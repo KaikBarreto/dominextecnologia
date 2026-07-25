@@ -247,6 +247,15 @@ export const settings = {
         unsavedStatus: 'Alterações não salvas',
         savedStatus: 'Salvo',
       },
+      discCard: {
+        title: 'Perfil Comportamental',
+        description: 'Como o teste comportamental (DISC) se comporta para os funcionários.',
+        visibilityLabel: 'Funcionário vê o próprio resultado do teste comportamental',
+        visibilityHint:
+          'Ligado: ao terminar, o funcionário vê o próprio perfil. Desligado: vê só uma tela de agradecimento, e o resultado fica só para o RH.',
+        on: 'Sim',
+        off: 'Não',
+      },
     },
 
     // ── Aba Aparência ─────────────────────────────────────────────────────────
@@ -1084,6 +1093,15 @@ export const settings = {
         unsavedStatus: 'Unsaved changes',
         savedStatus: 'Saved',
       },
+      discCard: {
+        title: 'Behavioral Profile',
+        description: 'How the behavioral (DISC) assessment behaves for employees.',
+        visibilityLabel: 'Employee sees their own behavioral assessment result',
+        visibilityHint:
+          'On: when they finish, the employee sees their own profile. Off: they see only a thank-you screen, and the result stays with HR.',
+        on: 'Yes',
+        off: 'No',
+      },
     },
 
     appearance: {
@@ -1875,6 +1893,15 @@ export const settings = {
         unsavedStatus: 'Cambios sin guardar',
         savedStatus: 'Guardado',
       },
+      discCard: {
+        title: 'Perfil de Comportamiento',
+        description: 'Cómo se comporta la evaluación de comportamiento (DISC) para los empleados.',
+        visibilityLabel: 'El empleado ve su propio resultado de la evaluación de comportamiento',
+        visibilityHint:
+          'Activado: al terminar, el empleado ve su propio perfil. Desactivado: solo ve una pantalla de agradecimiento, y el resultado queda con RR. HH.',
+        on: 'Sí',
+        off: 'No',
+      },
     },
 
     appearance: {
@@ -2665,6 +2692,15 @@ export const settings = {
         savingStatus: 'Enregistrement...',
         unsavedStatus: 'Modifications non enregistrées',
         savedStatus: 'Enregistré',
+      },
+      discCard: {
+        title: 'Profil Comportemental',
+        description: 'Comment l`évaluation comportementale (DISC) se comporte pour les salariés.',
+        visibilityLabel: 'Le salarié voit son propre résultat de l`évaluation comportementale',
+        visibilityHint:
+          'Activé : à la fin, le salarié voit son propre profil. Désactivé : il voit seulement un écran de remerciement, et le résultat reste chez les RH.',
+        on: 'Oui',
+        off: 'Non',
       },
     },
 

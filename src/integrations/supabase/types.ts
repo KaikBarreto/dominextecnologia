@@ -1002,6 +1002,7 @@ export type Database = {
           complement: string | null
           created_at: string
           currency: string
+          disc_show_result_to_employee: boolean
           document: string | null
           dre_start_date: string | null
           email: string | null
@@ -1042,6 +1043,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           currency?: string
+          disc_show_result_to_employee?: boolean
           document?: string | null
           dre_start_date?: string | null
           email?: string | null
@@ -1082,6 +1084,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           currency?: string
+          disc_show_result_to_employee?: boolean
           document?: string | null
           dre_start_date?: string | null
           email?: string | null
@@ -2409,6 +2412,72 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disc_assessments: {
+        Row: {
+          answers: Json | null
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          locale: string | null
+          primary_type: string | null
+          profile_code: string | null
+          public_short_code: string
+          scores: Json | null
+          secondary_type: string | null
+          status: string
+        }
+        Insert: {
+          answers?: Json | null
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          locale?: string | null
+          primary_type?: string | null
+          profile_code?: string | null
+          public_short_code: string
+          scores?: Json | null
+          secondary_type?: string | null
+          status?: string
+        }
+        Update: {
+          answers?: Json | null
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          locale?: string | null
+          primary_type?: string | null
+          profile_code?: string | null
+          public_short_code?: string
+          scores?: Json | null
+          secondary_type?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disc_assessments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disc_assessments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -8472,6 +8541,7 @@ export type Database = {
           subscription_status: string
         }[]
       }
+      get_disc_public: { Args: { p_code: string }; Returns: Json }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
       get_nps_criteria_averages: {
         Args: { p_end: string; p_start: string }
@@ -8835,6 +8905,16 @@ export type Database = {
       set_stock_materials: {
         Args: { p_inventory_ids: string[]; p_stock_id: string }
         Returns: undefined
+      }
+      submit_disc_assessment: {
+        Args: {
+          p_answers: Json
+          p_code: string
+          p_locale: string
+          p_profile: Json
+          p_scores: Json
+        }
+        Returns: Json
       }
       submit_lead_capture_form: {
         Args: {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { hexToRgbTriplet, idealForeground } from '@/lib/colorContrast';
 
@@ -40,25 +40,119 @@ interface MobilePillTabsProps {
 
 /**
  * Segmented control horizontal scrollável pra trocar de aba no mobile.
- * Pills snap-x com gradient fade nas bordas. Visual app nativo.
+ * Pills snap-x com gradient fade nas bordas via mask-image (superfície-agnóstico).
+ * Visual app nativo.
+ *
+ * Comportamento de scroll:
+ * - Ancora à esquerda por default (scrollLeft = 0 ao montar).
+ * - Ao trocar de aba, rola apenas o suficiente para revelar a pill ativa se ela
+ *   estiver além da borda direita — nunca corta a borda esquerda.
+ * - Fade esquerdo aparece só quando há conteúdo rolado para a esquerda.
+ * - Fade direito aparece só quando há conteúdo além da borda direita.
+ * - Ambos os fades usam mask-image (funciona sobre qualquer superfície: tela, modal, card).
  */
 export function MobilePillTabs({ tabs, activeTab, onTabChange, className, renderSuffix }: MobilePillTabsProps) {
-  // Centraliza a pill ativa na vista ao trocar de aba (ex: entrar numa ferramenta
-  // pelo carrossel do Início) — senão o carrossel fica preso no começo.
-  // Usamos dois refs separados para poder tipar corretamente o <div> (com suffix)
-  // e o <button> (sem suffix), evitando cast de tipo.
+  const scrollRef = useRef<HTMLDivElement>(null);
   const activeDivRef = useRef<HTMLDivElement>(null);
   const activeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Visibilidade dinâmica dos fades: esquerdo = há scroll à esquerda; direito = há scroll à direita.
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+
+  /** Recalcula quais fades devem aparecer com base na posição atual de scroll. */
+  const updateFades = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollLeft, clientWidth, scrollWidth } = el;
+    setShowLeft(scrollLeft > 1);
+    setShowRight(scrollLeft + clientWidth < scrollWidth - 1);
+  }, []);
+
+  // Listener de scroll e resize para atualizar fades dinamicamente.
   useEffect(() => {
-    activeDivRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    activeButtonRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    const el = scrollRef.current;
+    if (!el) return;
+
+    el.addEventListener('scroll', updateFades, { passive: true });
+    const ro = new ResizeObserver(updateFades);
+    ro.observe(el);
+
+    // Cálculo inicial após montagem.
+    updateFades();
+
+    return () => {
+      el.removeEventListener('scroll', updateFades);
+      ro.disconnect();
+    };
+  }, [updateFades]);
+
+  // Recalcula fades quando a lista de tabs muda (ex: abas carregadas assincronamente).
+  useEffect(() => {
+    updateFades();
+  }, [tabs, updateFades]);
+
+  // Ao trocar de aba: ancora à esquerda na primeira montagem (scroll = 0).
+  // Nas trocas subsequentes, rola só se a pill ativa estiver ALÉM da borda direita.
+  // Nunca usa scrollIntoView com inline: 'center' para não cortar a borda esquerda.
+  useEffect(() => {
+    const container = scrollRef.current;
+    const activeEl = activeDivRef.current ?? activeButtonRef.current;
+    if (!container || !activeEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+
+    const activeRight = activeRect.right - containerRect.left + container.scrollLeft;
+    const activeLeft = activeRect.left - containerRect.left + container.scrollLeft;
+
+    if (activeLeft < container.scrollLeft) {
+      // Pill ativa está à esquerda da vista — revelar com margem mínima.
+      container.scrollTo({ left: Math.max(0, activeLeft - 12), behavior: 'smooth' });
+    } else if (activeRight > container.scrollLeft + container.clientWidth) {
+      // Pill ativa está além da borda direita — revelar com margem mínima.
+      container.scrollTo({
+        left: activeRight - container.clientWidth + 12,
+        behavior: 'smooth',
+      });
+    }
+    // Caso contrário (pill visível), não mexe no scroll — preserva a âncora atual.
   }, [activeTab]);
+
+  // Máscara CSS superfície-agnóstica: transparente nas bordas com conteúdo rolável,
+  // opaca no centro. Aplicada dinamicamente conforme a posição de scroll.
+  // Usa a combinação dos dois fades: esquerdo e/ou direito, quando necessário.
+  const maskStyle: React.CSSProperties = (() => {
+    if (showLeft && showRight) {
+      return {
+        WebkitMaskImage:
+          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+        maskImage:
+          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+      };
+    }
+    if (showLeft) {
+      return {
+        WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 24px)',
+        maskImage: 'linear-gradient(to right, transparent 0, black 24px)',
+      };
+    }
+    if (showRight) {
+      return {
+        WebkitMaskImage: 'linear-gradient(to left, transparent 0, black 24px)',
+        maskImage: 'linear-gradient(to left, transparent 0, black 24px)',
+      };
+    }
+    return {};
+  })();
 
   return (
     <div className={cn('relative -mx-3', className)}>
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-background to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-gradient-to-l from-background to-transparent" />
-      <div className="flex gap-1.5 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={scrollRef}
+        style={maskStyle}
+        className="flex gap-1.5 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200"
+      >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.value;
           const rgb = hexToRgbTriplet(tab.accentColor);

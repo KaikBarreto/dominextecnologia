@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.27";
+export const APP_VERSION = "1.17.28";
 
-export const VERSION_NOTES = "No portal do cliente, cada equipamento agora abre em seções (visão geral, histórico e anexos) e você escolhe, equipamento por equipamento, se os arquivos anexados aparecem para o cliente. A lista de ordens de serviço ficou mais fácil de ler, ganhou busca (nas ordens e nos equipamentos) e passou a mostrar o tipo de serviço e o responsável, com as cores da sua marca aplicadas de forma mais consistente.";
+export const VERSION_NOTES = "Novidade em Funcionários: o Perfil Comportamental (DISC). Você gera um link exclusivo por funcionário, ele responde a um questionário rápido e o sistema monta um perfil completo, com gráficos de fatores e de competências, qualidades, pontos de atenção e como liderar cada pessoa. Dá para acompanhar a evolução ao longo do tempo, comparar dois funcionários lado a lado e ver a dinâmica entre eles (atritos, sinergias e a melhor forma de comunicação entre os dois). Disponível nos quatro idiomas do sistema.";

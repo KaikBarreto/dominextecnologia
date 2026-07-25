@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Globe, Coins, Clock, Loader2, CheckCircle2, AlertTriangle, User } from 'lucide-react';
+import { Globe, Coins, Clock, Loader2, CheckCircle2, AlertTriangle, User, Brain } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
   const [language, setLanguage] = useState<LocaleCode>('pt-br');
   const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
   const [timezone, setTimezone] = useState<string>(DEFAULT_TIMEZONE);
+  const [discShowResult, setDiscShowResult] = useState<boolean>(true);
   const [hadData, setHadData] = useState(false);
 
   // Guards do auto-save (mesmo padrão do Settings.tsx: baseline + anti-eco).
@@ -93,12 +95,14 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
       language: settings.language || 'pt-br',
       currency: settings.currency || DEFAULT_CURRENCY,
       timezone: settings.timezone || DEFAULT_TIMEZONE,
+      disc_show_result_to_employee: settings.disc_show_result_to_employee ?? true,
     });
     if (loadedRef.current && snapshot === lastSavedRef.current) return;
     hydratingRef.current = true;
     setLanguage((settings.language as LocaleCode) || 'pt-br');
     setCurrency(settings.currency || DEFAULT_CURRENCY);
     setTimezone(settings.timezone || DEFAULT_TIMEZONE);
+    setDiscShowResult(settings.disc_show_result_to_employee ?? true);
     // "Já tem dados" = a empresa tem OS/registros; usamos a existência de settings
     // como proxy pra decidir se mostramos o aviso de troca de moeda.
     setHadData(!!settings.currency);
@@ -114,13 +118,19 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
         language: settings?.language || 'pt-br',
         currency: settings?.currency || DEFAULT_CURRENCY,
         timezone: settings?.timezone || DEFAULT_TIMEZONE,
+        disc_show_result_to_employee: settings?.disc_show_result_to_employee ?? true,
       });
     }
   }, [canSave, settings]);
 
   const buildPayload = useCallback(
-    () => ({ language, currency, timezone }),
-    [language, currency, timezone],
+    () => ({
+      language,
+      currency,
+      timezone,
+      disc_show_result_to_employee: discShowResult,
+    }),
+    [language, currency, timezone, discShowResult],
   );
 
   // Auto-save com debounce.
@@ -371,6 +381,37 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
         </div>
       </CardContent>
     </Card>
+
+      {/* ── SEÇÃO 3: Perfil Comportamental (DISC) — visibilidade ao funcionário ── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            <CardTitle>{t.discCard.title}</CardTitle>
+          </div>
+          <CardDescription>
+            {t.discCard.description}
+            {!isAdmin && <span className="ml-1 text-muted-foreground/70">{t.companyCard.adminOnly}</span>}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">{t.discCard.visibilityLabel}</Label>
+              <p className="text-xs text-muted-foreground max-w-md">{t.discCard.visibilityHint}</p>
+            </div>
+            <LabeledSwitch
+              value={discShowResult ? 'on' : 'off'}
+              onChange={(v) => setDiscShowResult(v === 'on')}
+              off={{ value: 'off', label: t.discCard.off }}
+              on={{ value: 'on', label: t.discCard.on }}
+              disabled={!canSave || !isAdmin}
+              aria-label={t.discCard.visibilityLabel}
+              className="shrink-0"
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

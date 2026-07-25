@@ -46,6 +46,7 @@ export function EmptyState({ icon, title, description, action, className, size =
       )}
       {action && (
         <Button
+          type="button"
           className={compact ? 'mt-3' : 'mt-4'}
           size={compact ? 'sm' : undefined}
           onClick={action.onClick}

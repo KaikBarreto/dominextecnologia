@@ -6,7 +6,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import {
   Users, BarChart3, Plus, Search, Clock, UsersRound,
-  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementMo
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
+import { EmployeeDiscOverview } from '@/components/employees/EmployeeDiscOverview';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
@@ -84,6 +85,7 @@ export default function Employees() {
       { value: 'list', label: t.tabs.list, icon: Users },
       { value: 'teams', label: t.tabs.teams, icon: UsersRound },
       { value: 'dashboard', label: t.tabs.dashboard, icon: BarChart3 },
+      { value: 'behavioral', label: t.tabs.behavioral, icon: Brain },
     ];
     if (canManageTime) {
       base.push({ value: 'timeclock', label: t.tabs.timeclock, icon: Clock });
@@ -760,6 +762,8 @@ export default function Employees() {
           </div>
         ) : activeTab === 'teams' ? (
           <TeamsPanel />
+        ) : activeTab === 'behavioral' ? (
+          <EmployeeDiscOverview employees={employees} />
         ) : activeTab === 'timeclock' ? (
           <AdminTimePanel />
         ) : (
@@ -783,6 +787,10 @@ export default function Employees() {
         employee={editingEmployee}
         onSubmit={handleCreateOrUpdate}
         isPending={createEmployee.isPending || updateEmployee.isPending}
+        onCreateForDisc={async (data) => {
+          const newEmp = await createEmployee.mutateAsync(data as any);
+          return { id: newEmp.id, name: newEmp.name };
+        }}
       />
 
       {movementEmployee && (

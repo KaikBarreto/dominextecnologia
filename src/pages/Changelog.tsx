@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.28',
+    date: '25 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Perfil Comportamental (DISC) dos seus funcionários',
+        description: 'Em Funcionários, uma nova área de Perfil Comportamental. Para cada funcionário você gera um link exclusivo (sem precisar de login) e envia; ele responde a um questionário rápido, com perguntas que variam a cada avaliação, e o sistema monta um perfil completo: gráfico dos quatro fatores, radar de competências comportamentais, qualidades, pontos de atenção e orientações de como liderar aquela pessoa. Você define se o próprio funcionário pode ver o resultado. As perguntas mudam de uma avaliação para outra, para deixar o retrato mais fiel.',
+        category: 'recurso',
+      },
+      {
+        title: 'Histórico, comparação e dinâmica entre perfis',
+        description: 'Cada funcionário guarda o histórico das avaliações, com um gráfico de evolução ao longo do tempo. Você também pode comparar dois funcionários lado a lado, com os gráficos de fatores e de competências sobrepostos, e ver a dinâmica entre eles: os principais atritos, as sinergias e a melhor forma de comunicação entre os dois perfis. Tudo disponível nos quatro idiomas do sistema.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.27',
     date: '23 de julho de 2026',
     type: 'patch',

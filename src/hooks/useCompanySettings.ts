@@ -58,6 +58,9 @@ export interface CompanySettings {
   language?: LocaleCode | null;
   currency?: string | null;
   timezone?: string | null;
+  // Perfil Comportamental (DISC): funcionário vê o próprio resultado ao terminar
+  // o teste. Off = só tela de "obrigado", resultado fica com o RH. Default true.
+  disc_show_result_to_employee?: boolean | null;
   created_at: string;
   updated_at: string;
 }

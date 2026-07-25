@@ -152,6 +152,8 @@ const Quotes = React.lazy(() => import("./pages/Quotes"));
 const QuotePublic = React.lazy(() => import("./pages/QuotePublic"));
 const ProposalPublic = React.lazy(() => import("./pages/ProposalPublic"));
 const CustomerPortal = React.lazy(() => import("./pages/CustomerPortal"));
+// Tela pública do Perfil Comportamental (DISC) — link /avaliacao/:token, sem auth.
+const DiscAssessmentPublic = React.lazy(() => import("./pages/DiscAssessmentPublic"));
 // Formulário público de captação de cliente — link compartilhável, sem auth.
 const PublicLeadCapture = React.lazy(() => import("./pages/PublicLeadCapture"));
 // Portal PMOC público (Onda B — v1.9.1). Lazy: rota pública sem auth,
@@ -616,6 +618,10 @@ const AppRoutes = () => (
     {/* Ponto eletrônico por link público — anônimo, fora do AppLayout. O
        funcionário bate o ponto deslogado; tudo passa pela edge time-clock-portal. */}
     <Route path="/ponto/:slug" element={<PontoPublico />} />
+    {/* Perfil Comportamental (DISC) por link público — anônimo, fora do AppLayout.
+       O funcionário responde deslogado; tudo passa pelas RPCs get_disc_public /
+       submit_disc_assessment (SECURITY DEFINER). */}
+    <Route path="/avaliacao/:token" element={<DiscAssessmentPublic />} />
     {/* Public quote page */}
     <Route path="/orcamento/:token" element={<QuotePublic />} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />
@@ -684,7 +690,7 @@ const AppRoutes = () => (
       {localizedAppRoutes('profile', <Profile />)}
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
       {localizedAppRoutes('employees', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
-      <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
+<Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       {localizedAppRoutes('liveMap', <LiveMap />)}
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas
          via <Routes> dentro da página, então registra com /* (wildcard). */}

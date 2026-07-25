@@ -1,0 +1,2104 @@
+// i18n do APP — domínio PERFIL COMPORTAMENTAL (DISC).
+//
+// REGRA: cobre a TELA PÚBLICA (typeform, sem login), os rótulos dos gráficos, o
+// texto dos 28 itens Likert (por id), e os INSIGHTS por perfil (puros + combinados).
+// Consumido por:
+//   • lib/disc/questions.ts → items[id] (texto da afirmação)
+//   • lib/disc/profiles.ts  → profiles[code].{nome, ...}
+//   • telas/gráficos        → ui / scale / factors / disclaimer / charts
+//
+// IP: itens derivados de IPIP/ODAT (domínio público) + adjetivos genéricos.
+// NUNCA copiar questionário/relatório de marca (DiSC®/Insights/TTI).
+// Tradução SEMÂNTICA por termo de mercado de cada idioma (régua CEO), não literal:
+//   D Dominância/Dominance/Dominancia/Dominance · I Influência/Influence/Influencia/Influence
+//   S Estabilidade/Steadiness/Estabilidad/Stabilité · C Conformidade/Compliance/Conformidad/Conformité
+// pt-br é a FONTE (byte-completa); en/es/fr caem no pt-br via deepMerge se faltar chave.
+// Copy PT-BR sem travessão (—): usar vírgula.
+
+export const discProfile = {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // pt-br — FONTE DA VERDADE
+  // ═══════════════════════════════════════════════════════════════════════════
+  'pt-br': {
+    // ── Tela pública (typeform) ──────────────────────────────────────────────
+    ui: {
+      introTitle: 'Perfil Comportamental',
+      introLead:
+        'Leva cerca de 5 minutos. Não existe resposta certa ou errada, responda com sinceridade pensando no seu dia a dia.',
+      introStart: 'Começar',
+      back: 'Voltar',
+      next: 'Avançar',
+      submit: 'Enviar respostas',
+      submitting: 'Enviando...',
+      progress: 'Pergunta {current} de {total}',
+      thanksTitle: 'Obrigado!',
+      thanksLead:
+        'Suas respostas foram registradas. A equipe de RH receberá o seu perfil.',
+      alreadyDoneTitle: 'Respostas já enviadas',
+      alreadyDoneLead:
+        'Este questionário já foi respondido. Fale com o RH se precisar refazer.',
+      loadError: 'Não foi possível carregar o questionário. Tente novamente.',
+      resultTitle: 'Seu perfil comportamental',
+      greeting: 'Olá, {name}!',
+      assessmentDisclaimer:
+        'Não existe resposta certa ou errada, nem perfil melhor ou pior. Responda com sinceridade: não marque como você gostaria de ser ou o que acha que é o "certo", e sim o que é mais parecido com você de verdade.',
+    },
+
+    // ── Escala Likert 1–5 ────────────────────────────────────────────────────
+    scale: {
+      1: 'Discordo totalmente',
+      2: 'Discordo em parte',
+      3: 'Neutro',
+      4: 'Concordo em parte',
+      5: 'Concordo totalmente',
+      lowAnchor: 'Discordo',
+      highAnchor: 'Concordo',
+    },
+
+    // ── Fatores (rótulos dos eixos e gráficos) ───────────────────────────────
+    factors: {
+      D: { name: 'Dominância', short: 'D', tagline: 'Foco em resultado e ação' },
+      I: { name: 'Influência', short: 'I', tagline: 'Foco em pessoas e energia' },
+      S: { name: 'Estabilidade', short: 'S', tagline: 'Foco em harmonia e constância' },
+      C: { name: 'Conformidade', short: 'C', tagline: 'Foco em qualidade e critério' },
+    },
+
+    // ── Rótulos dos gráficos ─────────────────────────────────────────────────
+    charts: {
+      barTitle: 'Gráfico DISC',
+      radarTitle: 'Competências Comportamentais',
+      wheelTitle: 'Roda de estilo',
+      average: 'Média',
+      wheelCenter: 'Adaptável',
+      wheelEdge: 'Marcante',
+      score: 'Escore',
+    },
+
+    // ── Atributos do mapa de atributos (8 dimensões do radar) ───────────────
+    attributes: {
+      proactivity: 'Proatividade',
+      resultsFocus: 'Foco em resultados',
+      leadership: 'Liderança',
+      communication: 'Comunicação',
+      teamwork: 'Trabalho em equipe',
+      patience: 'Paciência',
+      discipline: 'Disciplina',
+      attentionToDetail: 'Atenção a detalhes',
+    },
+
+    // ── Competências Comportamentais (16 dimensões do novo radar) ───────────
+    competencies: {
+      competitiveness: 'Competitividade',
+      agility: 'Agilidade',
+      confidence: 'Confiança',
+      energy: 'Energia',
+      flexibility: 'Flexibilidade',
+      influence: 'Influência',
+      creativity: 'Criatividade',
+      consistency: 'Consistência',
+      communication: 'Comunicação',
+      empathy: 'Empatia',
+      planning: 'Planejamento',
+      patience: 'Paciência',
+      analysis: 'Análise',
+      judgment: 'Critério',
+      security: 'Segurança',
+      discipline: 'Disciplina',
+    },
+
+    // ── Seções de insight (títulos dos blocos do relatório) ──────────────────
+    sections: {
+      qualidades: 'Qualidades',
+      pontosDeAtencao: 'Pontos de atenção',
+      comoLiderar: 'Como liderar e comunicar',
+      oQueEvitar: 'O que evitar',
+      comunicacaoIdeal: 'Comunicação ideal',
+      ondeBrilha: 'Onde brilha',
+      sobEstresse: 'Sob estresse',
+      profileHeading: 'Perfil {code}',
+    },
+
+    disclaimer:
+      'Esta é uma ferramenta de autoconhecimento e comunicação de equipe. Não é um teste clínico nem um diagnóstico. Nenhum perfil é melhor ou pior que outro.',
+
+    // ── Texto dos 48 itens (por id) ──────────────────────────────────────────
+    items: {
+      d1: 'Gosto de assumir o comando das situações.',
+      d2: 'Pressiono para que as coisas aconteçam no ritmo que quero.',
+      d3: 'Vou direto ao ponto, mesmo que soe duro.',
+      d4: 'Gosto de competir e de vencer.',
+      d5: 'Tomo decisões rápido, mesmo correndo algum risco.',
+      d6: 'Prefiro ceder a entrar em confronto.',
+      d7: 'Tenho dificuldade de dizer não.',
+      d8: 'Assumo riscos para alcançar um objetivo.',
+      d9: 'Gosto de desafios difíceis.',
+      d10: 'Falo o que penso, sem rodeios.',
+      d11: 'Prefiro que outra pessoa tome as decisões difíceis.',
+      d12: 'Foco no resultado mesmo sob pressão.',
+      i1: 'Faço amizade com pessoas novas com facilidade.',
+      i2: 'Gosto de ser o centro das atenções.',
+      i3: 'Sou entusiasmado e contagio as pessoas ao meu redor.',
+      i4: 'Prefiro conversar e trocar ideias a trabalhar sozinho.',
+      i5: 'Mantenho o otimismo mesmo diante de problemas.',
+      i6: 'Num grupo grande, prefiro ficar mais quieto.',
+      i7: 'Falo pouco sobre mim mesmo.',
+      i8: 'Gosto de conhecer gente nova.',
+      i9: 'Convenço as pessoas com facilidade.',
+      i10: 'Trago bom humor para o ambiente.',
+      i11: 'Prefiro trabalhar sozinho a trabalhar em grupo.',
+      i12: 'Me empolgo com ideias novas.',
+      s1: 'Tenho paciência com processos demorados.',
+      s2: 'Prefiro rotina e previsibilidade a surpresas.',
+      s3: 'Ouço com atenção antes de me posicionar.',
+      s4: 'Evito conflitos para manter a harmonia do grupo.',
+      s5: 'Sou leal e constante com quem confio.',
+      s6: 'Gosto quando os planos mudam de repente.',
+      s7: 'Fico impaciente quando as coisas demoram.',
+      s8: 'Mantenho a calma em situações tensas.',
+      s9: 'Ajudo os colegas quando precisam.',
+      s10: 'Prefiro um ambiente estável e sem surpresas.',
+      s11: 'Gosto de assumir riscos e mudanças.',
+      s12: 'Sou o primeiro a acalmar um conflito.',
+      c1: 'Reparo em detalhes que a maioria não percebe.',
+      c2: 'Gosto de tudo organizado e em ordem.',
+      c3: 'Confiro o meu trabalho mais de uma vez.',
+      c4: 'Prefiro seguir regras e procedimentos claros.',
+      c5: 'Analiso os dados com calma antes de decidir.',
+      c6: 'Costumo decidir no impulso, sem muita análise.',
+      c7: 'Não me incomodo com pequenos erros.',
+      c8: 'Sigo checklists e procedimentos à risca.',
+      c9: 'Reviso o trabalho para evitar erros.',
+      c10: 'Prefiro qualidade a velocidade.',
+      c11: 'Não me importo muito com detalhes.',
+      c12: 'Baseio minhas decisões em fatos e números.',
+    },
+
+    // ── Insights por perfil ──────────────────────────────────────────────────
+    profiles: {
+      D: {
+        nome: 'O Executor',
+        qualidades: [
+          'Movido a resultado e ação',
+          'Assertivo e direto',
+          'Decide rápido sob pressão',
+          'Assume a liderança com naturalidade',
+        ],
+        pontosDeAtencao: [
+          'Prioriza a tarefa sobre as pessoas',
+          'Pode atropelar quem está ao lado',
+          'Impaciente com processos lentos',
+          'Escuta pouco antes de agir',
+        ],
+        comoLiderar: [
+          'Dê metas claras e autonomia sobre o "como"',
+          'Foque no resultado, não no caminho',
+          'Seja objetivo e vá direto ao ponto',
+        ],
+        oQueEvitar: ['Ambiguidade', 'Decisão lenta', 'Rodeios', 'Microgerência'],
+        comunicacaoIdeal:
+          'Direta e objetiva, com prazo e meta logo na frente.',
+        ondeBrilha: [
+          'Liderança e gestão de projeto',
+          'Metas agressivas',
+          'Negociação',
+          'Momentos de crise',
+        ],
+        sobEstresse:
+          'Fica mais controlador e ríspido, tentando retomar o comando.',
+      },
+      I: {
+        nome: 'O Comunicador',
+        qualidades: [
+          'Constrói relações com facilidade',
+          'Entusiasma e motiva o time',
+          'Criativo e cheio de ideias',
+          'Energiza o ambiente',
+        ],
+        pontosDeAtencao: [
+          'Dispersa a atenção com facilidade',
+          'Começa muito e termina pouco',
+          'Foge do detalhe',
+          'Age no impulso',
+        ],
+        comoLiderar: [
+          'Dê reconhecimento público',
+          'Pareie com alguém organizado',
+          'Ajude a manter o foco no que importa',
+        ],
+        oQueEvitar: [
+          'Excesso de regras e detalhe',
+          'Crítica sem reconhecimento',
+          'Isolamento',
+        ],
+        comunicacaoIdeal:
+          'Calorosa e com espaço para falar, valorizando as ideias da pessoa.',
+        ondeBrilha: [
+          'Vendas e atendimento',
+          'Relacionamento',
+          'Marketing',
+          'Integração de time',
+        ],
+        sobEstresse:
+          'Fala demais e busca aprovação, sofre quando fica isolado.',
+      },
+      S: {
+        nome: 'O Apoiador',
+        qualidades: [
+          'Paciente e constante',
+          'Leal com quem confia',
+          'Ótimo ouvinte',
+          'Estabiliza o time e cuida do clima',
+        ],
+        pontosDeAtencao: [
+          'Evita o conflito necessário',
+          'Resiste a mudanças',
+          'Se sobrecarrega calado',
+          'Demora a decidir',
+        ],
+        comoLiderar: [
+          'Avise mudanças com antecedência',
+          'Inclua nas decisões',
+          'Valorize a lealdade e a constância',
+        ],
+        oQueEvitar: [
+          'Mudança brusca sem aviso',
+          'Cobrança em público',
+          'Pressa',
+          'Confronto direto',
+        ],
+        comunicacaoIdeal:
+          'Calma e próxima, mostrando como a mudança ajuda o time e garantindo que a pessoa se sinta ouvida.',
+        ondeBrilha: [
+          'Suporte e atendimento',
+          'RH e pós-venda',
+          'Funções de continuidade',
+        ],
+        sobEstresse:
+          'Recua e busca segurança, o conflito o paralisa.',
+      },
+      C: {
+        nome: 'O Analista',
+        qualidades: [
+          'Foco em qualidade e detalhe',
+          'Especialista no que faz',
+          'Eleva o padrão do time',
+          'Confiável na entrega',
+        ],
+        pontosDeAtencao: [
+          'Perfeccionismo trava a entrega',
+          'Trato mais frio',
+          'Crítico consigo e com os outros',
+          'Sofre com pressa',
+        ],
+        comoLiderar: [
+          'Dê critérios e dados claros',
+          'Permita trabalho independente',
+          'Feedback específico e gentil',
+        ],
+        oQueEvitar: [
+          'Instrução vaga',
+          'Prazo apertado sem aviso',
+          'Crítica dura',
+          'Improviso',
+        ],
+        comunicacaoIdeal:
+          'Baseada em fatos, de preferência por escrito, com contexto e antecedência.',
+        ondeBrilha: [
+          'Análise e qualidade',
+          'Financeiro e processos',
+          'Documentação técnica',
+        ],
+        sobEstresse:
+          'Busca mais dados e regras, paralisa por medo de errar.',
+      },
+      DI: {
+        nome: 'O Impulsionador',
+        qualidades: [
+          'Líder carismático',
+          'Ambicioso e envolvente',
+          'Comunica direto, mas com energia',
+          'Mobiliza pessoas rápido',
+        ],
+        pontosDeAtencao: [
+          'Atropela e dispersa ao mesmo tempo',
+          'Promete além do que entrega',
+          'Impaciente com o detalhe',
+        ],
+        comoLiderar: [
+          'Dê palco e metas ambiciosas',
+          'Pareie com quem cuida do detalhe',
+          'Cobre foco no que foi prometido',
+        ],
+        oQueEvitar: ['Rotina', 'Lentidão', 'Ambiente sem visibilidade'],
+        comunicacaoIdeal:
+          'Objetiva e animada, com meta ambiciosa e reconhecimento no caminho.',
+        ondeBrilha: [
+          'Ambientes dinâmicos com visibilidade',
+          'Liderança comercial',
+          'Lançamentos',
+        ],
+        sobEstresse:
+          'Acelera demais e assume mais do que consegue entregar.',
+      },
+      ID: {
+        nome: 'O Persuasor',
+        qualidades: [
+          'Entusiasta primeiro, assertivo depois',
+          'Convence e empurra',
+          'Alta energia social',
+          'Cria movimento',
+        ],
+        pontosDeAtencao: [
+          'Promete além do que entrega',
+          'Foge do detalhe',
+          'Pode soar exagerado',
+        ],
+        comoLiderar: [
+          'Reconheça em público',
+          'Aterrisse as promessas em prazos',
+          'Dê metas de impacto',
+        ],
+        oQueEvitar: ['Ambiente estático', 'Excesso de regras', 'Trabalho solitário'],
+        comunicacaoIdeal:
+          'Calorosa e direta, com espaço pra convencer e uma meta clara no fim.',
+        ondeBrilha: ['Vendas de impacto', 'Apresentações', 'Captação'],
+        sobEstresse:
+          'Insiste na persuasão e ignora sinais de que é hora de recuar.',
+      },
+      DC: {
+        nome: 'O Desafiador',
+        qualidades: [
+          'Assertivo e detalhista',
+          'Estratégico e exigente',
+          'Busca resultado com qualidade',
+          'Padrão alto',
+        ],
+        pontosDeAtencao: [
+          'Duro e perfeccionista ao mesmo tempo',
+          'Cobra demais',
+          'Pouca paciência com erro',
+        ],
+        comoLiderar: [
+          'Traga metas claras e critérios objetivos',
+          'Respeite a autonomia técnica',
+          'Reconheça a qualidade entregue',
+        ],
+        oQueEvitar: ['Ambiguidade', 'Baixo padrão', 'Improviso'],
+        comunicacaoIdeal:
+          'Direta e fundamentada, com dados e um resultado claro na frente.',
+        ondeBrilha: [
+          'Onde precisa resultado com qualidade',
+          'Gestão técnica',
+          'Projetos exigentes',
+        ],
+        sobEstresse:
+          'Fica crítico e controlador, quer refazer tudo até ficar perfeito.',
+      },
+      CD: {
+        nome: 'O Realizador',
+        qualidades: [
+          'Preciso primeiro, decisivo depois',
+          'Decide por dados',
+          'Firme e fundamentado',
+          'Executa com rigor',
+        ],
+        pontosDeAtencao: [
+          'Frio e impaciente com "achismo"',
+          'Pode travar por excesso de análise',
+          'Trato direto demais',
+        ],
+        comoLiderar: [
+          'Traga dados confiáveis',
+          'Deixe decidir com base em critério',
+          'Evite pressão emocional',
+        ],
+        oQueEvitar: ['Decisão emocional', 'Dado ruim', 'Falta de critério'],
+        comunicacaoIdeal:
+          'Objetiva e baseada em fatos, com números que sustentem a decisão.',
+        ondeBrilha: [
+          'Finanças e engenharia',
+          'Decisão técnica',
+          'Controle e auditoria',
+        ],
+        sobEstresse:
+          'Fecha-se nos dados e endurece, rejeita o que não for comprovado.',
+      },
+      IS: {
+        nome: 'O Colaborador',
+        qualidades: [
+          'Caloroso e empático',
+          'Conecta pessoas',
+          'Cria clima leve',
+          'Cuida do time',
+        ],
+        pontosDeAtencao: [
+          'Evita conflito e cobrança',
+          'Custa a tomar decisão impopular',
+          'Pode adiar o difícil',
+        ],
+        comoLiderar: [
+          'Valorize o cuidado com as pessoas',
+          'Apoie nas decisões difíceis',
+          'Dê ambiente estável e amistoso',
+        ],
+        oQueEvitar: ['Tensão constante', 'Decisões impopulares sem apoio', 'Frieza'],
+        comunicacaoIdeal:
+          'Amigável e acolhedora, reconhecendo o esforço de manter o grupo unido.',
+        ondeBrilha: ['Times harmônicos', 'Atendimento', 'Facilitação'],
+        sobEstresse:
+          'Absorve a tensão de todos e evita o confronto que resolveria.',
+      },
+      SI: {
+        nome: 'O Facilitador',
+        qualidades: [
+          'Mediador amigável',
+          'Faz ponte entre pessoas',
+          'Constrói coesão',
+          'Constante e gentil',
+        ],
+        pontosDeAtencao: [
+          'Adia o confronto necessário',
+          'Resiste a mudança rápida',
+          'Guarda insatisfação',
+        ],
+        comoLiderar: [
+          'Avise mudanças cedo',
+          'Peça a leitura do grupo',
+          'Reconheça o papel de ponte',
+        ],
+        oQueEvitar: ['Mudança rápida', 'Clima hostil', 'Cobrança pública'],
+        comunicacaoIdeal:
+          'Próxima e calma, mostrando o impacto positivo no grupo.',
+        ondeBrilha: ['Coesão de equipe', 'Mediação', 'Onboarding e clima'],
+        sobEstresse:
+          'Recolhe-se e evita a fricção, mesmo quando ela é necessária.',
+      },
+      SC: {
+        nome: 'O Metódico',
+        qualidades: [
+          'Confiável e cuidadoso',
+          'Segue processo',
+          'Constante na rotina',
+          'Baixo índice de erro',
+        ],
+        pontosDeAtencao: [
+          'Rígido e avesso a risco',
+          'Resiste a mudança',
+          'Lento para adaptar',
+        ],
+        comoLiderar: [
+          'Dê processo claro e estável',
+          'Explique o porquê da mudança',
+          'Respeite o ritmo cuidadoso',
+        ],
+        oQueEvitar: ['Mudança brusca', 'Ambiguidade', 'Pressa sem aviso'],
+        comunicacaoIdeal:
+          'Clara e estruturada, com passo a passo e antecedência.',
+        ondeBrilha: ['Rotina bem-feita', 'Processos', 'Controle de qualidade'],
+        sobEstresse:
+          'Agarra-se ao procedimento e trava diante do imprevisto.',
+      },
+      CS: {
+        nome: 'O Perfeccionista',
+        qualidades: [
+          'Minucioso e cooperativo',
+          'Qualidade com cuidado',
+          'Padrão alto e discreto',
+          'Confiável em equipe',
+        ],
+        pontosDeAtencao: [
+          'Trava por excesso de zelo',
+          'Custa a delegar',
+          'Sofre com reviravolta',
+        ],
+        comoLiderar: [
+          'Defina critérios de "bom o suficiente"',
+          'Dê tempo e contexto',
+          'Reconheça o cuidado',
+        ],
+        oQueEvitar: ['Reviravolta súbita', 'Expectativa vaga', 'Prazo irreal'],
+        comunicacaoIdeal:
+          'Detalhada e respeitosa, com critérios e prazos realistas.',
+        ondeBrilha: ['Precisão em equipe', 'Revisão e conferência', 'Documentação'],
+        sobEstresse:
+          'Refaz sem parar em busca do perfeito e atrasa a entrega.',
+      },
+      DS: {
+        nome: 'O Planejador',
+        qualidades: [
+          'Decidido e organizado',
+          'Firme e constante',
+          'Executa o plano até o fim',
+          'Combina impulso com método',
+        ],
+        pontosDeAtencao: [
+          'Teimoso quando decide',
+          'Custa a mudar de rota',
+          'Cobra a si mesmo demais',
+        ],
+        comoLiderar: [
+          'Alinhe o plano no começo',
+          'Traga fatos para ajustes de rota',
+          'Respeite a constância',
+        ],
+        oQueEvitar: ['Rigidez consigo mesmo', 'Mudança sem motivo claro', 'Improviso'],
+        comunicacaoIdeal:
+          'Objetiva e planejada, com metas firmes e razões para qualquer ajuste.',
+        ondeBrilha: ['Execução planejada', 'Metas de médio prazo', 'Operação estável'],
+        sobEstresse:
+          'Insiste no plano original mesmo quando o cenário já mudou.',
+      },
+      IC: {
+        nome: 'O Consultor',
+        qualidades: [
+          'Sociável e preciso',
+          'Amigável, mas exato',
+          'Explica bem o complexo',
+          'Une relação com técnica',
+        ],
+        pontosDeAtencao: [
+          'Sofre em trabalho técnico solitário',
+          'Oscila entre falar e revisar',
+          'Pode se dispersar no detalhe',
+        ],
+        comoLiderar: [
+          'Dê interação e um problema técnico bom',
+          'Reconheça a clareza da explicação',
+          'Evite isolamento longo',
+        ],
+        oQueEvitar: ['Isolamento sem interação', 'Tarefa monótona', 'Falta de contexto'],
+        comunicacaoIdeal:
+          'Amigável e precisa, com espaço pra dialogar e dados pra sustentar.',
+        ondeBrilha: ['Explicar ou vender algo técnico', 'Consultoria', 'Treinamento'],
+        sobEstresse:
+          'Fala muito para aliviar a tensão e perde o rigor do detalhe.',
+      },
+    },
+
+    // ── Relações entre pares de perfis primários ─────────────────────────────
+    // Chave = par canônico D<I<S<C (ver src/lib/disc/relationships.ts).
+    // Cada combo descreve a dinâmica quando os dois fatores primários se encontram.
+    relationships: {
+      DD: {
+        friction: [
+          'Em reuniões, os dois competem para ter a palavra final, e uma decisão simples vira queda de braço que trava a equipe.',
+          'Nenhum dos dois recua numa discussão, então divergências pequenas escalam para confronto direto na frente do time.',
+          'Cada um assume a mesma frente sem combinar antes, e o resultado é retrabalho e ordens contraditórias para os subordinados.',
+          'O ego elevado faz com que admitir erro pareça derrota, então falhas ficam sem correção porque ninguém cede.',
+          'A pressa dos dois por resultado atropela o alinhamento, e a equipe recebe metas mudadas no meio do caminho.',
+        ],
+        synergy: [
+          'Quando o escopo está dividido, os dois decidem rápido e destravam projetos que travariam com perfis mais cautelosos.',
+          'A ambição compartilhada puxa metas arrojadas para cima, e um serve de referência de energia e ritmo para o outro.',
+          'Sob pressão ou em crise, nenhum dos dois congela, e juntos seguram a operação quando tudo está pegando fogo.',
+          'Cobram entrega um do outro no mesmo nível, então o padrão de resultado da dupla fica alto sem precisar de supervisão externa.',
+          'Em negociações duras, formam uma frente firme que dificilmente é dobrada pelo outro lado.',
+        ],
+        communication:
+          'Combine antes quem lidera cada frente e formalize por escrito, para que a reunião não vire disputa pela palavra final. Cada um deve entrar na conversa disposto a ceder em pelo menos um ponto, tratando divergência como dado, não como afronta pessoal. Feedback entre os dois funciona melhor a sós e direto, sem plateia que transforme o assunto em queda de braço. Definam um critério objetivo de decisão (número, prazo, meta) para desempatar sem que vire questão de ego.',
+      },
+      DI: {
+        friction: [
+          'O D cobra prazo e entrega fechada, enquanto o I chega cheio de ideias soltas, e o D passa a enxergá-lo como disperso e pouco confiável.',
+          'O I sente o D frio e ríspido, e depois de alguns cortes secos começa a evitar levar assuntos e a esconder problemas.',
+          'O ritmo acelerado do D atropela a necessidade do I de conversar e ser reconhecido, esvaziando a energia que ele traria para o time.',
+          'O I promete mais do que consegue cumprir para agradar, e o D se irrita quando a entrega não bate com o discurso animado.',
+          'Em reunião, o I alonga com histórias e o D corta na metade, e nenhum dos dois sai sentindo que foi ouvido.',
+        ],
+        synergy: [
+          'O D puxa o resultado e define a meta, o I engaja as pessoas e vende a ideia, uma dupla forte para lançamentos e viradas de operação.',
+          'O I suaviza o impacto do D nas pessoas, traduzindo cobranças duras numa linguagem que o time aceita sem desmotivar.',
+          'Juntos cobrem os dois lados que quase nenhum perfil sozinho entrega: foco em resultado e capacidade de influenciar e mobilizar.',
+          'O D dá foco e prazo ao entusiasmo do I, transformando muita ideia solta em poucas apostas realmente executadas.',
+          'Em momentos de baixa moral, o D define o rumo e o I reacende a energia, e a equipe volta a andar rápido.',
+        ],
+        communication:
+          'O D deve começar com uma frase de reconhecimento antes de cobrar, porque o I trava quando sente frieza logo de cara. O I precisa chegar às conversas com foco e um prazo concreto, cortando a introdução longa que faz o D desligar. Combinem que ideias novas do I entram numa lista para depois, e não no meio de uma decisão que já estava fechada. Em reunião, o D conduz a meta e o I conduz o engajamento, cada um respeitando o espaço do outro em vez de disputar o comando.',
+      },
+      DS: {
+        friction: [
+          'O D quer mudar tudo agora e o S precisa de tempo e aviso, então mudanças caem de surpresa e o S se sente atropelado.',
+          'O S protege a estabilidade e o ritmo do time, e o D lê isso como lentidão ou resistência de propósito.',
+          'Sob pressão, o D fica mais ríspido e o S se fecha, guardando insatisfações que só aparecem quando já viraram desgaste.',
+          'O D decide sozinho e comunica pronto, enquanto o S esperava ser consultado, e a confiança entre os dois vai corroendo.',
+          'O D mede valor por resultado rápido e o S por consistência e relação, então cada um acha que o outro cuida da coisa errada.',
+        ],
+        synergy: [
+          'O D lidera e decide, o S estabiliza e executa com constância, uma dupla que combina velocidade de decisão com entrega firme até o fim.',
+          'O S cuida das relações e do clima que o D costuma negligenciar, segurando o time que a pressão do D poderia desgastar.',
+          'Quando o D define o rumo, o S garante que o plano seja seguido sem abandono no meio, reduzindo projetos começados e não terminados.',
+          'O S traz ao D uma leitura realista de como a mudança afeta as pessoas, evitando decisões rápidas que quebram a operação.',
+          'Em rotinas longas, o D dá o impulso inicial e o S sustenta a constância, mantendo o resultado sem depender de novos empurrões.',
+        ],
+        communication:
+          'O D deve dar contexto e avisar mudanças com antecedência, porque o S entrega muito mais quando não é pego de surpresa. O S precisa se posicionar em voz alta na hora, em vez de concordar por fora e guardar a discordância. Nas conversas, o D ganha se desacelerar o tom e perguntar a opinião do S antes de fechar a decisão. Dividam papéis com clareza: o D assume as decisões e o ritmo, o S assume a execução constante e o cuidado com o time, sem um invadir o terreno do outro.',
+      },
+      DC: {
+        friction: [
+          'O D quer decidir rápido e o C precisa de dados e tempo para analisar, então o D lê o C como travador e o C lê o D como afobado.',
+          'O C aponta riscos e detalhes que faltam, e o D interpreta como resistência ou excesso de burocracia no meio da entrega.',
+          'Os dois são exigentes, mas cobram coisas opostas, o D cobra resultado no prazo e o C cobra qualidade sem falha, e o time fica no fogo cruzado.',
+          'Quando o prazo aperta, o D quer entregar como está e o C se recusa a soltar algo que considera abaixo do padrão, e a tensão sobe.',
+          'O D decide pelo instinto e o C pelo dado, então cada um desconfia do método do outro e a decisão empaca em desconfiança mútua.',
+        ],
+        synergy: [
+          'O D puxa o resultado e o C garante a qualidade, uma dupla forte para projetos que precisam entregar rápido e com padrão alto ao mesmo tempo.',
+          'O C freia o D nos erros evitáveis antes que virem prejuízo, funcionando como controle de qualidade sem travar a entrega.',
+          'O D dá ao C um senso de urgência e prazo, evitando que a análise se estenda sem fim atrás da certeza perfeita.',
+          'Em decisões de risco, o D traz a coragem de agir e o C traz o critério para agir certo, reduzindo tanto a paralisia quanto o erro impulsivo.',
+          'Juntos elevam o nível do que o time entrega: velocidade do D com o rigor técnico do C, algo raro num perfil só.',
+        ],
+        communication:
+          'O D deve trazer os dados que tem e dar ao C um tempo mínimo para processar antes de exigir a decisão, senão o C trava por insegurança. O C precisa começar pelo essencial e pela conclusão, deixando o detalhamento para depois, para o D não perder o fio nem a paciência. Combinem antes o que é inegociável em qualidade e o que pode ceder pelo prazo, para o embate não acontecer em cima da hora. Nas reuniões, o D conduz meta e prazo, o C conduz critério e risco, e a decisão final considera os dois lados em vez de um vencer o outro.',
+      },
+      II: {
+        friction: [
+          'Os dois falam muito e executam pouco, a lista de ideias cresce a cada reunião enquanto a entrega concreta encolhe.',
+          'Ambos querem o palco, então disputam a atenção do grupo e reuniões viram competição de quem fala mais em vez de decisão.',
+          'Prazo e detalhe ficam em segundo plano para os dois, e tarefas importantes atrasam porque nenhum assumiu o trabalho chato.',
+          'Como os dois evitam a parte árida, ninguém acompanha número nem checklist, e problemas só aparecem quando já estouraram.',
+          'No calor do entusiasmo, os dois prometem mais do que o time consegue entregar, e a conta chega depois em frustração.',
+        ],
+        synergy: [
+          'A energia da dupla é altíssima, e juntos criam um ambiente animado que motiva e contagia o resto do time.',
+          'Criatividade e networking em dobro fazem ideias e conexões fluírem, ótimo para campanhas, eventos e lançamentos.',
+          'Quando precisam vender uma ideia internamente, os dois somam poder de influência e a proposta ganha o grupo rápido.',
+          'Em momentos de moral baixa, a dupla reacende o ânimo da equipe e devolve leveza a um clima pesado.',
+          'A troca constante de ideias entre os dois gera soluções criativas que perfis mais fechados dificilmente chegariam.',
+        ],
+        communication:
+          'Definam logo no início quem executa o quê e registrem por escrito, porque a boa intenção dos dois some sem responsável claro. Combinem prazos reais e um momento fixo para revisar o que de fato saiu do papel, senão tudo vira conversa animada sem entrega. Vale trazer alguém organizado para o time, ou revezar quem assume a parte chata a cada projeto. Aproveitem a energia para celebrar as conquistas juntos, mas separem o momento de comemorar do momento de decidir, para a reunião não virar só festa.',
+      },
+      IS: {
+        friction: [
+          'O ritmo acelerado e as mudanças constantes do I sobrecarregam o S, que precisa de previsibilidade para render bem.',
+          'O I se frustra com o tempo que o S leva para aderir a uma novidade, e passa a empurrar mudanças que o S ainda não digeriu.',
+          'O S guarda insatisfações para não gerar atrito, e o I, distraído pela própria energia, nunca percebe que algo está errado.',
+          'O I muda de assunto e de prioridade o tempo todo, e o S se sente inseguro sem saber qual é o foco real da semana.',
+          'Quando o clima esquenta, o I quer resolver conversando alto e rápido, e o S se retrai, e a conversa não acontece.',
+        ],
+        synergy: [
+          'O I energiza e conecta as pessoas, o S apoia e estabiliza, juntos formam um time caloroso, colaborativo e agradável de trabalhar.',
+          'O S dá constância à energia do I, transformando entusiasmo passageiro em relações e rotinas que duram.',
+          'O S cuida em silêncio dos detalhes e do acompanhamento que o I deixa de lado, cobrindo o ponto fraco do parceiro.',
+          'Nas relações com clientes e equipe, o I abre a porta e o S mantém o vínculo no longo prazo, uma combinação forte em atendimento.',
+          'O clima de confiança que os dois criam faz o time se sentir seguro para falar e pedir ajuda.',
+        ],
+        communication:
+          'O I deve desacelerar e avisar mudanças com antecedência, dando ao S tempo para se preparar em vez de reagir na correria. O S precisa falar abertamente das preocupações assim que surgem, em vez de guardar até virar mágoa. Combinem uma prioridade clara por período, para o S não se perder na troca constante de foco do I. Nas conversas difíceis, o I ganha se baixar o tom e ouvir mais, e o S ganha se disser o que pensa mesmo correndo o risco de um pequeno atrito.',
+      },
+      IC: {
+        friction: [
+          'A espontaneidade do I bate de frente com a precisão do C, e o que para um é agilidade para o outro é desleixo.',
+          'O C acha o I desorganizado e superficial, o I acha o C rígido e sem graça, e cada um subestima a contribuição do outro.',
+          'O I quer começar já e ajustar no caminho, o C quer planejar tudo antes, e a diferença de ritmo gera atrito no arranque de qualquer tarefa.',
+          'O C aponta erros e inconsistências, e o I, que se move por reconhecimento, recebe isso como crítica pessoal e desanima.',
+          'Em reunião, o I traz visão e o C traz ressalvas, e sem mediação a conversa oscila entre otimismo solto e ceticismo travador.',
+        ],
+        synergy: [
+          'O I traz ideia, energia e relação, o C traz rigor, qualidade e profundidade, um equilíbrio raro entre encantar e entregar bem feito.',
+          'O C aterra as ideias do I em algo concreto e executável, transformando entusiasmo em plano de verdade.',
+          'Juntos são ótimos para explicar e vender assuntos técnicos, o I dá o charme e a clareza, o C garante que o conteúdo esteja correto.',
+          'O I abre portas e conquista as pessoas, o C sustenta a credibilidade com dados, uma dupla convincente e confiável ao mesmo tempo.',
+          'A criatividade do I somada ao senso crítico do C gera soluções inovadoras que também passam no teste da qualidade.',
+        ],
+        communication:
+          'O I deve levar fatos e evidências ao C, porque só entusiasmo não convence quem decide por dado. O C precisa se abrir a ideias novas sem exigir perfeição já no primeiro rascunho, e cuidar para que a crítica venha com reconhecimento, não só como correção. Combinem um momento para divergir livremente e outro para fechar com rigor, separando o brainstorm da revisão. Dividam papéis na apresentação: o I conduz a relação e a narrativa, o C garante a exatidão do conteúdo, buscando sempre o meio-termo entre encantar e comprovar.',
+      },
+      SS: {
+        friction: [
+          'Os dois evitam conflito e deixam problemas se acumularem sem dizer nada, até que o pequeno atrito vira um desgaste grande.',
+          'Decisões ficam lentas ou adiadas indefinidamente, porque nenhum dos dois quer bancar a escolha difícil e assumir o risco.',
+          'Ambos resistem a mudanças, mesmo às necessárias, e a dupla se acomoda numa rotina que já não serve ao time.',
+          'Insatisfações ficam guardadas dos dois lados, e o clima aparentemente tranquilo esconde ressentimentos que ninguém verbaliza.',
+          'Sem alguém puxando o ritmo, prazos escorregam de forma silenciosa porque cobrar o outro parece quebrar a harmonia.',
+        ],
+        synergy: [
+          'A harmonia, a lealdade e a cooperação entre os dois são genuínas, e o time sente um ambiente estável e sem panelinha.',
+          'A dupla sustenta a operação no longo prazo, dando ao time uma base de estabilidade que segura a rotina mesmo em fases difíceis.',
+          'Criam um ambiente seguro onde todos se sentem ouvidos, o que faz as pessoas ao redor abrirem problemas mais cedo.',
+          'Trabalham com paciência e constância, ideais para funções de continuidade, suporte e cuidado com pessoas.',
+          'A lealdade mútua torna a dupla extremamente confiável em momentos que exigem discrição e apoio silencioso.',
+        ],
+        communication:
+          'Combinem que ser honesto sobre um problema não é agredir, para que os dois consigam falar o desconforto mesmo sem gostar do momento. Definam quem puxa cada decisão e um prazo para bater o martelo, senão a escolha fica rodando sem fim. Marquem uma conversa periódica só para colocar na mesa o que está incomodando, criando um espaço seguro para o que ninguém diria no corredor. Diante de uma mudança necessária, escrevam juntos o porquê e os ganhos, para vencer a resistência natural dos dois com argumento, não com pressão.',
+      },
+      SC: {
+        friction: [
+          'Os dois são cautelosos e avessos a risco, e juntos podem travar diante de qualquer decisão que envolva incerteza.',
+          'O excesso de análise antes de mudar qualquer coisa faz a dupla adiar movimentos que o negócio precisa fazer logo.',
+          'O S quer harmonia e o C quer precisão, e às vezes o apego do C ao processo passa por cima do cuidado do S com as pessoas.',
+          'Nenhum dos dois gosta de confronto, então divergências sobre o método ficam sem ser resolvidas e se arrastam.',
+          'A dupla se sente confortável demais na rotina conhecida, e resiste a inovações mesmo quando elas trariam ganho claro.',
+        ],
+        synergy: [
+          'O trabalho da dupla é confiável, minucioso e de qualidade consistente, com pouquíssima variação de um dia para o outro.',
+          'O baixo índice de erro e o respeito às regras fazem deles um dos pares mais estáveis para rotinas de precisão.',
+          'O S mantém o clima e o C mantém o padrão, e juntos entregam qualidade sem gerar atrito com o time em volta.',
+          'São a dupla certa para processos críticos que não podem falhar, porque os dois checam antes de soltar.',
+          'A combinação de cuidado com pessoas e cuidado com o detalhe cria uma operação previsível em que a liderança pode confiar.',
+        ],
+        communication:
+          'Trabalhem com processos e critérios claros e definidos por escrito, porque os dois se sentem seguros quando o caminho está mapeado. Avisem mudanças com antecedência e deem tempo de adaptação, evitando o susto que trava o S e a análise sem fim que trava o C. Combinem antes um prazo para encerrar a análise e agir, para a cautela dos dois não virar paralisia. Incentivem-se mutuamente a se posicionar quando algo estiver errado, tratando a divergência sobre o método como parte do trabalho, não como conflito pessoal.',
+      },
+      CC: {
+        friction: [
+          'O perfeccionismo dos dois leva à paralisia por análise, e a dupla adia a entrega em busca de uma certeza que nunca chega.',
+          'Ambos tendem a criticar demais, e a revisão mútua vira um vaivém de apontamentos que gera tensão e desgasta a relação.',
+          'Nenhum dos dois avança sem o nível de certeza que o outro também não considera suficiente, e o projeto empaca em checagens infinitas.',
+          'Como os dois valorizam o detalhe, discussões técnicas se estendem sobre pontos mínimos enquanto o prazo geral aperta.',
+          'Sob pressão, os dois se fecham ainda mais no dado e endurecem, rejeitando qualquer atalho e travando decisões urgentes.',
+        ],
+        synergy: [
+          'A precisão, a qualidade e a profundidade técnica da dupla são excepcionais, e o padrão de entrega fica acima da média do mercado.',
+          'O padrão elevado dos dois puxa para cima o nível de tudo que passa pelas mãos deles, elevando a régua do time inteiro.',
+          'São confiáveis para tarefas críticas que não toleram erro, porque um revisa o outro e nada sai sem checagem dupla.',
+          'Juntos produzem documentação, análises e controles impecáveis, uma base sólida em que o resto da empresa pode confiar.',
+          'A troca entre dois olhares rigorosos costuma pegar falhas que passariam despercebidas por qualquer perfil sozinho.',
+        ],
+        communication:
+          'Combinem antes de começar o que é bom o suficiente e qual o critério de pronto, para não perseguirem uma perfeição que trava a entrega. Definam prazos firmes e um ponto em que a análise se encerra e a decisão é tomada, mesmo sem certeza total. Ao revisar o trabalho um do outro, equilibrem a crítica com o reconhecimento do que ficou bom, evitando o desgaste do apontamento constante. Dividam responsabilidades para não checarem a mesma coisa duas vezes, confiando no critério do parceiro em vez de refazer tudo por conta própria.',
+      },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // en — English (semantic / market terms)
+  // ═══════════════════════════════════════════════════════════════════════════
+  en: {
+    ui: {
+      introTitle: 'Behavioral Profile',
+      introLead:
+        'It takes about 5 minutes. There is no right or wrong answer, just answer honestly thinking about your day to day.',
+      introStart: 'Start',
+      back: 'Back',
+      next: 'Next',
+      submit: 'Submit answers',
+      submitting: 'Submitting...',
+      progress: 'Question {current} of {total}',
+      thanksTitle: 'Thank you!',
+      thanksLead:
+        'Your answers have been recorded. The HR team will receive your profile.',
+      alreadyDoneTitle: 'Answers already submitted',
+      alreadyDoneLead:
+        'This questionnaire has already been answered. Talk to HR if you need to redo it.',
+      loadError: 'We could not load the questionnaire. Please try again.',
+      resultTitle: 'Your behavioral profile',
+      greeting: 'Hi, {name}!',
+      assessmentDisclaimer:
+        'There are no right or wrong answers, and no profile is better or worse than another. Answer honestly: mark what truly resembles you, not what you wish you were or what you think is the "correct" response.',
+    },
+    scale: {
+      1: 'Strongly disagree',
+      2: 'Somewhat disagree',
+      3: 'Neutral',
+      4: 'Somewhat agree',
+      5: 'Strongly agree',
+      lowAnchor: 'Disagree',
+      highAnchor: 'Agree',
+    },
+    factors: {
+      D: { name: 'Dominance', short: 'D', tagline: 'Focus on results and action' },
+      I: { name: 'Influence', short: 'I', tagline: 'Focus on people and energy' },
+      S: { name: 'Steadiness', short: 'S', tagline: 'Focus on harmony and consistency' },
+      C: { name: 'Compliance', short: 'C', tagline: 'Focus on quality and standards' },
+    },
+    charts: {
+      barTitle: 'DISC graph',
+      radarTitle: 'Behavioral Competencies',
+      wheelTitle: 'Style wheel',
+      average: 'Average',
+      wheelCenter: 'Adaptable',
+      wheelEdge: 'Pronounced',
+      score: 'Score',
+    },
+    attributes: {
+      proactivity: 'Proactivity',
+      resultsFocus: 'Results focus',
+      leadership: 'Leadership',
+      communication: 'Communication',
+      teamwork: 'Teamwork',
+      patience: 'Patience',
+      discipline: 'Discipline',
+      attentionToDetail: 'Attention to detail',
+    },
+    competencies: {
+      competitiveness: 'Competitiveness',
+      agility: 'Agility',
+      confidence: 'Confidence',
+      energy: 'Energy',
+      flexibility: 'Flexibility',
+      influence: 'Influence',
+      creativity: 'Creativity',
+      consistency: 'Consistency',
+      communication: 'Communication',
+      empathy: 'Empathy',
+      planning: 'Planning',
+      patience: 'Patience',
+      analysis: 'Analysis',
+      judgment: 'Judgment',
+      security: 'Security',
+      discipline: 'Discipline',
+    },
+    sections: {
+      qualidades: 'Strengths',
+      pontosDeAtencao: 'Watch-outs',
+      comoLiderar: 'How to lead and communicate',
+      oQueEvitar: 'What to avoid',
+      comunicacaoIdeal: 'Ideal communication',
+      ondeBrilha: 'Where they shine',
+      sobEstresse: 'Under stress',
+      profileHeading: 'Profile {code}',
+    },
+    disclaimer:
+      'This is a tool for self-awareness and team communication. It is not a clinical test or a diagnosis. No profile is better or worse than another.',
+    items: {
+      d1: 'I like to take charge of situations.',
+      d2: 'I push to make things happen at the pace I want.',
+      d3: 'I get straight to the point, even if it sounds harsh.',
+      d4: 'I like to compete and to win.',
+      d5: 'I make decisions quickly, even taking some risk.',
+      d6: 'I would rather give in than get into a confrontation.',
+      d7: 'I find it hard to say no.',
+      d8: 'I take risks to reach a goal.',
+      d9: 'I enjoy difficult challenges.',
+      d10: 'I say what I think, without beating around the bush.',
+      d11: 'I prefer someone else to make the tough decisions.',
+      d12: 'I stay focused on results even under pressure.',
+      i1: 'I make friends with new people easily.',
+      i2: 'I like being the center of attention.',
+      i3: 'I am enthusiastic and my energy rubs off on people around me.',
+      i4: 'I would rather talk and share ideas than work alone.',
+      i5: 'I stay optimistic even when facing problems.',
+      i6: 'In a large group, I tend to stay quiet.',
+      i7: 'I say little about myself.',
+      i8: 'I enjoy meeting new people.',
+      i9: 'I find it easy to persuade others.',
+      i10: 'I bring good energy and humor to the team.',
+      i11: 'I prefer working alone over working in a group.',
+      i12: 'I get excited about new ideas.',
+      s1: 'I am patient with slow processes.',
+      s2: 'I prefer routine and predictability over surprises.',
+      s3: 'I listen carefully before taking a stand.',
+      s4: 'I avoid conflict to keep the group in harmony.',
+      s5: 'I am loyal and steady with those I trust.',
+      s6: 'I like it when plans change suddenly.',
+      s7: 'I get impatient when things take too long.',
+      s8: 'I stay calm in tense situations.',
+      s9: 'I help colleagues when they need it.',
+      s10: 'I prefer a stable environment without surprises.',
+      s11: 'I enjoy taking risks and embracing change.',
+      s12: 'I am usually the first to calm things down during a conflict.',
+      c1: 'I notice details that most people miss.',
+      c2: 'I like everything organized and in order.',
+      c3: 'I check my work more than once.',
+      c4: 'I prefer to follow clear rules and procedures.',
+      c5: 'I analyze the data calmly before deciding.',
+      c6: 'I tend to decide on impulse, without much analysis.',
+      c7: 'Small mistakes do not bother me.',
+      c8: 'I follow checklists and procedures to the letter.',
+      c9: 'I review my work to avoid mistakes.',
+      c10: 'I prefer quality over speed.',
+      c11: 'I do not care much about details.',
+      c12: 'I base my decisions on facts and numbers.',
+    },
+    profiles: {
+      D: {
+        nome: 'The Driver',
+        qualidades: ['Results and action driven', 'Assertive and direct', 'Decides fast under pressure', 'Takes the lead naturally'],
+        pontosDeAtencao: ['Puts task over people', 'May run over others', 'Impatient with slow processes', 'Listens little before acting'],
+        comoLiderar: ['Give clear goals and autonomy over the "how"', 'Focus on the result, not the path', 'Be direct and to the point'],
+        oQueEvitar: ['Ambiguity', 'Slow decisions', 'Beating around the bush', 'Micromanagement'],
+        comunicacaoIdeal: 'Direct and objective, with the deadline and goal up front.',
+        ondeBrilha: ['Leadership and project management', 'Aggressive goals', 'Negotiation', 'Crisis moments'],
+        sobEstresse: 'Becomes more controlling and blunt, trying to regain command.',
+      },
+      I: {
+        nome: 'The Communicator',
+        qualidades: ['Builds relationships easily', 'Inspires and motivates the team', 'Creative and full of ideas', 'Energizes the environment'],
+        pontosDeAtencao: ['Loses focus easily', 'Starts a lot, finishes little', 'Avoids detail', 'Acts on impulse'],
+        comoLiderar: ['Give public recognition', 'Pair with someone organized', 'Help keep focus on what matters'],
+        oQueEvitar: ['Too many rules and detail', 'Criticism without recognition', 'Isolation'],
+        comunicacaoIdeal: 'Warm and with room to talk, valuing the person’s ideas.',
+        ondeBrilha: ['Sales and service', 'Relationships', 'Marketing', 'Team integration'],
+        sobEstresse: 'Talks too much and seeks approval, suffers when isolated.',
+      },
+      S: {
+        nome: 'The Supporter',
+        qualidades: ['Patient and steady', 'Loyal to those they trust', 'A great listener', 'Stabilizes the team and cares for the mood'],
+        pontosDeAtencao: ['Avoids necessary conflict', 'Resists change', 'Overloads in silence', 'Slow to decide'],
+        comoLiderar: ['Announce changes ahead of time', 'Include them in decisions', 'Value loyalty and consistency'],
+        oQueEvitar: ['Abrupt change without notice', 'Public pressure', 'Rushing', 'Direct confrontation'],
+        comunicacaoIdeal: 'Calm and close, showing how the change helps the team and making sure they feel heard.',
+        ondeBrilha: ['Support and service', 'HR and after-sales', 'Continuity roles'],
+        sobEstresse: 'Withdraws and seeks safety, conflict paralyzes them.',
+      },
+      C: {
+        nome: 'The Analyst',
+        qualidades: ['Focus on quality and detail', 'Expert at what they do', 'Raises the team’s standard', 'Reliable in delivery'],
+        pontosDeAtencao: ['Perfectionism stalls delivery', 'Cooler manner', 'Critical of self and others', 'Suffers with rushing'],
+        comoLiderar: ['Give clear criteria and data', 'Allow independent work', 'Specific and gentle feedback'],
+        oQueEvitar: ['Vague instructions', 'Tight deadlines without notice', 'Harsh criticism', 'Improvisation'],
+        comunicacaoIdeal: 'Fact based, preferably in writing, with context and advance notice.',
+        ondeBrilha: ['Analysis and quality', 'Finance and processes', 'Technical documentation'],
+        sobEstresse: 'Seeks more data and rules, freezes for fear of getting it wrong.',
+      },
+      DI: {
+        nome: 'The Motivator',
+        qualidades: ['Charismatic leader', 'Ambitious and engaging', 'Communicates directly, but with energy', 'Mobilizes people quickly'],
+        pontosDeAtencao: ['Runs over and scatters at the same time', 'Promises more than delivers', 'Impatient with detail'],
+        comoLiderar: ['Give a stage and ambitious goals', 'Pair with someone who handles detail', 'Hold focus on what was promised'],
+        oQueEvitar: ['Routine', 'Slowness', 'Low-visibility environments'],
+        comunicacaoIdeal: 'Objective and lively, with an ambitious goal and recognition along the way.',
+        ondeBrilha: ['Dynamic, high-visibility settings', 'Sales leadership', 'Launches'],
+        sobEstresse: 'Speeds up too much and takes on more than they can deliver.',
+      },
+      ID: {
+        nome: 'The Persuader',
+        qualidades: ['Enthusiast first, assertive after', 'Convinces and pushes', 'High social energy', 'Creates momentum'],
+        pontosDeAtencao: ['Promises more than delivers', 'Avoids detail', 'May sound over the top'],
+        comoLiderar: ['Recognize publicly', 'Ground promises into deadlines', 'Give impact goals'],
+        oQueEvitar: ['Static environments', 'Too many rules', 'Solitary work'],
+        comunicacaoIdeal: 'Warm and direct, with room to persuade and a clear goal at the end.',
+        ondeBrilha: ['High-impact sales', 'Presentations', 'Fundraising'],
+        sobEstresse: 'Keeps persuading and ignores signs that it is time to step back.',
+      },
+      DC: {
+        nome: 'The Challenger',
+        qualidades: ['Assertive and detail-oriented', 'Strategic and demanding', 'Seeks results with quality', 'High standard'],
+        pontosDeAtencao: ['Tough and perfectionist at once', 'Demands too much', 'Little patience with mistakes'],
+        comoLiderar: ['Bring clear goals and objective criteria', 'Respect technical autonomy', 'Recognize the quality delivered'],
+        oQueEvitar: ['Ambiguity', 'Low standards', 'Improvisation'],
+        comunicacaoIdeal: 'Direct and well-founded, with data and a clear result up front.',
+        ondeBrilha: ['Where results need quality', 'Technical management', 'Demanding projects'],
+        sobEstresse: 'Becomes critical and controlling, wants to redo everything until perfect.',
+      },
+      CD: {
+        nome: 'The Achiever',
+        qualidades: ['Precise first, decisive after', 'Decides by data', 'Firm and well-founded', 'Executes with rigor'],
+        pontosDeAtencao: ['Cold and impatient with guesswork', 'May stall from over-analysis', 'Too direct a manner'],
+        comoLiderar: ['Bring reliable data', 'Let them decide on criteria', 'Avoid emotional pressure'],
+        oQueEvitar: ['Emotional decisions', 'Bad data', 'Lack of criteria'],
+        comunicacaoIdeal: 'Objective and fact based, with numbers that back the decision.',
+        ondeBrilha: ['Finance and engineering', 'Technical decisions', 'Control and audit'],
+        sobEstresse: 'Closes off into the data and hardens, rejecting anything unproven.',
+      },
+      IS: {
+        nome: 'The Collaborator',
+        qualidades: ['Warm and empathetic', 'Connects people', 'Creates a light mood', 'Cares for the team'],
+        pontosDeAtencao: ['Avoids conflict and accountability', 'Struggles with unpopular decisions', 'May put off the hard stuff'],
+        comoLiderar: ['Value care for people', 'Support them in hard decisions', 'Give a stable, friendly setting'],
+        oQueEvitar: ['Constant tension', 'Unpopular decisions without support', 'Coldness'],
+        comunicacaoIdeal: 'Friendly and welcoming, recognizing the effort to keep the group together.',
+        ondeBrilha: ['Harmonious teams', 'Customer service', 'Facilitation'],
+        sobEstresse: 'Absorbs everyone’s tension and avoids the confrontation that would solve it.',
+      },
+      SI: {
+        nome: 'The Facilitator',
+        qualidades: ['Friendly mediator', 'Bridges people', 'Builds cohesion', 'Steady and gentle'],
+        pontosDeAtencao: ['Puts off necessary confrontation', 'Resists fast change', 'Holds in dissatisfaction'],
+        comoLiderar: ['Announce changes early', 'Ask for the group’s read', 'Recognize the bridging role'],
+        oQueEvitar: ['Fast change', 'Hostile mood', 'Public pressure'],
+        comunicacaoIdeal: 'Close and calm, showing the positive impact on the group.',
+        ondeBrilha: ['Team cohesion', 'Mediation', 'Onboarding and culture'],
+        sobEstresse: 'Withdraws and avoids friction, even when it is needed.',
+      },
+      SC: {
+        nome: 'The Methodical',
+        qualidades: ['Reliable and careful', 'Follows the process', 'Steady in routine', 'Low error rate'],
+        pontosDeAtencao: ['Rigid and risk-averse', 'Resists change', 'Slow to adapt'],
+        comoLiderar: ['Give a clear, stable process', 'Explain the why of the change', 'Respect the careful pace'],
+        oQueEvitar: ['Abrupt change', 'Ambiguity', 'Rushing without notice'],
+        comunicacaoIdeal: 'Clear and structured, with a step-by-step and advance notice.',
+        ondeBrilha: ['Well-run routine', 'Processes', 'Quality control'],
+        sobEstresse: 'Clings to the procedure and freezes in the face of the unexpected.',
+      },
+      CS: {
+        nome: 'The Perfectionist',
+        qualidades: ['Thorough and cooperative', 'Quality with care', 'High, quiet standard', 'Reliable on a team'],
+        pontosDeAtencao: ['Stalls from over-diligence', 'Struggles to delegate', 'Suffers with sudden turns'],
+        comoLiderar: ['Define "good enough" criteria', 'Give time and context', 'Recognize the care'],
+        oQueEvitar: ['Sudden turnarounds', 'Vague expectations', 'Unrealistic deadlines'],
+        comunicacaoIdeal: 'Detailed and respectful, with realistic criteria and deadlines.',
+        ondeBrilha: ['Precision on a team', 'Review and checking', 'Documentation'],
+        sobEstresse: 'Reworks endlessly chasing perfect and delays delivery.',
+      },
+      DS: {
+        nome: 'The Planner',
+        qualidades: ['Decisive and organized', 'Firm and steady', 'Executes the plan to the end', 'Combines drive with method'],
+        pontosDeAtencao: ['Stubborn once decided', 'Slow to change course', 'Demands too much of self'],
+        comoLiderar: ['Align the plan up front', 'Bring facts for route changes', 'Respect the consistency'],
+        oQueEvitar: ['Rigidity with self', 'Change without a clear reason', 'Improvisation'],
+        comunicacaoIdeal: 'Objective and planned, with firm goals and reasons for any change.',
+        ondeBrilha: ['Planned execution', 'Mid-term goals', 'Stable operations'],
+        sobEstresse: 'Sticks to the original plan even when the scenario has changed.',
+      },
+      IC: {
+        nome: 'The Consultant',
+        qualidades: ['Sociable and precise', 'Friendly, yet exact', 'Explains the complex well', 'Unites relationship with technique'],
+        pontosDeAtencao: ['Suffers in solitary technical work', 'Swings between talking and reviewing', 'May get lost in detail'],
+        comoLiderar: ['Give interaction and a good technical problem', 'Recognize the clarity of the explanation', 'Avoid long isolation'],
+        oQueEvitar: ['Isolation without interaction', 'Monotonous tasks', 'Lack of context'],
+        comunicacaoIdeal: 'Friendly and precise, with room to dialogue and data to back it up.',
+        ondeBrilha: ['Explaining or selling something technical', 'Consulting', 'Training'],
+        sobEstresse: 'Talks a lot to ease tension and loses the rigor of detail.',
+      },
+    },
+
+    // ── Relationships between pairs of primary profiles ──────────────────────
+    relationships: {
+      DD: {
+        friction: [
+          `In meetings, both compete for the last word, and a simple decision turns into an arm-wrestle that stalls the team.`,
+          `Neither one backs down in an argument, so small disagreements escalate into direct confrontation in front of the team.`,
+          `Each one takes on the same workstream without aligning first, and the result is rework and contradictory orders to their reports.`,
+          `Their high ego makes admitting a mistake feel like defeat, so failures go uncorrected because nobody gives in.`,
+          `Their shared rush for results runs over alignment, and the team ends up with goals that change midway.`,
+        ],
+        synergy: [
+          `When the scope is divided, both decide fast and unblock projects that would stall with more cautious profiles.`,
+          `Shared ambition pulls bold targets upward, and each becomes a benchmark of energy and pace for the other.`,
+          `Under pressure or in a crisis, neither one freezes, and together they hold the operation when everything is on fire.`,
+          `They hold each other to the same delivery bar, so the pair keeps a high results standard without outside supervision.`,
+          `In tough negotiations, they form a firm front that the other side can rarely bend.`,
+        ],
+        communication:
+          `Agree in advance who leads each workstream and put it in writing, so the meeting does not become a fight for the last word. Each should enter the conversation willing to concede at least one point, treating disagreement as data, not a personal attack. Feedback between the two works best one-on-one and direct, with no audience that turns it into a power struggle. Set an objective decision criterion (a number, a deadline, a goal) to break ties without it becoming about ego.`,
+      },
+      DI: {
+        friction: [
+          `D demands deadlines and finished work, while I shows up full of loose ideas, so D starts seeing I as scattered and unreliable.`,
+          `I feels D is cold and blunt, and after a few curt cut-offs starts avoiding raising issues and hiding problems.`,
+          `D's fast pace runs over I's need to talk and be recognized, draining the energy I would otherwise bring to the team.`,
+          `I promises more than they can deliver to please, and D gets irritated when the delivery does not match the upbeat pitch.`,
+          `In meetings, I stretches things out with stories and D cuts in halfway, and neither leaves feeling heard.`,
+        ],
+        synergy: [
+          `D drives the result and sets the goal, I engages people and sells the idea, a strong duo for launches and operational turnarounds.`,
+          `I softens D's impact on people, translating hard demands into language the team accepts without losing motivation.`,
+          `Together they cover the two sides almost no single profile delivers: focus on results and the ability to influence and mobilize.`,
+          `D gives focus and a deadline to I's enthusiasm, turning many loose ideas into a few genuinely executed bets.`,
+          `In low-morale moments, D sets the direction and I reignites the energy, and the team gets moving fast again.`,
+        ],
+        communication:
+          `D should open with a line of recognition before pushing, because I shuts down when met with coldness up front. I needs to come to conversations with focus and a concrete deadline, cutting the long intro that makes D tune out. Agree that I's new ideas go into a list for later, not into the middle of a decision that was already settled. In meetings, D drives the goal and I drives the engagement, each respecting the other's space instead of fighting for command.`,
+      },
+      DS: {
+        friction: [
+          `D wants to change everything now and S needs time and notice, so changes land as a surprise and S feels run over.`,
+          `S protects the team's stability and pace, and D reads that as slowness or deliberate resistance.`,
+          `Under pressure, D gets blunter and S shuts down, storing up frustrations that only surface once they have become wear and tear.`,
+          `D decides alone and communicates the finished call, while S expected to be consulted, and trust between them erodes.`,
+          `D measures value by fast results and S by consistency and relationships, so each thinks the other cares about the wrong thing.`,
+        ],
+        synergy: [
+          `D leads and decides, S steadies and executes consistently, a pair that combines decision speed with firm delivery through to the end.`,
+          `S looks after the relationships and mood D tends to overlook, protecting the team that D's pressure could otherwise wear down.`,
+          `Once D sets the direction, S makes sure the plan is followed without being abandoned midway, cutting down half-finished projects.`,
+          `S gives D a realistic read of how change affects people, avoiding fast decisions that break the operation.`,
+          `In long routines, D provides the initial push and S sustains the consistency, keeping results going without needing fresh nudges.`,
+        ],
+        communication:
+          `D should give context and flag changes in advance, because S delivers far more when not caught by surprise. S needs to speak up on the spot instead of agreeing on the surface and keeping the disagreement inside. In conversations, D benefits from slowing the tone and asking S's opinion before closing the decision. Split roles clearly: D owns the decisions and the pace, S owns steady execution and care for the team, with neither one invading the other's turf.`,
+      },
+      DC: {
+        friction: [
+          `D wants to decide fast and C needs data and time to analyze, so D reads C as a bottleneck and C reads D as reckless.`,
+          `C flags risks and missing details, and D interprets it as resistance or excess bureaucracy in the middle of delivery.`,
+          `Both are demanding but pull in opposite directions, D pushes for results on time and C pushes for flawless quality, and the team is caught in the crossfire.`,
+          `When the deadline tightens, D wants to ship it as is and C refuses to release something below standard, and tension rises.`,
+          `D decides by instinct and C by data, so each distrusts the other's method and the decision gets stuck in mutual suspicion.`,
+        ],
+        synergy: [
+          `D drives the result and C ensures the quality, a strong pair for projects that must ship fast and to a high standard at the same time.`,
+          `C catches D's avoidable mistakes before they become losses, acting as quality control without stalling delivery.`,
+          `D gives C a sense of urgency and a deadline, keeping the analysis from stretching on endlessly in pursuit of perfect certainty.`,
+          `In risky decisions, D brings the courage to act and C brings the criteria to act right, reducing both paralysis and impulsive error.`,
+          `Together they raise the team's bar: D's speed with C's technical rigor, something rare in a single profile.`,
+        ],
+        communication:
+          `D should bring the data they have and give C a minimum window to process before demanding the decision, or C freezes out of insecurity. C needs to lead with the essentials and the conclusion, leaving the detail for later, so D does not lose the thread or their patience. Agree in advance what is non-negotiable on quality and what can give way for the deadline, so the clash does not happen at the last minute. In meetings, D drives goal and deadline, C drives criteria and risk, and the final decision weighs both sides instead of one winning over the other.`,
+      },
+      II: {
+        friction: [
+          `Both talk a lot and execute little, the idea list grows with every meeting while concrete delivery shrinks.`,
+          `Both want the stage, so they compete for the group's attention and meetings turn into a contest of who speaks more instead of a decision.`,
+          `Deadlines and details fall to the bottom for both, and important tasks slip because neither took on the tedious work.`,
+          `Since both dodge the dry part, nobody tracks numbers or checklists, and problems only surface once they have blown up.`,
+          `In the heat of enthusiasm, both promise more than the team can deliver, and the bill arrives later as frustration.`,
+        ],
+        synergy: [
+          `The pair's energy is very high, and together they create a lively environment that motivates and rubs off on the rest of the team.`,
+          `Double the creativity and networking makes ideas and connections flow, great for campaigns, events, and launches.`,
+          `When they need to sell an idea internally, the two combine their influence and the proposal wins over the group fast.`,
+          `In low-morale moments, the pair reignites the team's spirit and brings lightness back to a heavy mood.`,
+          `The constant exchange of ideas between them produces creative solutions that more reserved profiles would rarely reach.`,
+        ],
+        communication:
+          `Define early who executes what and put it in writing, because the good intentions of both fade without a clear owner. Agree on real deadlines and a fixed moment to review what actually got done, or it all becomes lively talk with no delivery. It helps to bring someone organized onto the team, or to take turns owning the tedious part each project. Use the energy to celebrate wins together, but separate the moment to celebrate from the moment to decide, so the meeting does not become just a party.`,
+      },
+      IS: {
+        friction: [
+          `I's fast pace and constant changes overload S, who needs predictability to perform well.`,
+          `I gets frustrated with how long S takes to buy into something new, and starts pushing changes S has not yet digested.`,
+          `S holds back frustrations to avoid friction, and I, distracted by their own energy, never notices something is wrong.`,
+          `I switches topics and priorities all the time, and S feels insecure without knowing the real focus of the week.`,
+          `When things heat up, I wants to resolve it by talking loud and fast, and S retreats, so the conversation never happens.`,
+        ],
+        synergy: [
+          `I energizes and connects people, S supports and steadies, and together they form a warm, collaborative team that is pleasant to work in.`,
+          `S gives consistency to I's energy, turning fleeting enthusiasm into relationships and routines that last.`,
+          `S quietly handles the details and follow-through I leaves aside, covering the partner's weak spot.`,
+          `With clients and the team, I opens the door and S keeps the bond alive long term, a strong combination in service roles.`,
+          `The atmosphere of trust the two create makes the team feel safe to speak up and ask for help.`,
+        ],
+        communication:
+          `I should slow down and flag changes in advance, giving S time to prepare instead of reacting in a rush. S needs to voice concerns openly as soon as they arise, instead of holding them until they turn into resentment. Agree on one clear priority per period, so S is not lost in I's constant shift of focus. In hard conversations, I benefits from lowering the tone and listening more, and S benefits from saying what they think even at the risk of a little friction.`,
+      },
+      IC: {
+        friction: [
+          `I's spontaneity clashes head-on with C's precision, and what looks like agility to one looks like sloppiness to the other.`,
+          `C finds I disorganized and superficial, I finds C rigid and dull, and each underestimates the other's contribution.`,
+          `I wants to start now and adjust along the way, C wants to plan everything first, and the pace gap causes friction at the start of any task.`,
+          `C points out mistakes and inconsistencies, and I, who runs on recognition, takes it as personal criticism and loses heart.`,
+          `In meetings, I brings vision and C brings caveats, and without mediation the conversation swings between loose optimism and stalling skepticism.`,
+        ],
+        synergy: [
+          `I brings ideas, energy, and relationships, C brings rigor, quality, and depth, a rare balance between charming people and delivering well.`,
+          `C grounds I's ideas into something concrete and doable, turning enthusiasm into a real plan.`,
+          `Together they are great at explaining and selling technical topics, I brings the charm and clarity, C ensures the content is correct.`,
+          `I opens doors and wins people over, C sustains credibility with data, a duo that is both convincing and trustworthy.`,
+          `I's creativity combined with C's critical eye produces innovative solutions that also pass the quality test.`,
+        ],
+        communication:
+          `I should bring facts and evidence to C, because enthusiasm alone does not convince someone who decides by data. C needs to open up to new ideas without demanding perfection in the first draft, and make sure criticism comes with recognition, not just correction. Agree on a moment to diverge freely and another to close with rigor, separating the brainstorm from the review. Split roles in a presentation: I drives the relationship and the narrative, C ensures the accuracy of the content, always seeking the middle ground between charming and proving.`,
+      },
+      SS: {
+        friction: [
+          `Both avoid conflict and let problems pile up unsaid, until a small friction becomes major wear and tear.`,
+          `Decisions turn slow or get postponed indefinitely, because neither wants to own the hard call and take on the risk.`,
+          `Both resist change, even the necessary kind, and the pair settles into a routine that no longer serves the team.`,
+          `Frustrations stay bottled up on both sides, and the seemingly calm mood hides resentments no one puts into words.`,
+          `With no one setting the pace, deadlines slip quietly because pushing the other feels like breaking the harmony.`,
+        ],
+        synergy: [
+          `The harmony, loyalty, and cooperation between them are genuine, and the team feels a stable environment with no cliques.`,
+          `The pair sustains the operation long term, giving the team a base of stability that holds the routine even through hard phases.`,
+          `They create a safe environment where everyone feels heard, which makes the people around them raise problems sooner.`,
+          `They work with patience and consistency, ideal for continuity, support, and people-care roles.`,
+          `Their mutual loyalty makes the pair extremely reliable in moments that call for discretion and quiet support.`,
+        ],
+        communication:
+          `Agree that being honest about a problem is not an attack, so both can voice discomfort even without enjoying the moment. Define who drives each decision and a deadline to make the call, or the choice keeps circling with no end. Schedule a regular conversation just to put on the table what is bothering them, creating a safe space for what no one would say in the hallway. Facing a necessary change, write down together the why and the gains, to overcome the natural resistance of both with argument rather than pressure.`,
+      },
+      SC: {
+        friction: [
+          `Both are cautious and risk-averse, and together they can freeze in the face of any decision involving uncertainty.`,
+          `Over-analysis before changing anything makes the pair postpone moves the business needs to make soon.`,
+          `S wants harmony and C wants precision, and at times C's attachment to the process overrides S's care for people.`,
+          `Neither one likes confrontation, so disagreements about method go unresolved and drag on.`,
+          `The pair gets too comfortable in the familiar routine and resists innovations even when they would bring clear gains.`,
+        ],
+        synergy: [
+          `The pair's work is reliable, thorough, and consistently high quality, with very little variation from one day to the next.`,
+          `The low error rate and respect for rules make them one of the most stable pairs for precision-driven routines.`,
+          `S keeps the mood and C keeps the standard, and together they deliver quality without creating friction with the surrounding team.`,
+          `They are the right pair for critical processes that cannot fail, because both check before releasing.`,
+          `The blend of care for people and care for detail creates a predictable operation leadership can rely on.`,
+        ],
+        communication:
+          `Work with clear processes and criteria set in writing, because both feel secure when the path is mapped out. Flag changes in advance and allow adaptation time, avoiding the shock that freezes S and the endless analysis that freezes C. Agree in advance on a deadline to close the analysis and act, so the caution of both does not turn into paralysis. Encourage each other to speak up when something is wrong, treating disagreement about method as part of the work, not as personal conflict.`,
+      },
+      CC: {
+        friction: [
+          `The perfectionism of both leads to analysis paralysis, and the pair delays delivery in pursuit of a certainty that never arrives.`,
+          `Both tend to over-criticize, and mutual review turns into a back-and-forth of remarks that creates tension and wears the relationship down.`,
+          `Neither moves forward without a level of certainty the other also does not consider sufficient, and the project stalls in endless checks.`,
+          `Since both value detail, technical discussions stretch over tiny points while the overall deadline tightens.`,
+          `Under pressure, both close in on the data even more and harden, rejecting any shortcut and stalling urgent decisions.`,
+        ],
+        synergy: [
+          `The pair's precision, quality, and technical depth are exceptional, and the delivery standard sits above the market average.`,
+          `Their high standard pulls up the level of everything that passes through their hands, raising the bar for the whole team.`,
+          `They are reliable for critical tasks that tolerate no error, because one reviews the other and nothing ships without a double check.`,
+          `Together they produce impeccable documentation, analyses, and controls, a solid base the rest of the company can rely on.`,
+          `The exchange between two rigorous eyes usually catches flaws that any single profile would miss.`,
+        ],
+        communication:
+          `Agree before starting on what is good enough and the definition of done, so you do not chase a perfection that stalls delivery. Set firm deadlines and a point at which analysis ends and the decision is made, even without total certainty. When reviewing each other's work, balance criticism with recognition of what turned out well, avoiding the wear of constant remarks. Split responsibilities so you do not check the same thing twice, trusting the partner's judgment instead of redoing everything on your own.`,
+      },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // es — Español (términos de mercado)
+  // ═══════════════════════════════════════════════════════════════════════════
+  es: {
+    ui: {
+      introTitle: 'Perfil de Comportamiento',
+      introLead:
+        'Toma unos 5 minutos. No hay respuesta correcta ni incorrecta, responde con sinceridad pensando en tu día a día.',
+      introStart: 'Comenzar',
+      back: 'Volver',
+      next: 'Siguiente',
+      submit: 'Enviar respuestas',
+      submitting: 'Enviando...',
+      progress: 'Pregunta {current} de {total}',
+      thanksTitle: '¡Gracias!',
+      thanksLead:
+        'Tus respuestas fueron registradas. El equipo de RR. HH. recibirá tu perfil.',
+      alreadyDoneTitle: 'Respuestas ya enviadas',
+      alreadyDoneLead:
+        'Este cuestionario ya fue respondido. Habla con RR. HH. si necesitas rehacerlo.',
+      loadError: 'No pudimos cargar el cuestionario. Inténtalo de nuevo.',
+      resultTitle: 'Tu perfil de comportamiento',
+      greeting: '¡Hola, {name}!',
+      assessmentDisclaimer:
+        'No hay respuesta correcta ni incorrecta, ni perfil mejor ni peor. Responde con sinceridad: no marques lo que te gustaría ser o lo que crees que es lo "correcto", sino lo que más se parece a ti de verdad.',
+    },
+    scale: {
+      1: 'Totalmente en desacuerdo',
+      2: 'Algo en desacuerdo',
+      3: 'Neutral',
+      4: 'Algo de acuerdo',
+      5: 'Totalmente de acuerdo',
+      lowAnchor: 'En desacuerdo',
+      highAnchor: 'De acuerdo',
+    },
+    factors: {
+      D: { name: 'Dominancia', short: 'D', tagline: 'Enfoque en resultados y acción' },
+      I: { name: 'Influencia', short: 'I', tagline: 'Enfoque en personas y energía' },
+      S: { name: 'Estabilidad', short: 'S', tagline: 'Enfoque en armonía y constancia' },
+      C: { name: 'Conformidad', short: 'C', tagline: 'Enfoque en calidad y criterio' },
+    },
+    charts: {
+      barTitle: 'Gráfico DISC',
+      radarTitle: 'Competencias Comportamentales',
+      wheelTitle: 'Rueda de estilo',
+      average: 'Promedio',
+      wheelCenter: 'Adaptable',
+      wheelEdge: 'Marcado',
+      score: 'Puntaje',
+    },
+    attributes: {
+      proactivity: 'Proactividad',
+      resultsFocus: 'Enfoque en resultados',
+      leadership: 'Liderazgo',
+      communication: 'Comunicación',
+      teamwork: 'Trabajo en equipo',
+      patience: 'Paciencia',
+      discipline: 'Disciplina',
+      attentionToDetail: 'Atención al detalle',
+    },
+    competencies: {
+      competitiveness: 'Competitividad',
+      agility: 'Agilidad',
+      confidence: 'Confianza',
+      energy: 'Energía',
+      flexibility: 'Flexibilidad',
+      influence: 'Influencia',
+      creativity: 'Creatividad',
+      consistency: 'Consistencia',
+      communication: 'Comunicación',
+      empathy: 'Empatía',
+      planning: 'Planificación',
+      patience: 'Paciencia',
+      analysis: 'Análisis',
+      judgment: 'Criterio',
+      security: 'Seguridad',
+      discipline: 'Disciplina',
+    },
+    sections: {
+      qualidades: 'Fortalezas',
+      pontosDeAtencao: 'Puntos de atención',
+      comoLiderar: 'Cómo liderar y comunicar',
+      oQueEvitar: 'Qué evitar',
+      comunicacaoIdeal: 'Comunicación ideal',
+      ondeBrilha: 'Dónde brilla',
+      sobEstresse: 'Bajo estrés',
+      profileHeading: 'Perfil {code}',
+    },
+    disclaimer:
+      'Esta es una herramienta de autoconocimiento y comunicación de equipo. No es una prueba clínica ni un diagnóstico. Ningún perfil es mejor o peor que otro.',
+    items: {
+      d1: 'Me gusta tomar el mando de las situaciones.',
+      d2: 'Presiono para que las cosas ocurran al ritmo que quiero.',
+      d3: 'Voy directo al grano, aunque suene duro.',
+      d4: 'Me gusta competir y ganar.',
+      d5: 'Tomo decisiones rápido, aun corriendo algún riesgo.',
+      d6: 'Prefiero ceder antes que entrar en un enfrentamiento.',
+      d7: 'Me cuesta decir que no.',
+      d8: 'Asumo riesgos para alcanzar un objetivo.',
+      d9: 'Disfruto los desafíos difíciles.',
+      d10: 'Digo lo que pienso, sin rodeos.',
+      d11: 'Prefiero que otra persona tome las decisiones difíciles.',
+      d12: 'Me concentro en el resultado incluso bajo presión.',
+      i1: 'Hago amistad con gente nueva con facilidad.',
+      i2: 'Me gusta ser el centro de atención.',
+      i3: 'Soy entusiasta y contagio a la gente a mi alrededor.',
+      i4: 'Prefiero conversar e intercambiar ideas a trabajar solo.',
+      i5: 'Mantengo el optimismo aun frente a los problemas.',
+      i6: 'En un grupo grande, prefiero quedarme más callado.',
+      i7: 'Hablo poco de mí mismo.',
+      i8: 'Disfruto conocer gente nueva.',
+      i9: 'Convenzo a las personas con facilidad.',
+      i10: 'Aporto buen humor al ambiente de trabajo.',
+      i11: 'Prefiero trabajar solo antes que en grupo.',
+      i12: 'Me entusiasmo con las ideas nuevas.',
+      s1: 'Tengo paciencia con los procesos lentos.',
+      s2: 'Prefiero la rutina y la previsibilidad a las sorpresas.',
+      s3: 'Escucho con atención antes de posicionarme.',
+      s4: 'Evito los conflictos para mantener la armonía del grupo.',
+      s5: 'Soy leal y constante con quienes confío.',
+      s6: 'Me gusta cuando los planes cambian de repente.',
+      s7: 'Me impaciento cuando las cosas tardan.',
+      s8: 'Mantengo la calma en situaciones tensas.',
+      s9: 'Ayudo a los compañeros cuando lo necesitan.',
+      s10: 'Prefiero un entorno estable y sin sorpresas.',
+      s11: 'Me gusta asumir riesgos y afrontar cambios.',
+      s12: 'Suelo ser el primero en calmar un conflicto.',
+      c1: 'Noto detalles que la mayoría no percibe.',
+      c2: 'Me gusta todo organizado y en orden.',
+      c3: 'Reviso mi trabajo más de una vez.',
+      c4: 'Prefiero seguir reglas y procedimientos claros.',
+      c5: 'Analizo los datos con calma antes de decidir.',
+      c6: 'Suelo decidir por impulso, sin mucho análisis.',
+      c7: 'No me molestan los pequeños errores.',
+      c8: 'Sigo listas de verificación y procedimientos al pie de la letra.',
+      c9: 'Reviso el trabajo para evitar errores.',
+      c10: 'Prefiero la calidad a la velocidad.',
+      c11: 'No me importan mucho los detalles.',
+      c12: 'Baso mis decisiones en hechos y datos.',
+    },
+    profiles: {
+      D: {
+        nome: 'El Ejecutor',
+        qualidades: ['Orientado a resultados y acción', 'Asertivo y directo', 'Decide rápido bajo presión', 'Lidera con naturalidad'],
+        pontosDeAtencao: ['Prioriza la tarea sobre las personas', 'Puede atropellar a los demás', 'Impaciente con procesos lentos', 'Escucha poco antes de actuar'],
+        comoLiderar: ['Da metas claras y autonomía sobre el "cómo"', 'Enfócate en el resultado, no en el camino', 'Sé directo y al grano'],
+        oQueEvitar: ['Ambigüedad', 'Decisión lenta', 'Rodeos', 'Microgestión'],
+        comunicacaoIdeal: 'Directa y objetiva, con el plazo y la meta por delante.',
+        ondeBrilha: ['Liderazgo y gestión de proyectos', 'Metas agresivas', 'Negociación', 'Momentos de crisis'],
+        sobEstresse: 'Se vuelve más controlador y cortante, tratando de retomar el mando.',
+      },
+      I: {
+        nome: 'El Comunicador',
+        qualidades: ['Construye relaciones con facilidad', 'Entusiasma y motiva al equipo', 'Creativo y lleno de ideas', 'Energiza el ambiente'],
+        pontosDeAtencao: ['Se dispersa con facilidad', 'Empieza mucho y termina poco', 'Huye del detalle', 'Actúa por impulso'],
+        comoLiderar: ['Da reconocimiento público', 'Empareja con alguien organizado', 'Ayuda a mantener el foco en lo importante'],
+        oQueEvitar: ['Exceso de reglas y detalle', 'Crítica sin reconocimiento', 'Aislamiento'],
+        comunicacaoIdeal: 'Cálida y con espacio para hablar, valorando las ideas de la persona.',
+        ondeBrilha: ['Ventas y atención', 'Relaciones', 'Marketing', 'Integración de equipo'],
+        sobEstresse: 'Habla de más y busca aprobación, sufre cuando se aísla.',
+      },
+      S: {
+        nome: 'El Apoyador',
+        qualidades: ['Paciente y constante', 'Leal con quien confía', 'Excelente oyente', 'Estabiliza al equipo y cuida el clima'],
+        pontosDeAtencao: ['Evita el conflicto necesario', 'Se resiste al cambio', 'Se sobrecarga en silencio', 'Tarda en decidir'],
+        comoLiderar: ['Avisa los cambios con antelación', 'Inclúyelo en las decisiones', 'Valora la lealtad y la constancia'],
+        oQueEvitar: ['Cambio brusco sin aviso', 'Reproche en público', 'Prisa', 'Enfrentamiento directo'],
+        comunicacaoIdeal: 'Calmada y cercana, mostrando cómo el cambio ayuda al equipo y asegurando que se sienta escuchado.',
+        ondeBrilha: ['Soporte y atención', 'RR. HH. y posventa', 'Funciones de continuidad'],
+        sobEstresse: 'Se repliega y busca seguridad, el conflicto lo paraliza.',
+      },
+      C: {
+        nome: 'El Analista',
+        qualidades: ['Enfoque en calidad y detalle', 'Especialista en lo suyo', 'Eleva el estándar del equipo', 'Confiable en la entrega'],
+        pontosDeAtencao: ['El perfeccionismo traba la entrega', 'Trato más frío', 'Crítico consigo y con los demás', 'Sufre con la prisa'],
+        comoLiderar: ['Da criterios y datos claros', 'Permite el trabajo independiente', 'Feedback específico y amable'],
+        oQueEvitar: ['Instrucción vaga', 'Plazo ajustado sin aviso', 'Crítica dura', 'Improvisación'],
+        comunicacaoIdeal: 'Basada en hechos, de preferencia por escrito, con contexto y antelación.',
+        ondeBrilha: ['Análisis y calidad', 'Finanzas y procesos', 'Documentación técnica'],
+        sobEstresse: 'Busca más datos y reglas, se paraliza por miedo a equivocarse.',
+      },
+      DI: {
+        nome: 'El Impulsor',
+        qualidades: ['Líder carismático', 'Ambicioso y envolvente', 'Comunica directo, pero con energía', 'Moviliza a la gente rápido'],
+        pontosDeAtencao: ['Atropella y se dispersa a la vez', 'Promete más de lo que entrega', 'Impaciente con el detalle'],
+        comoLiderar: ['Da escenario y metas ambiciosas', 'Empareja con quien cuida el detalle', 'Exige foco en lo prometido'],
+        oQueEvitar: ['Rutina', 'Lentitud', 'Ambiente sin visibilidad'],
+        comunicacaoIdeal: 'Objetiva y animada, con una meta ambiciosa y reconocimiento en el camino.',
+        ondeBrilha: ['Ambientes dinámicos con visibilidad', 'Liderazgo comercial', 'Lanzamientos'],
+        sobEstresse: 'Acelera de más y asume más de lo que puede entregar.',
+      },
+      ID: {
+        nome: 'El Persuasor',
+        qualidades: ['Entusiasta primero, asertivo después', 'Convence y empuja', 'Alta energía social', 'Crea movimiento'],
+        pontosDeAtencao: ['Promete más de lo que entrega', 'Huye del detalle', 'Puede sonar exagerado'],
+        comoLiderar: ['Reconoce en público', 'Aterriza las promesas en plazos', 'Da metas de impacto'],
+        oQueEvitar: ['Ambiente estático', 'Exceso de reglas', 'Trabajo solitario'],
+        comunicacaoIdeal: 'Cálida y directa, con espacio para convencer y una meta clara al final.',
+        ondeBrilha: ['Ventas de impacto', 'Presentaciones', 'Captación'],
+        sobEstresse: 'Insiste en persuadir e ignora las señales de que es hora de replegarse.',
+      },
+      DC: {
+        nome: 'El Retador',
+        qualidades: ['Asertivo y detallista', 'Estratégico y exigente', 'Busca resultado con calidad', 'Estándar alto'],
+        pontosDeAtencao: ['Duro y perfeccionista a la vez', 'Exige demasiado', 'Poca paciencia con el error'],
+        comoLiderar: ['Trae metas claras y criterios objetivos', 'Respeta la autonomía técnica', 'Reconoce la calidad entregada'],
+        oQueEvitar: ['Ambigüedad', 'Bajo estándar', 'Improvisación'],
+        comunicacaoIdeal: 'Directa y fundamentada, con datos y un resultado claro por delante.',
+        ondeBrilha: ['Donde el resultado necesita calidad', 'Gestión técnica', 'Proyectos exigentes'],
+        sobEstresse: 'Se vuelve crítico y controlador, quiere rehacer todo hasta que quede perfecto.',
+      },
+      CD: {
+        nome: 'El Realizador',
+        qualidades: ['Preciso primero, decisivo después', 'Decide por datos', 'Firme y fundamentado', 'Ejecuta con rigor'],
+        pontosDeAtencao: ['Frío e impaciente con las suposiciones', 'Puede trabarse por exceso de análisis', 'Trato demasiado directo'],
+        comoLiderar: ['Trae datos confiables', 'Déjalo decidir con criterio', 'Evita la presión emocional'],
+        oQueEvitar: ['Decisión emocional', 'Datos malos', 'Falta de criterio'],
+        comunicacaoIdeal: 'Objetiva y basada en hechos, con números que sostengan la decisión.',
+        ondeBrilha: ['Finanzas e ingeniería', 'Decisión técnica', 'Control y auditoría'],
+        sobEstresse: 'Se encierra en los datos y se endurece, rechaza lo que no esté comprobado.',
+      },
+      IS: {
+        nome: 'El Colaborador',
+        qualidades: ['Cálido y empático', 'Conecta a las personas', 'Crea un clima ligero', 'Cuida del equipo'],
+        pontosDeAtencao: ['Evita el conflicto y la exigencia', 'Le cuesta la decisión impopular', 'Puede posponer lo difícil'],
+        comoLiderar: ['Valora el cuidado con las personas', 'Apóyalo en las decisiones difíciles', 'Da un entorno estable y amable'],
+        oQueEvitar: ['Tensión constante', 'Decisiones impopulares sin apoyo', 'Frialdad'],
+        comunicacaoIdeal: 'Amistosa y acogedora, reconociendo el esfuerzo de mantener al grupo unido.',
+        ondeBrilha: ['Equipos armónicos', 'Atención al cliente', 'Facilitación'],
+        sobEstresse: 'Absorbe la tensión de todos y evita el enfrentamiento que la resolvería.',
+      },
+      SI: {
+        nome: 'El Facilitador',
+        qualidades: ['Mediador amistoso', 'Tiende puentes entre personas', 'Construye cohesión', 'Constante y amable'],
+        pontosDeAtencao: ['Pospone el enfrentamiento necesario', 'Se resiste al cambio rápido', 'Guarda la insatisfacción'],
+        comoLiderar: ['Avisa los cambios temprano', 'Pide la lectura del grupo', 'Reconoce el papel de puente'],
+        oQueEvitar: ['Cambio rápido', 'Clima hostil', 'Reproche en público'],
+        comunicacaoIdeal: 'Cercana y calmada, mostrando el impacto positivo en el grupo.',
+        ondeBrilha: ['Cohesión de equipo', 'Mediación', 'Integración y clima'],
+        sobEstresse: 'Se recoge y evita la fricción, aun cuando es necesaria.',
+      },
+      SC: {
+        nome: 'El Metódico',
+        qualidades: ['Confiable y cuidadoso', 'Sigue el proceso', 'Constante en la rutina', 'Bajo índice de error'],
+        pontosDeAtencao: ['Rígido y averso al riesgo', 'Se resiste al cambio', 'Lento para adaptarse'],
+        comoLiderar: ['Da un proceso claro y estable', 'Explica el porqué del cambio', 'Respeta el ritmo cuidadoso'],
+        oQueEvitar: ['Cambio brusco', 'Ambigüedad', 'Prisa sin aviso'],
+        comunicacaoIdeal: 'Clara y estructurada, con un paso a paso y antelación.',
+        ondeBrilha: ['Rutina bien hecha', 'Procesos', 'Control de calidad'],
+        sobEstresse: 'Se aferra al procedimiento y se traba ante lo imprevisto.',
+      },
+      CS: {
+        nome: 'El Perfeccionista',
+        qualidades: ['Minucioso y cooperativo', 'Calidad con cuidado', 'Estándar alto y discreto', 'Confiable en equipo'],
+        pontosDeAtencao: ['Se traba por exceso de celo', 'Le cuesta delegar', 'Sufre con los giros'],
+        comoLiderar: ['Define criterios de "suficientemente bueno"', 'Da tiempo y contexto', 'Reconoce el cuidado'],
+        oQueEvitar: ['Giro súbito', 'Expectativa vaga', 'Plazo irreal'],
+        comunicacaoIdeal: 'Detallada y respetuosa, con criterios y plazos realistas.',
+        ondeBrilha: ['Precisión en equipo', 'Revisión y verificación', 'Documentación'],
+        sobEstresse: 'Rehace sin parar buscando lo perfecto y atrasa la entrega.',
+      },
+      DS: {
+        nome: 'El Planificador',
+        qualidades: ['Decidido y organizado', 'Firme y constante', 'Ejecuta el plan hasta el final', 'Combina impulso con método'],
+        pontosDeAtencao: ['Terco cuando decide', 'Le cuesta cambiar de ruta', 'Se exige demasiado'],
+        comoLiderar: ['Alinea el plan al inicio', 'Trae hechos para ajustes de ruta', 'Respeta la constancia'],
+        oQueEvitar: ['Rigidez consigo mismo', 'Cambio sin motivo claro', 'Improvisación'],
+        comunicacaoIdeal: 'Objetiva y planificada, con metas firmes y razones para cualquier ajuste.',
+        ondeBrilha: ['Ejecución planificada', 'Metas de mediano plazo', 'Operación estable'],
+        sobEstresse: 'Insiste en el plan original aun cuando el escenario ya cambió.',
+      },
+      IC: {
+        nome: 'El Consultor',
+        qualidades: ['Sociable y preciso', 'Amable, pero exacto', 'Explica bien lo complejo', 'Une la relación con la técnica'],
+        pontosDeAtencao: ['Sufre en el trabajo técnico solitario', 'Oscila entre hablar y revisar', 'Puede dispersarse en el detalle'],
+        comoLiderar: ['Da interacción y un buen problema técnico', 'Reconoce la claridad de la explicación', 'Evita el aislamiento largo'],
+        oQueEvitar: ['Aislamiento sin interacción', 'Tarea monótona', 'Falta de contexto'],
+        comunicacaoIdeal: 'Amistosa y precisa, con espacio para dialogar y datos para sostener.',
+        ondeBrilha: ['Explicar o vender algo técnico', 'Consultoría', 'Capacitación'],
+        sobEstresse: 'Habla mucho para aliviar la tensión y pierde el rigor del detalle.',
+      },
+    },
+
+    // ── Relaciones entre pares de perfiles primarios ──────────────────────────
+    relationships: {
+      DD: {
+        friction: [
+          'En las reuniones, los dos compiten por tener la última palabra, y una decisión simple se vuelve un pulso que traba al equipo.',
+          'Ninguno cede en una discusión, así que las diferencias pequeñas escalan a confrontación directa delante del equipo.',
+          'Cada uno asume el mismo frente sin acordarlo antes, y el resultado es retrabajo y órdenes contradictorias para los subordinados.',
+          'El ego elevado hace que admitir un error parezca una derrota, así que las fallas quedan sin corregir porque nadie cede.',
+          'La prisa de ambos por el resultado atropella la alineación, y el equipo recibe metas que cambian a mitad de camino.',
+        ],
+        synergy: [
+          'Cuando el alcance está dividido, los dos deciden rápido y destraban proyectos que se frenarían con perfiles más cautelosos.',
+          'La ambición compartida eleva las metas atrevidas, y cada uno sirve de referencia de energía y ritmo para el otro.',
+          'Bajo presión o en una crisis, ninguno se paraliza, y juntos sostienen la operación cuando todo está en llamas.',
+          'Se exigen mutuamente el mismo nivel de entrega, así que el estándar de resultado del dúo se mantiene alto sin supervisión externa.',
+          'En negociaciones duras, forman un frente firme que la otra parte difícilmente logra doblar.',
+        ],
+        communication:
+          'Acuerden de antemano quién lidera cada frente y déjenlo por escrito, para que la reunión no se vuelva una pelea por la última palabra. Cada uno debe entrar a la conversación dispuesto a ceder al menos un punto, tratando la diferencia como un dato y no como una ofensa personal. El feedback entre los dos funciona mejor a solas y directo, sin público que lo convierta en un pulso de poder. Definan un criterio objetivo de decisión (un número, un plazo, una meta) para desempatar sin que sea cuestión de ego.',
+      },
+      DI: {
+        friction: [
+          'D exige plazo y entrega cerrada, mientras que I llega lleno de ideas sueltas, y D empieza a verlo como disperso y poco confiable.',
+          'I siente a D frío y cortante, y tras algunos cortes secos empieza a evitar plantear temas y a esconder problemas.',
+          'El ritmo acelerado del D atropella la necesidad del I de conversar y ser reconocido, vaciando la energía que aportaría al equipo.',
+          'I promete más de lo que puede cumplir para agradar, y D se irrita cuando la entrega no coincide con el discurso animado.',
+          'En la reunión, I se extiende con historias y D lo corta a la mitad, y ninguno sale sintiéndose escuchado.',
+        ],
+        synergy: [
+          'D impulsa el resultado y define la meta, I conecta a las personas y vende la idea, un dúo fuerte para lanzamientos y giros de operación.',
+          'I suaviza el impacto del D en las personas, traduciendo las exigencias duras a un lenguaje que el equipo acepta sin desmotivarse.',
+          'Juntos cubren los dos lados que casi ningún perfil solo entrega: foco en el resultado y capacidad de influir y movilizar.',
+          'D da foco y plazo al entusiasmo del I, transformando muchas ideas sueltas en pocas apuestas realmente ejecutadas.',
+          'En momentos de moral baja, D marca el rumbo y I reaviva la energía, y el equipo vuelve a andar rápido.',
+        ],
+        communication:
+          'D debe empezar con una frase de reconocimiento antes de exigir, porque I se bloquea cuando percibe frialdad de entrada. I necesita llegar a las conversaciones con foco y un plazo concreto, cortando la introducción larga que hace que D se desconecte. Acuerden que las ideas nuevas del I van a una lista para después, y no en medio de una decisión que ya estaba cerrada. En la reunión, D conduce la meta e I conduce el engagement, cada uno respetando el espacio del otro en lugar de disputar el mando.',
+      },
+      DS: {
+        friction: [
+          'D quiere cambiar todo ya y S necesita tiempo y aviso, así que los cambios caen de sorpresa y S se siente atropellado.',
+          'S protege la estabilidad y el ritmo del equipo, y D lo lee como lentitud o resistencia a propósito.',
+          'Bajo presión, D se pone más cortante y S se cierra, guardando insatisfacciones que solo aparecen cuando ya se volvieron desgaste.',
+          'D decide solo y comunica la decisión ya tomada, mientras S esperaba ser consultado, y la confianza entre ambos se erosiona.',
+          'D mide el valor por el resultado rápido y S por la constancia y la relación, así que cada uno cree que el otro cuida lo equivocado.',
+        ],
+        synergy: [
+          'D lidera y decide, S estabiliza y ejecuta con constancia, un dúo que combina velocidad de decisión con entrega firme hasta el final.',
+          'S cuida las relaciones y el clima que D suele descuidar, protegiendo al equipo que la presión del D podría desgastar.',
+          'Cuando D define el rumbo, S garantiza que el plan se siga sin abandono a mitad de camino, reduciendo los proyectos empezados y no terminados.',
+          'S le da al D una lectura realista de cómo el cambio afecta a las personas, evitando decisiones rápidas que rompen la operación.',
+          'En rutinas largas, D da el impulso inicial y S sostiene la constancia, manteniendo el resultado sin depender de nuevos empujones.',
+        ],
+        communication:
+          'D debe dar contexto y avisar los cambios con antelación, porque S entrega mucho más cuando no lo toman por sorpresa. S necesita posicionarse en voz alta en el momento, en lugar de aceptar por fuera y guardar el desacuerdo. En las conversaciones, D gana si baja el ritmo del tono y pregunta la opinión del S antes de cerrar la decisión. Repartan los roles con claridad: D asume las decisiones y el ritmo, S asume la ejecución constante y el cuidado del equipo, sin que uno invada el terreno del otro.',
+      },
+      DC: {
+        friction: [
+          'D quiere decidir rápido y C necesita datos y tiempo para analizar, así que D lee al C como un freno y C lee al D como imprudente.',
+          'C señala riesgos y detalles que faltan, y D lo interpreta como resistencia o exceso de burocracia en plena entrega.',
+          'Los dos son exigentes pero en sentidos opuestos, D exige resultado a tiempo y C exige calidad sin fallas, y el equipo queda en el fuego cruzado.',
+          'Cuando el plazo aprieta, D quiere entregar tal como está y C se niega a soltar algo por debajo del estándar, y la tensión sube.',
+          'D decide por instinto y C por el dato, así que cada uno desconfía del método del otro y la decisión se atasca en la desconfianza mutua.',
+        ],
+        synergy: [
+          'D impulsa el resultado y C garantiza la calidad, un dúo fuerte para proyectos que deben entregar rápido y con estándar alto a la vez.',
+          'C frena al D en los errores evitables antes de que se vuelvan pérdida, funcionando como control de calidad sin trabar la entrega.',
+          'D le da al C un sentido de urgencia y un plazo, evitando que el análisis se extienda sin fin tras la certeza perfecta.',
+          'En decisiones de riesgo, D aporta el coraje de actuar y C aporta el criterio para actuar bien, reduciendo tanto la parálisis como el error impulsivo.',
+          'Juntos elevan el nivel de lo que el equipo entrega: la velocidad del D con el rigor técnico del C, algo raro en un solo perfil.',
+        ],
+        communication:
+          'D debe traer los datos que tiene y darle al C un tiempo mínimo para procesar antes de exigir la decisión, o el C se bloquea por inseguridad. C necesita empezar por lo esencial y la conclusión, dejando el detalle para después, para que D no pierda el hilo ni la paciencia. Acuerden de antemano qué es innegociable en calidad y qué puede ceder por el plazo, para que el choque no ocurra sobre la hora. En las reuniones, D conduce meta y plazo, C conduce criterio y riesgo, y la decisión final pondera ambos lados en lugar de que uno venza al otro.',
+      },
+      II: {
+        friction: [
+          'Los dos hablan mucho y ejecutan poco, la lista de ideas crece en cada reunión mientras la entrega concreta se encoge.',
+          'Ambos quieren el escenario, así que compiten por la atención del grupo y las reuniones se vuelven un concurso de quién habla más en vez de una decisión.',
+          'Los plazos y los detalles quedan en segundo plano para los dos, y tareas importantes se atrasan porque ninguno asumió el trabajo tedioso.',
+          'Como los dos esquivan la parte árida, nadie sigue números ni checklists, y los problemas solo aparecen cuando ya estallaron.',
+          'En el calor del entusiasmo, ambos prometen más de lo que el equipo puede entregar, y la cuenta llega después en forma de frustración.',
+        ],
+        synergy: [
+          'La energía del dúo es altísima, y juntos crean un ambiente animado que motiva y contagia al resto del equipo.',
+          'El doble de creatividad y networking hace que las ideas y las conexiones fluyan, ideal para campañas, eventos y lanzamientos.',
+          'Cuando necesitan vender una idea internamente, los dos suman su poder de influencia y la propuesta gana al grupo rápido.',
+          'En momentos de moral baja, el dúo reaviva el ánimo del equipo y devuelve la ligereza a un clima pesado.',
+          'El intercambio constante de ideas entre ellos genera soluciones creativas a las que perfiles más cerrados difícilmente llegarían.',
+        ],
+        communication:
+          'Definan desde el inicio quién ejecuta qué y déjenlo por escrito, porque la buena intención de ambos se desvanece sin un responsable claro. Acuerden plazos reales y un momento fijo para revisar lo que de verdad se hizo, o todo se vuelve conversación animada sin entrega. Conviene sumar a alguien organizado al equipo, o turnarse para asumir la parte tediosa en cada proyecto. Aprovechen la energía para celebrar los logros juntos, pero separen el momento de celebrar del momento de decidir, para que la reunión no sea solo fiesta.',
+      },
+      IS: {
+        friction: [
+          'El ritmo acelerado y los cambios constantes del I sobrecargan al S, que necesita previsibilidad para rendir bien.',
+          'I se frustra con el tiempo que tarda S en sumarse a una novedad, y empieza a empujar cambios que S aún no ha digerido.',
+          'S guarda las insatisfacciones para no generar roce, y I, distraído por su propia energía, nunca percibe que algo anda mal.',
+          'I cambia de tema y de prioridad todo el tiempo, y S se siente inseguro sin saber cuál es el foco real de la semana.',
+          'Cuando el clima se calienta, I quiere resolver hablando fuerte y rápido, y S se retrae, y la conversación no ocurre.',
+        ],
+        synergy: [
+          'I energiza y conecta a las personas, S apoya y estabiliza, juntos forman un equipo cálido, colaborativo y agradable para trabajar.',
+          'S le da constancia a la energía del I, transformando el entusiasmo pasajero en relaciones y rutinas que duran.',
+          'S cuida en silencio los detalles y el seguimiento que I deja de lado, cubriendo el punto débil del compañero.',
+          'En las relaciones con clientes y equipo, I abre la puerta y S mantiene el vínculo a largo plazo, una combinación fuerte en atención.',
+          'El clima de confianza que ambos crean hace que el equipo se sienta seguro para hablar y pedir ayuda.',
+        ],
+        communication:
+          'I debe desacelerar y avisar los cambios con antelación, dándole a S tiempo para prepararse en lugar de reaccionar a las corridas. S necesita hablar abiertamente de sus preocupaciones apenas surgen, en lugar de guardarlas hasta que se vuelvan rencor. Acuerden una prioridad clara por período, para que S no se pierda en el cambio constante de foco del I. En las conversaciones difíciles, I gana si baja el tono y escucha más, y S gana si dice lo que piensa aun a riesgo de un pequeño roce.',
+      },
+      IC: {
+        friction: [
+          'La espontaneidad del I choca de frente con la precisión del C, y lo que para uno es agilidad para el otro es descuido.',
+          'C considera al I desorganizado y superficial, I considera al C rígido y aburrido, y cada uno subestima el aporte del otro.',
+          'I quiere empezar ya y ajustar sobre la marcha, C quiere planear todo antes, y la diferencia de ritmo genera roce al arranque de cualquier tarea.',
+          'C señala errores e inconsistencias, e I, que se mueve por reconocimiento, lo recibe como crítica personal y se desanima.',
+          'En la reunión, I aporta visión y C aporta reparos, y sin mediación la conversación oscila entre el optimismo suelto y el escepticismo que traba.',
+        ],
+        synergy: [
+          'I aporta idea, energía y relación, C aporta rigor, calidad y profundidad, un equilibrio raro entre encantar y entregar bien hecho.',
+          'C aterriza las ideas del I en algo concreto y ejecutable, transformando el entusiasmo en un plan de verdad.',
+          'Juntos son excelentes para explicar y vender temas técnicos, I aporta el encanto y la claridad, C garantiza que el contenido sea correcto.',
+          'I abre puertas y conquista a las personas, C sostiene la credibilidad con datos, un dúo convincente y confiable a la vez.',
+          'La creatividad del I sumada al ojo crítico del C genera soluciones innovadoras que además pasan la prueba de la calidad.',
+        ],
+        communication:
+          'I debe llevar hechos y evidencias al C, porque solo el entusiasmo no convence a quien decide por el dato. C necesita abrirse a ideas nuevas sin exigir perfección en el primer borrador, y cuidar que la crítica venga con reconocimiento, no solo como corrección. Acuerden un momento para divergir libremente y otro para cerrar con rigor, separando el brainstorm de la revisión. Repartan los roles en la presentación: I conduce la relación y la narrativa, C garantiza la exactitud del contenido, buscando siempre el punto medio entre encantar y demostrar.',
+      },
+      SS: {
+        friction: [
+          'Los dos evitan el conflicto y dejan que los problemas se acumulen sin decir nada, hasta que el pequeño roce se vuelve un gran desgaste.',
+          'Las decisiones se vuelven lentas o se aplazan indefinidamente, porque ninguno quiere hacerse cargo de la decisión difícil y asumir el riesgo.',
+          'Ambos resisten el cambio, incluso el necesario, y el dúo se acomoda en una rutina que ya no le sirve al equipo.',
+          'Las insatisfacciones quedan guardadas por ambos lados, y el clima aparentemente tranquilo esconde rencores que nadie verbaliza.',
+          'Sin alguien que marque el ritmo, los plazos se escurren en silencio porque exigirle al otro parece romper la armonía.',
+        ],
+        synergy: [
+          'La armonía, la lealtad y la cooperación entre ambos son genuinas, y el equipo siente un ambiente estable y sin roscas.',
+          'El dúo sostiene la operación a largo plazo, dándole al equipo una base de estabilidad que aguanta la rutina incluso en fases difíciles.',
+          'Crean un ambiente seguro donde todos se sienten escuchados, lo que hace que la gente a su alrededor plantee los problemas más temprano.',
+          'Trabajan con paciencia y constancia, ideales para funciones de continuidad, soporte y cuidado de las personas.',
+          'La lealtad mutua vuelve al dúo extremadamente confiable en momentos que exigen discreción y apoyo silencioso.',
+        ],
+        communication:
+          'Acuerden que ser honesto sobre un problema no es una agresión, para que ambos puedan expresar la incomodidad aunque no disfruten el momento. Definan quién impulsa cada decisión y un plazo para dar el veredicto, o la elección se queda dando vueltas sin fin. Agenden una conversación periódica solo para poner sobre la mesa lo que incomoda, creando un espacio seguro para lo que nadie diría en el pasillo. Ante un cambio necesario, escriban juntos el porqué y las ganancias, para vencer la resistencia natural de ambos con argumento y no con presión.',
+      },
+      SC: {
+        friction: [
+          'Los dos son cautelosos y reacios al riesgo, y juntos pueden trabarse ante cualquier decisión que implique incertidumbre.',
+          'El exceso de análisis antes de cambiar cualquier cosa hace que el dúo aplace movimientos que el negocio necesita hacer pronto.',
+          'S busca armonía y C busca precisión, y a veces el apego del C al proceso pasa por encima del cuidado del S por las personas.',
+          'A ninguno le gusta el enfrentamiento, así que las diferencias sobre el método quedan sin resolver y se arrastran.',
+          'El dúo se siente demasiado cómodo en la rutina conocida y resiste las innovaciones incluso cuando traerían una ganancia clara.',
+        ],
+        synergy: [
+          'El trabajo del dúo es confiable, minucioso y de calidad consistente, con muy poca variación de un día al otro.',
+          'El bajo índice de error y el respeto por las reglas los convierten en uno de los pares más estables para rutinas de precisión.',
+          'S mantiene el clima y C mantiene el estándar, y juntos entregan calidad sin generar roce con el equipo alrededor.',
+          'Son el dúo indicado para procesos críticos que no pueden fallar, porque ambos verifican antes de soltar.',
+          'La combinación de cuidado por las personas y cuidado por el detalle crea una operación previsible en la que el liderazgo puede confiar.',
+        ],
+        communication:
+          'Trabajen con procesos y criterios claros y definidos por escrito, porque ambos se sienten seguros cuando el camino está mapeado. Avisen los cambios con antelación y den tiempo de adaptación, evitando el susto que traba al S y el análisis sin fin que traba al C. Acuerden de antemano un plazo para cerrar el análisis y actuar, para que la cautela de ambos no se vuelva parálisis. Anímense mutuamente a posicionarse cuando algo esté mal, tratando la diferencia sobre el método como parte del trabajo y no como un conflicto personal.',
+      },
+      CC: {
+        friction: [
+          'El perfeccionismo de los dos lleva a la parálisis por análisis, y el dúo demora la entrega en busca de una certeza que nunca llega.',
+          'Ambos tienden a criticar en exceso, y la revisión mutua se vuelve un vaivén de observaciones que genera tensión y desgasta la relación.',
+          'Ninguno avanza sin el nivel de certeza que el otro tampoco considera suficiente, y el proyecto se atasca en verificaciones interminables.',
+          'Como ambos valoran el detalle, las discusiones técnicas se extienden sobre puntos mínimos mientras el plazo general aprieta.',
+          'Bajo presión, ambos se cierran aún más en el dato y se endurecen, rechazando cualquier atajo y trabando decisiones urgentes.',
+        ],
+        synergy: [
+          'La precisión, la calidad y la profundidad técnica del dúo son excepcionales, y el estándar de entrega queda por encima del promedio del mercado.',
+          'El estándar elevado de ambos eleva el nivel de todo lo que pasa por sus manos, subiendo la vara del equipo entero.',
+          'Son confiables para tareas críticas que no toleran errores, porque uno revisa al otro y nada sale sin doble verificación.',
+          'Juntos producen documentación, análisis y controles impecables, una base sólida en la que el resto de la empresa puede confiar.',
+          'El intercambio entre dos miradas rigurosas suele detectar fallas que a cualquier perfil solo se le pasarían.',
+        ],
+        communication:
+          'Acuerden antes de empezar qué es suficientemente bueno y cuál es el criterio de terminado, para no perseguir una perfección que traba la entrega. Fijen plazos firmes y un punto en el que el análisis se cierra y se toma la decisión, aun sin certeza total. Al revisar el trabajo del otro, equilibren la crítica con el reconocimiento de lo que quedó bien, evitando el desgaste de la observación constante. Repartan responsabilidades para no verificar lo mismo dos veces, confiando en el criterio del compañero en lugar de rehacer todo por cuenta propia.',
+      },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // fr — Français (termes de marché). Apóstrofo em backtick quando dentro de string com aspas simples.
+  // ═══════════════════════════════════════════════════════════════════════════
+  fr: {
+    ui: {
+      introTitle: `Profil Comportemental`,      introLead:
+        `Cela prend environ 5 minutes. Il n’y a pas de bonne ou de mauvaise réponse, répondez avec sincérité en pensant à votre quotidien.`,      introStart: `Commencer`,      back: `Retour`,      next: `Suivant`,      submit: `Envoyer les réponses`,      submitting: `Envoi...`,      progress: `Question {current} sur {total}`,      thanksTitle: `Merci !`,      thanksLead:
+        `Vos réponses ont été enregistrées. L’équipe RH recevra votre profil.`,      alreadyDoneTitle: `Réponses déjà envoyées`,      alreadyDoneLead:
+        `Ce questionnaire a déjà été rempli. Contactez les RH si vous devez le refaire.`,      loadError: `Impossible de charger le questionnaire. Veuillez réessayer.`,      resultTitle: `Votre profil comportemental`,      greeting: `Bonjour, {name} !`,      assessmentDisclaimer:
+        `Il n’existe pas de bonne ou de mauvaise réponse, ni de profil meilleur ou moins bon qu’un autre. Répondez avec sincérité : choisissez ce qui vous ressemble vraiment, pas ce que vous aimeriez être ou ce que vous pensez être la "bonne" réponse.`,    },
+    scale: {
+      1: 'Pas du tout d’accord',
+      2: 'Plutôt pas d’accord',
+      3: 'Neutre',
+      4: 'Plutôt d’accord',
+      5: 'Tout à fait d’accord',
+      lowAnchor: 'Pas d’accord',
+      highAnchor: 'D’accord',
+    },
+    factors: {
+      D: { name: 'Dominance', short: 'D', tagline: 'Axé sur le résultat et l’action' },
+      I: { name: 'Influence', short: 'I', tagline: 'Axé sur les personnes et l’énergie' },
+      S: { name: 'Stabilité', short: 'S', tagline: 'Axé sur l’harmonie et la constance' },
+      C: { name: 'Conformité', short: 'C', tagline: 'Axé sur la qualité et le critère' },
+    },
+    charts: {
+      barTitle: 'Graphique DISC',
+      radarTitle: 'Compétences Comportementales',
+      wheelTitle: 'Roue de style',
+      average: 'Moyenne',
+      wheelCenter: 'Adaptable',
+      wheelEdge: 'Marqué',
+      score: 'Score',
+    },
+    attributes: {
+      proactivity: 'Proactivité',
+      resultsFocus: 'Focus résultats',
+      leadership: 'Leadership',
+      communication: 'Communication',
+      teamwork: 'Travail d`équipe',
+      patience: 'Patience',
+      discipline: 'Discipline',
+      attentionToDetail: 'Souci du détail',
+    },
+    competencies: {
+      competitiveness: 'Compétitivité',
+      agility: 'Agilité',
+      confidence: 'Confiance',
+      energy: 'Énergie',
+      flexibility: 'Flexibilité',
+      influence: 'Influence',
+      creativity: 'Créativité',
+      consistency: 'Cohérence',
+      communication: 'Communication',
+      empathy: 'Empathie',
+      planning: 'Planification',
+      patience: 'Patience',
+      analysis: 'Analyse',
+      judgment: 'Jugement',
+      security: 'Sécurité',
+      discipline: 'Discipline',
+    },
+    sections: {
+      qualidades: 'Forces',
+      pontosDeAtencao: 'Points de vigilance',
+      comoLiderar: 'Comment diriger et communiquer',
+      oQueEvitar: 'Ce qu’il faut éviter',
+      comunicacaoIdeal: 'Communication idéale',
+      ondeBrilha: 'Là où il brille',
+      sobEstresse: 'Sous stress',
+      profileHeading: 'Profil {code}',
+    },
+    disclaimer:
+      'Ceci est un outil de connaissance de soi et de communication d’équipe. Ce n’est ni un test clinique ni un diagnostic. Aucun profil n’est meilleur ou pire qu’un autre.',
+    items: {
+      d1: `J’aime prendre les commandes des situations.`,      d2: `Je pousse pour que les choses avancent au rythme que je veux.`,      d3: `Je vais droit au but, même si cela paraît dur.`,      d4: `J’aime la compétition et gagner.`,      d5: `Je décide vite, même en prenant un certain risque.`,      d6: `Je préfère céder plutôt que d’entrer en confrontation.`,      d7: `J’ai du mal à dire non.`,      d8: `Je prends des risques pour atteindre un objectif.`,      d9: `J’apprécie les défis difficiles.`,      d10: `Je dis ce que je pense, sans détours.`,      d11: `Je préfère que quelqu’un d’autre prenne les décisions difficiles.`,      d12: `Je reste concentré sur le résultat même sous pression.`,      i1: `Je me fais facilement de nouveaux amis.`,      i2: `J’aime être au centre de l’attention.`,      i3: `Je suis enthousiaste et je communique mon énergie aux autres.`,      i4: `Je préfère échanger des idées plutôt que travailler seul.`,      i5: `Je reste optimiste même face aux problèmes.`,      i6: `Dans un grand groupe, je préfère rester discret.`,      i7: `Je parle peu de moi.`,      i8: `J’aime faire la connaissance de nouvelles personnes.`,      i9: `Je convaincs facilement les autres.`,      i10: `J’apporte de la bonne humeur dans l’environnement de travail.`,      i11: `Je préfère travailler seul plutôt qu’en groupe.`,      i12: `Je m’enthousiasme pour les nouvelles idées.`,      s1: `J’ai de la patience avec les processus lents.`,      s2: `Je préfère la routine et la prévisibilité aux surprises.`,      s3: `J’écoute attentivement avant de me positionner.`,      s4: `J’évite les conflits pour préserver l’harmonie du groupe.`,      s5: `Je suis loyal et constant envers ceux en qui j’ai confiance.`,      s6: `J’aime quand les plans changent soudainement.`,      s7: `Je m’impatiente quand les choses traînent.`,      s8: `Je reste calme dans les situations tendues.`,      s9: `J’aide mes collègues quand ils en ont besoin.`,      s10: `Je préfère un environnement stable et sans surprises.`,      s11: `J’aime prendre des risques et m’adapter au changement.`,      s12: `Je suis généralement le premier à apaiser un conflit.`,      c1: `Je remarque des détails que la plupart ne voient pas.`,      c2: `J’aime que tout soit organisé et en ordre.`,      c3: `Je vérifie mon travail plus d’une fois.`,      c4: `Je préfère suivre des règles et des procédures claires.`,      c5: `J’analyse les données calmement avant de décider.`,      c6: `J’ai tendance à décider sur un coup de tête, sans trop analyser.`,      c7: `Les petites erreurs ne me dérangent pas.`,      c8: `Je suis les listes de contrôle et les procédures à la lettre.`,      c9: `Je relis mon travail pour éviter les erreurs.`,      c10: `Je préfère la qualité à la rapidité.`,      c11: `Je ne me soucie guère des détails.`,      c12: `Je fonde mes décisions sur des faits et des chiffres.`,    },
+    profiles: {
+      D: {
+        nome: 'L’Exécuteur',
+        qualidades: ['Orienté résultat et action', 'Affirmé et direct', 'Décide vite sous pression', 'Prend le lead naturellement'],
+        pontosDeAtencao: ['Priorise la tâche sur les personnes', 'Peut bousculer les autres', 'Impatient avec les processus lents', 'Écoute peu avant d’agir'],
+        comoLiderar: ['Donnez des objectifs clairs et l’autonomie sur le "comment"', 'Concentrez-vous sur le résultat, pas le chemin', 'Soyez direct et concis'],
+        oQueEvitar: ['Ambiguïté', 'Décision lente', 'Détours', 'Micro-gestion'],
+        comunicacaoIdeal: 'Directe et objective, avec le délai et l’objectif en avant.',
+        ondeBrilha: ['Leadership et gestion de projet', 'Objectifs ambitieux', 'Négociation', 'Moments de crise'],
+        sobEstresse: 'Devient plus contrôlant et sec, cherchant à reprendre la main.',
+      },
+      I: {
+        nome: 'Le Communicant',
+        qualidades: ['Construit des relations facilement', 'Enthousiasme et motive l’équipe', 'Créatif et plein d’idées', 'Dynamise l’ambiance'],
+        pontosDeAtencao: ['Se disperse facilement', 'Commence beaucoup, termine peu', 'Fuit le détail', 'Agit sur impulsion'],
+        comoLiderar: ['Donnez une reconnaissance publique', 'Associez à quelqu’un d’organisé', 'Aidez à garder le cap sur l’essentiel'],
+        oQueEvitar: ['Trop de règles et de détail', 'Critique sans reconnaissance', 'Isolement'],
+        comunicacaoIdeal: 'Chaleureuse et avec de l’espace pour parler, valorisant les idées de la personne.',
+        ondeBrilha: ['Vente et relation client', 'Relations', 'Marketing', 'Intégration d’équipe'],
+        sobEstresse: 'Parle trop et cherche l’approbation, souffre dans l’isolement.',
+      },
+      S: {
+        nome: 'Le Soutien',
+        qualidades: ['Patient et constant', 'Loyal envers ceux en qui il a confiance', 'Excellent écoutant', 'Stabilise l’équipe et soigne l’ambiance'],
+        pontosDeAtencao: ['Évite le conflit nécessaire', 'Résiste au changement', 'Se surcharge en silence', 'Lent à décider'],
+        comoLiderar: ['Annoncez les changements à l’avance', 'Incluez-le dans les décisions', 'Valorisez la loyauté et la constance'],
+        oQueEvitar: ['Changement brusque sans préavis', 'Reproche en public', 'Précipitation', 'Confrontation directe'],
+        comunicacaoIdeal: 'Calme et proche, montrant comment le changement aide l’équipe et en s’assurant qu’il se sente écouté.',
+        ondeBrilha: ['Support et service', 'RH et après-vente', 'Fonctions de continuité'],
+        sobEstresse: 'Se replie et cherche la sécurité, le conflit le paralyse.',
+      },
+      C: {
+        nome: 'L’Analyste',
+        qualidades: ['Axé sur la qualité et le détail', 'Expert dans son domaine', 'Élève le standard de l’équipe', 'Fiable dans la livraison'],
+        pontosDeAtencao: ['Le perfectionnisme bloque la livraison', 'Contact plus froid', 'Critique envers soi et les autres', 'Souffre de la précipitation'],
+        comoLiderar: ['Donnez des critères et des données clairs', 'Permettez le travail indépendant', 'Feedback précis et bienveillant'],
+        oQueEvitar: ['Consigne vague', 'Délai serré sans préavis', 'Critique dure', 'Improvisation'],
+        comunicacaoIdeal: 'Basée sur les faits, de préférence à l’écrit, avec contexte et anticipation.',
+        ondeBrilha: ['Analyse et qualité', 'Finance et processus', 'Documentation technique'],
+        sobEstresse: 'Cherche plus de données et de règles, se fige par peur de se tromper.',
+      },
+      DI: {
+        nome: 'Le Moteur',
+        qualidades: ['Leader charismatique', 'Ambitieux et fédérateur', 'Communique direct, mais avec énergie', 'Mobilise vite les gens'],
+        pontosDeAtencao: ['Bouscule et se disperse à la fois', 'Promet plus qu’il ne livre', 'Impatient avec le détail'],
+        comoLiderar: ['Donnez une scène et des objectifs ambitieux', 'Associez à quelqu’un qui gère le détail', 'Exigez le cap sur ce qui a été promis'],
+        oQueEvitar: ['Routine', 'Lenteur', 'Environnement sans visibilité'],
+        comunicacaoIdeal: 'Objective et animée, avec un objectif ambitieux et de la reconnaissance en chemin.',
+        ondeBrilha: ['Environnements dynamiques et visibles', 'Leadership commercial', 'Lancements'],
+        sobEstresse: 'Accélère trop et prend plus qu’il ne peut livrer.',
+      },
+      ID: {
+        nome: 'Le Persuadeur',
+        qualidades: ['Enthousiaste d’abord, affirmé ensuite', 'Convainc et pousse', 'Forte énergie sociale', 'Crée du mouvement'],
+        pontosDeAtencao: ['Promet plus qu’il ne livre', 'Fuit le détail', 'Peut paraître exagéré'],
+        comoLiderar: ['Reconnaissez en public', 'Ancrez les promesses dans des délais', 'Donnez des objectifs à impact'],
+        oQueEvitar: ['Environnement statique', 'Trop de règles', 'Travail solitaire'],
+        comunicacaoIdeal: 'Chaleureuse et directe, avec de l’espace pour convaincre et un objectif clair à la fin.',
+        ondeBrilha: ['Vente à fort impact', 'Présentations', 'Levée de fonds'],
+        sobEstresse: 'Persiste à persuader et ignore les signes qu’il faut lâcher.',
+      },
+      DC: {
+        nome: 'Le Challengeur',
+        qualidades: ['Affirmé et méticuleux', 'Stratégique et exigeant', 'Vise le résultat avec la qualité', 'Standard élevé'],
+        pontosDeAtencao: ['Dur et perfectionniste à la fois', 'Exige trop', 'Peu de patience avec l’erreur'],
+        comoLiderar: ['Apportez des objectifs clairs et des critères objectifs', 'Respectez l’autonomie technique', 'Reconnaissez la qualité livrée'],
+        oQueEvitar: ['Ambiguïté', 'Bas standard', 'Improvisation'],
+        comunicacaoIdeal: 'Directe et étayée, avec des données et un résultat clair en avant.',
+        ondeBrilha: ['Où le résultat exige la qualité', 'Gestion technique', 'Projets exigeants'],
+        sobEstresse: 'Devient critique et contrôlant, veut tout refaire jusqu’à la perfection.',
+      },
+      CD: {
+        nome: 'Le Réalisateur',
+        qualidades: ['Précis d’abord, décisif ensuite', 'Décide par les données', 'Ferme et étayé', 'Exécute avec rigueur'],
+        pontosDeAtencao: ['Froid et impatient avec les suppositions', 'Peut se bloquer par excès d’analyse', 'Contact trop direct'],
+        comoLiderar: ['Apportez des données fiables', 'Laissez-le décider sur critère', 'Évitez la pression émotionnelle'],
+        oQueEvitar: ['Décision émotionnelle', 'Mauvaises données', 'Manque de critère'],
+        comunicacaoIdeal: 'Objective et factuelle, avec des chiffres qui appuient la décision.',
+        ondeBrilha: ['Finance et ingénierie', 'Décision technique', 'Contrôle et audit'],
+        sobEstresse: 'Se referme sur les données et se durcit, rejette tout ce qui n’est pas prouvé.',
+      },
+      IS: {
+        nome: 'Le Collaborateur',
+        qualidades: ['Chaleureux et empathique', 'Connecte les gens', 'Crée une ambiance légère', 'Prend soin de l’équipe'],
+        pontosDeAtencao: ['Évite le conflit et l’exigence', 'Peine sur la décision impopulaire', 'Peut repousser le difficile'],
+        comoLiderar: ['Valorisez le soin porté aux personnes', 'Soutenez-le dans les décisions difficiles', 'Donnez un cadre stable et amical'],
+        oQueEvitar: ['Tension constante', 'Décisions impopulaires sans soutien', 'Froideur'],
+        comunicacaoIdeal: 'Amicale et accueillante, reconnaissant l’effort de garder le groupe uni.',
+        ondeBrilha: ['Équipes harmonieuses', 'Service client', 'Facilitation'],
+        sobEstresse: 'Absorbe la tension de tous et évite la confrontation qui résoudrait.',
+      },
+      SI: {
+        nome: 'Le Facilitateur',
+        qualidades: ['Médiateur amical', 'Fait le pont entre les personnes', 'Construit la cohésion', 'Constant et doux'],
+        pontosDeAtencao: ['Repousse la confrontation nécessaire', 'Résiste au changement rapide', 'Garde l’insatisfaction'],
+        comoLiderar: ['Annoncez les changements tôt', 'Demandez la lecture du groupe', 'Reconnaissez le rôle de pont'],
+        oQueEvitar: ['Changement rapide', 'Ambiance hostile', 'Reproche en public'],
+        comunicacaoIdeal: 'Proche et calme, montrant l’impact positif sur le groupe.',
+        ondeBrilha: ['Cohésion d’équipe', 'Médiation', 'Intégration et climat'],
+        sobEstresse: 'Se retire et évite la friction, même quand elle est nécessaire.',
+      },
+      SC: {
+        nome: 'Le Méthodique',
+        qualidades: ['Fiable et soigneux', 'Suit le processus', 'Constant dans la routine', 'Faible taux d’erreur'],
+        pontosDeAtencao: ['Rigide et averse au risque', 'Résiste au changement', 'Lent à s’adapter'],
+        comoLiderar: ['Donnez un processus clair et stable', 'Expliquez le pourquoi du changement', 'Respectez le rythme soigneux'],
+        oQueEvitar: ['Changement brusque', 'Ambiguïté', 'Précipitation sans préavis'],
+        comunicacaoIdeal: 'Claire et structurée, avec un pas à pas et de l’anticipation.',
+        ondeBrilha: ['Routine bien faite', 'Processus', 'Contrôle qualité'],
+        sobEstresse: 'S’accroche à la procédure et se fige face à l’imprévu.',
+      },
+      CS: {
+        nome: 'Le Perfectionniste',
+        qualidades: ['Minutieux et coopératif', 'Qualité avec soin', 'Standard élevé et discret', 'Fiable en équipe'],
+        pontosDeAtencao: ['Se bloque par excès de zèle', 'Peine à déléguer', 'Souffre des revirements'],
+        comoLiderar: ['Définissez des critères de "assez bon"', 'Donnez du temps et du contexte', 'Reconnaissez le soin'],
+        oQueEvitar: ['Revirement soudain', 'Attente vague', 'Délai irréaliste'],
+        comunicacaoIdeal: 'Détaillée et respectueuse, avec des critères et des délais réalistes.',
+        ondeBrilha: ['Précision en équipe', 'Revue et vérification', 'Documentation'],
+        sobEstresse: 'Refait sans fin en quête du parfait et retarde la livraison.',
+      },
+      DS: {
+        nome: 'Le Planificateur',
+        qualidades: ['Décidé et organisé', 'Ferme et constant', 'Exécute le plan jusqu’au bout', 'Allie l’impulsion à la méthode'],
+        pontosDeAtencao: ['Têtu une fois décidé', 'Peine à changer de route', 'S’exige beaucoup'],
+        comoLiderar: ['Alignez le plan au départ', 'Apportez des faits pour ajuster la route', 'Respectez la constance'],
+        oQueEvitar: ['Rigidité envers soi-même', 'Changement sans raison claire', 'Improvisation'],
+        comunicacaoIdeal: 'Objective et planifiée, avec des objectifs fermes et des raisons pour tout ajustement.',
+        ondeBrilha: ['Exécution planifiée', 'Objectifs à moyen terme', 'Opération stable'],
+        sobEstresse: 'Persiste dans le plan initial même quand le contexte a changé.',
+      },
+      IC: {
+        nome: 'Le Consultant',
+        qualidades: ['Sociable et précis', 'Amical, mais exact', 'Explique bien le complexe', 'Unit la relation à la technique'],
+        pontosDeAtencao: ['Souffre dans le travail technique solitaire', 'Oscille entre parler et vérifier', 'Peut se disperser dans le détail'],
+        comoLiderar: ['Donnez de l’interaction et un bon problème technique', 'Reconnaissez la clarté de l’explication', 'Évitez l’isolement long'],
+        oQueEvitar: ['Isolement sans interaction', 'Tâche monotone', 'Manque de contexte'],
+        comunicacaoIdeal: 'Amicale et précise, avec de l’espace pour dialoguer et des données pour appuyer.',
+        ondeBrilha: ['Expliquer ou vendre quelque chose de technique', 'Conseil', 'Formation'],
+        sobEstresse: 'Parle beaucoup pour apaiser la tension et perd la rigueur du détail.',
+      },
+    },
+
+    // ── Relations entre paires de profils primaires ──────────────────────────
+    relationships: {
+      DD: {
+        friction: [
+          `En réunion, les deux rivalisent pour avoir le dernier mot, et une décision simple devient un bras de fer qui bloque l'équipe.`,
+          `Aucun des deux ne recule dans une discussion, alors les petits désaccords dégénèrent en confrontation directe devant l'équipe.`,
+          `Chacun prend le même front sans s'être concerté avant, et le résultat, c'est du retravail et des ordres contradictoires pour les subordonnés.`,
+          `L'ego élevé fait que reconnaître une erreur ressemble à une défaite, alors les failles restent sans correction parce que personne ne cède.`,
+          `La hâte des deux pour le résultat bouscule l'alignement, et l'équipe reçoit des objectifs qui changent en cours de route.`,
+        ],
+        synergy: [
+          `Quand le périmètre est réparti, les deux décident vite et débloquent des projets qui se bloqueraient avec des profils plus prudents.`,
+          `L'ambition partagée tire les objectifs audacieux vers le haut, et chacun sert de référence d'énergie et de rythme pour l'autre.`,
+          `Sous pression ou en crise, aucun des deux ne se fige, et ensemble ils tiennent l'opération quand tout est en feu.`,
+          `Ils s'exigent mutuellement le même niveau de livraison, alors le standard de résultat du duo reste élevé sans supervision externe.`,
+          `Dans les négociations difficiles, ils forment un front ferme que l'autre partie parvient difficilement à faire plier.`,
+        ],
+        communication:
+          `Convenez à l'avance de qui dirige chaque front et mettez-le par écrit, pour que la réunion ne devienne pas une lutte pour le dernier mot. Chacun doit entrer dans la conversation prêt à céder sur au moins un point, en traitant le désaccord comme une donnée et non comme une attaque personnelle. Le feedback entre les deux fonctionne mieux en tête-à-tête et direct, sans public qui le transforme en bras de fer. Fixez un critère de décision objectif (un chiffre, un délai, un objectif) pour départager sans que ce soit une question d'ego.`,
+      },
+      DI: {
+        friction: [
+          `D exige des délais et un travail abouti, tandis que I arrive plein d'idées éparses, et D commence à le voir comme dispersé et peu fiable.`,
+          `I trouve D froid et cassant, et après quelques coupures sèches il se met à éviter d'aborder des sujets et à cacher les problèmes.`,
+          `Le rythme rapide du D bouscule le besoin du I de parler et d'être reconnu, vidant l'énergie qu'il apporterait à l'équipe.`,
+          `I promet plus qu'il ne peut tenir pour plaire, et D s'agace quand la livraison ne correspond pas au discours enthousiaste.`,
+          `En réunion, I s'étale en anecdotes et D le coupe à mi-chemin, et aucun des deux ne repart en se sentant écouté.`,
+        ],
+        synergy: [
+          `D tire le résultat et fixe l'objectif, I engage les personnes et vend l'idée, un duo fort pour les lancements et les virages d'opération.`,
+          `I adoucit l'impact du D sur les personnes, en traduisant les exigences dures dans un langage que l'équipe accepte sans se démotiver.`,
+          `Ensemble, ils couvrent les deux facettes que presque aucun profil seul ne livre : le focus sur le résultat et la capacité d'influencer et de mobiliser.`,
+          `D donne du focus et un délai à l'enthousiasme du I, transformant beaucoup d'idées éparses en quelques paris réellement exécutés.`,
+          `Dans les moments de moral bas, D fixe le cap et I ravive l'énergie, et l'équipe se remet à avancer vite.`,
+        ],
+        communication:
+          `D devrait commencer par une phrase de reconnaissance avant de pousser, parce que I se ferme quand il perçoit de la froideur d'entrée. I doit arriver aux conversations avec du focus et un délai concret, en coupant la longue introduction qui fait décrocher D. Convenez que les idées nouvelles du I vont dans une liste pour plus tard, et non au milieu d'une décision déjà arrêtée. En réunion, D mène l'objectif et I mène l'engagement, chacun respectant l'espace de l'autre au lieu de se disputer le commandement.`,
+      },
+      DS: {
+        friction: [
+          `D veut tout changer maintenant et S a besoin de temps et de préavis, alors les changements tombent par surprise et S se sent bousculé.`,
+          `S protège la stabilité et le rythme de l'équipe, et D lit cela comme de la lenteur ou une résistance délibérée.`,
+          `Sous pression, D devient plus cassant et S se referme, gardant des insatisfactions qui ne surgissent que devenues usure.`,
+          `D décide seul et communique la décision toute faite, alors que S s'attendait à être consulté, et la confiance entre eux s'érode.`,
+          `D mesure la valeur par le résultat rapide et S par la constance et la relation, alors chacun pense que l'autre prend soin de la mauvaise chose.`,
+        ],
+        synergy: [
+          `D dirige et décide, S stabilise et exécute avec constance, un duo qui allie la rapidité de décision à une livraison ferme jusqu'au bout.`,
+          `S prend soin des relations et du climat que D tend à négliger, protégeant l'équipe que la pression du D pourrait user.`,
+          `Une fois que D fixe le cap, S veille à ce que le plan soit suivi sans abandon en cours de route, réduisant les projets commencés et non terminés.`,
+          `S donne à D une lecture réaliste de l'effet du changement sur les personnes, évitant les décisions rapides qui cassent l'opération.`,
+          `Dans les routines longues, D donne l'impulsion initiale et S soutient la constance, maintenant le résultat sans dépendre de nouveaux coups de pouce.`,
+        ],
+        communication:
+          `D devrait donner du contexte et signaler les changements à l'avance, parce que S livre bien plus quand il n'est pas pris par surprise. S doit se positionner à voix haute sur le moment, au lieu d'accepter en façade et de garder son désaccord. Dans les conversations, D gagne à ralentir le ton et à demander l'avis de S avant de clore la décision. Répartissez les rôles clairement : D assume les décisions et le rythme, S assume l'exécution constante et le soin de l'équipe, sans que l'un empiète sur le terrain de l'autre.`,
+      },
+      DC: {
+        friction: [
+          `D veut décider vite et C a besoin de données et de temps pour analyser, alors D voit C comme un frein et C voit D comme imprudent.`,
+          `C signale des risques et des détails manquants, et D l'interprète comme de la résistance ou un excès de bureaucratie en pleine livraison.`,
+          `Les deux sont exigeants mais en sens opposés, D exige un résultat dans les temps et C exige une qualité sans faille, et l'équipe se retrouve entre deux feux.`,
+          `Quand le délai se resserre, D veut livrer tel quel et C refuse de lâcher quelque chose en dessous du standard, et la tension monte.`,
+          `D décide à l'instinct et C par la donnée, alors chacun se méfie de la méthode de l'autre et la décision s'enlise dans la méfiance mutuelle.`,
+        ],
+        synergy: [
+          `D tire le résultat et C assure la qualité, un duo fort pour les projets qui doivent livrer vite et à un haut standard en même temps.`,
+          `C freine D sur les erreurs évitables avant qu'elles ne deviennent une perte, faisant office de contrôle qualité sans bloquer la livraison.`,
+          `D donne à C un sens de l'urgence et un délai, évitant que l'analyse ne s'étire sans fin à la recherche de la certitude parfaite.`,
+          `Dans les décisions à risque, D apporte le courage d'agir et C apporte le critère pour agir juste, réduisant à la fois la paralysie et l'erreur impulsive.`,
+          `Ensemble, ils élèvent le niveau de ce que l'équipe livre : la vitesse du D avec la rigueur technique du C, chose rare dans un seul profil.`,
+        ],
+        communication:
+          `D devrait apporter les données dont il dispose et laisser à C un minimum de temps pour traiter avant d'exiger la décision, sinon C se fige par insécurité. C doit commencer par l'essentiel et la conclusion, en laissant le détail pour après, pour que D ne perde ni le fil ni sa patience. Convenez à l'avance de ce qui est non négociable en qualité et de ce qui peut céder pour le délai, pour que le choc n'arrive pas à la dernière minute. En réunion, D mène l'objectif et le délai, C mène le critère et le risque, et la décision finale pèse les deux côtés au lieu que l'un l'emporte sur l'autre.`,
+      },
+      II: {
+        friction: [
+          `Les deux parlent beaucoup et exécutent peu, la liste d'idées grandit à chaque réunion pendant que la livraison concrète diminue.`,
+          `Les deux veulent la scène, alors ils se disputent l'attention du groupe et les réunions deviennent un concours de qui parle le plus au lieu d'une décision.`,
+          `Les délais et les détails passent au second plan pour les deux, et des tâches importantes prennent du retard parce qu'aucun n'a pris le travail ingrat.`,
+          `Comme les deux esquivent la partie aride, personne ne suit les chiffres ni les checklists, et les problèmes ne surgissent qu'une fois éclatés.`,
+          `Dans la chaleur de l'enthousiasme, les deux promettent plus que ce que l'équipe peut livrer, et l'addition arrive ensuite sous forme de frustration.`,
+        ],
+        synergy: [
+          `L'énergie du duo est très élevée, et ensemble ils créent un environnement animé qui motive et déteint sur le reste de l'équipe.`,
+          `Le double de créativité et de networking fait circuler les idées et les connexions, idéal pour les campagnes, les événements et les lancements.`,
+          `Quand ils doivent vendre une idée en interne, les deux additionnent leur pouvoir d'influence et la proposition rallie le groupe rapidement.`,
+          `Dans les moments de moral bas, le duo ravive le moral de l'équipe et rend de la légèreté à un climat pesant.`,
+          `L'échange constant d'idées entre eux génère des solutions créatives que des profils plus fermés atteindraient difficilement.`,
+        ],
+        communication:
+          `Définissez dès le départ qui exécute quoi et mettez-le par écrit, parce que la bonne intention des deux s'évapore sans responsable clair. Convenez de vrais délais et d'un moment fixe pour revoir ce qui a réellement été fait, sinon tout devient une conversation animée sans livraison. Il est utile d'ajouter quelqu'un d'organisé à l'équipe, ou d'alterner qui prend la partie ingrate à chaque projet. Profitez de l'énergie pour célébrer les victoires ensemble, mais séparez le moment de célébrer du moment de décider, pour que la réunion ne devienne pas qu'une fête.`,
+      },
+      IS: {
+        friction: [
+          `Le rythme rapide et les changements constants du I surchargent le S, qui a besoin de prévisibilité pour bien performer.`,
+          `I se frustre du temps que met S à adhérer à une nouveauté, et se met à pousser des changements que S n'a pas encore digérés.`,
+          `S garde ses insatisfactions pour éviter les frictions, et I, distrait par sa propre énergie, ne perçoit jamais que quelque chose ne va pas.`,
+          `I change de sujet et de priorité tout le temps, et S se sent en insécurité sans savoir quel est le vrai focus de la semaine.`,
+          `Quand le climat s'échauffe, I veut régler en parlant fort et vite, et S se retire, alors la conversation n'a jamais lieu.`,
+        ],
+        synergy: [
+          `I énergise et connecte les personnes, S soutient et stabilise, et ensemble ils forment une équipe chaleureuse, collaborative et agréable où travailler.`,
+          `S donne de la constance à l'énergie du I, transformant l'enthousiasme passager en relations et routines qui durent.`,
+          `S gère en silence les détails et le suivi que I laisse de côté, couvrant le point faible du partenaire.`,
+          `Avec les clients et l'équipe, I ouvre la porte et S entretient le lien sur le long terme, une combinaison forte dans les rôles de service.`,
+          `Le climat de confiance que les deux créent fait que l'équipe se sent libre de s'exprimer et de demander de l'aide.`,
+        ],
+        communication:
+          `I devrait ralentir et signaler les changements à l'avance, en donnant à S le temps de se préparer au lieu de réagir dans la précipitation. S doit exprimer ses préoccupations ouvertement dès qu'elles surgissent, au lieu de les garder jusqu'à ce qu'elles tournent au ressentiment. Convenez d'une priorité claire par période, pour que S ne se perde pas dans le changement constant de focus du I. Dans les conversations difficiles, I gagne à baisser le ton et à écouter davantage, et S gagne à dire ce qu'il pense, même au risque d'une petite friction.`,
+      },
+      IC: {
+        friction: [
+          `La spontanéité du I se heurte de plein fouet à la précision du C, et ce qui est de l'agilité pour l'un est du laisser-aller pour l'autre.`,
+          `C trouve I désorganisé et superficiel, I trouve C rigide et ennuyeux, et chacun sous-estime l'apport de l'autre.`,
+          `I veut commencer tout de suite et ajuster en chemin, C veut tout planifier avant, et l'écart de rythme crée des frictions au démarrage de toute tâche.`,
+          `C pointe les erreurs et les incohérences, et I, qui carbure à la reconnaissance, le reçoit comme une critique personnelle et se décourage.`,
+          `En réunion, I apporte la vision et C apporte les réserves, et sans médiation la conversation oscille entre optimisme débridé et scepticisme bloquant.`,
+        ],
+        synergy: [
+          `I apporte l'idée, l'énergie et la relation, C apporte la rigueur, la qualité et la profondeur, un équilibre rare entre séduire et livrer du bien fait.`,
+          `C ancre les idées du I dans quelque chose de concret et réalisable, transformant l'enthousiasme en un vrai plan.`,
+          `Ensemble, ils excellent à expliquer et à vendre des sujets techniques, I apporte le charme et la clarté, C garantit que le contenu est correct.`,
+          `I ouvre les portes et conquiert les personnes, C soutient la crédibilité par les données, un duo à la fois convaincant et fiable.`,
+          `La créativité du I alliée à l'oeil critique du C produit des solutions innovantes qui passent aussi le test de la qualité.`,
+        ],
+        communication:
+          `I devrait apporter des faits et des preuves à C, parce que l'enthousiasme seul ne convainc pas quelqu'un qui décide par la donnée. C doit s'ouvrir aux idées nouvelles sans exiger la perfection dès le premier brouillon, et veiller à ce que la critique s'accompagne de reconnaissance, et pas seulement de correction. Convenez d'un moment pour diverger librement et d'un autre pour clore avec rigueur, en séparant le brainstorm de la relecture. Répartissez les rôles en présentation : I mène la relation et le récit, C garantit l'exactitude du contenu, en cherchant toujours le juste milieu entre séduire et démontrer.`,
+      },
+      SS: {
+        friction: [
+          `Les deux évitent le conflit et laissent les problèmes s'accumuler sans rien dire, jusqu'à ce que la petite friction devienne une grande usure.`,
+          `Les décisions deviennent lentes ou sont reportées indéfiniment, parce qu'aucun ne veut assumer le choix difficile et en prendre le risque.`,
+          `Les deux résistent au changement, même nécessaire, et le duo s'installe dans une routine qui ne sert plus l'équipe.`,
+          `Les insatisfactions restent enfouies des deux côtés, et le climat en apparence calme cache des rancoeurs que personne ne verbalise.`,
+          `Sans personne pour donner le rythme, les délais glissent en silence parce qu'exiger de l'autre semble rompre l'harmonie.`,
+        ],
+        synergy: [
+          `L'harmonie, la loyauté et la coopération entre eux sont sincères, et l'équipe ressent un environnement stable et sans clans.`,
+          `Le duo soutient l'opération sur le long terme, donnant à l'équipe une base de stabilité qui tient la routine même dans les phases difficiles.`,
+          `Ils créent un environnement sûr où chacun se sent écouté, ce qui pousse les gens autour d'eux à remonter les problèmes plus tôt.`,
+          `Ils travaillent avec patience et constance, idéaux pour les rôles de continuité, de support et de soin des personnes.`,
+          `Leur loyauté mutuelle rend le duo extrêmement fiable dans les moments qui exigent discrétion et soutien silencieux.`,
+        ],
+        communication:
+          `Convenez qu'être honnête sur un problème n'est pas une agression, pour que les deux puissent exprimer leur gêne même sans apprécier le moment. Définissez qui mène chaque décision et un délai pour trancher, sinon le choix tourne en rond sans fin. Planifiez une conversation régulière juste pour mettre sur la table ce qui dérange, en créant un espace sûr pour ce que personne ne dirait dans le couloir. Face à un changement nécessaire, écrivez ensemble le pourquoi et les gains, pour vaincre la résistance naturelle des deux par l'argument plutôt que par la pression.`,
+      },
+      SC: {
+        friction: [
+          `Les deux sont prudents et averses au risque, et ensemble ils peuvent se figer devant toute décision comportant de l'incertitude.`,
+          `L'excès d'analyse avant de changer quoi que ce soit fait que le duo repousse des mouvements que l'entreprise doit faire bientôt.`,
+          `S cherche l'harmonie et C cherche la précision, et parfois l'attachement du C au processus passe au-dessus du soin du S pour les personnes.`,
+          `Aucun des deux n'aime la confrontation, alors les désaccords sur la méthode restent sans solution et s'éternisent.`,
+          `Le duo se sent trop à l'aise dans la routine connue et résiste aux innovations même quand elles apporteraient un gain clair.`,
+        ],
+        synergy: [
+          `Le travail du duo est fiable, minutieux et d'une qualité constante, avec très peu de variation d'un jour à l'autre.`,
+          `Le faible taux d'erreur et le respect des règles en font l'un des duos les plus stables pour les routines de précision.`,
+          `S maintient le climat et C maintient le standard, et ensemble ils livrent de la qualité sans créer de frictions avec l'équipe autour.`,
+          `Ils sont le duo idéal pour les processus critiques qui ne peuvent pas échouer, parce que les deux vérifient avant de lâcher.`,
+          `L'alliance du soin pour les personnes et du soin pour le détail crée une opération prévisible sur laquelle la direction peut compter.`,
+        ],
+        communication:
+          `Travaillez avec des processus et des critères clairs et définis par écrit, parce que les deux se sentent en sécurité quand le chemin est balisé. Signalez les changements à l'avance et laissez du temps d'adaptation, en évitant le choc qui fige S et l'analyse sans fin qui fige C. Convenez à l'avance d'un délai pour clore l'analyse et agir, pour que la prudence des deux ne devienne pas de la paralysie. Encouragez-vous mutuellement à vous positionner quand quelque chose ne va pas, en traitant le désaccord sur la méthode comme une partie du travail et non comme un conflit personnel.`,
+      },
+      CC: {
+        friction: [
+          `Le perfectionnisme des deux mène à la paralysie par l'analyse, et le duo retarde la livraison en quête d'une certitude qui n'arrive jamais.`,
+          `Les deux ont tendance à trop critiquer, et la relecture mutuelle devient un va-et-vient de remarques qui crée de la tension et use la relation.`,
+          `Aucun n'avance sans le niveau de certitude que l'autre non plus ne juge suffisant, et le projet s'enlise dans des vérifications sans fin.`,
+          `Comme les deux valorisent le détail, les discussions techniques s'étirent sur des points minimes pendant que le délai global se resserre.`,
+          `Sous pression, les deux se referment encore plus sur la donnée et se durcissent, rejetant tout raccourci et bloquant les décisions urgentes.`,
+        ],
+        synergy: [
+          `La précision, la qualité et la profondeur technique du duo sont exceptionnelles, et le standard de livraison se situe au-dessus de la moyenne du marché.`,
+          `Leur standard élevé tire vers le haut le niveau de tout ce qui passe entre leurs mains, relevant la barre de toute l'équipe.`,
+          `Ils sont fiables pour les tâches critiques qui ne tolèrent aucune erreur, parce que l'un relit l'autre et rien ne part sans double vérification.`,
+          `Ensemble, ils produisent une documentation, des analyses et des contrôles impeccables, une base solide sur laquelle le reste de l'entreprise peut compter.`,
+          `L'échange entre deux regards rigoureux repère souvent des failles qu'un profil seul laisserait passer.`,
+        ],
+        communication:
+          `Convenez avant de commencer de ce qui est assez bon et du critère de fini, pour ne pas courir après une perfection qui bloque la livraison. Fixez des délais fermes et un point où l'analyse s'arrête et la décision se prend, même sans certitude totale. En relisant le travail de l'autre, équilibrez la critique avec la reconnaissance de ce qui est réussi, pour éviter l'usure de la remarque constante. Répartissez les responsabilités pour ne pas vérifier deux fois la même chose, en faisant confiance au jugement du partenaire au lieu de tout refaire soi-même.`,
+      },
+    },
+  },
+};

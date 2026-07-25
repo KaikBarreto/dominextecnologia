@@ -4,7 +4,8 @@ import { Loader2, Camera, Link2, Calculator, Clock, Copy } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,7 @@ import { formatBRL } from '@/utils/currency';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { EmployeeDiscPanel } from '@/components/employees/EmployeeDiscPanel';
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -35,9 +37,11 @@ interface EmployeeFormDialogProps {
   employee?: Employee | null;
   onSubmit: (data: Partial<Employee>) => void;
   isPending?: boolean;
+  /** Usado APENAS no fluxo "salvar+gerar DISC" na criação. Retorna o funcionário criado. */
+  onCreateForDisc?: (data: Partial<Employee>) => Promise<{ id: string; name: string }>;
 }
 
-export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending }: EmployeeFormDialogProps) {
+export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending, onCreateForDisc }: EmployeeFormDialogProps) {
   const { toast } = useToast();
   const { users } = useUsers();
   const { locale } = useAppLocaleContext();
@@ -72,8 +76,13 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [paymentWeekday, setPaymentWeekday] = useState<number>(5);
   const TAB_DADOS = 'dados';
   const TAB_REMUNERACAO = 'remuneracao';
-  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO;
+  const TAB_DISC = 'disc';
+  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO | typeof TAB_DISC;
   const [activeTab, setActiveTab] = useState<TabKey>(TAB_DADOS);
+  // ID do funcionário recém-criado no fluxo "salvar+gerar DISC" na criação.
+  const [createdEmployeeId, setCreatedEmployeeId] = useState<string | null>(null);
+  const [createdEmployeeName, setCreatedEmployeeName] = useState<string | null>(null);
+  const [isSavingForDisc, setIsSavingForDisc] = useState(false);
 
   type EmployeeDraft = { name: string; cpf: string; phone: string; email: string; position: string; salary: string; hireDate: string; address: string; pixKey: string };
   const draft = useFormDraft<EmployeeDraft>({ key: 'employee-form', isOpen: open, isEditing });
@@ -127,6 +136,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setPassword('');
       setLinkedUserId(employee?.user_id || null);
       setActiveTab(TAB_DADOS);
+      setCreatedEmployeeId(null);
+      setCreatedEmployeeName(null);
+      setIsSavingForDisc(false);
     }
   }, [open, employee?.id]);
 
@@ -150,6 +162,46 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       toast({ variant: 'destructive', title: tv.photoUploadError, description: getErrorMessage(err) });
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Fluxo especial: usuário clicou em "Gerar link do teste" na aba Perfil durante
+  // a CRIAÇÃO de um funcionário ainda não salvo. Valida, salva, e devolve o id para
+  // o EmployeeDiscPanel continuar a geração do link.
+  const handleSaveAndGenerateDisc = async () => {
+    if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.nameRequired }); return; }
+    if (parseCurrency(salary) <= 0) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.salaryRequired }); return; }
+    if (!onCreateForDisc) return;
+    setIsSavingForDisc(true);
+    try {
+      const created = await onCreateForDisc({
+        name: name.trim(),
+        cpf: cpf || null,
+        phone: phone || null,
+        email: email || null,
+        position: position || null,
+        salary: parseCurrency(salary),
+        monthly_cost: parseCurrency(monthlyCost) || null,
+        monthly_cost_breakdown: monthlyCostBreakdown,
+        hire_date: hireDate || null,
+        address: address || null,
+        pix_key: pixKey || null,
+        photo_url: photoUrl || null,
+        user_id: linkedUserId,
+        ponto_enabled: pontoEnabled,
+        payment_frequency: paymentFrequency,
+        payment_day_type: paymentFrequency === 'weekly' ? 'calendar' : paymentDayType,
+        payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
+        payment_day_2: paymentFrequency === 'biweekly' ? paymentDay2 : null,
+        payment_weekday: paymentFrequency === 'weekly' ? paymentWeekday : null,
+      });
+      draft.clearDraft();
+      setCreatedEmployeeId(created.id);
+      setCreatedEmployeeName(created.name);
+    } catch {
+      // Erros já tratados pelo hook useEmployees (toast de destructive).
+    } finally {
+      setIsSavingForDisc(false);
     }
   };
 
@@ -188,13 +240,19 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
   const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
 
+  // Quando o funcionário foi criado via fluxo save-then-generate (criação + DISC),
+  // o registro já existe no banco. O botão principal vira "Fechar" para evitar duplicação.
+  const alreadyCreatedViaDisc = !isEditing && !!createdEmployeeId;
+
   const footer = (
     <div className="flex justify-end gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
-      <Button type="submit" form="employee-form" disabled={isPending}>
-        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {employee ? t.submitEdit : t.submitNew}
-      </Button>
+      {!alreadyCreatedViaDisc && (
+        <Button type="submit" form="employee-form" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {employee ? t.submitEdit : t.submitNew}
+        </Button>
+      )}
     </div>
   );
 
@@ -214,20 +272,15 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       />
       <form id="employee-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="space-y-4">
-          <TabsList className="mx-auto flex w-full max-w-md">
-            <TabsTrigger
-              value={TAB_DADOS}
-              className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              {t.tabData}
-            </TabsTrigger>
-            <TabsTrigger
-              value={TAB_REMUNERACAO}
-              className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              {t.tabPayment}
-            </TabsTrigger>
-          </TabsList>
+          <MobilePillTabs
+            tabs={[
+              { value: TAB_DADOS, label: t.tabData },
+              { value: TAB_REMUNERACAO, label: t.tabPayment },
+              { value: TAB_DISC, label: t.tabDisc },
+            ]}
+            activeTab={activeTab}
+            onTabChange={(v) => setActiveTab(v as TabKey)}
+          />
 
           <TabsContent value={TAB_DADOS} className="space-y-4">
         {/* Photo */}
@@ -402,7 +455,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
         {/* Ponto eletrônico por link público */}
         <div className="rounded-lg border p-3 space-y-3">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <div>
@@ -520,6 +573,17 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </div>
         )}
 
+          </TabsContent>
+
+          <TabsContent value={TAB_DISC} className="space-y-4">
+            <EmployeeDiscPanel
+              employeeId={isEditing && employee ? employee.id : (createdEmployeeId ?? undefined)}
+              employeeName={isEditing && employee ? employee.name : ((createdEmployeeName ?? name.trim()) || '')}
+              isNew={!isEditing && !createdEmployeeId}
+              isSavingForDisc={isSavingForDisc}
+              onNeedSaveThenGenerate={handleSaveAndGenerateDisc}
+              autoGenerate={!!createdEmployeeId && !isEditing}
+            />
           </TabsContent>
         </Tabs>
 

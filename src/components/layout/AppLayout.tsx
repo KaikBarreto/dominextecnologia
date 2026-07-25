@@ -32,7 +32,6 @@ import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
 import { TasksDrawer } from '@/components/tasks/TasksDrawer';
 import { DailyTasksPopup } from '@/components/tasks/DailyTasksPopup';
-import { TasksBadgeTrigger } from '@/components/tasks/TasksBadgeTrigger';
 import {
   Tooltip,
   TooltipContent,
@@ -124,11 +123,11 @@ export function AppLayout() {
       )}
       <SubscriptionGate>
         {isCompactViewport ? (
-          <MobileTabletShell isAdminUser={isAdminUser} onOpenTasksDrawer={() => setTasksDrawerOpen(true)} />
+          <MobileTabletShell isAdminUser={isAdminUser} />
         ) : useTopbar ? (
-          <TopbarShell onOpenTasksDrawer={() => setTasksDrawerOpen(true)} />
+          <TopbarShell />
         ) : (
-          <SidebarShell onOpenTasksDrawer={() => setTasksDrawerOpen(true)} />
+          <SidebarShell />
         )}
       </SubscriptionGate>
     </>
@@ -161,13 +160,13 @@ function RouteTransition({ children }: { children: React.ReactNode }) {
 // ============================================================
 // SHELL: desktop sidebar (modo padrão)
 // ============================================================
-function SidebarShell({ onOpenTasksDrawer }: { onOpenTasksDrawer: () => void }) {
+function SidebarShell() {
   return (
     <SidebarProvider>
       <div className="flex h-[100dvh] w-full max-w-full">
         <Sidebar />
         <SidebarInset className="flex flex-col min-w-0 max-w-full overflow-hidden">
-          <DesktopSidebarHeader onOpenTasksDrawer={onOpenTasksDrawer} />
+          <DesktopSidebarHeader />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
             <RouteTransition>
               <Outlet />
@@ -195,7 +194,7 @@ function SidebarShell({ onOpenTasksDrawer }: { onOpenTasksDrawer: () => void }) 
  * - Direita: `NotificationsBell` + Perfil + Sair (com tooltips). O dropdown
  *   completo de conta continua dentro do Sidebar; aqui só os atalhos rápidos.
  */
-function DesktopSidebarHeader({ onOpenTasksDrawer }: { onOpenTasksDrawer: () => void }) {
+function DesktopSidebarHeader() {
   const navigate = useNavigate();
   const { user, isAdminUser, signOut } = useAuth();
   const { settings } = useCompanySettings();
@@ -216,8 +215,6 @@ function DesktopSidebarHeader({ onOpenTasksDrawer }: { onOpenTasksDrawer: () => 
           {/* Seletor de idioma pessoal — SÓ no header desktop (no mobile a troca
               fica em Configurações → Regional). */}
           <AppLanguageSwitcher />
-          {/* Badge de tarefas pendentes — abre o drawer controlado no AppLayout */}
-          {!isAdminUser && <TasksBadgeTrigger onOpen={onOpenTasksDrawer} />}
           <NotificationsBell />
 
           {/* Botão de perfil removido — já existe no avatar do sidebar (dropdown).
@@ -246,13 +243,10 @@ function DesktopSidebarHeader({ onOpenTasksDrawer }: { onOpenTasksDrawer: () => 
 // ============================================================
 // SHELL: desktop topbar (modo alternativo)
 // ============================================================
-function TopbarShell({ onOpenTasksDrawer }: { onOpenTasksDrawer: () => void }) {
-  const { isAdminUser } = useAuth();
+function TopbarShell() {
   return (
     <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
-      {/* TopNavbar tem NotificationsBell internamente. O badge de tarefas é
-          injetado via prop pública para não duplicar o estado do drawer. */}
-      <TopNavbar tasksBadgeTrigger={!isAdminUser ? <TasksBadgeTrigger onOpen={onOpenTasksDrawer} /> : undefined} />
+      <TopNavbar />
       <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
         <RouteTransition>
           <Outlet />
@@ -268,7 +262,7 @@ function TopbarShell({ onOpenTasksDrawer }: { onOpenTasksDrawer: () => void }) {
 // ============================================================
 // SHELL: mobile/tablet (header simples + MobileBottomNav + pull-to-refresh)
 // ============================================================
-function MobileTabletShell({ isAdminUser, onOpenTasksDrawer }: { isAdminUser: boolean; onOpenTasksDrawer: () => void }) {
+function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
 
@@ -291,7 +285,7 @@ function MobileTabletShell({ isAdminUser, onOpenTasksDrawer }: { isAdminUser: bo
 
   return (
     <div className="flex h-[100dvh] w-full max-w-full flex-col bg-background">
-      <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} onOpenTasksDrawer={onOpenTasksDrawer} />
+      <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} />
       <MobilePullToRefresh
         onRefresh={handleRefresh}
         onScroll={(e) => {
@@ -317,7 +311,7 @@ function MobileTabletShell({ isAdminUser, onOpenTasksDrawer }: { isAdminUser: bo
   );
 }
 
-function MobileTabletHeader({ isAdminUser, scrolled, onOpenTasksDrawer }: { isAdminUser: boolean; scrolled: boolean; onOpenTasksDrawer: () => void }) {
+function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; scrolled: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -431,8 +425,6 @@ function MobileTabletHeader({ isAdminUser, scrolled, onOpenTasksDrawer }: { isAd
       <div className="flex items-center gap-1 justify-end">
         {user && (
           <>
-            {/* Badge de tarefas pendentes — visível para usuários não-admin */}
-            {!isAdminUser && <TasksBadgeTrigger onOpen={onOpenTasksDrawer} />}
             <NotificationsBell />
             {/* Atalhos compactos só em tablet: no mobile (<lg) o bottom nav é o caminho. */}
             <Button

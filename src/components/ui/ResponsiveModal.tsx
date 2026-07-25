@@ -58,9 +58,13 @@ export function ResponsiveModal({
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          <DrawerHeader className="relative shrink-0 pr-24">
-            <DrawerTitle>{title}</DrawerTitle>
-            {description ? <DrawerDescription>{description}</DrawerDescription> : null}
+          {/* Header com título centralizado e botão FECHAR absoluto.
+              O título usa padding horizontal simétrico (px-14) para que o texto
+              nunca passe por baixo do botão FECHAR, mesmo em títulos longos.
+              O botão fica absolute para não ocupar o fluxo e desalinhar o centro. */}
+          <DrawerHeader className="relative shrink-0 px-14 pt-4 pb-3">
+            <DrawerTitle className="text-center">{title}</DrawerTitle>
+            {description ? <DrawerDescription className="text-center mt-1">{description}</DrawerDescription> : null}
             <ModalCloseButton
               className="absolute right-3 top-3"
               onClick={() => onOpenChange(false)}
