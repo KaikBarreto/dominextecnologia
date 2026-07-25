@@ -51,3 +51,9 @@ tools/maps-lead-scraper/
 # Scripts efêmeros de verificação via Chrome DevTools Protocol (debris de agente)
 cdp-*.mjs
 .superpowers/
+
+# Artefatos locais de ferramentas e QA (fora do repo)
+graphify-out/
+.graphifyignore
+melhorias-claude.md
+public/TMP/
