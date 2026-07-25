@@ -21,14 +21,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, ThumbsDown, ThumbsUp, Meh, MinusCircle, PlusCircle, ClipboardList } from 'lucide-react';
+import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, MousePointerClick, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
 import { DiscReport } from '@/components/employees/disc/DiscReport';
+import { DiscScaleSlider } from '@/components/employees/disc/DiscScaleSlider';
 import { extractShortCode } from '@/utils/prettyLinks';
 import { usePersistedState } from '@/hooks/usePersistedState';
-import { LIKERT_MIN, LIKERT_MAX } from '@/lib/disc/questions';
 import { scoreAndClassify, type DiscScores } from '@/lib/disc/scoring';
 import { selectFormItems } from '@/lib/disc/formSelection';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -220,15 +220,24 @@ export default function DiscAssessmentPublic() {
     }
   };
 
-  // Seleciona uma resposta e avança automaticamente (typeform).
+  // Registra a resposta do item atual (1..5). NÃO avança automaticamente:
+  // com a barra arrastável o usuário ajusta o nível e depois toca em "Avançar".
   const selectAnswer = (value: number) => {
     const item = formItems[step];
     setAnswers({ ...answers, [item.id]: value });
-    // pequeno atraso pra dar feedback visual antes de avançar
-    setTimeout(() => {
-      setStep((s) => Math.min(total - 1, s + 1));
-    }, 180);
   };
+
+  // Ajuste 2: ao exibir uma pergunta sem resposta salva, grava Neutro (3) como
+  // padrão. Roda apenas para a pergunta ATUAL (não pré-preenche em massa).
+  // Só ativa na fase 'questions' para não disparar em outras fases.
+  const currentItemId = phase === 'questions' ? formItems[step]?.id : undefined;
+  useEffect(() => {
+    if (currentItemId === undefined) return;
+    if (answers[currentItemId] === undefined) {
+      setAnswers((prev) => ({ ...prev, [currentItemId]: 3 }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentItemId]);
 
   // ── Render por fase ──────────────────────────────────────────────────────────
   let body: React.ReactNode = null;
@@ -275,16 +284,15 @@ export default function DiscAssessmentPublic() {
   } else if (phase === 'intro') {
     body = (
       <div className="flex flex-col items-center justify-center gap-6 py-10 text-center px-2">
-        {/* Emblema/ícone central */}
+        {/* Emblema/ícone central — saturado, gradiente teal da marca, ícone branco */}
         <div
-          className="flex h-20 w-20 items-center justify-center rounded-2xl shadow-md"
-          style={{ backgroundColor: brandColor ? `${brandColor}18` : '#00C68418', border: `2px solid ${brandColor ?? '#00C684'}30` }}
+          className="flex h-20 w-20 items-center justify-center rounded-2xl shadow-lg ring-1 ring-white/40"
+          style={{
+            background: 'linear-gradient(135deg, #00C684 0%, #00C597 100%)',
+            boxShadow: '0 10px 25px -5px rgba(0,198,132,0.45), 0 4px 10px -4px rgba(0,197,151,0.35)',
+          }}
         >
-          <ClipboardList
-            className="h-10 w-10"
-            style={{ color: brandColor ?? '#00C684' }}
-            aria-hidden
-          />
+          <Brain className="h-10 w-10 text-white" aria-hidden />
         </div>
 
         {/* Título grande e negrito */}
@@ -306,10 +314,27 @@ export default function DiscAssessmentPublic() {
           </p>
         )}
 
-        {/* Lead/instrução */}
-        <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-          {tr.ui.introLead}
-        </p>
+        {/* Bloco "Como funciona" — instruções curtas com ícones */}
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-muted/40 p-4 text-left">
+          <p className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
+            <Sparkles className="h-4 w-4 shrink-0" style={{ color: brandColor ?? '#00C684' }} aria-hidden />
+            {tr.ui.instructionsTitle}
+          </p>
+          <ul className="flex flex-col gap-2.5">
+            <li className="flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
+              <Brain className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+              <span>{tr.ui.instructionsHowto}</span>
+            </li>
+            <li className="flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
+              <MousePointerClick className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+              <span>{tr.ui.instructionsDrag}</span>
+            </li>
+            <li className="flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+              <span>{tr.ui.instructionsHonest}</span>
+            </li>
+          </ul>
+        </div>
 
         {/* Botão proeminente */}
         <Button
@@ -321,11 +346,6 @@ export default function DiscAssessmentPublic() {
         >
           {tr.ui.introStart}
         </Button>
-
-        {/* Disclaimer de sinceridade — visível antes de começar */}
-        <p className="max-w-sm text-center text-xs text-muted-foreground leading-relaxed mt-2">
-          {tr.ui.assessmentDisclaimer}
-        </p>
       </div>
     );
   } else if (phase === 'questions') {
@@ -334,19 +354,6 @@ export default function DiscAssessmentPublic() {
     const current = answers[item.id];
     const isLast = step === total - 1;
     const progressPct = Math.round(((step + 1) / total) * 100);
-    // Ordem de exibição: Concordo no topo, Neutro no meio, Discordo embaixo.
-    // O valor viaja junto com a opção (selectAnswer(v)), então a pontuação
-    // NÃO muda — só a ordem visual.
-    const scaleValues = [LIKERT_MAX, 4, 3, 2, LIKERT_MIN];
-
-    // Ícones e cores semânticas para cada nível da escala Likert
-    const SCALE_META: Record<number, { Icon: typeof ThumbsDown; color: string }> = {
-      1: { Icon: ThumbsDown,   color: '#DC2626' }, // vermelho — discordo totalmente
-      2: { Icon: MinusCircle,  color: '#EA580C' }, // laranja — discordo em parte
-      3: { Icon: Meh,          color: '#64748B' }, // slate — neutro
-      4: { Icon: PlusCircle,   color: '#65A30D' }, // verde-limão — concordo em parte
-      5: { Icon: ThumbsUp,     color: '#16A34A' }, // verde — concordo totalmente
-    };
 
     body = (
       <div className="flex flex-col gap-5 py-4">
@@ -367,36 +374,14 @@ export default function DiscAssessmentPublic() {
         {/* Afirmação */}
         <p className="min-h-[3.5rem] text-center text-lg font-semibold text-foreground">{itemText}</p>
 
-        {/* Escala Likert 1–5 */}
-        <div className="flex flex-col gap-2">
-          {scaleValues.map((v) => {
-            const active = current === v;
-            const { Icon, color } = SCALE_META[v];
-            return (
-              <button
-                key={v}
-                type="button"
-                onClick={() => selectAnswer(v)}
-                className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
-                  active
-                    ? 'border-transparent text-white shadow-sm'
-                    : 'border-border bg-card text-foreground hover:bg-muted'
-                }`}
-                style={active ? { backgroundColor: brandColor || '#00C684' } : undefined}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Icon
-                    className="h-4 w-4 shrink-0"
-                    style={{ color: active ? '#fff' : color }}
-                    aria-hidden
-                  />
-                  {tr.scale[v as 1 | 2 | 3 | 4 | 5]}
-                </span>
-                {active && <Check className="h-4 w-4 shrink-0" />}
-              </button>
-            );
-          })}
-        </div>
+        {/* Barra arrastável Likert 1–5 */}
+        <DiscScaleSlider
+          key={item.id}
+          value={current}
+          onChange={selectAnswer}
+          labels={tr.scale}
+          ariaLabel={itemText}
+        />
 
         {/* Navegação */}
         <div className="flex items-center justify-between gap-2 pt-1">
@@ -414,7 +399,7 @@ export default function DiscAssessmentPublic() {
             <Button
               type="button"
               className="gap-1.5"
-              disabled={current === undefined || submitting}
+              disabled={submitting}
               style={brandColor ? { backgroundColor: brandColor, color: '#fff' } : undefined}
               onClick={handleSubmit}
             >
@@ -434,7 +419,6 @@ export default function DiscAssessmentPublic() {
               variant="ghost"
               size="sm"
               className="gap-1.5"
-              disabled={current === undefined}
               onClick={() => setStep((s) => Math.min(total - 1, s + 1))}
             >
               {tr.ui.next} <ArrowRight className="h-4 w-4" />

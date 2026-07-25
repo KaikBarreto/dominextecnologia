@@ -41,18 +41,25 @@ export const discProfile = {
       resultTitle: 'Seu perfil comportamental',
       greeting: 'Olá, {name}!',
       assessmentDisclaimer:
-        'Não existe resposta certa ou errada, nem perfil melhor ou pior. Responda com sinceridade: não marque como você gostaria de ser ou o que acha que é o "certo", e sim o que é mais parecido com você de verdade.',
+        'Responda com sinceridade: não marque como você gostaria de ser ou o que acha que é o "certo", e sim o que é mais parecido com você de verdade.',
+      instructionsTitle: 'Como funciona',
+      instructionsHowto:
+        'São 28 afirmações sobre o seu jeito de agir. Leva cerca de 5 minutos.',
+      instructionsDrag:
+        'Arraste a barra: direita se tem tudo a ver com você, esquerda se não tem nada a ver, centro se é neutro.',
+      instructionsHonest:
+        'Não existe resposta certa ou errada, nem perfil melhor ou pior. Responda pensando no que é mais parecido com você de verdade.',
     },
 
     // ── Escala Likert 1–5 ────────────────────────────────────────────────────
     scale: {
-      1: 'Discordo totalmente',
+      1: 'Nada a ver comigo',
       2: 'Discordo em parte',
       3: 'Neutro',
       4: 'Concordo em parte',
-      5: 'Concordo totalmente',
-      lowAnchor: 'Discordo',
-      highAnchor: 'Concordo',
+      5: 'Tudo a ver comigo',
+      lowAnchor: 'Nada a ver comigo',
+      highAnchor: 'Tudo a ver comigo',
     },
 
     // ── Fatores (rótulos dos eixos e gráficos) ───────────────────────────────
@@ -786,16 +793,23 @@ export const discProfile = {
       resultTitle: 'Your behavioral profile',
       greeting: 'Hi, {name}!',
       assessmentDisclaimer:
-        'There are no right or wrong answers, and no profile is better or worse than another. Answer honestly: mark what truly resembles you, not what you wish you were or what you think is the "correct" response.',
+        'Answer honestly: mark what truly resembles you, not what you wish you were or what you think is the "correct" response.',
+      instructionsTitle: 'How it works',
+      instructionsHowto:
+        'There are 28 statements about the way you act. It takes about 5 minutes.',
+      instructionsDrag:
+        'Drag the bar: right if it is exactly like you, left if it is not like you at all, center if it is neutral.',
+      instructionsHonest:
+        'There are no right or wrong answers, and no profile is better or worse. Answer thinking about what truly resembles you.',
     },
     scale: {
-      1: 'Strongly disagree',
+      1: 'Not like me at all',
       2: 'Somewhat disagree',
       3: 'Neutral',
       4: 'Somewhat agree',
-      5: 'Strongly agree',
-      lowAnchor: 'Disagree',
-      highAnchor: 'Agree',
+      5: 'Exactly like me',
+      lowAnchor: 'Not like me at all',
+      highAnchor: 'Exactly like me',
     },
     factors: {
       D: { name: 'Dominance', short: 'D', tagline: 'Focus on results and action' },
@@ -1254,16 +1268,23 @@ export const discProfile = {
       resultTitle: 'Tu perfil de comportamiento',
       greeting: '¡Hola, {name}!',
       assessmentDisclaimer:
-        'No hay respuesta correcta ni incorrecta, ni perfil mejor ni peor. Responde con sinceridad: no marques lo que te gustaría ser o lo que crees que es lo "correcto", sino lo que más se parece a ti de verdad.',
+        'Responde con sinceridad: no marques lo que te gustaría ser o lo que crees que es lo "correcto", sino lo que más se parece a ti de verdad.',
+      instructionsTitle: 'Cómo funciona',
+      instructionsHowto:
+        'Son 28 afirmaciones sobre tu forma de actuar. Toma unos 5 minutos.',
+      instructionsDrag:
+        'Arrastra la barra: a la derecha si tiene todo que ver contigo, a la izquierda si no tiene nada que ver, al centro si es neutral.',
+      instructionsHonest:
+        'No hay respuesta correcta ni incorrecta, ni perfil mejor ni peor. Responde pensando en lo que más se parece a ti de verdad.',
     },
     scale: {
-      1: 'Totalmente en desacuerdo',
+      1: 'Nada que ver conmigo',
       2: 'Algo en desacuerdo',
       3: 'Neutral',
       4: 'Algo de acuerdo',
-      5: 'Totalmente de acuerdo',
-      lowAnchor: 'En desacuerdo',
-      highAnchor: 'De acuerdo',
+      5: 'Totalmente como yo',
+      lowAnchor: 'Nada que ver conmigo',
+      highAnchor: 'Totalmente como yo',
     },
     factors: {
       D: { name: 'Dominancia', short: 'D', tagline: 'Enfoque en resultados y acción' },
@@ -1707,15 +1728,20 @@ export const discProfile = {
         `Cela prend environ 5 minutes. Répondez en pensant à votre quotidien.`,      introStart: `Commencer`,      back: `Retour`,      next: `Suivant`,      submit: `Envoyer les réponses`,      submitting: `Envoi...`,      progress: `Question {current} sur {total}`,      thanksTitle: `Merci !`,      thanksLead:
         `Vos réponses ont été enregistrées. L’équipe RH recevra votre profil.`,      alreadyDoneTitle: `Réponses déjà envoyées`,      alreadyDoneLead:
         `Ce questionnaire a déjà été rempli. Contactez les RH si vous devez le refaire.`,      loadError: `Impossible de charger le questionnaire. Veuillez réessayer.`,      resultTitle: `Votre profil comportemental`,      greeting: `Bonjour, {name} !`,      assessmentDisclaimer:
-        `Il n’existe pas de bonne ou de mauvaise réponse, ni de profil meilleur ou moins bon qu’un autre. Répondez avec sincérité : choisissez ce qui vous ressemble vraiment, pas ce que vous aimeriez être ou ce que vous pensez être la "bonne" réponse.`,    },
+        `Répondez avec sincérité : choisissez ce qui vous ressemble vraiment, pas ce que vous aimeriez être ou ce que vous pensez être la "bonne" réponse.`,
+      instructionsTitle: `Comment ça marche`,
+      instructionsHowto: `Ce sont 28 affirmations sur votre façon d'agir. Cela prend environ 5 minutes.`,
+      instructionsDrag: `Faites glisser la barre : à droite si c'est tout à fait vous, à gauche si ce n'est pas du tout vous, au centre si c'est neutre.`,
+      instructionsHonest: `Il n'existe pas de bonne ou de mauvaise réponse, ni de profil meilleur ou moins bon. Répondez en pensant à ce qui vous ressemble vraiment.`,
+    },
     scale: {
-      1: 'Pas du tout d’accord',
-      2: 'Plutôt pas d’accord',
+      1: `Pas du tout moi`,
+      2: `Plutôt pas d'accord`,
       3: 'Neutre',
-      4: 'Plutôt d’accord',
-      5: 'Tout à fait d’accord',
-      lowAnchor: 'Pas d’accord',
-      highAnchor: 'D’accord',
+      4: `Plutôt d'accord`,
+      5: `Tout à fait moi`,
+      lowAnchor: `Pas du tout moi`,
+      highAnchor: `Tout à fait moi`,
     },
     factors: {
       D: { name: 'Dominance', short: 'D', tagline: 'Axé sur le résultat et l’action' },
