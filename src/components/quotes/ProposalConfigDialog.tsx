@@ -950,8 +950,8 @@ function TemplatePickerCarousel({
   onSelect: (slug: string) => void;
   itemHeight: number;
 }) {
-  // Mostra 3 itens visíveis; o container é alto o bastante pra 3 linhas + gaps.
-  const visible = Math.min(3, options.length);
+  // Mostra 4 itens visíveis; o container é alto o bastante pra 4 linhas + gaps.
+  const visible = Math.min(4, options.length);
   const gap = 8; // pt-2 entre slides (embla usa -mt-4/pt-4 → aqui customizamos)
   const viewportH = visible * itemHeight + (visible - 1) * gap;
 

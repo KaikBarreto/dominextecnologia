@@ -170,6 +170,8 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           .clean-table-wrap { overflow: visible !important; }
           .clean-table { min-width: 0 !important; }
           .clean-block { break-inside: avoid; }
+          .clean-table thead { display: table-header-group; }
+          .clean-table tr { break-inside: avoid; }
         }
       `}</style>
 
@@ -196,9 +198,9 @@ export function CleanTemplate(props: ProposalTemplateProps) {
             {validUntil && (
               <span
                 className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-                style={{ background: `${primary}14`, color: primary, ...colorAdjust }}
+                style={{ background: primary, color: '#ffffff', ...colorAdjust }}
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: primary, ...colorAdjust }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#ffffff', ...colorAdjust }} />
                 {t.cleanValidUntilBadge.replace('{date}', validUntil)}
               </span>
             )}

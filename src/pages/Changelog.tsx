@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.29',
+    date: '25 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Proposta do orçamento com todos os modelos e PDF sem cortes',
+        description: 'Ao montar a proposta do seu orçamento, agora aparecem todos os modelos visuais disponíveis para escolher, sem nenhum escondido. No modelo Clean, o selo de validade ficou mais destacado e, ao gerar o PDF, os blocos e as tabelas não são mais cortados no meio ao virar a página.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.28',
     date: '25 de julho de 2026',
     type: 'minor',
