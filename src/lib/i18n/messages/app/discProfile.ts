@@ -22,9 +22,9 @@ export const discProfile = {
   'pt-br': {
     // ── Tela pública (typeform) ──────────────────────────────────────────────
     ui: {
-      introTitle: 'Perfil Comportamental',
+      introTitle: 'Teste de Perfil Comportamental (DISC)',
       introLead:
-        'Leva cerca de 5 minutos. Não existe resposta certa ou errada, responda com sinceridade pensando no seu dia a dia.',
+        'Leva cerca de 5 minutos. Responda pensando no seu dia a dia.',
       introStart: 'Começar',
       back: 'Voltar',
       next: 'Avançar',
@@ -767,9 +767,9 @@ export const discProfile = {
   // ═══════════════════════════════════════════════════════════════════════════
   en: {
     ui: {
-      introTitle: 'Behavioral Profile',
+      introTitle: 'Behavioral Profile Test (DISC)',
       introLead:
-        'It takes about 5 minutes. There is no right or wrong answer, just answer honestly thinking about your day to day.',
+        'It takes about 5 minutes. Answer thinking about your day to day.',
       introStart: 'Start',
       back: 'Back',
       next: 'Next',
@@ -1235,9 +1235,9 @@ export const discProfile = {
   // ═══════════════════════════════════════════════════════════════════════════
   es: {
     ui: {
-      introTitle: 'Perfil de Comportamiento',
+      introTitle: 'Test de Perfil de Comportamiento (DISC)',
       introLead:
-        'Toma unos 5 minutos. No hay respuesta correcta ni incorrecta, responde con sinceridad pensando en tu día a día.',
+        'Toma unos 5 minutos. Responde pensando en tu día a día.',
       introStart: 'Comenzar',
       back: 'Volver',
       next: 'Siguiente',
@@ -1703,8 +1703,8 @@ export const discProfile = {
   // ═══════════════════════════════════════════════════════════════════════════
   fr: {
     ui: {
-      introTitle: `Profil Comportemental`,      introLead:
-        `Cela prend environ 5 minutes. Il n’y a pas de bonne ou de mauvaise réponse, répondez avec sincérité en pensant à votre quotidien.`,      introStart: `Commencer`,      back: `Retour`,      next: `Suivant`,      submit: `Envoyer les réponses`,      submitting: `Envoi...`,      progress: `Question {current} sur {total}`,      thanksTitle: `Merci !`,      thanksLead:
+      introTitle: `Test de Profil Comportemental (DISC)`,      introLead:
+        `Cela prend environ 5 minutes. Répondez en pensant à votre quotidien.`,      introStart: `Commencer`,      back: `Retour`,      next: `Suivant`,      submit: `Envoyer les réponses`,      submitting: `Envoi...`,      progress: `Question {current} sur {total}`,      thanksTitle: `Merci !`,      thanksLead:
         `Vos réponses ont été enregistrées. L’équipe RH recevra votre profil.`,      alreadyDoneTitle: `Réponses déjà envoyées`,      alreadyDoneLead:
         `Ce questionnaire a déjà été rempli. Contactez les RH si vous devez le refaire.`,      loadError: `Impossible de charger le questionnaire. Veuillez réessayer.`,      resultTitle: `Votre profil comportemental`,      greeting: `Bonjour, {name} !`,      assessmentDisclaimer:
         `Il n’existe pas de bonne ou de mauvaise réponse, ni de profil meilleur ou moins bon qu’un autre. Répondez avec sincérité : choisissez ce qui vous ressemble vraiment, pas ce que vous aimeriez être ou ce que vous pensez être la "bonne" réponse.`,    },

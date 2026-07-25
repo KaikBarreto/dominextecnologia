@@ -334,7 +334,10 @@ export default function DiscAssessmentPublic() {
     const current = answers[item.id];
     const isLast = step === total - 1;
     const progressPct = Math.round(((step + 1) / total) * 100);
-    const scaleValues = [LIKERT_MIN, 2, 3, 4, LIKERT_MAX];
+    // Ordem de exibição: Concordo no topo, Neutro no meio, Discordo embaixo.
+    // O valor viaja junto com a opção (selectAnswer(v)), então a pontuação
+    // NÃO muda — só a ordem visual.
+    const scaleValues = [LIKERT_MAX, 4, 3, 2, LIKERT_MIN];
 
     // Ícones e cores semânticas para cada nível da escala Likert
     const SCALE_META: Record<number, { Icon: typeof ThumbsDown; color: string }> = {
