@@ -5,7 +5,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import {
-  Users, BarChart3, Plus, Search, Clock, UsersRound,
+  Users, BarChart3, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
   FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -82,7 +82,7 @@ export default function Employees() {
 
   const tabs: SettingsTab[] = useMemo(() => {
     const base: SettingsTab[] = [
-      { value: 'list', label: t.tabs.list, icon: Users },
+      { value: 'list', label: t.tabs.list, icon: UserRound },
       { value: 'teams', label: t.tabs.teams, icon: UsersRound },
       { value: 'dashboard', label: t.tabs.dashboard, icon: BarChart3 },
       { value: 'behavioral', label: t.tabs.behavioral, icon: Brain },
@@ -557,7 +557,7 @@ export default function Employees() {
       <MobilePageHeader
         title={t.page.title}
         subtitle={t.page.subtitle}
-        icon={Users}
+        icon={Briefcase}
         actions={
           isMobile ? (
             <Badge variant="secondary" className="text-[10px]">{employees.length}</Badge>
