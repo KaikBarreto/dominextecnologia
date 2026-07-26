@@ -249,7 +249,7 @@ export const employees = {
 
     // ── Cabeçalho da página ────────────────────────────────────────────────
     page: {
-      title: 'Funcionários',
+      title: 'Funcionários (RH)',
       subtitle: 'Gerencie funcionários, vales, pagamentos e extratos',
     },
 
@@ -1090,7 +1090,7 @@ export const employees = {
       },
     },
     page: {
-      title: 'Employees',
+      title: 'Employees (HR)',
       subtitle: 'Manage employees, advances, payments and statements',
     },
     tabs: {
@@ -1900,7 +1900,7 @@ export const employees = {
       },
     },
     page: {
-      title: 'Empleados',
+      title: 'Empleados (RRHH)',
       subtitle: 'Gestiona empleados, adelantos, pagos y extractos',
     },
     tabs: {
@@ -2710,7 +2710,7 @@ export const employees = {
       },
     },
     page: {
-      title: 'Employés',
+      title: 'Employés (RH)',
       subtitle: 'Gérez les employés, avances, paiements et relevés',
     },
     tabs: {

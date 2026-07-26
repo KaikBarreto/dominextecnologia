@@ -347,7 +347,7 @@ export function SidebarMenuContent() {
 
         {/* Lista de itens */}
         <div ref={menuScrollRef} className={cn('flex-1 overflow-y-auto pt-2', collapsed ? 'px-1.5' : 'px-4')}>
-          <nav className={cn('space-y-0.5', collapsed && 'flex flex-col items-center')}>
+          <nav className={cn(collapsed ? 'flex flex-col items-center gap-2' : 'space-y-0.5')}>
             {activeMenu.map((item) => {
               if (item.children) {
                 const visibleChildren = filterByAccess(item.children);
