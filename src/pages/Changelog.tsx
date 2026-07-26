@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.31',
+    date: '26 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Organograma da sua empresa',
+        description: 'Chegou o Organograma, uma nova área em Funcionários (RH). É um quadro visual que você arrasta e dá zoom para montar a estrutura da sua empresa: puxe os funcionários já cadastrados (vêm com foto e cargo) ou crie caixas manuais para posições que ainda não têm alguém. Ligue as pessoas para formar a hierarquia, marque o setor de cada uma com uma cor (inclusive cor personalizada) e use o botão "Organizar" para arrumar tudo automaticamente. Ao criar alguém abaixo de outra pessoa, o novo já entra conectado e pode herdar o setor de quem está acima. Você pode ter vários organogramas nomeados e tudo é salvo sozinho.',
+        category: 'recurso',
+      },
+      {
+        title: 'Funcionários agora é Funcionários (RH)',
+        description: 'O módulo e a tela de Funcionários passaram a se chamar Funcionários (RH), deixando mais claro que ali fica tudo de gestão de pessoas. O menu recolhido (só com ícones) também ficou mais alinhado e organizado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.30',
     date: '26 de julho de 2026',
     type: 'minor',
