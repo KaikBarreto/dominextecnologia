@@ -13,14 +13,44 @@
 /** Os 4 fatores DISC. */
 export type DiscFactor = 'D' | 'I' | 'S' | 'C';
 
-/** Um item do questionário. O texto vem do i18n pelo `id`. */
-export interface DiscItem {
-  /** Identificador estável (d1..d7, i1..i7, s1..s7, c1..c7). Chave do i18n. */
+/**
+ * Um item de escala (Likert). O texto vem do i18n pelo `id`.
+ * Resposta esperada: número Likert 1..5.
+ */
+export interface DiscLikertItem {
+  /** Identificador estável (d1..d14, i1..i14, s1..s14, c1..c14). Chave do i18n. */
   id: string;
   /** Fator ao qual o item pontua. */
   factor: DiscFactor;
   /** Se true, aplicar `6 − resposta` no scoring (item invertido). */
   reverse: boolean;
+}
+
+/**
+ * Alias histórico. `DiscItem` sempre foi o item de escala (Likert). Mantido pra
+ * não quebrar imports existentes.
+ */
+export type DiscItem = DiscLikertItem;
+
+/**
+ * Um item de alternativa (forced-choice). SEMPRE 4 opções, uma por fator
+ * (D/I/S/C). O motor NÃO precisa do texto nem do mapa opção→fator: a UI resolve
+ * o texto pelo i18n (`items[id].options`) e envia de volta a LETRA do fator da
+ * opção escolhida. A resposta esperada é `'D' | 'I' | 'S' | 'C'`.
+ */
+export interface DiscChoiceItem {
+  /** Identificador estável (ch1..ch20). Chave do i18n. */
+  id: string;
+  /** Discriminador de tipo de item. */
+  kind: 'choice';
+}
+
+/** União dos dois tipos de item que podem compor um formulário. */
+export type DiscFormItem = DiscLikertItem | DiscChoiceItem;
+
+/** Type guard: `true` quando o item é de alternativa (forced-choice). */
+export function isChoiceItem(i: DiscFormItem): i is DiscChoiceItem {
+  return 'kind' in i && i.kind === 'choice';
 }
 
 /** Quantidade de itens por fator (banco completo). O scoring usa o subconjunto sorteado. */
@@ -107,3 +137,24 @@ export const DISC_ITEM_IDS: readonly string[] = DISC_ITEMS.map((i) => i.id);
 
 /** Os 4 fatores na ordem canônica de exibição/roda (D→I→S→C, sentido horário). */
 export const DISC_FACTORS: readonly DiscFactor[] = ['D', 'I', 'S', 'C'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Banco de itens de ALTERNATIVA (forced-choice) — 20 itens (ch1..ch20).
+//
+// Cada item tem SEMPRE 4 opções, uma por fator D/I/S/C. O texto das afirmações e
+// o mapa opção→fator vivem no i18n (`items[id].options`) — o motor só conhece o
+// `id` e o `kind`. A resposta é a LETRA do fator escolhido, e no scoring vale
+// LIKERT_MAX (5) pro fator escolhido e LIKERT_MIN (1) pros outros 3 (ver
+// scoring.ts). Cada formulário sorteia um subconjunto (lógica em formSelection).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Os 20 itens de alternativa, na ordem canônica (ch1..ch20). */
+export const DISC_CHOICE_ITEMS: readonly DiscChoiceItem[] = Array.from(
+  { length: 20 },
+  (_, idx) => ({ id: `ch${idx + 1}`, kind: 'choice' as const }),
+);
+
+/** Todos os ids de alternativa na ordem canônica. */
+export const DISC_CHOICE_ITEM_IDS: readonly string[] = DISC_CHOICE_ITEMS.map(
+  (i) => i.id,
+);

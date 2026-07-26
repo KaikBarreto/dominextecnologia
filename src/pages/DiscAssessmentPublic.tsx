@@ -27,10 +27,12 @@ import { Button } from '@/components/ui/button';
 import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
 import { DiscReport } from '@/components/employees/disc/DiscReport';
 import { DiscScaleSlider } from '@/components/employees/disc/DiscScaleSlider';
+import { DiscChoiceSelect } from '@/components/employees/disc/DiscChoiceSelect';
 import { extractShortCode } from '@/utils/prettyLinks';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { scoreAndClassify, type DiscScores } from '@/lib/disc/scoring';
 import { selectFormItems } from '@/lib/disc/formSelection';
+import { isChoiceItem, type DiscFactor } from '@/lib/disc/questions';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { type LocaleCode } from '@/lib/i18n/locales';
 import { generateDiscDossierPdf } from '@/utils/discDossierPdf';
@@ -105,8 +107,9 @@ export default function DiscAssessmentPublic() {
   // Fallback de iniciais quando a edge de foto retorna erro (404 ou outro).
   const [photoError, setPhotoError] = useState(false);
 
-  // Respostas sobrevivem a refresh (chave por code). { itemId: 1..5 }
-  const [answers, setAnswers] = usePersistedState<Record<string, number>>(
+  // Respostas sobrevivem a refresh (chave por code).
+  // Escala (Likert) = número 1..5; alternativa (forced-choice) = LETRA do fator ('D'|'I'|'S'|'C').
+  const [answers, setAnswers] = usePersistedState<Record<string, number | DiscFactor>>(
     `disc:answers:${code ?? 'none'}`,
     {},
   );
@@ -278,8 +281,9 @@ export default function DiscAssessmentPublic() {
       if (phase !== 'questions') return;
       if (submitting) return;
       const item = formItems[step];
-      // Só avança se houver resposta registrada (garante que Neutro já foi gravado).
-      if (answers[item.id] === undefined) return;
+      // Só avança se houver resposta registrada. Para escala, o Neutro (3) já foi
+      // gravado ao entrar; para alternativa, exige uma opção escolhida (letra).
+      if (answers[item.id] == null) return;
       e.preventDefault();
       const isLast = step === total - 1;
       if (isLast) {
@@ -297,19 +301,23 @@ export default function DiscAssessmentPublic() {
     return () => window.removeEventListener('keydown', handleQuestionEnter);
   }, [handleQuestionEnter]);
 
-  // Registra a resposta do item atual (1..5). NÃO avança automaticamente:
-  // com a barra arrastável o usuário ajusta o nível e depois toca em "Avançar".
+  // Registra a resposta do item atual (escala 1..5 ou letra de fator). NÃO avança
+  // automaticamente: o usuário ajusta e depois toca em "Avançar".
   const selectAnswer = (value: number) => {
     const item = formItems[step];
     setAnswers({ ...answers, [item.id]: value });
   };
 
-  // Ajuste 2: ao exibir uma pergunta sem resposta salva, grava Neutro (3) como
-  // padrão. Roda apenas para a pergunta ATUAL (não pré-preenche em massa).
-  // Só ativa na fase 'questions' para não disparar em outras fases.
-  const currentItemId = phase === 'questions' ? formItems[step]?.id : undefined;
+  // Ajuste 2: ao exibir uma pergunta de ESCALA sem resposta salva, grava Neutro (3)
+  // como padrão. Perguntas de ALTERNATIVA NÃO recebem default — exigem escolha
+  // ativa. Roda apenas para a pergunta ATUAL (não pré-preenche em massa) e só na
+  // fase 'questions'.
+  const currentItem = phase === 'questions' ? formItems[step] : undefined;
+  const currentItemId = currentItem?.id;
+  const currentIsChoice = currentItem ? isChoiceItem(currentItem) : false;
   useEffect(() => {
     if (currentItemId === undefined) return;
+    if (currentIsChoice) return; // alternativa não tem valor neutro
     if (answers[currentItemId] === undefined) {
       setAnswers((prev) => ({ ...prev, [currentItemId]: 3 }));
     }
@@ -424,6 +432,10 @@ export default function DiscAssessmentPublic() {
               <span>{tr.ui.instructionsDrag}</span>
             </li>
             <li className="flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
+              <MousePointerClick className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+              <span>{tr.ui.instructionsChoice}</span>
+            </li>
+            <li className="flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               <span>{tr.ui.instructionsHonest}</span>
             </li>
@@ -444,9 +456,12 @@ export default function DiscAssessmentPublic() {
     );
   } else if (phase === 'questions') {
     const item = formItems[step];
-    const itemText = tr.items[item.id as keyof typeof tr.items];
     const current = answers[item.id];
     const isLast = step === total - 1;
+    const isChoice = isChoiceItem(item);
+    // Item respondido? Escala tem número (Neutro-default garante); alternativa
+    // exige letra escolhida. `!= null` cobre os dois tipos.
+    const answered = current != null;
     const progressPct = Math.round(((step + 1) / total) * 100);
 
     body = (
@@ -465,17 +480,32 @@ export default function DiscAssessmentPublic() {
           </div>
         </div>
 
-        {/* Afirmação */}
-        <p className="min-h-[3.5rem] text-center text-lg font-semibold text-foreground">{itemText}</p>
-
-        {/* Barra arrastável Likert 1–5 */}
-        <DiscScaleSlider
-          key={item.id}
-          value={current}
-          onChange={selectAnswer}
-          labels={tr.scale}
-          ariaLabel={itemText}
-        />
+        {/* Pergunta: alternativa (forced-choice) OU escala (Likert) */}
+        {isChoice ? (
+          <DiscChoiceSelect
+            key={item.id}
+            prompt={tr.choiceItems[item.id as keyof typeof tr.choiceItems].prompt}
+            options={tr.choiceItems[item.id as keyof typeof tr.choiceItems].options}
+            value={current as DiscFactor | undefined}
+            onChange={(f) => setAnswers((a) => ({ ...a, [item.id]: f }))}
+            seed={`${code ?? 'default'}|${item.id}`}
+          />
+        ) : (
+          <>
+            {/* Afirmação */}
+            <p className="min-h-[3.5rem] text-center text-lg font-semibold text-foreground">
+              {tr.items[item.id as keyof typeof tr.items]}
+            </p>
+            {/* Barra arrastável Likert 1–5 */}
+            <DiscScaleSlider
+              key={item.id}
+              value={typeof current === 'number' ? current : undefined}
+              onChange={selectAnswer}
+              labels={tr.scale}
+              ariaLabel={tr.items[item.id as keyof typeof tr.items]}
+            />
+          </>
+        )}
 
         {/* Navegação */}
         <div className="flex items-center justify-between gap-2 pt-1">
@@ -493,7 +523,7 @@ export default function DiscAssessmentPublic() {
             <Button
               type="button"
               className="gap-1.5"
-              disabled={submitting}
+              disabled={submitting || !answered}
               style={brandColor ? { backgroundColor: brandColor, color: '#fff' } : undefined}
               onClick={handleSubmit}
             >
@@ -513,6 +543,7 @@ export default function DiscAssessmentPublic() {
               variant="ghost"
               size="sm"
               className="gap-1.5"
+              disabled={!answered}
               onClick={() => setStep((s) => Math.min(total - 1, s + 1))}
             >
               {tr.ui.next} <ArrowRight className="h-4 w-4" />

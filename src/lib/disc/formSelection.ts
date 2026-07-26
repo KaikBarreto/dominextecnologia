@@ -1,24 +1,42 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// DISC — seleção determinística de subconjunto de itens por formulário.
+// DISC — seleção determinística do formulário (MISTO: escala + alternativa).
 //
-// Cada link de avaliação tem um `code` (short_code de 12 chars) único.
-// Usando o `code` como seed de um PRNG (mulberry32), sorteamos 7 itens por fator
-// (= 28 itens no total) do banco de 48, e embaralhamos a ordem do formulário.
+// Cada link de avaliação tem um `code` (short_code de 12 chars) único. Usando o
+// `code` como seed de um PRNG (mulberry32), montamos um formulário MISTO:
+//   • 5 itens de ESCALA (Likert) por fator → 20 itens;
+//   • 8 itens de ALTERNATIVA (forced-choice), sorteados do banco de 20;
+//   • total 28 itens, embaralhados GLOBALMENTE (escala e alternativa intercaladas).
 //
 // Propriedades garantidas:
 //   • Determinístico: mesmo seed → mesmo subconjunto + mesma ordem (refresh seguro).
 //   • Diferente por link: seeds distintos → formulários distintos.
 //   • Sem dependência de Math.random (testável, reproduzível).
 //   • Sem dependência de i18n, React ou Supabase.
+//
+// O retorno é `DiscFormItem[]`. A UI discrimina cada item por `isChoiceItem(i)`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { DISC_ITEMS, DISC_FACTORS, type DiscItem, type DiscFactor } from './questions';
+import {
+  DISC_ITEMS,
+  DISC_CHOICE_ITEMS,
+  DISC_FACTORS,
+  type DiscLikertItem,
+  type DiscChoiceItem,
+  type DiscFormItem,
+} from './questions';
 
-/** Quantidade de itens por fator a sortear para cada formulário. */
-export const FORM_ITEMS_PER_FACTOR = 7;
+/** Quantidade de itens de ESCALA (Likert) por fator em cada formulário. */
+export const FORM_LIKERT_PER_FACTOR = 5;
 
-/** Total de itens por formulário (4 fatores × FORM_ITEMS_PER_FACTOR). */
-export const FORM_TOTAL_ITEMS = DISC_FACTORS.length * FORM_ITEMS_PER_FACTOR;
+/** Quantidade de itens de ALTERNATIVA (forced-choice) em cada formulário. */
+export const FORM_CHOICE_ITEMS = 8;
+
+/**
+ * Total de itens por formulário:
+ * (4 fatores × FORM_LIKERT_PER_FACTOR) + FORM_CHOICE_ITEMS = 20 + 8 = 28.
+ */
+export const FORM_TOTAL_ITEMS =
+  DISC_FACTORS.length * FORM_LIKERT_PER_FACTOR + FORM_CHOICE_ITEMS;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PRNG: mulberry32 (seeded, 32-bit, de domínio público — Tommy Ettinger 2017)
@@ -71,35 +89,44 @@ function shuffle<T>(arr: T[], rng: Prng): T[] {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Sorteia um subconjunto determinístico do banco de itens DISC para um formulário.
+ * Sorteia o formulário MISTO determinístico para um link de avaliação.
  *
- * @param seed       String que identifica o formulário (ex.: short_code do link).
- *                   O mesmo seed sempre produz o mesmo resultado.
- * @param perFactor  Quantos itens por fator sortear (padrão 7; total = 4 × perFactor).
- * @returns          Array de `DiscItem` com exatamente `4 × perFactor` elementos,
- *                   em ordem aleatória (embaralhados globalmente).
+ * @param seed          String que identifica o formulário (ex.: short_code do link).
+ *                      O mesmo seed sempre produz o mesmo resultado.
+ * @param likertPerFactor  Itens de escala por fator (padrão 5).
+ * @param choiceCount      Itens de alternativa (padrão 8).
+ * @returns             Array `DiscFormItem[]` com exatamente
+ *                      `4 × likertPerFactor + choiceCount` elementos, em ordem
+ *                      aleatória (escala e alternativa embaralhadas juntas).
  *
  * Fluxo interno:
  *   1. Converte `seed` → uint32 via djb2.
- *   2. Instancia mulberry32(hash).
- *   3. Para cada fator (D→I→S→C em ordem canônica):
- *      a. Filtra os itens do fator no banco.
- *      b. Embaralha o subarray com o PRNG compartilhado.
- *      c. Fatia os primeiros `perFactor` elementos.
- *   4. Junta os 4 × perFactor itens e embaralha a ordem global (mesmo PRNG).
+ *   2. Instancia mulberry32(hash) — PRNG único compartilhado por todo o sorteio.
+ *   3. Para cada fator (D→I→S→C): embaralha os Likert do fator e fatia `likertPerFactor`.
+ *   4. Embaralha o banco de alternativas e fatia `choiceCount`.
+ *   5. Junta escala + alternativa e embaralha a ordem GLOBAL (mesmo PRNG).
  */
-export function selectFormItems(seed: string, perFactor = FORM_ITEMS_PER_FACTOR): DiscItem[] {
+export function selectFormItems(
+  seed: string,
+  likertPerFactor = FORM_LIKERT_PER_FACTOR,
+  choiceCount = FORM_CHOICE_ITEMS,
+): DiscFormItem[] {
   const rng = mulberry32(hashString(seed));
 
-  const selected: DiscItem[] = [];
-
+  const likertSelected: DiscLikertItem[] = [];
   for (const factor of DISC_FACTORS) {
-    const factorItems = DISC_ITEMS.filter((item) => item.factor === factor) as DiscItem[];
+    const factorItems = DISC_ITEMS.filter((item) => item.factor === factor);
     // Embaralha cópia (não muta o banco original)
     const shuffled = shuffle([...factorItems], rng);
-    selected.push(...shuffled.slice(0, perFactor));
+    likertSelected.push(...shuffled.slice(0, likertPerFactor));
   }
 
-  // Embaralha a ordem global para misturar os fatores no formulário
-  return shuffle(selected, rng);
+  const choiceSelected: DiscChoiceItem[] = shuffle(
+    [...DISC_CHOICE_ITEMS],
+    rng,
+  ).slice(0, choiceCount);
+
+  // Junta os dois tipos e embaralha a ordem GLOBAL (intercala escala/alternativa).
+  const combined: DiscFormItem[] = [...likertSelected, ...choiceSelected];
+  return shuffle(combined, rng);
 }

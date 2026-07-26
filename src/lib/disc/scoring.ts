@@ -14,11 +14,27 @@
 
 import {
   DISC_ITEMS,
+  DISC_CHOICE_ITEMS,
   DISC_FACTORS,
   LIKERT_MAX,
   LIKERT_MIN,
   type DiscFactor,
 } from './questions';
+
+/**
+ * Uma resposta pode ser:
+ *   • número Likert (1..5) — para itens de escala;
+ *   • letra de fator ('D'|'I'|'S'|'C') — para itens de alternativa (forced-choice).
+ */
+export type DiscAnswer = number | DiscFactor;
+
+/** Conjunto de respostas cruas: itemId → resposta (Likert ou letra de fator). */
+export type DiscAnswers = Record<string, DiscAnswer>;
+
+/** Verdadeiro quando o valor é uma letra de fator válida (D/I/S/C). */
+function isFactorLetter(v: unknown): v is DiscFactor {
+  return v === 'D' || v === 'I' || v === 'S' || v === 'C';
+}
 
 /** Escores normalizados 0–100 por fator. */
 export type DiscScores = Record<DiscFactor, number>;
@@ -87,22 +103,29 @@ function clampScore(value: number): number {
 /**
  * Calcula os escores 0–100 por fator a partir das respostas cruas.
  *
- * `answers` mapeia itemId → resposta Likert (1..5). Itens ausentes (não
- * respondidos) são simplesmente ignorados — o divisor é o número de itens
- * RESPONDIDOS de cada fator, não o total do banco. Isso garante que qualquer
- * subconjunto (7/fator, 12/fator, ou outro) produza escores comparáveis.
+ * `answers` mapeia itemId → resposta. Suporta os dois tipos de item, MISTURADOS
+ * na mesma normalização (soma aditiva, comparável em 0–100):
+ *   • ESCALA (Likert): valor numérico 1..5. Reverse aplica `6 − x`.
+ *   • ALTERNATIVA (forced-choice): valor = LETRA do fator escolhido. Conta como
+ *     LIKERT_MAX (5) pro fator escolhido e LIKERT_MIN (1) pra CADA um dos outros
+ *     3 fatores. Ou seja, cada item de alternativa incrementa +1 no count de
+ *     TODOS os 4 fatores — o escolhido puxa pra cima, os demais pra baixo.
+ *
+ * Itens ausentes (não respondidos) e respostas inválidas são ignorados — o
+ * divisor é o número de itens RESPONDIDOS de cada fator, não o total do banco.
+ * Isso garante que qualquer subconjunto (Likert puro, misto, etc.) produza
+ * escores comparáveis.
  *
  * Fórmula por fator:
  *   max_fator = n_respondidos_do_fator × LIKERT_MAX (5)
  *   escore    = round(100 × soma_efetiva / max_fator)   clampado em [0, 100]
  *   se max_fator = 0 (nenhum item respondido): escore = 0
- *
- * Itens reverse: `effective = LIKERT_MIN + LIKERT_MAX − clamped` (= 6 − x).
  */
-export function computeScores(answers: Record<string, number>): DiscScores {
+export function computeScores(answers: DiscAnswers): DiscScores {
   const rawByFactor: Record<DiscFactor, number> = { D: 0, I: 0, S: 0, C: 0 };
   const countByFactor: Record<DiscFactor, number> = { D: 0, I: 0, S: 0, C: 0 };
 
+  // ── Itens de ESCALA (Likert) ──────────────────────────────────────────────
   for (const item of DISC_ITEMS) {
     const raw = answers[item.id];
     if (typeof raw !== 'number' || Number.isNaN(raw)) continue;
@@ -111,6 +134,16 @@ export function computeScores(answers: Record<string, number>): DiscScores {
     const effective = item.reverse ? LIKERT_MIN + LIKERT_MAX - clamped : clamped; // 6 − x
     rawByFactor[item.factor] += effective;
     countByFactor[item.factor] += 1;
+  }
+
+  // ── Itens de ALTERNATIVA (forced-choice) ──────────────────────────────────
+  for (const item of DISC_CHOICE_ITEMS) {
+    const pick = answers[item.id];
+    if (!isFactorLetter(pick)) continue; // ausente ou inválido → ignora
+    for (const f of DISC_FACTORS) {
+      rawByFactor[f] += f === pick ? LIKERT_MAX : LIKERT_MIN; // escolhido=5, demais=1
+      countByFactor[f] += 1;
+    }
   }
 
   const scoreForFactor = (f: DiscFactor): number => {
@@ -201,7 +234,7 @@ export function classify(scores: DiscScores): DiscClassification {
 
 /** Açúcar: escore → classificação num passo só. */
 export function scoreAndClassify(
-  answers: Record<string, number>,
+  answers: DiscAnswers,
 ): { scores: DiscScores; classification: DiscClassification } {
   const scores = computeScores(answers);
   return { scores, classification: classify(scores) };

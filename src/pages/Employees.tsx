@@ -9,7 +9,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import {
-  Users, BarChart3, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
+  Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
   FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -29,7 +29,6 @@ import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
-import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
 import { EmployeeDiscOverview } from '@/components/employees/EmployeeDiscOverview';
 import { OrgChartTab } from '@/components/employees/orgchart/OrgChartTab';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
@@ -213,13 +212,14 @@ export default function Employees() {
     const base: SettingsTab[] = [
       { value: 'list', label: t.tabs.list, icon: UserRound },
       { value: 'teams', label: t.tabs.teams, icon: UsersRound },
-      { value: 'dashboard', label: t.tabs.dashboard, icon: BarChart3 },
-      { value: 'behavioral', label: t.tabs.behavioral, icon: Brain },
-      { value: 'organogram', label: t.tabs.organogram, icon: Network },
     ];
     if (canManageTime) {
       base.push({ value: 'timeclock', label: t.tabs.timeclock, icon: Clock });
     }
+    base.push(
+      { value: 'behavioral', label: t.tabs.behavioral, icon: Brain },
+      { value: 'organogram', label: t.tabs.organogram, icon: Network },
+    );
     return base;
   }, [canManageTime, t]);
 
@@ -905,9 +905,7 @@ export default function Employees() {
             openChartId={resolvedOrgChartId}
             onSelectChart={handleSelectOrgChart}
           />
-        ) : (
-          <EmployeesDashboard employees={employees} balances={balanceMap} />
-        )}
+        ) : null}
       </SettingsSidebarLayout>
 
       {/* FAB mobile-only — só na tab de lista. Desktop usa botão inline na toolbar. */}

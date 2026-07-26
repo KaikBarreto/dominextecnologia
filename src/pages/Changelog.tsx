@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.39',
+    date: '26 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Perfil Comportamental agora tem perguntas de alternativa',
+        description: 'Além das perguntas de escala (em que você arrasta a barra), o teste de Perfil Comportamental ganhou perguntas de alternativa: a pessoa escolhe, entre quatro opções, a que mais combina com ela. Os dois tipos aparecem misturados na mesma avaliação, e a introdução agora explica como responder cada um. O resultado do perfil continua sendo calculado no mesmo padrão de sempre.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tela de Funcionários (RH) mais organizada',
+        description: 'A aba Dashboard foi removida da tela de Funcionários (RH) e o Controle de Ponto passou a aparecer logo depois de Equipes, deixando a navegação mais direta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.38',
     date: '26 de julho de 2026',
     type: 'patch',

@@ -44,9 +44,11 @@ export const discProfile = {
         'Responda com sinceridade: não marque como você gostaria de ser ou o que acha que é o "certo", e sim o que é mais parecido com você de verdade.',
       instructionsTitle: 'Como funciona',
       instructionsHowto:
-        'São 28 afirmações sobre o seu jeito de agir. Leva cerca de 5 minutos.',
+        'São perguntas sobre o seu jeito de agir. Algumas são de escala e outras de escolha. Leva cerca de 5 minutos.',
       instructionsDrag:
-        'Arraste a barra: direita se tem tudo a ver com você, esquerda se não tem nada a ver, centro se é neutro.',
+        'Nas perguntas de escala, arraste a barra: direita se tem tudo a ver com você, esquerda se não tem nada a ver, centro se é neutro.',
+      instructionsChoice:
+        'Em algumas perguntas, escolha entre as opções a alternativa que mais combina com você.',
       instructionsHonest:
         'Não existe resposta certa ou errada, nem perfil melhor ou pior. Responda pensando no que é mais parecido com você de verdade.',
       aboutProfileTitle: 'Sobre o seu perfil',
@@ -1131,6 +1133,190 @@ export const discProfile = {
         ],
       },
     },
+
+    // ── Perguntas de escolha forçada (ch1..ch20), 1 opção por fator D/I/S/C ────
+    choiceItems: {
+      ch1: {
+        prompt: 'No trabalho, eu sou mais...',
+        options: {
+          D: 'Decidido: assumo o comando e vou atrás do resultado.',
+          I: 'Comunicativo: converso, animo e engajo as pessoas.',
+          S: 'Constante: mantenho o ritmo firme e dou apoio ao time.',
+          C: 'Criterioso: analiso os detalhes antes de agir.',
+        },
+      },
+      ch2: {
+        prompt: 'Diante de um problema novo, eu prefiro...',
+        options: {
+          D: 'Decidir rápido e agir, mesmo com algum risco.',
+          I: 'Chamar as pessoas e resolver juntos, na conversa.',
+          S: 'Ir com calma, um passo de cada vez, sem atropelo.',
+          C: 'Levantar os dados e estudar antes de decidir.',
+        },
+      },
+      ch3: {
+        prompt: 'O que mais me motiva é...',
+        options: {
+          D: 'Vencer desafios e alcançar metas ambiciosas.',
+          I: 'O reconhecimento e o contato com as pessoas.',
+          S: 'Um ambiente estável, harmonioso e de confiança.',
+          C: 'Fazer um trabalho preciso e bem feito.',
+        },
+      },
+      ch4: {
+        prompt: 'Meu lema no dia a dia seria...',
+        options: {
+          D: 'Resultado agora, o resto a gente ajusta depois.',
+          I: 'Junto com as pessoas, tudo fica mais leve.',
+          S: 'Devagar e sempre, sem perder a calma.',
+          C: 'Bem feito é melhor do que só feito.',
+        },
+      },
+      ch5: {
+        prompt: 'Numa reunião, eu costumo ser quem...',
+        options: {
+          D: 'Puxa a decisão e cobra que as coisas andem.',
+          I: 'Anima o grupo e traz energia para a conversa.',
+          S: 'Escuta todos e busca um consenso tranquilo.',
+          C: 'Aponta os detalhes e questiona os dados.',
+        },
+      },
+      ch6: {
+        prompt: 'Sob pressão, a minha reação é...',
+        options: {
+          D: 'Assumir o controle e empurrar para a frente.',
+          I: 'Manter o otimismo e mobilizar as pessoas.',
+          S: 'Ficar calmo e manter a estabilidade do grupo.',
+          C: 'Recuar um passo e revisar antes de agir.',
+        },
+      },
+      ch7: {
+        prompt: 'Eu me sinto realizado quando...',
+        options: {
+          D: 'Bato a meta e vejo o resultado do meu esforço.',
+          I: 'Sou reconhecido e valorizado pelas pessoas.',
+          S: 'O time está unido e o clima está em paz.',
+          C: 'Entrego um trabalho impecável, sem falhas.',
+        },
+      },
+      ch8: {
+        prompt: 'Eu gosto de um ambiente que seja...',
+        options: {
+          D: 'Competitivo, com desafios e liberdade para decidir.',
+          I: 'Animado, sociável e cheio de gente por perto.',
+          S: 'Previsível, tranquilo e com boas relações.',
+          C: 'Organizado, com regras e procedimentos claros.',
+        },
+      },
+      ch9: {
+        prompt: 'Ao tomar uma decisão, eu me guio mais por...',
+        options: {
+          D: 'Instinto e vontade de chegar logo ao resultado.',
+          I: 'Como isso vai afetar e envolver as pessoas.',
+          S: 'O que mantém a estabilidade e evita conflito.',
+          C: 'Fatos, números e uma análise cuidadosa.',
+        },
+      },
+      ch10: {
+        prompt: 'Quando falo com alguém, eu sou...',
+        options: {
+          D: 'Direto e objetivo, vou logo ao ponto.',
+          I: 'Expressivo e caloroso, gosto de contar histórias.',
+          S: 'Paciente e atento, ouço mais do que falo.',
+          C: 'Preciso e ponderado, escolho bem as palavras.',
+        },
+      },
+      ch11: {
+        prompt: 'A mudança, para mim, é...',
+        options: {
+          D: 'Uma oportunidade de avançar e liderar.',
+          I: 'Empolgante, gosto de novidade e movimento.',
+          S: 'Algo que prefiro fazer com calma e segurança.',
+          C: 'Aceitável se houver um bom plano por trás.',
+        },
+      },
+      ch12: {
+        prompt: 'Meus colegas diriam que eu sou...',
+        options: {
+          D: 'Determinado e às vezes um pouco impaciente.',
+          I: 'Simpático e entusiasmado, animo o ambiente.',
+          S: 'Confiável e sereno, sempre disposto a ajudar.',
+          C: 'Detalhista e caprichoso com a qualidade.',
+        },
+      },
+      ch13: {
+        prompt: 'Para obter bons resultados, eu conto com a minha...',
+        options: {
+          D: 'Coragem de decidir e assumir o comando.',
+          I: 'Facilidade de convencer e engajar pessoas.',
+          S: 'Persistência de manter o ritmo até o fim.',
+          C: 'Capacidade de analisar e não deixar passar nada.',
+        },
+      },
+      ch14: {
+        prompt: 'O que mais me incomoda é...',
+        options: {
+          D: 'Lentidão e falta de resultado.',
+          I: 'Ambiente frio, calado e sem interação.',
+          S: 'Pressa, conflito e mudança em cima da hora.',
+          C: 'Desorganização e trabalho feito sem cuidado.',
+        },
+      },
+      ch15: {
+        prompt: 'Num projeto em grupo, eu naturalmente...',
+        options: {
+          D: 'Assumo a liderança e defino o rumo.',
+          I: 'Motivo o time e mantenho todos animados.',
+          S: 'Dou suporte e garanto que ninguém fique para trás.',
+          C: 'Cuido da qualidade e organizo os detalhes.',
+        },
+      },
+      ch16: {
+        prompt: 'Eu penso que o mais importante é...',
+        options: {
+          D: 'Entregar resultado e vencer o desafio.',
+          I: 'Manter boas relações e um clima positivo.',
+          S: 'Ter constância e um ambiente de confiança.',
+          C: 'Fazer certo, com precisão e critério.',
+        },
+      },
+      ch17: {
+        prompt: 'Quando algo dá errado, eu...',
+        options: {
+          D: 'Assumo a frente e corrijo o rumo na hora.',
+          I: 'Mantenho o otimismo e mobilizo o grupo.',
+          S: 'Fico firme e ajudo a estabilizar a situação.',
+          C: 'Investigo a causa com calma antes de agir.',
+        },
+      },
+      ch18: {
+        prompt: 'Eu prefiro tarefas que exijam...',
+        options: {
+          D: 'Decisão rápida e resultado visível.',
+          I: 'Contato com pessoas e boa comunicação.',
+          S: 'Rotina, constância e trabalho em equipe.',
+          C: 'Análise, cuidado e atenção ao detalhe.',
+        },
+      },
+      ch19: {
+        prompt: 'A minha maior força é...',
+        options: {
+          D: 'A vontade de vencer e a coragem de decidir.',
+          I: 'O carisma e a energia para engajar os outros.',
+          S: 'A paciência e a lealdade com quem confio.',
+          C: 'O rigor e a busca por qualidade.',
+        },
+      },
+      ch20: {
+        prompt: 'No fim das contas, eu quero...',
+        options: {
+          D: 'Estar no comando e fazer as coisas acontecerem.',
+          I: 'Ser querido e trabalhar cercado de pessoas.',
+          S: 'Ter tranquilidade, harmonia e segurança.',
+          C: 'Ter tudo certo, organizado e no padrão.',
+        },
+      },
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1160,9 +1346,11 @@ export const discProfile = {
         'Answer honestly: mark what truly resembles you, not what you wish you were or what you think is the "correct" response.',
       instructionsTitle: 'How it works',
       instructionsHowto:
-        'There are 28 statements about the way you act. It takes about 5 minutes.',
+        'These are questions about the way you act. Some are scale questions and others are choice questions. It takes about 5 minutes.',
       instructionsDrag:
-        'Drag the bar: right if it is exactly like you, left if it is not like you at all, center if it is neutral.',
+        'On scale questions, drag the bar: right if it is exactly like you, left if it is not like you at all, center if it is neutral.',
+      instructionsChoice:
+        'On some questions, choose the option that best matches you.',
       instructionsHonest:
         'There are no right or wrong answers, and no profile is better or worse. Answer thinking about what truly resembles you.',
       aboutProfileTitle: 'About your profile',
@@ -2212,6 +2400,190 @@ export const discProfile = {
         ],
       },
     },
+
+    // ── Forced-choice questions (ch1..ch20), one option per D/I/S/C factor ─────
+    choiceItems: {
+      ch1: {
+        prompt: 'At work, I am more...',
+        options: {
+          D: 'Decisive: I take charge and go after the result.',
+          I: 'Outgoing: I talk, energize and engage people.',
+          S: 'Steady: I keep a firm pace and support the team.',
+          C: 'Careful: I analyze the details before acting.',
+        },
+      },
+      ch2: {
+        prompt: 'Facing a new problem, I prefer to...',
+        options: {
+          D: 'Decide fast and act, even with some risk.',
+          I: 'Bring people in and solve it together, talking it out.',
+          S: 'Take it calmly, one step at a time, no rushing.',
+          C: 'Gather the data and study it before deciding.',
+        },
+      },
+      ch3: {
+        prompt: 'What motivates me most is...',
+        options: {
+          D: 'Winning challenges and hitting ambitious goals.',
+          I: 'Recognition and contact with people.',
+          S: 'A stable, harmonious and trusting environment.',
+          C: 'Doing accurate, well done work.',
+        },
+      },
+      ch4: {
+        prompt: 'My daily motto would be...',
+        options: {
+          D: 'Results now, we fine tune the rest later.',
+          I: 'Everything is lighter when we are with people.',
+          S: 'Slow and steady, never losing my cool.',
+          C: 'Well done is better than just done.',
+        },
+      },
+      ch5: {
+        prompt: 'In a meeting, I am usually the one who...',
+        options: {
+          D: 'Drives the decision and pushes things to move.',
+          I: 'Energizes the group and brings energy to the talk.',
+          S: 'Listens to everyone and seeks a calm consensus.',
+          C: 'Points out the details and questions the data.',
+        },
+      },
+      ch6: {
+        prompt: 'Under pressure, my reaction is to...',
+        options: {
+          D: 'Take control and push forward.',
+          I: 'Stay optimistic and rally people.',
+          S: 'Stay calm and keep the group stable.',
+          C: 'Step back and review before acting.',
+        },
+      },
+      ch7: {
+        prompt: 'I feel fulfilled when...',
+        options: {
+          D: 'I hit the target and see the result of my effort.',
+          I: 'I am recognized and valued by people.',
+          S: 'The team is united and the mood is at peace.',
+          C: 'I deliver flawless work, with no mistakes.',
+        },
+      },
+      ch8: {
+        prompt: 'I like an environment that is...',
+        options: {
+          D: 'Competitive, with challenges and freedom to decide.',
+          I: 'Lively, sociable and full of people around.',
+          S: 'Predictable, calm and with good relationships.',
+          C: 'Organized, with clear rules and procedures.',
+        },
+      },
+      ch9: {
+        prompt: 'When making a decision, I am guided more by...',
+        options: {
+          D: 'Instinct and the drive to reach the result fast.',
+          I: 'How it will affect and involve people.',
+          S: 'What keeps stability and avoids conflict.',
+          C: 'Facts, numbers and careful analysis.',
+        },
+      },
+      ch10: {
+        prompt: 'When I talk to someone, I am...',
+        options: {
+          D: 'Direct and to the point, I get straight to it.',
+          I: 'Expressive and warm, I like telling stories.',
+          S: 'Patient and attentive, I listen more than I talk.',
+          C: 'Precise and measured, I choose my words well.',
+        },
+      },
+      ch11: {
+        prompt: 'Change, to me, is...',
+        options: {
+          D: 'A chance to move forward and lead.',
+          I: 'Exciting, I love novelty and movement.',
+          S: 'Something I prefer to do calmly and safely.',
+          C: 'Acceptable if there is a good plan behind it.',
+        },
+      },
+      ch12: {
+        prompt: 'My colleagues would say I am...',
+        options: {
+          D: 'Determined and sometimes a bit impatient.',
+          I: 'Friendly and enthusiastic, I liven up the room.',
+          S: 'Reliable and calm, always willing to help.',
+          C: 'Detail oriented and meticulous about quality.',
+        },
+      },
+      ch13: {
+        prompt: 'To get good results, I rely on my...',
+        options: {
+          D: 'Courage to decide and take charge.',
+          I: 'Ease in convincing and engaging people.',
+          S: 'Persistence to keep the pace to the end.',
+          C: 'Ability to analyze and let nothing slip.',
+        },
+      },
+      ch14: {
+        prompt: 'What bothers me most is...',
+        options: {
+          D: 'Slowness and lack of results.',
+          I: 'A cold, quiet environment with no interaction.',
+          S: 'Rush, conflict and last minute change.',
+          C: 'Disorganization and careless work.',
+        },
+      },
+      ch15: {
+        prompt: 'On a group project, I naturally...',
+        options: {
+          D: 'Take the lead and set the direction.',
+          I: 'Motivate the team and keep everyone upbeat.',
+          S: 'Give support and make sure no one is left behind.',
+          C: 'Look after quality and organize the details.',
+        },
+      },
+      ch16: {
+        prompt: 'I think the most important thing is...',
+        options: {
+          D: 'Delivering results and winning the challenge.',
+          I: 'Keeping good relationships and a positive mood.',
+          S: 'Having consistency and a trusting environment.',
+          C: 'Getting it right, with precision and criteria.',
+        },
+      },
+      ch17: {
+        prompt: 'When something goes wrong, I...',
+        options: {
+          D: 'Step up and correct course right away.',
+          I: 'Stay optimistic and rally the group.',
+          S: 'Stay steady and help stabilize the situation.',
+          C: 'Investigate the cause calmly before acting.',
+        },
+      },
+      ch18: {
+        prompt: 'I prefer tasks that require...',
+        options: {
+          D: 'Fast decisions and visible results.',
+          I: 'Contact with people and good communication.',
+          S: 'Routine, consistency and teamwork.',
+          C: 'Analysis, care and attention to detail.',
+        },
+      },
+      ch19: {
+        prompt: 'My greatest strength is...',
+        options: {
+          D: 'The drive to win and the courage to decide.',
+          I: 'The charisma and energy to engage others.',
+          S: 'The patience and loyalty toward those I trust.',
+          C: 'The rigor and pursuit of quality.',
+        },
+      },
+      ch20: {
+        prompt: 'In the end, I want to...',
+        options: {
+          D: 'Be in charge and make things happen.',
+          I: 'Be liked and work surrounded by people.',
+          S: 'Have calm, harmony and security.',
+          C: 'Have everything right, organized and up to standard.',
+        },
+      },
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2241,9 +2613,11 @@ export const discProfile = {
         'Responde con sinceridad: no marques lo que te gustaría ser o lo que crees que es lo "correcto", sino lo que más se parece a ti de verdad.',
       instructionsTitle: 'Cómo funciona',
       instructionsHowto:
-        'Son 28 afirmaciones sobre tu forma de actuar. Toma unos 5 minutos.',
+        'Son preguntas sobre tu forma de actuar. Algunas son de escala y otras de elección. Toma unos 5 minutos.',
       instructionsDrag:
-        'Arrastra la barra: a la derecha si tiene todo que ver contigo, a la izquierda si no tiene nada que ver, al centro si es neutral.',
+        'En las preguntas de escala, arrastra la barra: a la derecha si tiene todo que ver contigo, a la izquierda si no tiene nada que ver, al centro si es neutral.',
+      instructionsChoice:
+        'En algunas preguntas, elige la opción que más se parece a ti.',
       instructionsHonest:
         'No hay respuesta correcta ni incorrecta, ni perfil mejor ni peor. Responde pensando en lo que más se parece a ti de verdad.',
       aboutProfileTitle: 'Sobre tu perfil',
@@ -3293,6 +3667,190 @@ export const discProfile = {
         ],
       },
     },
+
+    // ── Preguntas de elección forzada (ch1..ch20), una opción por factor D/I/S/C
+    choiceItems: {
+      ch1: {
+        prompt: 'En el trabajo, soy más...',
+        options: {
+          D: 'Decidido: tomo el mando y voy tras el resultado.',
+          I: 'Comunicativo: converso, animo y comprometo a la gente.',
+          S: 'Constante: mantengo un ritmo firme y apoyo al equipo.',
+          C: 'Cuidadoso: analizo los detalles antes de actuar.',
+        },
+      },
+      ch2: {
+        prompt: 'Ante un problema nuevo, prefiero...',
+        options: {
+          D: 'Decidir rápido y actuar, aun con algún riesgo.',
+          I: 'Reunir a la gente y resolverlo juntos, conversando.',
+          S: 'Ir con calma, paso a paso, sin atropellar.',
+          C: 'Reunir los datos y estudiar antes de decidir.',
+        },
+      },
+      ch3: {
+        prompt: 'Lo que más me motiva es...',
+        options: {
+          D: 'Superar desafíos y alcanzar metas ambiciosas.',
+          I: 'El reconocimiento y el contacto con la gente.',
+          S: 'Un ambiente estable, armonioso y de confianza.',
+          C: 'Hacer un trabajo preciso y bien hecho.',
+        },
+      },
+      ch4: {
+        prompt: 'Mi lema del día a día sería...',
+        options: {
+          D: 'Resultado ya, lo demás lo ajustamos después.',
+          I: 'Con la gente, todo se vuelve más ligero.',
+          S: 'Despacio y constante, sin perder la calma.',
+          C: 'Bien hecho es mejor que solo hecho.',
+        },
+      },
+      ch5: {
+        prompt: 'En una reunión, suelo ser quien...',
+        options: {
+          D: 'Impulsa la decisión y exige que las cosas avancen.',
+          I: 'Anima al grupo y aporta energía a la conversación.',
+          S: 'Escucha a todos y busca un consenso tranquilo.',
+          C: 'Señala los detalles y cuestiona los datos.',
+        },
+      },
+      ch6: {
+        prompt: 'Bajo presión, mi reacción es...',
+        options: {
+          D: 'Tomar el control y empujar hacia adelante.',
+          I: 'Mantener el optimismo y movilizar a la gente.',
+          S: 'Mantener la calma y la estabilidad del grupo.',
+          C: 'Dar un paso atrás y revisar antes de actuar.',
+        },
+      },
+      ch7: {
+        prompt: 'Me siento realizado cuando...',
+        options: {
+          D: 'Cumplo la meta y veo el resultado de mi esfuerzo.',
+          I: 'Soy reconocido y valorado por la gente.',
+          S: 'El equipo está unido y el clima está en paz.',
+          C: 'Entrego un trabajo impecable, sin fallas.',
+        },
+      },
+      ch8: {
+        prompt: 'Me gusta un ambiente que sea...',
+        options: {
+          D: 'Competitivo, con desafíos y libertad para decidir.',
+          I: 'Animado, sociable y lleno de gente alrededor.',
+          S: 'Previsible, tranquilo y con buenas relaciones.',
+          C: 'Organizado, con reglas y procedimientos claros.',
+        },
+      },
+      ch9: {
+        prompt: 'Al tomar una decisión, me guío más por...',
+        options: {
+          D: 'El instinto y las ganas de llegar pronto al resultado.',
+          I: 'Cómo va a afectar e involucrar a la gente.',
+          S: 'Lo que mantiene la estabilidad y evita el conflicto.',
+          C: 'Hechos, números y un análisis cuidadoso.',
+        },
+      },
+      ch10: {
+        prompt: 'Cuando hablo con alguien, soy...',
+        options: {
+          D: 'Directo y objetivo, voy al grano.',
+          I: 'Expresivo y cálido, me gusta contar historias.',
+          S: 'Paciente y atento, escucho más de lo que hablo.',
+          C: 'Preciso y ponderado, elijo bien las palabras.',
+        },
+      },
+      ch11: {
+        prompt: 'El cambio, para mí, es...',
+        options: {
+          D: 'Una oportunidad de avanzar y liderar.',
+          I: 'Emocionante, me gusta la novedad y el movimiento.',
+          S: 'Algo que prefiero hacer con calma y seguridad.',
+          C: 'Aceptable si hay un buen plan detrás.',
+        },
+      },
+      ch12: {
+        prompt: 'Mis colegas dirían que soy...',
+        options: {
+          D: 'Determinado y a veces un poco impaciente.',
+          I: 'Simpático y entusiasta, animo el ambiente.',
+          S: 'Confiable y sereno, siempre dispuesto a ayudar.',
+          C: 'Detallista y meticuloso con la calidad.',
+        },
+      },
+      ch13: {
+        prompt: 'Para lograr buenos resultados, cuento con mi...',
+        options: {
+          D: 'Valor para decidir y tomar el mando.',
+          I: 'Facilidad para convencer y comprometer a la gente.',
+          S: 'Perseverancia para mantener el ritmo hasta el final.',
+          C: 'Capacidad de analizar y no dejar pasar nada.',
+        },
+      },
+      ch14: {
+        prompt: 'Lo que más me incomoda es...',
+        options: {
+          D: 'La lentitud y la falta de resultados.',
+          I: 'Un ambiente frío, callado y sin interacción.',
+          S: 'La prisa, el conflicto y el cambio de último momento.',
+          C: 'El desorden y el trabajo hecho sin cuidado.',
+        },
+      },
+      ch15: {
+        prompt: 'En un proyecto en grupo, yo naturalmente...',
+        options: {
+          D: 'Asumo el liderazgo y defino el rumbo.',
+          I: 'Motivo al equipo y mantengo a todos animados.',
+          S: 'Doy apoyo y garantizo que nadie quede atrás.',
+          C: 'Cuido la calidad y organizo los detalles.',
+        },
+      },
+      ch16: {
+        prompt: 'Pienso que lo más importante es...',
+        options: {
+          D: 'Entregar resultados y superar el desafío.',
+          I: 'Mantener buenas relaciones y un clima positivo.',
+          S: 'Tener constancia y un ambiente de confianza.',
+          C: 'Hacerlo bien, con precisión y criterio.',
+        },
+      },
+      ch17: {
+        prompt: 'Cuando algo sale mal, yo...',
+        options: {
+          D: 'Tomo la delantera y corrijo el rumbo enseguida.',
+          I: 'Mantengo el optimismo y movilizo al grupo.',
+          S: 'Me mantengo firme y ayudo a estabilizar la situación.',
+          C: 'Investigo la causa con calma antes de actuar.',
+        },
+      },
+      ch18: {
+        prompt: 'Prefiero tareas que exijan...',
+        options: {
+          D: 'Decisión rápida y resultado visible.',
+          I: 'Contacto con la gente y buena comunicación.',
+          S: 'Rutina, constancia y trabajo en equipo.',
+          C: 'Análisis, cuidado y atención al detalle.',
+        },
+      },
+      ch19: {
+        prompt: 'Mi mayor fortaleza es...',
+        options: {
+          D: 'Las ganas de ganar y el valor de decidir.',
+          I: 'El carisma y la energía para comprometer a otros.',
+          S: 'La paciencia y la lealtad con quien confío.',
+          C: 'El rigor y la búsqueda de la calidad.',
+        },
+      },
+      ch20: {
+        prompt: 'Al final, quiero...',
+        options: {
+          D: 'Estar al mando y hacer que las cosas pasen.',
+          I: 'Ser querido y trabajar rodeado de gente.',
+          S: 'Tener tranquilidad, armonía y seguridad.',
+          C: 'Tener todo correcto, organizado y en su estándar.',
+        },
+      },
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -3306,8 +3864,9 @@ export const discProfile = {
         `Ce questionnaire a déjà été rempli. Contactez les RH si vous devez le refaire.`,      loadError: `Impossible de charger le questionnaire. Veuillez réessayer.`,      resultTitle: `Votre profil comportemental`,      greeting: `Bonjour, {name} !`,      assessmentDisclaimer:
         `Répondez avec sincérité : choisissez ce qui vous ressemble vraiment, pas ce que vous aimeriez être ou ce que vous pensez être la "bonne" réponse.`,
       instructionsTitle: `Comment ça marche`,
-      instructionsHowto: `Ce sont 28 affirmations sur votre façon d'agir. Cela prend environ 5 minutes.`,
-      instructionsDrag: `Faites glisser la barre : à droite si c'est tout à fait vous, à gauche si ce n'est pas du tout vous, au centre si c'est neutre.`,
+      instructionsHowto: `Ce sont des questions sur votre façon d'agir. Certaines sont à échelle et d'autres à choix. Cela prend environ 5 minutes.`,
+      instructionsDrag: `Pour les questions à échelle, faites glisser la barre : à droite si c'est tout à fait vous, à gauche si ce n'est pas du tout vous, au centre si c'est neutre.`,
+      instructionsChoice: `Pour certaines questions, choisissez l'option qui vous correspond le mieux.`,
       instructionsHonest: `Il n'existe pas de bonne ou de mauvaise réponse, ni de profil meilleur ou moins bon. Répondez en pensant à ce qui vous ressemble vraiment.`,
       aboutProfileTitle: `À propos de votre profil`,
     },
@@ -4290,6 +4849,190 @@ export const discProfile = {
           `La carrière que vous avez choisie valorise-t-elle la qualité et la profondeur technique que vous prisez, ou vit-elle d'improvisation et de hâte ?`,
           `Aurez-vous la clarté des règles et des critères, ou devrez-vous composer avec l'ambiguïté qui vous gêne le plus ?`,
         ],
+      },
+    },
+
+    // ── Questions à choix forcé (ch1..ch20), une option par facteur D/I/S/C ────
+    choiceItems: {
+      ch1: {
+        prompt: `Au travail, je suis plutôt...`,
+        options: {
+          D: `Décidé : je prends les commandes et je vise le résultat.`,
+          I: `Communicant : je discute, je motive et j'engage les gens.`,
+          S: `Constant : je garde un rythme ferme et je soutiens l'équipe.`,
+          C: `Méticuleux : j'analyse les détails avant d'agir.`,
+        },
+      },
+      ch2: {
+        prompt: `Face à un problème nouveau, je préfère...`,
+        options: {
+          D: `Décider vite et agir, même avec un peu de risque.`,
+          I: `Réunir les gens et résoudre ensemble, en échangeant.`,
+          S: `Avancer calmement, pas à pas, sans précipitation.`,
+          C: `Rassembler les données et étudier avant de décider.`,
+        },
+      },
+      ch3: {
+        prompt: `Ce qui me motive le plus, c'est...`,
+        options: {
+          D: `Relever des défis et atteindre des objectifs ambitieux.`,
+          I: `La reconnaissance et le contact avec les gens.`,
+          S: `Un environnement stable, harmonieux et de confiance.`,
+          C: `Faire un travail précis et bien fait.`,
+        },
+      },
+      ch4: {
+        prompt: `Ma devise au quotidien serait...`,
+        options: {
+          D: `Le résultat d'abord, on ajuste le reste ensuite.`,
+          I: `Avec les gens, tout devient plus léger.`,
+          S: `Lentement mais sûrement, sans perdre mon calme.`,
+          C: `Bien fait vaut mieux que juste fait.`,
+        },
+      },
+      ch5: {
+        prompt: `En réunion, je suis souvent celui qui...`,
+        options: {
+          D: `Pousse la décision et exige que ça avance.`,
+          I: `Anime le groupe et apporte de l'énergie à l'échange.`,
+          S: `Écoute tout le monde et cherche un consensus tranquille.`,
+          C: `Relève les détails et questionne les données.`,
+        },
+      },
+      ch6: {
+        prompt: `Sous pression, ma réaction est de...`,
+        options: {
+          D: `Prendre le contrôle et pousser vers l'avant.`,
+          I: `Garder l'optimisme et mobiliser les gens.`,
+          S: `Rester calme et maintenir la stabilité du groupe.`,
+          C: `Prendre du recul et revoir avant d'agir.`,
+        },
+      },
+      ch7: {
+        prompt: `Je me sens accompli quand...`,
+        options: {
+          D: `J'atteins l'objectif et je vois le fruit de mon effort.`,
+          I: `Je suis reconnu et valorisé par les gens.`,
+          S: `L'équipe est unie et le climat est apaisé.`,
+          C: `Je livre un travail impeccable, sans erreur.`,
+        },
+      },
+      ch8: {
+        prompt: `J'aime un environnement qui soit...`,
+        options: {
+          D: `Compétitif, avec des défis et la liberté de décider.`,
+          I: `Animé, sociable et plein de monde autour.`,
+          S: `Prévisible, calme et avec de bonnes relations.`,
+          C: `Organisé, avec des règles et des procédures claires.`,
+        },
+      },
+      ch9: {
+        prompt: `Pour décider, je me guide surtout sur...`,
+        options: {
+          D: `L'instinct et l'envie d'arriver vite au résultat.`,
+          I: `L'impact sur les gens et leur implication.`,
+          S: `Ce qui maintient la stabilité et évite le conflit.`,
+          C: `Les faits, les chiffres et une analyse rigoureuse.`,
+        },
+      },
+      ch10: {
+        prompt: `Quand je parle à quelqu'un, je suis...`,
+        options: {
+          D: `Direct et concret, je vais droit au but.`,
+          I: `Expressif et chaleureux, j'aime raconter des histoires.`,
+          S: `Patient et attentif, j'écoute plus que je ne parle.`,
+          C: `Précis et mesuré, je choisis bien mes mots.`,
+        },
+      },
+      ch11: {
+        prompt: `Le changement, pour moi, c'est...`,
+        options: {
+          D: `Une occasion d'avancer et de mener.`,
+          I: `Stimulant, j'aime la nouveauté et le mouvement.`,
+          S: `Quelque chose que je préfère faire calmement et sûrement.`,
+          C: `Acceptable s'il y a un bon plan derrière.`,
+        },
+      },
+      ch12: {
+        prompt: `Mes collègues diraient que je suis...`,
+        options: {
+          D: `Déterminé et parfois un peu impatient.`,
+          I: `Sympathique et enthousiaste, j'anime l'ambiance.`,
+          S: `Fiable et serein, toujours prêt à aider.`,
+          C: `Minutieux et exigeant sur la qualité.`,
+        },
+      },
+      ch13: {
+        prompt: `Pour obtenir de bons résultats, je compte sur mon...`,
+        options: {
+          D: `Courage de décider et de prendre les commandes.`,
+          I: `Aisance à convaincre et à engager les gens.`,
+          S: `Persévérance à tenir le rythme jusqu'au bout.`,
+          C: `Capacité à analyser et à ne rien laisser passer.`,
+        },
+      },
+      ch14: {
+        prompt: `Ce qui me dérange le plus, c'est...`,
+        options: {
+          D: `La lenteur et le manque de résultats.`,
+          I: `Un environnement froid, silencieux et sans interaction.`,
+          S: `La précipitation, le conflit et le changement de dernière minute.`,
+          C: `Le désordre et le travail bâclé.`,
+        },
+      },
+      ch15: {
+        prompt: `Dans un projet de groupe, je...`,
+        options: {
+          D: `Prends le leadership et fixe le cap.`,
+          I: `Motive l'équipe et garde tout le monde de bonne humeur.`,
+          S: `Apporte du soutien et veille à ne laisser personne de côté.`,
+          C: `Veille à la qualité et organise les détails.`,
+        },
+      },
+      ch16: {
+        prompt: `Je pense que le plus important, c'est...`,
+        options: {
+          D: `Livrer des résultats et relever le défi.`,
+          I: `Entretenir de bonnes relations et un climat positif.`,
+          S: `Avoir de la constance et un environnement de confiance.`,
+          C: `Bien faire, avec précision et rigueur.`,
+        },
+      },
+      ch17: {
+        prompt: `Quand quelque chose se passe mal, je...`,
+        options: {
+          D: `Prends les devants et corrige le tir aussitôt.`,
+          I: `Garde l'optimisme et mobilise le groupe.`,
+          S: `Reste solide et aide à stabiliser la situation.`,
+          C: `Cherche la cause posément avant d'agir.`,
+        },
+      },
+      ch18: {
+        prompt: `Je préfère les tâches qui demandent...`,
+        options: {
+          D: `Des décisions rapides et un résultat visible.`,
+          I: `Du contact humain et une bonne communication.`,
+          S: `De la routine, de la constance et du travail d'équipe.`,
+          C: `De l'analyse, du soin et de l'attention au détail.`,
+        },
+      },
+      ch19: {
+        prompt: `Ma plus grande force, c'est...`,
+        options: {
+          D: `L'envie de gagner et le courage de décider.`,
+          I: `Le charisme et l'énergie pour engager les autres.`,
+          S: `La patience et la loyauté envers ceux en qui j'ai confiance.`,
+          C: `La rigueur et la recherche de la qualité.`,
+        },
+      },
+      ch20: {
+        prompt: `Au fond, je veux...`,
+        options: {
+          D: `Être aux commandes et faire bouger les choses.`,
+          I: `Être apprécié et travailler entouré de gens.`,
+          S: `Avoir du calme, de l'harmonie et de la sécurité.`,
+          C: `Que tout soit correct, organisé et conforme au standard.`,
+        },
       },
     },
   },
