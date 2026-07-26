@@ -21,6 +21,7 @@ export interface Employee {
   user_id: string | null;
   ponto_enabled: boolean;
   ponto_slug: string | null;
+  public_short_code: string | null;
   is_active: boolean;
   monthly_cost: number | null;
   monthly_cost_breakdown: any;

@@ -127,6 +127,9 @@ const ROUTES: AppRouteDef[] = [
   { key: 'settings', base: '/configuracoes' },
   { key: 'profile', base: '/perfil' },
   { key: 'employees', base: '/funcionarios' },
+  // Perfil Comportamental (DISC) deep-link amigável: abre a experiência in-place
+  // (aba "Perfil Comportamental" + detalhe do funcionário) dentro de Employees.
+  { key: 'employeeProfile', base: '/funcionarios/perfil/:param' },
   { key: 'liveMap', base: '/mapa-ao-vivo' },
   { key: 'technicianArea', base: '/area-tecnico/*' },
   { key: 'billing', base: '/assinatura' },

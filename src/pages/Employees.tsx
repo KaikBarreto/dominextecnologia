@@ -1,5 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
+import { extractShortCode, isUuid, buildEmployeeProfilePath } from '@/utils/prettyLinks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -46,7 +48,13 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 
 export default function Employees() {
-  const [activeTab, setActiveTab] = useState('list');
+  // Deep-link do Perfil Comportamental: `/funcionarios/perfil/<slug>-<code>`.
+  // Registrado como a MESMA tela Employees (ver App.tsx). Quando há `:param`,
+  // resolvemos o funcionário e abrimos a aba behavioral + detalhe in-place.
+  const { param: profileParam } = useParams<{ param?: string }>();
+  const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState(profileParam ? 'behavioral' : 'list');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('az');
   // Modo de exibição da tab de funcionários: 'list' (default) ou 'grid' (cards).
@@ -65,6 +73,61 @@ export default function Employees() {
 
   const isMobile = useIsMobile();
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
+
+  // ── Deep-link do Perfil Comportamental ──────────────────────────────────────
+  // Resolve o funcionário do `:param` da URL amigável. Prioriza o public_short_code
+  // do fim do slug; com FALLBACK para UUID puro (retrocompat com links antigos).
+  const resolvedProfileEmployeeId = useMemo(() => {
+    if (!profileParam) return null;
+    const code = extractShortCode(profileParam);
+    if (code) {
+      const byCode = employees.find((e) => e.public_short_code === code);
+      if (byCode) return byCode.id;
+    }
+    // Retrocompat: link antigo com o UUID cru do funcionário.
+    if (isUuid(profileParam) && employees.some((e) => e.id === profileParam)) {
+      return profileParam;
+    }
+    return null;
+  }, [profileParam, employees]);
+
+  // Com um deep-link, força a aba behavioral (mesmo que o usuário estivesse noutra).
+  useEffect(() => {
+    if (profileParam) setActiveTab('behavioral');
+  }, [profileParam]);
+
+  // Se há `:param` mas os funcionários já carregaram e nada resolveu (código
+  // inválido / funcionário inexistente), volta ao grid da aba behavioral.
+  useEffect(() => {
+    if (profileParam && !isLoading && !resolvedProfileEmployeeId) {
+      navigate('/funcionarios', { replace: true });
+    }
+  }, [profileParam, isLoading, resolvedProfileEmployeeId, navigate]);
+
+  // Troca de aba: se sair da behavioral estando numa URL de perfil, limpa a URL
+  // pra `/funcionarios` (mantém consistência entre aba visível e endereço).
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      setActiveTab(tab);
+      if (profileParam && tab !== 'behavioral') navigate('/funcionarios');
+    },
+    [profileParam, navigate],
+  );
+
+  // Navega para a URL amigável ao abrir um detalhe; para /funcionarios ao voltar.
+  // Isso torna o detalhe compartilhável e faz voltar/avançar do browser funcionar.
+  const handleSelectProfileEmployee = useCallback(
+    (id: string | null) => {
+      if (!id) {
+        navigate('/funcionarios');
+        return;
+      }
+      const emp = employees.find((e) => e.id === id);
+      const code = emp?.public_short_code;
+      navigate(code ? buildEmployeeProfilePath(emp!.name, code) : `/funcionarios/perfil/${id}`);
+    },
+    [employees, navigate],
+  );
   const { accounts: allAccounts } = useFinancialAccounts();
   // Contas válidas pra vale: caixa/banco ativos. Cartão NÃO pode bancar vale —
   // vale sai de dinheiro real, não vira lançamento na fatura.
@@ -569,7 +632,7 @@ export default function Employees() {
         }
       />
 
-      <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+      <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
         {activeTab === 'list' ? (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-2">
@@ -763,7 +826,11 @@ export default function Employees() {
         ) : activeTab === 'teams' ? (
           <TeamsPanel />
         ) : activeTab === 'behavioral' ? (
-          <EmployeeDiscOverview employees={employees} />
+          <EmployeeDiscOverview
+            employees={employees}
+            selectedEmployeeId={resolvedProfileEmployeeId}
+            onSelectEmployee={handleSelectProfileEmployee}
+          />
         ) : activeTab === 'timeclock' ? (
           <AdminTimePanel />
         ) : (

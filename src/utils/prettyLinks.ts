@@ -55,6 +55,19 @@ function trimSlug(s: string, max = 60): string {
 }
 
 /**
+ * Monta o path amigável do Perfil Comportamental (DISC) de um funcionário:
+ * `/funcionarios/perfil/<slug-do-nome>-<public_short_code>`.
+ *
+ * O `public_short_code` é sempre o último segmento (nunca contém '-'), então
+ * `extractShortCode` o recupera mesmo quando o nome tem hifens. O path fica fixo
+ * em pt-br: a localização de rota do app logado é aplicada por quem navega
+ * (localizeAppPath) — este helper só monta a forma canônica.
+ */
+export function buildEmployeeProfilePath(name: string, shortCode: string): string {
+  return `/funcionarios/perfil/${buildSlugSegment([name], shortCode, "funcionario")}`;
+}
+
+/**
  * Monta o miolo do path: slug de um ou mais nomes + código curto.
  * Ex.: buildSlugSegment(['Cliente Demo', 'Manutenção Preventiva'], 'a1b2c3d4e5f6')
  *      → 'cliente-demo-manutencao-preventiva-a1b2c3d4e5f6'

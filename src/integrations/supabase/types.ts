@@ -2875,6 +2875,7 @@ export type Database = {
           ponto_enabled: boolean
           ponto_slug: string | null
           position: string | null
+          public_short_code: string | null
           salary: number | null
           updated_at: string
           user_id: string | null
@@ -2902,6 +2903,7 @@ export type Database = {
           ponto_enabled?: boolean
           ponto_slug?: string | null
           position?: string | null
+          public_short_code?: string | null
           salary?: number | null
           updated_at?: string
           user_id?: string | null
@@ -2929,6 +2931,7 @@ export type Database = {
           ponto_enabled?: boolean
           ponto_slug?: string | null
           position?: string | null
+          public_short_code?: string | null
           salary?: number | null
           updated_at?: string
           user_id?: string | null

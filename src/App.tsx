@@ -690,6 +690,9 @@ const AppRoutes = () => (
       {localizedAppRoutes('profile', <Profile />)}
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
       {localizedAppRoutes('employees', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {/* Deep-link amigável do Perfil Comportamental (DISC): mesma tela Employees,
+         que lê o :param, resolve o funcionário e abre o detalhe in-place. */}
+      {localizedAppRoutes('employeeProfile', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
 <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       {localizedAppRoutes('liveMap', <LiveMap />)}
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas

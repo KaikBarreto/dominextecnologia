@@ -34,6 +34,18 @@ import type { DiscFactor } from '@/lib/disc/questions';
 
 interface EmployeeDiscOverviewProps {
   employees: Employee[];
+  /**
+   * ID do funcionário cujo detalhe está aberto — CONTROLADO pela URL amigável
+   * (`/funcionarios/perfil/<slug>-<code>`). Quando definido, o detalhe in-place
+   * abre daquele funcionário (sub-sidebar preservado). `null` = grid de cards.
+   */
+  selectedEmployeeId?: string | null;
+  /**
+   * Chamado ao clicar num card (id) ou no Voltar (null). O container (Employees)
+   * NAVEGA para a URL amigável / de volta, tornando o detalhe compartilhável e
+   * fazendo o histórico do navegador (voltar/avançar) funcionar.
+   */
+  onSelectEmployee?: (employeeId: string | null) => void;
 }
 
 // ── Mini-barra dos 4 fatores ────────────────────────────────────────────────
@@ -263,7 +275,11 @@ function EmployeeDiscCard({
 }
 
 // ── Componente principal ────────────────────────────────────────────────────
-export function EmployeeDiscOverview({ employees }: EmployeeDiscOverviewProps) {
+export function EmployeeDiscOverview({
+  employees,
+  selectedEmployeeId: controlledSelectedId,
+  onSelectEmployee,
+}: EmployeeDiscOverviewProps) {
   const { locale } = useAppLocaleContext();
   const { toast } = useToast();
   const t = MESSAGES[locale].app.employees.form.disc.overview;
@@ -274,8 +290,16 @@ export function EmployeeDiscOverview({ employees }: EmployeeDiscOverviewProps) {
   // ID do funcionário cujo link está sendo gerado (para loading por card)
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
 
-  // Funcionário selecionado para exibir o detalhe in-place (null = grade de cards)
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  // Seleção do detalhe in-place. Quando o container passa `onSelectEmployee`, a
+  // seleção é CONTROLADA pela URL amigável (deep-link compartilhável + histórico
+  // do navegador). Sem essas props, cai no estado interno (retrocompat).
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
+  const isControlled = typeof onSelectEmployee === 'function';
+  const selectedEmployeeId = isControlled ? controlledSelectedId ?? null : internalSelectedId;
+  const selectEmployee = (id: string | null) => {
+    if (isControlled) onSelectEmployee!(id);
+    else setInternalSelectedId(id);
+  };
 
   // View de comparação de 2 funcionários (in-place)
   const [comparing, setComparing] = useState(false);
@@ -339,10 +363,10 @@ export function EmployeeDiscOverview({ employees }: EmployeeDiscOverviewProps) {
     return (
       <EmployeeProfileDetail
         employeeId={selectedEmployeeId}
-        onBack={() => setSelectedEmployeeId(null)}
+        onBack={() => selectEmployee(null)}
         allEmployees={activeEmployees}
         profilesByEmployeeExternal={profilesByEmployee}
-        onChangeEmployee={(id) => setSelectedEmployeeId(id)}
+        onChangeEmployee={(id) => selectEmployee(id)}
       />
     );
   }
@@ -402,7 +426,7 @@ export function EmployeeDiscOverview({ employees }: EmployeeDiscOverviewProps) {
               employee={emp}
               latestCompleted={summary.latestCompleted}
               latestPending={summary.latestPending}
-              onSelect={setSelectedEmployeeId}
+              onSelect={selectEmployee}
               onGenerateLink={handleGenerateLink}
               isGenerating={generatingFor === emp.id}
             />
