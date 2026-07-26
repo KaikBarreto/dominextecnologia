@@ -84,6 +84,19 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
 
   const showQuickAdd = quickAdd.enabled && !!quickAdd.onQuickAdd;
 
+  // Config dos 4 lados: posição do React Flow + classes de posicionamento do
+  // handle (bolinha) e do "+" de quick-add. O "+" fica AFASTADO da borda pra não
+  // brigar com o arraste do handle (que vive colado na borda).
+  // O React Flow já centraliza o handle no lado indicado por `position` (via seu
+  // próprio CSS). Não sobrescrevemos a posição do handle aqui — só o "+" recebe
+  // classes de posicionamento (afastado da borda pra não brigar com o arraste).
+  const SIDES = [
+    { dir: 'top' as const, pos: Position.Top, plusCls: 'left-1/2 -top-7 -translate-x-1/2' },
+    { dir: 'bottom' as const, pos: Position.Bottom, plusCls: 'left-1/2 -bottom-7 -translate-x-1/2' },
+    { dir: 'left' as const, pos: Position.Left, plusCls: 'top-1/2 -left-7 -translate-y-1/2' },
+    { dir: 'right' as const, pos: Position.Right, plusCls: 'top-1/2 -right-7 -translate-y-1/2' },
+  ];
+
   return (
     <div
       className={cn(
@@ -91,30 +104,37 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
         selected ? 'ring-2 ring-primary shadow-md' : 'hover:shadow-md',
       )}
     >
+      {/* Handles de conexão manual nos 4 lados. Cada lado tem um par sobreposto:
+          um `target` (embaixo) e um `source` (em cima) com o MESMO ponto de
+          ancoragem — assim consigo tanto PUXAR um fio a partir do lado (source)
+          quanto SOLTAR um fio nele (target). Os ids `<dir>-source` / `<dir>-target`
+          entram no sourceHandle/targetHandle da aresta e são persistidos.
+          Estilo `org-handle`: bolinha discreta em repouso, realça no hover do nó. */}
+      {SIDES.map(({ dir, pos }) => (
+        <div key={dir}>
+          <Handle id={`${dir}-target`} type="target" position={pos} className="org-handle" />
+          <Handle id={`${dir}-source`} type="source" position={pos} className="org-handle" />
+        </div>
+      ))}
+
       {/* "+" nos 4 lados (desktop, no hover): adiciona um nó JÁ CONECTADO naquela
-          direção. `nodrag`/`nopan` + stopPropagation garantem que o clique não
-          inicie arrasto do nó nem conflite com os handles de conexão manual. */}
+          direção. Fica afastado da borda (não sobre o handle) pra não conflitar
+          com o arraste de conexão. `nodrag`/`nopan` + stopPropagation garantem
+          que o clique não inicie arrasto do nó. */}
       {showQuickAdd && (
         <>
-          {(
-            [
-              { dir: 'top', cls: 'left-1/2 -top-3 -translate-x-1/2' },
-              { dir: 'bottom', cls: 'left-1/2 -bottom-3 -translate-x-1/2' },
-              { dir: 'left', cls: 'top-1/2 -left-3 -translate-y-1/2' },
-              { dir: 'right', cls: 'top-1/2 -right-3 -translate-y-1/2' },
-            ] as const
-          ).map(({ dir, cls }) => (
+          {SIDES.map(({ dir, plusCls }) => (
             <button
               key={dir}
               type="button"
               aria-label={quickAdd.addLabel}
               title={quickAdd.addLabel}
               className={cn(
-                'nodrag nopan absolute z-20 flex h-5 w-5 items-center justify-center rounded-full',
+                'nodrag nopan absolute z-30 flex h-5 w-5 items-center justify-center rounded-full',
                 'bg-primary text-primary-foreground shadow-md ring-2 ring-background',
                 'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
                 'hover:scale-110',
-                cls,
+                plusCls,
               )}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
@@ -127,9 +147,6 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
           ))}
         </>
       )}
-
-      {/* Handle de destino (topo) — recebe conexão do superior hierárquico. */}
-      <Handle type="target" position={Position.Top} className="!h-2.5 !w-2.5 !bg-primary !border-background" />
 
       {/* Barra/etiqueta do setor no topo do card. */}
       {(d.sector || sectorColor) && (
@@ -160,9 +177,6 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
           {discCode && <NodeDiscBadge code={discCode} />}
         </div>
       </div>
-
-      {/* Handle de origem (base) — arrasta daqui pro topo de um subordinado. */}
-      <Handle type="source" position={Position.Bottom} className="!h-2.5 !w-2.5 !bg-primary !border-background" />
     </div>
   );
 }

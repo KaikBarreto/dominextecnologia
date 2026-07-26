@@ -625,3 +625,36 @@ html {
   max-width: 14px;
   max-height: 14px;
 }
+
+/* ── Organograma: handles de conexão (bolinhas sutis) ───────────────────────
+   Cada lado do card tem um par target+source sobreposto (mesmo ponto de
+   ancoragem) pra permitir arrastar-para-conectar de/para qualquer lado. Em
+   REPOUSO a bolinha é pequena e quase transparente (não poluir). No HOVER do
+   nó (.group:hover, do OrgChartNode) ela cresce, fica opaca e ganha a cor da
+   marca — aí é visível e clicável pra puxar o fio. */
+.react-flow__handle.org-handle {
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  min-height: 9px;
+  border: 1.5px solid hsl(var(--background));
+  background: hsl(var(--muted-foreground) / 0.45);
+  opacity: 0.35;
+  transition: opacity 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+/* Realce no hover do nó (o card do OrgChartNode tem a classe `group`; os handles
+   ficam dentro de um <div> wrapper por lado) e no hover do próprio handle. */
+.group:hover .react-flow__handle.org-handle,
+.react-flow__handle.org-handle:hover {
+  opacity: 1;
+  background: hsl(var(--primary));
+  transform: scale(1.15);
+}
+
+/* Enquanto uma conexão está sendo arrastada, os alvos válidos acendem. */
+.react-flow__handle.org-handle.connectingto,
+.react-flow__handle.org-handle.valid {
+  opacity: 1;
+  background: hsl(var(--primary));
+}

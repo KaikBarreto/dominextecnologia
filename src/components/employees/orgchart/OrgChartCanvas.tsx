@@ -99,7 +99,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   const isDark = useIsDark();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.orgchart;
-  const { saveGraph } = useOrgCharts();
+  const { saveGraph, renameChart } = useOrgCharts();
   const rf = useReactFlow();
 
   const nodeTypes = useMemo(() => ({ [ORG_NODE_TYPE]: OrgChartNode }), []);
@@ -635,9 +635,12 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
                     <span>{backLabel}</span>
                   </button>
                 )}
-                <span className="pointer-events-none hidden max-w-[40vw] truncate rounded-lg bg-card/85 px-2.5 py-1.5 text-sm font-semibold shadow-md ring-1 ring-border backdrop-blur sm:inline-block">
-                  {chart.name}
-                </span>
+                <InlineChartName
+                  key={chart.id}
+                  name={chart.name}
+                  ariaLabel={t.toolbar.renameChartAria}
+                  onRename={(next) => renameChart.mutate({ id: chart.id, name: next })}
+                />
               </div>
 
               {/* Canto superior DIREITO: Adicionar nó + Organizar + selo salvar. */}
@@ -736,6 +739,87 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
       </OrgQuickAddProvider>
       </OrgDiscProvider>
     </OrgEmployeesProvider>
+  );
+}
+
+// ── Nome do organograma editável inline (auto-save no blur) ──────────────────
+// Clica no rótulo → vira <input> (foco automático + seleção). onBlur salva via
+// renameChart; Enter confirma (blur), Esc cancela (volta ao nome atual sem
+// salvar). Não salva se o nome ficar vazio (mantém o anterior). Mesma tipografia
+// do rótulo estático pra não "pular" ao alternar.
+function InlineChartName({
+  name,
+  ariaLabel,
+  onRename,
+}: {
+  name: string;
+  ariaLabel: string;
+  onRename: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Mantém o rótulo em dia se o nome mudar por fora (ex.: refetch) enquanto não
+  // estamos editando.
+  useEffect(() => {
+    if (!editing) setDraft(name);
+  }, [name, editing]);
+
+  const startEditing = () => {
+    setDraft(name);
+    setEditing(true);
+    // Foca e seleciona no próximo frame (input recém-montado).
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+  };
+
+  const commit = () => {
+    const next = draft.trim();
+    setEditing(false);
+    // Só salva se mudou de fato e não ficou vazio; senão mantém o anterior.
+    if (next && next !== name) onRename(next);
+  };
+
+  const cancel = () => {
+    setDraft(name);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        aria-label={ariaLabel}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.currentTarget.blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancel();
+          }
+        }}
+        className="pointer-events-auto hidden max-w-[40vw] rounded-lg bg-card/95 px-2.5 py-1.5 text-sm font-semibold shadow-md outline-none ring-2 ring-primary backdrop-blur focus:ring-primary sm:inline-block"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={startEditing}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      className="pointer-events-auto hidden max-w-[40vw] truncate rounded-lg bg-card/85 px-2.5 py-1.5 text-sm font-semibold shadow-md ring-1 ring-border backdrop-blur transition-colors hover:ring-primary sm:inline-block"
+    >
+      {name}
+    </button>
   );
 }
 

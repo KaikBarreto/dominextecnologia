@@ -853,6 +853,7 @@ export const employees = {
         addNode: 'Adicionar nó',
         organize: 'Organizar',
         organizeHint: 'Reposiciona automaticamente em árvore',
+        renameChartAria: 'Renomear organograma',
       },
       status: {
         saving: 'Salvando…',
@@ -1663,6 +1664,7 @@ export const employees = {
         addNode: 'Add node',
         organize: 'Organize',
         organizeHint: 'Auto-arrange as a tree',
+        renameChartAria: 'Rename org chart',
       },
       status: {
         saving: 'Saving…',
@@ -2473,6 +2475,7 @@ export const employees = {
         addNode: 'Agregar nodo',
         organize: 'Organizar',
         organizeHint: 'Reordena automáticamente en árbol',
+        renameChartAria: 'Renombrar organigrama',
       },
       status: {
         saving: 'Guardando…',
@@ -3283,6 +3286,7 @@ export const employees = {
         addNode: 'Ajouter un nœud',
         organize: 'Organiser',
         organizeHint: 'Réorganise automatiquement en arbre',
+        renameChartAria: `Renommer l'organigramme`,
       },
       status: {
         saving: 'Enregistrement…',
