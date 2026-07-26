@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.32";
+export const APP_VERSION = "1.17.33";
 
-export const VERSION_NOTES = "No Perfil Comportamental (RH), agora dá para baixar um dossiê completo em PDF de cada funcionário: capa, o perfil descrito em detalhe, gráficos, tabela de pontuação colorida, motivadores de carreira e um rodapé com a sua marca, sempre no idioma da sua empresa. Se a opção de mostrar o resultado ao funcionário estiver ligada, ele também baixa o próprio PDF ao terminar a avaliação. O perfil ganhou ainda um gráfico de Perfil Emocional (como a pessoa tende a sentir e reagir no trabalho), que aparece ao lado das competências e também na comparação entre dois funcionários. E você pode ver os perfis em lista ou em grade.";
+export const VERSION_NOTES = "Agora você também pode baixar em PDF a comparação entre dois funcionários no Perfil Comportamental, no mesmo capricho do relatório individual: capa com os dois perfis, os gráficos cruzados de DISC, competências e perfil emocional, e a leitura da dinâmica da dupla (onde costumam atritar, onde se completam e a melhor forma de comunicação). Sai sempre no idioma da sua empresa.";

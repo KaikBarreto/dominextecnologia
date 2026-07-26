@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.33',
+    date: '26 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Baixe a comparação entre dois funcionários em PDF',
+        description: 'Na comparação de Perfil Comportamental entre dois funcionários, agora tem um botão para baixar tudo em PDF, no mesmo capricho do relatório individual. O documento traz uma capa com os dois perfis, os gráficos cruzados de DISC, competências comportamentais e perfil emocional, e a leitura da dinâmica da dupla: onde costumam atritar, onde se completam e a melhor forma de comunicação entre eles. Sai sempre no idioma da sua empresa.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.32',
     date: '26 de julho de 2026',
     type: 'minor',

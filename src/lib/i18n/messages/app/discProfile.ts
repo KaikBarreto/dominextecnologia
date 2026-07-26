@@ -1000,6 +1000,9 @@ export const discProfile = {
       coverSubtitle: 'Dossiê de perfil comportamental',
       generatedAt: 'Gerado em',
       roleLabel: 'Cargo',
+      comparisonTitle: 'Comparação de Perfil Comportamental',
+      comparisonSubtitle: 'Como esses dois perfis se combinam no dia a dia de trabalho.',
+      comparedLabel: 'Perfis comparados',
       method: {
         title: 'Sobre o método',
         paragraphs: [
@@ -1031,6 +1034,7 @@ export const discProfile = {
       reflectionLabel: 'Para refletir',
       downloadPdf: 'Baixar PDF',
       generating: 'Gerando PDF...',
+      pdfError: 'Erro ao gerar o PDF. Tente novamente.',
       footerDisclaimer:
         'Este documento é uma ferramenta de autoconhecimento e desenvolvimento profissional, não um diagnóstico clínico. Os resultados refletem tendências e podem mudar com o tempo e o contexto.',
     },
@@ -2076,6 +2080,9 @@ export const discProfile = {
       coverSubtitle: 'Behavioral profile dossier',
       generatedAt: 'Generated on',
       roleLabel: 'Role',
+      comparisonTitle: 'Behavioral Profile Comparison',
+      comparisonSubtitle: 'How these two profiles fit together in day-to-day work.',
+      comparedLabel: 'Compared profiles',
       method: {
         title: 'About the method',
         paragraphs: [
@@ -2107,6 +2114,7 @@ export const discProfile = {
       reflectionLabel: 'To reflect on',
       downloadPdf: 'Download PDF',
       generating: 'Generating PDF...',
+      pdfError: 'Failed to generate the PDF. Please try again.',
       footerDisclaimer:
         'This document is a tool for self-awareness and professional development, not a clinical diagnosis. The results reflect tendencies and may change over time and with context.',
     },
@@ -3152,6 +3160,9 @@ export const discProfile = {
       coverSubtitle: 'Dosier de perfil comportamental',
       generatedAt: 'Generado el',
       roleLabel: 'Puesto',
+      comparisonTitle: 'Comparación de Perfil Comportamental',
+      comparisonSubtitle: 'Cómo se combinan estos dos perfiles en el día a día del trabajo.',
+      comparedLabel: 'Perfiles comparados',
       method: {
         title: 'Sobre el método',
         paragraphs: [
@@ -3183,6 +3194,7 @@ export const discProfile = {
       reflectionLabel: 'Para reflexionar',
       downloadPdf: 'Descargar PDF',
       generating: 'Generando PDF...',
+      pdfError: 'Error al generar el PDF. Inténtelo de nuevo.',
       footerDisclaimer:
         'Este documento es una herramienta de autoconocimiento y desarrollo profesional, no un diagnóstico clínico. Los resultados reflejan tendencias y pueden cambiar con el tiempo y el contexto.',
     },
@@ -4155,6 +4167,9 @@ export const discProfile = {
       coverSubtitle: `Dossier de profil comportemental`,
       generatedAt: `Généré le`,
       roleLabel: `Poste`,
+      comparisonTitle: `Comparaison de Profil Comportemental`,
+      comparisonSubtitle: `Comment ces deux profils se combinent au quotidien du travail.`,
+      comparedLabel: `Profils comparés`,
       method: {
         title: `À propos de la méthode`,
         paragraphs: [
@@ -4182,6 +4197,7 @@ export const discProfile = {
       reflectionLabel: `À méditer`,
       downloadPdf: `Télécharger le PDF`,
       generating: `Génération du PDF...`,
+      pdfError: `Échec de la génération du PDF. Réessayez.`,
       footerDisclaimer: `Ce document est un outil de connaissance de soi et de développement professionnel, non un diagnostic clinique. Les résultats reflètent des tendances et peuvent évoluer avec le temps et le contexte.`,
     },
 

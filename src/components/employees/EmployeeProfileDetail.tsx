@@ -52,6 +52,7 @@ import { formatDate } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { generateDiscDossierPdf } from '@/utils/discDossierPdf';
+import { generateDiscComparisonPdf } from '@/utils/discComparisonPdf';
 import { openPdfInTab } from '@/utils/openPdfInTab';
 import { cn } from '@/lib/utils';
 import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
@@ -77,6 +78,18 @@ import { describeEvolution } from '@/lib/disc/evolution';
 import { DiscGenerateLinkModal } from '@/components/employees/disc/DiscGenerateLinkModal';
 
 type SubTab = 'overview' | 'interactions' | 'history';
+
+/** Slug simples de um nome pra usar em nome de arquivo (sem acentos). */
+function slugName(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'funcionario'
+  );
+}
 
 // ── Selo saturado de perfil (código + nome, cor do fator primário) ────────────
 function ProfileBadge({
@@ -157,13 +170,20 @@ function InteractionsTab({
   others,
   profilesByEmployee,
 }: InteractionsTabProps) {
-  const { locale } = useAppLocaleContext();
+  const { toast } = useToast();
+  const { locale, timezone } = useAppLocaleContext();
   const { t: discT } = useDiscMessages();
+  const dossierUi = (discT as any).dossier;
   const p = MESSAGES[locale].app.employees.form.disc.profilePage;
   const c = MESSAGES[locale].app.employees.form.disc.overview.compare;
+  const { settings: companySettings } = useCompanySettings();
+  // Idioma do PDF = idioma da EMPRESA (não da UI). Fallback: contexto → pt-br.
+  const comparisonLocale: LocaleCode =
+    (companySettings?.language as LocaleCode | null) ?? locale ?? 'pt-br';
 
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   // A aba exige que o funcionário-alvo (A) tenha perfil concluído.
   if (!selfPrimary) {
@@ -192,15 +212,79 @@ function InteractionsTab({
         >)[relationshipKey(selfPrimary, selectedPrimary)]
       : null;
 
+  // Baixar o PDF de comparação (idioma da empresa). Abre a aba DENTRO do gesto de
+  // clique (workaround de popup-blocker) e só então gera o Blob (async).
+  const handleDownloadComparison = async () => {
+    if (!selected || !selfPrimary || !selectedPrimary || !rel) return;
+    if (!selfScores || !selectedAssessment?.scores) return;
+
+    const w = window.open('', '_blank');
+    setDownloading(true);
+    try {
+      const generatedAtLabel = formatDate(new Date().toISOString(), comparisonLocale, timezone);
+      const isWhiteLabel = !!companySettings?.white_label_enabled;
+      const branding = {
+        companyName: companySettings?.name ?? 'Dominex',
+        logoUrl:
+          (isWhiteLabel
+            ? companySettings?.white_label_logo_url || companySettings?.logo_url
+            : companySettings?.logo_url) ?? null,
+        isWhiteLabel,
+      };
+      const blob = await generateDiscComparisonPdf({
+        scoresA: selfScores,
+        scoresB: selectedAssessment.scores as DiscScores,
+        nameA: self.name,
+        nameB: selected.name,
+        positionA: self.position,
+        positionB: selected.position,
+        codeA: selfProfileCode ?? selfPrimary,
+        codeB: selectedProfileCode ?? selectedPrimary,
+        branding,
+        locale: comparisonLocale,
+        generatedAtLabel,
+      });
+      openPdfInTab(blob, `comparacao-${slugName(self.name)}-${slugName(selected.name)}`, w);
+    } catch (e: unknown) {
+      if (w && !w.closed) w.close();
+      console.error('[DiscComparisonPdf] falha ao gerar a comparação:', e);
+      toast({ variant: 'destructive', title: dossierUi?.pdfError ?? 'Erro ao gerar o PDF' });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Cabeçalho: título+subtítulo+select à esquerda; card dos 2 funcionários à direita (desktop).
           No mobile empilha normalmente. */}
       <div className="lg:flex lg:items-center lg:justify-between lg:gap-6">
         <div className="space-y-3 lg:flex-1 lg:min-w-0">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">{p.interactionsTitle}</h3>
-            <p className="mt-0.5 text-sm text-muted-foreground">{p.interactionsSubtitle}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold text-foreground">{p.interactionsTitle}</h3>
+              <p className="mt-0.5 text-sm text-muted-foreground">{p.interactionsSubtitle}</p>
+            </div>
+            {/* Baixar PDF da comparação — só quando há os 2 perfis + relação curada */}
+            {selected && selfPrimary && selectedPrimary && rel && (
+              <Button
+                onClick={handleDownloadComparison}
+                disabled={downloading}
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                aria-label={dossierUi?.downloadPdf}
+              >
+                {downloading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {downloading ? dossierUi?.generating : dossierUi?.downloadPdf}
+                </span>
+              </Button>
+            )}
           </div>
 
           {/* Combobox com busca — funcionário sem avaliação vem desabilitado */}
