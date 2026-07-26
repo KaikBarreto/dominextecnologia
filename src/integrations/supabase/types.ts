@@ -3772,6 +3772,7 @@ export type Database = {
           question: string
           question_type: string
           require_camera: boolean
+          require_camera_video: boolean
           start_kind: string | null
           start_visit: number | null
           template_id: string
@@ -3801,6 +3802,7 @@ export type Database = {
           question: string
           question_type?: string
           require_camera?: boolean
+          require_camera_video?: boolean
           start_kind?: string | null
           start_visit?: number | null
           template_id: string
@@ -3830,6 +3832,7 @@ export type Database = {
           question?: string
           question_type?: string
           require_camera?: boolean
+          require_camera_video?: boolean
           start_kind?: string | null
           start_visit?: number | null
           template_id?: string

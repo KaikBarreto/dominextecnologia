@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.37',
+    date: '26 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Respostas em vídeo dos checklists: tela cheia, 30 segundos e opção de galeria',
+        description: 'As perguntas de vídeo nos checklists ficaram mais completas. No celular, a gravação passou a abrir em tela cheia, com o contador e o botão de parar bem visíveis, em vez de ficar num quadradinho apertado dentro da pergunta. O tempo máximo do vídeo aumentou de 15 para 30 segundos. E, ao montar a pergunta, você decide se o técnico só pode gravar o vídeo na hora ou também pode enviar um vídeo já salvo na galeria do aparelho.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.36',
     date: '26 de julho de 2026',
     type: 'patch',

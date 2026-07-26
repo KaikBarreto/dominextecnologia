@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Video, Square, X, RotateCcw, Upload } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Video, Square, X, RotateCcw, Upload, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { Button } from '@/components/ui/button';
@@ -11,9 +12,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Duração máxima do clipe (segundos). */
-const MAX_SECONDS = 15;
-/** Teto de tamanho pro caminho de fallback (input file). ~20 MB. */
-const MAX_FALLBACK_BYTES = 20 * 1024 * 1024;
+const MAX_SECONDS = 30;
+/** Teto de tamanho pro caminho de fallback (input file). ~40 MB. */
+const MAX_FALLBACK_BYTES = 40 * 1024 * 1024;
 
 interface OsVideoFieldProps {
   /** OS dona do vídeo — usado no path do bucket. */
@@ -29,6 +30,11 @@ interface OsVideoFieldProps {
   onChange: (url: string | null) => void | Promise<void>;
   /** Bloqueia gravar/remover (OS pausada). */
   readOnly?: boolean;
+  /**
+   * Quando false, esconde o botão de galeria e só permite gravar na hora.
+   * Default true (galeria disponível).
+   */
+  allowGallery?: boolean;
 }
 
 // Escolhe o melhor mimeType de gravação disponível. Prefere mp4 (mais compatível
@@ -49,12 +55,18 @@ function pickRecordingMime(): { mime: string; ext: string } | null {
 
 /**
  * Campo de VÍDEO da OS — espelha OsPhotoField, mas guarda EXATAMENTE 1 clipe curto
- * (até 15s, ~720p leve). Grava via getUserMedia + MediaRecorder já leve (sem
- * transcodificar), com auto-stop em 15s. Regravar substitui o clipe anterior.
+ * (até 30s, ~720p leve). Grava via getUserMedia + MediaRecorder já leve (sem
+ * transcodificar), com auto-stop em 30s. Regravar substitui o clipe anterior.
+ *
+ * Durante a gravação, exibe um overlay em tela cheia (via createPortal) com o
+ * preview ao vivo, contador regressivo e botão de parar acessível (safe-area).
  *
  * Fallback (device sem MediaRecorder): input file com câmera; rejeita arquivo
  * grande demais. Sobe pro mesmo bucket público `os-photos` das fotos e devolve a
  * URL pública única via onChange. O consumidor decide onde persistir a URL.
+ *
+ * Quando allowGallery=true (default), exibe também um botão "Galeria" que abre
+ * um input file sem capture, permitindo escolher vídeo já gravado.
  */
 export function OsVideoField({
   serviceOrderId,
@@ -62,6 +74,7 @@ export function OsVideoField({
   value,
   onChange,
   readOnly = false,
+  allowGallery = true,
 }: OsVideoFieldProps) {
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
@@ -77,7 +90,10 @@ export function OsVideoField({
   const livePreviewRef = useRef<HTMLVideoElement | null>(null);
   const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Input de fallback (câmera / device sem MediaRecorder).
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Input de galeria (sem capture, só galeria).
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   const disabled = uploading || readOnly;
 
@@ -88,6 +104,16 @@ export function OsVideoField({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Quando a gravação começa, reatribui o stream ao elemento de preview que agora
+  // vive no overlay (portal). Padrão seguro: o ref é atribuído pelo React antes
+  // deste efeito rodar, porque o overlay já está montado quando recording vira true.
+  useEffect(() => {
+    if (recording && streamRef.current && livePreviewRef.current) {
+      livePreviewRef.current.srcObject = streamRef.current;
+      livePreviewRef.current.play().catch(() => {});
+    }
+  }, [recording]);
 
   function cleanupCapture() {
     if (autoStopRef.current) { clearTimeout(autoStopRef.current); autoStopRef.current = null; }
@@ -133,7 +159,7 @@ export function OsVideoField({
     if (disabled) return;
     const picked = pickRecordingMime();
     if (!picked || !navigator.mediaDevices?.getUserMedia) {
-      // Sem suporte a gravação — cai pro input file.
+      // Sem suporte a gravação — cai pro input file (câmera).
       fileInputRef.current?.click();
       return;
     }
@@ -143,10 +169,8 @@ export function OsVideoField({
         audio: true,
       });
       streamRef.current = stream;
-      if (livePreviewRef.current) {
-        livePreviewRef.current.srcObject = stream;
-        livePreviewRef.current.play().catch(() => {});
-      }
+      // O stream será atribuído ao <video> do overlay pelo useEffect acima,
+      // quando recording virar true e o elemento já estiver no DOM.
 
       chunksRef.current = [];
       const recorder = new MediaRecorder(stream, {
@@ -170,7 +194,7 @@ export function OsVideoField({
       setRecording(true);
       setRemaining(MAX_SECONDS);
 
-      // Auto-stop em 15s.
+      // Auto-stop em MAX_SECONDS.
       autoStopRef.current = setTimeout(() => stopRecording(), MAX_SECONDS * 1000);
       // Contador regressivo.
       tickRef.current = setInterval(() => {
@@ -198,7 +222,7 @@ export function OsVideoField({
     }
   };
 
-  // Fallback: seleção/gravação via input file (device sem MediaRecorder).
+  // Fallback / galeria: seleção de arquivo via input file.
   const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -211,7 +235,7 @@ export function OsVideoField({
       });
       return;
     }
-    // Best-effort: se der pra medir a duração, rejeita acima de ~20s.
+    // Best-effort: se der pra medir a duração, rejeita acima de ~35s.
     const durationOk = await checkDuration(file);
     if (durationOk === false) {
       toast({
@@ -232,8 +256,52 @@ export function OsVideoField({
 
   const hasClip = !!value;
 
+  // Overlay de gravação em tela cheia (portal no body).
+  const recordingOverlay = recording
+    ? createPortal(
+        <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+          {/* Preview ao vivo — ocupa o espaço disponível */}
+          <div className="flex-1 relative overflow-hidden">
+            <video
+              ref={livePreviewRef}
+              muted
+              playsInline
+              className="w-full h-full object-contain bg-black"
+            />
+            {/* Contador regressivo — canto superior com safe-area */}
+            <div
+              className="absolute left-4 flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-sm font-semibold text-destructive-foreground shadow-lg"
+              style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-white animate-pulse" />
+              {remaining}s
+            </div>
+          </div>
+          {/* Botão de parar — rodapé com safe-area */}
+          <div
+            className="shrink-0 px-6 pt-4 bg-black"
+            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          >
+            <Button
+              variant="destructive"
+              size="lg"
+              className="w-full h-14 text-base rounded-2xl"
+              onClick={stopRecording}
+            >
+              <Square className="h-5 w-5 mr-2" />
+              {t.btnStop}
+            </Button>
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
     <div className="space-y-2">
+      {/* Overlay de gravação em tela cheia (portal) */}
+      {recordingOverlay}
+
       {/* Preview do clipe já anexado. */}
       {hasClip && !recording && (
         <div className="relative rounded-lg overflow-hidden border bg-black">
@@ -254,63 +322,94 @@ export function OsVideoField({
         </div>
       )}
 
-      {/* Preview ao vivo durante a gravação, com contador regressivo. */}
-      {recording && (
-        <div className="relative rounded-lg overflow-hidden border bg-black">
-          <video
-            ref={livePreviewRef}
-            muted
-            playsInline
-            className="w-full max-h-72 object-contain bg-black"
-          />
-          <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-destructive px-2.5 py-1 text-xs font-semibold text-destructive-foreground shadow-sm">
-            <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-            {remaining}s
-          </div>
-        </div>
-      )}
-
-      {/* Controles. */}
-      {recording ? (
-        <Button
-          variant="destructive"
-          size="sm"
-          className="w-full"
-          onClick={stopRecording}
-        >
-          <Square className="h-3.5 w-3.5 mr-1.5" />
-          {t.btnStop}
-        </Button>
-      ) : (
-        <div className={cn('w-full', hasClip && 'grid grid-cols-1')}>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={startRecording}
-            disabled={disabled}
-          >
-            {uploading ? (
-              <>
-                <Upload className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
-                {t.btnUploading}
-              </>
-            ) : hasClip ? (
-              <>
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                {t.btnReRecord}
-              </>
-            ) : (
-              <>
-                <Video className="h-3.5 w-3.5 mr-1.5" />
-                {t.btnRecord.replace('{n}', String(MAX_SECONDS))}
-              </>
+      {/* Controles — não mostrar enquanto o overlay de gravação está ativo. */}
+      {!recording && (
+        hasClip ? (
+          // Já tem clipe: botão de regravar + (se allowGallery) trocar da galeria.
+          <div className={cn(allowGallery ? 'grid grid-cols-2 gap-2' : 'w-full')}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={startRecording}
+              disabled={disabled}
+            >
+              {uploading ? (
+                <>
+                  <Upload className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
+                  {t.btnUploading}
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                  {t.btnReRecord}
+                </>
+              )}
+            </Button>
+            {allowGallery && (
+              <label className={disabled ? 'pointer-events-none' : 'cursor-pointer'}>
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={handleFilePick}
+                  disabled={disabled}
+                />
+                <Button variant="outline" size="sm" className="w-full" asChild disabled={disabled}>
+                  <span>
+                    <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
+                    {t.btnGallery}
+                  </span>
+                </Button>
+              </label>
             )}
-          </Button>
-        </div>
+          </div>
+        ) : (
+          // Sem clipe: botão de gravar + (se allowGallery) escolher da galeria.
+          <div className={cn(allowGallery ? 'grid grid-cols-2 gap-2' : 'w-full')}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={startRecording}
+              disabled={disabled}
+            >
+              {uploading ? (
+                <>
+                  <Upload className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
+                  {t.btnUploading}
+                </>
+              ) : (
+                <>
+                  <Video className="h-3.5 w-3.5 mr-1.5" />
+                  {t.btnRecord.replace('{n}', String(MAX_SECONDS))}
+                </>
+              )}
+            </Button>
+            {allowGallery && (
+              <label className={disabled ? 'pointer-events-none' : 'cursor-pointer'}>
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={handleFilePick}
+                  disabled={disabled}
+                />
+                <Button variant="outline" size="sm" className="w-full" asChild disabled={disabled}>
+                  <span>
+                    <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
+                    {t.btnGallery}
+                  </span>
+                </Button>
+              </label>
+            )}
+          </div>
+        )
       )}
 
-      {/* Input de fallback (device sem gravação nativa). Sempre presente e escondido. */}
+      {/* Input de fallback câmera (device sem gravação nativa). Sempre presente e escondido. */}
       <input
         ref={fileInputRef}
         type="file"
@@ -352,7 +451,7 @@ export function OsVideoField({
 }
 
 // Mede a duração do vídeo carregando os metadados. Retorna true (ok), false
-// (passou de ~20s) ou null (não deu pra medir → deixa passar).
+// (passou de ~35s) ou null (não deu pra medir → deixa passar).
 function checkDuration(file: File): Promise<boolean | null> {
   return new Promise((resolve) => {
     try {
@@ -366,7 +465,7 @@ function checkDuration(file: File): Promise<boolean | null> {
       v.onloadedmetadata = () => {
         const d = v.duration;
         if (!isFinite(d) || d <= 0) return done(null);
-        done(d <= 20);
+        done(d <= 35);
       };
       v.onerror = () => done(null);
       v.src = url;

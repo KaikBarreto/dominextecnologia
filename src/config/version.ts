@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.36";
+export const APP_VERSION = "1.17.37";
 
-export const VERSION_NOTES = "No contrato, ao configurar os checklists de um equipamento, agora dá para aplicar a mesma seleção para todos os equipamentos daquele ambiente de uma só vez, com o novo botão 'Aplicar a todos do ambiente'. Não precisa mais repetir equipamento por equipamento.";
+export const VERSION_NOTES = "As respostas em vídeo dos checklists ficaram melhores: no celular a gravação agora abre em tela cheia, o tempo máximo do vídeo subiu de 15 para 30 segundos, e ao montar a pergunta você escolhe se o técnico só grava na hora ou também pode enviar um vídeo já salvo na galeria.";

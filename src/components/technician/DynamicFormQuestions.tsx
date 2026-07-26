@@ -760,9 +760,11 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       }
 
       case 'video': {
-        // Um único clipe curto (até 15s, ~720p leve). Toda a máquina de vídeo
+        // Um único clipe curto (até 30s, ~720p leve). Toda a máquina de vídeo
         // (gravar/parar/regravar, upload, remover) vive em OsVideoField. Aqui só
         // ligamos a URL única ao response_video_url desta pergunta/equipamento.
+        // require_camera_video=true → galeria oculta, só gravação na hora.
+        const allowGallery = (question as any).require_camera_video !== true;
         return (
           <OsVideoField
             serviceOrderId={serviceOrderId}
@@ -772,6 +774,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               saveResponse(question.id, responses[question.id]?.response_value || null, undefined, url)
             }
             readOnly={readOnly}
+            allowGallery={allowGallery}
           />
         );
       }

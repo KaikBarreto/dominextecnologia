@@ -112,6 +112,7 @@ export default function ChecklistDetail() {
       description: question.description || '',
       options: opts,
       require_camera: (question as any).require_camera || false,
+      require_camera_video: (question as any).require_camera_video || false,
       allow_multiple_photos: (question as any).allow_multiple_photos !== false,
       answer_types: effectiveTypes,
       answer_mode: (question as any).answer_mode || 'exclusive',
@@ -217,6 +218,7 @@ export default function ChecklistDetail() {
         description: qForm.description || null,
         options: optionsToSave,
         require_camera: qForm.require_camera || false,
+        require_camera_video: (qForm as any).require_camera_video || false,
         allow_multiple_photos: (qForm as any).allow_multiple_photos !== false,
         answer_types: answerTypes,
         answer_mode: answerMode,
@@ -238,6 +240,7 @@ export default function ChecklistDetail() {
         options: optionsToSave || undefined,
         position,
         require_camera: qForm.require_camera || false,
+        require_camera_video: (qForm as any).require_camera_video || false,
         allow_multiple_photos: (qForm as any).allow_multiple_photos !== false,
         answer_types: answerTypes,
         answer_mode: answerMode,
@@ -662,6 +665,20 @@ export default function ChecklistDetail() {
               <div>
                 <Label className="text-sm cursor-pointer">{tC.questionCameraLabel}</Label>
                 <p className="text-xs text-muted-foreground">{tC.questionCameraDesc}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Camera-only toggle for video type */}
+          {selectedAnswerTypes.includes('video') && (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={(qForm as any).require_camera_video ?? false}
+                onCheckedChange={(checked) => setQForm({ ...qForm, require_camera_video: checked } as any)}
+              />
+              <div>
+                <Label className="text-sm cursor-pointer">{tC.questionVideoCameraLabel}</Label>
+                <p className="text-xs text-muted-foreground">{tC.questionVideoCameraDesc}</p>
               </div>
             </div>
           )}
