@@ -170,7 +170,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   // o EmployeeDiscPanel continuar a geração do link.
   const handleSaveAndGenerateDisc = async () => {
     if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.nameRequired }); return; }
-    if (parseCurrency(salary) <= 0) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.salaryRequired }); return; }
     if (!onCreateForDisc) return;
     setIsSavingForDisc(true);
     try {
@@ -208,7 +207,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.nameRequired }); return; }
-    if (parseCurrency(salary) <= 0) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.salaryRequired }); return; }
     if (createAccess && !email.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.emailRequired }); return; }
     const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
     if (createAccess && finalPassword.length < 6) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.passwordMinLength }); return; }
