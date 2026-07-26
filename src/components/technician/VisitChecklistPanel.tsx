@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Check, X, MinusCircle, AlertTriangle, Lock, Camera, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { ListChecks, Check, X, MinusCircle, Minus, AlertTriangle, Lock, Camera, ClipboardList, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
+import { OsVideoField } from '@/components/technician/OsVideoField';
 import { sectionLabel } from '@/utils/sectionLabel';
 import { SignaturePad } from '@/components/SignaturePad';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -156,7 +157,11 @@ interface Props {
   onSaveFormResponse?: (
     equipmentId: string | null,
     questionId: string,
-    patch: { response_value?: string | null; response_photo_url?: string | null }
+    patch: {
+      response_value?: string | null;
+      response_photo_url?: string | null;
+      response_video_url?: string | null;
+    }
   ) => Promise<void>;
   /**
    * Accordion controlado SINGLE-OPEN (sidebar desktop): chave aberta única +
@@ -503,6 +508,7 @@ function TemplateQuestionRow({
   const save = async (patch: {
     response_value?: string | null;
     response_photo_url?: string | null;
+    response_video_url?: string | null;
   }) => {
     if (readOnly || saving) return;
     setSaving(true);
@@ -688,6 +694,93 @@ function TemplateQuestionRow({
           />
         );
       }
+
+      case 'conformidade': {
+        // 3 estados fixos: Conforme / Não Conforme / N/A.
+        // Salva os literais 'Conforme'/'Não Conforme'/'N/A' — o PDF (OSReport)
+        // lê esses valores diretamente. NÃO reusar o mapeamento 'true'/'false'
+        // do case boolean acima.
+        // Régua visual: idle = neutro + ícone colorido; hover === ativo (saturado
+        // + branco). Strings LITERAIS pro Tailwind JIT. N/A usa flex-none px-3;
+        // os outros flex-[1.3] px-2.
+        const conformOptions: {
+          value: string;
+          label: string;
+          activeClass: string;
+          idleIcon: string;
+          hover: string;
+          Icon: typeof Check;
+        }[] = [
+          {
+            value: 'Conforme',
+            label: t.conformityConforme,
+            activeClass: 'bg-emerald-600 border-emerald-600 text-white [&_svg]:!text-white',
+            idleIcon: '[&_svg]:text-emerald-600',
+            hover: 'hover:bg-emerald-600 hover:border-emerald-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-emerald-600 focus-visible:border-emerald-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
+            Icon: Check,
+          },
+          {
+            value: 'Não Conforme',
+            label: t.conformityNaoConforme,
+            activeClass: 'bg-red-600 border-red-600 text-white [&_svg]:!text-white',
+            idleIcon: '[&_svg]:text-red-600',
+            hover: 'hover:bg-red-600 hover:border-red-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-red-600 focus-visible:border-red-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
+            Icon: X,
+          },
+          {
+            value: 'N/A',
+            label: t.conformityNa,
+            activeClass: 'bg-orange-600 border-orange-600 text-white [&_svg]:!text-white',
+            idleIcon: '[&_svg]:text-orange-600',
+            hover: 'hover:bg-orange-600 hover:border-orange-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-orange-600 focus-visible:border-orange-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
+            Icon: Minus,
+          },
+        ];
+        return (
+          // <button> PURO (sem variant "outline"): evita hover:bg-accent/[&_svg]:size-4
+          // do shadcn que vence as classes saturadas. Mesmo padrão do DynamicFormQuestions.
+          <div className="flex gap-1.5">
+            {conformOptions.map((opt) => {
+              const active = value === opt.value;
+              const OptIcon = opt.Icon;
+              const isNa = opt.value === 'N/A';
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={readOnly || saving}
+                  onClick={() => save({ response_value: active ? null : opt.value })}
+                  className={cn(
+                    'flex h-9 items-center justify-center gap-1.5 rounded-md border text-xs font-medium transition-colors min-w-0',
+                    isNa ? 'flex-none px-3' : 'flex-[1.3] px-2',
+                    'disabled:opacity-60 disabled:cursor-not-allowed',
+                    active
+                      ? opt.activeClass
+                      : cn('bg-card text-muted-foreground border-border', opt.idleIcon, opt.hover),
+                  )}
+                >
+                  <OptIcon className="h-3.5 w-3.5 shrink-0" />
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+
+      case 'video':
+        // Um único clipe curto. OsVideoField cuida de gravar/parar/regravar/upload.
+        // Persiste a URL em response_video_url (coluna já existe no banco).
+        return (
+          <OsVideoField
+            serviceOrderId={serviceOrderId}
+            pathPrefix={`form-${question.id}`}
+            value={response?.response_video_url ?? undefined}
+            onChange={(url) => save({ response_video_url: url })}
+            readOnly={readOnly}
+          />
+        );
 
       case 'signature':
         // Assinatura sempre centralizada (título + pad), desktop e mobile.

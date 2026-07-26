@@ -189,14 +189,24 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
     );
   }
 
-  const bgColor = serviceTypeColor
-    ? (colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor)
-    : undefined;
+  // No card grande, a cor do tipo de serviço é usada APENAS como filete lateral esquerdo.
+  // O fundo permanece sempre no padrão escuro (bg-card). bgColor não é mais usado.
 
-  const taskBorderClass = isTask && !bgColor ? 'border-l-4 border-l-violet-500' : '';
-  // Quando a OS é uma instância "Retomada" (apareceu em data não-original),
-  // sobrescrevemos a borda esquerda com âmbar pra distinguir visualmente.
-  const resumedBorderClass = isResumedDisplay && !bgColor ? 'border-l-4 border-l-amber-500' : '';
+  // Precedência da borda esquerda:
+  //  1. Retomada → âmbar (máxima prioridade)
+  //  2. Tarefa   → violet
+  //  3. serviceTypeColor → filete com a cor do tipo de serviço
+  let leftBorderStyle: React.CSSProperties | undefined;
+  let leftBorderClass = '';
+
+  if (isResumedDisplay) {
+    leftBorderClass = 'border-l-4 border-l-amber-500';
+  } else if (isTask) {
+    leftBorderClass = 'border-l-4 border-l-violet-500';
+  } else if (serviceTypeColor) {
+    leftBorderClass = 'border-l-4';
+    leftBorderStyle = { borderLeftColor: serviceTypeColor };
+  }
 
   return (
     <div
@@ -205,29 +215,27 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
       onDragStart={onDragStart}
       className={cn(
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
+        'border bg-card hover:border-primary/30',
         fillHeight && 'h-full',
-        !bgColor && 'border bg-card hover:border-primary/30',
         isDone && 'opacity-60',
-        taskBorderClass,
-        resumedBorderClass,
-        isResumedDisplay && bgColor && 'ring-2 ring-amber-400 ring-offset-1',
+        leftBorderClass,
         isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
       )}
-      style={bgColor ? { backgroundColor: bgColor, color: 'white' } : undefined}
+      style={leftBorderStyle}
       title={isResumedDisplay ? 'OS retomada — agendada originalmente para outra data' : undefined}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           {isResumedDisplay && (
-            <Play className={cn('h-3.5 w-3.5', bgColor ? 'text-white' : 'text-amber-500')} />
+            <Play className="h-3.5 w-3.5 text-amber-500" />
           )}
-          {isDone && <CheckCircle2 className={cn('h-4 w-4', bgColor ? 'text-white' : 'text-emerald-500')} />}
-          {isTask && !isDone && <CheckSquare className={cn('h-3.5 w-3.5', bgColor ? 'text-white/80' : 'text-violet-500')} />}
+          {isDone && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+          {isTask && !isDone && <CheckSquare className="h-3.5 w-3.5 text-violet-500" />}
           <span className={cn('font-semibold text-sm', isDone && 'line-through')}>
             {order.scheduled_time?.slice(0, 5) || '--:--'}
           </span>
           {!isTask && (order as any).order_number != null && (
-            <span className={cn('text-xs font-medium', bgColor ? 'text-white/70' : 'text-muted-foreground', isDone && 'line-through')}>
+            <span className={cn('text-xs font-medium text-muted-foreground', isDone && 'line-through')}>
               #{(order as any).order_number}
             </span>
           )}
@@ -239,7 +247,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
             </Badge>
           )}
           {isResumedDisplay && (
-            <Badge className={cn('text-[10px] px-1.5 h-5 shadow-sm shadow-black/20', 'bg-amber-500 text-white')}>
+            <Badge className="text-[10px] px-1.5 h-5 shadow-sm shadow-black/20 bg-amber-500 text-white">
               Retomada
             </Badge>
           )}
@@ -249,22 +257,22 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         </div>
       </div>
       {isTask ? (
-        <p className={cn('text-xs font-medium break-words line-clamp-2', bgColor ? 'text-white/90' : 'text-violet-600 dark:text-violet-400')}>
+        <p className="text-xs font-medium break-words line-clamp-2 text-violet-600 dark:text-violet-400">
           {taskTitle || 'Tarefa'}
         </p>
       ) : (
-        <p className={cn('text-xs font-medium truncate', bgColor ? 'text-white/90' : 'text-primary')}>{getOsTypeLabel(order, osTypeLabels)}</p>
+        <p className="text-xs font-medium truncate text-primary">{getOsTypeLabel(order, osTypeLabels)}</p>
       )}
       {!isTask && (
-        <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <User className="h-3 w-3 shrink-0" />
           <span className="truncate">{order.customer?.name || 'Cliente'}</span>
         </div>
       )}
       {!isTask && ((order as any).service_city || order.customer?.city) && (
-        <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {(order as any).service_city ? (
-            <MapPinned className={cn('h-3 w-3 shrink-0', bgColor ? '' : 'text-primary')} />
+            <MapPinned className="h-3 w-3 shrink-0 text-primary" />
           ) : (
             <MapPin className="h-3 w-3 shrink-0" />
           )}
@@ -272,13 +280,13 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         </div>
       )}
       {isTask && order.description && (
-        <div className={cn('text-xs break-words line-clamp-2', bgColor ? 'text-white/70' : 'text-muted-foreground')}>
+        <div className="text-xs break-words line-clamp-2 text-muted-foreground">
           {order.description}
         </div>
       )}
       {(assignees?.length > 0 || team) && (
         <div className="flex justify-end pt-0.5">
-          <AssigneeAvatars assignees={assignees || []} team={team} light={!!bgColor} />
+          <AssigneeAvatars assignees={assignees || []} team={team} light={false} />
         </div>
       )}
     </div>

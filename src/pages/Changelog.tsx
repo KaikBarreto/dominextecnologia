@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.34',
+    date: '26 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist de visita: perguntas que não abriam voltaram ao normal',
+        description: 'Em alguns checklists de visita, certas perguntas apareciam com o aviso "Tipo não suportado" e não deixavam você responder. Corrigimos: agora essas perguntas abrem normalmente, com os botões de Conforme, Não-conforme e N/A, ou o campo de foto, conforme o caso. Nenhuma resposta já registrada foi perdida.',
+        category: 'correcao',
+      },
+      {
+        title: 'Agenda com visual mais limpo e uniforme',
+        description: 'Os cards da agenda do dia agora seguem um padrão único: fundo escuro com uma faixa fina, na cor do tipo de serviço, na lateral, em vez de o card inteiro pintado. Fica mais fácil de ler e bater o olho no dia.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.33',
     date: '26 de julho de 2026',
     type: 'minor',

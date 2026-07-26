@@ -53,6 +53,7 @@ export interface ChecklistFormResponse {
   question_id: string;
   response_value: string | null;
   response_photo_url: string | null;
+  response_video_url: string | null;
 }
 
 /** Chave de resposta: isola por equipamento + pergunta (mesma máquina, mesma OS). */
@@ -179,14 +180,14 @@ export function rollupConformity(
   return 'parcial';
 }
 
-/** Uma resposta de form_response "vale" (tem valor não-vazio ou foto). */
+/** Uma resposta de form_response "vale" (tem valor não-vazio, foto ou vídeo). */
 export function isFormResponseAnswered(
-  resp: Pick<ChecklistFormResponse, 'response_value' | 'response_photo_url'> | undefined | null
+  resp: Pick<ChecklistFormResponse, 'response_value' | 'response_photo_url' | 'response_video_url'> | undefined | null
 ): boolean {
   if (!resp) return false;
   const val = typeof resp.response_value === 'string' ? resp.response_value.trim() : '';
   const hasValue = val !== '' && val !== '-';
-  return hasValue || !!resp.response_photo_url;
+  return hasValue || !!resp.response_photo_url || !!resp.response_video_url;
 }
 
 /**
@@ -332,7 +333,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
           for (let from = 0; ; from += PAGE) {
             const { data: rData, error: rErr } = await supabase
               .from('form_responses')
-              .select('question_id, equipment_id, response_value, response_photo_url')
+              .select('question_id, equipment_id, response_value, response_photo_url, response_video_url')
               .eq('service_order_id', serviceOrderId)
               .in('question_id', allQuestionIds)
               .range(from, from + PAGE - 1);
@@ -343,6 +344,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
                 question_id: r.question_id,
                 response_value: r.response_value ?? null,
                 response_photo_url: r.response_photo_url ?? null,
+                response_video_url: r.response_video_url ?? null,
               };
             }
             if (rPage.length < PAGE) break;
@@ -422,7 +424,11 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
     async (
       equipmentId: string | null,
       questionId: string,
-      patch: { response_value?: string | null; response_photo_url?: string | null }
+      patch: {
+        response_value?: string | null;
+        response_photo_url?: string | null;
+        response_video_url?: string | null;
+      }
     ) => {
       if (!serviceOrderId) return;
       const key = formResponseKey(equipmentId, questionId);
@@ -435,6 +441,10 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
           patch.response_photo_url !== undefined
             ? patch.response_photo_url
             : prev?.response_photo_url ?? null,
+        response_video_url:
+          patch.response_video_url !== undefined
+            ? patch.response_video_url
+            : prev?.response_video_url ?? null,
       };
       setFormResponses((curr) => ({ ...curr, [key]: next }));
       try {
@@ -457,6 +467,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
             .update({
               response_value: next.response_value,
               response_photo_url: next.response_photo_url,
+              response_video_url: next.response_video_url,
               responded_at: respondedAt,
               responded_by: respondedBy,
             } as any)
@@ -469,6 +480,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
             question_id: questionId,
             response_value: next.response_value,
             response_photo_url: next.response_photo_url,
+            response_video_url: next.response_video_url,
             responded_at: respondedAt,
             responded_by: respondedBy,
           } as any);
