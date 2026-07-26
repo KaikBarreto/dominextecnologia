@@ -216,34 +216,40 @@ export function DiscCompareLineChart({
           </g>
         </svg>
 
-        {/* Tooltip HTML absolutamente posicionado dentro do container relative */}
+        {/* Tooltip HTML absolutamente posicionado dentro do container relative.
+            Alem das 2 pontuacoes coloridas por pessoa, mostra a descricao do
+            fator e a figura famosa (example). Ancoragem clampada nas pontas
+            (D/C) pra o tooltip nao vazar do container. */}
         {hovered !== null && (() => {
           const factor = DISC_FACTORS[hovered];
-          const factorName = t.factors[factor].name;
+          const ff = t.factors[factor];
           const valA = scoresA[factor];
           const valB = scoresB[factor];
+          const centerPct = ((hovered + 0.5) / NUM_FACTORS) * 100;
+          const isFirst = hovered === 0;
+          const isLast = hovered === NUM_FACTORS - 1;
+          const translateX = isFirst ? '0%' : isLast ? '-100%' : '-50%';
           return (
             <div
               style={{
                 position: 'absolute',
                 top: 8,
-                left: `${((hovered + 0.5) / NUM_FACTORS) * 100}%`,
-                transform: 'translateX(-50%)',
+                left: `${centerPct}%`,
+                transform: `translateX(${translateX})`,
                 background: 'hsl(var(--popover))',
                 border: '1px solid hsl(var(--border))',
                 borderRadius: 8,
-                padding: '6px 10px',
+                padding: '8px 10px',
                 color: 'hsl(var(--popover-foreground))',
                 fontSize: 12,
                 fontFamily: 'system-ui, sans-serif',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                 pointerEvents: 'none',
-                minWidth: 140,
+                maxWidth: 220,
                 zIndex: 10,
-                whiteSpace: 'nowrap',
               }}
             >
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>{factorName}</div>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>{ff.name}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <span style={{ color: colorA, fontWeight: 600 }}>{nameA}</span>
                 <span style={{ color: colorA, fontWeight: 700 }}>{valA}</span>
@@ -252,6 +258,8 @@ export function DiscCompareLineChart({
                 <span style={{ color: colorB, fontWeight: 600 }}>{nameB}</span>
                 <span style={{ color: colorB, fontWeight: 700 }}>{valB}</span>
               </div>
+              <div style={{ marginTop: 6, lineHeight: 1.45, color: 'hsl(var(--muted-foreground))' }}>{ff.description}</div>
+              <div style={{ marginTop: 6, lineHeight: 1.45, fontStyle: 'italic', color: 'hsl(var(--muted-foreground))' }}>{ff.example}</div>
             </div>
           );
         })()}

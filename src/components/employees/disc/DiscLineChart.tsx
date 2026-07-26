@@ -10,6 +10,7 @@
 // Tela-documento: cores hardcoded (não segue tema do usuário).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { useState } from 'react';
 import { DISC_FACTORS } from '@/lib/disc/questions';
 import type { DiscScores } from '@/lib/disc/scoring';
 import type { LocaleCode } from '@/lib/i18n/locales';
@@ -81,6 +82,7 @@ function colCenterX(i: number): number {
 
 export function DiscLineChart({ scores, locale, className }: DiscLineChartProps) {
   const { t } = useDiscMessages(locale);
+  const [hovered, setHovered] = useState<number | null>(null);
 
   const data = DISC_FACTORS.map((factor) => ({
     factor,
@@ -105,7 +107,7 @@ export function DiscLineChart({ scores, locale, className }: DiscLineChartProps)
   const NUMBERS_Y = PANEL_H + NUMBERS_GAP + NUMBERS_H / 2;
 
   return (
-    <div className={`mx-auto w-full max-w-[400px] text-foreground ${className ?? ''}`}>
+    <div className={`relative mx-auto w-full max-w-[400px] text-foreground ${className ?? ''}`}>
       <svg
         viewBox={`0 0 ${SVG_W} ${SVG_H}`}
         width="100%"
@@ -222,6 +224,23 @@ export function DiscLineChart({ scores, locale, className }: DiscLineChartProps)
               {p.label}
             </text>
           ))}
+
+          {/* ── Rects transparentes de hover por coluna (desktop) ──
+              Ficam por cima e capturam mouse events. fill=transparent nao
+              intercepta toque/scroll relevante no mobile (sem :hover). ── */}
+          {DISC_FACTORS.map((_, i) => (
+            <rect
+              key={`hover-${i}`}
+              x={PLOT_X + COL_W * i}
+              y={PLOT_Y}
+              width={COL_W}
+              height={PLOT_H + INNER_PAD_BOTTOM}
+              fill="transparent"
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+            />
+          ))}
         </g>
 
         {/* ── Valores numéricos abaixo do painel (fora da área azul) ── */}
@@ -240,6 +259,50 @@ export function DiscLineChart({ scores, locale, className }: DiscLineChartProps)
           </text>
         ))}
       </svg>
+
+      {/* Tooltip HTML posicionado sobre a coluna em hover: nome do fator +
+          pontuacao + descricao + figura famosa. pointerEvents:none pra nao
+          "roubar" o mouse e piscar. Ancoragem clampada nas pontas (D/C) pra
+          nao vazar do container. */}
+      {hovered !== null && (() => {
+        const factor = DISC_FACTORS[hovered];
+        const ff = t.factors[factor];
+        const value = Math.round(scores[factor]);
+        // Ancora no centro da coluna, mas clampa a translacao nas pontas pra
+        // o tooltip (max-width) nao cortar em D (esquerda) e C (direita).
+        const centerPct = ((hovered + 0.5) / NUM_FACTORS) * 100;
+        const isFirst = hovered === 0;
+        const isLast = hovered === NUM_FACTORS - 1;
+        const translateX = isFirst ? '0%' : isLast ? '-100%' : '-50%';
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: `${centerPct}%`,
+              transform: `translateX(${translateX})`,
+              background: 'hsl(var(--popover))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: 8,
+              padding: '8px 10px',
+              color: 'hsl(var(--popover-foreground))',
+              fontSize: 12,
+              fontFamily: 'system-ui, sans-serif',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              pointerEvents: 'none',
+              maxWidth: 220,
+              zIndex: 10,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+              <span style={{ fontWeight: 700 }}>{ff.name}</span>
+              <span style={{ fontWeight: 700 }}>{value}</span>
+            </div>
+            <div style={{ lineHeight: 1.45, color: 'hsl(var(--muted-foreground))' }}>{ff.description}</div>
+            <div style={{ marginTop: 6, lineHeight: 1.45, fontStyle: 'italic', color: 'hsl(var(--muted-foreground))' }}>{ff.example}</div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

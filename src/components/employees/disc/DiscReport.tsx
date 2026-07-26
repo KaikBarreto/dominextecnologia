@@ -200,6 +200,13 @@ export function DiscReport({
 
   const profileHeading = interpolate(t.sections.profileHeading, { code: profileCode });
 
+  // Biografia narrativa do perfil — string com paragrafos separados por \n\n.
+  // Defensivo: alguns perfis podem nao ter biografia; nesse caso a secao nao renderiza.
+  const bioParagraphs = ((profileText as { biografia?: string }).biografia ?? '')
+    .split('\n\n')
+    .map((p) => p.trim())
+    .filter(Boolean);
+
   return (
     /*
      * max-w-3xl em mobile/tablet (como antes).
@@ -224,6 +231,30 @@ export function DiscReport({
               {profileText.nome}
             </h2>
           </header>
+        )}
+
+        {/* ── Biografia narrativa "Sobre o seu perfil" — em destaque, largura de
+            leitura confortavel. Tela-documento clara, entao text-foreground
+            resolve correto. So renderiza se o perfil tiver biografia. ── */}
+        {bioParagraphs.length > 0 && (
+          <section className="mx-auto max-w-prose">
+            <div className="mb-3 flex items-center gap-2.5">
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Sparkles className="h-4 w-4 text-white" strokeWidth={2.5} />
+              </span>
+              <h5 className="text-sm font-bold text-foreground">{t.ui.aboutProfileTitle}</h5>
+            </div>
+            <div className="space-y-3">
+              {bioParagraphs.map((para, i) => (
+                <p key={i} className="text-sm leading-relaxed text-foreground">
+                  {para}
+                </p>
+              ))}
+            </div>
+          </section>
         )}
 
         {/*
