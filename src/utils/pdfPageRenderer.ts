@@ -31,7 +31,20 @@ async function waitForImages(root: HTMLElement): Promise<void> {
   );
 }
 
-export async function generateReportPDF(reportElement: HTMLElement, filename: string): Promise<void> {
+/**
+ * Renderiza um elemento (relatório) num PDF A4 e devolve o Blob (sem salvar).
+ *
+ * É o MIOLO compartilhado: clona o elemento offscreen (A4 794px), força
+ * accordions abertos, amplia thumbnails, captura com html2canvas-pro (scale 2) e
+ * fatia em páginas A4 evitando cortar imagens. Retorna `pdf.output('blob')`.
+ *
+ * `generateReportPDF` reusa esta função e depois faz `pdf.save`. Quem precisa
+ * abrir o PDF em nova aba (openPdfInTab) chama esta versão direto e recebe o Blob.
+ */
+export async function renderElementToPdfBlob(
+  reportElement: HTMLElement,
+  opts?: { pageMarginTopPx?: number; pageMarginBottomPx?: number },
+): Promise<Blob> {
   const html2canvas = (await import('html2canvas-pro')).default;
   const { jsPDF } = await import('jspdf');
 
@@ -135,14 +148,19 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
       windowHeight: clone.scrollHeight,
     });
 
-    // Map image bounding boxes (in canvas pixels — scale=2) so we can avoid
-    // cutting them across pages.
+    // Map bounding boxes (in canvas pixels — scale=2) of everything we must not
+    // split across a page boundary. Always: images. Opt-in: any element marked
+    // with [data-pdf-keep] (atomic content blocks — cards, paragraphs, chart
+    // pairs). Reports that don't use the marker keep the historical behavior.
     const SCALE = 2;
     const cloneTop = clone.getBoundingClientRect().top;
-    const imageBoxes = Array.from(clone.querySelectorAll('img')).map(img => {
-      const r = (img as HTMLImageElement).getBoundingClientRect();
+    const toBox = (el: Element) => {
+      const r = el.getBoundingClientRect();
       return { top: (r.top - cloneTop) * SCALE, bottom: (r.bottom - cloneTop) * SCALE };
-    });
+    };
+    const imageBoxes = Array.from(clone.querySelectorAll('img')).map(toBox);
+    const keepBoxes = Array.from(clone.querySelectorAll('[data-pdf-keep]')).map(toBox);
+    const atomicBoxes = [...imageBoxes, ...keepBoxes];
 
     // Slice into A4 pages, snapping page breaks before any image that would be split.
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -151,26 +169,76 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
 
     const pageHeightPx = Math.floor((A4_HEIGHT_PX / A4_WIDTH_PX) * fullCanvas.width);
 
+    // ── Page margins (OPT-IN, in canvas px) ─────────────────────────────────
+    // Default 0/0 → paginação BYTE-idêntica ao histórico (OSReport etc.).
+    // Se o elemento (ou um ancestral no clone) tiver [data-pdf-margins], usa um
+    // default de respiro no topo/base — sem tocar em quem chama esta função.
+    // Valores em px de canvas (scale=2): ~72 topo / ~64 base ≈ 36/32 CSS px.
+    const wantsMargins = !!(reportElement.closest?.('[data-pdf-margins]') || clone.querySelector('[data-pdf-margins]') || clone.matches?.('[data-pdf-margins]'));
+    const attrTop = clone.matches?.('[data-pdf-margins]')
+      ? clone.getAttribute('data-pdf-margin-top')
+      : clone.querySelector('[data-pdf-margins]')?.getAttribute('data-pdf-margin-top');
+    const attrBottom = clone.matches?.('[data-pdf-margins]')
+      ? clone.getAttribute('data-pdf-margin-bottom')
+      : clone.querySelector('[data-pdf-margins]')?.getAttribute('data-pdf-margin-bottom');
+    const attrTopFirst = clone.matches?.('[data-pdf-margins]')
+      ? clone.getAttribute('data-pdf-margin-top-first')
+      : clone.querySelector('[data-pdf-margins]')?.getAttribute('data-pdf-margin-top-first');
+    const marginTop = Math.max(
+      0,
+      opts?.pageMarginTopPx ?? (attrTop ? Number(attrTop) : wantsMargins ? 72 : 0),
+    );
+    const marginBottom = Math.max(
+      0,
+      opts?.pageMarginBottomPx ?? (attrBottom ? Number(attrBottom) : wantsMargins ? 64 : 0),
+    );
+    // Margem de topo da PRIMEIRA página (capa). Opt-in por
+    // [data-pdf-margin-top-first]; na ausência, 0 quando há margens (capa colada
+    // no topo). Sem opt-in de margens, fica 0 = idêntico ao histórico.
+    const firstPageMarginTop = Math.max(
+      0,
+      attrTopFirst != null ? Number(attrTopFirst) : wantsMargins ? 0 : marginTop,
+    );
+    const hasMargins = marginTop > 0 || marginBottom > 0;
+
+    // ── Cap na altura REAL do conteúdo (mata página em branco no fim) ────────
+    // Maior `bottom` entre os blocos atômicos (imagens + [data-pdf-keep] +
+    // rodapé/folhas). Só aplica o cap quando temos margens/keeps: sem opt-in
+    // o comportamento fica idêntico ao histórico (usa fullCanvas.height).
+    const contentBottom = atomicBoxes.length
+      ? Math.max(...atomicBoxes.map((b) => b.bottom))
+      : fullCanvas.height;
+    const applyCap = hasMargins || keepBoxes.length > 0;
+    const contentHeight = applyCap
+      ? Math.min(fullCanvas.height, Math.ceil(contentBottom + marginBottom))
+      : fullCanvas.height;
+
     let cursorY = 0;
     let pageIndex = 0;
-    while (cursorY < fullCanvas.height) {
-      let pageEndY = Math.min(cursorY + pageHeightPx, fullCanvas.height);
+    while (cursorY < contentHeight) {
+      // Margem de topo desta página: 0 na capa (página 0) por padrão quando há
+      // margens; margem normal nas páginas 2+. A altura ÚTIL varia por página.
+      const topMargin = pageIndex === 0 ? firstPageMarginTop : marginTop;
+      const usableHeight = Math.max(1, pageHeightPx - topMargin - marginBottom);
 
-      // If an image straddles pageEndY, push the break up to its top so the
-      // entire image lands on the next page. Skip if the image is taller than
-      // a full page (cannot avoid in that case).
-      for (const box of imageBoxes) {
+      let pageEndY = Math.min(cursorY + usableHeight, contentHeight);
+
+      // If an atomic box (image or [data-pdf-keep] block) straddles pageEndY,
+      // push the break up to its top so the entire block lands on the next page.
+      // Skip if the block is taller than the usable height (cannot avoid) or is
+      // glued to the top of the current page (would just move the same break).
+      // We snap to the HIGHEST offending box so no earlier block is left split.
+      for (const box of atomicBoxes) {
         if (box.top < pageEndY && box.bottom > pageEndY) {
-          const imgHeight = box.bottom - box.top;
-          if (imgHeight <= pageHeightPx && box.top > cursorY + pageHeightPx * 0.15) {
-            pageEndY = Math.floor(box.top);
-            break;
+          const boxHeight = box.bottom - box.top;
+          if (boxHeight <= usableHeight && box.top > cursorY + usableHeight * 0.15) {
+            pageEndY = Math.min(pageEndY, Math.floor(box.top));
           }
         }
       }
 
       // Safety: never produce an empty page
-      if (pageEndY <= cursorY) pageEndY = Math.min(cursorY + pageHeightPx, fullCanvas.height);
+      if (pageEndY <= cursorY) pageEndY = Math.min(cursorY + usableHeight, contentHeight);
 
       const sliceHeight = pageEndY - cursorY;
       const pageCanvas = document.createElement('canvas');
@@ -179,10 +247,12 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
       const ctx = pageCanvas.getContext('2d')!;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      // Slice de conteúdo desenhado deslocado pra baixo em topMargin → topo (e
+      // base) ganha respiro. Na capa (página 0), topMargin=0 = colada no topo.
       ctx.drawImage(
         fullCanvas,
         0, cursorY, fullCanvas.width, sliceHeight,
-        0, 0, fullCanvas.width, sliceHeight
+        0, topMargin, fullCanvas.width, sliceHeight
       );
 
       const imgData = pageCanvas.toDataURL('image/jpeg', 0.92);
@@ -193,8 +263,25 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
       pageIndex++;
     }
 
-    pdf.save(filename);
+    return pdf.output('blob');
   } finally {
     document.body.removeChild(offscreen);
   }
+}
+
+/**
+ * Gera o PDF do relatório e dispara o download (`pdf.save`), preservando o
+ * comportamento histórico usado por OSReport e outros geradores.
+ */
+export async function generateReportPDF(reportElement: HTMLElement, filename: string): Promise<void> {
+  const blob = await renderElementToPdfBlob(reportElement);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

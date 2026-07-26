@@ -21,6 +21,8 @@
 
 import {
   AlertTriangle,
+  Briefcase,
+  HelpCircle,
   Info,
   MessageCircle,
   Shield,
@@ -38,6 +40,7 @@ import {
 } from '@/lib/disc/scoring';
 import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { DiscEmotionalRadar } from './DiscEmotionalRadar';
 import { DiscLineChart } from './DiscLineChart';
 import { DiscRadar } from './DiscRadar';
 import { interpolate, useDiscMessages } from './useDiscMessages';
@@ -116,6 +119,71 @@ const SECTION_STYLE: Record<
 };
 
 const TEXT_SECTIONS: TextSectionKey[] = ['comunicacaoIdeal', 'sobEstresse'];
+
+/** Bloco de motivadores de carreira por fator. Adaptavel ao tema (sem cor hardcoded). */
+function CareerBlock({
+  label,
+  factorName,
+  factorColor,
+  motivators,
+  reflectionLabel,
+}: {
+  label: string;
+  factorName: string;
+  factorColor: string;
+  motivators: { headline: string; points: { title: string; body: string }[]; questions: string[] };
+  reflectionLabel: string;
+}) {
+  return (
+    <div className="space-y-3 p-1">
+      {/* Rotulo do fator (primario / apoio) + nome do fator por extenso */}
+      <div className="flex items-baseline gap-1.5 flex-wrap">
+        <span className="text-xs font-semibold text-muted-foreground">{label}:</span>
+        <span className="text-sm font-bold" style={{ color: factorColor }}>
+          {factorName}
+        </span>
+      </div>
+
+      {/* Headline do motivador */}
+      <p className="text-sm font-semibold leading-snug text-foreground">{motivators.headline}</p>
+
+      {/* Points (titulo + corpo) */}
+      <div className="space-y-2.5 pl-1">
+        {motivators.points.map((pt, i) => (
+          <div key={i}>
+            <div
+              className="text-xs font-bold mb-0.5"
+              style={{ color: factorColor }}
+            >
+              {pt.title}
+            </div>
+            <p className="text-sm leading-relaxed text-foreground">{pt.body}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Perguntas de reflexao */}
+      {motivators.questions.length > 0 && (
+        <div className="pt-1">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              {reflectionLabel}
+            </span>
+          </div>
+          <ul className="space-y-1.5 pl-1">
+            {motivators.questions.map((q, i) => (
+              <li key={i} className="flex gap-2 text-sm leading-relaxed text-foreground">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
+                <span>{q}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Bloco de insight em lista (com marcadores). Sem fundo de card. */
 function ListBlock({
@@ -269,20 +337,25 @@ export function DiscReport({
         )}
 
         {/*
-         * BENTO DESKTOP (lg+):
-         *   Linha 1: [Grafico DISC | Qualidades + Pontos de atencao empilhados]
-         *   Linha 2: Competencias Radar — LARGURA TOTAL (full-width)
-         *   Linha 3+: demais insights em 2 colunas
+         * ORDEM (desktop e mobile identica, so muda o arranjo em colunas):
+         *   1. Grafico DISC
+         *   2. Qualidades + Pontos de atencao
+         *   3. Competencias (radar, largura total)
+         *   4. Perfil emocional (radar, largura total)
+         *   5. Perfil em profundidade (5 blocos de insight)
+         *   6. Motivadores de carreira
          *
-         * Mobile/tablet (< lg): pilha vertical, inalterado.
+         * BENTO DESKTOP (lg+): passos 1-2 dividem uma linha de 2 colunas
+         *   [Grafico DISC | Qualidades + Pontos]. Radares full-width. Insights
+         *   em grid de 2 colunas.
+         * Mobile/tablet (< lg): tudo empilha em 1 coluna, na mesma ordem acima.
          */}
 
-        {/* ── Linha 1 do bento: Grafico DISC | 2 primeiros insights ── */}
+        {/* ── Linha 1 do bento: Grafico DISC | Qualidades + Pontos ── */}
         {/*
-         * Mobile: Grafico DISC aparece aqui, sozinho em largura total.
-         * Desktop: grid 2 colunas — DISC a esquerda, 2 primeiros insights a direita.
-         * Os 2 primeiros insights ficam OCULTOS aqui no mobile (aparecem na secao
-         * de insights abaixo junto com os demais, para manter a ordem correta).
+         * Mobile: Grafico DISC aparece aqui, sozinho em largura total; o bloco
+         *   Qualidades + Pontos vem logo abaixo (lg:hidden), antes dos radares.
+         * Desktop: grid 2 colunas — DISC a esquerda, Qualidades + Pontos a direita.
          */}
         <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
           {/* Grafico DISC */}
@@ -310,65 +383,89 @@ export function DiscReport({
           )}
         </div>
 
-        {/* ── Linha 2 do bento: Competencias Radar — FLEX 2-col no desktop ── */}
-        {/*
-         * Desktop (lg+): flex row — titulo grande (260px fixo, shrink-0) a
-         *   esquerda + radar (flex-1 min-w-0) a direita. O flex-1 min-w-0
-         *   garante que o ResponsiveContainer do recharts mede a largura correta
-         *   (~700px na coluna direita), diferente do grid que causava radar minusculo.
-         *   NAO usar CSS grid aqui — a medicao do recharts fica errada.
+        {/* Qualidades + Pontos de atencao — visivel SOMENTE no mobile (< lg).
+            Fica AQUI (logo apos o grafico DISC) para manter a ordem-alvo no
+            mobile: DISC -> Qualidades+Pontos -> radares. No desktop estes dois
+            blocos aparecem ao lado do grafico DISC (bento acima). */}
+        {variant === 'full' && (
+          <div className="lg:hidden space-y-4">
+            <ListBlock
+              sectionKey="qualidades"
+              title={t.sections.qualidades}
+              items={profileText.qualidades}
+            />
+            <ListBlock
+              sectionKey="pontosDeAtencao"
+              title={t.sections.pontosDeAtencao}
+              items={profileText.pontosDeAtencao}
+            />
+          </div>
+        )}
+
+        {/* ── Dois radares lado a lado no desktop, empilhados no mobile ──
          *
-         * Mobile (< lg): empilhado — titulo pequeno centralizado em cima (lg:hidden),
-         *   radar embaixo em largura total com leve full-bleed (-mx-2).
-         *   O titulo grande do desktop fica hidden no mobile (hidden lg:block).
+         * ATENCAO recharts: ResponsiveContainer mede ERRADO dentro de CSS grid
+         * (renderiza minusculo). NAO usar CSS grid aqui. Usamos FLEXBOX:
+         *   - Mobile (< lg): flex-col => empilhados, cada coluna w-full.
+         *   - Desktop (lg+): flex-row => lado a lado; cada coluna lg:flex-1
+         *     lg:min-w-0, o que garante largura real ~metade para o recharts
+         *     medir corretamente e renderizar grande.
+         * O leve full-bleed (-mx-2 sm:mx-0) dentro de cada radar evita cortar
+         * os rotulos externos no mobile.
          */}
-        {/*
-         * Radar em LARGURA TOTAL (o recharts ResponsiveContainer so mede certo
-         * com largura definida — em coluna flex/grid ele renderiza minusculo).
-         * Titulo grande alinhado a esquerda em cima (2 linhas no desktop),
-         * radar grande embaixo em largura total. Mobile: titulo menor centralizado.
-         */}
-        <div>
-          <h4 className="mb-2 text-center text-lg font-bold text-foreground">
-            {t.charts.radarTitle}
-          </h4>
-          {/* Radar em largura total (grande, sem cortar rotulos). */}
-          <div className="w-full min-w-0 -mx-2 sm:mx-0">
-            <DiscRadar scores={scores} primary={primary} locale={locale} />
+        <div className="flex flex-col lg:flex-row lg:items-stretch lg:gap-6">
+          {/* Coluna 1: Competencias comportamentais */}
+          <div className="w-full min-w-0 lg:flex-1 lg:flex lg:flex-col">
+            {/* Header — altura reservada igual ao da coluna 2 */}
+            <div className="shrink-0">
+              <h4 className="text-center text-lg font-bold text-foreground">
+                {t.charts.radarTitle}
+              </h4>
+              {/* Subtitulo com min-h reservado (lg) para casar com o do emocional */}
+              <div className="lg:min-h-[2.75rem]">
+                <p className="mx-auto mt-1 mb-2 max-w-xl text-center text-sm leading-snug text-muted-foreground">
+                  {t.dossier.competenciesLead}
+                </p>
+              </div>
+            </div>
+            <div className="w-full min-w-0 -mx-2 sm:mx-0">
+              <DiscRadar scores={scores} primary={primary} locale={locale} />
+            </div>
+          </div>
+
+          {/* Coluna 2: Perfil emocional */}
+          <div className="w-full min-w-0 lg:flex-1 lg:flex lg:flex-col">
+            {/* Header — altura reservada igual ao da coluna 1 */}
+            <div className="shrink-0">
+              <h4 className="text-center text-lg font-bold text-foreground">
+                {t.dossier.emotionalTitle}
+              </h4>
+              {/* Subtitulo com min-h reservado (lg) para casar com o de competencias */}
+              <div className="lg:min-h-[2.75rem]">
+                <p className="mx-auto mt-1 mb-2 max-w-xl text-center text-sm leading-snug text-muted-foreground">
+                  {t.dossier.emotionalLead}
+                </p>
+              </div>
+            </div>
+            <div className="w-full min-w-0 -mx-2 sm:mx-0">
+              <DiscEmotionalRadar scores={scores} primary={primary} locale={locale} />
+            </div>
           </div>
         </div>
 
-        {/* Blocos de insight (so no variant full) — adaptaveis ao tema, sem fundo */}
+        {/* Blocos de insight ("Perfil em profundidade") — so no variant full,
+            adaptaveis ao tema, sem fundo. Qualidades+Pontos ja apareceram acima
+            (ao lado do DISC no desktop, logo apos o DISC no mobile). */}
         {variant === 'full' && (
           <>
             {/*
-             * Mobile (< lg): todos os 7 blocos em 1 coluna, incluindo qualidades
-             * e pontosDeAtencao (que estao ocultos no bento acima).
-             * Desktop (lg+): apenas os 5 ultimos blocos em 2 colunas (qualidades
-             * e pontosDeAtencao ja aparecem ao lado do grafico DISC acima).
-             */}
-
-            {/* Qualidades + Pontos de atencao — visivel SOMENTE no mobile (< lg) */}
-            <div className="lg:hidden space-y-4">
-              <ListBlock
-                sectionKey="qualidades"
-                title={t.sections.qualidades}
-                items={profileText.qualidades}
-              />
-              <ListBlock
-                sectionKey="pontosDeAtencao"
-                title={t.sections.pontosDeAtencao}
-                items={profileText.pontosDeAtencao}
-              />
-            </div>
-
-            {/*
-             * Demais insights: 1 coluna no mobile, 2 colunas no desktop.
-             * No desktop: comoLiderar, oQueEvitar, ondeBrilha, comunicacaoIdeal,
-             * sobEstresse (5 blocos => 2+2+1 no grid de 2 colunas).
+             * Demais insights ("Perfil em profundidade"): 1 coluna no mobile,
+             * 2 colunas no desktop. Ordem fixa (definida pelo Tech Lead):
+             * ondeBrilha, comoLiderar, oQueEvitar, comunicacaoIdeal, sobEstresse
+             * (5 blocos => 2+2+1 no grid de 2 colunas).
              */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
-              {(['comoLiderar', 'oQueEvitar', 'ondeBrilha'] as ListSectionKey[]).map((key) => (
+              {(['ondeBrilha', 'comoLiderar', 'oQueEvitar'] as ListSectionKey[]).map((key) => (
                 <ListBlock
                   key={key}
                   sectionKey={key}
@@ -387,6 +484,59 @@ export function DiscReport({
             </div>
           </>
         )}
+
+        {/* ── Motivadores de carreira (so no variant full) ── */}
+        {variant === 'full' && (() => {
+          // Fator primario e secundario pelas LETRAS CRUAS do profileCode.
+          const careerPrimary = (profileCode[0] as DiscFactor) ?? classify(scores).primary;
+          const careerSecondaryRaw = profileCode[1] as DiscFactor | undefined;
+          const careerSecondary: DiscFactor | undefined =
+            careerSecondaryRaw && careerSecondaryRaw !== careerPrimary
+              ? careerSecondaryRaw
+              : undefined;
+
+          const motivators = t.careerMotivators;
+          const primaryMotivators = motivators[careerPrimary];
+          const secondaryMotivators = careerSecondary ? motivators[careerSecondary] : undefined;
+
+          if (!primaryMotivators) return null;
+
+          return (
+            <section className="space-y-5 border-t border-border pt-6">
+              {/* Titulo de SECAO do perfil (nao um topico colorido como os demais) */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 shrink-0 text-foreground" strokeWidth={2.5} />
+                  <h3 className="text-lg font-bold text-foreground">{t.dossier.careerTitle}</h3>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground leading-snug">{t.dossier.careerLead}</p>
+              </div>
+
+              {/* Grade de 1 ou 2 colunas dependendo de haver secundario */}
+              <div className={`grid grid-cols-1 gap-4 ${careerSecondary ? 'lg:grid-cols-2' : ''}`}>
+                {/* Bloco do fator primario */}
+                <CareerBlock
+                  label={t.dossier.careerPrimaryLabel}
+                  factorName={t.factors[careerPrimary].name}
+                  factorColor={FACTOR_COLOR[careerPrimary]}
+                  motivators={primaryMotivators}
+                  reflectionLabel={t.dossier.reflectionLabel}
+                />
+
+                {/* Bloco do fator secundario (so se houver) */}
+                {careerSecondary && secondaryMotivators && (
+                  <CareerBlock
+                    label={t.dossier.careerSecondaryLabel}
+                    factorName={t.factors[careerSecondary].name}
+                    factorColor={FACTOR_COLOR[careerSecondary]}
+                    motivators={secondaryMotivators}
+                    reflectionLabel={t.dossier.reflectionLabel}
+                  />
+                )}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Disclaimer — adaptavel ao tema */}
         <footer className="flex items-start gap-2.5">

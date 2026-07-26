@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.32',
+    date: '26 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Baixe o Perfil Comportamental em PDF (um dossiê completo)',
+        description: 'Agora você pode baixar um relatório em PDF do Perfil Comportamental de cada funcionário, num visual caprichado e organizado. Ele traz capa, o perfil descrito por extenso, os gráficos, uma tabela de pontuação com cores que facilitam a leitura, os motivadores de carreira da pessoa e um rodapé com a sua marca. O documento sai sempre no idioma da sua empresa. O botão fica ao lado de "Nova avaliação", no perfil do funcionário. E se você deixou ligada a opção de mostrar o resultado ao funcionário, ele também consegue baixar o próprio PDF assim que termina a avaliação.',
+        category: 'recurso',
+      },
+      {
+        title: 'Novo gráfico de Perfil Emocional',
+        description: 'Além das competências comportamentais, o perfil agora mostra um Perfil Emocional: como a pessoa tende a sentir e reagir no trabalho (autoconfiança, resiliência, empatia, serenidade, autocontrole e mais). Ele aparece ao lado das competências, tanto na tela quanto no PDF, e também entra na comparação entre dois funcionários.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ver os perfis em lista ou em grade',
+        description: 'A aba de Perfil Comportamental ganhou um botão para alternar entre a visão em grade (cartões) e a visão em lista, do mesmo jeito que já existe na lista de funcionários. Sua preferência fica salva.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.31',
     date: '26 de julho de 2026',
     type: 'minor',

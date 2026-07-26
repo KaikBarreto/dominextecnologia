@@ -21,6 +21,7 @@ import {
   Check,
   ChevronsUpDown,
   Clock,
+  Download,
   FileText,
   Link2,
   Loader2,
@@ -48,6 +49,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { generateDiscDossierPdf } from '@/utils/discDossierPdf';
+import { openPdfInTab } from '@/utils/openPdfInTab';
 import { cn } from '@/lib/utils';
 import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
 import { relationshipKey } from '@/lib/disc/relationships';
@@ -64,6 +69,7 @@ import {
 import { DiscReport } from '@/components/employees/disc/DiscReport';
 import { DiscCompareLineChart } from '@/components/employees/disc/DiscCompareLineChart';
 import { DiscCompareRadar } from '@/components/employees/disc/DiscCompareRadar';
+import { DiscEmotionalCompareRadar } from '@/components/employees/disc/DiscEmotionalCompareRadar';
 import { DiscLineChart } from '@/components/employees/disc/DiscLineChart';
 import { DiscRadar } from '@/components/employees/disc/DiscRadar';
 import { useDiscMessages } from '@/components/employees/disc/useDiscMessages';
@@ -351,6 +357,31 @@ function InteractionsTab({
                     className="w-full lg:h-full"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Radar EMOCIONAL cruzado — abaixo dos dois gráficos, centralizado.
+              Precisa de LARGURA e ALTURA definidas (igual ao radar de competências
+              acima), senão o ResponsiveContainer do recharts mede 0 e some. */}
+          {selfScores && selectedAssessment?.scores && (
+            <div className="lg:mx-auto lg:w-[540px] lg:flex lg:flex-col lg:h-[440px]">
+              <h3 className="mb-2 text-lg font-bold text-foreground text-center shrink-0">
+                {discT.dossier.emotionalTitle}
+              </h3>
+              <div className="lg:flex-1 lg:flex">
+                <DiscEmotionalCompareRadar
+                  scoresA={selfScores}
+                  scoresB={selectedAssessment.scores as DiscScores}
+                  nameA={self.name}
+                  nameB={selected.name}
+                  colorA="#2563EB"
+                  colorB="#F59E0B"
+                  codeA={selfProfileCode ?? undefined}
+                  codeB={selectedProfileCode ?? undefined}
+                  locale={locale}
+                  className="w-full lg:h-full"
+                />
               </div>
             </div>
           )}
@@ -689,13 +720,22 @@ export function EmployeeProfileDetail({
   onChangeEmployee,
 }: EmployeeProfileDetailProps) {
   const { toast } = useToast();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const p = MESSAGES[locale].app.employees.form.disc.profilePage;
   const tToasts = MESSAGES[locale].app.employees.toasts;
 
   const { employees: employeesFromHook, isLoading: employeesHookLoading } = useEmployees();
   const { profilesByEmployee: profilesByEmployeeFromHook, isLoading: profilesHookLoading } = useCompanyDiscProfiles();
   const { currentProfile, generateLink } = useEmployeeDisc(employeeId);
+  const { settings: companySettings } = useCompanySettings();
+  // Rótulos do botão de PDF na LÍNGUA DA UI do usuário (o CONTEÚDO do dossiê é
+  // no idioma da empresa, mas o botão/erro seguem a UI de quem clica).
+  const { t: discUiT } = useDiscMessages();
+  const dossierUi = (discUiT as any).dossier;
+
+  // Idioma do dossiê = idioma da EMPRESA (não da UI do usuário). Fallback: locale
+  // do contexto, depois pt-br.
+  const dossierLocale: LocaleCode = (companySettings?.language as LocaleCode | null) ?? locale ?? 'pt-br';
 
   // Prefer props passed by the parent (avoids double fetch when parent already has data).
   // If the parent passed data, we skip loading state for those slices.
@@ -706,6 +746,7 @@ export function EmployeeProfileDetail({
 
   const [tab, setTab] = useState<SubTab>('overview');
   const [generating, setGenerating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
 
@@ -748,6 +789,56 @@ export function EmployeeProfileDetail({
         },
       },
     );
+  };
+
+  // Baixar o dossiê PDF (idioma da empresa). Abre a aba DENTRO do gesto de clique
+  // (workaround de popup-blocker) e só então gera o Blob (async).
+  const handleDownloadPdf = async () => {
+    if (!employee) return;
+    const scores = currentProfile?.scores as DiscScores | undefined;
+    const profileCode = currentProfile?.profile_code ?? null;
+    if (!scores || !profileCode) return;
+
+    const w = window.open('', '_blank');
+    setDownloading(true);
+    try {
+      const generatedAtLabel = formatDate(new Date().toISOString(), dossierLocale, timezone);
+      const isWhiteLabel = !!companySettings?.white_label_enabled;
+      const branding = {
+        companyName:
+          (isWhiteLabel ? companySettings?.name : undefined) ?? companySettings?.name ?? 'Dominex',
+        logoUrl:
+          (isWhiteLabel
+            ? companySettings?.white_label_logo_url || companySettings?.logo_url
+            : companySettings?.logo_url) ?? null,
+        isWhiteLabel,
+      };
+      const blob = await generateDiscDossierPdf({
+        scores,
+        profileCode,
+        employeeName: employee.name,
+        employeePosition: employee.position,
+        branding,
+        locale: dossierLocale,
+        generatedAtLabel,
+      });
+      const slug =
+        employee.name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'funcionario';
+      openPdfInTab(blob, `perfil-comportamental-${slug}`, w);
+    } catch (e: unknown) {
+      if (w && !w.closed) w.close();
+      console.error('[DiscDossierPdf] falha ao gerar o dossiê:', e);
+      // pdfError é opcional no contrato de i18n do dossiê; fallback defensivo
+      // pra não exibir "undefined" caso ainda não exista a chave.
+      toast({ variant: 'destructive', title: dossierUi?.pdfError ?? 'Erro ao gerar o PDF' });
+    } finally {
+      setDownloading(false);
+    }
   };
 
   if (employeesLoading || profilesLoading) {
@@ -882,6 +973,41 @@ export function EmployeeProfileDetail({
             )}
           </div>
         </div>
+
+        {/* Botão Baixar PDF — só quando há perfil concluído. Desktop com label,
+            mobile só ícone. Fica à ESQUERDA do "Nova avaliação". */}
+        {currentProfile?.scores && currentProfile?.profile_code && (
+          <>
+            <Button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5 hidden sm:inline-flex"
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {downloading ? dossierUi.generating : dossierUi.downloadPdf}
+            </Button>
+            <Button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              variant="outline"
+              size="icon"
+              className="shrink-0 sm:hidden"
+              aria-label={dossierUi.downloadPdf}
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+            </Button>
+          </>
+        )}
 
         {/* Botão Nova Avaliação — visível em todas as subabas, canto direito do cabeçalho */}
         <Button

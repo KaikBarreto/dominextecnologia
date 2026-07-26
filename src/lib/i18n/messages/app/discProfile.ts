@@ -150,6 +150,18 @@ export const discProfile = {
       discipline: 'Disciplina',
     },
 
+    // ── Dimensões emocionais (radar do perfil emocional) ─────────────────────
+    emotional: {
+      selfConfidence: 'Autoconfiança',
+      resilience: 'Resiliência',
+      enthusiasm: 'Entusiasmo',
+      optimism: 'Otimismo',
+      sociability: 'Sociabilidade',
+      empathy: 'Empatia',
+      serenity: 'Serenidade',
+      selfControl: 'Autocontrole',
+    },
+
     // ── Seções de insight (títulos dos blocos do relatório) ──────────────────
     sections: {
       qualidades: 'Qualidades',
@@ -980,6 +992,140 @@ export const discProfile = {
           'A dupla Conforme + Conforme atinge uma precisão e profundidade técnica excepcionais, acima da média do mercado. O atrito é a paralisia por análise: o perfeccionismo dos dois adia a entrega em busca de uma certeza que nunca chega, e a revisão mútua vira apontamento constante; o segredo é combinar antes o critério de pronto e um prazo firme para encerrar a análise. Bem alinhados, produzem controles impecáveis e pegam falhas que passariam por qualquer perfil sozinho, desde que confiem no critério um do outro em vez de refazer tudo.',
       },
     },
+
+    // ── Dossiê PDF (documento do perfil comportamental) ──────────────────────
+    dossier: {
+      coverKicker: 'Relatório comportamental',
+      coverTitle: 'Perfil Comportamental',
+      coverSubtitle: 'Dossiê de perfil comportamental',
+      generatedAt: 'Gerado em',
+      roleLabel: 'Cargo',
+      method: {
+        title: 'Sobre o método',
+        paragraphs: [
+          'O perfil comportamental organiza a forma como cada pessoa tende a agir, se comunicar e tomar decisões em quatro grandes fatores: Dominância, Influência, Estabilidade e Conformidade. Nenhum fator é melhor que o outro, e ninguém é feito de um só. O que muda de pessoa para pessoa é a combinação e a intensidade de cada um, e é essa mistura que dá origem ao estilo comportamental de cada um.',
+          'Na prática do dia a dia de trabalho, conhecer esse perfil ajuda a formar equipes mais equilibradas, distribuir tarefas de acordo com o que cada pessoa faz com mais naturalidade, ajustar a comunicação entre colegas e reduzir atritos que muitas vezes nascem apenas de estilos diferentes de agir. É uma linguagem comum para falar de comportamento sem rótulos e sem julgamento.',
+          'Este dossiê é uma ferramenta de autoconhecimento e desenvolvimento profissional, não um diagnóstico clínico nem um teste de aptidão. Os resultados refletem tendências observadas nas respostas e podem variar com o contexto, o momento de vida e o amadurecimento de cada pessoa. Use as leituras a seguir como ponto de partida para conversas e reflexão, e não como um veredito definitivo sobre quem você é.',
+        ],
+      },
+      profileSectionTitle: 'Seu perfil',
+      scoreTableTitle: 'Pontuação por fator',
+      scoreTableSubtitle:
+        'Cada fator é medido de 0 a 100. Quanto maior a pontuação, mais presente aquele traço tende a estar no seu comportamento.',
+      scoreLegendHigh: 'Predominante',
+      scoreLegendMid: 'Moderado',
+      scoreLegendLow: 'Menos acentuado',
+      competenciesTitle: 'Competências comportamentais',
+      competenciesLead:
+        'A partir da combinação dos seus fatores, algumas competências tendem a se destacar naturalmente no seu jeito de trabalhar.',
+      emotionalTitle: 'Perfil emocional',
+      emotionalLead:
+        'Como você tende a sentir e reagir emocionalmente no trabalho, a partir do seu perfil.',
+      inDepthTitle: 'Perfil em profundidade',
+      styleTitle: 'Estilo comportamental',
+      careerTitle: 'Motivadores de carreira',
+      careerLead:
+        'O que sustenta a sua motivação ao longo da carreira também tem relação com o seu perfil. A seguir, o que costuma dar energia e sentido ao trabalho de quem tem um perfil como o seu.',
+      careerPrimaryLabel: 'Fator predominante',
+      careerSecondaryLabel: 'Fator de apoio',
+      reflectionLabel: 'Para refletir',
+      downloadPdf: 'Baixar PDF',
+      generating: 'Gerando PDF...',
+      footerDisclaimer:
+        'Este documento é uma ferramenta de autoconhecimento e desenvolvimento profissional, não um diagnóstico clínico. Os resultados refletem tendências e podem mudar com o tempo e o contexto.',
+    },
+
+    // ── Motivadores de carreira por fator dominante ──────────────────────────
+    careerMotivators: {
+      D: {
+        headline:
+          'Um perfil de Dominância se motiva quando pode decidir, encarar desafios reais e ver o resultado do próprio esforço aparecer com clareza.',
+        points: [
+          {
+            title: 'Resultado e conquista',
+            body: 'Poucas coisas dão mais energia a um perfil D do que atingir metas ambiciosas e ver o impacto concreto do que fez. Ambientes que medem resultado, reconhecem quem entrega e oferecem alvos claros para superar mantêm essa pessoa engajada. Quando o trabalho vira rotina previsível, sem uma próxima montanha para escalar, a motivação cai rápido e ela começa a procurar desafio em outro lugar.',
+          },
+          {
+            title: 'Autonomia e comando',
+            body: 'O perfil D floresce quando tem liberdade para decidir o caminho e assumir o comando de uma frente. Ser microgerenciado, precisar pedir permissão para cada passo ou depender de aprovações lentas é profundamente desmotivador para ele. Uma carreira que lhe dá espaço para liderar, correr riscos calculados e responder pelas próprias escolhas tende a segurar esse perfil por muito mais tempo.',
+          },
+          {
+            title: 'Desafio e crescimento acelerado',
+            body: 'Estabilidade demais soa como estagnação para quem tem Dominância alta. Ele se motiva por trajetórias em que é possível crescer rápido, assumir mais responsabilidade em pouco tempo e ser cobrado à altura. Oportunidades de liderança, projetos difíceis e problemas que ninguém quer pegar costumam atrair, em vez de assustar, esse perfil.',
+          },
+        ],
+        questions: [
+          'Na carreira que você está construindo, você terá desafios reais e autonomia para decidir, ou vai depender da aprovação dos outros para agir?',
+          'Você conseguirá enxergar com clareza o resultado do seu esforço e ser reconhecido por ele?',
+        ],
+      },
+      I: {
+        headline:
+          'Um perfil de Influência se motiva pela interação com pessoas, pelo reconhecimento e por ambientes vivos, variados e colaborativos.',
+        points: [
+          {
+            title: 'Pessoas e conexão',
+            body: 'O perfil I ganha energia no contato com gente. Trabalhar cercado de pessoas, construir relações, convencer, animar e articular grupos é onde ele brilha. Funções muito solitárias, puramente técnicas e sem troca humana tendem a apagar esse perfil aos poucos, por mais competente que ele seja no conteúdo. Uma carreira com bastante interação mantém a chama acesa.',
+          },
+          {
+            title: 'Reconhecimento e visibilidade',
+            body: 'Ser visto e reconhecido importa muito para o perfil I. Ele se motiva quando o bom trabalho é notado publicamente, quando há espaço para brilhar e quando sente que sua contribuição é valorizada pelo grupo. Ambientes que reconhecem apenas em silêncio, ou que deixam o esforço passar sem retorno, minam a motivação desse perfil mesmo que a remuneração seja boa.',
+          },
+          {
+            title: 'Variedade e movimento',
+            body: 'Rotina rígida e repetitiva pesa sobre o perfil I. Ele se motiva com variedade, novos projetos, novos contatos e ambientes que mudam e se renovam. Uma carreira com espaço para explorar frentes diferentes, participar de várias iniciativas e circular entre pessoas e áreas costuma segurar bem esse perfil, enquanto o trabalho engessado o deixa inquieto.',
+          },
+        ],
+        questions: [
+          'A carreira que você escolheu terá o convívio com pessoas e a variedade de que você precisa para se manter motivado?',
+          'Você terá reconhecimento e espaço para influenciar, ou correrá o risco de ficar isolado num trabalho técnico e solitário?',
+        ],
+      },
+      S: {
+        headline:
+          'Um perfil de Estabilidade se motiva por previsibilidade, cooperação, pertencimento e um propósito claro por trás do que faz.',
+        points: [
+          {
+            title: 'Segurança e previsibilidade',
+            body: 'O perfil S rende mais quando sabe o que esperar. Um ambiente estável, com regras claras, ritmo sustentável e mudanças bem comunicadas, dá a ele a base de que precisa para se dedicar de verdade. Mudanças abruptas e constantes, reviravoltas sem aviso e clima de incerteza permanente desgastam esse perfil e minam sua motivação, mesmo quando o desafio técnico é interessante.',
+          },
+          {
+            title: 'Cooperação e pertencimento',
+            body: 'Fazer parte de um time unido é um grande motor para o perfil S. Ele se dedica quando sente pertencimento, quando as relações são de confiança e quando pode apoiar os colegas sem clima de disputa. Ambientes muito competitivos, onde cada um puxa para si e o conflito é constante, deixam esse perfil desconfortável e retraído, mesmo que ele nunca reclame em voz alta.',
+          },
+          {
+            title: 'Propósito e relações duradouras',
+            body: 'O perfil S se motiva quando enxerga sentido no que faz e quando pode construir algo de longo prazo. Relações estáveis, um propósito claro e a sensação de estar contribuindo para algo maior sustentam sua dedicação ao longo dos anos. Trocas constantes de contexto, projetos que começam e morrem sem continuidade e falta de sentido esvaziam a motivação desse perfil.',
+          },
+        ],
+        questions: [
+          'A carreira que você seguiu oferece a estabilidade e o senso de propósito de que você precisa para se sentir bem no trabalho?',
+          'Você fará parte de um time cooperativo e com relações duradouras, ou terá que conviver com mudança abrupta e conflito constante?',
+        ],
+      },
+      C: {
+        headline:
+          'Um perfil de Conformidade se motiva por qualidade, precisão, especialização técnica e clareza de regras e critérios.',
+        points: [
+          {
+            title: 'Qualidade e precisão',
+            body: 'O perfil C se motiva quando pode fazer as coisas bem feitas, com o cuidado que o assunto merece. Padrões altos, atenção ao detalhe e trabalho que resiste à conferência mais rigorosa dão sentido ao seu esforço. Ambientes que aceitam o improviso constante, o remendo e o suficientemente bom para passar frustram profundamente esse perfil, que enxerga na falta de rigor um risco real.',
+          },
+          {
+            title: 'Especialização e aprofundamento',
+            body: 'Aprofundar-se num domínio, dominar o assunto a fundo e ser referência técnica é uma fonte forte de motivação para o perfil C. Ele se realiza quando pode se especializar, estudar, refinar métodos e responder pela parte que exige conhecimento sólido. Carreiras que exigem apenas superficialidade, saltos constantes de tema e nenhuma profundidade tendem a deixar esse perfil vazio.',
+          },
+          {
+            title: 'Clareza de regras e critérios',
+            body: 'O perfil C rende melhor quando as regras são claras e os critérios de qualidade estão definidos. Saber exatamente o que se espera, com base objetiva para decidir, dá segurança para ele avançar. A ambiguidade constante, as regras que mudam sem explicação e a cobrança por resultado sem clareza de padrão geram estresse e travam a motivação desse perfil.',
+          },
+        ],
+        questions: [
+          'A carreira que você escolheu valoriza a qualidade e a profundidade técnica que você preza, ou vive de improviso e pressa?',
+          'Você terá clareza de regras e critérios, ou precisará conviver com a ambiguidade que mais te incomoda?',
+        ],
+      },
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1103,6 +1249,16 @@ export const discProfile = {
       judgment: 'Judgment',
       security: 'Security',
       discipline: 'Discipline',
+    },
+    emotional: {
+      selfConfidence: 'Self-confidence',
+      resilience: 'Resilience',
+      enthusiasm: 'Enthusiasm',
+      optimism: 'Optimism',
+      sociability: 'Sociability',
+      empathy: 'Empathy',
+      serenity: 'Serenity',
+      selfControl: 'Self-control',
     },
     sections: {
       qualidades: 'Strengths',
@@ -1912,6 +2068,140 @@ export const discProfile = {
           `The Conscientious + Conscientious pair reaches exceptional precision and technical depth, above the market average. The friction is analysis paralysis: the perfectionism of both delays delivery in pursuit of a certainty that never arrives, and mutual review turns into constant remarks; the key is to agree in advance on the definition of done and a firm deadline to close the analysis. Well aligned, they produce impeccable controls and catch flaws any single profile would miss, as long as they trust each other's judgment instead of redoing everything.`,
       },
     },
+
+    // ── Behavioral profile PDF dossier ───────────────────────────────────────
+    dossier: {
+      coverKicker: 'Behavioral report',
+      coverTitle: 'Behavioral Profile',
+      coverSubtitle: 'Behavioral profile dossier',
+      generatedAt: 'Generated on',
+      roleLabel: 'Role',
+      method: {
+        title: 'About the method',
+        paragraphs: [
+          'A behavioral profile maps how each person tends to act, communicate and make decisions across four broad factors: Dominance, Influence, Steadiness and Conscientiousness. No factor is better than another, and no one is made of a single one. What changes from person to person is the blend and the intensity of each factor, and that mix is what gives rise to each individual behavioral style.',
+          'In everyday work, knowing this profile helps build more balanced teams, assign tasks according to what each person does most naturally, fine-tune communication between colleagues and reduce friction that often comes from nothing more than different ways of acting. It is a shared language for talking about behavior without labels and without judgment.',
+          'This dossier is a tool for self-awareness and professional development, not a clinical diagnosis or an aptitude test. The results reflect tendencies observed in the responses and may vary with context, life stage and personal growth. Use the readings that follow as a starting point for conversation and reflection, not as a final verdict on who you are.',
+        ],
+      },
+      profileSectionTitle: 'Your profile',
+      scoreTableTitle: 'Score by factor',
+      scoreTableSubtitle:
+        'Each factor is measured from 0 to 100. The higher the score, the more present that trait tends to be in your behavior.',
+      scoreLegendHigh: 'Predominant',
+      scoreLegendMid: 'Moderate',
+      scoreLegendLow: 'Less pronounced',
+      competenciesTitle: 'Behavioral competencies',
+      competenciesLead:
+        'From the blend of your factors, certain competencies tend to stand out naturally in the way you work.',
+      emotionalTitle: 'Emotional profile',
+      emotionalLead:
+        'How you tend to feel and react emotionally at work, based on your profile.',
+      inDepthTitle: 'Profile in depth',
+      styleTitle: 'Behavioral style',
+      careerTitle: 'Career motivators',
+      careerLead:
+        'What sustains your motivation over a career is also tied to your profile. Below is what tends to bring energy and meaning to the work of someone with a profile like yours.',
+      careerPrimaryLabel: 'Predominant factor',
+      careerSecondaryLabel: 'Supporting factor',
+      reflectionLabel: 'To reflect on',
+      downloadPdf: 'Download PDF',
+      generating: 'Generating PDF...',
+      footerDisclaimer:
+        'This document is a tool for self-awareness and professional development, not a clinical diagnosis. The results reflect tendencies and may change over time and with context.',
+    },
+
+    // ── Career motivators by dominant factor ─────────────────────────────────
+    careerMotivators: {
+      D: {
+        headline:
+          'A Dominance profile is motivated when it can decide, take on real challenges and see the outcome of its own effort show up clearly.',
+        points: [
+          {
+            title: 'Results and achievement',
+            body: 'Few things energize a D profile more than hitting ambitious goals and seeing the concrete impact of what they did. Environments that measure results, recognize those who deliver and offer clear targets to beat keep this person engaged. When work turns into predictable routine, with no next mountain to climb, motivation drops fast and they start looking for challenge elsewhere.',
+          },
+          {
+            title: 'Autonomy and command',
+            body: 'The D profile thrives when free to choose the path and take command of a front. Being micromanaged, needing permission for every step or waiting on slow approvals is deeply demotivating. A career that gives them room to lead, take calculated risks and answer for their own choices tends to hold this profile far longer.',
+          },
+          {
+            title: 'Challenge and fast growth',
+            body: 'Too much stability feels like stagnation to someone high in Dominance. They are motivated by paths where it is possible to grow fast, take on more responsibility quickly and be pushed accordingly. Leadership opportunities, hard projects and the problems no one else wants tend to attract rather than scare this profile.',
+          },
+        ],
+        questions: [
+          'In the career you are building, will you have real challenges and the autonomy to decide, or will you depend on others approval to act?',
+          'Will you be able to clearly see the outcome of your effort and be recognized for it?',
+        ],
+      },
+      I: {
+        headline:
+          'An Influence profile is motivated by interaction with people, by recognition and by lively, varied, collaborative environments.',
+        points: [
+          {
+            title: 'People and connection',
+            body: 'The I profile draws energy from being around people. Working surrounded by others, building relationships, persuading, energizing and bringing groups together is where they shine. Very solitary, purely technical roles with no human exchange tend to dim this profile over time, no matter how capable they are with the content. A career with plenty of interaction keeps the spark alive.',
+          },
+          {
+            title: 'Recognition and visibility',
+            body: 'Being seen and recognized matters a great deal to the I profile. They are motivated when good work is noticed publicly, when there is room to shine and when they feel their contribution is valued by the group. Environments that only recognize quietly, or that let effort go by with no feedback, sap this profile of motivation even when the pay is good.',
+          },
+          {
+            title: 'Variety and movement',
+            body: 'Rigid, repetitive routine weighs on the I profile. They are motivated by variety, new projects, new contacts and environments that shift and renew. A career with room to explore different fronts, join several initiatives and move among people and areas tends to hold this profile well, whereas rigid work leaves them restless.',
+          },
+        ],
+        questions: [
+          'Will the career you chose give you the contact with people and the variety you need to stay motivated?',
+          'Will you have recognition and room to influence, or risk being isolated in solitary technical work?',
+        ],
+      },
+      S: {
+        headline:
+          'A Steadiness profile is motivated by predictability, cooperation, belonging and a clear sense of purpose behind the work.',
+        points: [
+          {
+            title: 'Security and predictability',
+            body: 'The S profile performs best when it knows what to expect. A stable environment, with clear rules, a sustainable pace and well-communicated changes, gives them the base they need to fully commit. Abrupt, constant change, unannounced turnarounds and a climate of permanent uncertainty wear this profile down and sap their motivation, even when the technical challenge is interesting.',
+          },
+          {
+            title: 'Cooperation and belonging',
+            body: 'Being part of a close-knit team is a major driver for the S profile. They commit when they feel belonging, when relationships are built on trust and when they can support colleagues without a climate of rivalry. Highly competitive environments, where everyone pulls for themselves and conflict is constant, leave this profile uncomfortable and withdrawn, even if they never complain out loud.',
+          },
+          {
+            title: 'Purpose and lasting relationships',
+            body: 'The S profile is motivated when they see meaning in what they do and when they can build something for the long term. Stable relationships, a clear purpose and the sense of contributing to something larger sustain their dedication over the years. Constant context switching, projects that start and die with no continuity, and a lack of meaning drain this profile of motivation.',
+          },
+        ],
+        questions: [
+          'Does the career you followed offer the stability and sense of purpose you need to feel good at work?',
+          'Will you be part of a cooperative team with lasting relationships, or have to live with abrupt change and constant conflict?',
+        ],
+      },
+      C: {
+        headline:
+          'A Conscientiousness profile is motivated by quality, precision, technical specialization and clarity of rules and criteria.',
+        points: [
+          {
+            title: 'Quality and precision',
+            body: 'The C profile is motivated when it can do things well, with the care the subject deserves. High standards, attention to detail and work that holds up to the most rigorous review give meaning to their effort. Environments that accept constant improvisation, patchwork and good enough to pass deeply frustrate this profile, who sees a real risk in the lack of rigor.',
+          },
+          {
+            title: 'Specialization and depth',
+            body: 'Going deep into a domain, mastering the subject thoroughly and becoming a technical reference is a strong source of motivation for the C profile. They fulfill themselves when they can specialize, study, refine methods and answer for the part that demands solid knowledge. Careers that only require surface work, constant topic-hopping and no depth tend to leave this profile empty.',
+          },
+          {
+            title: 'Clarity of rules and criteria',
+            body: 'The C profile performs best when the rules are clear and the quality criteria are defined. Knowing exactly what is expected, with an objective basis to decide, gives them the confidence to move forward. Constant ambiguity, rules that change without explanation and demands for results with no clear standard create stress and stall this profile motivation.',
+          },
+        ],
+        questions: [
+          'Does the career you chose value the quality and technical depth you prize, or does it run on improvisation and haste?',
+          'Will you have clarity of rules and criteria, or have to live with the ambiguity that bothers you most?',
+        ],
+      },
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2035,6 +2325,16 @@ export const discProfile = {
       judgment: 'Criterio',
       security: 'Seguridad',
       discipline: 'Disciplina',
+    },
+    emotional: {
+      selfConfidence: 'Autoconfianza',
+      resilience: 'Resiliencia',
+      enthusiasm: 'Entusiasmo',
+      optimism: 'Optimismo',
+      sociability: 'Sociabilidad',
+      empathy: 'Empatía',
+      serenity: 'Serenidad',
+      selfControl: 'Autocontrol',
     },
     sections: {
       qualidades: 'Fortalezas',
@@ -2844,6 +3144,140 @@ export const discProfile = {
           'El dúo Conforme + Conforme alcanza una precisión y profundidad técnica excepcionales, por encima del promedio del mercado. El roce es la parálisis por análisis: el perfeccionismo de ambos demora la entrega en busca de una certeza que nunca llega, y la revisión mutua se vuelve observación constante; la clave es acordar de antemano el criterio de terminado y un plazo firme para cerrar el análisis. Bien alineados, producen controles impecables y detectan fallas que a cualquier perfil solo se le pasarían, siempre que confíen en el criterio del otro en lugar de rehacer todo.',
       },
     },
+
+    // ── Dosier PDF del perfil comportamental ─────────────────────────────────
+    dossier: {
+      coverKicker: 'Informe comportamental',
+      coverTitle: 'Perfil Comportamental',
+      coverSubtitle: 'Dosier de perfil comportamental',
+      generatedAt: 'Generado el',
+      roleLabel: 'Puesto',
+      method: {
+        title: 'Sobre el método',
+        paragraphs: [
+          'El perfil comportamental organiza la forma en que cada persona tiende a actuar, comunicarse y tomar decisiones en cuatro grandes factores: Dominancia, Influencia, Estabilidad y Conformidad. Ningún factor es mejor que otro, y nadie está hecho de uno solo. Lo que cambia de una persona a otra es la combinación y la intensidad de cada factor, y esa mezcla es la que da origen al estilo comportamental de cada individuo.',
+          'En el día a día del trabajo, conocer este perfil ayuda a formar equipos más equilibrados, repartir tareas según lo que cada persona hace con mayor naturalidad, ajustar la comunicación entre colegas y reducir roces que muchas veces nacen solo de estilos distintos de actuar. Es un lenguaje común para hablar de comportamiento sin etiquetas y sin juicios.',
+          'Este dosier es una herramienta de autoconocimiento y desarrollo profesional, no un diagnóstico clínico ni una prueba de aptitud. Los resultados reflejan tendencias observadas en las respuestas y pueden variar con el contexto, el momento de vida y la maduración de cada persona. Usa las lecturas siguientes como punto de partida para la conversación y la reflexión, no como un veredicto definitivo sobre quién eres.',
+        ],
+      },
+      profileSectionTitle: 'Tu perfil',
+      scoreTableTitle: 'Puntuación por factor',
+      scoreTableSubtitle:
+        'Cada factor se mide de 0 a 100. Cuanto mayor es la puntuación, más presente tiende a estar ese rasgo en tu comportamiento.',
+      scoreLegendHigh: 'Predominante',
+      scoreLegendMid: 'Moderado',
+      scoreLegendLow: 'Menos marcado',
+      competenciesTitle: 'Competencias comportamentales',
+      competenciesLead:
+        'A partir de la combinación de tus factores, algunas competencias tienden a destacar de forma natural en tu manera de trabajar.',
+      emotionalTitle: 'Perfil emocional',
+      emotionalLead:
+        'Cómo tiendes a sentir y reaccionar emocionalmente en el trabajo, a partir de tu perfil.',
+      inDepthTitle: 'Perfil en profundidad',
+      styleTitle: 'Estilo comportamental',
+      careerTitle: 'Motivadores de carrera',
+      careerLead:
+        'Lo que sostiene tu motivación a lo largo de la carrera también se relaciona con tu perfil. A continuación, lo que suele dar energía y sentido al trabajo de quien tiene un perfil como el tuyo.',
+      careerPrimaryLabel: 'Factor predominante',
+      careerSecondaryLabel: 'Factor de apoyo',
+      reflectionLabel: 'Para reflexionar',
+      downloadPdf: 'Descargar PDF',
+      generating: 'Generando PDF...',
+      footerDisclaimer:
+        'Este documento es una herramienta de autoconocimiento y desarrollo profesional, no un diagnóstico clínico. Los resultados reflejan tendencias y pueden cambiar con el tiempo y el contexto.',
+    },
+
+    // ── Motivadores de carrera por factor dominante ──────────────────────────
+    careerMotivators: {
+      D: {
+        headline:
+          'Un perfil de Dominancia se motiva cuando puede decidir, afrontar desafíos reales y ver con claridad el resultado de su propio esfuerzo.',
+        points: [
+          {
+            title: 'Resultado y logro',
+            body: 'Pocas cosas dan más energía a un perfil D que alcanzar metas ambiciosas y ver el impacto concreto de lo que hizo. Los entornos que miden resultados, reconocen a quien entrega y ofrecen objetivos claros para superar mantienen a esta persona comprometida. Cuando el trabajo se vuelve rutina previsible, sin una próxima montaña que escalar, la motivación cae rápido y empieza a buscar el desafío en otro lugar.',
+          },
+          {
+            title: 'Autonomía y mando',
+            body: 'El perfil D florece cuando tiene libertad para decidir el camino y asumir el mando de un frente. Ser microgestionado, tener que pedir permiso para cada paso o depender de aprobaciones lentas es profundamente desmotivador para él. Una carrera que le da espacio para liderar, correr riesgos calculados y responder por sus propias decisiones tiende a retener mucho más tiempo a este perfil.',
+          },
+          {
+            title: 'Desafío y crecimiento acelerado',
+            body: 'Demasiada estabilidad suena a estancamiento para quien tiene una Dominancia alta. Se motiva por trayectorias en las que es posible crecer rápido, asumir más responsabilidad en poco tiempo y ser exigido a la altura. Las oportunidades de liderazgo, los proyectos difíciles y los problemas que nadie quiere tomar suelen atraer, en lugar de asustar, a este perfil.',
+          },
+        ],
+        questions: [
+          'En la carrera que estás construyendo, ¿tendrás desafíos reales y autonomía para decidir, o dependerás de la aprobación de otros para actuar?',
+          '¿Podrás ver con claridad el resultado de tu esfuerzo y ser reconocido por él?',
+        ],
+      },
+      I: {
+        headline:
+          'Un perfil de Influencia se motiva por la interacción con las personas, por el reconocimiento y por entornos vivos, variados y colaborativos.',
+        points: [
+          {
+            title: 'Personas y conexión',
+            body: 'El perfil I gana energía en el contacto con la gente. Trabajar rodeado de personas, construir relaciones, convencer, animar y articular grupos es donde brilla. Las funciones muy solitarias, puramente técnicas y sin intercambio humano tienden a apagar poco a poco a este perfil, por más competente que sea en el contenido. Una carrera con bastante interacción mantiene la llama encendida.',
+          },
+          {
+            title: 'Reconocimiento y visibilidad',
+            body: 'Ser visto y reconocido importa mucho al perfil I. Se motiva cuando el buen trabajo se nota públicamente, cuando hay espacio para brillar y cuando siente que su aporte es valorado por el grupo. Los entornos que solo reconocen en silencio, o que dejan pasar el esfuerzo sin devolución, minan la motivación de este perfil aunque la remuneración sea buena.',
+          },
+          {
+            title: 'Variedad y movimiento',
+            body: 'La rutina rígida y repetitiva pesa sobre el perfil I. Se motiva con la variedad, los nuevos proyectos, los nuevos contactos y los entornos que cambian y se renuevan. Una carrera con espacio para explorar frentes distintos, participar en varias iniciativas y circular entre personas y áreas suele retener bien a este perfil, mientras que el trabajo encorsetado lo deja inquieto.',
+          },
+        ],
+        questions: [
+          '¿La carrera que elegiste te dará el trato con las personas y la variedad que necesitas para mantenerte motivado?',
+          '¿Tendrás reconocimiento y espacio para influir, o correrás el riesgo de quedar aislado en un trabajo técnico y solitario?',
+        ],
+      },
+      S: {
+        headline:
+          'Un perfil de Estabilidad se motiva por la previsibilidad, la cooperación, la pertenencia y un propósito claro detrás de lo que hace.',
+        points: [
+          {
+            title: 'Seguridad y previsibilidad',
+            body: 'El perfil S rinde más cuando sabe qué esperar. Un entorno estable, con reglas claras, ritmo sostenible y cambios bien comunicados, le da la base que necesita para dedicarse de verdad. Los cambios abruptos y constantes, los giros sin aviso y el clima de incertidumbre permanente desgastan a este perfil y minan su motivación, aun cuando el desafío técnico sea interesante.',
+          },
+          {
+            title: 'Cooperación y pertenencia',
+            body: 'Formar parte de un equipo unido es un gran motor para el perfil S. Se dedica cuando siente pertenencia, cuando las relaciones son de confianza y cuando puede apoyar a los colegas sin clima de disputa. Los entornos muy competitivos, donde cada uno tira para sí y el conflicto es constante, dejan a este perfil incómodo y retraído, aunque nunca se queje en voz alta.',
+          },
+          {
+            title: 'Propósito y relaciones duraderas',
+            body: 'El perfil S se motiva cuando ve sentido en lo que hace y cuando puede construir algo a largo plazo. Las relaciones estables, un propósito claro y la sensación de contribuir a algo mayor sostienen su dedicación a lo largo de los años. Los cambios constantes de contexto, los proyectos que empiezan y mueren sin continuidad y la falta de sentido vacían la motivación de este perfil.',
+          },
+        ],
+        questions: [
+          '¿La carrera que seguiste ofrece la estabilidad y el sentido de propósito que necesitas para sentirte bien en el trabajo?',
+          '¿Formarás parte de un equipo cooperativo y con relaciones duraderas, o tendrás que convivir con el cambio abrupto y el conflicto constante?',
+        ],
+      },
+      C: {
+        headline:
+          'Un perfil de Conformidad se motiva por la calidad, la precisión, la especialización técnica y la claridad de reglas y criterios.',
+        points: [
+          {
+            title: 'Calidad y precisión',
+            body: 'El perfil C se motiva cuando puede hacer las cosas bien hechas, con el cuidado que el asunto merece. Los estándares altos, la atención al detalle y el trabajo que resiste la revisión más rigurosa dan sentido a su esfuerzo. Los entornos que aceptan la improvisación constante, el parche y el suficientemente bueno para pasar frustran profundamente a este perfil, que ve en la falta de rigor un riesgo real.',
+          },
+          {
+            title: 'Especialización y profundidad',
+            body: 'Profundizar en un dominio, dominar el asunto a fondo y ser referencia técnica es una fuente fuerte de motivación para el perfil C. Se realiza cuando puede especializarse, estudiar, refinar métodos y responder por la parte que exige conocimiento sólido. Las carreras que solo exigen superficialidad, saltos constantes de tema y ninguna profundidad tienden a dejar vacío a este perfil.',
+          },
+          {
+            title: 'Claridad de reglas y criterios',
+            body: 'El perfil C rinde mejor cuando las reglas son claras y los criterios de calidad están definidos. Saber exactamente qué se espera, con base objetiva para decidir, le da seguridad para avanzar. La ambigüedad constante, las reglas que cambian sin explicación y la exigencia de resultados sin claridad de estándar generan estrés y traban la motivación de este perfil.',
+          },
+        ],
+        questions: [
+          '¿La carrera que elegiste valora la calidad y la profundidad técnica que aprecias, o vive de la improvisación y la prisa?',
+          '¿Tendrás claridad de reglas y criterios, o tendrás que convivir con la ambigüedad que más te incomoda?',
+        ],
+      },
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2941,6 +3375,16 @@ export const discProfile = {
       judgment: 'Jugement',
       security: 'Sécurité',
       discipline: 'Discipline',
+    },
+    emotional: {
+      selfConfidence: `Confiance en soi`,
+      resilience: `Résilience`,
+      enthusiasm: `Enthousiasme`,
+      optimism: `Optimisme`,
+      sociability: `Sociabilité`,
+      empathy: `Empathie`,
+      serenity: `Sérénité`,
+      selfControl: `Maîtrise de soi`,
     },
     sections: {
       qualidades: 'Forces',
@@ -3701,6 +4145,131 @@ export const discProfile = {
           `Convenez avant de commencer de ce qui est assez bon et du critère de fini, pour ne pas courir après une perfection qui bloque la livraison. Fixez des délais fermes et un point où l'analyse s'arrête et la décision se prend, même sans certitude totale. En relisant le travail de l'autre, équilibrez la critique avec la reconnaissance de ce qui est réussi, pour éviter l'usure de la remarque constante. Répartissez les responsabilités pour ne pas vérifier deux fois la même chose, en faisant confiance au jugement du partenaire au lieu de tout refaire soi-même.`,
         dynamic:
           `Le duo Conforme + Conforme atteint une précision et une profondeur technique exceptionnelles, au-dessus de la moyenne du marché. La friction, c'est la paralysie par l'analyse : le perfectionnisme des deux retarde la livraison en quête d'une certitude qui n'arrive jamais, et la relecture mutuelle devient une remarque constante ; la clé est de convenir à l'avance du critère de fini et d'un délai ferme pour clore l'analyse. Bien alignés, ils produisent des contrôles impeccables et repèrent des failles qu'un profil seul laisserait passer, à condition de faire confiance au jugement de l'autre au lieu de tout refaire.`,
+      },
+    },
+
+    // ── Dossier PDF du profil comportemental ─────────────────────────────────
+    dossier: {
+      coverKicker: `Rapport comportemental`,
+      coverTitle: `Profil Comportemental`,
+      coverSubtitle: `Dossier de profil comportemental`,
+      generatedAt: `Généré le`,
+      roleLabel: `Poste`,
+      method: {
+        title: `À propos de la méthode`,
+        paragraphs: [
+          `Le profil comportemental organise la façon dont chaque personne tend à agir, à communiquer et à décider selon quatre grands facteurs : Dominance, Influence, Stabilité et Conformité. Aucun facteur n'est meilleur qu'un autre, et personne n'est fait d'un seul. Ce qui change d'une personne à l'autre, c'est la combinaison et l'intensité de chaque facteur, et c'est ce mélange qui donne naissance au style comportemental de chacun.`,
+          `Au quotidien, connaître ce profil aide à former des équipes plus équilibrées, à répartir les tâches selon ce que chaque personne fait le plus naturellement, à ajuster la communication entre collègues et à réduire des frictions qui naissent souvent seulement de manières d'agir différentes. C'est un langage commun pour parler de comportement sans étiquettes et sans jugement.`,
+          `Ce dossier est un outil de connaissance de soi et de développement professionnel, non un diagnostic clinique ni un test d'aptitude. Les résultats reflètent des tendances observées dans les réponses et peuvent varier selon le contexte, le moment de vie et la maturité de chacun. Utilisez les lectures qui suivent comme point de départ pour la conversation et la réflexion, non comme un verdict définitif sur qui vous êtes.`,
+        ],
+      },
+      profileSectionTitle: `Votre profil`,
+      scoreTableTitle: `Score par facteur`,
+      scoreTableSubtitle: `Chaque facteur est mesuré de 0 à 100. Plus le score est élevé, plus ce trait tend à être présent dans votre comportement.`,
+      scoreLegendHigh: `Prédominant`,
+      scoreLegendMid: `Modéré`,
+      scoreLegendLow: `Moins marqué`,
+      competenciesTitle: `Compétences comportementales`,
+      competenciesLead: `À partir de la combinaison de vos facteurs, certaines compétences tendent à ressortir naturellement dans votre façon de travailler.`,
+      emotionalTitle: `Profil émotionnel`,
+      emotionalLead: `Comment vous tendez à ressentir et à réagir émotionnellement au travail, à partir de votre profil.`,
+      inDepthTitle: `Profil en profondeur`,
+      styleTitle: `Style comportemental`,
+      careerTitle: `Motivateurs de carrière`,
+      careerLead: `Ce qui soutient votre motivation tout au long de la carrière est aussi lié à votre profil. Voici ce qui apporte en général de l'énergie et du sens au travail d'une personne au profil comme le vôtre.`,
+      careerPrimaryLabel: `Facteur prédominant`,
+      careerSecondaryLabel: `Facteur d'appui`,
+      reflectionLabel: `À méditer`,
+      downloadPdf: `Télécharger le PDF`,
+      generating: `Génération du PDF...`,
+      footerDisclaimer: `Ce document est un outil de connaissance de soi et de développement professionnel, non un diagnostic clinique. Les résultats reflètent des tendances et peuvent évoluer avec le temps et le contexte.`,
+    },
+
+    // ── Motivateurs de carrière par facteur dominant ─────────────────────────
+    careerMotivators: {
+      D: {
+        headline: `Un profil de Dominance se motive quand il peut décider, relever de vrais défis et voir clairement le résultat de son propre effort.`,
+        points: [
+          {
+            title: `Résultat et accomplissement`,
+            body: `Peu de choses donnent plus d'énergie à un profil D qu'atteindre des objectifs ambitieux et voir l'impact concret de ce qu'il a fait. Les environnements qui mesurent les résultats, reconnaissent ceux qui livrent et offrent des cibles claires à dépasser gardent cette personne engagée. Quand le travail devient une routine prévisible, sans prochaine montagne à gravir, la motivation chute vite et il commence à chercher le défi ailleurs.`,
+          },
+          {
+            title: `Autonomie et commandement`,
+            body: `Le profil D s'épanouit lorsqu'il est libre de choisir la voie et de prendre le commandement d'un front. Être micro-géré, devoir demander la permission à chaque pas ou dépendre d'approbations lentes est profondément démotivant pour lui. Une carrière qui lui laisse l'espace de diriger, de prendre des risques calculés et de répondre de ses propres choix tend à retenir bien plus longtemps ce profil.`,
+          },
+          {
+            title: `Défi et croissance accélérée`,
+            body: `Trop de stabilité ressemble à de la stagnation pour qui a une Dominance élevée. Il se motive par des trajectoires où il est possible de grandir vite, de prendre plus de responsabilités en peu de temps et d'être exigé à la hauteur. Les occasions de leadership, les projets difficiles et les problèmes que personne ne veut prendre attirent, plutôt qu'ils n'effraient, ce profil.`,
+          },
+        ],
+        questions: [
+          `Dans la carrière que vous construisez, aurez-vous de vrais défis et l'autonomie de décider, ou dépendrez-vous de l'approbation des autres pour agir ?`,
+          `Pourrez-vous voir clairement le résultat de votre effort et être reconnu pour cela ?`,
+        ],
+      },
+      I: {
+        headline: `Un profil d'Influence se motive par l'interaction avec les personnes, par la reconnaissance et par des environnements vivants, variés et collaboratifs.`,
+        points: [
+          {
+            title: `Personnes et connexion`,
+            body: `Le profil I puise son énergie dans le contact avec les gens. Travailler entouré de personnes, nouer des relations, convaincre, animer et rassembler des groupes est là où il brille. Les fonctions très solitaires, purement techniques et sans échange humain tendent à éteindre peu à peu ce profil, aussi compétent soit-il sur le contenu. Une carrière avec beaucoup d'interaction garde la flamme allumée.`,
+          },
+          {
+            title: `Reconnaissance et visibilité`,
+            body: `Être vu et reconnu compte beaucoup pour le profil I. Il se motive quand le bon travail est remarqué publiquement, quand il y a de la place pour briller et quand il sent que sa contribution est valorisée par le groupe. Les environnements qui ne reconnaissent qu'en silence, ou qui laissent passer l'effort sans retour, minent la motivation de ce profil même si la rémunération est bonne.`,
+          },
+          {
+            title: `Variété et mouvement`,
+            body: `La routine rigide et répétitive pèse sur le profil I. Il se motive par la variété, les nouveaux projets, les nouveaux contacts et les environnements qui changent et se renouvellent. Une carrière avec de l'espace pour explorer différents fronts, participer à plusieurs initiatives et circuler entre personnes et domaines retient bien ce profil, tandis que le travail corseté le laisse agité.`,
+          },
+        ],
+        questions: [
+          `La carrière que vous avez choisie vous donnera-t-elle le contact avec les personnes et la variété dont vous avez besoin pour rester motivé ?`,
+          `Aurez-vous de la reconnaissance et de la place pour influencer, ou risquez-vous d'être isolé dans un travail technique et solitaire ?`,
+        ],
+      },
+      S: {
+        headline: `Un profil de Stabilité se motive par la prévisibilité, la coopération, l'appartenance et un sens clair du but derrière ce qu'il fait.`,
+        points: [
+          {
+            title: `Sécurité et prévisibilité`,
+            body: `Le profil S rend le mieux quand il sait à quoi s'attendre. Un environnement stable, avec des règles claires, un rythme soutenable et des changements bien communiqués, lui donne la base dont il a besoin pour s'investir vraiment. Les changements brusques et constants, les revirements sans préavis et un climat d'incertitude permanente usent ce profil et minent sa motivation, même quand le défi technique est intéressant.`,
+          },
+          {
+            title: `Coopération et appartenance`,
+            body: `Faire partie d'une équipe soudée est un grand moteur pour le profil S. Il s'investit quand il ressent l'appartenance, quand les relations sont fondées sur la confiance et quand il peut soutenir ses collègues sans climat de rivalité. Les environnements très compétitifs, où chacun tire pour soi et où le conflit est constant, laissent ce profil mal à l'aise et en retrait, même s'il ne se plaint jamais à voix haute.`,
+          },
+          {
+            title: `But et relations durables`,
+            body: `Le profil S se motive quand il voit du sens dans ce qu'il fait et quand il peut construire quelque chose sur le long terme. Des relations stables, un but clair et le sentiment de contribuer à quelque chose de plus grand soutiennent son dévouement au fil des années. Les changements de contexte constants, les projets qui commencent et meurent sans continuité et le manque de sens vident la motivation de ce profil.`,
+          },
+        ],
+        questions: [
+          `La carrière que vous avez suivie offre-t-elle la stabilité et le sens du but dont vous avez besoin pour vous sentir bien au travail ?`,
+          `Ferez-vous partie d'une équipe coopérative avec des relations durables, ou devrez-vous composer avec le changement brusque et le conflit constant ?`,
+        ],
+      },
+      C: {
+        headline: `Un profil de Conformité se motive par la qualité, la précision, la spécialisation technique et la clarté des règles et des critères.`,
+        points: [
+          {
+            title: `Qualité et précision`,
+            body: `Le profil C se motive quand il peut faire les choses bien faites, avec le soin que le sujet mérite. Des standards élevés, l'attention au détail et un travail qui résiste à la relecture la plus rigoureuse donnent du sens à son effort. Les environnements qui acceptent l'improvisation constante, le rafistolage et le assez bon pour passer frustrent profondément ce profil, qui voit dans le manque de rigueur un risque réel.`,
+          },
+          {
+            title: `Spécialisation et profondeur`,
+            body: `Approfondir un domaine, maîtriser le sujet à fond et devenir une référence technique est une forte source de motivation pour le profil C. Il s'accomplit quand il peut se spécialiser, étudier, affiner des méthodes et répondre de la partie qui exige un savoir solide. Les carrières qui n'exigent que de la superficialité, des sauts de thème constants et aucune profondeur tendent à laisser ce profil vide.`,
+          },
+          {
+            title: `Clarté des règles et des critères`,
+            body: `Le profil C rend le mieux quand les règles sont claires et les critères de qualité définis. Savoir exactement ce qui est attendu, avec une base objective pour décider, lui donne l'assurance d'avancer. L'ambiguïté constante, les règles qui changent sans explication et l'exigence de résultats sans clarté de standard créent du stress et bloquent la motivation de ce profil.`,
+          },
+        ],
+        questions: [
+          `La carrière que vous avez choisie valorise-t-elle la qualité et la profondeur technique que vous prisez, ou vit-elle d'improvisation et de hâte ?`,
+          `Aurez-vous la clarté des règles et des critères, ou devrez-vous composer avec l'ambiguïté qui vous gêne le plus ?`,
+        ],
       },
     },
   },

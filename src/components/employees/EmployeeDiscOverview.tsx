@@ -28,6 +28,8 @@ import { useDiscMessages } from '@/components/employees/disc/useDiscMessages';
 import { DiscGenerateLinkModal } from '@/components/employees/disc/DiscGenerateLinkModal';
 import { EmployeeProfileDetail } from '@/components/employees/EmployeeProfileDetail';
 import { EmployeeDiscCompare } from '@/components/employees/EmployeeDiscCompare';
+import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
+import { useViewMode } from '@/hooks/useViewMode';
 import type { Employee } from '@/hooks/useEmployees';
 import type { DiscScores } from '@/lib/disc/scoring';
 import type { DiscFactor } from '@/lib/disc/questions';
@@ -274,6 +276,91 @@ function EmployeeDiscCard({
   );
 }
 
+// ── Linha compacta da vista de lista ───────────────────────────────────────
+interface DiscListRowProps {
+  employee: Employee;
+  latestCompleted: DiscAssessment | null;
+  latestPending: DiscAssessment | null;
+  onSelect: (employeeId: string) => void;
+  isFirst: boolean;
+}
+
+function DiscListRow({ employee, latestCompleted, latestPending, onSelect, isFirst }: DiscListRowProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.form.disc.overview;
+  const { t: discT } = useDiscMessages();
+
+  const hasProfile = !!latestCompleted?.profile_code && !!latestCompleted?.scores;
+  const hasPending = !!latestPending;
+  const meta = hasProfile ? resolveProfile(latestCompleted!.profile_code!) : null;
+  const profileColor = meta ? FACTOR_COLOR[meta.primary] : undefined;
+
+  const initials = employee.name
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={`group flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors${!isFirst ? ' border-t border-border' : ''}`}
+      onClick={() => onSelect(employee.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(employee.id);
+        }
+      }}
+    >
+      {/* Avatar */}
+      <Avatar className="h-9 w-9 shrink-0">
+        <SignedAvatarImage src={employee.photo_url} alt={employee.name} />
+        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+
+      {/* Nome + cargo */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground truncate">{employee.name}</p>
+        {employee.position && (
+          <p className="text-xs text-muted-foreground truncate">{employee.position}</p>
+        )}
+      </div>
+
+      {/* Selo de perfil / estado */}
+      <div className="shrink-0">
+        {hasProfile && meta ? (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold text-white"
+            style={{ backgroundColor: profileColor }}
+          >
+            <span className="font-black tracking-wide">{latestCompleted!.profile_code}</span>
+            <span className="opacity-90 hidden sm:inline">
+              {(discT.profiles as Record<string, { nome: string }>)[meta.code]?.nome ?? meta.code}
+            </span>
+          </span>
+        ) : hasPending ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-semibold text-white">
+            <Clock className="h-3 w-3" />
+            {t.pending}
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+            {t.noProfile}
+          </span>
+        )}
+      </div>
+
+      {/* Seta de navegação */}
+      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+    </div>
+  );
+}
+
 // ── Componente principal ────────────────────────────────────────────────────
 export function EmployeeDiscOverview({
   employees,
@@ -286,6 +373,9 @@ export function EmployeeDiscOverview({
   const tToasts = MESSAGES[locale].app.employees.toasts;
 
   const { profilesByEmployee, isLoading, generateLink } = useCompanyDiscProfiles();
+
+  // Modo de exibição: 'grid' (cards, padrão original) ou 'list' (linhas compactas).
+  const [viewMode, setViewMode] = useViewMode('disc-overview-view-mode');
 
   // ID do funcionário cujo link está sendo gerado (para loading por card)
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
@@ -398,41 +488,68 @@ export function EmployeeDiscOverview({
 
   return (
     <>
-      {/* Barra superior: botão Comparar (canto superior direito) */}
-      {completedCount >= 2 && (
-        <div className="mb-4 flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setComparing(true)}
-          >
-            <GitCompareArrows className="h-4 w-4" />
-            {t.compare.button}
-          </Button>
+      {/* Barra superior: Comparar (esq.) + toggle Lista/Grade (dir.) */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div>
+          {completedCount >= 2 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setComparing(true)}
+            >
+              <GitCompareArrows className="h-4 w-4" />
+              {t.compare.button}
+            </Button>
+          )}
+        </div>
+        <ViewModeToggle value={viewMode} onChange={setViewMode} />
+      </div>
+
+      {/* Grid de cards */}
+      {viewMode === 'grid' && (
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+          {activeEmployees.map((emp) => {
+            const summary = profilesByEmployee[emp.id] ?? {
+              latestCompleted: null,
+              latestPending: null,
+            };
+            return (
+              <EmployeeDiscCard
+                key={emp.id}
+                employee={emp}
+                latestCompleted={summary.latestCompleted}
+                latestPending={summary.latestPending}
+                onSelect={selectEmployee}
+                onGenerateLink={handleGenerateLink}
+                isGenerating={generatingFor === emp.id}
+              />
+            );
+          })}
         </div>
       )}
 
-      {/* Grid de cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-        {activeEmployees.map((emp) => {
-          const summary = profilesByEmployee[emp.id] ?? {
-            latestCompleted: null,
-            latestPending: null,
-          };
-          return (
-            <EmployeeDiscCard
-              key={emp.id}
-              employee={emp}
-              latestCompleted={summary.latestCompleted}
-              latestPending={summary.latestPending}
-              onSelect={selectEmployee}
-              onGenerateLink={handleGenerateLink}
-              isGenerating={generatingFor === emp.id}
-            />
-          );
-        })}
-      </div>
+      {/* Vista de lista compacta */}
+      {viewMode === 'list' && (
+        <div className="rounded-xl border border-border overflow-hidden">
+          {activeEmployees.map((emp, idx) => {
+            const summary = profilesByEmployee[emp.id] ?? {
+              latestCompleted: null,
+              latestPending: null,
+            };
+            return (
+              <DiscListRow
+                key={emp.id}
+                employee={emp}
+                latestCompleted={summary.latestCompleted}
+                latestPending={summary.latestPending}
+                onSelect={selectEmployee}
+                isFirst={idx === 0}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Modal de confirmação antes de gerar o link (toggle show_result por avaliação) */}
       <DiscGenerateLinkModal

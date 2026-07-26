@@ -290,7 +290,8 @@ export function DiscLineChart({ scores, locale, className }: DiscLineChartProps)
               fontFamily: 'system-ui, sans-serif',
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
               pointerEvents: 'none',
-              maxWidth: 220,
+              width: 'max-content',
+              maxWidth: 280,
               zIndex: 10,
             }}
           >

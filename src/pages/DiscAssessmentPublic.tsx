@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, MousePointerClick, Sparkles } from 'lucide-react';
+import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, MousePointerClick, Sparkles, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
@@ -33,6 +33,8 @@ import { scoreAndClassify, type DiscScores } from '@/lib/disc/scoring';
 import { selectFormItems } from '@/lib/disc/formSelection';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { type LocaleCode } from '@/lib/i18n/locales';
+import { generateDiscDossierPdf } from '@/utils/discDossierPdf';
+import { openPdfInTab } from '@/utils/openPdfInTab';
 
 // SUPABASE_URL da mesma config do client — usado para montar a URL da edge pública.
 const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL as string;
@@ -111,6 +113,7 @@ export default function DiscAssessmentPublic() {
   const [step, setStep] = useState(0); // índice da afirmação atual
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<DiscSubmitResult | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Subconjunto determinístico de 28 itens para este formulário.
   // Seed = code do link → mesmo link sempre gera as mesmas perguntas (refresh seguro).
@@ -220,6 +223,52 @@ export default function DiscAssessmentPublic() {
     }
   };
 
+  // ── Baixar o dossiê PDF (fase result) ────────────────────────────────────────
+  // Idioma = locale já resolvido do payload (company_locale). Branding vem do
+  // payload; numa tela pública de tenant não há marca Dominex, então tratamos
+  // como white-label (marca do tenant). Abre a aba no gesto de clique.
+  const handleDownloadPdf = async () => {
+    const scores = (result?.scores ?? payload?.scores) as DiscScores | undefined;
+    const profileCode = result?.profile_code ?? payload?.profile_code ?? undefined;
+    if (!scores || !profileCode || !employeeFullName) return;
+
+    const w = window.open('', '_blank');
+    setDownloadingPdf(true);
+    try {
+      const generatedAtLabel = new Intl.DateTimeFormat(
+        locale === 'pt-br' ? 'pt-BR' : locale,
+        { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'America/Sao_Paulo' },
+      ).format(new Date());
+      const blob = await generateDiscDossierPdf({
+        scores,
+        profileCode,
+        employeeName: employeeFullName,
+        employeePosition: null,
+        branding: {
+          companyName: payload?.company_name ?? companyName,
+          logoUrl: payload?.logo_url ?? null,
+          // Tela pública de tenant: nunca assina Dominex, sempre marca do tenant.
+          isWhiteLabel: true,
+        },
+        locale,
+        generatedAtLabel,
+      });
+      const slug =
+        employeeFullName
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'funcionario';
+      openPdfInTab(blob, `perfil-comportamental-${slug}`, w);
+    } catch (err) {
+      if (w && !w.closed) w.close();
+      console.error('[DiscDossierPdf] falha ao gerar o dossiê (público):', err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   // Handler de Enter global (window) durante o passo de perguntas.
   // Avança pra próxima pergunta (ou envia na última). Ignora Enter se submitting.
   // O DiscScaleSlider não usa Enter (usa ←/→/Home/End/1-5), então não há conflito.
@@ -303,9 +352,26 @@ export default function DiscAssessmentPublic() {
     // Usa o resultado do submit (recém-respondido) ou o do payload (já respondido).
     const scores = (result?.scores ?? payload?.scores) as DiscScores | undefined;
     const profileCode = result?.profile_code ?? payload?.profile_code ?? undefined;
+    const dossierUi = (tr as any).dossier;
     body = scores && profileCode ? (
       <div className="py-2">
-        <h2 className="mb-4 text-center text-lg font-bold text-foreground">{tr.ui.resultTitle}</h2>
+        <div className="mb-4 flex flex-col items-center gap-3">
+          <h2 className="text-center text-lg font-bold text-foreground">{tr.ui.resultTitle}</h2>
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            disabled={downloadingPdf}
+            onClick={handleDownloadPdf}
+          >
+            {downloadingPdf ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {downloadingPdf ? dossierUi?.generating : dossierUi?.downloadPdf}
+          </Button>
+        </div>
         <DiscReport scores={scores} profileCode={profileCode} locale={locale} variant="full" />
       </div>
     ) : null;
