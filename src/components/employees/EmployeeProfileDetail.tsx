@@ -357,7 +357,7 @@ function InteractionsTab({
 
           {/* Parágrafo de dinâmica do par — em destaque, largura de leitura, antes dos pontos */}
           {rel.dynamic && (
-            <p className="mx-auto max-w-prose rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground">
+            <p className="w-full rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground">
               {rel.dynamic}
             </p>
           )}

@@ -248,7 +248,7 @@ export function DiscReport({
             leitura confortavel. Tela-documento clara, entao text-foreground
             resolve correto. So renderiza se o perfil tiver biografia. ── */}
         {bioParagraphs.length > 0 && (
-          <section className="mx-auto max-w-prose">
+          <section className="w-full">
             <div className="mb-3 flex items-center gap-2.5">
               <span
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
