@@ -340,6 +340,57 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
     scheduleSave();
   }, [selectedNodeId, setNodes, setEdges, scheduleSave]);
 
+  // Herda setor/cor do nó de origem quando o "+" foi acionado (quick-add).
+  const inheritFromOrigin = useMemo(() => {
+    if (!pendingQuickAdd) return { sector: undefined, sectorColor: undefined };
+    const origin = nodes.find((n) => n.id === pendingQuickAdd.nodeId);
+    return {
+      sector: origin?.data.sector,
+      sectorColor: origin?.data.sectorColor,
+    };
+  }, [pendingQuickAdd, nodes]);
+
+  // BFS que coleta todos os IDs de descendentes de um nó (segue source→target).
+  const getDescendantIds = useCallback(
+    (nodeId: string): string[] => {
+      const childrenOf = new Map<string, string[]>();
+      for (const e of edges) {
+        if (!childrenOf.has(e.source)) childrenOf.set(e.source, []);
+        childrenOf.get(e.source)!.push(e.target);
+      }
+      const result: string[] = [];
+      const visited = new Set<string>([nodeId]);
+      const queue = [...(childrenOf.get(nodeId) ?? [])];
+      while (queue.length) {
+        const cur = queue.shift()!;
+        if (visited.has(cur)) continue; // guarda de ciclo
+        visited.add(cur);
+        result.push(cur);
+        for (const child of childrenOf.get(cur) ?? []) {
+          if (!visited.has(child)) queue.push(child);
+        }
+      }
+      return result;
+    },
+    [edges],
+  );
+
+  // Propaga sector+sectorColor do nó selecionado para todos os descendentes.
+  const applyToDescendants = useCallback(() => {
+    if (!selectedNodeId) return;
+    const origin = nodes.find((n) => n.id === selectedNodeId);
+    if (!origin) return;
+    const { sector, sectorColor } = origin.data;
+    const ids = getDescendantIds(selectedNodeId);
+    if (ids.length === 0) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        ids.includes(n.id) ? { ...n, data: { ...n.data, sector, sectorColor } } : n,
+      ),
+    );
+    scheduleSave();
+  }, [selectedNodeId, nodes, getDescendantIds, setNodes, scheduleSave]);
+
   const quickAddValue = useMemo(
     () => ({ onQuickAdd: handleQuickAdd, enabled: !isMobile, addLabel: t.toolbar.addNode }),
     [handleQuickAdd, isMobile, t.toolbar.addNode],
@@ -501,6 +552,8 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
                     onChange={updateSelected}
                     onDelete={deleteSelected}
                     onClose={() => setSelectedNodeId(null)}
+                    onApplyToDescendants={applyToDescendants}
+                    hasDescendants={getDescendantIds(selectedNode.id).length > 0}
                     t={t}
                     floating
                   />
@@ -519,6 +572,8 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
             onChange={updateSelected}
             onDelete={deleteSelected}
             onClose={() => setSelectedNodeId(null)}
+            onApplyToDescendants={applyToDescendants}
+            hasDescendants={getDescendantIds(selectedNode.id).length > 0}
             t={t}
           />
         )}
@@ -532,6 +587,8 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
         }}
         employees={employees}
         onAdd={addNode}
+        inheritSector={inheritFromOrigin.sector}
+        inheritColor={inheritFromOrigin.sectorColor}
         t={t}
       />
       </OrgQuickAddProvider>
@@ -545,10 +602,14 @@ interface AddNodeModalProps {
   onOpenChange: (o: boolean) => void;
   employees: Employee[];
   onAdd: (data: OrgNodeData) => void;
+  /** Setor herdado do nó pai quando o modal abre via quick-add "+" */
+  inheritSector?: string;
+  /** Cor herdada do nó pai quando o modal abre via quick-add "+" */
+  inheritColor?: string;
   t: any;
 }
 
-function AddNodeModal({ open, onOpenChange, employees, onAdd, t }: AddNodeModalProps) {
+function AddNodeModal({ open, onOpenChange, employees, onAdd, inheritSector, inheritColor, t }: AddNodeModalProps) {
   const [tab, setTab] = useState<'employee' | 'manual'>('employee');
   const [search, setSearch] = useState('');
   const [manualName, setManualName] = useState('');
@@ -562,9 +623,11 @@ function AddNodeModal({ open, onOpenChange, employees, onAdd, t }: AddNodeModalP
       setSearch('');
       setManualName('');
       setManualRole('');
-      setSector('');
-      setColor('');
+      // Pré-preenche com os valores do pai quando vem de um quick-add.
+      setSector(inheritSector ?? '');
+      setColor(inheritColor ?? '');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const filtered = employees.filter(
@@ -677,11 +740,15 @@ interface EditPanelProps {
   onChange: (patch: Partial<OrgNodeData>) => void;
   onDelete: () => void;
   onClose: () => void;
+  /** Propaga setor+cor do nó atual para todos os descendentes. */
+  onApplyToDescendants: () => void;
+  /** true quando o nó tem ao menos um descendente (via aresta). */
+  hasDescendants: boolean;
   t: any;
   floating?: boolean;
 }
 
-function EditPanel({ node, employeesById, onChange, onDelete, onClose, t, floating }: EditPanelProps) {
+function EditPanel({ node, employeesById, onChange, onDelete, onClose, onApplyToDescendants, hasDescendants, t, floating }: EditPanelProps) {
   const d = node.data;
   const isEmployee = d.kind === 'employee';
   const emp = isEmployee && d.employeeId ? employeesById[d.employeeId] : undefined;
@@ -739,10 +806,15 @@ function EditPanel({ node, employeesById, onChange, onDelete, onClose, t, floati
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 flex items-center gap-2">
         <Button variant="destructive" size="sm" onClick={onDelete}>
           {t.editPanel.deleteNode}
         </Button>
+        {hasDescendants && (
+          <Button variant="outline" size="sm" onClick={onApplyToDescendants}>
+            {t.editPanel.applyToDescendants}
+          </Button>
+        )}
       </div>
     </div>
   );
