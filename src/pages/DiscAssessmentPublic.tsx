@@ -25,6 +25,7 @@ import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, M
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
+import { StepTransition } from '@/components/ui/step-transition';
 import { DiscReport } from '@/components/employees/disc/DiscReport';
 import { DiscScaleSlider } from '@/components/employees/disc/DiscScaleSlider';
 import { DiscChoiceSelect } from '@/components/employees/disc/DiscChoiceSelect';
@@ -465,101 +466,193 @@ export default function DiscAssessmentPublic() {
     const progressPct = Math.round(((step + 1) / total) * 100);
 
     body = (
-      <div className="flex flex-col gap-5 py-4">
-        {/* Barra de progresso */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{tr.ui.progress.replace('{current}', String(step + 1)).replace('{total}', String(total))}</span>
-            <span>{progressPct}%</span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${progressPct}%`, backgroundColor: brandColor || '#00C684' }}
-            />
-          </div>
-        </div>
-
-        {/* Pergunta: alternativa (forced-choice) OU escala (Likert) */}
-        {isChoice ? (
-          <DiscChoiceSelect
-            key={item.id}
-            prompt={tr.choiceItems[item.id as keyof typeof tr.choiceItems].prompt}
-            options={tr.choiceItems[item.id as keyof typeof tr.choiceItems].options}
-            value={current as DiscFactor | undefined}
-            onChange={(f) => setAnswers((a) => ({ ...a, [item.id]: f }))}
-            seed={`${code ?? 'default'}|${item.id}`}
+      /*
+       * Layout de perguntas:
+       * 1. Barra de progresso: fixa no TOPO do conteúdo (não centralizada).
+       * 2. Miolo (enunciado + controle de resposta): centralizado verticalmente
+       *    no espaço restante.
+       * 3. Navegação desktop: inline (hidden no mobile).
+       * 4. FABs mobile: fixed nos cantos inferiores (lg:hidden), definidos
+       *    abaixo como JSX separado e adicionados via fragment.
+       *
+       * Padding-bottom em mobile: pb-24 no miolo garante que nada fique
+       * escondido atrás dos FABs fixos.
+       */
+      <>
+        {/* ── Cabeçalho PADRÃO (sem a parte verde/colorida do topo) ── */}
+        <div className="pt-4 pb-1 text-center">
+          <h1 className="text-lg font-bold text-foreground leading-snug">{tr.ui.introTitle}</h1>
+          <div
+            className="mx-auto mt-2 h-1 w-10 rounded-full"
+            style={{ backgroundColor: brandColor || '#00C684' }}
           />
-        ) : (
-          <>
-            {/* Afirmação */}
-            <p className="min-h-[3.5rem] text-center text-lg font-semibold text-foreground">
-              {tr.items[item.id as keyof typeof tr.items]}
-            </p>
-            {/* Barra arrastável Likert 1–5 */}
-            <DiscScaleSlider
-              key={item.id}
-              value={typeof current === 'number' ? current : undefined}
-              onChange={selectAnswer}
-              labels={tr.scale}
-              ariaLabel={tr.items[item.id as keyof typeof tr.items]}
-            />
-          </>
-        )}
-
-        {/* Navegação */}
-        <div className="flex items-center justify-between gap-2 pt-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="gap-1.5"
-            disabled={step === 0}
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-          >
-            <ArrowLeft className="h-4 w-4" /> {tr.ui.back}
-          </Button>
-          {isLast ? (
-            <Button
-              type="button"
-              className="gap-1.5"
-              disabled={submitting || !answered}
-              style={brandColor ? { backgroundColor: brandColor, color: '#fff' } : undefined}
-              onClick={handleSubmit}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> {tr.ui.submitting}
-                </>
-              ) : (
-                <>
-                  {tr.ui.submit} <Check className="h-4 w-4" />
-                </>
-              )}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              disabled={!answered}
-              onClick={() => setStep((s) => Math.min(total - 1, s + 1))}
-            >
-              {tr.ui.next} <ArrowRight className="h-4 w-4" />
-            </Button>
-          )}
         </div>
-      </div>
+
+        {/* ── GRUPO CENTRALIZADO: progresso + pergunta + resposta juntos e
+             centralizados verticalmente no espaço restante (mobile). O pb generoso
+             garante que nada fique escondido atrás dos FABs + rodapé sticky. ── */}
+        <div className="flex flex-col justify-center min-h-[calc(100dvh-170px)] lg:min-h-0 pb-24 lg:pb-0">
+          {/* Progresso — colado à pergunta */}
+          <div className="space-y-2 pb-4">
+            <div className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
+              <span>{tr.ui.progress.replace('{current}', String(step + 1)).replace('{total}', String(total))}</span>
+              <span>{progressPct}%</span>
+            </div>
+            <div className="h-3.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${progressPct}%`, backgroundColor: brandColor || '#00C684' }}
+              />
+            </div>
+          </div>
+
+          <StepTransition
+            stepKey={`q-${step}`}
+            index={step}
+            animateInitial
+            className="flex flex-col gap-5"
+          >
+            {/* Pergunta: alternativa (forced-choice) OU escala (Likert) */}
+            {isChoice ? (
+              <DiscChoiceSelect
+                key={item.id}
+                prompt={tr.choiceItems[item.id as keyof typeof tr.choiceItems].prompt}
+                options={tr.choiceItems[item.id as keyof typeof tr.choiceItems].options}
+                value={current as DiscFactor | undefined}
+                onChange={(f) => setAnswers((a) => ({ ...a, [item.id]: f }))}
+                seed={`${code ?? 'default'}|${item.id}`}
+              />
+            ) : (
+              <>
+                {/* Afirmação — grande e extrabold (foco da tela) */}
+                <p className="min-h-[3.5rem] text-center text-2xl sm:text-3xl font-extrabold leading-snug text-foreground px-1">
+                  {tr.items[item.id as keyof typeof tr.items]}
+                </p>
+                {/* Barra arrastável Likert 1–5 */}
+                <DiscScaleSlider
+                  key={item.id}
+                  value={typeof current === 'number' ? current : undefined}
+                  onChange={selectAnswer}
+                  labels={tr.scale}
+                  ariaLabel={tr.items[item.id as keyof typeof tr.items]}
+                />
+              </>
+            )}
+
+            {/* Navegação DESKTOP — inline, oculta no mobile */}
+            <div className="hidden lg:flex items-center justify-between gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                disabled={step === 0}
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+              >
+                <ArrowLeft className="h-4 w-4" /> {tr.ui.back}
+              </Button>
+              {isLast ? (
+                <Button
+                  type="button"
+                  className="gap-1.5"
+                  disabled={submitting || !answered}
+                  style={brandColor ? { backgroundColor: brandColor, color: '#fff' } : undefined}
+                  onClick={handleSubmit}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> {tr.ui.submitting}
+                    </>
+                  ) : (
+                    <>
+                      {tr.ui.submit} <Check className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={!answered}
+                  onClick={() => setStep((s) => Math.min(total - 1, s + 1))}
+                >
+                  {tr.ui.next} <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </StepTransition>
+        </div>
+
+        {/* ── FABs MOBILE — fixed nos cantos inferiores, lg:hidden ── */}
+        {/* Voltar: canto inferior esquerdo, vermelho (destructive) */}
+        {step > 0 && (
+          <button
+            type="button"
+            aria-label={tr.ui.back}
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            className="lg:hidden fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 z-50 flex items-center gap-2 rounded-2xl bg-destructive px-4 py-3 shadow-lg active:scale-95 transition-transform"
+          >
+            <ArrowLeft className="h-5 w-5 text-white" aria-hidden />
+            <span className="text-sm font-bold text-white">{tr.ui.back}</span>
+          </button>
+        )}
+        {/* Avançar / Enviar: canto inferior direito, verde (emerald) */}
+        {isLast ? (
+          <button
+            type="button"
+            aria-label={submitting ? tr.ui.submitting : tr.ui.submit}
+            disabled={submitting || !answered}
+            onClick={handleSubmit}
+            className="lg:hidden fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex items-center gap-2 rounded-2xl px-4 py-3 shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: answered && !submitting ? (brandColor || '#00C684') : undefined }}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-5 w-5 text-white animate-spin" aria-hidden />
+                <span className="text-sm font-bold text-white">{tr.ui.submitting}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-bold text-white">{tr.ui.submit}</span>
+                <Check className="h-5 w-5 text-white" aria-hidden />
+              </>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={tr.ui.next}
+            disabled={!answered}
+            onClick={() => setStep((s) => Math.min(total - 1, s + 1))}
+            className="lg:hidden fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 shadow-lg transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span className="text-sm font-bold text-white">{tr.ui.next}</span>
+            <ArrowRight className="h-5 w-5 text-white" aria-hidden />
+          </button>
+        )}
+      </>
     );
   }
+
+  // ── Configuração do header por fase ──────────────────────────────────────────
+  // intro (capa) E questions: SEM o header verde/branded do shell — a capa tem o
+  //   hero próprio, e a fase de perguntas usa um cabeçalho plano (sem cor) no corpo.
+  // demais fases (thanks/result): header padrão do shell.
+  const isIntro = phase === 'intro';
+  const hideBrandedHeader = isIntro || phase === 'questions';
+  const shellTitle = employeeFullName ?? companyName;
+  const shellSubtitle = tr.ui.introTitle;
 
   return (
     <PublicPortalShell
       brandColor={brandColor}
       logoUrl={headerLogoUrl}
-      title={employeeFullName ?? companyName}
-      subtitle={tr.ui.introTitle}
+      title={shellTitle}
+      subtitle={shellSubtitle}
+      hideHeader={hideBrandedHeader}
+      alwaysShowFooter
     >
       {/*
         Imagem oculta usada apenas para detectar falha de carregamento da foto.

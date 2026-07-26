@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.41',
+    date: '27 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Teste de Perfil Comportamental mais confortável no celular',
+        description: 'A tela que o funcionário usa para responder o teste de Perfil Comportamental ganhou uma repaginada no celular: as perguntas ficaram maiores e centralizadas, as opções de múltipla escolha agora têm letras A, B, C e D e destacam ao serem escolhidas, os botões de Voltar e Avançar ficaram fixos e fáceis de tocar, e há uma animação suave ao passar de uma pergunta para a outra.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Rodapé dos portais públicos acompanhando o tema claro',
+        description: 'Nos portais públicos (teste de perfil, portal do cliente e do contrato), o rodapé fixo com a versão e o copyright agora segue o tema claro da página, em vez de aparecer escuro e destoando do restante da tela.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.40',
     date: '26 de julho de 2026',
     type: 'patch',

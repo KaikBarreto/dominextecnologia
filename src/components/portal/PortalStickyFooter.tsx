@@ -1,5 +1,4 @@
 import { SystemFooter } from '@/components/layout/SystemFooter';
-import { PORTAL_FOOTER_GRADIENT } from './portalTheme';
 
 interface PortalStickyFooterProps {
   /** Linha de status exibida acima do CTA (ex.: "Proxima manutencao 18/07"). */
@@ -15,10 +14,12 @@ interface PortalStickyFooterProps {
 }
 
 /**
- * Rodape sticky escuro dos portais publicos.
+ * Rodape sticky dos portais publicos.
  *
- * Padrao visual identico ao rodape do PontoPublico / TechnicianOS:
- *   - Degrede preto-cinza (#0a0a0a -> #27272a).
+ * Segue o TEMA da pagina (portais forcam tema claro -> rodape claro), pra nao
+ * gerar contraste escuro sobre o conteudo claro. Se a tela fosse escura, os
+ * tokens (bg-card/border/muted) acompanhariam. Regua CEO 2026-07-27.
+ *   - Fundo claro (bg-card) + borda superior sutil.
  *   - Status opcional acima do CTA.
  *   - CTA grande com a cor de marca da empresa.
  *   - SystemFooter (versao + "Desenvolvido por Auctus") na base.
@@ -36,15 +37,14 @@ export function PortalStickyFooter({
 
   return (
     <div
-      className="sticky bottom-0 left-0 right-0 z-30 border-t border-white/10 shadow-[0_-4px_16px_rgba(0,0,0,0.25)] overflow-hidden"
+      className="sticky bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)] overflow-hidden"
       style={{
-        background: PORTAL_FOOTER_GRADIENT,
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
       <div className="px-4 pt-4 pb-3 space-y-3">
         {status && (
-          <p className="text-xs text-zinc-300 text-center">{status}</p>
+          <p className="text-xs text-muted-foreground text-center">{status}</p>
         )}
         {ctaLabel && (
           <button
@@ -57,7 +57,7 @@ export function PortalStickyFooter({
           </button>
         )}
         <div className="pt-0.5">
-          <SystemFooter variant="dark" />
+          <SystemFooter variant="light" />
         </div>
       </div>
     </div>

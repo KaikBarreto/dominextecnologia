@@ -78,6 +78,25 @@ interface PublicPortalShellProps {
   onFooterCta?: () => void;
   /** Rotulo da secao de navegacao na sidebar desktop (ex.: "Menu"). Traduzido pelo consumidor. */
   navLabel?: string;
+  /**
+   * Oculta o header sticky branded (opt-in). Default: false (header sempre visivel).
+   * Usado por telas que ja tem um hero proprio no corpo (ex.: capa do DISC),
+   * evitando duplicar a identidade no topo.
+   */
+  hideHeader?: boolean;
+  /**
+   * Inverte a enfase do header (opt-in). Default: false.
+   * Quando true: o `title` vira o elemento PRINCIPAL (maior/negrito) e o `subtitle`
+   * fica com peso leve ABAIXO; o avatar/logo e des-enfatizado (menor). Usado quando
+   * o titulo (nome do teste) importa mais que a pessoa/empresa do avatar.
+   */
+  emphasizeTitle?: boolean;
+  /**
+   * Renderiza o rodape (SystemFooter) sticky em MOBILE e DESKTOP mesmo sem CTA (opt-in).
+   * Default: false (comportamento atual — rodape mobile sempre; desktop so com CTA/status).
+   * Usado por telas sem CTA que ainda querem o copyright/Auctus fixo no rodape.
+   */
+  alwaysShowFooter?: boolean;
   /** Conteudo principal (corpo rolavel). */
   children: ReactNode;
 }
@@ -118,6 +137,9 @@ export function PublicPortalShell({
   footerCtaLabel,
   onFooterCta,
   navLabel = 'Menu',
+  hideHeader = false,
+  emphasizeTitle = false,
+  alwaysShowFooter = false,
   children,
 }: PublicPortalShellProps) {
   // Forca tema claro para que todos os tokens (bg-card, bg-background, etc.)
@@ -159,11 +181,14 @@ export function PublicPortalShell({
   //   grid de 3 colunas), com `position: sticky bottom-0`. Isso garante que
   //   ele SEMPRE fica visivel no fundo da viewport enquanto o usuario rola —
   //   independente de overflow-x: clip em qualquer ancestral.
-  const hasDesktopFooter = !!(footerCtaLabel || footerStatus);
+  // Desktop mostra o rodape quando ha CTA/status OU quando o consumidor pediu
+  // alwaysShowFooter (rodape so-copyright fixo, sem CTA).
+  const hasDesktopFooter = !!(footerCtaLabel || footerStatus || alwaysShowFooter);
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-muted/40">
-      {/* ── Header branded ── */}
+      {/* ── Header branded (opt-out via hideHeader) ── */}
+      {!hideHeader && (
       <div
         ref={headerRef}
         className="sticky top-0 z-20 rounded-b-3xl lg:rounded-b-2xl shadow-md overflow-hidden"
@@ -179,8 +204,14 @@ export function PublicPortalShell({
           }}
         />
 
-        {/* Conteudo interno — centralizado, max-w-screen-2xl no desktop */}
-        <div className="relative px-4 pt-6 pb-5 text-center mx-auto w-full lg:max-w-screen-2xl lg:px-8">
+        {/* Conteudo interno — centralizado, max-w-screen-2xl no desktop.
+            Em modo emphasizeTitle o header fica MAIS compacto (pt/pb menores). */}
+        <div
+          className={cn(
+            'relative text-center mx-auto w-full lg:max-w-screen-2xl px-4 lg:px-8',
+            emphasizeTitle ? 'pt-4 pb-4' : 'pt-6 pb-5',
+          )}
+        >
           {/* Acao(oes) secundaria(s) no canto superior direito — flex para multiplos botoes */}
           {headerAction && (
             <div className="absolute right-3 lg:right-8 top-[calc(env(safe-area-inset-top)+0.75rem)] flex items-center gap-2">
@@ -188,31 +219,63 @@ export function PublicPortalShell({
             </div>
           )}
 
-          {/* Logo da empresa */}
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={title}
-              className="mx-auto mb-2 h-14 w-14 rounded-full object-contain border-2 border-white/40 shadow-sm bg-white/10"
-            />
+          {emphasizeTitle ? (
+            <>
+              {/* Enfase no TITULO: avatar des-enfatizado (pequeno, inline com o subtitulo).
+                  Titulo grande e negrito como elemento principal; subtitulo (nome) leve abaixo. */}
+              <h1
+                className="text-lg sm:text-xl font-extrabold leading-tight tracking-tight"
+                style={{ color: textColor }}
+              >
+                {title}
+              </h1>
+              {subtitle && (
+                <div className="mt-1.5 flex items-center justify-center gap-2">
+                  {logoUrl && (
+                    <img
+                      src={logoUrl}
+                      alt=""
+                      aria-hidden
+                      className="h-6 w-6 rounded-full object-contain border border-white/40 bg-white/10 shrink-0"
+                    />
+                  )}
+                  <p className="text-sm font-medium opacity-90" style={{ color: textColor }}>
+                    {subtitle}
+                  </p>
+                </div>
+              )}
+              {badge && <div className="mt-2 flex justify-center">{badge}</div>}
+            </>
           ) : (
-            <div
-              className="mx-auto mb-2 h-14 w-14 rounded-full border-2 border-white/40 shadow-sm"
-              style={{ background: 'rgba(255,255,255,0.12)' }}
-            />
-          )}
+            <>
+              {/* Logo da empresa */}
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={title}
+                  className="mx-auto mb-2 h-14 w-14 rounded-full object-contain border-2 border-white/40 shadow-sm bg-white/10"
+                />
+              ) : (
+                <div
+                  className="mx-auto mb-2 h-14 w-14 rounded-full border-2 border-white/40 shadow-sm"
+                  style={{ background: 'rgba(255,255,255,0.12)' }}
+                />
+              )}
 
-          <h1 className="text-base font-extrabold leading-tight" style={{ color: textColor }}>
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-xs mt-0.5 opacity-85" style={{ color: textColor }}>
-              {subtitle}
-            </p>
+              <h1 className="text-base font-extrabold leading-tight" style={{ color: textColor }}>
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="text-xs mt-0.5 opacity-85" style={{ color: textColor }}>
+                  {subtitle}
+                </p>
+              )}
+              {badge && <div className="mt-2 flex justify-center">{badge}</div>}
+            </>
           )}
-          {badge && <div className="mt-2 flex justify-center">{badge}</div>}
         </div>
       </div>
+      )}
 
       {/* ── Grid responsivo ── */}
       <div

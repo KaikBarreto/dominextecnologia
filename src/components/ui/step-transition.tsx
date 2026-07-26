@@ -26,12 +26,24 @@ export interface StepTransitionProps {
   index: number;
   children: React.ReactNode;
   className?: string;
+  /**
+   * Anima também a PRIMEIRA renderização (mount inicial). Default: false
+   * (comportamento atual — só anima trocas, não a montagem). Útil quando o
+   * step-transition monta como entrada de uma tela nova (ex.: capa → 1ª pergunta).
+   */
+  animateInitial?: boolean;
 }
 
 const EASE: [number, number, number, number] = [0.4, 0, 0.2, 1];
 const OFFSET = 24;
 
-export function StepTransition({ stepKey, index, children, className }: StepTransitionProps) {
+export function StepTransition({
+  stepKey,
+  index,
+  children,
+  className,
+  animateInitial = false,
+}: StepTransitionProps) {
   const reduceMotion = useReducedMotion();
 
   // Index anterior pra inferir a direção. Inicializa com o atual pra que a
@@ -49,7 +61,7 @@ export function StepTransition({ stepKey, index, children, className }: StepTran
   const exitX = reduceMotion ? 0 : direction * -OFFSET;
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="wait" initial={animateInitial}>
       <motion.div
         key={stepKey}
         className={className}

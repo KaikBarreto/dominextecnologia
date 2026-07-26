@@ -94,15 +94,18 @@ export function DiscChoiceSelect({
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
-      {/* Enunciado */}
-      <p className="min-h-[3rem] text-center text-lg font-semibold text-foreground">
+      {/* Enunciado — grande e extrabold (foco da tela, mesma régua do Likert) */}
+      <p className="min-h-[3rem] text-center text-2xl sm:text-3xl font-extrabold leading-snug text-foreground px-1">
         {prompt}
       </p>
 
       {/* Opções (radiogroup) */}
       <div role="radiogroup" aria-label={prompt} className="flex flex-col gap-2.5">
-        {order.map((factor) => {
+        {order.map((factor, idx) => {
           const selected = value === factor;
+          // Letra posicional de exibição (A/B/C/D por índice na lista embaralhada).
+          // NÃO é a letra do fator DISC — nunca vaza D/I/S/C pro usuário.
+          const posLabel = String.fromCharCode(65 + idx); // 0→A, 1→B, 2→C, 3→D
           return (
             <button
               key={factor}
@@ -112,38 +115,42 @@ export function DiscChoiceSelect({
               onClick={() => onChange(factor)}
               className={cn(
                 'group flex w-full items-center gap-3 rounded-2xl border-2 p-4 text-left',
-                'transition-colors duration-150 active:scale-[0.99]',
+                'transition-all duration-150 active:scale-[0.99]',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                 selected
-                  ? 'border-transparent bg-[var(--disc-accent)]/10'
+                  ? 'border-[var(--disc-accent)]'
                   : 'border-border bg-background hover:border-[var(--disc-accent)]/60',
               )}
               style={
                 {
                   '--disc-accent': accent,
                   ...(selected
-                    ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}` }
+                    ? {
+                        backgroundColor: accent,
+                        boxShadow: `0 4px 14px -2px ${accent}55`,
+                      }
                     : {}),
                 } as React.CSSProperties
               }
             >
-              {/* Indicador radio */}
+              {/* Badge posicional: mostra check quando selecionado, letra (A/B/C/D) quando não */}
               <span
                 aria-hidden
                 className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-                  selected ? 'border-transparent text-white' : 'border-muted-foreground/40',
+                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors',
+                  selected
+                    ? 'bg-white/20 text-white'
+                    : 'border-2 border-muted-foreground/30 bg-muted/50 text-muted-foreground',
                 )}
-                style={selected ? { backgroundColor: accent } : undefined}
               >
-                {selected && <Check className="h-4 w-4" strokeWidth={3} />}
+                {selected ? <Check className="h-4 w-4" strokeWidth={3} /> : posLabel}
               </span>
 
               {/* Texto da opção */}
               <span
                 className={cn(
                   'text-sm leading-snug sm:text-base',
-                  selected ? 'font-semibold text-foreground' : 'text-foreground/90',
+                  selected ? 'font-semibold text-white' : 'text-foreground/90',
                 )}
               >
                 {options[factor]}
