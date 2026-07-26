@@ -8,7 +8,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import {
   Users, BarChart3, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
-  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/Emp
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
 import { EmployeeDiscOverview } from '@/components/employees/EmployeeDiscOverview';
+import { OrgChartTab } from '@/components/employees/orgchart/OrgChartTab';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
@@ -149,6 +150,7 @@ export default function Employees() {
       { value: 'teams', label: t.tabs.teams, icon: UsersRound },
       { value: 'dashboard', label: t.tabs.dashboard, icon: BarChart3 },
       { value: 'behavioral', label: t.tabs.behavioral, icon: Brain },
+      { value: 'organogram', label: t.tabs.organogram, icon: Network },
     ];
     if (canManageTime) {
       base.push({ value: 'timeclock', label: t.tabs.timeclock, icon: Clock });
@@ -833,6 +835,8 @@ export default function Employees() {
           />
         ) : activeTab === 'timeclock' ? (
           <AdminTimePanel />
+        ) : activeTab === 'organogram' ? (
+          <OrgChartTab />
         ) : (
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}
