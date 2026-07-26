@@ -854,6 +854,7 @@ export const employees = {
         organize: 'Organizar',
         organizeHint: 'Reposiciona automaticamente em árvore',
         renameChartAria: 'Renomear organograma',
+        renameChartConfirm: 'Confirmar nome',
       },
       status: {
         saving: 'Salvando…',
@@ -1665,6 +1666,7 @@ export const employees = {
         organize: 'Organize',
         organizeHint: 'Auto-arrange as a tree',
         renameChartAria: 'Rename org chart',
+        renameChartConfirm: 'Confirm name',
       },
       status: {
         saving: 'Saving…',
@@ -2476,6 +2478,7 @@ export const employees = {
         organize: 'Organizar',
         organizeHint: 'Reordena automáticamente en árbol',
         renameChartAria: 'Renombrar organigrama',
+        renameChartConfirm: 'Confirmar nombre',
       },
       status: {
         saving: 'Guardando…',
@@ -3287,6 +3290,7 @@ export const employees = {
         organize: 'Organiser',
         organizeHint: 'Réorganise automatiquement en arbre',
         renameChartAria: `Renommer l'organigramme`,
+        renameChartConfirm: 'Confirmer le nom',
       },
       status: {
         saving: 'Enregistrement…',

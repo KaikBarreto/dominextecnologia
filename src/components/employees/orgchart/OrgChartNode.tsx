@@ -84,17 +84,49 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
 
   const showQuickAdd = quickAdd.enabled && !!quickAdd.onQuickAdd;
 
-  // Config dos 4 lados: posição do React Flow + classes de posicionamento do
-  // handle (bolinha) e do "+" de quick-add. O "+" fica AFASTADO da borda pra não
-  // brigar com o arraste do handle (que vive colado na borda).
-  // O React Flow já centraliza o handle no lado indicado por `position` (via seu
-  // próprio CSS). Não sobrescrevemos a posição do handle aqui — só o "+" recebe
-  // classes de posicionamento (afastado da borda pra não brigar com o arraste).
+  // Config dos 4 lados: posição do React Flow (handle/bolinha) + posicionamento
+  // do "+" de quick-add.
+  //
+  // Ancoragem do "+": o React Flow centraliza cada handle no MEIO do lado do card
+  // (top/bottom → center-x na borda superior/inferior; left/right → center-y na
+  // borda esquerda/direita — ver style.css do @xyflow). Pra o "+" ficar no MESMO
+  // ponto cardeal do handle, ancoramos o "+" no mesmo eixo central do lado
+  // (`left-1/2 -translate-x-1/2` ou `top-1/2 -translate-y-1/2`) e o empurramos pra
+  // FORA da borda com `top/bottom/left = -100% - gap` via style inline (não usa o
+  // topo do card como referência, então a barra de cor do setor não desloca o "+").
+  //
+  // `OUT` = distância do centro do "+" à borda do card (afastado o suficiente pra
+  // não brigar com o arraste do handle, mas alinhado no eixo central do lado).
+  const OUT = 26;
   const SIDES = [
-    { dir: 'top' as const, pos: Position.Top, plusCls: 'left-1/2 -top-7 -translate-x-1/2' },
-    { dir: 'bottom' as const, pos: Position.Bottom, plusCls: 'left-1/2 -bottom-7 -translate-x-1/2' },
-    { dir: 'left' as const, pos: Position.Left, plusCls: 'top-1/2 -left-7 -translate-y-1/2' },
-    { dir: 'right' as const, pos: Position.Right, plusCls: 'top-1/2 -right-7 -translate-y-1/2' },
+    {
+      dir: 'top' as const,
+      pos: Position.Top,
+      // center-x alinhado ao handle; empurrado pra cima da borda superior.
+      plusCls: 'left-1/2 -translate-x-1/2 -translate-y-1/2',
+      plusStyle: { top: -OUT } as const,
+    },
+    {
+      dir: 'bottom' as const,
+      pos: Position.Bottom,
+      // center-x alinhado ao handle; empurrado pra baixo da borda inferior.
+      plusCls: 'left-1/2 -translate-x-1/2 translate-y-1/2',
+      plusStyle: { bottom: -OUT } as const,
+    },
+    {
+      dir: 'left' as const,
+      pos: Position.Left,
+      // center-y alinhado ao handle; empurrado pra esquerda da borda.
+      plusCls: 'top-1/2 -translate-y-1/2 -translate-x-1/2',
+      plusStyle: { left: -OUT } as const,
+    },
+    {
+      dir: 'right' as const,
+      pos: Position.Right,
+      // center-y alinhado ao handle; empurrado pra direita da borda.
+      plusCls: 'top-1/2 -translate-y-1/2 translate-x-1/2',
+      plusStyle: { right: -OUT } as const,
+    },
   ];
 
   return (
@@ -123,12 +155,13 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
           que o clique não inicie arrasto do nó. */}
       {showQuickAdd && (
         <>
-          {SIDES.map(({ dir, plusCls }) => (
+          {SIDES.map(({ dir, plusCls, plusStyle }) => (
             <button
               key={dir}
               type="button"
               aria-label={quickAdd.addLabel}
               title={quickAdd.addLabel}
+              style={plusStyle}
               className={cn(
                 'nodrag nopan absolute z-30 flex h-5 w-5 items-center justify-center rounded-full',
                 'bg-primary text-primary-foreground shadow-md ring-2 ring-background',

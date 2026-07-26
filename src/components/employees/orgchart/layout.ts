@@ -6,6 +6,28 @@ import type { Node, Edge } from '@xyflow/react';
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 92;
 
+// Ids dos handles usados no layout top-down (TB). Precisam bater EXATAMENTE com
+// os ids definidos no OrgChartNode (`${dir}-source` / `${dir}-target`). No
+// "Organizar" a árvore desce reta: a aresta sai do handle de BAIXO do pai
+// (source) e entra no handle de CIMA do filho (target).
+const TB_SOURCE_HANDLE = 'bottom-source';
+const TB_TARGET_HANDLE = 'top-target';
+
+/**
+ * Normaliza os handles de TODAS as arestas pro layout top-down (TB): cada aresta
+ * sai do handle de baixo do pai e entra no handle de cima do filho. Assim as
+ * linhas descem retas, sem "voltas" causadas por handles arbitrários de conexões
+ * manuais. Usado só pelo "Organizar" — conexões manuais fora dele ficam livres.
+ * Não muta o array de entrada; sourceHandle/targetHandle já serializam no save.
+ */
+export function normalizeEdgeHandlesTB(edges: Edge[]): Edge[] {
+  return edges.map((e) => ({
+    ...e,
+    sourceHandle: TB_SOURCE_HANDLE,
+    targetHandle: TB_TARGET_HANDLE,
+  }));
+}
+
 /**
  * Auto-layout hierárquico (árvore de cima pra baixo) com dagre.
  * Recebe os nodes/edges atuais e devolve os MESMOS nodes com `position` nova.

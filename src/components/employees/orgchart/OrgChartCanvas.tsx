@@ -2,11 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import '@xyflow/react/dist/style.css';
 import {
   ReactFlow,
-  ReactFlowProvider,
   Background,
   Controls,
   addEdge,
-  getNodesBounds,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -15,6 +13,7 @@ import {
   type Connection,
   type NodeChange,
   type EdgeChange,
+  type ReactFlowInstance,
 } from '@xyflow/react';
 import { Plus, Wand2, Loader2, Check, Info } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -46,7 +45,7 @@ import {
   ORG_NODE_TYPE,
   type QuickAddDirection,
 } from './OrgChartNode';
-import { layoutOrgChart, layoutBranchFrom } from './layout';
+import { layoutOrgChart, layoutBranchFrom, normalizeEdgeHandlesTB } from './layout';
 
 type RFNode = Node<OrgNodeData>;
 
@@ -70,6 +69,18 @@ function serializeGraph(nodes: RFNode[], edges: Edge[]): OrgChartGraph {
       targetHandle: e.targetHandle ?? null,
     })),
   };
+}
+
+// Componente FILHO do <ReactFlow> que existe só para capturar a instância do
+// React Flow (via useReactFlow — só funciona dentro da árvore do <ReactFlow>,
+// já que não há mais provider externo) e publicá-la ao pai por `onReady`. O pai
+// guarda num ref e usa nas leituras de viewport/coordenadas da adição avulsa.
+function FlowController({ onReady }: { onReady: (inst: ReactFlowInstance<RFNode, Edge>) => void }) {
+  const instance = useReactFlow<RFNode, Edge>();
+  useEffect(() => {
+    onReady(instance);
+  }, [instance, onReady]);
+  return null;
 }
 
 interface CanvasInnerProps {
@@ -100,7 +111,13 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.orgchart;
   const { saveGraph, renameChart } = useOrgCharts();
-  const rf = useReactFlow();
+  // Instância do React Flow do PRÓPRIO `<ReactFlow>` (não há mais provider
+  // externo — o flow é dono do store). Capturada por um `<FlowController>`
+  // renderizado como FILHO do `<ReactFlow>` via callback `onReady`, e guardada
+  // aqui num ref para a adição avulsa ler viewport/coordenadas
+  // (getViewport / screenToFlowPosition). Como o store agora é o do próprio
+  // flow, essas leituras refletem o transform real na tela.
+  const rfInstanceRef = useRef<ReactFlowInstance<RFNode, Edge> | null>(null);
 
   const nodeTypes = useMemo(() => ({ [ORG_NODE_TYPE]: OrgChartNode }), []);
 
@@ -187,152 +204,170 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     };
   }, []);
 
-  // ── Centralizar ao ENTRAR (robusto, sem depender de transitionEnd) ─────────
+  // ── Centralizar ao ENTRAR — via arrasto/wheel de MOUSE sintético ───────────
   //
-  // Estratégia: poll com requestAnimationFrame que a cada frame verifica 4 condições:
-  //   (1) wrapper existe e tem clientWidth/Height > 0
-  //   (2) há nós no grafo
-  //   (3) todos os nós foram medidos pelo React Flow (measured.width > 0)
-  //   (4) o tamanho do wrapper está ESTÁVEL por ≥2 frames consecutivos
-  //       (mesmo clientWidth + clientHeight que o frame anterior)
-  //
-  // A condição (4) cobre a transição CSS de scale/opacity do container fullscreen
-  // sem precisar de onTransitionEnd (não-confiável em portais do React).
-  //
-  // Teto: ~120 frames (~2s a 60fps). Se não estabilizar até lá, roda
-  // rf.fitView({ padding: 0.15 }) como fallback — ainda centraliza.
-  //
-  // No modo fullscreen, a prop containerReady controla quando o poll PODE iniciar
-  // (evita que o poll comece durante a transição e ache um tamanho instável logo
-  // no frame 1, antes da animação CSS completar). No modo normal: sempre pronto.
+  // DESCOBERTA (comprovada ao vivo): neste editor NENHUM comando de viewport da
+  // API do React Flow funciona — `defaultViewport` é ignorado (nasce [0,0,1]) e
+  // `fitView`/`setViewport`/`panBy` são inertes. A ÚNICA coisa que move o
+  // viewport é um EVENTO DE MOUSE REAL, que o d3-zoom obedece. Então centralizar
+  // = ler o transform e os nós direto do DOM e despachar um arrasto (e wheel)
+  // sintético de MOUSE (não PointerEvent — o d3-zoom aqui escuta mouse) que leva
+  // o centro da árvore ao centro do container, pelo delta exato.
   const flowWrapperRef = useRef<HTMLDivElement | null>(null);
-  const didFitRef = useRef(false);
-  const fitPollRef = useRef<number | null>(null);
-  const fitPollCountRef = useRef(0);
-  // Guarda as dimensões do frame ANTERIOR para detectar estabilidade.
-  const prevSizeRef = useRef<{ w: number; h: number; stableFrames: number }>({ w: 0, h: 0, stableFrames: 0 });
+  const [wrapperSize, setWrapperSize] = useState<{ width: number; height: number } | null>(null);
 
-  // Reseta ao trocar de chart.
   useEffect(() => {
-    didFitRef.current = false;
-    fitPollCountRef.current = 0;
-    prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
-    if (fitPollRef.current !== null) {
-      cancelAnimationFrame(fitPollRef.current);
-      fitPollRef.current = null;
-    }
-  }, [chart.id]);
+    const el = flowWrapperRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) {
+        setWrapperSize((prev) =>
+          prev && prev.width === w && prev.height === h ? prev : { width: w, height: h },
+        );
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // No modo fullscreen, containerReady é false até o pai sinalizar (setTimeout
-  // fixo de 330ms, mais confiável que onTransitionEnd em portais).
-  // No modo normal, a prop não é passada → undefined → trata como sempre-pronto.
+  // fixo de 330ms após a transição de entrada, mais confiável que onTransitionEnd
+  // em portais). No modo normal a prop não é passada → undefined → sempre pronto.
   const isContainerReady = fullscreen ? (containerReady === true) : true;
 
-  const startFitPoll = useCallback(() => {
-    // Cancela qualquer poll em andamento antes de iniciar um novo.
-    if (fitPollRef.current !== null) {
-      cancelAnimationFrame(fitPollRef.current);
-      fitPollRef.current = null;
+  // Os nós já estão populados? Se o chart tem nós no banco, esperamos eles
+  // entrarem no estado local antes de montar (senão o `defaultViewport` nasce
+  // {0,0,1}). Se o chart legitimamente não tem nós, {0,0,1} é aceitável — então
+  // consideramos "pronto" também nesse caso.
+  const chartHasNoNodes = chart.data.nodes.length === 0;
+  const nodesReady = nodes.length > 0 || chartHasNoNodes;
+
+  // Gate de montagem do <ReactFlow>: precisa do tamanho real do container, em
+  // fullscreen do container estável, E dos nós populados. Até lá não monta.
+  const canMountFlow = !!wrapperSize && isContainerReady && nodesReady;
+
+  // Centraliza a árvore no container disparando eventos de MOUSE sintéticos
+  // (única coisa que move o viewport neste editor). Lê o transform atual e os
+  // nós direto do DOM (via flowWrapperRef), computa o zoom-alvo (fit com padding,
+  // maxZoom 1) e converge por WHEEL sintético, depois faz o PAN exato por um
+  // arrasto de mouse (mousedown no pane + mousemove/mouseup no window). Se o zoom
+  // sintético não estabilizar, o PAN exato sozinho já tira a árvore do canto.
+  const centerOnTree = useCallback(() => {
+    const wrapper = flowWrapperRef.current;
+    if (!wrapper) return;
+    const pane = wrapper.querySelector('.react-flow__pane');
+    const vpEl = wrapper.querySelector('.react-flow__viewport');
+    if (!pane || !vpEl) return;
+    const rect = wrapper.getBoundingClientRect();
+
+    // transform atual do viewport lido do style inline
+    const parse = () => {
+      const m = (vpEl as HTMLElement).style.transform.match(
+        /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/,
+      );
+      return m ? { x: +m[1], y: +m[2], k: +m[3] } : { x: 0, y: 0, k: 1 };
+    };
+
+    // bounds da árvore em coords de FLOW, lendo os nós do DOM (translate do
+    // transform, dividido pelo zoom atual, + tamanho medido também em flow).
+    const nodeEls = Array.from(wrapper.querySelectorAll('.react-flow__node')) as HTMLElement[];
+    if (!nodeEls.length) return;
+    const kNow = parse().k || 1;
+    const b = nodeEls.reduce(
+      (a, n) => {
+        const mm = n.style.transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+        const x = mm ? +mm[1] : 0;
+        const y = mm ? +mm[2] : 0;
+        const w = n.offsetWidth / kNow;
+        const h = n.offsetHeight / kNow;
+        return {
+          minX: Math.min(a.minX, x),
+          minY: Math.min(a.minY, y),
+          maxX: Math.max(a.maxX, x + w),
+          maxY: Math.max(a.maxY, y + h),
+        };
+      },
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+    );
+    const bw = Math.max(b.maxX - b.minX, 1);
+    const bh = Math.max(b.maxY - b.minY, 1);
+    const cxFlow = (b.minX + b.maxX) / 2;
+    const cyFlow = (b.minY + b.maxY) / 2;
+
+    const cxScr = rect.left + rect.width / 2;
+    const cyScr = rect.top + rect.height / 2;
+
+    // 1) ZOOM alvo (fit com padding, maxZoom 1) via wheel sintético no centro do
+    //    container, convergindo com teto de iterações. Se não convergir limpo,
+    //    o PAN abaixo (recalculado no zoom vigente) ainda centraliza.
+    const pad = 0.15;
+    const targetZoom = Math.min(
+      rect.width / (bw * (1 + 2 * pad)),
+      rect.height / (bh * (1 + 2 * pad)),
+      1,
+    );
+    let guard = 0;
+    while (guard++ < 40 && Math.abs(parse().k - targetZoom) > 0.02) {
+      const cur = parse().k;
+      const deltaY = cur > targetZoom ? 100 : -100; // 100 = zoom out, -100 = zoom in
+      pane.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          deltaY,
+          clientX: cxScr,
+          clientY: cyScr,
+        }),
+      );
+      // passou do alvo → para (evita oscilar em torno do target)
+      if (Math.sign(parse().k - targetZoom) !== Math.sign(cur - targetZoom)) break;
     }
-    fitPollCountRef.current = 0;
-    prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
 
-    const STABLE_FRAMES_NEEDED = 2; // frames consecutivos com mesmo tamanho
-    const MAX_FRAMES = 120;         // teto de ~2s a 60fps
+    // 2) PAN exato: leva o centro da árvore ao centro do container (recalcula com
+    //    o zoom vigente). Arrasto de mouse: mousedown no pane, mousemove/mouseup
+    //    no window (PointerEvent não funciona aqui; MouseEvent sim).
+    const cur = parse();
+    const treeScrX = cxFlow * cur.k + cur.x;
+    const treeScrY = cyFlow * cur.k + cur.y;
+    const dx = Math.round(rect.width / 2 - treeScrX);
+    const dy = Math.round(rect.height / 2 - treeScrY);
+    if (dx !== 0 || dy !== 0) {
+      const o = (x: number, y: number, buttons = 1): MouseEventInit => ({
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: x,
+        clientY: y,
+        button: 0,
+        buttons,
+      });
+      pane.dispatchEvent(new MouseEvent('mousedown', o(cxScr, cyScr)));
+      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx * 0.5, cyScr + dy * 0.5)));
+      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx, cyScr + dy)));
+      window.dispatchEvent(new MouseEvent('mouseup', o(cxScr + dx, cyScr + dy, 0)));
+    }
+  }, []);
 
-    const poll = () => {
-      if (didFitRef.current) return;
-
-      fitPollCountRef.current += 1;
-
-      if (fitPollCountRef.current > MAX_FRAMES) {
-        // Fallback: mesmo sem estabilidade perfeita, centraliza com fitView.
-        rf.fitView({ padding: 0.15, duration: 200 });
-        didFitRef.current = true;
-        fitPollRef.current = null;
-        return;
-      }
-
-      // (1) Wrapper existe e tem tamanho real.
-      const wrapper = flowWrapperRef.current;
-      if (!wrapper || wrapper.clientWidth === 0 || wrapper.clientHeight === 0) {
-        prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
-        fitPollRef.current = requestAnimationFrame(poll);
-        return;
-      }
-
-      // (2) Há nós.
-      const current = rf.getNodes();
-      if (current.length === 0) {
-        prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
-        fitPollRef.current = requestAnimationFrame(poll);
-        return;
-      }
-
-      // (3) Todos os nós foram medidos pelo React Flow.
-      const allMeasured = current.every((n) => (n.measured?.width ?? 0) > 0 && (n.measured?.height ?? 0) > 0);
-      if (!allMeasured) {
-        prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
-        fitPollRef.current = requestAnimationFrame(poll);
-        return;
-      }
-
-      // (4) Tamanho do wrapper estável por ≥ STABLE_FRAMES_NEEDED frames consecutivos.
-      const cw = wrapper.clientWidth;
-      const ch = wrapper.clientHeight;
-      const prev = prevSizeRef.current;
-      if (prev.w === cw && prev.h === ch) {
-        prevSizeRef.current = { w: cw, h: ch, stableFrames: prev.stableFrames + 1 };
-      } else {
-        prevSizeRef.current = { w: cw, h: ch, stableFrames: 1 };
-      }
-
-      if (prevSizeRef.current.stableFrames < STABLE_FRAMES_NEEDED) {
-        fitPollRef.current = requestAnimationFrame(poll);
-        return;
-      }
-
-      // Todas as condições satisfeitas: verifica bounds e faz o fit definitivo.
-      const bounds = getNodesBounds(current);
-      if (bounds.width === 0 || bounds.height === 0) {
-        // Bounds zerados apesar de nós medidos → usa fitView de segurança.
-        rf.fitView({ padding: 0.15, duration: 200 });
-      } else {
-        rf.fitBounds(bounds, { padding: 0.15, duration: 200 });
-      }
-      didFitRef.current = true;
-      fitPollRef.current = null;
-    };
-
-    fitPollRef.current = requestAnimationFrame(poll);
-  }, [rf]);
-
-  // Dispara o poll quando o container estiver pronto e ao trocar de chart.
+  // Centraliza UMA vez ao abrir/trocar de chart, quando o flow montou e os nós já
+  // estão no DOM. Guard reseta em chart.id. Dois RAFs garantem que pane/nós já
+  // têm posição no DOM antes de medir/despachar.
+  const didCenterRef = useRef(false);
   useEffect(() => {
-    if (!isContainerReady) return;
-    if (didFitRef.current) return;
-    startFitPoll();
-    return () => {
-      if (fitPollRef.current !== null) {
-        cancelAnimationFrame(fitPollRef.current);
-        fitPollRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isContainerReady, chart.id]);
-
-  // Quando novos nós chegam (ex: adição) e ainda não fitou, reinicia o poll.
+    didCenterRef.current = false;
+  }, [chart.id]);
   useEffect(() => {
-    if (!isContainerReady || didFitRef.current) return;
-    startFitPoll();
-    return () => {
-      if (fitPollRef.current !== null) {
-        cancelAnimationFrame(fitPollRef.current);
-        fitPollRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes]);
+    if (!canMountFlow || didCenterRef.current || nodes.length === 0) return;
+    didCenterRef.current = true;
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => centerOnTree());
+    });
+    return () => cancelAnimationFrame(raf1);
+  }, [canMountFlow, nodes.length, centerOnTree]);
 
   // Handlers que aplicam a mudança E agendam o save.
   const handleNodesChange = useCallback(
@@ -415,8 +450,9 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
         setPendingQuickAdd(null);
         scheduleSave();
         setAddOpen(false);
-        // Reenquadra suavemente pra mostrar o nó recém-inserido.
-        setTimeout(() => rf.fitView({ duration: 400, padding: 0.2 }), 60);
+        // NÃO reenquadra: setViewport/fitView são inertes neste editor e um
+        // remount por `key` no meio da edição piscaria a tela. O nó aparece na
+        // posição calculada; o usuário reenquadra pelo "Organizar" se quiser.
         return;
       }
 
@@ -424,13 +460,19 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
       // viewport atual, sem conexão.
       let position = { x: 0, y: 0 };
       try {
-        const vp = rf.getViewport();
+        const rf = rfInstanceRef.current;
         const el = document.querySelector('.org-flow-wrapper') as HTMLElement | null;
         const w = el?.clientWidth ?? 800;
         const h = el?.clientHeight ?? 600;
-        position = rf.screenToFlowPosition
-          ? rf.screenToFlowPosition({ x: (el?.getBoundingClientRect().left ?? 0) + w / 2, y: (el?.getBoundingClientRect().top ?? 0) + h / 2 })
-          : { x: (-vp.x + w / 2) / vp.zoom, y: (-vp.y + h / 2) / vp.zoom };
+        if (rf?.screenToFlowPosition) {
+          position = rf.screenToFlowPosition({
+            x: (el?.getBoundingClientRect().left ?? 0) + w / 2,
+            y: (el?.getBoundingClientRect().top ?? 0) + h / 2,
+          });
+        } else if (rf?.getViewport) {
+          const vp = rf.getViewport();
+          position = { x: (-vp.x + w / 2) / vp.zoom, y: (-vp.y + h / 2) / vp.zoom };
+        }
       } catch {
         /* usa 0,0 */
       }
@@ -444,7 +486,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
       scheduleSave();
       setAddOpen(false);
     },
-    [rf, setNodes, setEdges, scheduleSave, pendingQuickAdd, nodes, edges],
+    [setNodes, setEdges, scheduleSave, pendingQuickAdd, nodes, edges],
   );
 
   // ── Organizar (dagre) ─────────────────────────────────────────────────────
@@ -453,10 +495,14 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
       const laid = layoutOrgChart(nds, edges);
       return laid;
     });
+    // Normaliza os handles pro layout TB: cada aresta desce reta (bottom do pai →
+    // top do filho), sem "voltas" de handles arbitrários. Persistido no auto-save.
+    setEdges((eds) => normalizeEdgeHandlesTB(eds));
     scheduleSave();
-    // fitView depois que as posições assentam.
-    setTimeout(() => rf.fitView({ duration: 400, padding: 0.2 }), 60);
-  }, [edges, setNodes, scheduleSave, rf]);
+    // Recentraliza SEM remontar: dois RAFs para as posições do dagre já estarem
+    // no DOM, então dispara o arrasto/wheel sintético que centraliza a árvore.
+    requestAnimationFrame(() => requestAnimationFrame(() => centerOnTree()));
+  }, [edges, setNodes, setEdges, scheduleSave, centerOnTree]);
 
   // ── Painel de edição do nó selecionado ────────────────────────────────────
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
@@ -588,29 +634,35 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
               : 'h-[calc(100vh-20rem)] min-h-[420px] rounded-xl border',
           )}
         >
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            colorMode={isDark ? 'dark' : 'light'}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
-            onPaneClick={() => setSelectedNodeId(null)}
-            nodesDraggable={!isMobile}
-            nodesConnectable={!isMobile}
-            elementsSelectable
-            deleteKeyCode={isMobile ? null : ['Backspace', 'Delete']}
-            minZoom={0.2}
-            maxZoom={2}
-            fitView
-            fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={16} />
-            <Controls showInteractive={!isMobile} />
-          </ReactFlow>
+          {/* Só monta o flow quando há tamanho real do container (e, em fullscreen,
+              container estável) E os nós estão populados. A `key` remonta só ao
+              TROCAR de chart (chart.id); a centralização é feita pelo
+              `centerOnTree` (arrasto sintético), não por remount/defaultViewport. */}
+          {canMountFlow && (
+            <ReactFlow
+              key={chart.id}
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              colorMode={isDark ? 'dark' : 'light'}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={handleEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
+              onPaneClick={() => setSelectedNodeId(null)}
+              nodesDraggable={!isMobile}
+              nodesConnectable={!isMobile}
+              elementsSelectable
+              deleteKeyCode={isMobile ? null : ['Backspace', 'Delete']}
+              minZoom={0.2}
+              maxZoom={2}
+              proOptions={{ hideAttribution: true }}
+            >
+              <FlowController onReady={(inst) => { rfInstanceRef.current = inst; }} />
+              <Background gap={16} />
+              <Controls showInteractive={!isMobile} />
+            </ReactFlow>
+          )}
 
           {/* ── Overlays flutuantes do editor fullscreen ─────────────────── */}
           {fullscreen && (
@@ -639,6 +691,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
                   key={chart.id}
                   name={chart.name}
                   ariaLabel={t.toolbar.renameChartAria}
+                  confirmLabel={t.toolbar.renameChartConfirm}
                   onRename={(next) => renameChart.mutate({ id: chart.id, name: next })}
                 />
               </div>
@@ -750,10 +803,12 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
 function InlineChartName({
   name,
   ariaLabel,
+  confirmLabel,
   onRename,
 }: {
   name: string;
   ariaLabel: string;
+  confirmLabel: string;
   onRename: (next: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -790,23 +845,38 @@ function InlineChartName({
 
   if (editing) {
     return (
-      <input
-        ref={inputRef}
-        value={draft}
-        aria-label={ariaLabel}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            e.currentTarget.blur();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            cancel();
-          }
-        }}
-        className="pointer-events-auto hidden max-w-[40vw] rounded-lg bg-card/95 px-2.5 py-1.5 text-sm font-semibold shadow-md outline-none ring-2 ring-primary backdrop-blur focus:ring-primary sm:inline-block"
-      />
+      <div className="pointer-events-auto hidden items-center gap-1 sm:inline-flex">
+        <input
+          ref={inputRef}
+          value={draft}
+          aria-label={ariaLabel}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+          className="max-w-[40vw] rounded-lg bg-card/95 px-2.5 py-1.5 text-sm font-semibold shadow-md outline-none ring-2 ring-primary backdrop-blur focus:ring-primary"
+        />
+        {/* Botão de check (✓) — confirma o rename pelo MESMO caminho do blur/Enter.
+            onMouseDown com preventDefault evita que o input perca o foco (e dispare
+            onBlur) antes do onClick, evitando commit duplicado. */}
+        <button
+          type="button"
+          aria-label={confirmLabel}
+          title={confirmLabel}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={commit}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-md ring-1 ring-emerald-700/40 backdrop-blur transition-colors hover:bg-emerald-700"
+        >
+          <Check className="h-4 w-4" />
+        </button>
+      </div>
     );
   }
 
@@ -1202,19 +1272,20 @@ export function OrgChartCanvas({
     return map;
   }, [profilesByEmployee]);
 
+  // Sem <ReactFlowProvider> externo de propósito: assim o <ReactFlow> (dentro do
+  // Inner) cria o PRÓPRIO store e o `defaultViewport` é aplicado na criação
+  // (com provider externo o store nascia [0,0,1] e ignorava o defaultViewport).
   return (
-    <ReactFlowProvider>
-      <OrgChartCanvasInner
-        chart={chart}
-        employees={employees}
-        employeesById={employeesById}
-        discCodeByEmployee={discCodeByEmployee}
-        fullscreen={fullscreen}
-        containerReady={containerReady}
-        onBack={onBack}
-        backLabel={backLabel}
-        backIcon={backIcon}
-      />
-    </ReactFlowProvider>
+    <OrgChartCanvasInner
+      chart={chart}
+      employees={employees}
+      employeesById={employeesById}
+      discCodeByEmployee={discCodeByEmployee}
+      fullscreen={fullscreen}
+      containerReady={containerReady}
+      onBack={onBack}
+      backLabel={backLabel}
+      backIcon={backIcon}
+    />
   );
 }

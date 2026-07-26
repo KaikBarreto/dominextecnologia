@@ -639,17 +639,18 @@ html {
   min-height: 9px;
   border: 1.5px solid hsl(var(--background));
   background: hsl(var(--muted-foreground) / 0.45);
-  opacity: 0.35;
-  transition: opacity 150ms ease, background-color 150ms ease, transform 150ms ease;
+  opacity: 0;
+  transition: opacity 150ms ease, background-color 150ms ease;
 }
 
 /* Realce no hover do nó (o card do OrgChartNode tem a classe `group`; os handles
-   ficam dentro de um <div> wrapper por lado) e no hover do próprio handle. */
+   ficam dentro de um <div> wrapper por lado) e no hover do próprio handle.
+   NÃO mexer em `transform`: o React Flow usa translate(-50%,-50%) por lado pra
+   centralizar a bolinha no eixo cardeal; sobrescrever com scale() desalinha do "+". */
 .group:hover .react-flow__handle.org-handle,
 .react-flow__handle.org-handle:hover {
   opacity: 1;
   background: hsl(var(--primary));
-  transform: scale(1.15);
 }
 
 /* Enquanto uma conexão está sendo arrastada, os alvos válidos acendem. */
