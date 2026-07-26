@@ -40,6 +40,14 @@ function useSidebar() {
   return context;
 }
 
+// Variante que NÃO lança quando não há provider (shells topbar/mobile não
+// montam SidebarProvider). Retorna null nesses casos — o chamador decide o que
+// fazer. Usada pelo editor de organograma fullscreen, que precisa colapsar o
+// sidebar só quando o shell atual é o de sidebar.
+function useSidebarSafe() {
+  return React.useContext(SidebarContext);
+}
+
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -634,4 +642,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  useSidebarSafe,
 };

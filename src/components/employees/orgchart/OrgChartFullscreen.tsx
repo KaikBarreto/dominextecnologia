@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useSidebarSafe } from '@/components/ui/sidebar';
 import type { OrgChart } from '@/hooks/useOrgCharts';
 import { OrgChartCanvas } from './OrgChartCanvas';
 
@@ -65,6 +64,23 @@ export function OrgChartFullscreen({
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Colapsa o sidebar do app ao ENTRAR (só quando o shell tem sidebar e ela está
+  // aberta) para dar mais espaço ao canvas; restaura o estado anterior ao sair.
+  // Nos shells topbar/mobile useSidebarSafe() é null → não faz nada.
+  const sidebar = useSidebarSafe();
+  useEffect(() => {
+    if (!sidebar) return;
+    // Só colapsa se estiver aberto (e não estamos no modo mobile do sidebar).
+    if (sidebar.isMobile || !sidebar.open) return;
+    sidebar.setOpen(false);
+    return () => {
+      // Restaura para aberto ao desmontar o editor.
+      sidebar.setOpen(true);
+    };
+    // Roda uma vez no mount; a captura do estado inicial acontece aqui.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Trava o scroll do body enquanto o editor está aberto (o canvas tem pan/zoom
   // próprio; scroll da página atrás atrapalharia).
   useEffect(() => {
@@ -98,29 +114,13 @@ export function OrgChartFullscreen({
         willChange: 'opacity, transform',
       }}
     >
-      {/* Botão Voltar flutuante no canto superior esquerdo. */}
-      <div
-        className="absolute left-3 top-3 z-10"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
-      >
-        <Button
-          variant="secondary"
-          size="sm"
-          className={cn('gap-1 shadow-md')}
-          onClick={handleBack}
-        >
-          <ChevronLeft className="h-4 w-4" /> {backLabel}
-        </Button>
-      </div>
-
-      {/* Nome do organograma centralizado no topo (não cobre o Voltar). */}
-      <div className="pointer-events-none absolute inset-x-0 top-4 z-0 flex justify-center px-24">
-        <span className="truncate rounded-full bg-card/80 px-3 py-1 text-sm font-semibold shadow-sm backdrop-blur">
-          {chart.name}
-        </span>
-      </div>
-
-      <OrgChartCanvas chart={chart} fullscreen />
+      <OrgChartCanvas
+        chart={chart}
+        fullscreen
+        onBack={handleBack}
+        backLabel={backLabel}
+        backIcon={<ChevronLeft className="h-4 w-4" />}
+      />
     </div>,
     document.body,
   );

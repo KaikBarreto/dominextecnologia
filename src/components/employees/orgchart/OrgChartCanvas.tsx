@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import '@xyflow/react/dist/style.css';
 import {
   ReactFlow,
@@ -16,6 +16,7 @@ import {
   type EdgeChange,
 } from '@xyflow/react';
 import { Plus, Wand2, Loader2, Check, Info } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,9 +74,13 @@ interface CanvasInnerProps {
   employees: Employee[];
   employeesById: Record<string, Employee>;
   fullscreen?: boolean;
+  // Ações do editor fullscreen sobrepostas no canvas (só no modo fullscreen).
+  onBack?: () => void;
+  backLabel?: string;
+  backIcon?: ReactNode;
 }
 
-function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen }: CanvasInnerProps) {
+function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBack, backLabel, backIcon }: CanvasInnerProps) {
   const isMobile = useIsMobile();
   const isDark = useIsDark();
   const { locale } = useAppLocaleContext();
@@ -167,6 +172,27 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen }: Ca
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
   }, []);
+
+  // ── Centralizar ao ENTRAR ──────────────────────────────────────────────────
+  // O `fitView` do <ReactFlow> às vezes roda antes dos nós serem medidos (o card
+  // tem largura/altura dinâmicas), deixando tudo no canto. Reenquadra após o
+  // load, quando os nós já têm dimensão. Só uma vez por organograma aberto.
+  const didFitRef = useRef(false);
+  useEffect(() => {
+    didFitRef.current = false;
+  }, [chart.id]);
+  useEffect(() => {
+    if (didFitRef.current) return;
+    if (nodes.length === 0) return;
+    // Espera dois frames para o React Flow medir os nós antes de enquadrar.
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        rf.fitView({ padding: 0.2, duration: 300 });
+        didFitRef.current = true;
+      }),
+    );
+    return () => cancelAnimationFrame(id);
+  }, [nodes, rf]);
 
   // Handlers que aplicam a mudança E agendam o save.
   const handleNodesChange = useCallback(
@@ -323,34 +349,37 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen }: Ca
     <OrgEmployeesProvider value={employeesById}>
       <OrgQuickAddProvider value={quickAddValue}>
       <div className={cn('flex flex-col', fullscreen && 'h-full')}>
-        {/* Toolbar */}
-        <div className={cn('flex flex-wrap items-center gap-2 pb-3', fullscreen && 'px-3 pt-14')}>
-          {!isMobile && (
-            <>
-              <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
-                <Plus className="h-4 w-4" /> {t.toolbar.addNode}
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={organize} title={t.toolbar.organizeHint}>
-                <Wand2 className="h-4 w-4" /> {t.toolbar.organize}
-              </Button>
-            </>
-          )}
-          <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-            {saveState === 'saving' && (
+        {/* Toolbar clássica: só aparece quando NÃO é fullscreen (no fullscreen os
+            botões viram overlays flutuantes dentro do canvas). */}
+        {!fullscreen && (
+          <div className="flex flex-wrap items-center gap-2 pb-3">
+            {!isMobile && (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.status.saving}
+                <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+                  <Plus className="h-4 w-4" /> {t.toolbar.addNode}
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={organize} title={t.toolbar.organizeHint}>
+                  <Wand2 className="h-4 w-4" /> {t.toolbar.organize}
+                </Button>
               </>
             )}
-            {saveState === 'saved' && (
-              <>
-                <Check className="h-3.5 w-3.5 text-emerald-600" /> {t.status.saved}
-              </>
-            )}
+            <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              {saveState === 'saving' && (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.status.saving}
+                </>
+              )}
+              {saveState === 'saved' && (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-600" /> {t.status.saved}
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {isMobile && (
-          <div className={cn('mb-2 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground', fullscreen && 'mx-3')}>
+        {isMobile && !fullscreen && (
+          <div className="mb-2 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{t.mobileHint}</span>
           </div>
@@ -360,9 +389,9 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen }: Ca
             Em fullscreen ocupa toda a altura restante do overlay. */}
         <div
           className={cn(
-            'org-flow-wrapper w-full overflow-hidden bg-muted/20',
+            'org-flow-wrapper relative w-full overflow-hidden bg-muted/20',
             fullscreen
-              ? 'min-h-0 flex-1 border-t'
+              ? 'min-h-0 flex-1'
               : 'h-[calc(100vh-20rem)] min-h-[420px] rounded-xl border',
           )}
         >
@@ -389,10 +418,100 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen }: Ca
             <Background gap={16} />
             <Controls showInteractive={!isMobile} />
           </ReactFlow>
+
+          {/* ── Overlays flutuantes do editor fullscreen ─────────────────── */}
+          {fullscreen && (
+            <>
+              {/* Canto superior ESQUERDO: Voltar (vermelho→branco) + título. */}
+              <div
+                className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-2"
+                style={{ paddingTop: 'env(safe-area-inset-top)' }}
+              >
+                {onBack && (
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className={cn(
+                      'pointer-events-auto group inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium shadow-md ring-1 ring-border backdrop-blur transition-colors',
+                      'bg-card/85 text-foreground hover:bg-destructive hover:text-white hover:ring-destructive',
+                    )}
+                  >
+                    <span className="text-destructive transition-colors group-hover:text-white">
+                      {backIcon}
+                    </span>
+                    <span>{backLabel}</span>
+                  </button>
+                )}
+                <span className="pointer-events-none hidden max-w-[40vw] truncate rounded-lg bg-card/85 px-2.5 py-1.5 text-sm font-semibold shadow-md ring-1 ring-border backdrop-blur sm:inline-block">
+                  {chart.name}
+                </span>
+              </div>
+
+              {/* Canto superior DIREITO: Adicionar nó + Organizar + selo salvar. */}
+              <div
+                className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2"
+                style={{ paddingTop: 'env(safe-area-inset-top)' }}
+              >
+                {(saveState === 'saving' || saveState === 'saved') && (
+                  <span className="pointer-events-none hidden items-center gap-1.5 rounded-lg bg-card/85 px-2.5 py-1.5 text-xs text-muted-foreground shadow-md ring-1 ring-border backdrop-blur sm:inline-flex">
+                    {saveState === 'saving' ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.status.saving}
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-600" /> {t.status.saved}
+                      </>
+                    )}
+                  </span>
+                )}
+                {!isMobile && (
+                  <>
+                    <Button size="sm" className="pointer-events-auto gap-1.5 shadow-md" onClick={() => setAddOpen(true)}>
+                      <Plus className="h-4 w-4" /> {t.toolbar.addNode}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="pointer-events-auto gap-1.5 shadow-md ring-1 ring-border"
+                      onClick={organize}
+                      title={t.toolbar.organizeHint}
+                    >
+                      <Wand2 className="h-4 w-4" /> {t.toolbar.organize}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Dica mobile flutuante no rodapé (fullscreen). */}
+              {isMobile && (
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-start gap-2 rounded-lg border bg-card/90 px-3 py-2 text-xs text-muted-foreground shadow-md backdrop-blur">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{t.mobileHint}</span>
+                </div>
+              )}
+
+              {/* Painel de edição flutuante no canto inferior esquerdo (fullscreen). */}
+              {!isMobile && selectedNode && (
+                <div className="absolute bottom-3 left-3 z-20 w-[360px] max-w-[calc(100%-1.5rem)]">
+                  <EditPanel
+                    key={selectedNode.id}
+                    node={selectedNode}
+                    employeesById={employeesById}
+                    onChange={updateSelected}
+                    onDelete={deleteSelected}
+                    onClose={() => setSelectedNodeId(null)}
+                    t={t}
+                    floating
+                  />
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        {/* Painel de edição (desktop): flutua abaixo da toolbar quando há seleção. */}
-        {!isMobile && selectedNode && (
+        {/* Painel de edição (desktop, modo NÃO fullscreen): abaixo do canvas. */}
+        {!fullscreen && !isMobile && selectedNode && (
           <EditPanel
             key={selectedNode.id}
             node={selectedNode}
@@ -482,7 +601,7 @@ function AddNodeModal({ open, onOpenChange, employees, onAdd, t }: AddNodeModalP
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">{t.addNodeModal.colorLabel}</Label>
-        <ColorPicker value={color} onChange={setColor} />
+        <ColorPicker value={color} onChange={setColor} customLabel={t.addNodeModal.customColor} />
       </div>
     </div>
   );
@@ -559,15 +678,21 @@ interface EditPanelProps {
   onDelete: () => void;
   onClose: () => void;
   t: any;
+  floating?: boolean;
 }
 
-function EditPanel({ node, employeesById, onChange, onDelete, onClose, t }: EditPanelProps) {
+function EditPanel({ node, employeesById, onChange, onDelete, onClose, t, floating }: EditPanelProps) {
   const d = node.data;
   const isEmployee = d.kind === 'employee';
   const emp = isEmployee && d.employeeId ? employeesById[d.employeeId] : undefined;
 
   return (
-    <div className="mt-3 rounded-xl border bg-card p-4 shadow-sm">
+    <div
+      className={cn(
+        'rounded-xl border bg-card p-4',
+        floating ? 'shadow-xl backdrop-blur' : 'mt-3 shadow-sm',
+      )}
+    >
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold">{t.editPanel.title}</p>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -609,6 +734,7 @@ function EditPanel({ node, employeesById, onChange, onDelete, onClose, t }: Edit
             onChange={(c) => onChange({ sectorColor: c || undefined })}
             allowNone
             noneLabel={t.editPanel.noColor}
+            customLabel={t.editPanel.customColor}
           />
         </div>
       </div>
@@ -622,18 +748,38 @@ function EditPanel({ node, employeesById, onChange, onDelete, onClose, t }: Edit
   );
 }
 
+// Normaliza um hex digitado pelo usuário (#RGB ou #RRGGBB, com/sem #) para o
+// formato #rrggbb minúsculo; devolve null se não for hex válido.
+function normalizeHex(input: string): string | null {
+  let v = input.trim().toLowerCase();
+  if (!v) return null;
+  if (!v.startsWith('#')) v = `#${v}`;
+  if (/^#[0-9a-f]{3}$/.test(v)) {
+    v = `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+  }
+  return /^#[0-9a-f]{6}$/.test(v) ? v : null;
+}
+
 // ── Seletor de cor do setor ──────────────────────────────────────────────────
 function ColorPicker({
   value,
   onChange,
   allowNone,
   noneLabel,
+  customLabel,
 }: {
   value: string;
   onChange: (c: string) => void;
   allowNone?: boolean;
   noneLabel?: string;
+  customLabel: string;
 }) {
+  const normalized = value ? value.toLowerCase() : '';
+  // Cor personalizada = tem valor mas não é um dos presets.
+  const isCustom = !!normalized && !SECTOR_COLORS.some((c) => c.toLowerCase() === normalized);
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(isCustom ? normalized : '#3b82f6');
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {allowNone && (
@@ -656,16 +802,80 @@ function ColorPicker({
           aria-label={c}
           className={cn(
             'h-7 w-7 rounded-full border-2 transition-transform',
-            value === c ? 'scale-110 border-foreground' : 'border-transparent',
+            normalized === c.toLowerCase() ? 'scale-110 border-foreground' : 'border-transparent',
           )}
           style={{ backgroundColor: c }}
         />
       ))}
+
+      {/* Cor personalizada: swatch com anel arco-íris; abre popover com input de
+          cor nativo + campo hex. Fica ativo (preenchido) se a cor não for preset. */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={customLabel}
+            title={customLabel}
+            className={cn(
+              'flex h-7 w-7 items-center justify-center rounded-full border-2 transition-transform',
+              isCustom ? 'scale-110 border-foreground' : 'border-transparent',
+            )}
+            style={
+              isCustom
+                ? { backgroundColor: normalized }
+                : {
+                    background:
+                      'conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #0ea5e9, #8b5cf6, #ec4899, #ef4444)',
+                  }
+            }
+          >
+            {!isCustom && <Plus className="h-3.5 w-3.5 text-white drop-shadow" />}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 space-y-3" align="start">
+          <Label className="text-xs">{customLabel}</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={normalizeHex(draft) ?? '#3b82f6'}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                onChange(e.target.value);
+              }}
+              className="h-9 w-9 shrink-0 cursor-pointer rounded-md border bg-transparent p-0.5"
+              aria-label={customLabel}
+            />
+            <Input
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                const hex = normalizeHex(e.target.value);
+                if (hex) onChange(hex);
+              }}
+              placeholder="#3b82f6"
+              className="h-9 font-mono text-sm"
+              maxLength={7}
+            />
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
 
-export function OrgChartCanvas({ chart, fullscreen }: { chart: OrgChart; fullscreen?: boolean }) {
+export function OrgChartCanvas({
+  chart,
+  fullscreen,
+  onBack,
+  backLabel,
+  backIcon,
+}: {
+  chart: OrgChart;
+  fullscreen?: boolean;
+  onBack?: () => void;
+  backLabel?: string;
+  backIcon?: ReactNode;
+}) {
   const { employees } = useEmployees();
   const employeesById = useMemo(() => {
     const map: Record<string, Employee> = {};
@@ -680,6 +890,9 @@ export function OrgChartCanvas({ chart, fullscreen }: { chart: OrgChart; fullscr
         employees={employees}
         employeesById={employeesById}
         fullscreen={fullscreen}
+        onBack={onBack}
+        backLabel={backLabel}
+        backIcon={backIcon}
       />
     </ReactFlowProvider>
   );

@@ -873,6 +873,7 @@ export const employees = {
         sectorLabel: 'Setor',
         sectorPlaceholder: 'Ex: Comercial',
         colorLabel: 'Cor do setor',
+        customColor: 'Cor personalizada',
       },
       editPanel: {
         title: 'Editar nó',
@@ -881,6 +882,7 @@ export const employees = {
         sectorLabel: 'Setor',
         sectorPlaceholder: 'Ex: Comercial',
         colorLabel: 'Cor do setor',
+        customColor: 'Cor personalizada',
         noColor: 'Sem cor',
         deleteNode: 'Excluir nó',
         close: 'Fechar',
@@ -1680,6 +1682,7 @@ export const employees = {
         sectorLabel: 'Department',
         sectorPlaceholder: 'e.g. Sales',
         colorLabel: 'Department color',
+        customColor: 'Custom color',
       },
       editPanel: {
         title: 'Edit node',
@@ -1688,6 +1691,7 @@ export const employees = {
         sectorLabel: 'Department',
         sectorPlaceholder: 'e.g. Sales',
         colorLabel: 'Department color',
+        customColor: 'Custom color',
         noColor: 'No color',
         deleteNode: 'Delete node',
         close: 'Close',
@@ -2487,6 +2491,7 @@ export const employees = {
         sectorLabel: 'Sector',
         sectorPlaceholder: 'Ej: Comercial',
         colorLabel: 'Color del sector',
+        customColor: 'Color personalizado',
       },
       editPanel: {
         title: 'Editar nodo',
@@ -2495,6 +2500,7 @@ export const employees = {
         sectorLabel: 'Sector',
         sectorPlaceholder: 'Ej: Comercial',
         colorLabel: 'Color del sector',
+        customColor: 'Color personalizado',
         noColor: 'Sin color',
         deleteNode: 'Eliminar nodo',
         close: 'Cerrar',
@@ -3294,6 +3300,7 @@ export const employees = {
         sectorLabel: 'Service',
         sectorPlaceholder: 'Ex : Commercial',
         colorLabel: 'Couleur du service',
+        customColor: 'Couleur personnalisée',
       },
       editPanel: {
         title: 'Modifier le nœud',
@@ -3302,6 +3309,7 @@ export const employees = {
         sectorLabel: 'Service',
         sectorPlaceholder: 'Ex : Commercial',
         colorLabel: 'Couleur du service',
+        customColor: 'Couleur personnalisée',
         noColor: 'Sans couleur',
         deleteNode: 'Supprimer le nœud',
         close: 'Fermer',
