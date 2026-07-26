@@ -824,6 +824,44 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     setShowCatalogPicker(false);
     setPickerMachineEqId(null);
   };
+  // Aplica a MESMA seleção atual a TODOS os equipamentos do mesmo ambiente do
+  // equipamento aberto no picker. templateIds/excludedQuestions são iguais pra
+  // todos (ids de template/pergunta); só o equipment_ref das activities muda por alvo.
+  const confirmCatalogPickerAllEnv = () => {
+    if (!pickerMachineEqId) { setShowCatalogPicker(false); return; }
+    const env = envs.find((e) => e.equipment_ids.includes(pickerMachineEqId));
+    if (!env) { confirmCatalogPicker(); return; }
+    const templateIds = [...pickerTemplateSelection];
+    const validExcludable = new Set<string>();
+    for (const tplId of templateIds) {
+      const tpl = templateQuestionsById.get(tplId);
+      for (const q of tpl?.questions ?? []) {
+        if (!isEveryVisit(q)) validExcludable.add(q.id);
+      }
+    }
+    const excludedQuestions = [...pickerExcludedQuestions].filter((id) => validExcludable.has(id));
+    setMachineConfigs((prev) => {
+      const next = { ...prev };
+      for (const targetEqId of env.equipment_ids) {
+        const cur = next[targetEqId];
+        if (!cur) continue;
+        const selected: PlanActivityRow[] = [];
+        for (const group of catalogGroups) {
+          for (const act of group.activities) {
+            if (pickerSelection.has(act.id)) {
+              selected.push({ ...catalogToPlanRow(act), applies_per_equipment: true, equipment_ref: targetEqId });
+            }
+          }
+        }
+        next[targetEqId] = { ...cur, activities: selected, customized: true, customTemplateIds: templateIds, firstOsExcludedQuestions: excludedQuestions };
+      }
+      return next;
+    });
+    const itemCount = pickerSelection.size + templateIds.length;
+    toast({ title: `${t.checklistToastTitle} ${t.checklistToastCount.replace('{n}', String(itemCount))}` });
+    setShowCatalogPicker(false);
+    setPickerMachineEqId(null);
+  };
 
   // ---- Picker de equipamentos do ambiente (membership) ----------------------
   const openMemberPicker = (envKey: string) => {
@@ -1301,8 +1339,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         footer={
           <div className="flex flex-row items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">{pickerSelection.size + pickerTemplateSelection.size} {tForm.catalogPicker.selected}</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>{tForm.catalogPicker.cancelButton}</Button>
+              <Button variant="secondary" onClick={confirmCatalogPickerAllEnv}>{tForm.catalogPicker.applyEnv}</Button>
               <Button onClick={confirmCatalogPicker}>{tForm.catalogPicker.applyMachine}</Button>
             </div>
           </div>

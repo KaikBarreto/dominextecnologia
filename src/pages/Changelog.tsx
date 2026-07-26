@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.36',
+    date: '26 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aplicar os checklists de um equipamento para todo o ambiente de uma vez',
+        description: 'Ao montar ou editar um contrato, na etapa de ambientes e equipamentos, o modal onde você escolhe os checklists de um equipamento ganhou o botão "Aplicar a todos do ambiente". Com ele, a mesma seleção de checklists vai para todos os equipamentos daquele ambiente de uma só vez, sem precisar repetir a configuração equipamento por equipamento. O botão de aplicar só naquele equipamento passou a se chamar "Aplicar ao equipamento".',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.35',
     date: '26 de julho de 2026',
     type: 'minor',

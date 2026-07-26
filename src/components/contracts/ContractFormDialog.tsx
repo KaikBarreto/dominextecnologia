@@ -1111,6 +1111,45 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setShowCatalogPicker(false);
   };
 
+  // Aplica a MESMA seleção a TODOS os equipamentos do mesmo ambiente do
+  // equipamento aberto no picker (só no modo máquina). templateIds/exclusões são
+  // iguais pra todos; só o equipment_ref das activities muda por alvo.
+  const confirmCatalogPickerAllEnv = () => {
+    if (!pickerMachineEqId) { setShowCatalogPicker(false); return; }
+    const env = environments.find((e) => e.equipment_ids.includes(pickerMachineEqId));
+    if (!env) { confirmCatalogPicker(); return; }
+    const templateIds = [...pickerTemplateSelection];
+    const validExcludable = new Set<string>();
+    for (const tplId of templateIds) {
+      const tpl = templateQuestionsById.get(tplId);
+      for (const q of tpl?.questions ?? []) {
+        if (!isEveryVisit(q)) validExcludable.add(q.id);
+      }
+    }
+    const excludedQuestions = [...pickerExcludedQuestions].filter((id) => validExcludable.has(id));
+    setMachineConfigs(prev => {
+      const next = { ...prev };
+      for (const targetEqId of env.equipment_ids) {
+        const cur = next[targetEqId];
+        if (!cur) continue;
+        const selected: PlanActivityRow[] = [];
+        for (const group of catalogGroups) {
+          for (const act of group.activities) {
+            if (pickerSelection.has(act.id)) {
+              selected.push({ ...catalogToPlanRow(act), applies_per_equipment: true, equipment_ref: targetEqId });
+            }
+          }
+        }
+        next[targetEqId] = { ...cur, activities: selected, customized: true, customTemplateIds: templateIds, firstOsExcludedQuestions: excludedQuestions };
+      }
+      return next;
+    });
+    const total = pickerSelection.size + templateIds.length;
+    toast({ title: `${t.toasts.machineChecklistUpdated} (${total} ${t.toasts.machineChecklistItem})` });
+    setShowCatalogPicker(false);
+    setPickerMachineEqId(null);
+  };
+
   // Lookup de equipamento por id (lista completa: um membro pode estar inativo).
   const equipmentById = useMemo(() => {
     const m = new Map<string, any>();
@@ -4175,8 +4214,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           <span className="text-xs text-muted-foreground">
             {pickerSelection.size + (pickerMachineEqId ? pickerTemplateSelection.size : 0)} {t.catalogPicker.selected}
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>{t.catalogPicker.cancelButton}</Button>
+            {pickerMachineEqId && (
+              <Button variant="secondary" onClick={confirmCatalogPickerAllEnv}>{t.catalogPicker.applyEnv}</Button>
+            )}
             <Button onClick={confirmCatalogPicker}>{pickerMachineEqId ? t.catalogPicker.applyMachine : t.catalogPicker.addToPlan}</Button>
           </div>
         </div>

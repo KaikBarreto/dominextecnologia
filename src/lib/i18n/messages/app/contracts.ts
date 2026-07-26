@@ -425,7 +425,8 @@ export const contracts = {
         titleContract: 'Catálogo de atividades PMOC',
         selected: 'selecionada(s)',
         cancelButton: 'Cancelar',
-        applyMachine: 'Aplicar à máquina',
+        applyMachine: 'Aplicar ao equipamento',
+        applyEnv: 'Aplicar a todos do ambiente',
         addToPlan: 'Adicionar ao plano',
       },
 
@@ -1086,7 +1087,8 @@ export const contracts = {
         titleContract: 'PMOC activity catalog',
         selected: 'selected',
         cancelButton: 'Cancel',
-        applyMachine: 'Apply to machine',
+        applyMachine: 'Apply to equipment',
+        applyEnv: 'Apply to all in this environment',
         addToPlan: 'Add to plan',
       },
 
@@ -1701,6 +1703,7 @@ export const contracts = {
         selected: 'seleccionada(s)',
         cancelButton: 'Cancelar',
         applyMachine: 'Aplicar al equipo',
+        applyEnv: 'Aplicar a todos los del ambiente',
         addToPlan: 'Agregar al plan',
       },
 
@@ -2315,6 +2318,7 @@ export const contracts = {
         selected: `sélectionné(s)`,
         cancelButton: 'Annuler',
         applyMachine: `Appliquer à l'équipement`,
+        applyEnv: `Appliquer à tous ceux de l'environnement`,
         addToPlan: 'Ajouter au plan',
       },
 
