@@ -20,12 +20,32 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { useOrgCharts, type OrgChart } from '@/hooks/useOrgCharts';
 import { OrgChartFullscreen } from './OrgChartFullscreen';
 
-export function OrgChartTab() {
+/**
+ * Props de CONTROLE do organograma aberto. Quando fornecidas (via deep-link em
+ * Employees), a seleção é 100% controlada pela URL (compartilhável + histórico
+ * do browser). Sem elas, cai no estado interno (retrocompat).
+ */
+interface OrgChartTabProps {
+  /** Id do organograma aberto (controlado pela URL). undefined = descontrolado. */
+  openChartId?: string | null;
+  /** Navega ao abrir (id) / fechar (null) um organograma. */
+  onSelectChart?: (id: string | null) => void;
+}
+
+export function OrgChartTab({ openChartId: openChartIdProp, onSelectChart }: OrgChartTabProps = {}) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.orgchart;
   const { charts, isLoading, createChart, renameChart, deleteChart } = useOrgCharts();
 
-  const [openChartId, setOpenChartId] = useState<string | null>(null);
+  // Controlado pela URL quando onSelectChart vier; senão estado interno (fallback).
+  const controlled = typeof onSelectChart === 'function';
+  const [openChartIdInternal, setOpenChartIdInternal] = useState<string | null>(null);
+  const openChartId = controlled ? (openChartIdProp ?? null) : openChartIdInternal;
+  const selectChart = (id: string | null) => {
+    if (controlled) onSelectChart!(id);
+    else setOpenChartIdInternal(id);
+  };
+
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [renaming, setRenaming] = useState<OrgChart | null>(null);
@@ -43,7 +63,10 @@ export function OrgChartTab() {
       onSuccess: (row: any) => {
         setCreateOpen(false);
         setNewName('');
-        if (row?.id) setOpenChartId(row.id);
+        // selectChart navega pelo link amigável quando controlado (Employees
+        // resolve o short_code por id); com fallback pro UUID se o cache ainda
+        // não tiver o código do organograma recém-criado.
+        if (row?.id) selectChart(row.id);
       },
     });
   };
@@ -62,7 +85,7 @@ export function OrgChartTab() {
         <OrgChartFullscreen
           key={openChart.id}
           chart={openChart}
-          onBack={() => setOpenChartId(null)}
+          onBack={() => selectChart(null)}
           backLabel={t.back}
         />
       )}
@@ -99,7 +122,7 @@ export function OrgChartTab() {
               </div>
               <button
                 type="button"
-                onClick={() => setOpenChartId(chart.id)}
+                onClick={() => selectChart(chart.id)}
                 className="min-w-0 flex-1 text-left"
               >
                 <p className="truncate text-sm font-medium">{chart.name}</p>
@@ -130,7 +153,7 @@ export function OrgChartTab() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => setOpenChartId(chart.id)}
+                onClick={() => selectChart(chart.id)}
                 aria-label={t.open}
               >
                 <ChevronRight className="h-4 w-4" />

@@ -693,6 +693,10 @@ const AppRoutes = () => (
       {/* Deep-link amigável do Perfil Comportamental (DISC): mesma tela Employees,
          que lê o :param, resolve o funcionário e abre o detalhe in-place. */}
       {localizedAppRoutes('employeeProfile', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {/* Organograma deep-link amigável: mesma tela Employees. A LISTA abre a aba
+         organograma; o DETALHE (/:param) abre o organograma resolvido pelo código. */}
+      {localizedAppRoutes('orgChart', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('orgChartDetail', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
 <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       {localizedAppRoutes('liveMap', <LiveMap />)}
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas

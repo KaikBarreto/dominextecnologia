@@ -72,6 +72,7 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   relatorio: { en: 'report', es: 'informe', fr: 'rapport' },
   movimentacoes: { en: 'movements', es: 'movimientos', fr: 'mouvements' },
   contas: { en: 'accounts', es: 'cuentas', fr: 'comptes' },
+  organograma: { en: 'organogram', es: 'organigrama', fr: 'organigramme' },
   // 'configuracoes' já está no mapa acima e serve como sub-segmento também
   // (/notas-fiscais/configuracoes → /invoices/settings).
 };
@@ -130,6 +131,10 @@ const ROUTES: AppRouteDef[] = [
   // Perfil Comportamental (DISC) deep-link amigável: abre a experiência in-place
   // (aba "Perfil Comportamental" + detalhe do funcionário) dentro de Employees.
   { key: 'employeeProfile', base: '/funcionarios/perfil/:param' },
+  // Organograma deep-link amigável: a LISTA (aba organograma) e o DETALHE
+  // (editor de um organograma), ambos in-place dentro de Employees.
+  { key: 'orgChart', base: '/funcionarios/organograma' },
+  { key: 'orgChartDetail', base: '/funcionarios/organograma/:param' },
   { key: 'liveMap', base: '/mapa-ao-vivo' },
   { key: 'technicianArea', base: '/area-tecnico/*' },
   { key: 'billing', base: '/assinatura' },

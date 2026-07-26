@@ -5045,6 +5045,7 @@ export type Database = {
           data: Json
           id: string
           name: string
+          public_short_code: string | null
           updated_at: string
         }
         Insert: {
@@ -5054,6 +5055,7 @@ export type Database = {
           data?: Json
           id?: string
           name: string
+          public_short_code?: string | null
           updated_at?: string
         }
         Update: {
@@ -5063,6 +5065,7 @@ export type Database = {
           data?: Json
           id?: string
           name?: string
+          public_short_code?: string | null
           updated_at?: string
         }
         Relationships: [

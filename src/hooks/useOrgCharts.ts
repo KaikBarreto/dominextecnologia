@@ -46,6 +46,8 @@ export interface OrgChart {
   id: string;
   name: string;
   data: OrgChartGraph;
+  /** Código curto público (12 chars base32) — usado no deep-link amigável. */
+  public_short_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -75,13 +77,14 @@ export function useOrgCharts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_charts')
-        .select('id, name, data, created_at, updated_at')
+        .select('id, name, data, public_short_code, created_at, updated_at')
         .order('created_at', { ascending: true });
       if (error) throw error;
       return (data || []).map((row) => ({
         id: row.id,
         name: row.name,
         data: normalizeGraph(row.data),
+        public_short_code: row.public_short_code ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at,
       })) as OrgChart[];
@@ -101,12 +104,32 @@ export function useOrgCharts() {
           created_by: userData.user?.id ?? null,
           data: EMPTY_GRAPH as any,
         } as any)
-        .select('id, name, data, created_at, updated_at')
+        .select('id, name, data, public_short_code, created_at, updated_at')
         .single();
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['org-charts'] }),
+    // Semeia o novo organograma no cache ANTES do refetch, para o deep-link
+    // (navegação pós-criação) já encontrar o short_code e montar o link amigável.
+    onSuccess: (row: any) => {
+      if (row?.id) {
+        qc.setQueryData<OrgChart[]>(['org-charts'], (prev) => {
+          const next = prev ? [...prev] : [];
+          if (!next.some((c) => c.id === row.id)) {
+            next.push({
+              id: row.id,
+              name: row.name,
+              data: normalizeGraph(row.data),
+              public_short_code: row.public_short_code ?? null,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+            });
+          }
+          return next;
+        });
+      }
+      qc.invalidateQueries({ queryKey: ['org-charts'] });
+    },
     onError: (e: Error) =>
       toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });

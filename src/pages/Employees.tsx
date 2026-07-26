@@ -1,7 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { extractShortCode, isUuid, buildEmployeeProfilePath } from '@/utils/prettyLinks';
+import { extractShortCode, isUuid, buildEmployeeProfilePath, buildOrgChartPath } from '@/utils/prettyLinks';
+import { resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
+import { useOrgCharts } from '@/hooks/useOrgCharts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -49,13 +51,29 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 
 export default function Employees() {
-  // Deep-link do Perfil Comportamental: `/funcionarios/perfil/<slug>-<code>`.
-  // Registrado como a MESMA tela Employees (ver App.tsx). Quando há `:param`,
-  // resolvemos o funcionário e abrimos a aba behavioral + detalhe in-place.
-  const { param: profileParam } = useParams<{ param?: string }>();
+  // Deep-links registrados como a MESMA tela Employees (ver App.tsx), todos com
+  // o segmento `:param`:
+  //  • `/funcionarios/perfil/<slug>-<code>`     → aba behavioral + detalhe do funcionário
+  //  • `/funcionarios/organograma`              → aba organograma (LISTA)
+  //  • `/funcionarios/organograma/<slug>-<code>`→ aba organograma + editor aberto
+  // Como os três compartilham `:param`, distinguimos QUAL rota casou pela KEY
+  // canônica do pathname (resolveAppSlug cobre os 4 idiomas + bookmarks pt-br).
+  const { param: routeParam } = useParams<{ param?: string }>();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // Sem passar locale: resolveAppSlug varre os 4 idiomas + pt-br, então casa a
+  // rota corretamente em qualquer idioma (e bookmarks pt-br) sem depender do
+  // contexto de locale ainda não lido aqui.
+  const routeKey = useMemo(() => resolveAppSlug(pathname), [pathname]);
 
-  const [activeTab, setActiveTab] = useState(profileParam ? 'behavioral' : 'list');
+  // Param de cada família (só quando a rota daquela família casou).
+  const profileParam = routeKey === 'employeeProfile' ? routeParam : undefined;
+  const isOrgChartRoute = routeKey === 'orgChart' || routeKey === 'orgChartDetail';
+  const orgChartParam = routeKey === 'orgChartDetail' ? routeParam : undefined;
+
+  const [activeTab, setActiveTab] = useState(
+    profileParam ? 'behavioral' : isOrgChartRoute ? 'organogram' : 'list',
+  );
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('az');
   // Modo de exibição da tab de funcionários: 'list' (default) ou 'grid' (cards).
@@ -105,14 +123,61 @@ export default function Employees() {
     }
   }, [profileParam, isLoading, resolvedProfileEmployeeId, navigate]);
 
-  // Troca de aba: se sair da behavioral estando numa URL de perfil, limpa a URL
-  // pra `/funcionarios` (mantém consistência entre aba visível e endereço).
+  // ── Deep-link do Organograma ────────────────────────────────────────────────
+  // Resolve o organograma aberto a partir do `:param` (rota orgChartDetail).
+  // Prioriza o public_short_code do fim do slug; FALLBACK para UUID puro.
+  const { charts: orgCharts } = useOrgCharts();
+  const resolvedOrgChartId = useMemo(() => {
+    if (!orgChartParam) return null;
+    const code = extractShortCode(orgChartParam);
+    if (code) {
+      const byCode = orgCharts.find((c) => c.public_short_code === code);
+      if (byCode) return byCode.id;
+    }
+    // Retrocompat / fallback: link com o UUID cru do organograma.
+    if (isUuid(orgChartParam) && orgCharts.some((c) => c.id === orgChartParam)) {
+      return orgChartParam;
+    }
+    return null;
+  }, [orgChartParam, orgCharts]);
+
+  // Numa rota de organograma, força a aba organograma.
+  useEffect(() => {
+    if (isOrgChartRoute) setActiveTab('organogram');
+  }, [isOrgChartRoute]);
+
+  // Rota de detalhe com param que não resolveu (código inválido / inexistente):
+  // cai na LISTA (aba organograma). Espera os organogramas carregarem.
+  const orgChartsLoaded = orgCharts.length > 0 || !isOrgChartRoute;
+  useEffect(() => {
+    if (orgChartParam && orgChartsLoaded && !resolvedOrgChartId) {
+      navigate('/funcionarios/organograma', { replace: true });
+    }
+  }, [orgChartParam, orgChartsLoaded, resolvedOrgChartId, navigate]);
+
+  // Abre/fecha o editor de um organograma navegando (deep-link + histórico).
+  const handleSelectOrgChart = useCallback(
+    (id: string | null) => {
+      if (!id) {
+        navigate('/funcionarios/organograma');
+        return;
+      }
+      const chart = orgCharts.find((c) => c.id === id);
+      const code = chart?.public_short_code;
+      navigate(code ? buildOrgChartPath(chart!.name, code) : `/funcionarios/organograma/${id}`);
+    },
+    [orgCharts, navigate],
+  );
+
+  // Troca de aba: se sair da behavioral/organograma estando numa URL de deep-link,
+  // limpa a URL (mantém consistência entre aba visível e endereço).
   const handleTabChange = useCallback(
     (tab: string) => {
       setActiveTab(tab);
       if (profileParam && tab !== 'behavioral') navigate('/funcionarios');
+      else if (isOrgChartRoute && tab !== 'organogram') navigate('/funcionarios');
     },
-    [profileParam, navigate],
+    [profileParam, isOrgChartRoute, navigate],
   );
 
   // Navega para a URL amigável ao abrir um detalhe; para /funcionarios ao voltar.
@@ -836,7 +901,10 @@ export default function Employees() {
         ) : activeTab === 'timeclock' ? (
           <AdminTimePanel />
         ) : activeTab === 'organogram' ? (
-          <OrgChartTab />
+          <OrgChartTab
+            openChartId={resolvedOrgChartId}
+            onSelectChart={handleSelectOrgChart}
+          />
         ) : (
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}
