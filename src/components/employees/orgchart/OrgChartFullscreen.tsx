@@ -31,6 +31,11 @@ export function OrgChartFullscreen({
   // Controla o estado de animação: entra em 'enter' no mount (fade + zoom-in),
   // vai pra 'leave' ao sair (fade + zoom-out) e só então chama onBack.
   const [phase, setPhase] = useState<'enter' | 'shown' | 'leave'>('enter');
+  // Sinaliza que o container está pronto para o Canvas fazer fitBounds.
+  // Usamos setTimeout fixo (transição dura 250ms + 80ms de folga) porque
+  // onTransitionEnd num portal do React é não-confiável: o evento pode ser
+  // engolido se o browser não pintar o frame inicial antes de o listener existir.
+  const [containerReady, setContainerReady] = useState(false);
   const mainRef = useRef<HTMLElement | null>(null);
 
   // Localiza o <main> do shell e mede seu retângulo. Reage a resize do main,
@@ -58,10 +63,17 @@ export function OrgChartFullscreen({
   }, []);
 
   // Dispara a transição de entrada no próximo frame (permite o browser pintar o
-  // estado inicial 'enter' antes de animar para 'shown').
+  // estado inicial 'enter' antes de animar para 'shown'). Após 330ms (250ms de
+  // transição + 80ms de folga), sinaliza que o container está estável para o
+  // Canvas poder rodar o fitBounds com tamanho real. Não depende de
+  // onTransitionEnd, que é não-confiável em portais do React.
   useEffect(() => {
-    const id = requestAnimationFrame(() => setPhase('shown'));
-    return () => cancelAnimationFrame(id);
+    const rafId = requestAnimationFrame(() => setPhase('shown'));
+    const timerId = window.setTimeout(() => setContainerReady(true), 330);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.clearTimeout(timerId);
+    };
   }, []);
 
   // Colapsa o sidebar do app ao ENTRAR (só quando o shell tem sidebar e ela está
@@ -108,15 +120,19 @@ export function OrgChartFullscreen({
         width: rect.width,
         height: rect.height,
         opacity: phase === 'shown' ? 1 : 0,
-        transform: phase === 'shown' ? 'scale(1)' : 'scale(0.96)',
+        // No REPOUSO usa transform:none (não scale(1)): um ancestral com transform
+        // — mesmo scale(1) — QUEBRA o fit/medição do React Flow (viewport fica
+        // identity). O zoom de entrada anima scale(0.96) → none (= scale 1).
+        transform: phase === 'shown' ? 'none' : 'scale(0.96)',
         transformOrigin: 'center center',
         transition: 'opacity 250ms ease, transform 250ms ease',
-        willChange: 'opacity, transform',
+        willChange: phase === 'shown' ? 'auto' : 'opacity, transform',
       }}
     >
       <OrgChartCanvas
         chart={chart}
         fullscreen
+        containerReady={containerReady}
         onBack={handleBack}
         backLabel={backLabel}
         backIcon={<ChevronLeft className="h-4 w-4" />}

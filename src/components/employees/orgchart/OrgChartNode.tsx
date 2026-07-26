@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { cn } from '@/lib/utils';
 import { idealForeground } from '@/lib/colorContrast';
+import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
+import { useDiscMessages } from '@/components/employees/disc/useDiscMessages';
 import type { Employee } from '@/hooks/useEmployees';
 import type { OrgNodeData } from '@/hooks/useOrgCharts';
 
@@ -13,6 +15,33 @@ import type { OrgNodeData } from '@/hooks/useOrgCharts';
 // snapshot de nome/cargo no data como fallback se o funcionário for removido.
 const EmployeesContext = createContext<Record<string, Employee>>({});
 export const OrgEmployeesProvider = EmployeesContext.Provider;
+
+// Contexto paralelo com o CÓDIGO do perfil DISC concluído por funcionário
+// (employeeId → profile_code, ex.: 'CI'). Fica FORA do data do nó (que é
+// serializado no banco) — é dado vivo, resolvido no render. Undefined = sem
+// perfil concluído → o nó não mostra badge.
+const DiscProfilesContext = createContext<Record<string, string>>({});
+export const OrgDiscProvider = DiscProfilesContext.Provider;
+
+// Badge compacto do perfil DISC pro nó do organograma: código do par saturado na
+// cor do fator primário + nome curto (branco). Truncável pra não estourar o card.
+function NodeDiscBadge({ code }: { code: string }) {
+  const { t: discT } = useDiscMessages();
+  const meta = resolveProfile(code);
+  const color = FACTOR_COLOR[meta.primary];
+  const name =
+    (discT.profiles as Record<string, { nome: string }>)[meta.code]?.nome ?? meta.code;
+  return (
+    <span
+      className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold leading-none text-white"
+      style={{ backgroundColor: color }}
+      title={`${code} · ${name}`}
+    >
+      <span className="font-black tracking-wide">{code}</span>
+      <span className="truncate font-semibold opacity-90">{name}</span>
+    </span>
+  );
+}
 
 // Direção do "+" de adição rápida relativo ao nó de origem.
 export type QuickAddDirection = 'top' | 'bottom' | 'left' | 'right';
@@ -35,6 +64,7 @@ export const ORG_NODE_TYPE = 'orgNode';
 
 function OrgChartNodeInner({ id, data, selected }: NodeProps) {
   const employees = useContext(EmployeesContext);
+  const discProfiles = useContext(DiscProfilesContext);
   const quickAdd = useContext(QuickAddContext);
   const d = data as OrgNodeData;
 
@@ -44,6 +74,10 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
   const role = emp?.position ?? d.role ?? '';
   const photoUrl = emp?.photo_url ?? null;
   const removed = d.kind === 'employee' && !!d.employeeId && !emp;
+
+  // Perfil DISC concluído (só nó de funcionário). Undefined → não mostra badge.
+  const discCode =
+    d.kind === 'employee' && d.employeeId ? discProfiles[d.employeeId] : undefined;
 
   const sectorColor = d.sectorColor;
   const sectorFg = sectorColor ? idealForeground(sectorColor) : undefined;
@@ -118,11 +152,12 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
             {name ? getInitials(name) : '?'}
           </AvatarFallback>
         </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className={cn('truncate text-sm font-semibold leading-tight', removed && 'text-muted-foreground line-through')}>
+        <div className="flex min-w-0 flex-1 flex-col items-start">
+          <p className={cn('w-full truncate text-sm font-semibold leading-tight', removed && 'text-muted-foreground line-through')}>
             {name || '—'}
           </p>
-          {role && <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">{role}</p>}
+          {role && <p className="w-full truncate text-xs text-muted-foreground leading-tight mt-0.5">{role}</p>}
+          {discCode && <NodeDiscBadge code={discCode} />}
         </div>
       </div>
 

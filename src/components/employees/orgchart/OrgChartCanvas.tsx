@@ -6,6 +6,7 @@ import {
   Background,
   Controls,
   addEdge,
+  getNodesBounds,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -25,6 +26,7 @@ import { useIsDark } from '@/hooks/useIsDark';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useEmployees, type Employee } from '@/hooks/useEmployees';
+import { useCompanyDiscProfiles } from '@/hooks/useEmployeeDisc';
 import {
   useOrgCharts,
   type OrgChart,
@@ -39,6 +41,7 @@ import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import {
   OrgChartNode,
   OrgEmployeesProvider,
+  OrgDiscProvider,
   OrgQuickAddProvider,
   ORG_NODE_TYPE,
   type QuickAddDirection,
@@ -73,14 +76,25 @@ interface CanvasInnerProps {
   chart: OrgChart;
   employees: Employee[];
   employeesById: Record<string, Employee>;
+  /** employeeId → código do perfil DISC concluído (ex.: 'CI'). */
+  discCodeByEmployee: Record<string, string>;
   fullscreen?: boolean;
+  /**
+   * Sinal externo de "container pronto para iniciar o poll de fit". No modo
+   * fullscreen o pai (OrgChartFullscreen) sinaliza `true` via setTimeout fixo
+   * (330ms) após a transição de entrada — mais confiável que onTransitionEnd
+   * em portais do React. No modo normal (não-fullscreen) não é passado e
+   * tratado como sempre-true. O poll ainda verifica estabilidade de tamanho
+   * internamente (≥2 frames consecutivos com mesmo clientWidth/Height).
+   */
+  containerReady?: boolean;
   // Ações do editor fullscreen sobrepostas no canvas (só no modo fullscreen).
   onBack?: () => void;
   backLabel?: string;
   backIcon?: ReactNode;
 }
 
-function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBack, backLabel, backIcon }: CanvasInnerProps) {
+function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmployee, fullscreen, containerReady, onBack, backLabel, backIcon }: CanvasInnerProps) {
   const isMobile = useIsMobile();
   const isDark = useIsDark();
   const { locale } = useAppLocaleContext();
@@ -173,26 +187,152 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
     };
   }, []);
 
-  // ── Centralizar ao ENTRAR ──────────────────────────────────────────────────
-  // O `fitView` do <ReactFlow> às vezes roda antes dos nós serem medidos (o card
-  // tem largura/altura dinâmicas), deixando tudo no canto. Reenquadra após o
-  // load, quando os nós já têm dimensão. Só uma vez por organograma aberto.
+  // ── Centralizar ao ENTRAR (robusto, sem depender de transitionEnd) ─────────
+  //
+  // Estratégia: poll com requestAnimationFrame que a cada frame verifica 4 condições:
+  //   (1) wrapper existe e tem clientWidth/Height > 0
+  //   (2) há nós no grafo
+  //   (3) todos os nós foram medidos pelo React Flow (measured.width > 0)
+  //   (4) o tamanho do wrapper está ESTÁVEL por ≥2 frames consecutivos
+  //       (mesmo clientWidth + clientHeight que o frame anterior)
+  //
+  // A condição (4) cobre a transição CSS de scale/opacity do container fullscreen
+  // sem precisar de onTransitionEnd (não-confiável em portais do React).
+  //
+  // Teto: ~120 frames (~2s a 60fps). Se não estabilizar até lá, roda
+  // rf.fitView({ padding: 0.15 }) como fallback — ainda centraliza.
+  //
+  // No modo fullscreen, a prop containerReady controla quando o poll PODE iniciar
+  // (evita que o poll comece durante a transição e ache um tamanho instável logo
+  // no frame 1, antes da animação CSS completar). No modo normal: sempre pronto.
+  const flowWrapperRef = useRef<HTMLDivElement | null>(null);
   const didFitRef = useRef(false);
+  const fitPollRef = useRef<number | null>(null);
+  const fitPollCountRef = useRef(0);
+  // Guarda as dimensões do frame ANTERIOR para detectar estabilidade.
+  const prevSizeRef = useRef<{ w: number; h: number; stableFrames: number }>({ w: 0, h: 0, stableFrames: 0 });
+
+  // Reseta ao trocar de chart.
   useEffect(() => {
     didFitRef.current = false;
+    fitPollCountRef.current = 0;
+    prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
+    if (fitPollRef.current !== null) {
+      cancelAnimationFrame(fitPollRef.current);
+      fitPollRef.current = null;
+    }
   }, [chart.id]);
-  useEffect(() => {
-    if (didFitRef.current) return;
-    if (nodes.length === 0) return;
-    // Espera dois frames para o React Flow medir os nós antes de enquadrar.
-    const id = requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        rf.fitView({ padding: 0.2, duration: 300 });
+
+  // No modo fullscreen, containerReady é false até o pai sinalizar (setTimeout
+  // fixo de 330ms, mais confiável que onTransitionEnd em portais).
+  // No modo normal, a prop não é passada → undefined → trata como sempre-pronto.
+  const isContainerReady = fullscreen ? (containerReady === true) : true;
+
+  const startFitPoll = useCallback(() => {
+    // Cancela qualquer poll em andamento antes de iniciar um novo.
+    if (fitPollRef.current !== null) {
+      cancelAnimationFrame(fitPollRef.current);
+      fitPollRef.current = null;
+    }
+    fitPollCountRef.current = 0;
+    prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
+
+    const STABLE_FRAMES_NEEDED = 2; // frames consecutivos com mesmo tamanho
+    const MAX_FRAMES = 120;         // teto de ~2s a 60fps
+
+    const poll = () => {
+      if (didFitRef.current) return;
+
+      fitPollCountRef.current += 1;
+
+      if (fitPollCountRef.current > MAX_FRAMES) {
+        // Fallback: mesmo sem estabilidade perfeita, centraliza com fitView.
+        rf.fitView({ padding: 0.15, duration: 200 });
         didFitRef.current = true;
-      }),
-    );
-    return () => cancelAnimationFrame(id);
-  }, [nodes, rf]);
+        fitPollRef.current = null;
+        return;
+      }
+
+      // (1) Wrapper existe e tem tamanho real.
+      const wrapper = flowWrapperRef.current;
+      if (!wrapper || wrapper.clientWidth === 0 || wrapper.clientHeight === 0) {
+        prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
+        fitPollRef.current = requestAnimationFrame(poll);
+        return;
+      }
+
+      // (2) Há nós.
+      const current = rf.getNodes();
+      if (current.length === 0) {
+        prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
+        fitPollRef.current = requestAnimationFrame(poll);
+        return;
+      }
+
+      // (3) Todos os nós foram medidos pelo React Flow.
+      const allMeasured = current.every((n) => (n.measured?.width ?? 0) > 0 && (n.measured?.height ?? 0) > 0);
+      if (!allMeasured) {
+        prevSizeRef.current = { w: 0, h: 0, stableFrames: 0 };
+        fitPollRef.current = requestAnimationFrame(poll);
+        return;
+      }
+
+      // (4) Tamanho do wrapper estável por ≥ STABLE_FRAMES_NEEDED frames consecutivos.
+      const cw = wrapper.clientWidth;
+      const ch = wrapper.clientHeight;
+      const prev = prevSizeRef.current;
+      if (prev.w === cw && prev.h === ch) {
+        prevSizeRef.current = { w: cw, h: ch, stableFrames: prev.stableFrames + 1 };
+      } else {
+        prevSizeRef.current = { w: cw, h: ch, stableFrames: 1 };
+      }
+
+      if (prevSizeRef.current.stableFrames < STABLE_FRAMES_NEEDED) {
+        fitPollRef.current = requestAnimationFrame(poll);
+        return;
+      }
+
+      // Todas as condições satisfeitas: verifica bounds e faz o fit definitivo.
+      const bounds = getNodesBounds(current);
+      if (bounds.width === 0 || bounds.height === 0) {
+        // Bounds zerados apesar de nós medidos → usa fitView de segurança.
+        rf.fitView({ padding: 0.15, duration: 200 });
+      } else {
+        rf.fitBounds(bounds, { padding: 0.15, duration: 200 });
+      }
+      didFitRef.current = true;
+      fitPollRef.current = null;
+    };
+
+    fitPollRef.current = requestAnimationFrame(poll);
+  }, [rf]);
+
+  // Dispara o poll quando o container estiver pronto e ao trocar de chart.
+  useEffect(() => {
+    if (!isContainerReady) return;
+    if (didFitRef.current) return;
+    startFitPoll();
+    return () => {
+      if (fitPollRef.current !== null) {
+        cancelAnimationFrame(fitPollRef.current);
+        fitPollRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isContainerReady, chart.id]);
+
+  // Quando novos nós chegam (ex: adição) e ainda não fitou, reinicia o poll.
+  useEffect(() => {
+    if (!isContainerReady || didFitRef.current) return;
+    startFitPoll();
+    return () => {
+      if (fitPollRef.current !== null) {
+        cancelAnimationFrame(fitPollRef.current);
+        fitPollRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes]);
 
   // Handlers que aplicam a mudança E agendam o save.
   const handleNodesChange = useCallback(
@@ -398,6 +538,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
 
   return (
     <OrgEmployeesProvider value={employeesById}>
+      <OrgDiscProvider value={discCodeByEmployee}>
       <OrgQuickAddProvider value={quickAddValue}>
       <div className={cn('flex flex-col', fullscreen && 'h-full')}>
         {/* Toolbar clássica: só aparece quando NÃO é fullscreen (no fullscreen os
@@ -439,6 +580,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
         {/* Canvas — precisa de altura definida senão o React Flow não renderiza.
             Em fullscreen ocupa toda a altura restante do overlay. */}
         <div
+          ref={flowWrapperRef}
           className={cn(
             'org-flow-wrapper relative w-full overflow-hidden bg-muted/20',
             fullscreen
@@ -460,10 +602,10 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
             nodesConnectable={!isMobile}
             elementsSelectable
             deleteKeyCode={isMobile ? null : ['Backspace', 'Delete']}
-            fitView
-            fitViewOptions={{ padding: 0.2 }}
             minZoom={0.2}
             maxZoom={2}
+            fitView
+            fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
             proOptions={{ hideAttribution: true }}
           >
             <Background gap={16} />
@@ -592,6 +734,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen, onBa
         t={t}
       />
       </OrgQuickAddProvider>
+      </OrgDiscProvider>
     </OrgEmployeesProvider>
   );
 }
@@ -938,12 +1081,20 @@ function ColorPicker({
 export function OrgChartCanvas({
   chart,
   fullscreen,
+  containerReady,
   onBack,
   backLabel,
   backIcon,
 }: {
   chart: OrgChart;
   fullscreen?: boolean;
+  /**
+   * Quando `fullscreen=true`, o pai deve passar `false` enquanto a transição
+   * de entrada estiver acontecendo e `true` após ela (via setTimeout fixo,
+   * não onTransitionEnd). No modo normal deixar `undefined` (sempre-pronto).
+   * O poll interno ainda verifica estabilidade de tamanho antes de fitBounds.
+   */
+  containerReady?: boolean;
   onBack?: () => void;
   backLabel?: string;
   backIcon?: ReactNode;
@@ -955,13 +1106,27 @@ export function OrgChartCanvas({
     return map;
   }, [employees]);
 
+  // Perfis DISC concluídos da empresa → mapa employeeId → profile_code. Só entra
+  // quem tem uma aplicação COMPLETED com profile_code; o nó decide se mostra.
+  const { profilesByEmployee } = useCompanyDiscProfiles();
+  const discCodeByEmployee = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const [employeeId, summary] of Object.entries(profilesByEmployee)) {
+      const code = summary.latestCompleted?.profile_code;
+      if (code) map[employeeId] = code;
+    }
+    return map;
+  }, [profilesByEmployee]);
+
   return (
     <ReactFlowProvider>
       <OrgChartCanvasInner
         chart={chart}
         employees={employees}
         employeesById={employeesById}
+        discCodeByEmployee={discCodeByEmployee}
         fullscreen={fullscreen}
+        containerReady={containerReady}
         onBack={onBack}
         backLabel={backLabel}
         backIcon={backIcon}
