@@ -62,10 +62,12 @@ import {
   type DiscAssessment,
 } from '@/hooks/useEmployeeDisc';
 import { DiscReport } from '@/components/employees/disc/DiscReport';
-import { DiscEvolutionRadar } from '@/components/employees/disc/DiscEvolutionRadar';
 import { DiscCompareLineChart } from '@/components/employees/disc/DiscCompareLineChart';
 import { DiscCompareRadar } from '@/components/employees/disc/DiscCompareRadar';
+import { DiscLineChart } from '@/components/employees/disc/DiscLineChart';
+import { DiscRadar } from '@/components/employees/disc/DiscRadar';
 import { useDiscMessages } from '@/components/employees/disc/useDiscMessages';
+import { describeEvolution } from '@/lib/disc/evolution';
 import { DiscGenerateLinkModal } from '@/components/employees/disc/DiscGenerateLinkModal';
 
 type SubTab = 'overview' | 'interactions' | 'history';
@@ -408,25 +410,53 @@ function RelationshipBlock({
 // ══════════════════════════════════════════════════════════════════════════════
 // Aba HISTÓRICO — evolução + linha do tempo
 // ══════════════════════════════════════════════════════════════════════════════
+// Cores por SÉRIE na evolução — anterior (azul) x atual (laranja). SEMPRE
+// distintas, mesmo se as duas avaliações forem do mesmo dia.
+const EVOLUTION_COLOR_PREV = '#2563EB'; // azul — avaliação anterior
+const EVOLUTION_COLOR_CURR = '#F59E0B'; // laranja — avaliação atual
+
 function HistoryTab({
   employee,
 }: {
   employee: Employee;
 }) {
   const { locale, timezone } = useAppLocaleContext();
+  const { t: discT } = useDiscMessages();
   const p = MESSAGES[locale].app.employees.form.disc.profilePage;
-  const { history, isLoading } = useEmployeeDiscHistory(employee.id);
+  const { history: fullHistory, isLoading } = useEmployeeDiscHistory(employee.id);
 
   const [openVersion, setOpenVersion] = useState<DiscAssessment | null>(null);
 
-  const evolutionLayers = useMemo(
-    () =>
-      history.map((a) => ({
-        scores: a.scores as DiscScores,
-        completedAt: a.completed_at,
-      })),
-    [history],
-  );
+  // Acumula no máximo os 3 perfis mais recentes (não-destrutivo: só limita a
+  // exibição). `fullHistory` já vem desc por completed_at.
+  const history = useMemo(() => fullHistory.slice(0, 3), [fullHistory]);
+
+  // As 2 avaliações mais recentes: atual (última) e anterior (penúltima).
+  const current = history[0] ?? null;
+  const previous = history[1] ?? null;
+
+  const dateLabel = (a: DiscAssessment | null) =>
+    a?.completed_at ? formatDate(a.completed_at, locale, timezone) : p.evolutionNoDate;
+
+  // Parágrafo dinâmico de evolução (regras puras + fragmentos i18n).
+  const evolutionText = useMemo(() => {
+    if (!current?.scores || !previous?.scores) return null;
+    const profileName = (code: string) => {
+      const meta = resolveProfile(code);
+      return (
+        (discT.profiles as Record<string, { nome: string }>)[meta.code]?.nome ?? meta.code
+      );
+    };
+    return describeEvolution(
+      previous.scores as DiscScores,
+      current.scores as DiscScores,
+      previous.profile_code,
+      current.profile_code,
+      p.evolution,
+      (f) => discT.factors[f].name,
+      profileName,
+    );
+  }, [current, previous, p.evolution, discT]);
 
   if (isLoading) {
     return (
@@ -444,16 +474,93 @@ function HistoryTab({
         {p.newAssessmentHint}
       </p>
 
-      {/* Radar de evolução — só com 2+ avaliações */}
+      {/* Evolução do perfil — cruzados (anterior x atual) lado a lado */}
       <div>
         <h3 className="mb-3 text-base font-semibold text-foreground">{p.evolutionTitle}</h3>
-        {evolutionLayers.length >= 2 ? (
-          <DiscEvolutionRadar
-            layers={evolutionLayers}
-            locale={locale}
-            timezone={timezone}
-            noDateLabel={p.evolutionNoDate}
-          />
+
+        {current?.scores && previous?.scores ? (
+          <div className="space-y-5">
+            {/* DISC cruzado + Radar cruzado — empilhados no mobile, lado a lado no desktop */}
+            <div className="lg:flex lg:items-stretch lg:justify-between lg:gap-6">
+              {/* DISC cruzado — SVG custom escala sozinho */}
+              <div className="lg:flex-1 lg:max-w-[420px] min-w-0 lg:flex lg:flex-col lg:h-[440px]">
+                <h4 className="mb-3 text-lg font-bold text-foreground text-center shrink-0">
+                  {p.evolutionDiscChartTitle}
+                </h4>
+                <div className="lg:flex-1 lg:flex min-w-0">
+                  <DiscCompareLineChart
+                    scoresA={previous.scores as DiscScores}
+                    scoresB={current.scores as DiscScores}
+                    nameA={dateLabel(previous)}
+                    nameB={dateLabel(current)}
+                    colorA={EVOLUTION_COLOR_PREV}
+                    colorB={EVOLUTION_COLOR_CURR}
+                    locale={locale}
+                    className="w-full lg:h-full"
+                  />
+                </div>
+              </div>
+
+              {/* Radar cruzado — largura fixa para o recharts medir certo e renderizar grande */}
+              <div className="lg:w-[540px] lg:shrink-0 lg:flex lg:flex-col lg:h-[440px]">
+                <h4 className="mb-2 text-lg font-bold text-foreground text-center shrink-0">
+                  {p.evolutionRadarTitle}
+                </h4>
+                <div className="lg:flex-1 lg:flex">
+                  <DiscCompareRadar
+                    scoresA={previous.scores as DiscScores}
+                    scoresB={current.scores as DiscScores}
+                    nameA={dateLabel(previous)}
+                    nameB={dateLabel(current)}
+                    colorA={EVOLUTION_COLOR_PREV}
+                    colorB={EVOLUTION_COLOR_CURR}
+                    locale={locale}
+                    className="w-full lg:h-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Parágrafo dinâmico do que mudou entre anterior e atual */}
+            {evolutionText && (
+              <p className="rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground">
+                {evolutionText}
+              </p>
+            )}
+          </div>
+        ) : current?.scores ? (
+          // Só 1 avaliação: mostra o perfil único + dica de fazer nova.
+          <div className="space-y-5">
+            <div className="lg:flex lg:items-stretch lg:justify-between lg:gap-6">
+              <div className="lg:flex-1 lg:max-w-[420px] min-w-0 lg:flex lg:flex-col lg:h-[440px]">
+                <h4 className="mb-3 text-lg font-bold text-foreground text-center shrink-0">
+                  {p.evolutionDiscChartTitle}
+                </h4>
+                <div className="lg:flex-1 lg:flex min-w-0">
+                  <DiscLineChart
+                    scores={current.scores as DiscScores}
+                    locale={locale}
+                    className="w-full lg:h-full"
+                  />
+                </div>
+              </div>
+              <div className="lg:w-[540px] lg:shrink-0 lg:flex lg:flex-col lg:h-[440px]">
+                <h4 className="mb-2 text-lg font-bold text-foreground text-center shrink-0">
+                  {p.evolutionRadarTitle}
+                </h4>
+                <div className="lg:flex-1 lg:flex">
+                  <DiscRadar
+                    scores={current.scores as DiscScores}
+                    locale={locale}
+                    className="w-full lg:h-full"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              {p.evolutionSingleHint}
+            </p>
+          </div>
         ) : (
           <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             {p.evolutionEmpty}
