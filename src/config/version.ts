@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.29";
+export const APP_VERSION = "1.17.30";
 
-export const VERSION_NOTES = "Ajustes na montagem da proposta do orçamento: agora todos os modelos visuais aparecem para escolha. No modelo Clean, o selo de validade ficou mais destacado e o PDF ficou mais bem acabado, sem cortar blocos e tabelas no meio ao virar a página.";
+export const VERSION_NOTES = "O Perfil Comportamental (DISC) ficou muito mais completo. Responder o teste ficou mais leve, com uma barra para arrastar e instruções antes de começar, e agora você escolhe, a cada link, se o funcionário vê o resultado ao final. Cada perfil ganhou uma biografia e seções mais detalhadas (qualidades, pontos de atenção, como liderar e onde a pessoa brilha), o histórico mostra a evolução comparando as avaliações lado a lado, a comparação entre dois funcionários ficou mais clara e cada perfil passou a ter um link próprio para compartilhar.";

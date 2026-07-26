@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.30',
+    date: '26 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Perfil Comportamental mais rico, com histórico de evolução e comparação',
+        description: 'Cada funcionário agora ganha uma biografia que descreve o seu jeito de trabalhar, além de seções mais completas de qualidades, pontos de atenção, como liderar e onde a pessoa se destaca. Passando o mouse sobre cada fator do gráfico, você vê o que ele significa com um exemplo. O histórico ficou mais útil: mostra a evolução do perfil comparando as avaliações lado a lado, com um resumo do que mudou de uma para a outra. A comparação entre dois funcionários também ficou mais clara, com um texto explicando a dinâmica da dupla e como extrair o melhor dela. E cada perfil passou a ter um link próprio para você abrir e compartilhar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Teste comportamental mais fácil de responder',
+        description: 'Responder o teste ficou mais leve: no lugar dos botões, agora há uma barra para arrastar entre "nada a ver comigo" e "tudo a ver comigo", com uma tela de instruções antes de começar e a opção de avançar apertando Enter. As perguntas variam mais entre um teste e outro, e, na hora de gerar o link, você escolhe se aquele funcionário vê o resultado ao final.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.29',
     date: '25 de julho de 2026',
     type: 'patch',
