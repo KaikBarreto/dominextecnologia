@@ -34,6 +34,9 @@ export interface DiscCompareRadarProps {
   nameB: string;
   colorA: string;
   colorB: string;
+  /** Par DISC opcional (ex.: "DI") — se presente, aparece " (XX)" após o nome na legenda. */
+  codeA?: string;
+  codeB?: string;
   locale?: LocaleCode;
   className?: string;
 }
@@ -147,6 +150,8 @@ export function DiscCompareRadar({
   nameB,
   colorA,
   colorB,
+  codeA,
+  codeB,
   locale,
   className,
 }: DiscCompareRadarProps) {
@@ -213,11 +218,17 @@ export function DiscCompareRadar({
       <div className="mt-3 shrink-0 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
         <span className="flex items-center gap-1.5 min-w-0">
           <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colorA }} />
-          <span className="truncate text-xs font-medium text-foreground max-w-[9rem]">{nameA}</span>
+          <span className="truncate text-xs font-medium text-foreground max-w-[11rem]">
+            {nameA}
+            {codeA ? <span className="ml-1 font-bold tracking-wide">({codeA})</span> : null}
+          </span>
         </span>
         <span className="flex items-center gap-1.5 min-w-0">
           <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colorB }} />
-          <span className="truncate text-xs font-medium text-foreground max-w-[9rem]">{nameB}</span>
+          <span className="truncate text-xs font-medium text-foreground max-w-[11rem]">
+            {nameB}
+            {codeB ? <span className="ml-1 font-bold tracking-wide">({codeB})</span> : null}
+          </span>
         </span>
       </div>
     </div>

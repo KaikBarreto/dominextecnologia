@@ -85,8 +85,18 @@ function ProfileBadge({
   const color = FACTOR_COLOR[meta.primary];
   const name =
     (discT.profiles as Record<string, { nome: string }>)[meta.code]?.nome ?? meta.code;
+  // Title usa as LETRAS CRUAS do profileCode (não o resolveProfile que canonicaliza/faz fallback).
+  // Assim "CI" → "Conforme-Influente", "SD" → "Estável-Dominante", puro "C" → "Conforme".
+  const p = profileCode[0] as DiscFactor;
+  const s = profileCode[1] as DiscFactor | undefined;
+  const personPair = discT.factors[p]
+    ? s && discT.factors[s]
+      ? `${discT.factors[p].person}-${discT.factors[s].person}`
+      : discT.factors[p].person
+    : name;
   return (
     <span
+      title={personPair}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full font-bold text-white',
         size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm',
@@ -172,98 +182,93 @@ function InteractionsTab({
     selectedPrimary != null
       ? (discT.relationships as Record<
           string,
-          { friction: string[]; synergy: string[]; communication: string }
+          { friction: string[]; synergy: string[]; communication: string; dynamic: string }
         >)[relationshipKey(selfPrimary, selectedPrimary)]
       : null;
 
   return (
     <div className="space-y-5">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">{p.interactionsTitle}</h3>
-        <p className="mt-0.5 text-sm text-muted-foreground">{p.interactionsSubtitle}</p>
-      </div>
+      {/* Cabeçalho: título+subtítulo+select à esquerda; card dos 2 funcionários à direita (desktop).
+          No mobile empilha normalmente. */}
+      <div className="lg:flex lg:items-center lg:justify-between lg:gap-6">
+        <div className="space-y-3 lg:flex-1 lg:min-w-0">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">{p.interactionsTitle}</h3>
+            <p className="mt-0.5 text-sm text-muted-foreground">{p.interactionsSubtitle}</p>
+          </div>
 
-      {/* Combobox com busca — funcionário sem avaliação vem desabilitado */}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between sm:max-w-md"
-          >
-            {selected ? (
-              <span className="flex items-center gap-2 min-w-0">
-                <EmployeeAvatar employee={selected} className="h-6 w-6 shrink-0" />
-                <span className="truncate">{selected.name}</span>
-              </span>
-            ) : (
-              <span className="text-muted-foreground">{p.interactionsSelectPlaceholder}</span>
-            )}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-          <Command
-            filter={(value, search) => {
-              const emp = others.find((e) => e.id === value);
-              if (!emp) return 0;
-              return emp.name.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-            }}
-          >
-            <CommandInput placeholder={p.interactionsSearchPlaceholder} />
-            <CommandList>
-              <CommandEmpty>{p.interactionsNoResults}</CommandEmpty>
-              <CommandGroup>
-                {others.map((emp) => {
-                  const hasProfile =
-                    !!profilesByEmployee[emp.id]?.latestCompleted?.primary_type;
-                  return (
-                    <CommandItem
-                      key={emp.id}
-                      value={emp.id}
-                      disabled={!hasProfile}
-                      onSelect={(v) => {
-                        setSelectedId(v);
-                        setOpen(false);
-                      }}
-                      className="gap-2"
-                    >
-                      <EmployeeAvatar employee={emp} className="h-7 w-7 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{emp.name}</p>
-                        {!hasProfile && (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {p.interactionsNoAssessment}
-                          </p>
-                        )}
-                      </div>
-                      {selectedId === emp.id && (
-                        <Check className="h-4 w-4 shrink-0 text-primary" />
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+          {/* Combobox com busca — funcionário sem avaliação vem desabilitado */}
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between sm:max-w-md"
+              >
+                {selected ? (
+                  <span className="flex items-center gap-2 min-w-0">
+                    <EmployeeAvatar employee={selected} className="h-6 w-6 shrink-0" />
+                    <span className="truncate">{selected.name}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">{p.interactionsSelectPlaceholder}</span>
+                )}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command
+                filter={(value, search) => {
+                  const emp = others.find((e) => e.id === value);
+                  if (!emp) return 0;
+                  return emp.name.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                }}
+              >
+                <CommandInput placeholder={p.interactionsSearchPlaceholder} />
+                <CommandList>
+                  <CommandEmpty>{p.interactionsNoResults}</CommandEmpty>
+                  <CommandGroup>
+                    {others.map((emp) => {
+                      const hasProfile =
+                        !!profilesByEmployee[emp.id]?.latestCompleted?.primary_type;
+                      return (
+                        <CommandItem
+                          key={emp.id}
+                          value={emp.id}
+                          disabled={!hasProfile}
+                          onSelect={(v) => {
+                            setSelectedId(v);
+                            setOpen(false);
+                          }}
+                          className="gap-2"
+                        >
+                          <EmployeeAvatar employee={emp} className="h-7 w-7 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{emp.name}</p>
+                            {!hasProfile && (
+                              <p className="truncate text-xs text-muted-foreground">
+                                {p.interactionsNoAssessment}
+                              </p>
+                            )}
+                          </div>
+                          {selectedId === emp.id && (
+                            <Check className="h-4 w-4 shrink-0 text-primary" />
+                          )}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
 
-      {/* Sem seleção → dica */}
-      {!selected && (
-        <EmptyState
-          icon={<MessageCircle className="h-12 w-12" />}
-          title={p.interactionsEmpty}
-          size="compact"
-        />
-      )}
-
-      {/* Análise da relação A x B */}
-      {selected && selfPrimary && selectedPrimary && rel && (
-        <div className="space-y-5">
-          {/* Contexto: selos reais de A e B (profile_code, não só o primário) */}
-          <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4">
+        {/* Card dos 2 funcionários — à direita no desktop, centralizado verticalmente.
+            No mobile ocupa a largura toda abaixo do select. Só aparece com seleção. */}
+        {selected && selfPrimary && selectedPrimary && rel && (
+          <div className="mt-4 lg:mt-0 lg:shrink-0 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4">
             <div className="flex flex-col items-center gap-1.5">
               <EmployeeAvatar employee={self} className="h-10 w-10" />
               <span className="max-w-[7rem] truncate text-xs font-medium text-foreground">
@@ -288,16 +293,21 @@ function InteractionsTab({
               )}
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Atritos · Sinergias · Melhor comunicação */}
-          <RelationshipBlock kind="friction" title={p.friction} items={rel.friction} />
-          <RelationshipBlock kind="synergy" title={p.synergy} items={rel.synergy} />
-          <RelationshipBlock
-            kind="communication"
-            title={p.communication}
-            text={rel.communication}
-          />
+      {/* Sem seleção → dica */}
+      {!selected && (
+        <EmptyState
+          icon={<MessageCircle className="h-12 w-12" />}
+          title={p.interactionsEmpty}
+          size="compact"
+        />
+      )}
 
+      {/* Análise da relação A x B: (1) gráficos, (2) dinâmica, (3) pontos */}
+      {selected && selfPrimary && selectedPrimary && rel && (
+        <div className="space-y-5">
           {/* Gráfico DISC cruzado + Radar — empilhados no mobile, lado a lado no desktop */}
           {selfScores && selectedAssessment?.scores && (
             <div className="lg:flex lg:items-stretch lg:justify-between lg:gap-6">
@@ -314,6 +324,8 @@ function InteractionsTab({
                     nameB={selected.name}
                     colorA="#2563EB"
                     colorB="#F59E0B"
+                    codeA={selfProfileCode ?? undefined}
+                    codeB={selectedProfileCode ?? undefined}
                     locale={locale}
                     className="w-full lg:h-full"
                   />
@@ -333,6 +345,8 @@ function InteractionsTab({
                     nameB={selected.name}
                     colorA="#2563EB"
                     colorB="#F59E0B"
+                    codeA={selfProfileCode ?? undefined}
+                    codeB={selectedProfileCode ?? undefined}
                     locale={locale}
                     className="w-full lg:h-full"
                   />
@@ -340,6 +354,22 @@ function InteractionsTab({
               </div>
             </div>
           )}
+
+          {/* Parágrafo de dinâmica do par — em destaque, largura de leitura, antes dos pontos */}
+          {rel.dynamic && (
+            <p className="mx-auto max-w-prose rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground">
+              {rel.dynamic}
+            </p>
+          )}
+
+          {/* Atritos · Sinergias · Melhor comunicação */}
+          <RelationshipBlock kind="friction" title={p.friction} items={rel.friction} />
+          <RelationshipBlock kind="synergy" title={p.synergy} items={rel.synergy} />
+          <RelationshipBlock
+            kind="communication"
+            title={p.communication}
+            text={rel.communication}
+          />
         </div>
       )}
     </div>
@@ -495,6 +525,8 @@ function HistoryTab({
                     nameB={dateLabel(current)}
                     colorA={EVOLUTION_COLOR_PREV}
                     colorB={EVOLUTION_COLOR_CURR}
+                    codeA={previous.profile_code ?? undefined}
+                    codeB={current.profile_code ?? undefined}
                     locale={locale}
                     className="w-full lg:h-full"
                   />
@@ -514,6 +546,8 @@ function HistoryTab({
                     nameB={dateLabel(current)}
                     colorA={EVOLUTION_COLOR_PREV}
                     colorB={EVOLUTION_COLOR_CURR}
+                    codeA={previous.profile_code ?? undefined}
+                    codeB={current.profile_code ?? undefined}
                     locale={locale}
                     className="w-full lg:h-full"
                   />

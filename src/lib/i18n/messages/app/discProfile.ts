@@ -68,6 +68,7 @@ export const discProfile = {
       D: {
         name: 'Dominância',
         short: 'D',
+        person: 'Dominante',
         tagline: 'Foco em resultado e ação',
         description:
           'Mede o quanto a pessoa assume o comando, decide rápido e vai atrás do resultado, mesmo correndo risco. Um D alto gosta de desafio, confronto direto e de estar no controle.',
@@ -77,6 +78,7 @@ export const discProfile = {
       I: {
         name: 'Influência',
         short: 'I',
+        person: 'Influente',
         tagline: 'Foco em pessoas e energia',
         description:
           'Mede o quanto a pessoa se conecta, entusiasma e convence os outros. Um I alto traz energia para o grupo, gosta de gente e movimenta o ambiente com otimismo.',
@@ -86,6 +88,7 @@ export const discProfile = {
       S: {
         name: 'Estabilidade',
         short: 'S',
+        person: 'Estável',
         tagline: 'Foco em harmonia e constância',
         description:
           'Mede o quanto a pessoa preza pela constância, pela harmonia e pela previsibilidade. Um S alto é paciente, leal, ótimo ouvinte e sustenta o time no longo prazo.',
@@ -95,6 +98,7 @@ export const discProfile = {
       C: {
         name: 'Conformidade',
         short: 'C',
+        person: 'Conforme',
         tagline: 'Foco em qualidade e critério',
         description:
           'Mede o quanto a pessoa se guia por dados, regras e padrão de qualidade. Um C alto analisa com calma, cuida do detalhe e decide com base em fatos, não no impulso.',
@@ -792,60 +796,68 @@ export const discProfile = {
         ],
         communication:
           'Combine antes quem lidera cada frente e formalize por escrito, para que a reunião não vire disputa pela palavra final. Cada um deve entrar na conversa disposto a ceder em pelo menos um ponto, tratando divergência como dado, não como afronta pessoal. Feedback entre os dois funciona melhor a sós e direto, sem plateia que transforme o assunto em queda de braço. Definam um critério objetivo de decisão (número, prazo, meta) para desempatar sem que vire questão de ego.',
+        dynamic:
+          'A dupla Dominante + Dominante junta duas locomotivas de resultado no mesmo trilho. O atrito nasce da disputa pela palavra final e do ego que não recua; o segredo é dividir o escopo antes de começar, dando a cada Dominante uma frente clara para liderar e um critério objetivo para desempatar. Bem alinhados, decidem rápido, cobram alto padrão um do outro e destravam projetos que perfis cautelosos travariam.',
       },
       DI: {
         friction: [
-          'O D cobra prazo e entrega fechada, enquanto o I chega cheio de ideias soltas, e o D passa a enxergá-lo como disperso e pouco confiável.',
-          'O I sente o D frio e ríspido, e depois de alguns cortes secos começa a evitar levar assuntos e a esconder problemas.',
-          'O ritmo acelerado do D atropela a necessidade do I de conversar e ser reconhecido, esvaziando a energia que ele traria para o time.',
-          'O I promete mais do que consegue cumprir para agradar, e o D se irrita quando a entrega não bate com o discurso animado.',
-          'Em reunião, o I alonga com histórias e o D corta na metade, e nenhum dos dois sai sentindo que foi ouvido.',
+          'O Dominante cobra prazo e entrega fechada, enquanto o Influente chega cheio de ideias soltas, e o Dominante passa a enxergá-lo como disperso e pouco confiável.',
+          'O Influente sente o Dominante frio e ríspido, e depois de alguns cortes secos começa a evitar levar assuntos e a esconder problemas.',
+          'O ritmo acelerado do Dominante atropela a necessidade do Influente de conversar e ser reconhecido, esvaziando a energia que ele traria para o time.',
+          'O Influente promete mais do que consegue cumprir para agradar, e o Dominante se irrita quando a entrega não bate com o discurso animado.',
+          'Em reunião, o Influente alonga com histórias e o Dominante corta na metade, e nenhum dos dois sai sentindo que foi ouvido.',
         ],
         synergy: [
-          'O D puxa o resultado e define a meta, o I engaja as pessoas e vende a ideia, uma dupla forte para lançamentos e viradas de operação.',
-          'O I suaviza o impacto do D nas pessoas, traduzindo cobranças duras numa linguagem que o time aceita sem desmotivar.',
+          'O Dominante puxa o resultado e define a meta, o Influente engaja as pessoas e vende a ideia, uma dupla forte para lançamentos e viradas de operação.',
+          'O Influente suaviza o impacto do Dominante nas pessoas, traduzindo cobranças duras numa linguagem que o time aceita sem desmotivar.',
           'Juntos cobrem os dois lados que quase nenhum perfil sozinho entrega: foco em resultado e capacidade de influenciar e mobilizar.',
-          'O D dá foco e prazo ao entusiasmo do I, transformando muita ideia solta em poucas apostas realmente executadas.',
-          'Em momentos de baixa moral, o D define o rumo e o I reacende a energia, e a equipe volta a andar rápido.',
+          'O Dominante dá foco e prazo ao entusiasmo do Influente, transformando muita ideia solta em poucas apostas realmente executadas.',
+          'Em momentos de baixa moral, o Dominante define o rumo e o Influente reacende a energia, e a equipe volta a andar rápido.',
         ],
         communication:
-          'O D deve começar com uma frase de reconhecimento antes de cobrar, porque o I trava quando sente frieza logo de cara. O I precisa chegar às conversas com foco e um prazo concreto, cortando a introdução longa que faz o D desligar. Combinem que ideias novas do I entram numa lista para depois, e não no meio de uma decisão que já estava fechada. Em reunião, o D conduz a meta e o I conduz o engajamento, cada um respeitando o espaço do outro em vez de disputar o comando.',
+          'O Dominante deve começar com uma frase de reconhecimento antes de cobrar, porque o Influente trava quando sente frieza logo de cara. O Influente precisa chegar às conversas com foco e um prazo concreto, cortando a introdução longa que faz o Dominante desligar. Combinem que ideias novas do Influente entram numa lista para depois, e não no meio de uma decisão que já estava fechada. Em reunião, o Dominante conduz a meta e o Influente conduz o engajamento, cada um respeitando o espaço do outro em vez de disputar o comando.',
+        dynamic:
+          'A dupla Dominante + Influente junta foco em resultado e poder de mobilizar pessoas. O atrito surge quando a frieza do Dominante esbarra na necessidade de reconhecimento do Influente; o segredo é combinar que o Dominante abre com um elogio antes de cobrar e o Influente chega com foco e prazo. Bem alinhados, o Dominante define a meta e o Influente engaja o time, uma dupla imbatível em lançamentos e viradas de operação.',
       },
       DS: {
         friction: [
-          'O D quer mudar tudo agora e o S precisa de tempo e aviso, então mudanças caem de surpresa e o S se sente atropelado.',
-          'O S protege a estabilidade e o ritmo do time, e o D lê isso como lentidão ou resistência de propósito.',
-          'Sob pressão, o D fica mais ríspido e o S se fecha, guardando insatisfações que só aparecem quando já viraram desgaste.',
-          'O D decide sozinho e comunica pronto, enquanto o S esperava ser consultado, e a confiança entre os dois vai corroendo.',
-          'O D mede valor por resultado rápido e o S por consistência e relação, então cada um acha que o outro cuida da coisa errada.',
+          'O Dominante quer mudar tudo agora e o Estável precisa de tempo e aviso, então mudanças caem de surpresa e o Estável se sente atropelado.',
+          'O Estável protege a estabilidade e o ritmo do time, e o Dominante lê isso como lentidão ou resistência de propósito.',
+          'Sob pressão, o Dominante fica mais ríspido e o Estável se fecha, guardando insatisfações que só aparecem quando já viraram desgaste.',
+          'O Dominante decide sozinho e comunica pronto, enquanto o Estável esperava ser consultado, e a confiança entre os dois vai corroendo.',
+          'O Dominante mede valor por resultado rápido e o Estável por consistência e relação, então cada um acha que o outro cuida da coisa errada.',
         ],
         synergy: [
-          'O D lidera e decide, o S estabiliza e executa com constância, uma dupla que combina velocidade de decisão com entrega firme até o fim.',
-          'O S cuida das relações e do clima que o D costuma negligenciar, segurando o time que a pressão do D poderia desgastar.',
-          'Quando o D define o rumo, o S garante que o plano seja seguido sem abandono no meio, reduzindo projetos começados e não terminados.',
-          'O S traz ao D uma leitura realista de como a mudança afeta as pessoas, evitando decisões rápidas que quebram a operação.',
-          'Em rotinas longas, o D dá o impulso inicial e o S sustenta a constância, mantendo o resultado sem depender de novos empurrões.',
+          'O Dominante lidera e decide, o Estável estabiliza e executa com constância, uma dupla que combina velocidade de decisão com entrega firme até o fim.',
+          'O Estável cuida das relações e do clima que o Dominante costuma negligenciar, segurando o time que a pressão do Dominante poderia desgastar.',
+          'Quando o Dominante define o rumo, o Estável garante que o plano seja seguido sem abandono no meio, reduzindo projetos começados e não terminados.',
+          'O Estável traz ao Dominante uma leitura realista de como a mudança afeta as pessoas, evitando decisões rápidas que quebram a operação.',
+          'Em rotinas longas, o Dominante dá o impulso inicial e o Estável sustenta a constância, mantendo o resultado sem depender de novos empurrões.',
         ],
         communication:
-          'O D deve dar contexto e avisar mudanças com antecedência, porque o S entrega muito mais quando não é pego de surpresa. O S precisa se posicionar em voz alta na hora, em vez de concordar por fora e guardar a discordância. Nas conversas, o D ganha se desacelerar o tom e perguntar a opinião do S antes de fechar a decisão. Dividam papéis com clareza: o D assume as decisões e o ritmo, o S assume a execução constante e o cuidado com o time, sem um invadir o terreno do outro.',
+          'O Dominante deve dar contexto e avisar mudanças com antecedência, porque o Estável entrega muito mais quando não é pego de surpresa. O Estável precisa se posicionar em voz alta na hora, em vez de concordar por fora e guardar a discordância. Nas conversas, o Dominante ganha se desacelerar o tom e perguntar a opinião do Estável antes de fechar a decisão. Dividam papéis com clareza: o Dominante assume as decisões e o ritmo, o Estável assume a execução constante e o cuidado com o time, sem um invadir o terreno do outro.',
+        dynamic:
+          'A dupla Dominante + Estável combina velocidade de decisão com entrega firme até o fim. O atrito aparece quando a pressa do Dominante atropela a necessidade de aviso do Estável, que então se fecha e guarda a insatisfação; o segredo é o Dominante dar contexto e antecedência, e o Estável se posicionar em voz alta na hora. Bem alinhados, o Dominante puxa o rumo e o Estável sustenta a constância, entregando resultado sem abandonar projetos no meio.',
       },
       DC: {
         friction: [
-          'O D quer decidir rápido e o C precisa de dados e tempo para analisar, então o D lê o C como travador e o C lê o D como afobado.',
-          'O C aponta riscos e detalhes que faltam, e o D interpreta como resistência ou excesso de burocracia no meio da entrega.',
-          'Os dois são exigentes, mas cobram coisas opostas, o D cobra resultado no prazo e o C cobra qualidade sem falha, e o time fica no fogo cruzado.',
-          'Quando o prazo aperta, o D quer entregar como está e o C se recusa a soltar algo que considera abaixo do padrão, e a tensão sobe.',
-          'O D decide pelo instinto e o C pelo dado, então cada um desconfia do método do outro e a decisão empaca em desconfiança mútua.',
+          'O Dominante quer decidir rápido e o Conforme precisa de dados e tempo para analisar, então o Dominante lê o Conforme como travador e o Conforme lê o Dominante como afobado.',
+          'O Conforme aponta riscos e detalhes que faltam, e o Dominante interpreta como resistência ou excesso de burocracia no meio da entrega.',
+          'Os dois são exigentes, mas cobram coisas opostas, o Dominante cobra resultado no prazo e o Conforme cobra qualidade sem falha, e o time fica no fogo cruzado.',
+          'Quando o prazo aperta, o Dominante quer entregar como está e o Conforme se recusa a soltar algo que considera abaixo do padrão, e a tensão sobe.',
+          'O Dominante decide pelo instinto e o Conforme pelo dado, então cada um desconfia do método do outro e a decisão empaca em desconfiança mútua.',
         ],
         synergy: [
-          'O D puxa o resultado e o C garante a qualidade, uma dupla forte para projetos que precisam entregar rápido e com padrão alto ao mesmo tempo.',
-          'O C freia o D nos erros evitáveis antes que virem prejuízo, funcionando como controle de qualidade sem travar a entrega.',
-          'O D dá ao C um senso de urgência e prazo, evitando que a análise se estenda sem fim atrás da certeza perfeita.',
-          'Em decisões de risco, o D traz a coragem de agir e o C traz o critério para agir certo, reduzindo tanto a paralisia quanto o erro impulsivo.',
-          'Juntos elevam o nível do que o time entrega: velocidade do D com o rigor técnico do C, algo raro num perfil só.',
+          'O Dominante puxa o resultado e o Conforme garante a qualidade, uma dupla forte para projetos que precisam entregar rápido e com padrão alto ao mesmo tempo.',
+          'O Conforme freia o Dominante nos erros evitáveis antes que virem prejuízo, funcionando como controle de qualidade sem travar a entrega.',
+          'O Dominante dá ao Conforme um senso de urgência e prazo, evitando que a análise se estenda sem fim atrás da certeza perfeita.',
+          'Em decisões de risco, o Dominante traz a coragem de agir e o Conforme traz o critério para agir certo, reduzindo tanto a paralisia quanto o erro impulsivo.',
+          'Juntos elevam o nível do que o time entrega: velocidade do Dominante com o rigor técnico do Conforme, algo raro num perfil só.',
         ],
         communication:
-          'O D deve trazer os dados que tem e dar ao C um tempo mínimo para processar antes de exigir a decisão, senão o C trava por insegurança. O C precisa começar pelo essencial e pela conclusão, deixando o detalhamento para depois, para o D não perder o fio nem a paciência. Combinem antes o que é inegociável em qualidade e o que pode ceder pelo prazo, para o embate não acontecer em cima da hora. Nas reuniões, o D conduz meta e prazo, o C conduz critério e risco, e a decisão final considera os dois lados em vez de um vencer o outro.',
+          'O Dominante deve trazer os dados que tem e dar ao Conforme um tempo mínimo para processar antes de exigir a decisão, senão o Conforme trava por insegurança. O Conforme precisa começar pelo essencial e pela conclusão, deixando o detalhamento para depois, para o Dominante não perder o fio nem a paciência. Combinem antes o que é inegociável em qualidade e o que pode ceder pelo prazo, para o embate não acontecer em cima da hora. Nas reuniões, o Dominante conduz meta e prazo, o Conforme conduz critério e risco, e a decisão final considera os dois lados em vez de um vencer o outro.',
+        dynamic:
+          'A dupla Dominante + Conforme junta velocidade e rigor. O atrito aparece quando a pressa de um bate na cautela do outro; o segredo é combinar o padrão inegociável e o prazo antes de começar, deixando o Dominante puxar a meta e o Conforme blindar a qualidade. Bem alinhados, entregam rápido e sem falha, algo raro.',
       },
       II: {
         friction: [
@@ -864,42 +876,48 @@ export const discProfile = {
         ],
         communication:
           'Definam logo no início quem executa o quê e registrem por escrito, porque a boa intenção dos dois some sem responsável claro. Combinem prazos reais e um momento fixo para revisar o que de fato saiu do papel, senão tudo vira conversa animada sem entrega. Vale trazer alguém organizado para o time, ou revezar quem assume a parte chata a cada projeto. Aproveitem a energia para celebrar as conquistas juntos, mas separem o momento de comemorar do momento de decidir, para a reunião não virar só festa.',
+        dynamic:
+          'A dupla Influente + Influente é pura energia e criatividade, mas corre o risco de falar muito e executar pouco. O atrito nasce da disputa pelo palco e da parte chata que ninguém assume; o segredo é definir por escrito quem faz o quê e um momento fixo para revisar o que saiu do papel. Bem alinhados, contagiam o time, geram ideias em dobro e vendem qualquer proposta ao grupo, desde que separem a hora de comemorar da hora de decidir.',
       },
       IS: {
         friction: [
-          'O ritmo acelerado e as mudanças constantes do I sobrecarregam o S, que precisa de previsibilidade para render bem.',
-          'O I se frustra com o tempo que o S leva para aderir a uma novidade, e passa a empurrar mudanças que o S ainda não digeriu.',
-          'O S guarda insatisfações para não gerar atrito, e o I, distraído pela própria energia, nunca percebe que algo está errado.',
-          'O I muda de assunto e de prioridade o tempo todo, e o S se sente inseguro sem saber qual é o foco real da semana.',
-          'Quando o clima esquenta, o I quer resolver conversando alto e rápido, e o S se retrai, e a conversa não acontece.',
+          'O ritmo acelerado e as mudanças constantes do Influente sobrecarregam o Estável, que precisa de previsibilidade para render bem.',
+          'O Influente se frustra com o tempo que o Estável leva para aderir a uma novidade, e passa a empurrar mudanças que o Estável ainda não digeriu.',
+          'O Estável guarda insatisfações para não gerar atrito, e o Influente, distraído pela própria energia, nunca percebe que algo está errado.',
+          'O Influente muda de assunto e de prioridade o tempo todo, e o Estável se sente inseguro sem saber qual é o foco real da semana.',
+          'Quando o clima esquenta, o Influente quer resolver conversando alto e rápido, e o Estável se retrai, e a conversa não acontece.',
         ],
         synergy: [
-          'O I energiza e conecta as pessoas, o S apoia e estabiliza, juntos formam um time caloroso, colaborativo e agradável de trabalhar.',
-          'O S dá constância à energia do I, transformando entusiasmo passageiro em relações e rotinas que duram.',
-          'O S cuida em silêncio dos detalhes e do acompanhamento que o I deixa de lado, cobrindo o ponto fraco do parceiro.',
-          'Nas relações com clientes e equipe, o I abre a porta e o S mantém o vínculo no longo prazo, uma combinação forte em atendimento.',
+          'O Influente energiza e conecta as pessoas, o Estável apoia e estabiliza, juntos formam um time caloroso, colaborativo e agradável de trabalhar.',
+          'O Estável dá constância à energia do Influente, transformando entusiasmo passageiro em relações e rotinas que duram.',
+          'O Estável cuida em silêncio dos detalhes e do acompanhamento que o Influente deixa de lado, cobrindo o ponto fraco do parceiro.',
+          'Nas relações com clientes e equipe, o Influente abre a porta e o Estável mantém o vínculo no longo prazo, uma combinação forte em atendimento.',
           'O clima de confiança que os dois criam faz o time se sentir seguro para falar e pedir ajuda.',
         ],
         communication:
-          'O I deve desacelerar e avisar mudanças com antecedência, dando ao S tempo para se preparar em vez de reagir na correria. O S precisa falar abertamente das preocupações assim que surgem, em vez de guardar até virar mágoa. Combinem uma prioridade clara por período, para o S não se perder na troca constante de foco do I. Nas conversas difíceis, o I ganha se baixar o tom e ouvir mais, e o S ganha se disser o que pensa mesmo correndo o risco de um pequeno atrito.',
+          'O Influente deve desacelerar e avisar mudanças com antecedência, dando ao Estável tempo para se preparar em vez de reagir na correria. O Estável precisa falar abertamente das preocupações assim que surgem, em vez de guardar até virar mágoa. Combinem uma prioridade clara por período, para o Estável não se perder na troca constante de foco do Influente. Nas conversas difíceis, o Influente ganha se baixar o tom e ouvir mais, e o Estável ganha se disser o que pensa mesmo correndo o risco de um pequeno atrito.',
+        dynamic:
+          'A dupla Influente + Estável forma um time caloroso, colaborativo e agradável de trabalhar. O atrito nasce quando o ritmo mutável do Influente sobrecarrega o Estável, que se cala e guarda a insatisfação; o segredo é o Influente avisar mudanças com antecedência e fixar uma prioridade por período, e o Estável falar das preocupações assim que surgem. Bem alinhados, o Influente abre portas e o Estável mantém o vínculo no longo prazo, uma combinação forte em atendimento.',
       },
       IC: {
         friction: [
-          'A espontaneidade do I bate de frente com a precisão do C, e o que para um é agilidade para o outro é desleixo.',
-          'O C acha o I desorganizado e superficial, o I acha o C rígido e sem graça, e cada um subestima a contribuição do outro.',
-          'O I quer começar já e ajustar no caminho, o C quer planejar tudo antes, e a diferença de ritmo gera atrito no arranque de qualquer tarefa.',
-          'O C aponta erros e inconsistências, e o I, que se move por reconhecimento, recebe isso como crítica pessoal e desanima.',
-          'Em reunião, o I traz visão e o C traz ressalvas, e sem mediação a conversa oscila entre otimismo solto e ceticismo travador.',
+          'A espontaneidade do Influente bate de frente com a precisão do Conforme, e o que para um é agilidade para o outro é desleixo.',
+          'O Conforme acha o Influente desorganizado e superficial, o Influente acha o Conforme rígido e sem graça, e cada um subestima a contribuição do outro.',
+          'O Influente quer começar já e ajustar no caminho, o Conforme quer planejar tudo antes, e a diferença de ritmo gera atrito no arranque de qualquer tarefa.',
+          'O Conforme aponta erros e inconsistências, e o Influente, que se move por reconhecimento, recebe isso como crítica pessoal e desanima.',
+          'Em reunião, o Influente traz visão e o Conforme traz ressalvas, e sem mediação a conversa oscila entre otimismo solto e ceticismo travador.',
         ],
         synergy: [
-          'O I traz ideia, energia e relação, o C traz rigor, qualidade e profundidade, um equilíbrio raro entre encantar e entregar bem feito.',
-          'O C aterra as ideias do I em algo concreto e executável, transformando entusiasmo em plano de verdade.',
-          'Juntos são ótimos para explicar e vender assuntos técnicos, o I dá o charme e a clareza, o C garante que o conteúdo esteja correto.',
-          'O I abre portas e conquista as pessoas, o C sustenta a credibilidade com dados, uma dupla convincente e confiável ao mesmo tempo.',
-          'A criatividade do I somada ao senso crítico do C gera soluções inovadoras que também passam no teste da qualidade.',
+          'O Influente traz ideia, energia e relação, o Conforme traz rigor, qualidade e profundidade, um equilíbrio raro entre encantar e entregar bem feito.',
+          'O Conforme aterra as ideias do Influente em algo concreto e executável, transformando entusiasmo em plano de verdade.',
+          'Juntos são ótimos para explicar e vender assuntos técnicos, o Influente dá o charme e a clareza, o Conforme garante que o conteúdo esteja correto.',
+          'O Influente abre portas e conquista as pessoas, o Conforme sustenta a credibilidade com dados, uma dupla convincente e confiável ao mesmo tempo.',
+          'A criatividade do Influente somada ao senso crítico do Conforme gera soluções inovadoras que também passam no teste da qualidade.',
         ],
         communication:
-          'O I deve levar fatos e evidências ao C, porque só entusiasmo não convence quem decide por dado. O C precisa se abrir a ideias novas sem exigir perfeição já no primeiro rascunho, e cuidar para que a crítica venha com reconhecimento, não só como correção. Combinem um momento para divergir livremente e outro para fechar com rigor, separando o brainstorm da revisão. Dividam papéis na apresentação: o I conduz a relação e a narrativa, o C garante a exatidão do conteúdo, buscando sempre o meio-termo entre encantar e comprovar.',
+          'O Influente deve levar fatos e evidências ao Conforme, porque só entusiasmo não convence quem decide por dado. O Conforme precisa se abrir a ideias novas sem exigir perfeição já no primeiro rascunho, e cuidar para que a crítica venha com reconhecimento, não só como correção. Combinem um momento para divergir livremente e outro para fechar com rigor, separando o brainstorm da revisão. Dividam papéis na apresentação: o Influente conduz a relação e a narrativa, o Conforme garante a exatidão do conteúdo, buscando sempre o meio-termo entre encantar e comprovar.',
+        dynamic:
+          'A dupla Influente + Conforme equilibra encantar e entregar bem feito. O atrito nasce quando a espontaneidade do Influente bate na precisão do Conforme, e a crítica do Conforme desanima o Influente, que se move por reconhecimento; o segredo é separar o momento de divergir livremente do momento de fechar com rigor, com a crítica sempre acompanhada de reconhecimento. Bem alinhados, o Influente dá charme e clareza e o Conforme garante o conteúdo correto, imbatíveis para explicar e vender assuntos técnicos.',
       },
       SS: {
         friction: [
@@ -918,24 +936,28 @@ export const discProfile = {
         ],
         communication:
           'Combinem que ser honesto sobre um problema não é agredir, para que os dois consigam falar o desconforto mesmo sem gostar do momento. Definam quem puxa cada decisão e um prazo para bater o martelo, senão a escolha fica rodando sem fim. Marquem uma conversa periódica só para colocar na mesa o que está incomodando, criando um espaço seguro para o que ninguém diria no corredor. Diante de uma mudança necessária, escrevam juntos o porquê e os ganhos, para vencer a resistência natural dos dois com argumento, não com pressão.',
+        dynamic:
+          'A dupla Estável + Estável cria um ambiente leal, harmonioso e estável que segura a operação no longo prazo. O atrito é silencioso: os dois evitam conflito, adiam decisões difíceis e deixam problemas se acumularem sem falar; o segredo é combinar que ser honesto não é agredir e marcar uma conversa periódica para colocar o desconforto na mesa. Bem alinhados, dão ao time uma base de confiança rara, desde que definam prazos para bater o martelo e não se acomodem na rotina.',
       },
       SC: {
         friction: [
           'Os dois são cautelosos e avessos a risco, e juntos podem travar diante de qualquer decisão que envolva incerteza.',
           'O excesso de análise antes de mudar qualquer coisa faz a dupla adiar movimentos que o negócio precisa fazer logo.',
-          'O S quer harmonia e o C quer precisão, e às vezes o apego do C ao processo passa por cima do cuidado do S com as pessoas.',
+          'O Estável quer harmonia e o Conforme quer precisão, e às vezes o apego do Conforme ao processo passa por cima do cuidado do Estável com as pessoas.',
           'Nenhum dos dois gosta de confronto, então divergências sobre o método ficam sem ser resolvidas e se arrastam.',
           'A dupla se sente confortável demais na rotina conhecida, e resiste a inovações mesmo quando elas trariam ganho claro.',
         ],
         synergy: [
           'O trabalho da dupla é confiável, minucioso e de qualidade consistente, com pouquíssima variação de um dia para o outro.',
           'O baixo índice de erro e o respeito às regras fazem deles um dos pares mais estáveis para rotinas de precisão.',
-          'O S mantém o clima e o C mantém o padrão, e juntos entregam qualidade sem gerar atrito com o time em volta.',
+          'O Estável mantém o clima e o Conforme mantém o padrão, e juntos entregam qualidade sem gerar atrito com o time em volta.',
           'São a dupla certa para processos críticos que não podem falhar, porque os dois checam antes de soltar.',
           'A combinação de cuidado com pessoas e cuidado com o detalhe cria uma operação previsível em que a liderança pode confiar.',
         ],
         communication:
-          'Trabalhem com processos e critérios claros e definidos por escrito, porque os dois se sentem seguros quando o caminho está mapeado. Avisem mudanças com antecedência e deem tempo de adaptação, evitando o susto que trava o S e a análise sem fim que trava o C. Combinem antes um prazo para encerrar a análise e agir, para a cautela dos dois não virar paralisia. Incentivem-se mutuamente a se posicionar quando algo estiver errado, tratando a divergência sobre o método como parte do trabalho, não como conflito pessoal.',
+          'Trabalhem com processos e critérios claros e definidos por escrito, porque os dois se sentem seguros quando o caminho está mapeado. Avisem mudanças com antecedência e deem tempo de adaptação, evitando o susto que trava o Estável e a análise sem fim que trava o Conforme. Combinem antes um prazo para encerrar a análise e agir, para a cautela dos dois não virar paralisia. Incentivem-se mutuamente a se posicionar quando algo estiver errado, tratando a divergência sobre o método como parte do trabalho, não como conflito pessoal.',
+        dynamic:
+          'A dupla Estável + Conforme entrega trabalho confiável, minucioso e de qualidade consistente. O atrito nasce do excesso de cautela dos dois, que pode travar qualquer decisão com incerteza e resistir a inovações úteis; o segredo é combinar antes um prazo para encerrar a análise e agir, e incentivar-se a se posicionar quando o método estiver errado. Bem alinhados, o Estável mantém o clima e o Conforme mantém o padrão, formando uma operação previsível em que a liderança pode confiar.',
       },
       CC: {
         friction: [
@@ -954,6 +976,8 @@ export const discProfile = {
         ],
         communication:
           'Combinem antes de começar o que é bom o suficiente e qual o critério de pronto, para não perseguirem uma perfeição que trava a entrega. Definam prazos firmes e um ponto em que a análise se encerra e a decisão é tomada, mesmo sem certeza total. Ao revisar o trabalho um do outro, equilibrem a crítica com o reconhecimento do que ficou bom, evitando o desgaste do apontamento constante. Dividam responsabilidades para não checarem a mesma coisa duas vezes, confiando no critério do parceiro em vez de refazer tudo por conta própria.',
+        dynamic:
+          'A dupla Conforme + Conforme atinge uma precisão e profundidade técnica excepcionais, acima da média do mercado. O atrito é a paralisia por análise: o perfeccionismo dos dois adia a entrega em busca de uma certeza que nunca chega, e a revisão mútua vira apontamento constante; o segredo é combinar antes o critério de pronto e um prazo firme para encerrar a análise. Bem alinhados, produzem controles impecáveis e pegam falhas que passariam por qualquer perfil sozinho, desde que confiem no critério um do outro em vez de refazer tudo.',
       },
     },
   },
@@ -1005,6 +1029,7 @@ export const discProfile = {
       D: {
         name: 'Dominance',
         short: 'D',
+        person: 'Dominant',
         tagline: 'Focus on results and action',
         description:
           'Measures how much a person takes charge, decides fast, and chases the result even at some risk. A high D enjoys challenge, direct confrontation, and being in control.',
@@ -1014,6 +1039,7 @@ export const discProfile = {
       I: {
         name: 'Influence',
         short: 'I',
+        person: 'Influencer',
         tagline: 'Focus on people and energy',
         description:
           'Measures how much a person connects with, inspires, and persuades others. A high I brings energy to the group, enjoys people, and lifts the mood with optimism.',
@@ -1023,6 +1049,7 @@ export const discProfile = {
       S: {
         name: 'Steadiness',
         short: 'S',
+        person: 'Steady',
         tagline: 'Focus on harmony and consistency',
         description:
           'Measures how much a person values consistency, harmony, and predictability. A high S is patient, loyal, a great listener, and sustains the team over the long run.',
@@ -1032,6 +1059,7 @@ export const discProfile = {
       C: {
         name: 'Compliance',
         short: 'C',
+        person: 'Conscientious',
         tagline: 'Focus on quality and standards',
         description:
           'Measures how much a person is guided by data, rules, and a quality standard. A high C analyzes calmly, minds the detail, and decides on facts rather than impulse.',
@@ -1700,60 +1728,68 @@ export const discProfile = {
         ],
         communication:
           `Agree in advance who leads each workstream and put it in writing, so the meeting does not become a fight for the last word. Each should enter the conversation willing to concede at least one point, treating disagreement as data, not a personal attack. Feedback between the two works best one-on-one and direct, with no audience that turns it into a power struggle. Set an objective decision criterion (a number, a deadline, a goal) to break ties without it becoming about ego.`,
+        dynamic:
+          `The Dominant + Dominant pair puts two result-driven engines on the same track. The friction comes from the fight for the last word and an ego that will not back down; the key is to divide the scope before starting, giving each Dominant a clear workstream to lead and an objective criterion to break ties. Well aligned, they decide fast, hold each other to a high bar, and unblock projects that cautious profiles would stall.`,
       },
       DI: {
         friction: [
-          `D demands deadlines and finished work, while I shows up full of loose ideas, so D starts seeing I as scattered and unreliable.`,
-          `I feels D is cold and blunt, and after a few curt cut-offs starts avoiding raising issues and hiding problems.`,
-          `D's fast pace runs over I's need to talk and be recognized, draining the energy I would otherwise bring to the team.`,
-          `I promises more than they can deliver to please, and D gets irritated when the delivery does not match the upbeat pitch.`,
-          `In meetings, I stretches things out with stories and D cuts in halfway, and neither leaves feeling heard.`,
+          `The Dominant demands deadlines and finished work, while the Influencer shows up full of loose ideas, so the Dominant starts seeing the Influencer as scattered and unreliable.`,
+          `The Influencer feels the Dominant is cold and blunt, and after a few curt cut-offs starts avoiding raising issues and hiding problems.`,
+          `The Dominant's fast pace runs over the Influencer's need to talk and be recognized, draining the energy the Influencer would otherwise bring to the team.`,
+          `The Influencer promises more than they can deliver to please, and the Dominant gets irritated when the delivery does not match the upbeat pitch.`,
+          `In meetings, the Influencer stretches things out with stories and the Dominant cuts in halfway, and neither leaves feeling heard.`,
         ],
         synergy: [
-          `D drives the result and sets the goal, I engages people and sells the idea, a strong duo for launches and operational turnarounds.`,
-          `I softens D's impact on people, translating hard demands into language the team accepts without losing motivation.`,
+          `The Dominant drives the result and sets the goal, the Influencer engages people and sells the idea, a strong duo for launches and operational turnarounds.`,
+          `The Influencer softens the Dominant's impact on people, translating hard demands into language the team accepts without losing motivation.`,
           `Together they cover the two sides almost no single profile delivers: focus on results and the ability to influence and mobilize.`,
-          `D gives focus and a deadline to I's enthusiasm, turning many loose ideas into a few genuinely executed bets.`,
-          `In low-morale moments, D sets the direction and I reignites the energy, and the team gets moving fast again.`,
+          `The Dominant gives focus and a deadline to the Influencer's enthusiasm, turning many loose ideas into a few genuinely executed bets.`,
+          `In low-morale moments, the Dominant sets the direction and the Influencer reignites the energy, and the team gets moving fast again.`,
         ],
         communication:
-          `D should open with a line of recognition before pushing, because I shuts down when met with coldness up front. I needs to come to conversations with focus and a concrete deadline, cutting the long intro that makes D tune out. Agree that I's new ideas go into a list for later, not into the middle of a decision that was already settled. In meetings, D drives the goal and I drives the engagement, each respecting the other's space instead of fighting for command.`,
+          `The Dominant should open with a line of recognition before pushing, because the Influencer shuts down when met with coldness up front. The Influencer needs to come to conversations with focus and a concrete deadline, cutting the long intro that makes the Dominant tune out. Agree that the Influencer's new ideas go into a list for later, not into the middle of a decision that was already settled. In meetings, the Dominant drives the goal and the Influencer drives the engagement, each respecting the other's space instead of fighting for command.`,
+        dynamic:
+          `The Dominant + Influencer pair joins focus on results with the power to mobilize people. The friction shows up when the Dominant's coldness hits the Influencer's need for recognition; the key is for the Dominant to open with praise before pushing and for the Influencer to arrive with focus and a deadline. Well aligned, the Dominant sets the goal and the Influencer engages the team, an unbeatable duo for launches and operational turnarounds.`,
       },
       DS: {
         friction: [
-          `D wants to change everything now and S needs time and notice, so changes land as a surprise and S feels run over.`,
-          `S protects the team's stability and pace, and D reads that as slowness or deliberate resistance.`,
-          `Under pressure, D gets blunter and S shuts down, storing up frustrations that only surface once they have become wear and tear.`,
-          `D decides alone and communicates the finished call, while S expected to be consulted, and trust between them erodes.`,
-          `D measures value by fast results and S by consistency and relationships, so each thinks the other cares about the wrong thing.`,
+          `The Dominant wants to change everything now and the Steady needs time and notice, so changes land as a surprise and the Steady feels run over.`,
+          `The Steady protects the team's stability and pace, and the Dominant reads that as slowness or deliberate resistance.`,
+          `Under pressure, the Dominant gets blunter and the Steady shuts down, storing up frustrations that only surface once they have become wear and tear.`,
+          `The Dominant decides alone and communicates the finished call, while the Steady expected to be consulted, and trust between them erodes.`,
+          `The Dominant measures value by fast results and the Steady by consistency and relationships, so each thinks the other cares about the wrong thing.`,
         ],
         synergy: [
-          `D leads and decides, S steadies and executes consistently, a pair that combines decision speed with firm delivery through to the end.`,
-          `S looks after the relationships and mood D tends to overlook, protecting the team that D's pressure could otherwise wear down.`,
-          `Once D sets the direction, S makes sure the plan is followed without being abandoned midway, cutting down half-finished projects.`,
-          `S gives D a realistic read of how change affects people, avoiding fast decisions that break the operation.`,
-          `In long routines, D provides the initial push and S sustains the consistency, keeping results going without needing fresh nudges.`,
+          `The Dominant leads and decides, the Steady steadies and executes consistently, a pair that combines decision speed with firm delivery through to the end.`,
+          `The Steady looks after the relationships and mood the Dominant tends to overlook, protecting the team that the Dominant's pressure could otherwise wear down.`,
+          `Once the Dominant sets the direction, the Steady makes sure the plan is followed without being abandoned midway, cutting down half-finished projects.`,
+          `The Steady gives the Dominant a realistic read of how change affects people, avoiding fast decisions that break the operation.`,
+          `In long routines, the Dominant provides the initial push and the Steady sustains the consistency, keeping results going without needing fresh nudges.`,
         ],
         communication:
-          `D should give context and flag changes in advance, because S delivers far more when not caught by surprise. S needs to speak up on the spot instead of agreeing on the surface and keeping the disagreement inside. In conversations, D benefits from slowing the tone and asking S's opinion before closing the decision. Split roles clearly: D owns the decisions and the pace, S owns steady execution and care for the team, with neither one invading the other's turf.`,
+          `The Dominant should give context and flag changes in advance, because the Steady delivers far more when not caught by surprise. The Steady needs to speak up on the spot instead of agreeing on the surface and keeping the disagreement inside. In conversations, the Dominant benefits from slowing the tone and asking the Steady's opinion before closing the decision. Split roles clearly: the Dominant owns the decisions and the pace, the Steady owns steady execution and care for the team, with neither one invading the other's turf.`,
+        dynamic:
+          `The Dominant + Steady pair combines decision speed with firm delivery through to the end. The friction appears when the Dominant's rush runs over the Steady's need for notice, so the Steady shuts down and stores up frustration; the key is for the Dominant to give context and advance warning, and for the Steady to speak up on the spot. Well aligned, the Dominant sets the direction and the Steady sustains the consistency, delivering results without abandoning projects midway.`,
       },
       DC: {
         friction: [
-          `D wants to decide fast and C needs data and time to analyze, so D reads C as a bottleneck and C reads D as reckless.`,
-          `C flags risks and missing details, and D interprets it as resistance or excess bureaucracy in the middle of delivery.`,
-          `Both are demanding but pull in opposite directions, D pushes for results on time and C pushes for flawless quality, and the team is caught in the crossfire.`,
-          `When the deadline tightens, D wants to ship it as is and C refuses to release something below standard, and tension rises.`,
-          `D decides by instinct and C by data, so each distrusts the other's method and the decision gets stuck in mutual suspicion.`,
+          `The Dominant wants to decide fast and the Conscientious needs data and time to analyze, so the Dominant reads the Conscientious as a bottleneck and the Conscientious reads the Dominant as reckless.`,
+          `The Conscientious flags risks and missing details, and the Dominant interprets it as resistance or excess bureaucracy in the middle of delivery.`,
+          `Both are demanding but pull in opposite directions, the Dominant pushes for results on time and the Conscientious pushes for flawless quality, and the team is caught in the crossfire.`,
+          `When the deadline tightens, the Dominant wants to ship it as is and the Conscientious refuses to release something below standard, and tension rises.`,
+          `The Dominant decides by instinct and the Conscientious by data, so each distrusts the other's method and the decision gets stuck in mutual suspicion.`,
         ],
         synergy: [
-          `D drives the result and C ensures the quality, a strong pair for projects that must ship fast and to a high standard at the same time.`,
-          `C catches D's avoidable mistakes before they become losses, acting as quality control without stalling delivery.`,
-          `D gives C a sense of urgency and a deadline, keeping the analysis from stretching on endlessly in pursuit of perfect certainty.`,
-          `In risky decisions, D brings the courage to act and C brings the criteria to act right, reducing both paralysis and impulsive error.`,
-          `Together they raise the team's bar: D's speed with C's technical rigor, something rare in a single profile.`,
+          `The Dominant drives the result and the Conscientious ensures the quality, a strong pair for projects that must ship fast and to a high standard at the same time.`,
+          `The Conscientious catches the Dominant's avoidable mistakes before they become losses, acting as quality control without stalling delivery.`,
+          `The Dominant gives the Conscientious a sense of urgency and a deadline, keeping the analysis from stretching on endlessly in pursuit of perfect certainty.`,
+          `In risky decisions, the Dominant brings the courage to act and the Conscientious brings the criteria to act right, reducing both paralysis and impulsive error.`,
+          `Together they raise the team's bar: the Dominant's speed with the Conscientious's technical rigor, something rare in a single profile.`,
         ],
         communication:
-          `D should bring the data they have and give C a minimum window to process before demanding the decision, or C freezes out of insecurity. C needs to lead with the essentials and the conclusion, leaving the detail for later, so D does not lose the thread or their patience. Agree in advance what is non-negotiable on quality and what can give way for the deadline, so the clash does not happen at the last minute. In meetings, D drives goal and deadline, C drives criteria and risk, and the final decision weighs both sides instead of one winning over the other.`,
+          `The Dominant should bring the data they have and give the Conscientious a minimum window to process before demanding the decision, or the Conscientious freezes out of insecurity. The Conscientious needs to lead with the essentials and the conclusion, leaving the detail for later, so the Dominant does not lose the thread or their patience. Agree in advance what is non-negotiable on quality and what can give way for the deadline, so the clash does not happen at the last minute. In meetings, the Dominant drives goal and deadline, the Conscientious drives criteria and risk, and the final decision weighs both sides instead of one winning over the other.`,
+        dynamic:
+          `The Dominant + Conscientious pair joins speed and rigor. The friction appears when one's rush hits the other's caution; the key is to agree on the non-negotiable standard and the deadline before starting, letting the Dominant pull the goal and the Conscientious shield the quality. Well aligned, they ship fast and flawless, something rare.`,
       },
       II: {
         friction: [
@@ -1772,42 +1808,48 @@ export const discProfile = {
         ],
         communication:
           `Define early who executes what and put it in writing, because the good intentions of both fade without a clear owner. Agree on real deadlines and a fixed moment to review what actually got done, or it all becomes lively talk with no delivery. It helps to bring someone organized onto the team, or to take turns owning the tedious part each project. Use the energy to celebrate wins together, but separate the moment to celebrate from the moment to decide, so the meeting does not become just a party.`,
+        dynamic:
+          `The Influencer + Influencer pair is pure energy and creativity, but risks talking a lot and executing little. The friction comes from competing for the stage and the tedious part no one takes on; the key is to define in writing who does what and a fixed moment to review what left the drawing board. Well aligned, they light up the team, double the ideas, and sell any proposal to the group, as long as they separate the time to celebrate from the time to decide.`,
       },
       IS: {
         friction: [
-          `I's fast pace and constant changes overload S, who needs predictability to perform well.`,
-          `I gets frustrated with how long S takes to buy into something new, and starts pushing changes S has not yet digested.`,
-          `S holds back frustrations to avoid friction, and I, distracted by their own energy, never notices something is wrong.`,
-          `I switches topics and priorities all the time, and S feels insecure without knowing the real focus of the week.`,
-          `When things heat up, I wants to resolve it by talking loud and fast, and S retreats, so the conversation never happens.`,
+          `The Influencer's fast pace and constant changes overload the Steady, who needs predictability to perform well.`,
+          `The Influencer gets frustrated with how long the Steady takes to buy into something new, and starts pushing changes the Steady has not yet digested.`,
+          `The Steady holds back frustrations to avoid friction, and the Influencer, distracted by their own energy, never notices something is wrong.`,
+          `The Influencer switches topics and priorities all the time, and the Steady feels insecure without knowing the real focus of the week.`,
+          `When things heat up, the Influencer wants to resolve it by talking loud and fast, and the Steady retreats, so the conversation never happens.`,
         ],
         synergy: [
-          `I energizes and connects people, S supports and steadies, and together they form a warm, collaborative team that is pleasant to work in.`,
-          `S gives consistency to I's energy, turning fleeting enthusiasm into relationships and routines that last.`,
-          `S quietly handles the details and follow-through I leaves aside, covering the partner's weak spot.`,
-          `With clients and the team, I opens the door and S keeps the bond alive long term, a strong combination in service roles.`,
+          `The Influencer energizes and connects people, the Steady supports and steadies, and together they form a warm, collaborative team that is pleasant to work in.`,
+          `The Steady gives consistency to the Influencer's energy, turning fleeting enthusiasm into relationships and routines that last.`,
+          `The Steady quietly handles the details and follow-through the Influencer leaves aside, covering the partner's weak spot.`,
+          `With clients and the team, the Influencer opens the door and the Steady keeps the bond alive long term, a strong combination in service roles.`,
           `The atmosphere of trust the two create makes the team feel safe to speak up and ask for help.`,
         ],
         communication:
-          `I should slow down and flag changes in advance, giving S time to prepare instead of reacting in a rush. S needs to voice concerns openly as soon as they arise, instead of holding them until they turn into resentment. Agree on one clear priority per period, so S is not lost in I's constant shift of focus. In hard conversations, I benefits from lowering the tone and listening more, and S benefits from saying what they think even at the risk of a little friction.`,
+          `The Influencer should slow down and flag changes in advance, giving the Steady time to prepare instead of reacting in a rush. The Steady needs to voice concerns openly as soon as they arise, instead of holding them until they turn into resentment. Agree on one clear priority per period, so the Steady is not lost in the Influencer's constant shift of focus. In hard conversations, the Influencer benefits from lowering the tone and listening more, and the Steady benefits from saying what they think even at the risk of a little friction.`,
+        dynamic:
+          `The Influencer + Steady pair forms a warm, collaborative team that is pleasant to work in. The friction comes when the Influencer's shifting pace overloads the Steady, who goes quiet and stores up frustration; the key is for the Influencer to flag changes in advance and fix one priority per period, and for the Steady to voice concerns as soon as they arise. Well aligned, the Influencer opens doors and the Steady keeps the bond alive long term, a strong combination in service roles.`,
       },
       IC: {
         friction: [
-          `I's spontaneity clashes head-on with C's precision, and what looks like agility to one looks like sloppiness to the other.`,
-          `C finds I disorganized and superficial, I finds C rigid and dull, and each underestimates the other's contribution.`,
-          `I wants to start now and adjust along the way, C wants to plan everything first, and the pace gap causes friction at the start of any task.`,
-          `C points out mistakes and inconsistencies, and I, who runs on recognition, takes it as personal criticism and loses heart.`,
-          `In meetings, I brings vision and C brings caveats, and without mediation the conversation swings between loose optimism and stalling skepticism.`,
+          `The Influencer's spontaneity clashes head-on with the Conscientious's precision, and what looks like agility to one looks like sloppiness to the other.`,
+          `The Conscientious finds the Influencer disorganized and superficial, the Influencer finds the Conscientious rigid and dull, and each underestimates the other's contribution.`,
+          `The Influencer wants to start now and adjust along the way, the Conscientious wants to plan everything first, and the pace gap causes friction at the start of any task.`,
+          `The Conscientious points out mistakes and inconsistencies, and the Influencer, who runs on recognition, takes it as personal criticism and loses heart.`,
+          `In meetings, the Influencer brings vision and the Conscientious brings caveats, and without mediation the conversation swings between loose optimism and stalling skepticism.`,
         ],
         synergy: [
-          `I brings ideas, energy, and relationships, C brings rigor, quality, and depth, a rare balance between charming people and delivering well.`,
-          `C grounds I's ideas into something concrete and doable, turning enthusiasm into a real plan.`,
-          `Together they are great at explaining and selling technical topics, I brings the charm and clarity, C ensures the content is correct.`,
-          `I opens doors and wins people over, C sustains credibility with data, a duo that is both convincing and trustworthy.`,
-          `I's creativity combined with C's critical eye produces innovative solutions that also pass the quality test.`,
+          `The Influencer brings ideas, energy, and relationships, the Conscientious brings rigor, quality, and depth, a rare balance between charming people and delivering well.`,
+          `The Conscientious grounds the Influencer's ideas into something concrete and doable, turning enthusiasm into a real plan.`,
+          `Together they are great at explaining and selling technical topics, the Influencer brings the charm and clarity, the Conscientious ensures the content is correct.`,
+          `The Influencer opens doors and wins people over, the Conscientious sustains credibility with data, a duo that is both convincing and trustworthy.`,
+          `The Influencer's creativity combined with the Conscientious's critical eye produces innovative solutions that also pass the quality test.`,
         ],
         communication:
-          `I should bring facts and evidence to C, because enthusiasm alone does not convince someone who decides by data. C needs to open up to new ideas without demanding perfection in the first draft, and make sure criticism comes with recognition, not just correction. Agree on a moment to diverge freely and another to close with rigor, separating the brainstorm from the review. Split roles in a presentation: I drives the relationship and the narrative, C ensures the accuracy of the content, always seeking the middle ground between charming and proving.`,
+          `The Influencer should bring facts and evidence to the Conscientious, because enthusiasm alone does not convince someone who decides by data. The Conscientious needs to open up to new ideas without demanding perfection in the first draft, and make sure criticism comes with recognition, not just correction. Agree on a moment to diverge freely and another to close with rigor, separating the brainstorm from the review. Split roles in a presentation: the Influencer drives the relationship and the narrative, the Conscientious ensures the accuracy of the content, always seeking the middle ground between charming and proving.`,
+        dynamic:
+          `The Influencer + Conscientious pair balances charming and delivering well. The friction comes when the Influencer's spontaneity hits the Conscientious's precision, and the Conscientious's criticism discourages the Influencer, who runs on recognition; the key is to separate the moment to diverge freely from the moment to close with rigor, with criticism always paired with recognition. Well aligned, the Influencer brings charm and clarity and the Conscientious ensures the content is correct, unbeatable at explaining and selling technical topics.`,
       },
       SS: {
         friction: [
@@ -1826,24 +1868,28 @@ export const discProfile = {
         ],
         communication:
           `Agree that being honest about a problem is not an attack, so both can voice discomfort even without enjoying the moment. Define who drives each decision and a deadline to make the call, or the choice keeps circling with no end. Schedule a regular conversation just to put on the table what is bothering them, creating a safe space for what no one would say in the hallway. Facing a necessary change, write down together the why and the gains, to overcome the natural resistance of both with argument rather than pressure.`,
+        dynamic:
+          `The Steady + Steady pair creates a loyal, harmonious, stable environment that sustains the operation long term. The friction is silent: both avoid conflict, postpone hard calls, and let problems pile up unsaid; the key is to agree that being honest is not an attack and to schedule a regular conversation to put the discomfort on the table. Well aligned, they give the team a rare base of trust, as long as they set deadlines to make the call and do not settle into the routine.`,
       },
       SC: {
         friction: [
           `Both are cautious and risk-averse, and together they can freeze in the face of any decision involving uncertainty.`,
           `Over-analysis before changing anything makes the pair postpone moves the business needs to make soon.`,
-          `S wants harmony and C wants precision, and at times C's attachment to the process overrides S's care for people.`,
+          `The Steady wants harmony and the Conscientious wants precision, and at times the Conscientious's attachment to the process overrides the Steady's care for people.`,
           `Neither one likes confrontation, so disagreements about method go unresolved and drag on.`,
           `The pair gets too comfortable in the familiar routine and resists innovations even when they would bring clear gains.`,
         ],
         synergy: [
           `The pair's work is reliable, thorough, and consistently high quality, with very little variation from one day to the next.`,
           `The low error rate and respect for rules make them one of the most stable pairs for precision-driven routines.`,
-          `S keeps the mood and C keeps the standard, and together they deliver quality without creating friction with the surrounding team.`,
+          `The Steady keeps the mood and the Conscientious keeps the standard, and together they deliver quality without creating friction with the surrounding team.`,
           `They are the right pair for critical processes that cannot fail, because both check before releasing.`,
           `The blend of care for people and care for detail creates a predictable operation leadership can rely on.`,
         ],
         communication:
-          `Work with clear processes and criteria set in writing, because both feel secure when the path is mapped out. Flag changes in advance and allow adaptation time, avoiding the shock that freezes S and the endless analysis that freezes C. Agree in advance on a deadline to close the analysis and act, so the caution of both does not turn into paralysis. Encourage each other to speak up when something is wrong, treating disagreement about method as part of the work, not as personal conflict.`,
+          `Work with clear processes and criteria set in writing, because both feel secure when the path is mapped out. Flag changes in advance and allow adaptation time, avoiding the shock that freezes the Steady and the endless analysis that freezes the Conscientious. Agree in advance on a deadline to close the analysis and act, so the caution of both does not turn into paralysis. Encourage each other to speak up when something is wrong, treating disagreement about method as part of the work, not as personal conflict.`,
+        dynamic:
+          `The Steady + Conscientious pair delivers reliable, thorough, consistently high-quality work. The friction comes from the caution of both, which can freeze any decision involving uncertainty and resist useful innovation; the key is to agree in advance on a deadline to close the analysis and act, and to encourage each other to speak up when the method is wrong. Well aligned, the Steady keeps the mood and the Conscientious keeps the standard, forming a predictable operation leadership can rely on.`,
       },
       CC: {
         friction: [
@@ -1862,6 +1908,8 @@ export const discProfile = {
         ],
         communication:
           `Agree before starting on what is good enough and the definition of done, so you do not chase a perfection that stalls delivery. Set firm deadlines and a point at which analysis ends and the decision is made, even without total certainty. When reviewing each other's work, balance criticism with recognition of what turned out well, avoiding the wear of constant remarks. Split responsibilities so you do not check the same thing twice, trusting the partner's judgment instead of redoing everything on your own.`,
+        dynamic:
+          `The Conscientious + Conscientious pair reaches exceptional precision and technical depth, above the market average. The friction is analysis paralysis: the perfectionism of both delays delivery in pursuit of a certainty that never arrives, and mutual review turns into constant remarks; the key is to agree in advance on the definition of done and a firm deadline to close the analysis. Well aligned, they produce impeccable controls and catch flaws any single profile would miss, as long as they trust each other's judgment instead of redoing everything.`,
       },
     },
   },
@@ -1913,6 +1961,7 @@ export const discProfile = {
       D: {
         name: 'Dominancia',
         short: 'D',
+        person: 'Dominante',
         tagline: 'Enfoque en resultados y acción',
         description:
           'Mide cuánto la persona toma el mando, decide rápido y va tras el resultado, aun corriendo riesgo. Un D alto disfruta el desafío, la confrontación directa y estar al control.',
@@ -1922,6 +1971,7 @@ export const discProfile = {
       I: {
         name: 'Influencia',
         short: 'I',
+        person: 'Influyente',
         tagline: 'Enfoque en personas y energía',
         description:
           'Mide cuánto la persona conecta, entusiasma y convence a los demás. Un I alto aporta energía al grupo, disfruta la gente y anima el ambiente con optimismo.',
@@ -1931,6 +1981,7 @@ export const discProfile = {
       S: {
         name: 'Estabilidad',
         short: 'S',
+        person: 'Estable',
         tagline: 'Enfoque en armonía y constancia',
         description:
           'Mide cuánto la persona valora la constancia, la armonía y la previsibilidad. Un S alto es paciente, leal, excelente oyente y sostiene al equipo a largo plazo.',
@@ -1940,6 +1991,7 @@ export const discProfile = {
       C: {
         name: 'Conformidad',
         short: 'C',
+        person: 'Conforme',
         tagline: 'Enfoque en calidad y criterio',
         description:
           'Mide cuánto la persona se guía por datos, reglas y un estándar de calidad. Un C alto analiza con calma, cuida el detalle y decide sobre hechos, no por impulso.',
@@ -2608,60 +2660,68 @@ export const discProfile = {
         ],
         communication:
           'Acuerden de antemano quién lidera cada frente y déjenlo por escrito, para que la reunión no se vuelva una pelea por la última palabra. Cada uno debe entrar a la conversación dispuesto a ceder al menos un punto, tratando la diferencia como un dato y no como una ofensa personal. El feedback entre los dos funciona mejor a solas y directo, sin público que lo convierta en un pulso de poder. Definan un criterio objetivo de decisión (un número, un plazo, una meta) para desempatar sin que sea cuestión de ego.',
+        dynamic:
+          'El dúo Dominante + Dominante junta dos locomotoras de resultado en la misma vía. El roce nace de la pelea por la última palabra y del ego que no cede; la clave es dividir el alcance antes de empezar, dándole a cada Dominante un frente claro para liderar y un criterio objetivo para desempatar. Bien alineados, deciden rápido, se exigen un estándar alto y destraban proyectos que perfiles cautelosos frenarían.',
       },
       DI: {
         friction: [
-          'D exige plazo y entrega cerrada, mientras que I llega lleno de ideas sueltas, y D empieza a verlo como disperso y poco confiable.',
-          'I siente a D frío y cortante, y tras algunos cortes secos empieza a evitar plantear temas y a esconder problemas.',
-          'El ritmo acelerado del D atropella la necesidad del I de conversar y ser reconocido, vaciando la energía que aportaría al equipo.',
-          'I promete más de lo que puede cumplir para agradar, y D se irrita cuando la entrega no coincide con el discurso animado.',
-          'En la reunión, I se extiende con historias y D lo corta a la mitad, y ninguno sale sintiéndose escuchado.',
+          'El Dominante exige plazo y entrega cerrada, mientras que el Influyente llega lleno de ideas sueltas, y el Dominante empieza a verlo como disperso y poco confiable.',
+          'El Influyente siente al Dominante frío y cortante, y tras algunos cortes secos empieza a evitar plantear temas y a esconder problemas.',
+          'El ritmo acelerado del Dominante atropella la necesidad del Influyente de conversar y ser reconocido, vaciando la energía que aportaría al equipo.',
+          'El Influyente promete más de lo que puede cumplir para agradar, y el Dominante se irrita cuando la entrega no coincide con el discurso animado.',
+          'En la reunión, el Influyente se extiende con historias y el Dominante lo corta a la mitad, y ninguno sale sintiéndose escuchado.',
         ],
         synergy: [
-          'D impulsa el resultado y define la meta, I conecta a las personas y vende la idea, un dúo fuerte para lanzamientos y giros de operación.',
-          'I suaviza el impacto del D en las personas, traduciendo las exigencias duras a un lenguaje que el equipo acepta sin desmotivarse.',
+          'El Dominante impulsa el resultado y define la meta, el Influyente conecta a las personas y vende la idea, un dúo fuerte para lanzamientos y giros de operación.',
+          'El Influyente suaviza el impacto del Dominante en las personas, traduciendo las exigencias duras a un lenguaje que el equipo acepta sin desmotivarse.',
           'Juntos cubren los dos lados que casi ningún perfil solo entrega: foco en el resultado y capacidad de influir y movilizar.',
-          'D da foco y plazo al entusiasmo del I, transformando muchas ideas sueltas en pocas apuestas realmente ejecutadas.',
-          'En momentos de moral baja, D marca el rumbo y I reaviva la energía, y el equipo vuelve a andar rápido.',
+          'El Dominante da foco y plazo al entusiasmo del Influyente, transformando muchas ideas sueltas en pocas apuestas realmente ejecutadas.',
+          'En momentos de moral baja, el Dominante marca el rumbo y el Influyente reaviva la energía, y el equipo vuelve a andar rápido.',
         ],
         communication:
-          'D debe empezar con una frase de reconocimiento antes de exigir, porque I se bloquea cuando percibe frialdad de entrada. I necesita llegar a las conversaciones con foco y un plazo concreto, cortando la introducción larga que hace que D se desconecte. Acuerden que las ideas nuevas del I van a una lista para después, y no en medio de una decisión que ya estaba cerrada. En la reunión, D conduce la meta e I conduce el engagement, cada uno respetando el espacio del otro en lugar de disputar el mando.',
+          'El Dominante debe empezar con una frase de reconocimiento antes de exigir, porque el Influyente se bloquea cuando percibe frialdad de entrada. El Influyente necesita llegar a las conversaciones con foco y un plazo concreto, cortando la introducción larga que hace que el Dominante se desconecte. Acuerden que las ideas nuevas del Influyente van a una lista para después, y no en medio de una decisión que ya estaba cerrada. En la reunión, el Dominante conduce la meta y el Influyente conduce el engagement, cada uno respetando el espacio del otro en lugar de disputar el mando.',
+        dynamic:
+          'El dúo Dominante + Influyente une el foco en el resultado con el poder de movilizar personas. El roce surge cuando la frialdad del Dominante choca con la necesidad de reconocimiento del Influyente; la clave es que el Dominante abra con un elogio antes de exigir y que el Influyente llegue con foco y un plazo. Bien alineados, el Dominante define la meta y el Influyente moviliza al equipo, un dúo imbatible para lanzamientos y giros de operación.',
       },
       DS: {
         friction: [
-          'D quiere cambiar todo ya y S necesita tiempo y aviso, así que los cambios caen de sorpresa y S se siente atropellado.',
-          'S protege la estabilidad y el ritmo del equipo, y D lo lee como lentitud o resistencia a propósito.',
-          'Bajo presión, D se pone más cortante y S se cierra, guardando insatisfacciones que solo aparecen cuando ya se volvieron desgaste.',
-          'D decide solo y comunica la decisión ya tomada, mientras S esperaba ser consultado, y la confianza entre ambos se erosiona.',
-          'D mide el valor por el resultado rápido y S por la constancia y la relación, así que cada uno cree que el otro cuida lo equivocado.',
+          'El Dominante quiere cambiar todo ya y el Estable necesita tiempo y aviso, así que los cambios caen de sorpresa y el Estable se siente atropellado.',
+          'El Estable protege la estabilidad y el ritmo del equipo, y el Dominante lo lee como lentitud o resistencia a propósito.',
+          'Bajo presión, el Dominante se pone más cortante y el Estable se cierra, guardando insatisfacciones que solo aparecen cuando ya se volvieron desgaste.',
+          'El Dominante decide solo y comunica la decisión ya tomada, mientras el Estable esperaba ser consultado, y la confianza entre ambos se erosiona.',
+          'El Dominante mide el valor por el resultado rápido y el Estable por la constancia y la relación, así que cada uno cree que el otro cuida lo equivocado.',
         ],
         synergy: [
-          'D lidera y decide, S estabiliza y ejecuta con constancia, un dúo que combina velocidad de decisión con entrega firme hasta el final.',
-          'S cuida las relaciones y el clima que D suele descuidar, protegiendo al equipo que la presión del D podría desgastar.',
-          'Cuando D define el rumbo, S garantiza que el plan se siga sin abandono a mitad de camino, reduciendo los proyectos empezados y no terminados.',
-          'S le da al D una lectura realista de cómo el cambio afecta a las personas, evitando decisiones rápidas que rompen la operación.',
-          'En rutinas largas, D da el impulso inicial y S sostiene la constancia, manteniendo el resultado sin depender de nuevos empujones.',
+          'El Dominante lidera y decide, el Estable estabiliza y ejecuta con constancia, un dúo que combina velocidad de decisión con entrega firme hasta el final.',
+          'El Estable cuida las relaciones y el clima que el Dominante suele descuidar, protegiendo al equipo que la presión del Dominante podría desgastar.',
+          'Cuando el Dominante define el rumbo, el Estable garantiza que el plan se siga sin abandono a mitad de camino, reduciendo los proyectos empezados y no terminados.',
+          'El Estable le da al Dominante una lectura realista de cómo el cambio afecta a las personas, evitando decisiones rápidas que rompen la operación.',
+          'En rutinas largas, el Dominante da el impulso inicial y el Estable sostiene la constancia, manteniendo el resultado sin depender de nuevos empujones.',
         ],
         communication:
-          'D debe dar contexto y avisar los cambios con antelación, porque S entrega mucho más cuando no lo toman por sorpresa. S necesita posicionarse en voz alta en el momento, en lugar de aceptar por fuera y guardar el desacuerdo. En las conversaciones, D gana si baja el ritmo del tono y pregunta la opinión del S antes de cerrar la decisión. Repartan los roles con claridad: D asume las decisiones y el ritmo, S asume la ejecución constante y el cuidado del equipo, sin que uno invada el terreno del otro.',
+          'El Dominante debe dar contexto y avisar los cambios con antelación, porque el Estable entrega mucho más cuando no lo toman por sorpresa. El Estable necesita posicionarse en voz alta en el momento, en lugar de aceptar por fuera y guardar el desacuerdo. En las conversaciones, el Dominante gana si baja el ritmo del tono y pregunta la opinión del Estable antes de cerrar la decisión. Repartan los roles con claridad: el Dominante asume las decisiones y el ritmo, el Estable asume la ejecución constante y el cuidado del equipo, sin que uno invada el terreno del otro.',
+        dynamic:
+          'El dúo Dominante + Estable combina velocidad de decisión con entrega firme hasta el final. El roce aparece cuando la prisa del Dominante atropella la necesidad de aviso del Estable, que entonces se cierra y guarda la insatisfacción; la clave es que el Dominante dé contexto y antelación, y que el Estable se posicione en voz alta en el momento. Bien alineados, el Dominante marca el rumbo y el Estable sostiene la constancia, entregando resultado sin abandonar proyectos a mitad de camino.',
       },
       DC: {
         friction: [
-          'D quiere decidir rápido y C necesita datos y tiempo para analizar, así que D lee al C como un freno y C lee al D como imprudente.',
-          'C señala riesgos y detalles que faltan, y D lo interpreta como resistencia o exceso de burocracia en plena entrega.',
-          'Los dos son exigentes pero en sentidos opuestos, D exige resultado a tiempo y C exige calidad sin fallas, y el equipo queda en el fuego cruzado.',
-          'Cuando el plazo aprieta, D quiere entregar tal como está y C se niega a soltar algo por debajo del estándar, y la tensión sube.',
-          'D decide por instinto y C por el dato, así que cada uno desconfía del método del otro y la decisión se atasca en la desconfianza mutua.',
+          'El Dominante quiere decidir rápido y el Conforme necesita datos y tiempo para analizar, así que el Dominante lee al Conforme como un freno y el Conforme lee al Dominante como imprudente.',
+          'El Conforme señala riesgos y detalles que faltan, y el Dominante lo interpreta como resistencia o exceso de burocracia en plena entrega.',
+          'Los dos son exigentes pero en sentidos opuestos, el Dominante exige resultado a tiempo y el Conforme exige calidad sin fallas, y el equipo queda en el fuego cruzado.',
+          'Cuando el plazo aprieta, el Dominante quiere entregar tal como está y el Conforme se niega a soltar algo por debajo del estándar, y la tensión sube.',
+          'El Dominante decide por instinto y el Conforme por el dato, así que cada uno desconfía del método del otro y la decisión se atasca en la desconfianza mutua.',
         ],
         synergy: [
-          'D impulsa el resultado y C garantiza la calidad, un dúo fuerte para proyectos que deben entregar rápido y con estándar alto a la vez.',
-          'C frena al D en los errores evitables antes de que se vuelvan pérdida, funcionando como control de calidad sin trabar la entrega.',
-          'D le da al C un sentido de urgencia y un plazo, evitando que el análisis se extienda sin fin tras la certeza perfecta.',
-          'En decisiones de riesgo, D aporta el coraje de actuar y C aporta el criterio para actuar bien, reduciendo tanto la parálisis como el error impulsivo.',
-          'Juntos elevan el nivel de lo que el equipo entrega: la velocidad del D con el rigor técnico del C, algo raro en un solo perfil.',
+          'El Dominante impulsa el resultado y el Conforme garantiza la calidad, un dúo fuerte para proyectos que deben entregar rápido y con estándar alto a la vez.',
+          'El Conforme frena al Dominante en los errores evitables antes de que se vuelvan pérdida, funcionando como control de calidad sin trabar la entrega.',
+          'El Dominante le da al Conforme un sentido de urgencia y un plazo, evitando que el análisis se extienda sin fin tras la certeza perfecta.',
+          'En decisiones de riesgo, el Dominante aporta el coraje de actuar y el Conforme aporta el criterio para actuar bien, reduciendo tanto la parálisis como el error impulsivo.',
+          'Juntos elevan el nivel de lo que el equipo entrega: la velocidad del Dominante con el rigor técnico del Conforme, algo raro en un solo perfil.',
         ],
         communication:
-          'D debe traer los datos que tiene y darle al C un tiempo mínimo para procesar antes de exigir la decisión, o el C se bloquea por inseguridad. C necesita empezar por lo esencial y la conclusión, dejando el detalle para después, para que D no pierda el hilo ni la paciencia. Acuerden de antemano qué es innegociable en calidad y qué puede ceder por el plazo, para que el choque no ocurra sobre la hora. En las reuniones, D conduce meta y plazo, C conduce criterio y riesgo, y la decisión final pondera ambos lados en lugar de que uno venza al otro.',
+          'El Dominante debe traer los datos que tiene y darle al Conforme un tiempo mínimo para procesar antes de exigir la decisión, o el Conforme se bloquea por inseguridad. El Conforme necesita empezar por lo esencial y la conclusión, dejando el detalle para después, para que el Dominante no pierda el hilo ni la paciencia. Acuerden de antemano qué es innegociable en calidad y qué puede ceder por el plazo, para que el choque no ocurra sobre la hora. En las reuniones, el Dominante conduce meta y plazo, el Conforme conduce criterio y riesgo, y la decisión final pondera ambos lados en lugar de que uno venza al otro.',
+        dynamic:
+          'El dúo Dominante + Conforme junta velocidad y rigor. El roce aparece cuando la prisa de uno choca con la cautela del otro; la clave es acordar el estándar innegociable y el plazo antes de empezar, dejando que el Dominante impulse la meta y el Conforme blinde la calidad. Bien alineados, entregan rápido y sin fallas, algo raro.',
       },
       II: {
         friction: [
@@ -2680,42 +2740,48 @@ export const discProfile = {
         ],
         communication:
           'Definan desde el inicio quién ejecuta qué y déjenlo por escrito, porque la buena intención de ambos se desvanece sin un responsable claro. Acuerden plazos reales y un momento fijo para revisar lo que de verdad se hizo, o todo se vuelve conversación animada sin entrega. Conviene sumar a alguien organizado al equipo, o turnarse para asumir la parte tediosa en cada proyecto. Aprovechen la energía para celebrar los logros juntos, pero separen el momento de celebrar del momento de decidir, para que la reunión no sea solo fiesta.',
+        dynamic:
+          'El dúo Influyente + Influyente es pura energía y creatividad, pero corre el riesgo de hablar mucho y ejecutar poco. El roce nace de la disputa por el escenario y de la parte tediosa que nadie asume; la clave es definir por escrito quién hace qué y un momento fijo para revisar lo que de verdad se hizo. Bien alineados, contagian al equipo, generan ideas por partida doble y venden cualquier propuesta al grupo, siempre que separen el momento de celebrar del momento de decidir.',
       },
       IS: {
         friction: [
-          'El ritmo acelerado y los cambios constantes del I sobrecargan al S, que necesita previsibilidad para rendir bien.',
-          'I se frustra con el tiempo que tarda S en sumarse a una novedad, y empieza a empujar cambios que S aún no ha digerido.',
-          'S guarda las insatisfacciones para no generar roce, y I, distraído por su propia energía, nunca percibe que algo anda mal.',
-          'I cambia de tema y de prioridad todo el tiempo, y S se siente inseguro sin saber cuál es el foco real de la semana.',
-          'Cuando el clima se calienta, I quiere resolver hablando fuerte y rápido, y S se retrae, y la conversación no ocurre.',
+          'El ritmo acelerado y los cambios constantes del Influyente sobrecargan al Estable, que necesita previsibilidad para rendir bien.',
+          'El Influyente se frustra con el tiempo que tarda el Estable en sumarse a una novedad, y empieza a empujar cambios que el Estable aún no ha digerido.',
+          'El Estable guarda las insatisfacciones para no generar roce, y el Influyente, distraído por su propia energía, nunca percibe que algo anda mal.',
+          'El Influyente cambia de tema y de prioridad todo el tiempo, y el Estable se siente inseguro sin saber cuál es el foco real de la semana.',
+          'Cuando el clima se calienta, el Influyente quiere resolver hablando fuerte y rápido, y el Estable se retrae, y la conversación no ocurre.',
         ],
         synergy: [
-          'I energiza y conecta a las personas, S apoya y estabiliza, juntos forman un equipo cálido, colaborativo y agradable para trabajar.',
-          'S le da constancia a la energía del I, transformando el entusiasmo pasajero en relaciones y rutinas que duran.',
-          'S cuida en silencio los detalles y el seguimiento que I deja de lado, cubriendo el punto débil del compañero.',
-          'En las relaciones con clientes y equipo, I abre la puerta y S mantiene el vínculo a largo plazo, una combinación fuerte en atención.',
+          'El Influyente energiza y conecta a las personas, el Estable apoya y estabiliza, juntos forman un equipo cálido, colaborativo y agradable para trabajar.',
+          'El Estable le da constancia a la energía del Influyente, transformando el entusiasmo pasajero en relaciones y rutinas que duran.',
+          'El Estable cuida en silencio los detalles y el seguimiento que el Influyente deja de lado, cubriendo el punto débil del compañero.',
+          'En las relaciones con clientes y equipo, el Influyente abre la puerta y el Estable mantiene el vínculo a largo plazo, una combinación fuerte en atención.',
           'El clima de confianza que ambos crean hace que el equipo se sienta seguro para hablar y pedir ayuda.',
         ],
         communication:
-          'I debe desacelerar y avisar los cambios con antelación, dándole a S tiempo para prepararse en lugar de reaccionar a las corridas. S necesita hablar abiertamente de sus preocupaciones apenas surgen, en lugar de guardarlas hasta que se vuelvan rencor. Acuerden una prioridad clara por período, para que S no se pierda en el cambio constante de foco del I. En las conversaciones difíciles, I gana si baja el tono y escucha más, y S gana si dice lo que piensa aun a riesgo de un pequeño roce.',
+          'El Influyente debe desacelerar y avisar los cambios con antelación, dándole al Estable tiempo para prepararse en lugar de reaccionar a las corridas. El Estable necesita hablar abiertamente de sus preocupaciones apenas surgen, en lugar de guardarlas hasta que se vuelvan rencor. Acuerden una prioridad clara por período, para que el Estable no se pierda en el cambio constante de foco del Influyente. En las conversaciones difíciles, el Influyente gana si baja el tono y escucha más, y el Estable gana si dice lo que piensa aun a riesgo de un pequeño roce.',
+        dynamic:
+          'El dúo Influyente + Estable forma un equipo cálido, colaborativo y agradable para trabajar. El roce nace cuando el ritmo cambiante del Influyente sobrecarga al Estable, que se calla y guarda la insatisfacción; la clave es que el Influyente avise los cambios con antelación y fije una prioridad por período, y que el Estable hable de sus preocupaciones apenas surgen. Bien alineados, el Influyente abre puertas y el Estable mantiene el vínculo a largo plazo, una combinación fuerte en atención.',
       },
       IC: {
         friction: [
-          'La espontaneidad del I choca de frente con la precisión del C, y lo que para uno es agilidad para el otro es descuido.',
-          'C considera al I desorganizado y superficial, I considera al C rígido y aburrido, y cada uno subestima el aporte del otro.',
-          'I quiere empezar ya y ajustar sobre la marcha, C quiere planear todo antes, y la diferencia de ritmo genera roce al arranque de cualquier tarea.',
-          'C señala errores e inconsistencias, e I, que se mueve por reconocimiento, lo recibe como crítica personal y se desanima.',
-          'En la reunión, I aporta visión y C aporta reparos, y sin mediación la conversación oscila entre el optimismo suelto y el escepticismo que traba.',
+          'La espontaneidad del Influyente choca de frente con la precisión del Conforme, y lo que para uno es agilidad para el otro es descuido.',
+          'El Conforme considera al Influyente desorganizado y superficial, el Influyente considera al Conforme rígido y aburrido, y cada uno subestima el aporte del otro.',
+          'El Influyente quiere empezar ya y ajustar sobre la marcha, el Conforme quiere planear todo antes, y la diferencia de ritmo genera roce al arranque de cualquier tarea.',
+          'El Conforme señala errores e inconsistencias, y el Influyente, que se mueve por reconocimiento, lo recibe como crítica personal y se desanima.',
+          'En la reunión, el Influyente aporta visión y el Conforme aporta reparos, y sin mediación la conversación oscila entre el optimismo suelto y el escepticismo que traba.',
         ],
         synergy: [
-          'I aporta idea, energía y relación, C aporta rigor, calidad y profundidad, un equilibrio raro entre encantar y entregar bien hecho.',
-          'C aterriza las ideas del I en algo concreto y ejecutable, transformando el entusiasmo en un plan de verdad.',
-          'Juntos son excelentes para explicar y vender temas técnicos, I aporta el encanto y la claridad, C garantiza que el contenido sea correcto.',
-          'I abre puertas y conquista a las personas, C sostiene la credibilidad con datos, un dúo convincente y confiable a la vez.',
-          'La creatividad del I sumada al ojo crítico del C genera soluciones innovadoras que además pasan la prueba de la calidad.',
+          'El Influyente aporta idea, energía y relación, el Conforme aporta rigor, calidad y profundidad, un equilibrio raro entre encantar y entregar bien hecho.',
+          'El Conforme aterriza las ideas del Influyente en algo concreto y ejecutable, transformando el entusiasmo en un plan de verdad.',
+          'Juntos son excelentes para explicar y vender temas técnicos, el Influyente aporta el encanto y la claridad, el Conforme garantiza que el contenido sea correcto.',
+          'El Influyente abre puertas y conquista a las personas, el Conforme sostiene la credibilidad con datos, un dúo convincente y confiable a la vez.',
+          'La creatividad del Influyente sumada al ojo crítico del Conforme genera soluciones innovadoras que además pasan la prueba de la calidad.',
         ],
         communication:
-          'I debe llevar hechos y evidencias al C, porque solo el entusiasmo no convence a quien decide por el dato. C necesita abrirse a ideas nuevas sin exigir perfección en el primer borrador, y cuidar que la crítica venga con reconocimiento, no solo como corrección. Acuerden un momento para divergir libremente y otro para cerrar con rigor, separando el brainstorm de la revisión. Repartan los roles en la presentación: I conduce la relación y la narrativa, C garantiza la exactitud del contenido, buscando siempre el punto medio entre encantar y demostrar.',
+          'El Influyente debe llevar hechos y evidencias al Conforme, porque solo el entusiasmo no convence a quien decide por el dato. El Conforme necesita abrirse a ideas nuevas sin exigir perfección en el primer borrador, y cuidar que la crítica venga con reconocimiento, no solo como corrección. Acuerden un momento para divergir libremente y otro para cerrar con rigor, separando el brainstorm de la revisión. Repartan los roles en la presentación: el Influyente conduce la relación y la narrativa, el Conforme garantiza la exactitud del contenido, buscando siempre el punto medio entre encantar y demostrar.',
+        dynamic:
+          'El dúo Influyente + Conforme equilibra encantar y entregar bien hecho. El roce nace cuando la espontaneidad del Influyente choca con la precisión del Conforme, y la crítica del Conforme desanima al Influyente, que se mueve por reconocimiento; la clave es separar el momento de divergir libremente del momento de cerrar con rigor, con la crítica siempre acompañada de reconocimiento. Bien alineados, el Influyente aporta encanto y claridad y el Conforme garantiza que el contenido sea correcto, imbatibles para explicar y vender temas técnicos.',
       },
       SS: {
         friction: [
@@ -2734,24 +2800,28 @@ export const discProfile = {
         ],
         communication:
           'Acuerden que ser honesto sobre un problema no es una agresión, para que ambos puedan expresar la incomodidad aunque no disfruten el momento. Definan quién impulsa cada decisión y un plazo para dar el veredicto, o la elección se queda dando vueltas sin fin. Agenden una conversación periódica solo para poner sobre la mesa lo que incomoda, creando un espacio seguro para lo que nadie diría en el pasillo. Ante un cambio necesario, escriban juntos el porqué y las ganancias, para vencer la resistencia natural de ambos con argumento y no con presión.',
+        dynamic:
+          'El dúo Estable + Estable crea un ambiente leal, armonioso y estable que sostiene la operación a largo plazo. El roce es silencioso: ambos evitan el conflicto, aplazan las decisiones difíciles y dejan que los problemas se acumulen sin hablar; la clave es acordar que ser honesto no es una agresión y agendar una conversación periódica para poner la incomodidad sobre la mesa. Bien alineados, le dan al equipo una base de confianza rara, siempre que fijen plazos para dar el veredicto y no se acomoden en la rutina.',
       },
       SC: {
         friction: [
           'Los dos son cautelosos y reacios al riesgo, y juntos pueden trabarse ante cualquier decisión que implique incertidumbre.',
           'El exceso de análisis antes de cambiar cualquier cosa hace que el dúo aplace movimientos que el negocio necesita hacer pronto.',
-          'S busca armonía y C busca precisión, y a veces el apego del C al proceso pasa por encima del cuidado del S por las personas.',
+          'El Estable busca armonía y el Conforme busca precisión, y a veces el apego del Conforme al proceso pasa por encima del cuidado del Estable por las personas.',
           'A ninguno le gusta el enfrentamiento, así que las diferencias sobre el método quedan sin resolver y se arrastran.',
           'El dúo se siente demasiado cómodo en la rutina conocida y resiste las innovaciones incluso cuando traerían una ganancia clara.',
         ],
         synergy: [
           'El trabajo del dúo es confiable, minucioso y de calidad consistente, con muy poca variación de un día al otro.',
           'El bajo índice de error y el respeto por las reglas los convierten en uno de los pares más estables para rutinas de precisión.',
-          'S mantiene el clima y C mantiene el estándar, y juntos entregan calidad sin generar roce con el equipo alrededor.',
+          'El Estable mantiene el clima y el Conforme mantiene el estándar, y juntos entregan calidad sin generar roce con el equipo alrededor.',
           'Son el dúo indicado para procesos críticos que no pueden fallar, porque ambos verifican antes de soltar.',
           'La combinación de cuidado por las personas y cuidado por el detalle crea una operación previsible en la que el liderazgo puede confiar.',
         ],
         communication:
-          'Trabajen con procesos y criterios claros y definidos por escrito, porque ambos se sienten seguros cuando el camino está mapeado. Avisen los cambios con antelación y den tiempo de adaptación, evitando el susto que traba al S y el análisis sin fin que traba al C. Acuerden de antemano un plazo para cerrar el análisis y actuar, para que la cautela de ambos no se vuelva parálisis. Anímense mutuamente a posicionarse cuando algo esté mal, tratando la diferencia sobre el método como parte del trabajo y no como un conflicto personal.',
+          'Trabajen con procesos y criterios claros y definidos por escrito, porque ambos se sienten seguros cuando el camino está mapeado. Avisen los cambios con antelación y den tiempo de adaptación, evitando el susto que traba al Estable y el análisis sin fin que traba al Conforme. Acuerden de antemano un plazo para cerrar el análisis y actuar, para que la cautela de ambos no se vuelva parálisis. Anímense mutuamente a posicionarse cuando algo esté mal, tratando la diferencia sobre el método como parte del trabajo y no como un conflicto personal.',
+        dynamic:
+          'El dúo Estable + Conforme entrega un trabajo confiable, minucioso y de calidad consistente. El roce nace del exceso de cautela de ambos, que puede trabar cualquier decisión con incertidumbre y resistir innovaciones útiles; la clave es acordar de antemano un plazo para cerrar el análisis y actuar, y animarse a posicionarse cuando el método esté mal. Bien alineados, el Estable mantiene el clima y el Conforme mantiene el estándar, formando una operación previsible en la que el liderazgo puede confiar.',
       },
       CC: {
         friction: [
@@ -2770,6 +2840,8 @@ export const discProfile = {
         ],
         communication:
           'Acuerden antes de empezar qué es suficientemente bueno y cuál es el criterio de terminado, para no perseguir una perfección que traba la entrega. Fijen plazos firmes y un punto en el que el análisis se cierra y se toma la decisión, aun sin certeza total. Al revisar el trabajo del otro, equilibren la crítica con el reconocimiento de lo que quedó bien, evitando el desgaste de la observación constante. Repartan responsabilidades para no verificar lo mismo dos veces, confiando en el criterio del compañero en lugar de rehacer todo por cuenta propia.',
+        dynamic:
+          'El dúo Conforme + Conforme alcanza una precisión y profundidad técnica excepcionales, por encima del promedio del mercado. El roce es la parálisis por análisis: el perfeccionismo de ambos demora la entrega en busca de una certeza que nunca llega, y la revisión mutua se vuelve observación constante; la clave es acordar de antemano el criterio de terminado y un plazo firme para cerrar el análisis. Bien alineados, producen controles impecables y detectan fallas que a cualquier perfil solo se le pasarían, siempre que confíen en el criterio del otro en lugar de rehacer todo.',
       },
     },
   },
@@ -2803,6 +2875,7 @@ export const discProfile = {
       D: {
         name: 'Dominance',
         short: 'D',
+        person: `Dominant`,
         tagline: `Axé sur le résultat et l’action`,
         description: `Mesure à quel point la personne prend les commandes, décide vite et vise le résultat, même en prenant un risque. Un D élevé aime le défi, la confrontation directe et le contrôle.`,
         example: `Souvent associé à Steve Jobs, pour sa vision forte, ses décisions rapides et son obsession du résultat.`,
@@ -2810,6 +2883,7 @@ export const discProfile = {
       I: {
         name: 'Influence',
         short: 'I',
+        person: `Influent`,
         tagline: `Axé sur les personnes et l’énergie`,
         description: `Mesure à quel point la personne connecte, enthousiasme et convainc les autres. Un I élevé apporte de l’énergie au groupe, aime les gens et anime l’ambiance avec optimisme.`,
         example: `Souvent associée à Oprah Winfrey, pour son charisme, sa connexion avec les gens et sa capacité à mobiliser son entourage.`,
@@ -2817,6 +2891,7 @@ export const discProfile = {
       S: {
         name: 'Stabilité',
         short: 'S',
+        person: `Stable`,
         tagline: `Axé sur l’harmonie et la constance`,
         description: `Mesure à quel point la personne valorise la constance, l’harmonie et la prévisibilité. Un S élevé est patient, loyal, excellent écoutant et soutient l’équipe sur la durée.`,
         example: `Souvent associé à Warren Buffett, pour sa patience, sa constance et sa vision de long terme.`,
@@ -2824,6 +2899,7 @@ export const discProfile = {
       C: {
         name: 'Conformité',
         short: 'C',
+        person: `Conforme`,
         tagline: `Axé sur la qualité et le critère`,
         description: `Mesure à quel point la personne se guide par les données, les règles et un standard de qualité. Un C élevé analyse calmement, soigne le détail et décide sur des faits, pas sur l’impulsion.`,
         example: `Souvent associé à Bill Gates, pour son analyse, sa méthode et sa rigueur technique fondée sur les données.`,
@@ -3443,60 +3519,68 @@ export const discProfile = {
         ],
         communication:
           `Convenez à l'avance de qui dirige chaque front et mettez-le par écrit, pour que la réunion ne devienne pas une lutte pour le dernier mot. Chacun doit entrer dans la conversation prêt à céder sur au moins un point, en traitant le désaccord comme une donnée et non comme une attaque personnelle. Le feedback entre les deux fonctionne mieux en tête-à-tête et direct, sans public qui le transforme en bras de fer. Fixez un critère de décision objectif (un chiffre, un délai, un objectif) pour départager sans que ce soit une question d'ego.`,
+        dynamic:
+          `Le duo Dominant + Dominant réunit deux locomotives de résultat sur la même voie. La friction naît de la lutte pour le dernier mot et de l'ego qui ne recule pas ; la clé est de répartir le périmètre avant de commencer, en donnant à chaque Dominant un front clair à diriger et un critère objectif pour départager. Bien alignés, ils décident vite, s'exigent un haut standard et débloquent des projets que des profils prudents bloqueraient.`,
       },
       DI: {
         friction: [
-          `D exige des délais et un travail abouti, tandis que I arrive plein d'idées éparses, et D commence à le voir comme dispersé et peu fiable.`,
-          `I trouve D froid et cassant, et après quelques coupures sèches il se met à éviter d'aborder des sujets et à cacher les problèmes.`,
-          `Le rythme rapide du D bouscule le besoin du I de parler et d'être reconnu, vidant l'énergie qu'il apporterait à l'équipe.`,
-          `I promet plus qu'il ne peut tenir pour plaire, et D s'agace quand la livraison ne correspond pas au discours enthousiaste.`,
-          `En réunion, I s'étale en anecdotes et D le coupe à mi-chemin, et aucun des deux ne repart en se sentant écouté.`,
+          `Le Dominant exige des délais et un travail abouti, tandis que l'Influent arrive plein d'idées éparses, et le Dominant commence à le voir comme dispersé et peu fiable.`,
+          `L'Influent trouve le Dominant froid et cassant, et après quelques coupures sèches il se met à éviter d'aborder des sujets et à cacher les problèmes.`,
+          `Le rythme rapide du Dominant bouscule le besoin de l'Influent de parler et d'être reconnu, vidant l'énergie qu'il apporterait à l'équipe.`,
+          `L'Influent promet plus qu'il ne peut tenir pour plaire, et le Dominant s'agace quand la livraison ne correspond pas au discours enthousiaste.`,
+          `En réunion, l'Influent s'étale en anecdotes et le Dominant le coupe à mi-chemin, et aucun des deux ne repart en se sentant écouté.`,
         ],
         synergy: [
-          `D tire le résultat et fixe l'objectif, I engage les personnes et vend l'idée, un duo fort pour les lancements et les virages d'opération.`,
-          `I adoucit l'impact du D sur les personnes, en traduisant les exigences dures dans un langage que l'équipe accepte sans se démotiver.`,
+          `Le Dominant tire le résultat et fixe l'objectif, l'Influent engage les personnes et vend l'idée, un duo fort pour les lancements et les virages d'opération.`,
+          `L'Influent adoucit l'impact du Dominant sur les personnes, en traduisant les exigences dures dans un langage que l'équipe accepte sans se démotiver.`,
           `Ensemble, ils couvrent les deux facettes que presque aucun profil seul ne livre : le focus sur le résultat et la capacité d'influencer et de mobiliser.`,
-          `D donne du focus et un délai à l'enthousiasme du I, transformant beaucoup d'idées éparses en quelques paris réellement exécutés.`,
-          `Dans les moments de moral bas, D fixe le cap et I ravive l'énergie, et l'équipe se remet à avancer vite.`,
+          `Le Dominant donne du focus et un délai à l'enthousiasme de l'Influent, transformant beaucoup d'idées éparses en quelques paris réellement exécutés.`,
+          `Dans les moments de moral bas, le Dominant fixe le cap et l'Influent ravive l'énergie, et l'équipe se remet à avancer vite.`,
         ],
         communication:
-          `D devrait commencer par une phrase de reconnaissance avant de pousser, parce que I se ferme quand il perçoit de la froideur d'entrée. I doit arriver aux conversations avec du focus et un délai concret, en coupant la longue introduction qui fait décrocher D. Convenez que les idées nouvelles du I vont dans une liste pour plus tard, et non au milieu d'une décision déjà arrêtée. En réunion, D mène l'objectif et I mène l'engagement, chacun respectant l'espace de l'autre au lieu de se disputer le commandement.`,
+          `Le Dominant devrait commencer par une phrase de reconnaissance avant de pousser, parce que l'Influent se ferme quand il perçoit de la froideur d'entrée. L'Influent doit arriver aux conversations avec du focus et un délai concret, en coupant la longue introduction qui fait décrocher le Dominant. Convenez que les idées nouvelles de l'Influent vont dans une liste pour plus tard, et non au milieu d'une décision déjà arrêtée. En réunion, le Dominant mène l'objectif et l'Influent mène l'engagement, chacun respectant l'espace de l'autre au lieu de se disputer le commandement.`,
+        dynamic:
+          `Le duo Dominant + Influent unit le focus sur le résultat au pouvoir de mobiliser les personnes. La friction surgit quand la froideur du Dominant heurte le besoin de reconnaissance de l'Influent ; la clé est que le Dominant ouvre par un compliment avant de pousser et que l'Influent arrive avec du focus et un délai. Bien alignés, le Dominant fixe l'objectif et l'Influent engage l'équipe, un duo imbattable pour les lancements et les virages d'opération.`,
       },
       DS: {
         friction: [
-          `D veut tout changer maintenant et S a besoin de temps et de préavis, alors les changements tombent par surprise et S se sent bousculé.`,
-          `S protège la stabilité et le rythme de l'équipe, et D lit cela comme de la lenteur ou une résistance délibérée.`,
-          `Sous pression, D devient plus cassant et S se referme, gardant des insatisfactions qui ne surgissent que devenues usure.`,
-          `D décide seul et communique la décision toute faite, alors que S s'attendait à être consulté, et la confiance entre eux s'érode.`,
-          `D mesure la valeur par le résultat rapide et S par la constance et la relation, alors chacun pense que l'autre prend soin de la mauvaise chose.`,
+          `Le Dominant veut tout changer maintenant et le Stable a besoin de temps et de préavis, alors les changements tombent par surprise et le Stable se sent bousculé.`,
+          `Le Stable protège la stabilité et le rythme de l'équipe, et le Dominant lit cela comme de la lenteur ou une résistance délibérée.`,
+          `Sous pression, le Dominant devient plus cassant et le Stable se referme, gardant des insatisfactions qui ne surgissent que devenues usure.`,
+          `Le Dominant décide seul et communique la décision toute faite, alors que le Stable s'attendait à être consulté, et la confiance entre eux s'érode.`,
+          `Le Dominant mesure la valeur par le résultat rapide et le Stable par la constance et la relation, alors chacun pense que l'autre prend soin de la mauvaise chose.`,
         ],
         synergy: [
-          `D dirige et décide, S stabilise et exécute avec constance, un duo qui allie la rapidité de décision à une livraison ferme jusqu'au bout.`,
-          `S prend soin des relations et du climat que D tend à négliger, protégeant l'équipe que la pression du D pourrait user.`,
-          `Une fois que D fixe le cap, S veille à ce que le plan soit suivi sans abandon en cours de route, réduisant les projets commencés et non terminés.`,
-          `S donne à D une lecture réaliste de l'effet du changement sur les personnes, évitant les décisions rapides qui cassent l'opération.`,
-          `Dans les routines longues, D donne l'impulsion initiale et S soutient la constance, maintenant le résultat sans dépendre de nouveaux coups de pouce.`,
+          `Le Dominant dirige et décide, le Stable stabilise et exécute avec constance, un duo qui allie la rapidité de décision à une livraison ferme jusqu'au bout.`,
+          `Le Stable prend soin des relations et du climat que le Dominant tend à négliger, protégeant l'équipe que la pression du Dominant pourrait user.`,
+          `Une fois que le Dominant fixe le cap, le Stable veille à ce que le plan soit suivi sans abandon en cours de route, réduisant les projets commencés et non terminés.`,
+          `Le Stable donne au Dominant une lecture réaliste de l'effet du changement sur les personnes, évitant les décisions rapides qui cassent l'opération.`,
+          `Dans les routines longues, le Dominant donne l'impulsion initiale et le Stable soutient la constance, maintenant le résultat sans dépendre de nouveaux coups de pouce.`,
         ],
         communication:
-          `D devrait donner du contexte et signaler les changements à l'avance, parce que S livre bien plus quand il n'est pas pris par surprise. S doit se positionner à voix haute sur le moment, au lieu d'accepter en façade et de garder son désaccord. Dans les conversations, D gagne à ralentir le ton et à demander l'avis de S avant de clore la décision. Répartissez les rôles clairement : D assume les décisions et le rythme, S assume l'exécution constante et le soin de l'équipe, sans que l'un empiète sur le terrain de l'autre.`,
+          `Le Dominant devrait donner du contexte et signaler les changements à l'avance, parce que le Stable livre bien plus quand il n'est pas pris par surprise. Le Stable doit se positionner à voix haute sur le moment, au lieu d'accepter en façade et de garder son désaccord. Dans les conversations, le Dominant gagne à ralentir le ton et à demander l'avis du Stable avant de clore la décision. Répartissez les rôles clairement : le Dominant assume les décisions et le rythme, le Stable assume l'exécution constante et le soin de l'équipe, sans que l'un empiète sur le terrain de l'autre.`,
+        dynamic:
+          `Le duo Dominant + Stable allie la rapidité de décision à une livraison ferme jusqu'au bout. La friction apparaît quand la hâte du Dominant bouscule le besoin de préavis du Stable, qui se referme alors et garde son insatisfaction ; la clé est que le Dominant donne du contexte et de l'avance, et que le Stable se positionne à voix haute sur le moment. Bien alignés, le Dominant fixe le cap et le Stable soutient la constance, livrant du résultat sans abandonner les projets en cours de route.`,
       },
       DC: {
         friction: [
-          `D veut décider vite et C a besoin de données et de temps pour analyser, alors D voit C comme un frein et C voit D comme imprudent.`,
-          `C signale des risques et des détails manquants, et D l'interprète comme de la résistance ou un excès de bureaucratie en pleine livraison.`,
-          `Les deux sont exigeants mais en sens opposés, D exige un résultat dans les temps et C exige une qualité sans faille, et l'équipe se retrouve entre deux feux.`,
-          `Quand le délai se resserre, D veut livrer tel quel et C refuse de lâcher quelque chose en dessous du standard, et la tension monte.`,
-          `D décide à l'instinct et C par la donnée, alors chacun se méfie de la méthode de l'autre et la décision s'enlise dans la méfiance mutuelle.`,
+          `Le Dominant veut décider vite et le Conforme a besoin de données et de temps pour analyser, alors le Dominant voit le Conforme comme un frein et le Conforme voit le Dominant comme imprudent.`,
+          `Le Conforme signale des risques et des détails manquants, et le Dominant l'interprète comme de la résistance ou un excès de bureaucratie en pleine livraison.`,
+          `Les deux sont exigeants mais en sens opposés, le Dominant exige un résultat dans les temps et le Conforme exige une qualité sans faille, et l'équipe se retrouve entre deux feux.`,
+          `Quand le délai se resserre, le Dominant veut livrer tel quel et le Conforme refuse de lâcher quelque chose en dessous du standard, et la tension monte.`,
+          `Le Dominant décide à l'instinct et le Conforme par la donnée, alors chacun se méfie de la méthode de l'autre et la décision s'enlise dans la méfiance mutuelle.`,
         ],
         synergy: [
-          `D tire le résultat et C assure la qualité, un duo fort pour les projets qui doivent livrer vite et à un haut standard en même temps.`,
-          `C freine D sur les erreurs évitables avant qu'elles ne deviennent une perte, faisant office de contrôle qualité sans bloquer la livraison.`,
-          `D donne à C un sens de l'urgence et un délai, évitant que l'analyse ne s'étire sans fin à la recherche de la certitude parfaite.`,
-          `Dans les décisions à risque, D apporte le courage d'agir et C apporte le critère pour agir juste, réduisant à la fois la paralysie et l'erreur impulsive.`,
-          `Ensemble, ils élèvent le niveau de ce que l'équipe livre : la vitesse du D avec la rigueur technique du C, chose rare dans un seul profil.`,
+          `Le Dominant tire le résultat et le Conforme assure la qualité, un duo fort pour les projets qui doivent livrer vite et à un haut standard en même temps.`,
+          `Le Conforme freine le Dominant sur les erreurs évitables avant qu'elles ne deviennent une perte, faisant office de contrôle qualité sans bloquer la livraison.`,
+          `Le Dominant donne au Conforme un sens de l'urgence et un délai, évitant que l'analyse ne s'étire sans fin à la recherche de la certitude parfaite.`,
+          `Dans les décisions à risque, le Dominant apporte le courage d'agir et le Conforme apporte le critère pour agir juste, réduisant à la fois la paralysie et l'erreur impulsive.`,
+          `Ensemble, ils élèvent le niveau de ce que l'équipe livre : la vitesse du Dominant avec la rigueur technique du Conforme, chose rare dans un seul profil.`,
         ],
         communication:
-          `D devrait apporter les données dont il dispose et laisser à C un minimum de temps pour traiter avant d'exiger la décision, sinon C se fige par insécurité. C doit commencer par l'essentiel et la conclusion, en laissant le détail pour après, pour que D ne perde ni le fil ni sa patience. Convenez à l'avance de ce qui est non négociable en qualité et de ce qui peut céder pour le délai, pour que le choc n'arrive pas à la dernière minute. En réunion, D mène l'objectif et le délai, C mène le critère et le risque, et la décision finale pèse les deux côtés au lieu que l'un l'emporte sur l'autre.`,
+          `Le Dominant devrait apporter les données dont il dispose et laisser au Conforme un minimum de temps pour traiter avant d'exiger la décision, sinon le Conforme se fige par insécurité. Le Conforme doit commencer par l'essentiel et la conclusion, en laissant le détail pour après, pour que le Dominant ne perde ni le fil ni sa patience. Convenez à l'avance de ce qui est non négociable en qualité et de ce qui peut céder pour le délai, pour que le choc n'arrive pas à la dernière minute. En réunion, le Dominant mène l'objectif et le délai, le Conforme mène le critère et le risque, et la décision finale pèse les deux côtés au lieu que l'un l'emporte sur l'autre.`,
+        dynamic:
+          `Le duo Dominant + Conforme réunit vitesse et rigueur. La friction apparaît quand la hâte de l'un heurte la prudence de l'autre ; la clé est de convenir du standard non négociable et du délai avant de commencer, en laissant le Dominant tirer l'objectif et le Conforme blinder la qualité. Bien alignés, ils livrent vite et sans faille, chose rare.`,
       },
       II: {
         friction: [
@@ -3515,42 +3599,48 @@ export const discProfile = {
         ],
         communication:
           `Définissez dès le départ qui exécute quoi et mettez-le par écrit, parce que la bonne intention des deux s'évapore sans responsable clair. Convenez de vrais délais et d'un moment fixe pour revoir ce qui a réellement été fait, sinon tout devient une conversation animée sans livraison. Il est utile d'ajouter quelqu'un d'organisé à l'équipe, ou d'alterner qui prend la partie ingrate à chaque projet. Profitez de l'énergie pour célébrer les victoires ensemble, mais séparez le moment de célébrer du moment de décider, pour que la réunion ne devienne pas qu'une fête.`,
+        dynamic:
+          `Le duo Influent + Influent est pure énergie et créativité, mais risque de beaucoup parler et peu exécuter. La friction naît de la dispute pour la scène et de la partie ingrate que personne n'assume ; la clé est de définir par écrit qui fait quoi et un moment fixe pour revoir ce qui a réellement été fait. Bien alignés, ils galvanisent l'équipe, doublent les idées et vendent n'importe quelle proposition au groupe, à condition de séparer le moment de célébrer du moment de décider.`,
       },
       IS: {
         friction: [
-          `Le rythme rapide et les changements constants du I surchargent le S, qui a besoin de prévisibilité pour bien performer.`,
-          `I se frustre du temps que met S à adhérer à une nouveauté, et se met à pousser des changements que S n'a pas encore digérés.`,
-          `S garde ses insatisfactions pour éviter les frictions, et I, distrait par sa propre énergie, ne perçoit jamais que quelque chose ne va pas.`,
-          `I change de sujet et de priorité tout le temps, et S se sent en insécurité sans savoir quel est le vrai focus de la semaine.`,
-          `Quand le climat s'échauffe, I veut régler en parlant fort et vite, et S se retire, alors la conversation n'a jamais lieu.`,
+          `Le rythme rapide et les changements constants de l'Influent surchargent le Stable, qui a besoin de prévisibilité pour bien performer.`,
+          `L'Influent se frustre du temps que met le Stable à adhérer à une nouveauté, et se met à pousser des changements que le Stable n'a pas encore digérés.`,
+          `Le Stable garde ses insatisfactions pour éviter les frictions, et l'Influent, distrait par sa propre énergie, ne perçoit jamais que quelque chose ne va pas.`,
+          `L'Influent change de sujet et de priorité tout le temps, et le Stable se sent en insécurité sans savoir quel est le vrai focus de la semaine.`,
+          `Quand le climat s'échauffe, l'Influent veut régler en parlant fort et vite, et le Stable se retire, alors la conversation n'a jamais lieu.`,
         ],
         synergy: [
-          `I énergise et connecte les personnes, S soutient et stabilise, et ensemble ils forment une équipe chaleureuse, collaborative et agréable où travailler.`,
-          `S donne de la constance à l'énergie du I, transformant l'enthousiasme passager en relations et routines qui durent.`,
-          `S gère en silence les détails et le suivi que I laisse de côté, couvrant le point faible du partenaire.`,
-          `Avec les clients et l'équipe, I ouvre la porte et S entretient le lien sur le long terme, une combinaison forte dans les rôles de service.`,
+          `L'Influent énergise et connecte les personnes, le Stable soutient et stabilise, et ensemble ils forment une équipe chaleureuse, collaborative et agréable où travailler.`,
+          `Le Stable donne de la constance à l'énergie de l'Influent, transformant l'enthousiasme passager en relations et routines qui durent.`,
+          `Le Stable gère en silence les détails et le suivi que l'Influent laisse de côté, couvrant le point faible du partenaire.`,
+          `Avec les clients et l'équipe, l'Influent ouvre la porte et le Stable entretient le lien sur le long terme, une combinaison forte dans les rôles de service.`,
           `Le climat de confiance que les deux créent fait que l'équipe se sent libre de s'exprimer et de demander de l'aide.`,
         ],
         communication:
-          `I devrait ralentir et signaler les changements à l'avance, en donnant à S le temps de se préparer au lieu de réagir dans la précipitation. S doit exprimer ses préoccupations ouvertement dès qu'elles surgissent, au lieu de les garder jusqu'à ce qu'elles tournent au ressentiment. Convenez d'une priorité claire par période, pour que S ne se perde pas dans le changement constant de focus du I. Dans les conversations difficiles, I gagne à baisser le ton et à écouter davantage, et S gagne à dire ce qu'il pense, même au risque d'une petite friction.`,
+          `L'Influent devrait ralentir et signaler les changements à l'avance, en donnant au Stable le temps de se préparer au lieu de réagir dans la précipitation. Le Stable doit exprimer ses préoccupations ouvertement dès qu'elles surgissent, au lieu de les garder jusqu'à ce qu'elles tournent au ressentiment. Convenez d'une priorité claire par période, pour que le Stable ne se perde pas dans le changement constant de focus de l'Influent. Dans les conversations difficiles, l'Influent gagne à baisser le ton et à écouter davantage, et le Stable gagne à dire ce qu'il pense, même au risque d'une petite friction.`,
+        dynamic:
+          `Le duo Influent + Stable forme une équipe chaleureuse, collaborative et agréable où travailler. La friction naît quand le rythme changeant de l'Influent surcharge le Stable, qui se tait et garde son insatisfaction ; la clé est que l'Influent signale les changements à l'avance et fixe une priorité par période, et que le Stable exprime ses préoccupations dès qu'elles surgissent. Bien alignés, l'Influent ouvre les portes et le Stable entretient le lien sur le long terme, une combinaison forte dans les rôles de service.`,
       },
       IC: {
         friction: [
-          `La spontanéité du I se heurte de plein fouet à la précision du C, et ce qui est de l'agilité pour l'un est du laisser-aller pour l'autre.`,
-          `C trouve I désorganisé et superficiel, I trouve C rigide et ennuyeux, et chacun sous-estime l'apport de l'autre.`,
-          `I veut commencer tout de suite et ajuster en chemin, C veut tout planifier avant, et l'écart de rythme crée des frictions au démarrage de toute tâche.`,
-          `C pointe les erreurs et les incohérences, et I, qui carbure à la reconnaissance, le reçoit comme une critique personnelle et se décourage.`,
-          `En réunion, I apporte la vision et C apporte les réserves, et sans médiation la conversation oscille entre optimisme débridé et scepticisme bloquant.`,
+          `La spontanéité de l'Influent se heurte de plein fouet à la précision du Conforme, et ce qui est de l'agilité pour l'un est du laisser-aller pour l'autre.`,
+          `Le Conforme trouve l'Influent désorganisé et superficiel, l'Influent trouve le Conforme rigide et ennuyeux, et chacun sous-estime l'apport de l'autre.`,
+          `L'Influent veut commencer tout de suite et ajuster en chemin, le Conforme veut tout planifier avant, et l'écart de rythme crée des frictions au démarrage de toute tâche.`,
+          `Le Conforme pointe les erreurs et les incohérences, et l'Influent, qui carbure à la reconnaissance, le reçoit comme une critique personnelle et se décourage.`,
+          `En réunion, l'Influent apporte la vision et le Conforme apporte les réserves, et sans médiation la conversation oscille entre optimisme débridé et scepticisme bloquant.`,
         ],
         synergy: [
-          `I apporte l'idée, l'énergie et la relation, C apporte la rigueur, la qualité et la profondeur, un équilibre rare entre séduire et livrer du bien fait.`,
-          `C ancre les idées du I dans quelque chose de concret et réalisable, transformant l'enthousiasme en un vrai plan.`,
-          `Ensemble, ils excellent à expliquer et à vendre des sujets techniques, I apporte le charme et la clarté, C garantit que le contenu est correct.`,
-          `I ouvre les portes et conquiert les personnes, C soutient la crédibilité par les données, un duo à la fois convaincant et fiable.`,
-          `La créativité du I alliée à l'oeil critique du C produit des solutions innovantes qui passent aussi le test de la qualité.`,
+          `L'Influent apporte l'idée, l'énergie et la relation, le Conforme apporte la rigueur, la qualité et la profondeur, un équilibre rare entre séduire et livrer du bien fait.`,
+          `Le Conforme ancre les idées de l'Influent dans quelque chose de concret et réalisable, transformant l'enthousiasme en un vrai plan.`,
+          `Ensemble, ils excellent à expliquer et à vendre des sujets techniques, l'Influent apporte le charme et la clarté, le Conforme garantit que le contenu est correct.`,
+          `L'Influent ouvre les portes et conquiert les personnes, le Conforme soutient la crédibilité par les données, un duo à la fois convaincant et fiable.`,
+          `La créativité de l'Influent alliée à l'oeil critique du Conforme produit des solutions innovantes qui passent aussi le test de la qualité.`,
         ],
         communication:
-          `I devrait apporter des faits et des preuves à C, parce que l'enthousiasme seul ne convainc pas quelqu'un qui décide par la donnée. C doit s'ouvrir aux idées nouvelles sans exiger la perfection dès le premier brouillon, et veiller à ce que la critique s'accompagne de reconnaissance, et pas seulement de correction. Convenez d'un moment pour diverger librement et d'un autre pour clore avec rigueur, en séparant le brainstorm de la relecture. Répartissez les rôles en présentation : I mène la relation et le récit, C garantit l'exactitude du contenu, en cherchant toujours le juste milieu entre séduire et démontrer.`,
+          `L'Influent devrait apporter des faits et des preuves au Conforme, parce que l'enthousiasme seul ne convainc pas quelqu'un qui décide par la donnée. Le Conforme doit s'ouvrir aux idées nouvelles sans exiger la perfection dès le premier brouillon, et veiller à ce que la critique s'accompagne de reconnaissance, et pas seulement de correction. Convenez d'un moment pour diverger librement et d'un autre pour clore avec rigueur, en séparant le brainstorm de la relecture. Répartissez les rôles en présentation : l'Influent mène la relation et le récit, le Conforme garantit l'exactitude du contenu, en cherchant toujours le juste milieu entre séduire et démontrer.`,
+        dynamic:
+          `Le duo Influent + Conforme équilibre séduire et livrer du bien fait. La friction naît quand la spontanéité de l'Influent heurte la précision du Conforme, et la critique du Conforme décourage l'Influent, qui carbure à la reconnaissance ; la clé est de séparer le moment de diverger librement du moment de clore avec rigueur, la critique allant toujours de pair avec la reconnaissance. Bien alignés, l'Influent apporte le charme et la clarté et le Conforme garantit que le contenu est correct, imbattables pour expliquer et vendre des sujets techniques.`,
       },
       SS: {
         friction: [
@@ -3569,24 +3659,28 @@ export const discProfile = {
         ],
         communication:
           `Convenez qu'être honnête sur un problème n'est pas une agression, pour que les deux puissent exprimer leur gêne même sans apprécier le moment. Définissez qui mène chaque décision et un délai pour trancher, sinon le choix tourne en rond sans fin. Planifiez une conversation régulière juste pour mettre sur la table ce qui dérange, en créant un espace sûr pour ce que personne ne dirait dans le couloir. Face à un changement nécessaire, écrivez ensemble le pourquoi et les gains, pour vaincre la résistance naturelle des deux par l'argument plutôt que par la pression.`,
+        dynamic:
+          `Le duo Stable + Stable crée un environnement loyal, harmonieux et stable qui soutient l'opération sur le long terme. La friction est silencieuse : les deux évitent le conflit, repoussent les choix difficiles et laissent les problèmes s'accumuler sans rien dire ; la clé est de convenir qu'être honnête n'est pas une agression et de planifier une conversation régulière pour mettre la gêne sur la table. Bien alignés, ils donnent à l'équipe une base de confiance rare, à condition de fixer des délais pour trancher et de ne pas s'installer dans la routine.`,
       },
       SC: {
         friction: [
           `Les deux sont prudents et averses au risque, et ensemble ils peuvent se figer devant toute décision comportant de l'incertitude.`,
           `L'excès d'analyse avant de changer quoi que ce soit fait que le duo repousse des mouvements que l'entreprise doit faire bientôt.`,
-          `S cherche l'harmonie et C cherche la précision, et parfois l'attachement du C au processus passe au-dessus du soin du S pour les personnes.`,
+          `Le Stable cherche l'harmonie et le Conforme cherche la précision, et parfois l'attachement du Conforme au processus passe au-dessus du soin du Stable pour les personnes.`,
           `Aucun des deux n'aime la confrontation, alors les désaccords sur la méthode restent sans solution et s'éternisent.`,
           `Le duo se sent trop à l'aise dans la routine connue et résiste aux innovations même quand elles apporteraient un gain clair.`,
         ],
         synergy: [
           `Le travail du duo est fiable, minutieux et d'une qualité constante, avec très peu de variation d'un jour à l'autre.`,
           `Le faible taux d'erreur et le respect des règles en font l'un des duos les plus stables pour les routines de précision.`,
-          `S maintient le climat et C maintient le standard, et ensemble ils livrent de la qualité sans créer de frictions avec l'équipe autour.`,
+          `Le Stable maintient le climat et le Conforme maintient le standard, et ensemble ils livrent de la qualité sans créer de frictions avec l'équipe autour.`,
           `Ils sont le duo idéal pour les processus critiques qui ne peuvent pas échouer, parce que les deux vérifient avant de lâcher.`,
           `L'alliance du soin pour les personnes et du soin pour le détail crée une opération prévisible sur laquelle la direction peut compter.`,
         ],
         communication:
-          `Travaillez avec des processus et des critères clairs et définis par écrit, parce que les deux se sentent en sécurité quand le chemin est balisé. Signalez les changements à l'avance et laissez du temps d'adaptation, en évitant le choc qui fige S et l'analyse sans fin qui fige C. Convenez à l'avance d'un délai pour clore l'analyse et agir, pour que la prudence des deux ne devienne pas de la paralysie. Encouragez-vous mutuellement à vous positionner quand quelque chose ne va pas, en traitant le désaccord sur la méthode comme une partie du travail et non comme un conflit personnel.`,
+          `Travaillez avec des processus et des critères clairs et définis par écrit, parce que les deux se sentent en sécurité quand le chemin est balisé. Signalez les changements à l'avance et laissez du temps d'adaptation, en évitant le choc qui fige le Stable et l'analyse sans fin qui fige le Conforme. Convenez à l'avance d'un délai pour clore l'analyse et agir, pour que la prudence des deux ne devienne pas de la paralysie. Encouragez-vous mutuellement à vous positionner quand quelque chose ne va pas, en traitant le désaccord sur la méthode comme une partie du travail et non comme un conflit personnel.`,
+        dynamic:
+          `Le duo Stable + Conforme livre un travail fiable, minutieux et d'une qualité constante. La friction naît de l'excès de prudence des deux, qui peut figer toute décision comportant de l'incertitude et résister aux innovations utiles ; la clé est de convenir à l'avance d'un délai pour clore l'analyse et agir, et de s'encourager à se positionner quand la méthode ne va pas. Bien alignés, le Stable maintient le climat et le Conforme maintient le standard, formant une opération prévisible sur laquelle la direction peut compter.`,
       },
       CC: {
         friction: [
@@ -3605,6 +3699,8 @@ export const discProfile = {
         ],
         communication:
           `Convenez avant de commencer de ce qui est assez bon et du critère de fini, pour ne pas courir après une perfection qui bloque la livraison. Fixez des délais fermes et un point où l'analyse s'arrête et la décision se prend, même sans certitude totale. En relisant le travail de l'autre, équilibrez la critique avec la reconnaissance de ce qui est réussi, pour éviter l'usure de la remarque constante. Répartissez les responsabilités pour ne pas vérifier deux fois la même chose, en faisant confiance au jugement du partenaire au lieu de tout refaire soi-même.`,
+        dynamic:
+          `Le duo Conforme + Conforme atteint une précision et une profondeur technique exceptionnelles, au-dessus de la moyenne du marché. La friction, c'est la paralysie par l'analyse : le perfectionnisme des deux retarde la livraison en quête d'une certitude qui n'arrive jamais, et la relecture mutuelle devient une remarque constante ; la clé est de convenir à l'avance du critère de fini et d'un délai ferme pour clore l'analyse. Bien alignés, ils produisent des contrôles impeccables et repèrent des failles qu'un profil seul laisserait passer, à condition de faire confiance au jugement de l'autre au lieu de tout refaire.`,
       },
     },
   },

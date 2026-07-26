@@ -23,6 +23,9 @@ export interface DiscCompareLineChartProps {
   nameB: string;
   colorA: string;
   colorB: string;
+  /** Par DISC opcional (ex.: "DI") — se presente, aparece " (XX)" após o nome na legenda. */
+  codeA?: string;
+  codeB?: string;
   locale?: LocaleCode;
   className?: string;
 }
@@ -107,6 +110,8 @@ export function DiscCompareLineChart({
   nameB,
   colorA,
   colorB,
+  codeA,
+  codeB,
   locale,
   className,
 }: DiscCompareLineChartProps) {
@@ -267,21 +272,24 @@ export function DiscCompareLineChart({
 
       {/* Legenda de nomes: shrink-0 fixa no rodapé do bloco no desktop */}
       <div className="mt-3 shrink-0 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
-        <LegendItem color={colorA} name={nameA} />
-        <LegendItem color={colorB} name={nameB} />
+        <LegendItem color={colorA} name={nameA} code={codeA} />
+        <LegendItem color={colorB} name={nameB} code={codeB} />
       </div>
     </div>
   );
 }
 
-function LegendItem({ color, name }: { color: string; name: string }) {
+function LegendItem({ color, name, code }: { color: string; name: string; code?: string }) {
   return (
     <span className="flex items-center gap-1.5 min-w-0">
       <span
         className="h-3 w-3 shrink-0 rounded-full"
         style={{ backgroundColor: color }}
       />
-      <span className="truncate text-xs font-medium text-foreground max-w-[9rem]">{name}</span>
+      <span className="truncate text-xs font-medium text-foreground max-w-[11rem]">
+        {name}
+        {code ? <span className="ml-1 font-bold tracking-wide">({code})</span> : null}
+      </span>
     </span>
   );
 }

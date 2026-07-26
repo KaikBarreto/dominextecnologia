@@ -195,6 +195,16 @@ export function DiscReport({
   const primary = meta.primary as DiscFactor;
   const primaryColor = FACTOR_COLOR[primary];
 
+  // Title usa as LETRAS CRUAS do profileCode (não o resolveProfile que canonicaliza/faz fallback).
+  // Assim "CI" → "Conforme-Influente", "SD" → "Estável-Dominante", puro "C" → "Conforme".
+  const _p = profileCode[0] as DiscFactor;
+  const _s = profileCode[1] as DiscFactor | undefined;
+  const personPair = t.factors[_p]
+    ? _s && t.factors[_s]
+      ? `${t.factors[_p].person}-${t.factors[_s].person}`
+      : t.factors[_p].person
+    : meta.code;
+
   // Insights do perfil, resolvidos por code (cai no puro se o combinado nao existe).
   const profileText = t.profiles[meta.code as keyof typeof t.profiles];
 
@@ -219,6 +229,7 @@ export function DiscReport({
         {!hideHeader && (
           <header className="text-center">
             <span
+              title={personPair}
               className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold text-white shadow-sm"
               style={{ backgroundColor: primaryColor }}
             >

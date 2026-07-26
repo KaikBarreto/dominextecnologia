@@ -40,6 +40,7 @@ import type { DiscScores } from '@/lib/disc/scoring';
 import { computeCompetencies } from '@/lib/disc/competencies';
 import type { CompetencyKey } from '@/lib/disc/competencies';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiscMessages } from './useDiscMessages';
 
 // Vermelho fixo conforme print do CEO
@@ -180,6 +181,7 @@ function RadarTooltip({ active, payload }: TooltipProps<number, string>) {
 
 export function DiscRadar({ scores, locale, className }: DiscRadarProps) {
   const { t } = useDiscMessages(locale);
+  const isMobile = useIsMobile();
 
   const competencies = computeCompetencies(scores);
   const data = competencies.map(({ key, value }) => ({
@@ -208,12 +210,21 @@ export function DiscRadar({ scores, locale, className }: DiscRadarProps) {
        * text-foreground no wrapper: CustomAngleTick usa currentColor e
        * herda a cor do tema — legivel em claro E escuro.
        */}
-      <div className="h-[420px] w-full min-w-0 text-foreground">
+      {/*
+       * Mobile: menos altura/padding vertical e roda MAIOR (outerRadius 84% +
+       * margens top/bottom pequenas), mantendo margem lateral para os rótulos.
+       * Desktop (>=768px): mantém 420px / outerRadius 72% / margens 24.
+       */}
+      <div className="h-[340px] sm:h-[420px] w-full min-w-0 text-foreground">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart
             data={data}
-            outerRadius="72%"
-            margin={{ top: 24, right: 84, bottom: 24, left: 84 }}
+            outerRadius={isMobile ? '84%' : '72%'}
+            margin={
+              isMobile
+                ? { top: 12, right: 76, bottom: 12, left: 76 }
+                : { top: 24, right: 84, bottom: 24, left: 84 }
+            }
           >
             {/*
              * Grade cinza suave (slate-400 translucido) — visivel de leve

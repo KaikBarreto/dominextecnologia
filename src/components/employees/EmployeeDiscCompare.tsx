@@ -86,8 +86,18 @@ function ProfileBadge({ profileCode, size = 'sm' }: { profileCode: string; size?
   const meta = resolveProfile(profileCode);
   const color = FACTOR_COLOR[meta.primary];
   const name = (discT.profiles as Record<string, { nome: string }>)[meta.code]?.nome ?? meta.code;
+  // Title usa as LETRAS CRUAS do profileCode (não o resolveProfile que canonicaliza/faz fallback).
+  // Assim "CI" → "Conforme-Influente", "SD" → "Estável-Dominante", puro "C" → "Conforme".
+  const p = profileCode[0] as DiscFactor;
+  const s = profileCode[1] as DiscFactor | undefined;
+  const personPair = discT.factors[p]
+    ? s && discT.factors[s]
+      ? `${discT.factors[p].person}-${discT.factors[s].person}`
+      : discT.factors[p].person
+    : name;
   return (
     <span
+      title={personPair}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full font-bold text-white',
         size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm',
@@ -272,7 +282,7 @@ export function EmployeeDiscCompare({
     ready && primaryA && primaryB
       ? (discT.relationships as Record<
           string,
-          { friction: string[]; synergy: string[]; communication: string }
+          { friction: string[]; synergy: string[]; communication: string; dynamic: string }
         >)[relationshipKey(primaryA, primaryB)]
       : null;
 
@@ -360,17 +370,6 @@ export function EmployeeDiscCompare({
             </div>
           </div>
 
-          {/* Interações */}
-          <div className="space-y-5">
-            <RelationshipBlock kind="friction" title={c.friction} items={rel.friction} />
-            <RelationshipBlock kind="synergy" title={c.synergy} items={rel.synergy} />
-            <RelationshipBlock
-              kind="communication"
-              title={c.communication}
-              text={rel.communication}
-            />
-          </div>
-
           {/* Gráfico DISC cruzado + Radar — empilhados no mobile, lado a lado no desktop */}
           <div className="lg:flex lg:items-stretch lg:justify-between lg:gap-6">
             {/* DISC cruzado — SVG custom escala sozinho */}
@@ -384,6 +383,8 @@ export function EmployeeDiscCompare({
                   nameB={empB.name}
                   colorA={PERSON_COLOR_A}
                   colorB={PERSON_COLOR_B}
+                  codeA={assessA.profile_code ?? undefined}
+                  codeB={assessB.profile_code ?? undefined}
                   locale={locale}
                   className="w-full lg:h-full"
                 />
@@ -401,11 +402,31 @@ export function EmployeeDiscCompare({
                   nameB={empB.name}
                   colorA={PERSON_COLOR_A}
                   colorB={PERSON_COLOR_B}
+                  codeA={assessA.profile_code ?? undefined}
+                  codeB={assessB.profile_code ?? undefined}
                   locale={locale}
                   className="w-full lg:h-full"
                 />
               </div>
             </div>
+          </div>
+
+          {/* Parágrafo de dinâmica do par — em destaque, largura de leitura, antes dos pontos */}
+          {rel.dynamic && (
+            <p className="mx-auto max-w-prose rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground">
+              {rel.dynamic}
+            </p>
+          )}
+
+          {/* Pontos: Atritos / Sinergias / Melhor comunicação */}
+          <div className="space-y-5">
+            <RelationshipBlock kind="friction" title={c.friction} items={rel.friction} />
+            <RelationshipBlock kind="synergy" title={c.synergy} items={rel.synergy} />
+            <RelationshipBlock
+              kind="communication"
+              title={c.communication}
+              text={rel.communication}
+            />
           </div>
         </div>
       )}
