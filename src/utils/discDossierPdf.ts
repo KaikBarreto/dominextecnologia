@@ -25,9 +25,10 @@ import {
 // ResponsiveContainer e desenhar o SVG do radar antes do html2canvas capturar.
 const RENDER_SETTLE_MS = 500;
 
-function nextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
+// Espera por setTimeout (NÃO requestAnimationFrame): o navegador CONGELA o rAF
+// em abas de fundo, então a geração ficava presa quando a aba do PDF roubava o
+// foco. setTimeout dispara mesmo em background (só throttla pra ~1s).
+const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 export async function generateDiscDossierPdf(
   props: DiscDossierDocumentProps,
@@ -41,10 +42,10 @@ export async function generateDiscDossierPdf(
   try {
     root.render(createElement(DiscDossierDocument, props));
 
-    // 2x rAF pra garantir layout, depois settle pro recharts desenhar.
-    await nextFrame();
-    await nextFrame();
-    await new Promise((r) => setTimeout(r, RENDER_SETTLE_MS));
+    // Deixa o layout assentar, depois settle pro recharts desenhar. Via
+    // setTimeout pra funcionar mesmo com a aba do PDF em primeiro plano.
+    await delay(60);
+    await delay(RENDER_SETTLE_MS);
 
     const el = container.firstElementChild as HTMLElement | null;
     if (!el) throw new Error('Falha ao montar o dossiê para geração do PDF.');

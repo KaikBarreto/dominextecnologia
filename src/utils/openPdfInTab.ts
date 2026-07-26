@@ -28,6 +28,64 @@ function isMobileUA(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
+/**
+ * Abre uma aba nova JÁ com uma página de "Gerando o relatório..." (spinner +
+ * texto), em vez de deixar o `about:blank` branco enquanto o PDF é gerado.
+ *
+ * Deve ser chamada DENTRO do gesto de clique do usuário (workaround de
+ * popup-blocker). Depois que o Blob estiver pronto, o chamador passa a janela
+ * retornada pra `openPdfInTab(blob, filename, w)`, que SUBSTITUI o conteúdo
+ * (loading → PDF) via `document.open()`.
+ *
+ * Retorna a `Window` (ou `null` se o popup foi bloqueado — nesse caso
+ * `openPdfInTab` cai no fallback de `<a download>`).
+ */
+export function openPendingPdfTab(message?: string): Window | null {
+  const w = window.open('', '_blank');
+  if (!w) return null;
+  const label = escapeHtml(message || 'Gerando o relatório...');
+  try {
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>${label}</title>
+  <link rel="icon" href="data:," />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f3f4f6; }
+    .wrap {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #374151;
+    }
+    .spinner {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid #d1d5db; border-top-color: #16a34a;
+      animation: spin 0.8s linear infinite;
+    }
+    .msg { font-size: 14px; font-weight: 500; letter-spacing: 0.1px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="spinner"></div>
+    <div class="msg">${label}</div>
+  </div>
+</body>
+</html>`;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  } catch (err) {
+    console.warn('[openPendingPdfTab] falha ao escrever a página de loading:', err);
+  }
+  return w;
+}
+
 export function openPdfInTab(
   blob: Blob,
   filenameNoExt: string,

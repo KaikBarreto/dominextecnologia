@@ -130,8 +130,10 @@ export async function renderElementToPdfBlob(
 
     offscreen.appendChild(clone);
 
-    // Wait for layout + image loads
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 100))));
+    // Wait for layout + image loads. Usa setTimeout (não requestAnimationFrame):
+    // o rAF CONGELA em abas de fundo, então a geração ficava presa quando a aba
+    // do PDF roubava o foco. setTimeout dispara mesmo em background.
+    await new Promise(r => setTimeout(r, 120));
     await waitForImages(clone);
     await new Promise(r => setTimeout(r, 150));
 

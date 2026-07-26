@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.35',
+    date: '26 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Histórico do perfil agora compara também o lado emocional',
+        description: 'No Histórico do Perfil Comportamental, além da evolução do perfil e das competências, agora você também vê o Perfil Emocional comparado entre as avaliações, lado a lado. Fica mais fácil enxergar como a pessoa evoluiu no jeito de sentir e reagir no trabalho.',
+        category: 'recurso',
+      },
+      {
+        title: 'Abrir o PDF do perfil e da comparação ficou mais fluido',
+        description: 'Os botões que geram o PDF (do perfil e da comparação entre dois funcionários) passaram a se chamar "Ver", já que o relatório abre em uma nova aba. Essa aba agora mostra um aviso de carregamento enquanto o relatório é montado, em vez de ficar em branco, e fica pronta sozinha em poucos segundos. Dentro dela continua o botão para baixar o arquivo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Gráficos do perfil com títulos maiores e alinhados',
+        description: 'Nas telas de Interações e Histórico do Perfil Comportamental, os títulos dos gráficos ficaram maiores e padronizados, deixando a leitura mais clara.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.34',
     date: '26 de julho de 2026',
     type: 'patch',

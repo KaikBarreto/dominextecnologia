@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, MousePointerClick, Sparkles, Download } from 'lucide-react';
+import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, MousePointerClick, Sparkles, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
@@ -34,7 +34,7 @@ import { selectFormItems } from '@/lib/disc/formSelection';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { type LocaleCode } from '@/lib/i18n/locales';
 import { generateDiscDossierPdf } from '@/utils/discDossierPdf';
-import { openPdfInTab } from '@/utils/openPdfInTab';
+import { openPdfInTab, openPendingPdfTab } from '@/utils/openPdfInTab';
 
 // SUPABASE_URL da mesma config do client — usado para montar a URL da edge pública.
 const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL as string;
@@ -232,7 +232,7 @@ export default function DiscAssessmentPublic() {
     const profileCode = result?.profile_code ?? payload?.profile_code ?? undefined;
     if (!scores || !profileCode || !employeeFullName) return;
 
-    const w = window.open('', '_blank');
+    const w = openPendingPdfTab((tr as any).dossier?.generating);
     setDownloadingPdf(true);
     try {
       const generatedAtLabel = new Intl.DateTimeFormat(
@@ -367,7 +367,7 @@ export default function DiscAssessmentPublic() {
             {downloadingPdf ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Download className="h-4 w-4" />
+              <Eye className="h-4 w-4" />
             )}
             {downloadingPdf ? dossierUi?.generating : dossierUi?.downloadPdf}
           </Button>

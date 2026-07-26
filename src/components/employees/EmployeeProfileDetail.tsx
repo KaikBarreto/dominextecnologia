@@ -21,7 +21,7 @@ import {
   Check,
   ChevronsUpDown,
   Clock,
-  Download,
+  Eye,
   FileText,
   Link2,
   Loader2,
@@ -53,7 +53,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { generateDiscDossierPdf } from '@/utils/discDossierPdf';
 import { generateDiscComparisonPdf } from '@/utils/discComparisonPdf';
-import { openPdfInTab } from '@/utils/openPdfInTab';
+import { openPdfInTab, openPendingPdfTab } from '@/utils/openPdfInTab';
 import { cn } from '@/lib/utils';
 import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
 import { relationshipKey } from '@/lib/disc/relationships';
@@ -71,6 +71,7 @@ import { DiscReport } from '@/components/employees/disc/DiscReport';
 import { DiscCompareLineChart } from '@/components/employees/disc/DiscCompareLineChart';
 import { DiscCompareRadar } from '@/components/employees/disc/DiscCompareRadar';
 import { DiscEmotionalCompareRadar } from '@/components/employees/disc/DiscEmotionalCompareRadar';
+import { DiscEmotionalRadar } from '@/components/employees/disc/DiscEmotionalRadar';
 import { DiscLineChart } from '@/components/employees/disc/DiscLineChart';
 import { DiscRadar } from '@/components/employees/disc/DiscRadar';
 import { useDiscMessages } from '@/components/employees/disc/useDiscMessages';
@@ -218,7 +219,7 @@ function InteractionsTab({
     if (!selected || !selfPrimary || !selectedPrimary || !rel) return;
     if (!selfScores || !selectedAssessment?.scores) return;
 
-    const w = window.open('', '_blank');
+    const w = openPendingPdfTab(dossierUi?.generating);
     setDownloading(true);
     try {
       const generatedAtLabel = formatDate(new Date().toISOString(), comparisonLocale, timezone);
@@ -260,31 +261,9 @@ function InteractionsTab({
           No mobile empilha normalmente. */}
       <div className="lg:flex lg:items-center lg:justify-between lg:gap-6">
         <div className="space-y-3 lg:flex-1 lg:min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-base font-semibold text-foreground">{p.interactionsTitle}</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">{p.interactionsSubtitle}</p>
-            </div>
-            {/* Baixar PDF da comparação — só quando há os 2 perfis + relação curada */}
-            {selected && selfPrimary && selectedPrimary && rel && (
-              <Button
-                onClick={handleDownloadComparison}
-                disabled={downloading}
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1.5"
-                aria-label={dossierUi?.downloadPdf}
-              >
-                {downloading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                <span className="hidden sm:inline">
-                  {downloading ? dossierUi?.generating : dossierUi?.downloadPdf}
-                </span>
-              </Button>
-            )}
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold text-foreground">{p.interactionsTitle}</h3>
+            <p className="mt-0.5 text-sm text-muted-foreground">{p.interactionsSubtitle}</p>
           </div>
 
           {/* Combobox com busca — funcionário sem avaliação vem desabilitado */}
@@ -356,32 +335,55 @@ function InteractionsTab({
         </div>
 
         {/* Card dos 2 funcionários — à direita no desktop, centralizado verticalmente.
-            No mobile ocupa a largura toda abaixo do select. Só aparece com seleção. */}
+            No mobile ocupa a largura toda abaixo do select. Só aparece com seleção.
+            O botão "Baixar comparação" fica no rodapé do card, agrupado com a dupla. */}
         {selected && selfPrimary && selectedPrimary && rel && (
-          <div className="mt-4 lg:mt-0 lg:shrink-0 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4">
-            <div className="flex flex-col items-center gap-1.5">
-              <EmployeeAvatar employee={self} className="h-10 w-10" />
-              <span className="max-w-[7rem] truncate text-xs font-medium text-foreground">
-                {self.name}
-              </span>
-              {selfProfileCode ? (
-                <ProfileBadge profileCode={selfProfileCode} size="sm" />
-              ) : (
-                <ProfileBadge profileCode={selfPrimary} size="sm" />
-              )}
+          <div className="mt-4 lg:mt-0 lg:shrink-0 flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-4">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <div className="flex flex-col items-center gap-1.5">
+                <EmployeeAvatar employee={self} className="h-10 w-10" />
+                <span className="max-w-[7rem] truncate text-xs font-medium text-foreground">
+                  {self.name}
+                </span>
+                {selfProfileCode ? (
+                  <ProfileBadge profileCode={selfProfileCode} size="sm" />
+                ) : (
+                  <ProfileBadge profileCode={selfPrimary} size="sm" />
+                )}
+              </div>
+              <span className="text-muted-foreground">·</span>
+              <div className="flex flex-col items-center gap-1.5">
+                <EmployeeAvatar employee={selected} className="h-10 w-10" />
+                <span className="max-w-[7rem] truncate text-xs font-medium text-foreground">
+                  {selected.name}
+                </span>
+                {selectedProfileCode ? (
+                  <ProfileBadge profileCode={selectedProfileCode} size="sm" />
+                ) : (
+                  <ProfileBadge profileCode={selectedPrimary} size="sm" />
+                )}
+              </div>
             </div>
-            <span className="text-muted-foreground">·</span>
-            <div className="flex flex-col items-center gap-1.5">
-              <EmployeeAvatar employee={selected} className="h-10 w-10" />
-              <span className="max-w-[7rem] truncate text-xs font-medium text-foreground">
-                {selected.name}
-              </span>
-              {selectedProfileCode ? (
-                <ProfileBadge profileCode={selectedProfileCode} size="sm" />
+
+            {/* Baixar comparação — ação intencional, agrupada à dupla. Rótulo
+                desambigua do dossiê individual do cabeçalho geral. */}
+            <Button
+              onClick={handleDownloadComparison}
+              disabled={downloading}
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              aria-label={dossierUi?.downloadComparison}
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <ProfileBadge profileCode={selectedPrimary} size="sm" />
+                <Eye className="h-4 w-4" />
               )}
-            </div>
+              <span className="hidden sm:inline">
+                {downloading ? dossierUi?.generating : dossierUi?.downloadComparison}
+              </span>
+            </Button>
           </div>
         )}
       </div>
@@ -403,7 +405,7 @@ function InteractionsTab({
             <div className="lg:flex lg:items-stretch lg:justify-between lg:gap-6">
               {/* DISC cruzado — SVG custom escala sozinho */}
               <div className="lg:flex-1 lg:max-w-[420px] min-w-0 lg:flex lg:flex-col lg:h-[440px]">
-                <h3 className="mb-3 text-lg font-bold text-foreground text-center shrink-0">
+                <h3 className="mb-3 text-xl font-bold text-foreground text-center shrink-0">
                   {c.discChartTitle}
                 </h3>
                 <div className="lg:flex-1 lg:flex min-w-0">
@@ -424,7 +426,7 @@ function InteractionsTab({
 
               {/* Radar cruzado — largura fixa para o recharts medir certo e renderizar grande */}
               <div className="lg:w-[540px] lg:shrink-0 lg:flex lg:flex-col lg:h-[440px]">
-                <h3 className="mb-2 text-lg font-bold text-foreground text-center shrink-0">
+                <h3 className="mb-2 text-xl font-bold text-foreground text-center shrink-0">
                   {c.radarTitle}
                 </h3>
                 <div className="lg:flex-1 lg:flex">
@@ -450,7 +452,7 @@ function InteractionsTab({
               acima), senão o ResponsiveContainer do recharts mede 0 e some. */}
           {selfScores && selectedAssessment?.scores && (
             <div className="lg:mx-auto lg:w-[540px] lg:flex lg:flex-col lg:h-[440px]">
-              <h3 className="mb-2 text-lg font-bold text-foreground text-center shrink-0">
+              <h3 className="mb-2 text-xl font-bold text-foreground text-center shrink-0">
                 {discT.dossier.emotionalTitle}
               </h3>
               <div className="lg:flex-1 lg:flex">
@@ -621,7 +623,7 @@ function HistoryTab({
 
       {/* Evolução do perfil — cruzados (anterior x atual) lado a lado */}
       <div>
-        <h3 className="mb-3 text-base font-semibold text-foreground">{p.evolutionTitle}</h3>
+        <h3 className="mb-3 text-lg font-semibold text-foreground">{p.evolutionTitle}</h3>
 
         {current?.scores && previous?.scores ? (
           <div className="space-y-5">
@@ -629,7 +631,7 @@ function HistoryTab({
             <div className="lg:flex lg:items-stretch lg:justify-between lg:gap-6">
               {/* DISC cruzado — SVG custom escala sozinho */}
               <div className="lg:flex-1 lg:max-w-[420px] min-w-0 lg:flex lg:flex-col lg:h-[440px]">
-                <h4 className="mb-3 text-lg font-bold text-foreground text-center shrink-0">
+                <h4 className="mb-3 text-xl font-bold text-foreground text-center shrink-0">
                   {p.evolutionDiscChartTitle}
                 </h4>
                 <div className="lg:flex-1 lg:flex min-w-0">
@@ -650,7 +652,7 @@ function HistoryTab({
 
               {/* Radar cruzado — largura fixa para o recharts medir certo e renderizar grande */}
               <div className="lg:w-[540px] lg:shrink-0 lg:flex lg:flex-col lg:h-[440px]">
-                <h4 className="mb-2 text-lg font-bold text-foreground text-center shrink-0">
+                <h4 className="mb-2 text-xl font-bold text-foreground text-center shrink-0">
                   {p.evolutionRadarTitle}
                 </h4>
                 <div className="lg:flex-1 lg:flex">
@@ -670,6 +672,29 @@ function HistoryTab({
               </div>
             </div>
 
+            {/* Radar EMOCIONAL cruzado (anterior x atual) — linha full-width, centralizado.
+                Precisa de LARGURA e ALTURA definidas (igual ao radar de competências),
+                senão o ResponsiveContainer do recharts mede 0 e some. */}
+            <div className="lg:mx-auto lg:w-[540px] lg:flex lg:flex-col lg:h-[440px]">
+              <h4 className="mb-2 text-xl font-bold text-foreground text-center shrink-0">
+                {discT.dossier.emotionalTitle}
+              </h4>
+              <div className="lg:flex-1 lg:flex">
+                <DiscEmotionalCompareRadar
+                  scoresA={previous.scores as DiscScores}
+                  scoresB={current.scores as DiscScores}
+                  nameA={dateLabel(previous)}
+                  nameB={dateLabel(current)}
+                  colorA={EVOLUTION_COLOR_PREV}
+                  colorB={EVOLUTION_COLOR_CURR}
+                  codeA={previous.profile_code ?? undefined}
+                  codeB={current.profile_code ?? undefined}
+                  locale={locale}
+                  className="w-full lg:h-full"
+                />
+              </div>
+            </div>
+
             {/* Parágrafo dinâmico do que mudou entre anterior e atual */}
             {evolutionText && (
               <p className="rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground">
@@ -682,7 +707,7 @@ function HistoryTab({
           <div className="space-y-5">
             <div className="lg:flex lg:items-stretch lg:justify-between lg:gap-6">
               <div className="lg:flex-1 lg:max-w-[420px] min-w-0 lg:flex lg:flex-col lg:h-[440px]">
-                <h4 className="mb-3 text-lg font-bold text-foreground text-center shrink-0">
+                <h4 className="mb-3 text-xl font-bold text-foreground text-center shrink-0">
                   {p.evolutionDiscChartTitle}
                 </h4>
                 <div className="lg:flex-1 lg:flex min-w-0">
@@ -694,7 +719,7 @@ function HistoryTab({
                 </div>
               </div>
               <div className="lg:w-[540px] lg:shrink-0 lg:flex lg:flex-col lg:h-[440px]">
-                <h4 className="mb-2 text-lg font-bold text-foreground text-center shrink-0">
+                <h4 className="mb-2 text-xl font-bold text-foreground text-center shrink-0">
                   {p.evolutionRadarTitle}
                 </h4>
                 <div className="lg:flex-1 lg:flex">
@@ -706,6 +731,21 @@ function HistoryTab({
                 </div>
               </div>
             </div>
+
+            {/* Perfil emocional (single) — mesma linha full-width, largura+altura fixas */}
+            <div className="lg:mx-auto lg:w-[540px] lg:flex lg:flex-col lg:h-[440px]">
+              <h4 className="mb-2 text-xl font-bold text-foreground text-center shrink-0">
+                {discT.dossier.emotionalTitle}
+              </h4>
+              <div className="lg:flex-1 lg:flex">
+                <DiscEmotionalRadar
+                  scores={current.scores as DiscScores}
+                  locale={locale}
+                  className="w-full lg:h-full"
+                />
+              </div>
+            </div>
+
             <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
               {p.evolutionSingleHint}
             </p>
@@ -719,7 +759,7 @@ function HistoryTab({
 
       {/* Linha do tempo */}
       <div>
-        <h3 className="mb-3 text-base font-semibold text-foreground">{p.timelineTitle}</h3>
+        <h3 className="mb-3 text-lg font-semibold text-foreground">{p.timelineTitle}</h3>
         {history.length === 0 ? (
           <EmptyState
             icon={<Clock className="h-12 w-12" />}
@@ -883,7 +923,7 @@ export function EmployeeProfileDetail({
     const profileCode = currentProfile?.profile_code ?? null;
     if (!scores || !profileCode) return;
 
-    const w = window.open('', '_blank');
+    const w = openPendingPdfTab(dossierUi?.generating);
     setDownloading(true);
     try {
       const generatedAtLabel = formatDate(new Date().toISOString(), dossierLocale, timezone);
@@ -1072,7 +1112,7 @@ export function EmployeeProfileDetail({
               {downloading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Eye className="h-4 w-4" />
               )}
               {downloading ? dossierUi.generating : dossierUi.downloadPdf}
             </Button>
@@ -1087,7 +1127,7 @@ export function EmployeeProfileDetail({
               {downloading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Eye className="h-4 w-4" />
               )}
             </Button>
           </>
