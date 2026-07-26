@@ -107,6 +107,9 @@ export const os = {
       instalacao: 'Instalação',
       visita_tecnica: 'Visita Técnica',
     },
+    // Rótulo neutro de OS de contrato comum sem tipo escolhido (evita cravar
+    // "Preventiva" só porque o enum legado vem chumbado no contrato).
+    typeGeneric: 'Serviço',
 
     // ── Formulário de criação / edição de OS ──────────────────────────────
     form: {
@@ -1558,6 +1561,7 @@ export const os = {
       instalacao: 'Installation',
       visita_tecnica: 'Technical visit',
     },
+    typeGeneric: 'Service',
 
     form: {
       titleCreate: 'New work order',
@@ -2908,6 +2912,7 @@ export const os = {
       instalacao: 'Instalación',
       visita_tecnica: 'Visita técnica',
     },
+    typeGeneric: 'Servicio',
 
     form: {
       titleCreate: 'Nueva orden de trabajo',
@@ -4258,6 +4263,7 @@ export const os = {
       instalacao: 'Installation',
       visita_tecnica: 'Visite technique',
     },
+    typeGeneric: 'Service',
 
     form: {
       titleCreate: 'Nouveau bon de travail',

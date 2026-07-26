@@ -960,7 +960,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
             } : null}
             orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
-            osType={getOsTypeLabel(serviceOrder)}
+            osType={getOsTypeLabel(
+              { ...serviceOrder, contract: isPmoc ? { is_pmoc: true } : (serviceOrder as any).contract },
+              MESSAGES[locale].app.os.typeFallback,
+              { genericLabel: MESSAGES[locale].app.os.typeGeneric },
+            )}
             checkOutTime={!partialReport && serviceOrder.check_out_time ? formatDateTime(serviceOrder.check_out_time, locale, timezone) : null}
             config={headerConfig}
           />

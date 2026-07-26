@@ -1965,18 +1965,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       return;
     }
 
-    // Guardrail PMOC: contrato PMOC PRECISA de tipo de serviço. Sem ele, as OSs
-    // recorrentes nascem com service_type_id null e aparecem genéricas ("Preventiva",
-    // sem tarja de cor) na agenda. Não bloqueia contrato comum (tipo é opcional lá).
-    if (isPmoc && !serviceTypeId) {
-      toast({
-        variant: 'destructive',
-        title: t.toasts.serviceTypeRequired,
-        description: t.toasts.serviceTypeRequiredDesc,
-      });
-      setStep(STEPS.findIndex(s => s.key === 'team'));
-      return;
-    }
     setSubmitting(true);
     try {
       const actualTeamId = selectedTeamIds.length > 0 ? selectedTeamIds[0] : null;
@@ -3545,12 +3533,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     usersLabel={t.team.billingUsersLabel}
                   />
                 </div>
-                {/* Tipo de Serviço define a cor/rótulo das OSs na agenda.
-                    Em PMOC é OBRIGATÓRIO: sem ele, as OSs recorrentes nascem sem
-                    service_type_id e aparecem genéricas ("Preventiva", sem tarja de
-                    cor) na agenda. Em contrato comum segue opcional. */}
+                {/* Tipo de Serviço é opcional em qualquer contrato (PMOC ou não).
+                    Quem dita o serviço real de cada visita é o checklist; a
+                    identificação PMOC no card vem da tarja azul. Escolher um tipo
+                    aqui só define a cor/rótulo das OSs na agenda. */}
                 <div className="space-y-2">
-                  <Label>{isPmoc ? t.team.serviceTypePmocLabel : t.team.serviceTypeLabel}</Label>
+                  <Label>{t.team.serviceTypeLabel}</Label>
                   <Select value={serviceTypeId || 'none'} onValueChange={v => setServiceTypeId(v === 'none' ? '' : v)}>
                     <SelectTrigger><SelectValue placeholder={t.team.serviceTypePlaceholder} /></SelectTrigger>
                     <SelectContent>
@@ -3573,15 +3561,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       })}
                     </SelectContent>
                   </Select>
-                  {isPmoc && (
-                    <p className="text-xs text-muted-foreground">{t.team.serviceTypePmocHint}</p>
-                  )}
-                  {isPmoc && !serviceTypeId && (
-                    <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                      {t.team.serviceTypePmocRequiredWarning}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground">{t.team.serviceTypePmocHint}</p>
                 </div>
                 {/* Checklist Padrão só faz sentido em contrato SEM plano de
                     serviços. Com plano, o checklist vem das atividades por

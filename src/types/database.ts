@@ -152,6 +152,9 @@ export interface ServiceOrder {
   technician?: Profile;
   form_template?: FormTemplate;
   service_type?: { id: string; name: string; color: string } | null;
+  // Contrato relacionado (join opcional; nem toda query traz `is_pmoc`/`name`).
+  // Usado por getOsTypeLabel pra rotular OS de contrato sem tipo escolhido.
+  contract?: { id?: string; name?: string; is_pmoc?: boolean | null } | null;
 }
 
 export interface FormTemplate {
@@ -364,19 +367,47 @@ export const osTypeLabels: Record<OsType, string> = {
  *
  * @param fallbackLabels permite passar um mapa de rótulos curtos por tela
  *        (ex.: a agenda usa "Corretiva" em vez de "Manutenção Corretiva").
+ * @param opts rótulos i18n pro fallback de contrato:
+ *        - `pmocLabel`: rótulo de OS de contrato PMOC sem tipo (default "PMOC",
+ *          igual nos 4 idiomas).
+ *        - `genericLabel`: rótulo neutro de OS de contrato comum sem tipo
+ *          (ex.: "Serviço"). Quando ausente, degrada pro `fallbackLabels`.
+ *
+ * Precedência:
+ *   1. snapshot_data.service_type.name (histórico)
+ *   2. service_type.name (ao vivo)
+ *   3. contrato PMOC (contract.is_pmoc) → `pmocLabel`
+ *   4. contrato comum (contract_id sem is_pmoc) → `genericLabel` (neutro)
+ *   5. OS avulsa → fallbackLabels[os_type] (escolha real do usuário)
  */
 export function getOsTypeLabel(
   order: {
     service_type?: { name?: string | null } | null;
     snapshot_data?: { service_type?: { name?: string | null } | null } | null;
     os_type: OsType;
+    contract_id?: string | null;
+    contract?: { is_pmoc?: boolean | null } | null;
   },
   fallbackLabels: Record<OsType, string> = osTypeLabels,
+  opts?: { pmocLabel?: string; genericLabel?: string },
 ): string {
   const snapshotName = order.snapshot_data?.service_type?.name?.trim();
   if (snapshotName) return snapshotName;
   const liveName = order.service_type?.name?.trim();
   if (liveName) return liveName;
+
+  // OS de contrato PMOC sem tipo escolhido: "PMOC" (não o enum legado, que
+  // sempre vem chumbado como manutencao_preventiva e enganaria o usuário).
+  if (order.contract?.is_pmoc === true) {
+    return opts?.pmocLabel ?? 'PMOC';
+  }
+  // OS de contrato comum (tem contract_id mas não é PMOC): rótulo neutro em
+  // vez de cravar "Preventiva" — o serviço pode ser qualquer coisa.
+  const hasContract = !!order.contract_id || !!order.contract;
+  if (hasContract && opts?.genericLabel) {
+    return opts.genericLabel;
+  }
+
   return fallbackLabels[order.os_type] ?? order.os_type;
 }
 

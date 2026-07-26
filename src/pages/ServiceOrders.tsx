@@ -649,7 +649,7 @@ export default function ServiceOrders() {
                                       {os.service_type.name}
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1">{getOsTypeLabel(os as any, t.typeFallback)}</span>
+                                    <span className="inline-flex items-center gap-1">{getOsTypeLabel(os as any, t.typeFallback, { genericLabel: t.typeGeneric })}</span>
                                   )}
                                   {os.scheduled_date && (
                                     <span className="inline-flex items-center gap-1">
@@ -749,7 +749,7 @@ export default function ServiceOrders() {
                                             <span className="text-sm">{os.service_type.name}</span>
                                           </div>
                                         ) : (
-                                          <span className="text-sm">{getOsTypeLabel(os as any, t.typeFallback)}</span>
+                                          <span className="text-sm">{getOsTypeLabel(os as any, t.typeFallback, { genericLabel: t.typeGeneric })}</span>
                                         )}
                                       </TableCell>
                                       <TableCell className="hidden sm:table-cell">

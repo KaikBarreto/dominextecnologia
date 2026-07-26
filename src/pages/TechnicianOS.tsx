@@ -1806,6 +1806,25 @@ function TechnicianOSInner() {
   const isPmocPublic = publicContract?.is_pmoc === true;
   const showPmocSeal = isPublicMode ? isPmocPublic : isPmocOrder;
 
+  // Rótulo do tipo da OS: PMOC (contrato PMOC) / neutro (contrato comum) /
+  // enum legado (avulsa). Reaproveita o sinal PMOC unificado acima; injeta um
+  // `contract.is_pmoc` sintético pra função rotular sem depender do join.
+  const osTypeLabel = serviceOrder
+    ? getOsTypeLabel(
+        {
+          ...serviceOrder,
+          contract: showPmocSeal
+            ? { is_pmoc: true }
+            : (serviceOrder as any).contract,
+        },
+        MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.typeFallback,
+        {
+          genericLabel:
+            MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.typeGeneric,
+        },
+      )
+    : '';
+
   // RELATÓRIO PARCIAL (link público de OS PAUSADA).
   // Quando a OS está pausada e o cliente abre o link, mostramos o relatório de
   // serviço como se estivesse concluído — porém SEM data de conclusão e exibindo
@@ -2380,7 +2399,7 @@ function TechnicianOSInner() {
               </h1>
               <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85 max-w-full min-w-0">
                 <Wrench className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{getOsTypeLabel(serviceOrder)}</span>
+                <span className="truncate">{osTypeLabel}</span>
               </div>
               {serviceOrder.scheduled_date && (
                 <div className="mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85">
@@ -3384,7 +3403,7 @@ function TechnicianOSInner() {
             </h1>
             <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85 max-w-full min-w-0">
               <Wrench className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{getOsTypeLabel(serviceOrder)}</span>
+              <span className="truncate">{osTypeLabel}</span>
             </div>
             {serviceOrder.scheduled_date && (
               <div className="mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85">

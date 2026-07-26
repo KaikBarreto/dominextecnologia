@@ -75,6 +75,7 @@ function OrderDetail({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.scheduleDetail;
   const tTypeFallback = MESSAGES[locale].app.os.typeFallback;
+  const tTypeGeneric = MESSAGES[locale].app.os.typeGeneric;
 
   const osTypeLabels: Record<OsType, string> = {
     manutencao_preventiva: tTypeFallback.manutencao_preventiva,
@@ -159,7 +160,7 @@ function OrderDetail({
             {isTask ? (
               <Badge variant="outline" className="text-xs truncate max-w-[140px] border-violet-500/50 text-violet-400">{t.badgeTask}</Badge>
             ) : (
-              <Badge variant="outline" className="text-xs truncate max-w-[140px]">{getOsTypeLabel(order, osTypeLabels)}</Badge>
+              <Badge variant="outline" className="text-xs truncate max-w-[140px]">{getOsTypeLabel(order, osTypeLabels, { genericLabel: tTypeGeneric })}</Badge>
             )}
             {order.order_number > 0 && (
               <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : t.osPrefix}{order.order_number}</Badge>

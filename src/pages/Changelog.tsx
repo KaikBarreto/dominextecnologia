@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.40',
+    date: '26 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nome do tipo de serviço mais fiel nas ordens de serviço',
+        description: 'As ordens de serviço passaram a mostrar um nome de tipo mais honesto quando o tipo de serviço não foi definido. As de PMOC aparecem como "PMOC", as demais de contrato aparecem como "Serviço", e as avulsas seguem mostrando o tipo que você escolheu. Antes, uma ordem sem tipo definido era rotulada como "Preventiva", o que podia enganar quando o serviço era outro.',
+        category: 'correcao',
+      },
+      {
+        title: 'Tipo de serviço volta a ser opcional em qualquer contrato',
+        description: 'Ao cadastrar um contrato, escolher o tipo de serviço voltou a ser opcional, inclusive nos de PMOC. Como o serviço real de cada visita é definido pelos checklists e a identificação de PMOC já aparece na agenda, o campo passa a ser apenas uma sugestão para personalizar a cor e o nome do card, sem travar o salvamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.39',
     date: '26 de julho de 2026',
     type: 'minor',
@@ -67,11 +84,6 @@ const changelog: ChangelogEntry[] = [
         title: 'Ordens de serviço de PMOC sempre identificadas como PMOC na agenda',
         description: 'Na agenda, as ordens de serviço que vêm de um contrato PMOC agora aparecem sempre marcadas com a cor azul de PMOC, tanto na lista do dia quanto na visão do mês. Antes, quando o contrato PMOC estava sem o tipo de serviço preenchido, a ordem aparecia como uma manutenção comum, sem a marcação azul, e podia passar despercebida. Agora a identificação de PMOC é garantida mesmo nesses casos.',
         category: 'correcao',
-      },
-      {
-        title: 'Tipo de serviço obrigatório ao cadastrar um contrato PMOC',
-        description: 'Ao criar ou editar um contrato de PMOC, informar o tipo de serviço passou a ser obrigatório. Assim, todas as ordens geradas por esse contrato já nascem com a identificação e a cor corretas na agenda, sem risco de aparecerem sem marcação. Para contratos que não são de PMOC, nada muda, o tipo de serviço continua opcional.',
-        category: 'melhoria',
       },
     ],
   },

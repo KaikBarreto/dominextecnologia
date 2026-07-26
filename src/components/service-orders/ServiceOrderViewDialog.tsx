@@ -279,7 +279,11 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         );
       })()}
       <div className="flex items-center gap-4 text-sm">
-        <Badge variant="secondary">{getOsTypeLabel(serviceOrder)}</Badge>
+        <Badge variant="secondary">{getOsTypeLabel(
+          { ...serviceOrder, contract: isPmocOrder ? { is_pmoc: true } : (serviceOrder as any).contract },
+          MESSAGES[locale].app.os.typeFallback,
+          { genericLabel: MESSAGES[locale].app.os.typeGeneric },
+        )}</Badge>
         {serviceOrder.scheduled_date && (
           <span className="flex items-center gap-1 text-muted-foreground">
             <Calendar className="h-3 w-3" />
