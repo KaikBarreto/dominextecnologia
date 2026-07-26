@@ -1,5 +1,6 @@
 import { memo, createContext, useContext } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Plus } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { cn } from '@/lib/utils';
@@ -13,14 +14,28 @@ import type { OrgNodeData } from '@/hooks/useOrgCharts';
 const EmployeesContext = createContext<Record<string, Employee>>({});
 export const OrgEmployeesProvider = EmployeesContext.Provider;
 
+// Direção do "+" de adição rápida relativo ao nó de origem.
+export type QuickAddDirection = 'top' | 'bottom' | 'left' | 'right';
+
+// Contexto que injeta o callback de adição rápida + flag de desktop. Fica FORA
+// do data do nó (que é serializado no banco) pra não vazar função na persistência.
+interface QuickAddCtx {
+  onQuickAdd?: (nodeId: string, dir: QuickAddDirection) => void;
+  enabled: boolean;
+  addLabel: string;
+}
+const QuickAddContext = createContext<QuickAddCtx>({ enabled: false, addLabel: 'Adicionar' });
+export const OrgQuickAddProvider = QuickAddContext.Provider;
+
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 }
 
 export const ORG_NODE_TYPE = 'orgNode';
 
-function OrgChartNodeInner({ data, selected }: NodeProps) {
+function OrgChartNodeInner({ id, data, selected }: NodeProps) {
   const employees = useContext(EmployeesContext);
+  const quickAdd = useContext(QuickAddContext);
   const d = data as OrgNodeData;
 
   // Resolve dados vivos do funcionário; cai no snapshot se removido/manual.
@@ -33,13 +48,52 @@ function OrgChartNodeInner({ data, selected }: NodeProps) {
   const sectorColor = d.sectorColor;
   const sectorFg = sectorColor ? idealForeground(sectorColor) : undefined;
 
+  const showQuickAdd = quickAdd.enabled && !!quickAdd.onQuickAdd;
+
   return (
     <div
       className={cn(
-        'relative w-[220px] rounded-xl border bg-card shadow-sm transition-shadow',
+        'group relative w-[220px] rounded-xl border bg-card shadow-sm transition-shadow',
         selected ? 'ring-2 ring-primary shadow-md' : 'hover:shadow-md',
       )}
     >
+      {/* "+" nos 4 lados (desktop, no hover): adiciona um nó JÁ CONECTADO naquela
+          direção. `nodrag`/`nopan` + stopPropagation garantem que o clique não
+          inicie arrasto do nó nem conflite com os handles de conexão manual. */}
+      {showQuickAdd && (
+        <>
+          {(
+            [
+              { dir: 'top', cls: 'left-1/2 -top-3 -translate-x-1/2' },
+              { dir: 'bottom', cls: 'left-1/2 -bottom-3 -translate-x-1/2' },
+              { dir: 'left', cls: 'top-1/2 -left-3 -translate-y-1/2' },
+              { dir: 'right', cls: 'top-1/2 -right-3 -translate-y-1/2' },
+            ] as const
+          ).map(({ dir, cls }) => (
+            <button
+              key={dir}
+              type="button"
+              aria-label={quickAdd.addLabel}
+              title={quickAdd.addLabel}
+              className={cn(
+                'nodrag nopan absolute z-20 flex h-5 w-5 items-center justify-center rounded-full',
+                'bg-primary text-primary-foreground shadow-md ring-2 ring-background',
+                'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
+                'hover:scale-110',
+                cls,
+              )}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                quickAdd.onQuickAdd?.(id, dir);
+              }}
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          ))}
+        </>
+      )}
+
       {/* Handle de destino (topo) — recebe conexão do superior hierárquico. */}
       <Handle type="target" position={Position.Top} className="!h-2.5 !w-2.5 !bg-primary !border-background" />
 

@@ -601,3 +601,27 @@ html {
 .blog-content [data-youtube-video] iframe {
   margin: 0 auto;
 }
+
+/* ── Organograma (React Flow): contraste dos controles de zoom ──────────────
+   O colorMode do React Flow já ajusta boa parte, mas garantimos legibilidade
+   nos DOIS temas amarrando os botões aos tokens semânticos do app (fundo card,
+   ícone foreground, borda). Sem isso, no tema escuro o ícone quase some. */
+.react-flow__controls {
+  box-shadow: 0 1px 4px hsl(var(--foreground) / 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  width: 26px;
+  height: 26px;
+}
+.react-flow__controls-button:hover {
+  background: hsl(var(--muted));
+}
+.react-flow__controls-button svg {
+  fill: hsl(var(--foreground));
+  max-width: 14px;
+  max-height: 14px;
+}

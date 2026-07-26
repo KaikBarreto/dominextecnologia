@@ -50,3 +50,72 @@ export function layoutOrgChart<T extends Record<string, unknown>>(
     };
   });
 }
+
+/**
+ * Reorganiza SÓ a ramificação (subárvore) que contém `seedId`, deixando o resto
+ * do grafo intacto. Usado após a adição rápida por "+" — as linhas daquela
+ * branch se ajeitam sozinhas sem mexer nas outras árvores do quadro.
+ *
+ * 1) Sobe de `seedId` pelas arestas (target→source) até a raiz da branch
+ *    (nó sem superior). 2) Coleta os descendentes da raiz. 3) Roda dagre só
+ *    nesse conjunto e reposiciona ancorando a raiz na posição atual dela (a
+ *    branch não "salta" pra outro canto).
+ */
+export function layoutBranchFrom<T extends Record<string, unknown>>(
+  nodes: Node<T>[],
+  edges: Edge[],
+  seedId: string,
+): Node<T>[] {
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+  if (!nodeById.has(seedId)) return nodes;
+
+  // Sobe até a raiz (primeiro nó sem aresta de entrada), evitando loop.
+  const parentOf = new Map<string, string>();
+  for (const e of edges) parentOf.set(e.target, e.source);
+  let rootId = seedId;
+  const seen = new Set<string>([rootId]);
+  while (parentOf.has(rootId)) {
+    const parent = parentOf.get(rootId)!;
+    if (seen.has(parent)) break; // ciclo defensivo
+    rootId = parent;
+    seen.add(parent);
+  }
+
+  // Coleta descendentes da raiz (BFS seguindo source→target).
+  const childrenOf = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!childrenOf.has(e.source)) childrenOf.set(e.source, []);
+    childrenOf.get(e.source)!.push(e.target);
+  }
+  const branchIds = new Set<string>([rootId]);
+  const queue = [rootId];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const child of childrenOf.get(cur) ?? []) {
+      if (!branchIds.has(child)) {
+        branchIds.add(child);
+        queue.push(child);
+      }
+    }
+  }
+
+  // Nada a fazer se a branch é só a raiz.
+  if (branchIds.size <= 1) return nodes;
+
+  const branchNodes = nodes.filter((n) => branchIds.has(n.id));
+  const branchEdges = edges.filter((e) => branchIds.has(e.source) && branchIds.has(e.target));
+
+  // Posição atual da raiz — usada como âncora pra manter a branch onde está.
+  const rootBefore = nodeById.get(rootId)!.position;
+  const laid = layoutOrgChart(branchNodes, branchEdges);
+  const laidRoot = laid.find((n) => n.id === rootId);
+  const dx = laidRoot ? rootBefore.x - laidRoot.position.x : 0;
+  const dy = laidRoot ? rootBefore.y - laidRoot.position.y : 0;
+
+  const laidById = new Map(laid.map((n) => [n.id, n]));
+  return nodes.map((n) => {
+    const l = laidById.get(n.id);
+    if (!l) return n; // fora da branch: intacto
+    return { ...n, position: { x: l.position.x + dx, y: l.position.y + dy } };
+  });
+}

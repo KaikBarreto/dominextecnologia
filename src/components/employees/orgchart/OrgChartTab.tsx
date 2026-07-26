@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Network, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Network, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useOrgCharts, type OrgChart } from '@/hooks/useOrgCharts';
-import { OrgChartCanvas } from './OrgChartCanvas';
+import { OrgChartFullscreen } from './OrgChartFullscreen';
 
 export function OrgChartTab() {
   const { locale } = useAppLocaleContext();
@@ -55,24 +55,18 @@ export function OrgChartTab() {
     renameChart.mutate({ id: renaming.id, name }, { onSuccess: () => setRenaming(null) });
   };
 
-  // ── Canvas de um organograma aberto ───────────────────────────────────────
-  if (openChart) {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-1" onClick={() => setOpenChartId(null)}>
-            <ChevronLeft className="h-4 w-4" /> {t.back}
-          </Button>
-          <h2 className="truncate text-base font-semibold">{openChart.name}</h2>
-        </div>
-        <OrgChartCanvas chart={openChart} />
-      </div>
-    );
-  }
-
-  // ── Lista de organogramas ─────────────────────────────────────────────────
+  // ── Lista de organogramas (+ editor fullscreen sobreposto quando aberto) ───
   return (
     <div className="space-y-4">
+      {openChart && (
+        <OrgChartFullscreen
+          key={openChart.id}
+          chart={openChart}
+          onBack={() => setOpenChartId(null)}
+          backLabel={t.back}
+        />
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">{t.subtitle}</p>
         <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>

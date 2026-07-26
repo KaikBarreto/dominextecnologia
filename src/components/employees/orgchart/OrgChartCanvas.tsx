@@ -5,7 +5,6 @@ import {
   ReactFlowProvider,
   Background,
   Controls,
-  MiniMap,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -21,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsDark } from '@/hooks/useIsDark';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useEmployees, type Employee } from '@/hooks/useEmployees';
@@ -35,8 +35,14 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
-import { OrgChartNode, OrgEmployeesProvider, ORG_NODE_TYPE } from './OrgChartNode';
-import { layoutOrgChart } from './layout';
+import {
+  OrgChartNode,
+  OrgEmployeesProvider,
+  OrgQuickAddProvider,
+  ORG_NODE_TYPE,
+  type QuickAddDirection,
+} from './OrgChartNode';
+import { layoutOrgChart, layoutBranchFrom } from './layout';
 
 type RFNode = Node<OrgNodeData>;
 
@@ -66,10 +72,12 @@ interface CanvasInnerProps {
   chart: OrgChart;
   employees: Employee[];
   employeesById: Record<string, Employee>;
+  fullscreen?: boolean;
 }
 
-function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerProps) {
+function OrgChartCanvasInner({ chart, employees, employeesById, fullscreen }: CanvasInnerProps) {
   const isMobile = useIsMobile();
+  const isDark = useIsDark();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.orgchart;
   const { saveGraph } = useOrgCharts();
@@ -101,6 +109,9 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges);
   const [addOpen, setAddOpen] = useState(false);
+  // Origem + direção de uma adição rápida pelo "+" do nó. Quando setado, o modal
+  // abre em modo "conectado": o novo nó entra ligado ao nó de origem na direção.
+  const [pendingQuickAdd, setPendingQuickAdd] = useState<{ nodeId: string; dir: QuickAddDirection } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
@@ -187,10 +198,64 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
     [setEdges, scheduleSave],
   );
 
+  // Abre o modal em modo "adição rápida conectada" a partir do "+" de um nó.
+  const handleQuickAdd = useCallback((nodeId: string, dir: QuickAddDirection) => {
+    setPendingQuickAdd({ nodeId, dir });
+    setAddOpen(true);
+  }, []);
+
   // ── Adicionar nó (funcionário ou manual) ──────────────────────────────────
   const addNode = useCallback(
     (data: OrgNodeData) => {
-      // Nó novo entra perto do centro do viewport atual.
+      const newId = crypto.randomUUID();
+      const quick = pendingQuickAdd;
+
+      if (quick) {
+        // Adição CONECTADA: posiciona o novo nó ao lado do de origem na direção
+        // escolhida e cria a aresta com a orientação certa, depois reorganiza só
+        // a ramificação afetada (dagre na subárvore da raiz da branch).
+        const origin = nodes.find((n) => n.id === quick.nodeId);
+        const OFFSET_X = 300;
+        const OFFSET_Y = 160;
+        const base = origin?.position ?? { x: 0, y: 0 };
+        const delta: Record<QuickAddDirection, { x: number; y: number }> = {
+          top: { x: 0, y: -OFFSET_Y },
+          bottom: { x: 0, y: OFFSET_Y },
+          left: { x: -OFFSET_X, y: 0 },
+          right: { x: OFFSET_X, y: 0 },
+        };
+        const newNode: RFNode = {
+          id: newId,
+          type: ORG_NODE_TYPE,
+          position: { x: base.x + delta[quick.dir].x, y: base.y + delta[quick.dir].y },
+          data,
+        };
+
+        // Direção define quem é source/target: 'top' → o novo nó é o superior
+        // (source) do de origem; nas outras, o de origem é o superior do novo.
+        const newEdge: Edge =
+          quick.dir === 'top'
+            ? { id: crypto.randomUUID(), source: newId, target: quick.nodeId }
+            : { id: crypto.randomUUID(), source: quick.nodeId, target: newId };
+
+        const nextNodes = [...nodes, newNode];
+        const nextEdges = [...edges, newEdge];
+
+        // Reorganiza só a branch a partir da raiz (sobe até o topo da árvore do
+        // nó de origem) — mantém o resto do grafo intacto.
+        const laid = layoutBranchFrom(nextNodes, nextEdges, quick.nodeId);
+        setNodes(laid);
+        setEdges(nextEdges);
+        setPendingQuickAdd(null);
+        scheduleSave();
+        setAddOpen(false);
+        // Reenquadra suavemente pra mostrar o nó recém-inserido.
+        setTimeout(() => rf.fitView({ duration: 400, padding: 0.2 }), 60);
+        return;
+      }
+
+      // Adição AVULSA (botão da toolbar): nó novo entra perto do centro do
+      // viewport atual, sem conexão.
       let position = { x: 0, y: 0 };
       try {
         const vp = rf.getViewport();
@@ -204,7 +269,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
         /* usa 0,0 */
       }
       const newNode: RFNode = {
-        id: crypto.randomUUID(),
+        id: newId,
         type: ORG_NODE_TYPE,
         position,
         data,
@@ -213,7 +278,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
       scheduleSave();
       setAddOpen(false);
     },
-    [rf, setNodes, scheduleSave],
+    [rf, setNodes, setEdges, scheduleSave, pendingQuickAdd, nodes, edges],
   );
 
   // ── Organizar (dagre) ─────────────────────────────────────────────────────
@@ -249,11 +314,17 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
     scheduleSave();
   }, [selectedNodeId, setNodes, setEdges, scheduleSave]);
 
+  const quickAddValue = useMemo(
+    () => ({ onQuickAdd: handleQuickAdd, enabled: !isMobile, addLabel: t.toolbar.addNode }),
+    [handleQuickAdd, isMobile, t.toolbar.addNode],
+  );
+
   return (
     <OrgEmployeesProvider value={employeesById}>
-      <div className="flex flex-col">
+      <OrgQuickAddProvider value={quickAddValue}>
+      <div className={cn('flex flex-col', fullscreen && 'h-full')}>
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 pb-3">
+        <div className={cn('flex flex-wrap items-center gap-2 pb-3', fullscreen && 'px-3 pt-14')}>
           {!isMobile && (
             <>
               <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
@@ -279,18 +350,27 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
         </div>
 
         {isMobile && (
-          <div className="mb-2 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          <div className={cn('mb-2 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground', fullscreen && 'mx-3')}>
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{t.mobileHint}</span>
           </div>
         )}
 
-        {/* Canvas — precisa de altura definida senão o React Flow não renderiza. */}
-        <div className="org-flow-wrapper h-[calc(100vh-20rem)] min-h-[420px] w-full overflow-hidden rounded-xl border bg-muted/20">
+        {/* Canvas — precisa de altura definida senão o React Flow não renderiza.
+            Em fullscreen ocupa toda a altura restante do overlay. */}
+        <div
+          className={cn(
+            'org-flow-wrapper w-full overflow-hidden bg-muted/20',
+            fullscreen
+              ? 'min-h-0 flex-1 border-t'
+              : 'h-[calc(100vh-20rem)] min-h-[420px] rounded-xl border',
+          )}
+        >
           <ReactFlow
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            colorMode={isDark ? 'dark' : 'light'}
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
@@ -308,7 +388,6 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
           >
             <Background gap={16} />
             <Controls showInteractive={!isMobile} />
-            {!isMobile && <MiniMap pannable zoomable className="!bg-card" />}
           </ReactFlow>
         </div>
 
@@ -328,11 +407,15 @@ function OrgChartCanvasInner({ chart, employees, employeesById }: CanvasInnerPro
 
       <AddNodeModal
         open={addOpen}
-        onOpenChange={setAddOpen}
+        onOpenChange={(o) => {
+          setAddOpen(o);
+          if (!o) setPendingQuickAdd(null);
+        }}
         employees={employees}
         onAdd={addNode}
         t={t}
       />
+      </OrgQuickAddProvider>
     </OrgEmployeesProvider>
   );
 }
@@ -582,7 +665,7 @@ function ColorPicker({
   );
 }
 
-export function OrgChartCanvas({ chart }: { chart: OrgChart }) {
+export function OrgChartCanvas({ chart, fullscreen }: { chart: OrgChart; fullscreen?: boolean }) {
   const { employees } = useEmployees();
   const employeesById = useMemo(() => {
     const map: Record<string, Employee> = {};
@@ -592,7 +675,12 @@ export function OrgChartCanvas({ chart }: { chart: OrgChart }) {
 
   return (
     <ReactFlowProvider>
-      <OrgChartCanvasInner chart={chart} employees={employees} employeesById={employeesById} />
+      <OrgChartCanvasInner
+        chart={chart}
+        employees={employees}
+        employeesById={employeesById}
+        fullscreen={fullscreen}
+      />
     </ReactFlowProvider>
   );
 }
