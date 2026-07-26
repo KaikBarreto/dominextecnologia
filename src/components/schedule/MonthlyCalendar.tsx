@@ -147,12 +147,16 @@ export function MonthlyCalendar({
                     {dayOrders.slice(0, 3).map((order) => {
                       // Mesma regra de cor do EventCard (visões Dia/Semana):
                       // tarefa sem tipo → roxo (violet-500 = #8b5cf6);
+                      // PMOC → azul (blue-600 = #2563eb, mesma cor do selo/filete);
                       // senão cor do tipo de serviço; senão cor da marca.
                       const isTask = (order as any).entry_type === 'tarefa';
+                      const isPmoc = (order as any).contract?.is_pmoc === true;
                       const serviceTypeColor = (order as any).service_type?.color;
                       const color = isTask && !serviceTypeColor
                         ? '#8b5cf6'
-                        : serviceTypeColor || 'hsl(var(--primary))';
+                        : (!isTask && isPmoc)
+                          ? '#2563eb'
+                          : serviceTypeColor || 'hsl(var(--primary))';
                       return (
                         <div
                           key={order.id}

@@ -195,7 +195,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   // Precedência da borda esquerda:
   //  1. Retomada → âmbar (máxima prioridade)
   //  2. Tarefa   → violet
-  //  3. serviceTypeColor → filete com a cor do tipo de serviço
+  //  3. PMOC     → azul (mesma cor do selo "PMOC", bg-blue-600)
+  //  4. serviceTypeColor → filete com a cor do tipo de serviço
   let leftBorderStyle: React.CSSProperties | undefined;
   let leftBorderClass = '';
 
@@ -203,6 +204,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
     leftBorderClass = 'border-l-4 border-l-amber-500';
   } else if (isTask) {
     leftBorderClass = 'border-l-4 border-l-violet-500';
+  } else if (isPmoc) {
+    leftBorderClass = 'border-l-4 border-l-blue-600';
   } else if (serviceTypeColor) {
     leftBorderClass = 'border-l-4';
     leftBorderStyle = { borderLeftColor: serviceTypeColor };

@@ -1964,6 +1964,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setStep(STEPS.findIndex(s => s.key === 'team'));
       return;
     }
+
+    // Guardrail PMOC: contrato PMOC PRECISA de tipo de serviço. Sem ele, as OSs
+    // recorrentes nascem com service_type_id null e aparecem genéricas ("Preventiva",
+    // sem tarja de cor) na agenda. Não bloqueia contrato comum (tipo é opcional lá).
+    if (isPmoc && !serviceTypeId) {
+      toast({
+        variant: 'destructive',
+        title: t.toasts.serviceTypeRequired,
+        description: t.toasts.serviceTypeRequiredDesc,
+      });
+      setStep(STEPS.findIndex(s => s.key === 'team'));
+      return;
+    }
     setSubmitting(true);
     try {
       const actualTeamId = selectedTeamIds.length > 0 ? selectedTeamIds[0] : null;
@@ -3532,35 +3545,44 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     usersLabel={t.team.billingUsersLabel}
                   />
                 </div>
-                {/* Tipo de Serviço não se aplica a PMOC — quem manda nas atividades
-                    é o plano/catálogo da norma. Some quando o contrato é PMOC. */}
-                {!isPmoc && (
-                  <div className="space-y-2">
-                    <Label>{t.team.serviceTypeLabel}</Label>
-                    <Select value={serviceTypeId || 'none'} onValueChange={v => setServiceTypeId(v === 'none' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder={t.team.serviceTypePlaceholder} /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t.team.serviceTypeNone}</SelectItem>
-                        {serviceTypes.filter(st => st.is_active).map(st => {
-                          const cat = st.category_id
-                            ? serviceTypeCategories.find(c => c.id === st.category_id)
-                            : undefined;
-                          return (
-                            <SelectItem key={st.id} value={st.id}>
-                              <span className="flex items-center gap-2 min-w-0">
-                                <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
-                                <span className="truncate">{st.name}</span>
-                                {cat && (
-                                  <span className="text-xs text-muted-foreground shrink-0">{cat.name}</span>
-                                )}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                {/* Tipo de Serviço define a cor/rótulo das OSs na agenda.
+                    Em PMOC é OBRIGATÓRIO: sem ele, as OSs recorrentes nascem sem
+                    service_type_id e aparecem genéricas ("Preventiva", sem tarja de
+                    cor) na agenda. Em contrato comum segue opcional. */}
+                <div className="space-y-2">
+                  <Label>{isPmoc ? t.team.serviceTypePmocLabel : t.team.serviceTypeLabel}</Label>
+                  <Select value={serviceTypeId || 'none'} onValueChange={v => setServiceTypeId(v === 'none' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder={t.team.serviceTypePlaceholder} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t.team.serviceTypeNone}</SelectItem>
+                      {serviceTypes.filter(st => st.is_active).map(st => {
+                        const cat = st.category_id
+                          ? serviceTypeCategories.find(c => c.id === st.category_id)
+                          : undefined;
+                        return (
+                          <SelectItem key={st.id} value={st.id}>
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
+                              <span className="truncate">{st.name}</span>
+                              {cat && (
+                                <span className="text-xs text-muted-foreground shrink-0">{cat.name}</span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {isPmoc && (
+                    <p className="text-xs text-muted-foreground">{t.team.serviceTypePmocHint}</p>
+                  )}
+                  {isPmoc && !serviceTypeId && (
+                    <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      {t.team.serviceTypePmocRequiredWarning}
+                    </p>
+                  )}
+                </div>
                 {/* Checklist Padrão só faz sentido em contrato SEM plano de
                     serviços. Com plano, o checklist vem das atividades por
                     equipamento — exibir o select duplicaria o checklist na OS.

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.38',
+    date: '26 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ordens de serviço de PMOC sempre identificadas como PMOC na agenda',
+        description: 'Na agenda, as ordens de serviço que vêm de um contrato PMOC agora aparecem sempre marcadas com a cor azul de PMOC, tanto na lista do dia quanto na visão do mês. Antes, quando o contrato PMOC estava sem o tipo de serviço preenchido, a ordem aparecia como uma manutenção comum, sem a marcação azul, e podia passar despercebida. Agora a identificação de PMOC é garantida mesmo nesses casos.',
+        category: 'correcao',
+      },
+      {
+        title: 'Tipo de serviço obrigatório ao cadastrar um contrato PMOC',
+        description: 'Ao criar ou editar um contrato de PMOC, informar o tipo de serviço passou a ser obrigatório. Assim, todas as ordens geradas por esse contrato já nascem com a identificação e a cor corretas na agenda, sem risco de aparecerem sem marcação. Para contratos que não são de PMOC, nada muda, o tipo de serviço continua opcional.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.37',
     date: '26 de julho de 2026',
     type: 'patch',
