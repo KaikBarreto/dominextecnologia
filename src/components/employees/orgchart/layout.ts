@@ -21,24 +21,50 @@ function isLateralEdge(e: Edge): boolean {
   return LATERAL_HANDLE.test(e.sourceHandle ?? '') || LATERAL_HANDLE.test(e.targetHandle ?? '');
 }
 
+// Numa aresta vertical, o PAI é quem conecta pela BASE (bottom) e o FILHO quem
+// conecta pelo TOPO (top). Assim o "Organizar" respeita a intenção do usuário
+// mesmo que ele tenha arrastado a linha de baixo pra cima (source vira o filho).
+function verticalParentChild(e: Edge): { parent: string; child: string } {
+  const sh = e.sourceHandle ?? '';
+  const th = e.targetHandle ?? '';
+  const sourceBottom = sh.startsWith('bottom');
+  const sourceTop = sh.startsWith('top');
+  const targetBottom = th.startsWith('bottom');
+  const targetTop = th.startsWith('top');
+  // source pela base OU target pelo topo => source é o pai (padrão)
+  if (sourceBottom || targetTop) return { parent: e.source, child: e.target };
+  // source pelo topo OU target pela base => target é o pai (arraste invertido)
+  if (sourceTop || targetBottom) return { parent: e.target, child: e.source };
+  return { parent: e.source, child: e.target }; // fallback
+}
+
 /**
  * Normaliza os handles das arestas VERTICAIS pro layout top-down (TB): cada
  * aresta sai do handle de baixo do pai e entra no handle de cima do filho.
  * Arestas LATERAIS (left/right) preservam seus handles originais — a linha
  * continua saindo e entrando pela lateral que o usuário escolheu.
  * Não muta o array de entrada; sourceHandle/targetHandle já serializam no save.
+ *
+ * Usa verticalParentChild para descobrir quem é pai/filho pelo handle usado,
+ * não pela direção do arraste (source/target). Assim a linha sempre sai da
+ * BASE do pai e entra no TOPO do filho, independente de como foi desenhada.
  */
 export function normalizeEdgeHandlesTB(edges: Edge[]): Edge[] {
-  return edges.map((e) =>
-    // Aresta lateral preserva os handles; vertical recebe os handles TB padrão.
-    isLateralEdge(e)
-      ? e
-      : {
-          ...e,
-          sourceHandle: TB_SOURCE_HANDLE,
-          targetHandle: TB_TARGET_HANDLE,
-        },
-  );
+  return edges.map((e) => {
+    // Aresta lateral preserva os handles originais.
+    if (isLateralEdge(e)) return e;
+
+    const { parent } = verticalParentChild(e);
+    if (parent === e.source) {
+      // Caso padrão: source é o pai → sai pela base do source, entra pelo topo do target.
+      return { ...e, sourceHandle: TB_SOURCE_HANDLE, targetHandle: TB_TARGET_HANDLE };
+    } else {
+      // Arraste invertido: target é o pai → sai pelo topo do source (filho), entra pela base do target (pai).
+      // Para manter a convenção de direção da aresta (source→target no React Flow),
+      // precisamos que a linha VISUALMENTE saia da base do pai (target) e vá ao topo do filho (source).
+      return { ...e, sourceHandle: 'top-source', targetHandle: 'bottom-target' };
+    }
+  });
 }
 
 /**
@@ -84,7 +110,10 @@ export function layoutOrgChart<T extends Record<string, unknown>>(
   for (const edge of edges) {
     // Arestas laterais não entram no rank do dagre: peers ficam no mesmo nível.
     if (isLateralEdge(edge)) continue;
-    g.setEdge(edge.source, edge.target);
+    // Usa verticalParentChild para determinar pai/filho pelo handle, não pelo
+    // sentido do arraste — garante que Organizar nunca inverta a hierarquia.
+    const { parent, child } = verticalParentChild(edge);
+    g.setEdge(parent, child);
   }
 
   dagre.layout(g);
@@ -125,10 +154,13 @@ export function layoutBranchFrom<T extends Record<string, unknown>>(
 
   // Sobe até a raiz (primeiro nó sem aresta de entrada), evitando loop.
   // Arestas laterais são puladas: peer não é pai.
+  // Usa verticalParentChild para determinar pai/filho pelo handle, não pelo
+  // sentido do arraste — mesma lógica do layoutOrgChart.
   const parentOf = new Map<string, string>();
   for (const e of edges) {
     if (isLateralEdge(e)) continue; // peer não é pai
-    parentOf.set(e.target, e.source);
+    const { parent, child } = verticalParentChild(e);
+    parentOf.set(child, parent);
   }
   let rootId = seedId;
   const seen = new Set<string>([rootId]);
@@ -139,13 +171,14 @@ export function layoutBranchFrom<T extends Record<string, unknown>>(
     seen.add(parent);
   }
 
-  // Coleta descendentes da raiz (BFS seguindo source→target).
+  // Coleta descendentes da raiz (BFS seguindo pai→filho via handle).
   // Arestas laterais são puladas: peer não é filho.
   const childrenOf = new Map<string, string[]>();
   for (const e of edges) {
     if (isLateralEdge(e)) continue; // peer não é filho
-    if (!childrenOf.has(e.source)) childrenOf.set(e.source, []);
-    childrenOf.get(e.source)!.push(e.target);
+    const { parent, child } = verticalParentChild(e);
+    if (!childrenOf.has(parent)) childrenOf.set(parent, []);
+    childrenOf.get(parent)!.push(child);
   }
   const branchIds = new Set<string>([rootId]);
   const queue = [rootId];

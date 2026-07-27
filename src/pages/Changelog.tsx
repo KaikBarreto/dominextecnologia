@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.45',
+    date: '27 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Organizar do organograma não inverte mais a hierarquia',
+        description: 'Ao ligar dois cargos, o Organizar agora sempre respeita quem é superior e quem é subordinado: quem sai pela base do card fica em cima e quem entra pelo topo fica embaixo, mesmo quando você desenha a linha de baixo para cima. Antes, em alguns casos, o chefe podia acabar posicionado como subordinado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.17.44',
     date: '27 de julho de 2026',
     type: 'minor',

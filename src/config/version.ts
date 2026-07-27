@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.44";
+export const APP_VERSION = "1.17.45";
 
-export const VERSION_NOTES = "O organograma ganhou bastante coisa nova: dá para exportar como imagem e PDF (com as pessoas, as linhas de ligação e o fundo), destacar um setor, buscar uma pessoa, adicionar caixas de anotação, desfazer e refazer, e ver a estrutura em formato de árvore. A organização automática ficou mais esperta e o menu lateral não recolhe mais sozinho ao abrir o organograma.";
+export const VERSION_NOTES = "Corrigimos o botão Organizar do organograma: agora ele nunca inverte a hierarquia. Quem você liga pela base do card fica como superior e quem entra pelo topo fica como subordinado, mesmo que a linha tenha sido puxada de baixo para cima.";
