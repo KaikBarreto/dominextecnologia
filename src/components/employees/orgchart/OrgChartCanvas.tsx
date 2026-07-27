@@ -4,7 +4,9 @@ import '@xyflow/react/dist/style.css';
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
+  ControlButton,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -16,12 +18,23 @@ import {
   type EdgeChange,
   type ReactFlowInstance,
 } from '@xyflow/react';
-import { Plus, Wand2, Loader2, Check, Info, Trash2, StickyNote, Undo2, Redo2, Download } from 'lucide-react';
+import { type OrgChartPrefs, useOrgChartPrefs } from './useOrgChartPrefs';
+import { getHelperLines } from './helperLines';
+import { HelperLines } from './HelperLines.tsx';
+import { Plus, Wand2, Loader2, Check, Info, Trash2, StickyNote, Undo2, Redo2, Download, Settings2, Maximize, Minimize } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +69,7 @@ import {
   type QuickAddDirection,
 } from './OrgChartNode';
 import { layoutOrgChart, layoutBranchFrom, normalizeEdgeHandlesTB } from './layout';
+import { OrgChartMiniMap } from './OrgChartMiniMap';
 
 type RFNode = Node<OrgNodeData>;
 
@@ -128,6 +142,8 @@ interface CanvasInnerProps {
 }
 
 function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmployee, fullscreen, containerReady, spotlight, addBoxSignal, onBack, backLabel, backIcon }: CanvasInnerProps) {
+  // Canvas é dono das preferências — persiste via localStorage.
+  const { prefs, setPref } = useOrgChartPrefs();
   const isMobile = useIsMobile();
   const isDark = useIsDark();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
@@ -176,6 +192,13 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   // Menu flutuante de exclusão de aresta: posição relativa ao container.
   const [edgeMenu, setEdgeMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
+  // ── Guias de alinhamento (helper lines / snap guides) ─────────────────────
+  // Linhas visuais que aparecem durante o arrasto de um nó quando uma de suas
+  // bordas alinha com a de outro nó dentro de um limiar (~6px em coords de flow).
+  // Controlado por prefs.smartGuides — quando false, não computa nem exibe guias.
+  const helperLinesEnabled = prefs.smartGuides;
+  const [helperLines, setHelperLines] = useState<{ horizontal?: number; vertical?: number }>({});
 
   // ── Histórico de undo/redo ─────────────────────────────────────────────────
   // Cada entrada é um snapshot limpo do grafo (mesmo shape do auto-save).
@@ -360,6 +383,9 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   // o centro da árvore ao centro do container, pelo delta exato.
   const flowWrapperRef = useRef<HTMLDivElement | null>(null);
   const [wrapperSize, setWrapperSize] = useState<{ width: number; height: number } | null>(null);
+  // Transform atual do canvas PRINCIPAL — rastreado via onMove do <ReactFlow>.
+  // Alimenta o retângulo de viewport do minimapa. Inicia identity até o 1º move.
+  const [mainViewport, setMainViewport] = useState<{ x: number; y: number; zoom: number }>({ x: 0, y: 0, zoom: 1 });
 
   useEffect(() => {
     const el = flowWrapperRef.current;
@@ -558,6 +584,54 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     }
   }, []);
 
+  // ── Centralizar num PONTO de flow arbitrário (navegação pelo minimapa) ────
+  //
+  // Generaliza o centerOnNode: dado um ponto (fx, fy) em coords de FLOW, arrasta
+  // o pane por MouseEvent sintético para levar esse ponto ao centro do container.
+  // NUNCA usa setCenter/setViewport (inertes neste editor).
+  const centerOnFlowPoint = useCallback((flowX: number, flowY: number) => {
+    const wrapper = flowWrapperRef.current;
+    if (!wrapper) return;
+    const pane = wrapper.querySelector('.react-flow__pane');
+    const vpEl = wrapper.querySelector('.react-flow__viewport');
+    if (!pane || !vpEl) return;
+    const rect = wrapper.getBoundingClientRect();
+
+    const parse = () => {
+      const m = (vpEl as HTMLElement).style.transform.match(
+        /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/,
+      );
+      return m ? { x: +m[1], y: +m[2], k: +m[3] } : { x: 0, y: 0, k: 1 };
+    };
+
+    const cxScr = rect.left + rect.width / 2;
+    const cyScr = rect.top + rect.height / 2;
+
+    // Posição atual do ponto de flow relativa ao wrapper (mesma base do transform)
+    // e delta pra levá-lo ao centro do container.
+    const cur = parse();
+    const ptScrX = flowX * cur.k + cur.x;
+    const ptScrY = flowY * cur.k + cur.y;
+    const dx = Math.round(rect.width / 2 - ptScrX);
+    const dy = Math.round(rect.height / 2 - ptScrY);
+
+    if (dx !== 0 || dy !== 0) {
+      const o = (x: number, y: number, buttons = 1): MouseEventInit => ({
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: x,
+        clientY: y,
+        button: 0,
+        buttons,
+      });
+      pane.dispatchEvent(new MouseEvent('mousedown', o(cxScr, cyScr)));
+      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx * 0.5, cyScr + dy * 0.5)));
+      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx, cyScr + dy)));
+      window.dispatchEvent(new MouseEvent('mouseup', o(cxScr + dx, cyScr + dy, 0)));
+    }
+  }, []);
+
   // ── Aplicar esmaecimento (spotlight) nos nós e arestas ───────────────────
   //
   // Efeito puramente visual — NÃO chama scheduleSave; não muta data/posição.
@@ -639,6 +713,38 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   // Handlers que aplicam a mudança E agendam o save.
   const handleNodesChange = useCallback(
     (changes: NodeChange<RFNode>[]) => {
+      // ── Helper Lines + Snap ──────────────────────────────────────────────
+      // Quando há exatamente 1 change de posição em arrasto ativo, calcula os
+      // alinhamentos e aplica o snap à posição do nó antes de repassar ao store.
+      if (helperLinesEnabled) {
+        const posChanges = changes.filter(
+          (c): c is NodeChange<RFNode> & { type: 'position'; position: { x: number; y: number }; dragging: boolean } =>
+            c.type === 'position' && (c as { dragging?: boolean }).dragging === true && !!(c as { position?: unknown }).position,
+        );
+
+        if (posChanges.length === 1) {
+          const change = posChanges[0] as NodeChange<RFNode> & { type: 'position'; position: { x: number; y: number } };
+          const lines = getHelperLines(
+            change as Parameters<typeof getHelperLines>[0],
+            nodes,
+          );
+
+          // Aplica o snap sobrescrevendo a posição do change (antes do store).
+          if (lines.snapPosition.x !== undefined || lines.snapPosition.y !== undefined) {
+            change.position = {
+              x: lines.snapPosition.x ?? change.position.x,
+              y: lines.snapPosition.y ?? change.position.y,
+            };
+          }
+
+          setHelperLines({ horizontal: lines.horizontal, vertical: lines.vertical });
+        } else {
+          // Múltiplos changes, ou drag finalizou (dragging === false) → limpa guias.
+          setHelperLines({});
+        }
+      }
+      // ────────────────────────────────────────────────────────────────────
+
       onNodesChange(changes);
       // Só salva em mudanças persistentes (posição/remoção/add), não em select.
       const meaningful = changes.some(
@@ -646,7 +752,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
       );
       if (meaningful) scheduleSave();
     },
-    [onNodesChange, scheduleSave],
+    [helperLinesEnabled, nodes, onNodesChange, scheduleSave],
   );
 
   const handleEdgesChange = useCallback(
@@ -867,6 +973,8 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
       preDragSnapshot.current = null;
       syncHistoryLen();
     }
+    // Remove as linhas guia ao soltar o nó.
+    setHelperLines({});
     scheduleSave();
   }, [syncHistoryLen, scheduleSave]);
 
@@ -912,6 +1020,44 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addBoxSignal]);
 
+  // ── Tela cheia REAL (Fullscreen API) ──────────────────────────────────────
+  // Alvo = o container [data-orgchart-root] (overlay do OrgChartFullscreen) ou,
+  // no modo normal, o próprio wrapper do canvas. Ícone alterna Maximize/Minimize
+  // conforme document.fullscreenElement.
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
+  useEffect(() => {
+    // Inclui webkitfullscreenchange para Safari (iOS/macOS).
+    const onChange = () =>
+      setIsBrowserFullscreen(
+        !!(document.fullscreenElement ?? (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement),
+      );
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
+
+  const toggleBrowserFullscreen = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const d = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => void };
+    const fsEl = document.fullscreenElement ?? d.webkitFullscreenElement;
+    if (fsEl) {
+      (document.exitFullscreen?.() ?? d.webkitExitFullscreen?.());
+      return;
+    }
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+    const req = el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.();
+    Promise.resolve(req).catch((err: Error) => {
+      toast({
+        title: t.fullscreenLabel,
+        description: (err?.name || 'Erro') + ': ' + (err?.message || 'não foi possível abrir em tela cheia'),
+        variant: 'destructive',
+      });
+    });
+  }, [toast, t.fullscreenLabel]);
+
   // Refs estáveis pra o handler de teclado usar sempre a versão mais recente.
   const undoRef = useRef(undo);
   const redoRef = useRef(redoFn);
@@ -944,6 +1090,16 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   const quickAddValue = useMemo(
     () => ({ onQuickAdd: handleQuickAdd, enabled: !isMobile, addLabel: t.toolbar.addNode }),
     [handleQuickAdd, isMobile, t.toolbar.addNode],
+  );
+
+  // ── Estilo das arestas (preferência edgeStyle) ────────────────────────────
+  // Aplica o tipo apenas para exibição. O estado `edges` real (para save/undo)
+  // não é tocado — só displayEdges recebe o type derivado da pref.
+  const edgeType = prefs.edgeStyle === 'straight' ? 'smoothstep' : 'default';
+  const displayEdges = useMemo(
+    () => edges.map((e) => ({ ...e, type: edgeType })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [edges, edgeType],
   );
 
   return (
@@ -1009,6 +1165,23 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {/* Engrenagem de preferências — clássico */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      title={t.settingsTool}
+                      aria-label={t.settingsTool}
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-64 p-0">
+                    <CanvasSettingsPanel prefs={prefs} setPref={setPref} t={t} />
+                  </PopoverContent>
+                </Popover>
               </>
             )}
             <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -1052,7 +1225,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
             <ReactFlow
               key={chart.id}
               nodes={nodes}
-              edges={edges}
+              edges={displayEdges}
               nodeTypes={nodeTypes}
               colorMode={isDark ? 'dark' : 'light'}
               onNodesChange={handleNodesChange}
@@ -1060,7 +1233,10 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
               onConnect={onConnect}
               onNodeClick={(_e, node) => { setSelectedNodeId(node.id); setEdgeMenu(null); }}
               onPaneClick={() => { setSelectedNodeId(null); setEdgeMenu(null); }}
-              onMove={() => setEdgeMenu(null)}
+              onMove={(_, vp) => {
+                setEdgeMenu(null);
+                setMainViewport(vp);
+              }}
               onEdgeClick={(event, edge) => {
                 const rect = flowWrapperRef.current?.getBoundingClientRect();
                 if (!rect) return;
@@ -1074,11 +1250,48 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
               deleteKeyCode={isMobile ? null : ['Backspace', 'Delete']}
               minZoom={0.2}
               maxZoom={2}
+              snapToGrid={prefs.snapGrid}
+              snapGrid={[16, 16]}
+              defaultEdgeOptions={{ type: edgeType }}
               proOptions={{ hideAttribution: true }}
             >
               <FlowController onReady={(inst) => { rfInstanceRef.current = inst; }} />
-              <Background gap={16} />
-              <Controls showInteractive={!isMobile} />
+              {prefs.background !== 'none' && (
+                <Background
+                  gap={16}
+                  variant={
+                    prefs.background === 'lines'
+                      ? BackgroundVariant.Lines
+                      : prefs.background === 'cross'
+                      ? BackgroundVariant.Cross
+                      : BackgroundVariant.Dots
+                  }
+                />
+              )}
+              <Controls showFitView={false} showInteractive={!isMobile}>
+                <ControlButton
+                  onClick={toggleBrowserFullscreen}
+                  title={t.fullscreenLabel}
+                  aria-label={t.fullscreenLabel}
+                >
+                  {isBrowserFullscreen ? <Minimize /> : <Maximize />}
+                </ControlButton>
+              </Controls>
+              {prefs.minimap && (
+                <OrgChartMiniMap
+                  nodes={nodes}
+                  edges={displayEdges}
+                  nodeTypes={nodeTypes}
+                  isDark={isDark}
+                  mainViewport={mainViewport}
+                  mainSize={wrapperSize ?? { width: 0, height: 0 }}
+                  onNavigate={centerOnFlowPoint}
+                />
+              )}
+              <HelperLines
+                horizontal={helperLines.horizontal}
+                vertical={helperLines.vertical}
+              />
             </ReactFlow>
           )}
 
@@ -1223,6 +1436,23 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    {/* Engrenagem de preferências — fullscreen */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="pointer-events-auto gap-1.5 shadow-md ring-1 ring-border"
+                          title={t.settingsTool}
+                          aria-label={t.settingsTool}
+                        >
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="pointer-events-auto w-64 p-0">
+                        <CanvasSettingsPanel prefs={prefs} setPref={setPref} t={t} />
+                      </PopoverContent>
+                    </Popover>
                   </>
                 )}
               </div>
@@ -1634,6 +1864,77 @@ function EditPanel({ node, employeesById, onChange, onDelete, onClose, onApplyTo
   );
 }
 
+// ── Painel de preferências inline (usado dentro do Popover da engrenagem) ───────
+function CanvasSettingsPanel({
+  prefs,
+  setPref,
+  t,
+}: {
+  prefs: OrgChartPrefs;
+  setPref: <K extends keyof OrgChartPrefs>(key: K, value: OrgChartPrefs[K]) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: any;
+}) {
+  return (
+    <div className="flex flex-col divide-y">
+      {/* Linhas curvas */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <span className="text-sm text-foreground">{t.edgeStyleLabel}</span>
+        <Switch
+          checked={prefs.edgeStyle === 'curved'}
+          onCheckedChange={(c) => setPref('edgeStyle', c ? 'curved' : 'straight')}
+          aria-label={t.edgeStyleLabel}
+        />
+      </div>
+      {/* Fundo */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <span className="text-sm text-foreground">{t.backgroundLabel}</span>
+        <Select
+          value={prefs.background}
+          onValueChange={(v) => setPref('background', v as OrgChartPrefs['background'])}
+        >
+          <SelectTrigger className="h-8 w-28 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dots">{t.bgDots}</SelectItem>
+            <SelectItem value="lines">{t.bgLines}</SelectItem>
+            <SelectItem value="cross">{t.bgCross}</SelectItem>
+            <SelectItem value="none">{t.bgNone}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {/* Minimapa */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <span className="text-sm text-foreground">{t.minimapLabel}</span>
+        <Switch
+          checked={prefs.minimap}
+          onCheckedChange={(c) => setPref('minimap', c)}
+          aria-label={t.minimapLabel}
+        />
+      </div>
+      {/* Encaixar na grade */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <span className="text-sm text-foreground">{t.snapGridLabel}</span>
+        <Switch
+          checked={prefs.snapGrid}
+          onCheckedChange={(c) => setPref('snapGrid', c)}
+          aria-label={t.snapGridLabel}
+        />
+      </div>
+      {/* Guias inteligentes */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <span className="text-sm text-foreground">{t.smartGuidesLabel}</span>
+        <Switch
+          checked={prefs.smartGuides}
+          onCheckedChange={(c) => setPref('smartGuides', c)}
+          aria-label={t.smartGuidesLabel}
+        />
+      </div>
+    </div>
+  );
+}
+
 // Normaliza um hex digitado pelo usuário (#RGB ou #RRGGBB, com/sem #) para o
 // formato #rrggbb minúsculo; devolve null se não for hex válido.
 function normalizeHex(input: string): string | null {
@@ -1703,7 +2004,7 @@ function ColorPicker({
             aria-label={customLabel}
             title={customLabel}
             className={cn(
-              'flex h-7 w-7 items-center justify-center rounded-full border-2 transition-transform',
+              'flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 transition-transform',
               isCustom ? 'scale-110 border-foreground' : 'border-transparent',
             )}
             style={
@@ -1721,16 +2022,19 @@ function ColorPicker({
         <PopoverContent className="w-56 space-y-3" align="start">
           <Label className="text-xs">{customLabel}</Label>
           <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={normalizeHex(draft) ?? '#3b82f6'}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                onChange(e.target.value);
-              }}
-              className="h-9 w-9 shrink-0 cursor-pointer rounded-md border bg-transparent p-0.5"
-              aria-label={customLabel}
-            />
+            {/* Wrapper redondo que mascara o swatch quadrado nativo do browser */}
+            <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border">
+              <input
+                type="color"
+                value={normalizeHex(draft) ?? '#3b82f6'}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  onChange(e.target.value);
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer border-0 bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-none [&::-moz-color-swatch]:rounded-none"
+                aria-label={customLabel}
+              />
+            </span>
             <Input
               value={draft}
               onChange={(e) => {

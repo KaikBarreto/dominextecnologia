@@ -363,6 +363,7 @@ export function OrgChartFullscreen({
   return createPortal(
     <div
       ref={overlayRef}
+      data-orgchart-root
       className="fixed z-40 bg-background"
       style={{
         top: rect.top,

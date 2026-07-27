@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.46',
+    date: '28 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Guias de alinhamento e encaixe ao arrastar',
+        description: 'Ao mover um card ou uma caixa no organograma, aparecem linhas de referência coloridas quando ele se alinha com outro (pela borda ou pelo centro), e ele encaixa sozinho na posição, do jeito que os editores de design fazem. Deixa tudo alinhado sem esforço.',
+        category: 'recurso',
+      },
+      {
+        title: 'Minimapa para navegar e botão de tela cheia',
+        description: 'Um minimapa no canto mostra o organograma inteiro em miniatura, com a área visível destacada, e você navega clicando nele, ótimo para estruturas grandes. E um botão abre o organograma em tela cheia para trabalhar com mais espaço.',
+        category: 'recurso',
+      },
+      {
+        title: 'Preferências do organograma',
+        description: 'Uma engrenagem no topo abre as preferências, salvas para você: escolher linhas retas ou curvas entre os cargos, o estilo do fundo do quadro (pontos, linhas, xadrez ou nenhum) e ligar ou desligar o minimapa, o encaixe na grade e as guias de alinhamento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.45',
     date: '27 de julho de 2026',
     type: 'patch',

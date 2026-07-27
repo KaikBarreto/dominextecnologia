@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.45";
+export const APP_VERSION = "1.17.46";
 
-export const VERSION_NOTES = "Corrigimos o botão Organizar do organograma: agora ele nunca inverte a hierarquia. Quem você liga pela base do card fica como superior e quem entra pelo topo fica como subordinado, mesmo que a linha tenha sido puxada de baixo para cima.";
+export const VERSION_NOTES = "O organograma ficou mais completo: ao arrastar um card ou caixa aparecem guias de alinhamento e um encaixe automático (estilo editor de design), tem um minimapa que mostra a estrutura inteira em miniatura para navegar rápido, um botão para abrir em tela cheia, e uma engrenagem de preferências para escolher linhas retas ou curvas, o estilo do fundo, e ligar ou desligar o minimapa, o encaixe na grade e as guias.";

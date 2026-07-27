@@ -659,3 +659,25 @@ html {
   opacity: 1;
   background: hsl(var(--primary));
 }
+
+/* ── Organograma: fullscreen real (Fullscreen API) ──────────────────────────
+   O alvo do requestFullscreen agora é o document.documentElement (html), que é
+   exatamente o que o F11 do navegador usa — o seletor ":fullscreen element"
+   não casa mais (só o próprio elemento em fullscreen casa com :fullscreen).
+   Por isso usamos o seletor DESCENDENTE: ":fullscreen [data-orgchart-root]"
+   (e o prefixo webkit). Os estilos inline (position:fixed; left:256px; etc.)
+   são sobrescritos por !important, forçando 100vw/100vh sobre a tela toda.
+   O transform:none evita que animações residuais criem containing-block.
+   O z-index garante que o overlay fique por cima de qualquer portal/dialog. */
+:fullscreen [data-orgchart-root],
+:-webkit-full-screen [data-orgchart-root] {
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  transform: none !important;
+  background: hsl(var(--background)) !important;
+  z-index: 2147483647 !important;
+}
