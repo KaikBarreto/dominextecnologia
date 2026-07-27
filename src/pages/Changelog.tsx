@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.44',
+    date: '27 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Baixar o organograma como imagem e PDF',
+        description: 'Agora dá para exportar o organograma como imagem (PNG) ou PDF direto pela tela cheia. O arquivo sai no seu tema (claro ou escuro) e traz tudo: as pessoas, as linhas que conectam os cargos e o fundo do quadro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Destacar um setor e buscar uma pessoa no organograma',
+        description: 'Novas ferramentas na lateral: escolha um setor para realçá-lo (o resto do quadro fica esmaecido) ou busque alguém pelo nome ou cargo, que a pessoa aparece em destaque e o quadro centraliza nela.',
+        category: 'recurso',
+      },
+      {
+        title: 'Caixas de anotação, desfazer/refazer e visão em árvore',
+        description: 'Ficou mais fácil montar e revisar a estrutura: adicione caixas livres de anotação (para setores ou observações), desfaça e refaça alterações a qualquer momento e veja a empresa em formato de árvore que abre e fecha por nível.',
+        category: 'recurso',
+      },
+      {
+        title: 'Organização automática mais esperta e outros acabamentos',
+        description: 'O botão Organizar agora entende quando você liga dois cargos lado a lado (mesmo nível) e mantém no lugar tudo o que estiver solto, sem ligação. Também dá para excluir uma ligação clicando nela, e o menu lateral do sistema não recolhe mais sozinho ao abrir o organograma.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.43',
     date: '27 de julho de 2026',
     type: 'patch',

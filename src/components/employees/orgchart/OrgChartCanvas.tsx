@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { Spotlight } from './OrgChartFullscreen';
 import '@xyflow/react/dist/style.css';
 import {
   ReactFlow,
@@ -15,13 +16,22 @@ import {
   type EdgeChange,
   type ReactFlowInstance,
 } from '@xyflow/react';
-import { Plus, Wand2, Loader2, Check, Info } from 'lucide-react';
+import { Plus, Wand2, Loader2, Check, Info, Trash2, StickyNote, Undo2, Redo2, Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useIsDark } from '@/hooks/useIsDark';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useEmployees, type Employee } from '@/hooks/useEmployees';
@@ -99,17 +109,31 @@ interface CanvasInnerProps {
    * internamente (≥2 frames consecutivos com mesmo clientWidth/Height).
    */
   containerReady?: boolean;
+  /**
+   * Estado de foco vindo do Fullscreen. null = todos visíveis normalmente.
+   * { ids } = só esses nós ficam opacos; o resto esmaece para 0.15.
+   * { ids, focusId } = idem + centraliza no nó focusId via arrasto sintético.
+   * Não persiste (scheduleSave nunca é chamado em resposta ao spotlight).
+   */
+  spotlight?: Spotlight | null;
+  /**
+   * Sinal de "nonce" para disparar addBox de fora (OrgChartFullscreen → Canvas).
+   * Incrementar este valor chama addBox() uma vez. Padrão: undefined = inativo.
+   */
+  addBoxSignal?: number;
   // Ações do editor fullscreen sobrepostas no canvas (só no modo fullscreen).
   onBack?: () => void;
   backLabel?: string;
   backIcon?: ReactNode;
 }
 
-function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmployee, fullscreen, containerReady, onBack, backLabel, backIcon }: CanvasInnerProps) {
+function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmployee, fullscreen, containerReady, spotlight, addBoxSignal, onBack, backLabel, backIcon }: CanvasInnerProps) {
   const isMobile = useIsMobile();
   const isDark = useIsDark();
+  const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.orgchart;
+  const { toast } = useToast();
   const { saveGraph, renameChart } = useOrgCharts();
   // Instância do React Flow do PRÓPRIO `<ReactFlow>` (não há mais provider
   // externo — o flow é dono do store). Capturada por um `<FlowController>`
@@ -150,6 +174,34 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   const [pendingQuickAdd, setPendingQuickAdd] = useState<{ nodeId: string; dir: QuickAddDirection } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  // Menu flutuante de exclusão de aresta: posição relativa ao container.
+  const [edgeMenu, setEdgeMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
+  // ── Histórico de undo/redo ─────────────────────────────────────────────────
+  // Cada entrada é um snapshot limpo do grafo (mesmo shape do auto-save).
+  // `past`: pilha de estados ANTERIORES (topo = mais recente). Cap = 50.
+  // `future`: pilha de estados pra REFAZER (topo = próximo a refazer).
+  // Snapshots são capturados via graphRef (evita closure defasado).
+  const HISTORY_CAP = 50;
+  type GraphSnapshot = { nodes: typeof initial.nodes; edges: typeof initial.edges };
+  const historyPast = useRef<GraphSnapshot[]>([]);
+  const historyFuture = useRef<GraphSnapshot[]>([]);
+  // Estado derivado pra re-render dos botões desabilitados.
+  const [historyLen, setHistoryLen] = useState({ past: 0, future: 0 });
+
+  // Atualiza o estado derivado pra forçar re-render dos botões.
+  const syncHistoryLen = useCallback(() => {
+    setHistoryLen({ past: historyPast.current.length, future: historyFuture.current.length });
+  }, []);
+
+  // Empilha o estado ATUAL (lido do graphRef) em `past` e limpa `future`.
+  // Chamar ANTES de aplicar a mutação.
+  const pushHistory = useCallback(() => {
+    const snap = graphRef.current;
+    historyPast.current = [snap, ...historyPast.current].slice(0, HISTORY_CAP);
+    historyFuture.current = [];
+    syncHistoryLen();
+  }, [syncHistoryLen]);
 
   // ── Auto-save com debounce (~800ms), com selo de status ───────────────────
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -167,6 +219,10 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     setSelectedNodeId(null);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaveState('idle');
+    // Limpa o histórico ao trocar de organograma.
+    historyPast.current = [];
+    historyFuture.current = [];
+    setHistoryLen({ past: 0, future: 0 });
     hydratedRef.current = true;
   }, [initial, setNodes, setEdges]);
 
@@ -178,6 +234,54 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   useEffect(() => {
     graphRef.current = serializeGraph(nodes, edges);
   }, [nodes, edges]);
+
+  // Aplica um snapshot ao grafo sem empilhar no histórico (usado por undo/redo).
+  const applySnapshot = useCallback((snap: GraphSnapshot) => {
+    setNodes(
+      snap.nodes.map((n) => ({
+        id: n.id,
+        type: ORG_NODE_TYPE,
+        position: n.position,
+        data: n.data,
+      })) as RFNode[],
+    );
+    setEdges(
+      snap.edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle ?? undefined,
+        targetHandle: e.targetHandle ?? undefined,
+      })) as Edge[],
+    );
+  }, [setNodes, setEdges]);
+
+  // Ref estável pro scheduleSave — definida depois, mas o undo/redo chama via ref.
+  const scheduleSaveRef = useRef<() => void>(() => {/* preenchido abaixo */});
+
+  const undo = useCallback(() => {
+    if (!historyPast.current.length) return;
+    const prev = historyPast.current[0];
+    const rest = historyPast.current.slice(1);
+    // Guarda o estado ATUAL em future antes de voltar.
+    historyFuture.current = [graphRef.current, ...historyFuture.current];
+    historyPast.current = rest;
+    syncHistoryLen();
+    applySnapshot(prev);
+    scheduleSaveRef.current();
+  }, [applySnapshot, syncHistoryLen]);
+
+  const redoFn = useCallback(() => {
+    if (!historyFuture.current.length) return;
+    const next = historyFuture.current[0];
+    const rest = historyFuture.current.slice(1);
+    // Guarda o estado ATUAL em past antes de avançar.
+    historyPast.current = [graphRef.current, ...historyPast.current].slice(0, HISTORY_CAP);
+    historyFuture.current = rest;
+    syncHistoryLen();
+    applySnapshot(next);
+    scheduleSaveRef.current();
+  }, [applySnapshot, syncHistoryLen]);
 
   const scheduleSave = useCallback(() => {
     // Ignora saves antes da hidratação inicial (evita gravar vazio no load).
@@ -198,11 +302,52 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     }, 800);
   }, [chart.id, saveGraph]);
 
+  // Mantém a ref do scheduleSave em dia (resolve a dependência circular com undo/redo).
+  useEffect(() => { scheduleSaveRef.current = scheduleSave; }, [scheduleSave]);
+
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
   }, []);
+
+  // ── Exportação (PNG / PDF) disparada pelas toolbars ──────────────────────
+  const handleExport = useCallback(async (format: 'png' | 'pdf') => {
+    if (nodes.length === 0) {
+      toast({ title: t.exportEmpty, variant: 'destructive' });
+      return;
+    }
+    // O elemento alvo é o `.react-flow__viewport` dentro do wrapper — contém
+    // nós E arestas SVG. O html-to-image serializa o DOM fielmente (sem o bug
+    // do html2canvas que perdia o svg das arestas por tamanho intrínseco 300×150).
+    const element = flowWrapperRef.current?.querySelector<HTMLElement>('.react-flow__viewport') ?? null;
+    if (!element) {
+      toast({ title: 'Elemento do canvas não encontrado.', variant: 'destructive' });
+      return;
+    }
+    try {
+      if (format === 'png') {
+        const { exportOrgChartPng } = await import('@/utils/orgChartExport');
+        await exportOrgChartPng({ element, nodes, isDark, chartName: chart.name });
+      } else {
+        const { exportOrgChartPdf } = await import('@/utils/orgChartExport');
+        await exportOrgChartPdf({
+          element,
+          nodes,
+          isDark,
+          chartName: chart.name,
+          hideBranding: whiteLabelEnabled,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'EMPTY') {
+        toast({ title: t.exportEmpty, variant: 'destructive' });
+      } else {
+        toast({ title: msg, variant: 'destructive' });
+      }
+    }
+  }, [nodes, isDark, chart.name, whiteLabelEnabled, toast, t.exportEmpty]);
 
   // ── Centralizar ao ENTRAR — via arrasto/wheel de MOUSE sintético ───────────
   //
@@ -353,8 +498,130 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     }
   }, []);
 
-  // Centraliza UMA vez ao abrir/trocar de chart, quando o flow montou e os nós já
-  // estão no DOM. Guard reseta em chart.id. Dois RAFs garantem que pane/nós já
+  // ── Centralizar num nó específico (busca pessoa) ─────────────────────────
+  //
+  // Mesmo mecanismo do centerOnTree (arrasto sintético de MouseEvent), mas mira
+  // no nó com o ID informado em vez do centro da árvore inteira.
+  // NUNCA usa setCenter/fitView/setViewport — essas APIs são inertes neste editor.
+  const centerOnNode = useCallback((nodeId: string) => {
+    const wrapper = flowWrapperRef.current;
+    if (!wrapper) return;
+    const pane = wrapper.querySelector('.react-flow__pane');
+    const vpEl = wrapper.querySelector('.react-flow__viewport');
+    if (!pane || !vpEl) return;
+    const rect = wrapper.getBoundingClientRect();
+
+    const parse = () => {
+      const m = (vpEl as HTMLElement).style.transform.match(
+        /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/,
+      );
+      return m ? { x: +m[1], y: +m[2], k: +m[3] } : { x: 0, y: 0, k: 1 };
+    };
+
+    // Localiza o elemento DOM do nó alvo via atributo data-id do React Flow.
+    const nodeEl = wrapper.querySelector(
+      `.react-flow__node[data-id="${CSS.escape(nodeId)}"]`,
+    ) as HTMLElement | null;
+    if (!nodeEl) return;
+
+    const mm = nodeEl.style.transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+    if (!mm) return;
+
+    const kNow = parse().k || 1;
+    const nodeFlowX = +mm[1] + (nodeEl.offsetWidth / kNow) / 2;
+    const nodeFlowY = +mm[2] + (nodeEl.offsetHeight / kNow) / 2;
+
+    const cxScr = rect.left + rect.width / 2;
+    const cyScr = rect.top + rect.height / 2;
+
+    // PAN exato para levar o centro do nó ao centro do container.
+    const cur = parse();
+    const nodeScrX = nodeFlowX * cur.k + cur.x;
+    const nodeScrY = nodeFlowY * cur.k + cur.y;
+    const dx = Math.round(rect.width / 2 - nodeScrX);
+    const dy = Math.round(rect.height / 2 - nodeScrY);
+
+    if (dx !== 0 || dy !== 0) {
+      const o = (x: number, y: number, buttons = 1): MouseEventInit => ({
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: x,
+        clientY: y,
+        button: 0,
+        buttons,
+      });
+      pane.dispatchEvent(new MouseEvent('mousedown', o(cxScr, cyScr)));
+      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx * 0.5, cyScr + dy * 0.5)));
+      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx, cyScr + dy)));
+      window.dispatchEvent(new MouseEvent('mouseup', o(cxScr + dx, cyScr + dy, 0)));
+    }
+  }, []);
+
+  // ── Aplicar esmaecimento (spotlight) nos nós e arestas ───────────────────
+  //
+  // Efeito puramente visual — NÃO chama scheduleSave; não muta data/posição.
+  // Altera node.style.opacity via setNodes/setEdges, preservando todo o resto.
+  useEffect(() => {
+    if (spotlight === null) {
+      // Remove o esmaecimento: volta opacity a 1 (limpa qualquer valor anterior).
+      setNodes((nds) =>
+        nds.map((n) => {
+          // Só re-cria o objeto se realmente há algo pra limpar.
+          const s = n.style ?? {};
+          if (s.opacity === undefined && s.transition === undefined) return n;
+          const { opacity: _o, transition: _t, ...rest } = s;
+          return { ...n, style: rest };
+        }),
+      );
+      setEdges((eds) =>
+        eds.map((e) => {
+          const s = e.style ?? {};
+          if (s.opacity === undefined) return e;
+          const { opacity: _o, ...rest } = s;
+          return { ...e, style: rest };
+        }),
+      );
+      return;
+    }
+
+    const idSet = new Set(spotlight.ids);
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        style: {
+          ...(n.style ?? {}),
+          opacity: idSet.has(n.id) ? 1 : 0.15,
+          transition: 'opacity 200ms ease',
+        },
+      })),
+    );
+    setEdges((eds) =>
+      eds.map((e) => {
+        const inSpotlight = idSet.has(e.source) && idSet.has(e.target);
+        return {
+          ...e,
+          style: {
+            ...(e.style ?? {}),
+            opacity: inSpotlight ? 1 : 0.12,
+          },
+        };
+      }),
+    );
+
+    // Centraliza no nó focusId (busca pessoa), 2 RAFs para o DOM estar pronto.
+    if (spotlight.focusId) {
+      const focusId = spotlight.focusId;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => centerOnNode(focusId)),
+      );
+    }
+  // setNodes/setEdges têm referência estável — safe incluir.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spotlight, centerOnNode]);
+
+  // ── Centralizar UMA vez ao abrir/trocar de chart ──────────────────────────
+  // Guard reseta em chart.id. Dois RAFs garantem que pane/nós já
   // têm posição no DOM antes de medir/despachar.
   const didCenterRef = useRef(false);
   useEffect(() => {
@@ -393,10 +660,11 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
 
   const onConnect = useCallback(
     (conn: Connection) => {
+      pushHistory();
       setEdges((eds) => addEdge({ ...conn, id: crypto.randomUUID() }, eds));
       scheduleSave();
     },
-    [setEdges, scheduleSave],
+    [setEdges, scheduleSave, pushHistory],
   );
 
   // Abre o modal em modo "adição rápida conectada" a partir do "+" de um nó.
@@ -408,6 +676,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   // ── Adicionar nó (funcionário ou manual) ──────────────────────────────────
   const addNode = useCallback(
     (data: OrgNodeData) => {
+      pushHistory();
       const newId = crypto.randomUUID();
       const quick = pendingQuickAdd;
 
@@ -486,11 +755,12 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
       scheduleSave();
       setAddOpen(false);
     },
-    [setNodes, setEdges, scheduleSave, pendingQuickAdd, nodes, edges],
+    [setNodes, setEdges, scheduleSave, pendingQuickAdd, nodes, edges, pushHistory],
   );
 
   // ── Organizar (dagre) ─────────────────────────────────────────────────────
   const organize = useCallback(() => {
+    pushHistory();
     setNodes((nds) => {
       const laid = layoutOrgChart(nds, edges);
       return laid;
@@ -502,7 +772,7 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     // Recentraliza SEM remontar: dois RAFs para as posições do dagre já estarem
     // no DOM, então dispara o arrasto/wheel sintético que centraliza a árvore.
     requestAnimationFrame(() => requestAnimationFrame(() => centerOnTree()));
-  }, [edges, setNodes, setEdges, scheduleSave, centerOnTree]);
+  }, [edges, setNodes, setEdges, scheduleSave, centerOnTree, pushHistory]);
 
   // ── Painel de edição do nó selecionado ────────────────────────────────────
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
@@ -510,21 +780,23 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   const updateSelected = useCallback(
     (patch: Partial<OrgNodeData>) => {
       if (!selectedNodeId) return;
+      pushHistory();
       setNodes((nds) =>
         nds.map((n) => (n.id === selectedNodeId ? { ...n, data: { ...n.data, ...patch } } : n)),
       );
       scheduleSave();
     },
-    [selectedNodeId, setNodes, scheduleSave],
+    [selectedNodeId, setNodes, scheduleSave, pushHistory],
   );
 
   const deleteSelected = useCallback(() => {
     if (!selectedNodeId) return;
+    pushHistory();
     setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
     setEdges((eds) => eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId));
     setSelectedNodeId(null);
     scheduleSave();
-  }, [selectedNodeId, setNodes, setEdges, scheduleSave]);
+  }, [selectedNodeId, setNodes, setEdges, scheduleSave, pushHistory]);
 
   // Herda setor/cor do nó de origem quando o "+" foi acionado (quick-add).
   const inheritFromOrigin = useMemo(() => {
@@ -569,13 +841,105 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     const { sector, sectorColor } = origin.data;
     const ids = getDescendantIds(selectedNodeId);
     if (ids.length === 0) return;
+    pushHistory();
     setNodes((nds) =>
       nds.map((n) =>
         ids.includes(n.id) ? { ...n, data: { ...n.data, sector, sectorColor } } : n,
       ),
     );
     scheduleSave();
-  }, [selectedNodeId, nodes, getDescendantIds, setNodes, scheduleSave]);
+  }, [selectedNodeId, nodes, getDescendantIds, setNodes, scheduleSave, pushHistory]);
+
+  // ── Arrasto de nó: captura snapshot ANTES do drag (ao iniciar) e empilha
+  //    no histórico ao SOLTAR (onNodeDragStop), não durante o movimento. ────
+  const preDragSnapshot = useRef<GraphSnapshot | null>(null);
+
+  const onNodeDragStart = useCallback(() => {
+    // Captura o estado ANTES do drag começar, via graphRef (sempre atualizado).
+    preDragSnapshot.current = graphRef.current;
+  }, []);
+
+  const onNodeDragStop = useCallback(() => {
+    // Empilha o estado PRÉ-DRAG em past e limpa future, se houve captura.
+    if (preDragSnapshot.current) {
+      historyPast.current = [preDragSnapshot.current, ...historyPast.current].slice(0, HISTORY_CAP);
+      historyFuture.current = [];
+      preDragSnapshot.current = null;
+      syncHistoryLen();
+    }
+    scheduleSave();
+  }, [syncHistoryLen, scheduleSave]);
+
+  // ── Adicionar caixa livre (kind='box') ────────────────────────────────────
+  const addBox = useCallback(() => {
+    pushHistory();
+    const newId = crypto.randomUUID();
+    let position = { x: 0, y: 0 };
+    try {
+      const rf = rfInstanceRef.current;
+      const el = document.querySelector('.org-flow-wrapper') as HTMLElement | null;
+      const w = el?.clientWidth ?? 800;
+      const h = el?.clientHeight ?? 600;
+      if (rf?.screenToFlowPosition) {
+        position = rf.screenToFlowPosition({
+          x: (el?.getBoundingClientRect().left ?? 0) + w / 2,
+          y: (el?.getBoundingClientRect().top ?? 0) + h / 2,
+        });
+      } else if (rf?.getViewport) {
+        const vp = rf.getViewport();
+        position = { x: (-vp.x + w / 2) / vp.zoom, y: (-vp.y + h / 2) / vp.zoom };
+      }
+    } catch { /* usa 0,0 */ }
+    const newNode: RFNode = {
+      id: newId,
+      type: ORG_NODE_TYPE,
+      position,
+      data: { kind: 'box', name: t.toolbar.boxDefaultText },
+    };
+    setNodes((nds) => [...nds, newNode]);
+    setSelectedNodeId(newId);
+    scheduleSave();
+  }, [pushHistory, setNodes, setSelectedNodeId, scheduleSave, t.toolbar.boxDefaultText]);
+
+  // ── Sinal externo addBoxSignal → chama addBox() uma vez por incremento ───
+  const lastAddBoxSignal = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (addBoxSignal === undefined) return;
+    if (lastAddBoxSignal.current === addBoxSignal) return;
+    lastAddBoxSignal.current = addBoxSignal;
+    addBox();
+  // addBox tem dependências estáveis; só re-executa quando o sinal muda.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addBoxSignal]);
+
+  // Refs estáveis pra o handler de teclado usar sempre a versão mais recente.
+  const undoRef = useRef(undo);
+  const redoRef = useRef(redoFn);
+  useEffect(() => { undoRef.current = undo; }, [undo]);
+  useEffect(() => { redoRef.current = redoFn; }, [redoFn]);
+
+  // ── Atalhos de teclado: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl+Y ────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Não intercepta quando o foco está em input/textarea (não briga com edição).
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        undoRef.current();
+      } else if (mod && e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        redoRef.current();
+      } else if (e.ctrlKey && !e.shiftKey && e.key === 'y') {
+        e.preventDefault();
+        redoRef.current();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const quickAddValue = useMemo(
     () => ({ onQuickAdd: handleQuickAdd, enabled: !isMobile, addLabel: t.toolbar.addNode }),
@@ -596,9 +960,55 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
                 <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
                   <Plus className="h-4 w-4" /> {t.toolbar.addNode}
                 </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={addBox} title={t.toolbar.addBox}>
+                  <StickyNote className="h-4 w-4" /> {t.toolbar.addBox}
+                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={organize} title={t.toolbar.organizeHint}>
                   <Wand2 className="h-4 w-4" /> {t.toolbar.organize}
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1"
+                  onClick={undo}
+                  disabled={historyLen.past === 0}
+                  title={t.toolbar.undo}
+                  aria-label={t.toolbar.undo}
+                >
+                  <Undo2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1"
+                  onClick={redoFn}
+                  disabled={historyLen.future === 0}
+                  title={t.toolbar.redo}
+                  aria-label={t.toolbar.redo}
+                >
+                  <Redo2 className="h-4 w-4" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1.5" title={t.exportTool}>
+                      <Download className="h-4 w-4" />
+                      {t.exportTool}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-52">
+                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                      {t.exportHint}
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleExport('png')}>
+                      <Download className="mr-2 h-4 w-4" />
+                      {t.exportPng}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                      <Download className="mr-2 h-4 w-4" />
+                      {t.exportPdf}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
             <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -648,8 +1058,16 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
               onNodesChange={handleNodesChange}
               onEdgesChange={handleEdgesChange}
               onConnect={onConnect}
-              onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
-              onPaneClick={() => setSelectedNodeId(null)}
+              onNodeClick={(_e, node) => { setSelectedNodeId(node.id); setEdgeMenu(null); }}
+              onPaneClick={() => { setSelectedNodeId(null); setEdgeMenu(null); }}
+              onMove={() => setEdgeMenu(null)}
+              onEdgeClick={(event, edge) => {
+                const rect = flowWrapperRef.current?.getBoundingClientRect();
+                if (!rect) return;
+                setEdgeMenu({ id: edge.id, x: event.clientX - rect.left, y: event.clientY - rect.top });
+              }}
+              onNodeDragStart={onNodeDragStart}
+              onNodeDragStop={onNodeDragStop}
               nodesDraggable={!isMobile}
               nodesConnectable={!isMobile}
               elementsSelectable
@@ -664,10 +1082,37 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
             </ReactFlow>
           )}
 
+          {/* ── Botão flutuante de exclusão de aresta ───────────────────── */}
+          {edgeMenu && (
+            <div
+              className="pointer-events-none absolute inset-0 z-30"
+              style={{ pointerEvents: 'none' }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  pushHistory();
+                  setEdges((eds) => eds.filter((e) => e.id !== edgeMenu.id));
+                  scheduleSave();
+                  setEdgeMenu(null);
+                }}
+                className="group pointer-events-auto absolute flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-card px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg transition-colors hover:bg-destructive hover:border-destructive"
+                style={{
+                  left: edgeMenu.x,
+                  top: edgeMenu.y,
+                  transform: 'translate(-50%, 8px)',
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive transition-colors group-hover:text-white" />
+                {t.delete}
+              </button>
+            </div>
+          )}
+
           {/* ── Overlays flutuantes do editor fullscreen ─────────────────── */}
           {fullscreen && (
             <>
-              {/* Canto superior ESQUERDO: Voltar (vermelho→branco) + título. */}
+              {/* Canto superior ESQUERDO: Voltar (vermelho→branco) + título + undo/redo. */}
               <div
                 className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-2"
                 style={{ paddingTop: 'env(safe-area-inset-top)' }}
@@ -694,6 +1139,30 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
                   confirmLabel={t.toolbar.renameChartConfirm}
                   onRename={(next) => renameChart.mutate({ id: chart.id, name: next })}
                 />
+                {!isMobile && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={undo}
+                      disabled={historyLen.past === 0}
+                      title={t.toolbar.undo}
+                      aria-label={t.toolbar.undo}
+                      className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg bg-card/85 shadow-md ring-1 ring-border backdrop-blur transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redoFn}
+                      disabled={historyLen.future === 0}
+                      title={t.toolbar.redo}
+                      aria-label={t.toolbar.redo}
+                      className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg bg-card/85 shadow-md ring-1 ring-border backdrop-blur transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Canto superior DIREITO: Adicionar nó + Organizar + selo salvar. */}
@@ -728,6 +1197,32 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
                     >
                       <Wand2 className="h-4 w-4" /> {t.toolbar.organize}
                     </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="pointer-events-auto gap-1.5 shadow-md ring-1 ring-border"
+                          title={t.exportTool}
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="hidden sm:inline">{t.exportTool}</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="pointer-events-auto w-52">
+                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                          {t.exportHint}
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleExport('png')}>
+                          <Download className="mr-2 h-4 w-4" />
+                          {t.exportPng}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                          <Download className="mr-2 h-4 w-4" />
+                          {t.exportPdf}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </>
                 )}
               </div>
@@ -1048,6 +1543,7 @@ interface EditPanelProps {
 function EditPanel({ node, employeesById, onChange, onDelete, onClose, onApplyToDescendants, hasDescendants, t, floating }: EditPanelProps) {
   const d = node.data;
   const isEmployee = d.kind === 'employee';
+  const isBox = d.kind === 'box';
   const emp = isEmployee && d.employeeId ? employeesById[d.employeeId] : undefined;
 
   return (
@@ -1064,50 +1560,71 @@ function EditPanel({ node, employeesById, onChange, onDelete, onClose, onApplyTo
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {isEmployee ? (
-          <div className="sm:col-span-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {emp ? `${emp.name}${emp.position ? ` · ${emp.position}` : ''}` : d.name}
-            <p className="mt-1">{t.editPanel.employeeHint}</p>
+      {isBox ? (
+        /* ── Edição de caixa livre ── */
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label className="text-xs">{t.editPanel.boxTextLabel}</Label>
+            <Input value={d.name} onChange={(e) => onChange({ name: e.target.value })} />
           </div>
-        ) : (
-          <>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t.editPanel.nameLabel}</Label>
-              <Input value={d.name} onChange={(e) => onChange({ name: e.target.value })} />
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label className="text-xs">{t.editPanel.boxColorLabel}</Label>
+            <ColorPicker
+              value={d.sectorColor ?? ''}
+              onChange={(c) => onChange({ sectorColor: c || undefined })}
+              allowNone
+              noneLabel={t.editPanel.noColor}
+              customLabel={t.editPanel.customColor}
+            />
+          </div>
+        </div>
+      ) : (
+        /* ── Edição de funcionário / manual ── */
+        <div className="grid gap-3 sm:grid-cols-2">
+          {isEmployee ? (
+            <div className="sm:col-span-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              {emp ? `${emp.name}${emp.position ? ` · ${emp.position}` : ''}` : d.name}
+              <p className="mt-1">{t.editPanel.employeeHint}</p>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t.editPanel.roleLabel}</Label>
-              <Input value={d.role ?? ''} onChange={(e) => onChange({ role: e.target.value })} />
-            </div>
-          </>
-        )}
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t.editPanel.nameLabel}</Label>
+                <Input value={d.name} onChange={(e) => onChange({ name: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t.editPanel.roleLabel}</Label>
+                <Input value={d.role ?? ''} onChange={(e) => onChange({ role: e.target.value })} />
+              </div>
+            </>
+          )}
 
-        <div className="space-y-1.5">
-          <Label className="text-xs">{t.editPanel.sectorLabel}</Label>
-          <Input
-            value={d.sector ?? ''}
-            onChange={(e) => onChange({ sector: e.target.value })}
-            placeholder={t.editPanel.sectorPlaceholder}
-          />
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.editPanel.sectorLabel}</Label>
+            <Input
+              value={d.sector ?? ''}
+              onChange={(e) => onChange({ sector: e.target.value })}
+              placeholder={t.editPanel.sectorPlaceholder}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.editPanel.colorLabel}</Label>
+            <ColorPicker
+              value={d.sectorColor ?? ''}
+              onChange={(c) => onChange({ sectorColor: c || undefined })}
+              allowNone
+              noneLabel={t.editPanel.noColor}
+              customLabel={t.editPanel.customColor}
+            />
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">{t.editPanel.colorLabel}</Label>
-          <ColorPicker
-            value={d.sectorColor ?? ''}
-            onChange={(c) => onChange({ sectorColor: c || undefined })}
-            allowNone
-            noneLabel={t.editPanel.noColor}
-            customLabel={t.editPanel.customColor}
-          />
-        </div>
-      </div>
+      )}
 
       <div className="mt-4 flex items-center gap-2">
         <Button variant="destructive" size="sm" onClick={onDelete}>
           {t.editPanel.deleteNode}
         </Button>
-        {hasDescendants && (
+        {!isBox && hasDescendants && (
           <Button variant="outline" size="sm" onClick={onApplyToDescendants}>
             {t.editPanel.applyToDescendants}
           </Button>
@@ -1236,6 +1753,8 @@ export function OrgChartCanvas({
   chart,
   fullscreen,
   containerReady,
+  spotlight,
+  addBoxSignal,
   onBack,
   backLabel,
   backIcon,
@@ -1249,6 +1768,10 @@ export function OrgChartCanvas({
    * O poll interno ainda verifica estabilidade de tamanho antes de fitBounds.
    */
   containerReady?: boolean;
+  /** Estado de foco passado pelo OrgChartFullscreen. Ver CanvasInnerProps. */
+  spotlight?: Spotlight | null;
+  /** Sinal de nonce para disparar addBox de fora. Ver CanvasInnerProps. */
+  addBoxSignal?: number;
   onBack?: () => void;
   backLabel?: string;
   backIcon?: ReactNode;
@@ -1283,6 +1806,8 @@ export function OrgChartCanvas({
       discCodeByEmployee={discCodeByEmployee}
       fullscreen={fullscreen}
       containerReady={containerReady}
+      spotlight={spotlight}
+      addBoxSignal={addBoxSignal}
       onBack={onBack}
       backLabel={backLabel}
       backIcon={backIcon}

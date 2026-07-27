@@ -9,16 +9,17 @@ import { getErrorMessage } from '@/utils/errorMessages';
 export interface OrgNodeData {
   // Index signature exigida pelo React Flow v12 (Node<T extends Record<string, unknown>>).
   [key: string]: unknown;
-  kind: 'employee' | 'manual';
+  kind: 'employee' | 'manual' | 'box';
   /** Presente quando kind === 'employee'. Nome/cargo/foto resolvem NO RENDER por este id. */
   employeeId?: string;
-  /** Snapshot de nome (fallback se o funcionário for removido, ou nome do nó manual). */
+  /** Snapshot de nome (fallback se o funcionário for removido, ou nome do nó manual).
+   *  Para kind === 'box': texto exibido na caixa. */
   name: string;
-  /** Snapshot de cargo (fallback / cargo do nó manual). */
+  /** Snapshot de cargo (fallback / cargo do nó manual). Não usado em 'box'. */
   role?: string;
-  /** Rótulo do setor (opcional). */
+  /** Rótulo do setor (opcional). Não usado em 'box'. */
   sector?: string;
-  /** Cor do setor escolhida pelo usuário (hex). Única cor fora dos tokens permitida. */
+  /** Cor do setor (employee/manual) ou cor de fundo da caixa (box). */
   sectorColor?: string;
 }
 

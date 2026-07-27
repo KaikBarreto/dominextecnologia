@@ -13,25 +13,42 @@ const NODE_HEIGHT = 92;
 const TB_SOURCE_HANDLE = 'bottom-source';
 const TB_TARGET_HANDLE = 'top-target';
 
+// Detecta se a aresta foi criada por um handle lateral (left/right).
+// Ligações laterais significam "mesmo nível" (peers), não hierarquia pai→filho.
+// Ligações verticais (top/bottom) continuam sendo tratadas como hierarquia.
+const LATERAL_HANDLE = /^(left|right)-/;
+function isLateralEdge(e: Edge): boolean {
+  return LATERAL_HANDLE.test(e.sourceHandle ?? '') || LATERAL_HANDLE.test(e.targetHandle ?? '');
+}
+
 /**
- * Normaliza os handles de TODAS as arestas pro layout top-down (TB): cada aresta
- * sai do handle de baixo do pai e entra no handle de cima do filho. Assim as
- * linhas descem retas, sem "voltas" causadas por handles arbitrários de conexões
- * manuais. Usado só pelo "Organizar" — conexões manuais fora dele ficam livres.
+ * Normaliza os handles das arestas VERTICAIS pro layout top-down (TB): cada
+ * aresta sai do handle de baixo do pai e entra no handle de cima do filho.
+ * Arestas LATERAIS (left/right) preservam seus handles originais — a linha
+ * continua saindo e entrando pela lateral que o usuário escolheu.
  * Não muta o array de entrada; sourceHandle/targetHandle já serializam no save.
  */
 export function normalizeEdgeHandlesTB(edges: Edge[]): Edge[] {
-  return edges.map((e) => ({
-    ...e,
-    sourceHandle: TB_SOURCE_HANDLE,
-    targetHandle: TB_TARGET_HANDLE,
-  }));
+  return edges.map((e) =>
+    // Aresta lateral preserva os handles; vertical recebe os handles TB padrão.
+    isLateralEdge(e)
+      ? e
+      : {
+          ...e,
+          sourceHandle: TB_SOURCE_HANDLE,
+          targetHandle: TB_TARGET_HANDLE,
+        },
+  );
 }
 
 /**
  * Auto-layout hierárquico (árvore de cima pra baixo) com dagre.
  * Recebe os nodes/edges atuais e devolve os MESMOS nodes com `position` nova.
  * Não muta os arrays de entrada.
+ *
+ * Arestas LATERAIS (left/right) NÃO entram no ranqueamento do dagre: assim o
+ * nó conectado lateralmente vira uma raiz própria e cai no mesmo nível (rank 0)
+ * do nó de origem, em vez de ser empurrado um nível abaixo como filho.
  */
 export function layoutOrgChart<T extends Record<string, unknown>>(
   nodes: Node<T>[],
@@ -49,12 +66,24 @@ export function layoutOrgChart<T extends Record<string, unknown>>(
     marginy: 24,
   });
 
+  // Nós soltos (sem nenhuma aresta) NÃO entram no dagre: o "Organizar" arruma
+  // só o que está ligado por linhas; caixas soltas ficam onde o usuário deixou.
+  // O `if (!pos) return node` lá embaixo já cuida de devolvê-los inalterados.
+  const connectedIds = new Set<string>();
+  for (const e of edges) {
+    connectedIds.add(e.source);
+    connectedIds.add(e.target);
+  }
+
   for (const node of nodes) {
+    if (!connectedIds.has(node.id)) continue; // solto → fica parado
     const w = node.measured?.width ?? node.width ?? NODE_WIDTH;
     const h = node.measured?.height ?? node.height ?? NODE_HEIGHT;
     g.setNode(node.id, { width: w, height: h });
   }
   for (const edge of edges) {
+    // Arestas laterais não entram no rank do dagre: peers ficam no mesmo nível.
+    if (isLateralEdge(edge)) continue;
     g.setEdge(edge.source, edge.target);
   }
 
@@ -82,6 +111,9 @@ export function layoutOrgChart<T extends Record<string, unknown>>(
  *    (nó sem superior). 2) Coleta os descendentes da raiz. 3) Roda dagre só
  *    nesse conjunto e reposiciona ancorando a raiz na posição atual dela (a
  *    branch não "salta" pra outro canto).
+ *
+ * Arestas LATERAIS são ignoradas ao montar parentOf/childrenOf: um peer não é
+ * pai nem filho, não deve guiar a subida até a raiz nem a coleta de descendentes.
  */
 export function layoutBranchFrom<T extends Record<string, unknown>>(
   nodes: Node<T>[],
@@ -92,8 +124,12 @@ export function layoutBranchFrom<T extends Record<string, unknown>>(
   if (!nodeById.has(seedId)) return nodes;
 
   // Sobe até a raiz (primeiro nó sem aresta de entrada), evitando loop.
+  // Arestas laterais são puladas: peer não é pai.
   const parentOf = new Map<string, string>();
-  for (const e of edges) parentOf.set(e.target, e.source);
+  for (const e of edges) {
+    if (isLateralEdge(e)) continue; // peer não é pai
+    parentOf.set(e.target, e.source);
+  }
   let rootId = seedId;
   const seen = new Set<string>([rootId]);
   while (parentOf.has(rootId)) {
@@ -104,8 +140,10 @@ export function layoutBranchFrom<T extends Record<string, unknown>>(
   }
 
   // Coleta descendentes da raiz (BFS seguindo source→target).
+  // Arestas laterais são puladas: peer não é filho.
   const childrenOf = new Map<string, string[]>();
   for (const e of edges) {
+    if (isLateralEdge(e)) continue; // peer não é filho
     if (!childrenOf.has(e.source)) childrenOf.set(e.source, []);
     childrenOf.get(e.source)!.push(e.target);
   }

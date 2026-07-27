@@ -62,12 +62,115 @@ function getInitials(name: string) {
 
 export const ORG_NODE_TYPE = 'orgNode';
 
+// Config dos 4 lados reutilizada tanto no card normal quanto na box.
+const OUT = 26;
+const SIDES = [
+  {
+    dir: 'top' as const,
+    pos: Position.Top,
+    plusCls: 'left-1/2 -translate-x-1/2 -translate-y-1/2',
+    plusStyle: { top: -OUT } as const,
+  },
+  {
+    dir: 'bottom' as const,
+    pos: Position.Bottom,
+    plusCls: 'left-1/2 -translate-x-1/2 translate-y-1/2',
+    plusStyle: { bottom: -OUT } as const,
+  },
+  {
+    dir: 'left' as const,
+    pos: Position.Left,
+    plusCls: 'top-1/2 -translate-y-1/2 -translate-x-1/2',
+    plusStyle: { left: -OUT } as const,
+  },
+  {
+    dir: 'right' as const,
+    pos: Position.Right,
+    plusCls: 'top-1/2 -translate-y-1/2 translate-x-1/2',
+    plusStyle: { right: -OUT } as const,
+  },
+];
+
 function OrgChartNodeInner({ id, data, selected }: NodeProps) {
   const employees = useContext(EmployeesContext);
   const discProfiles = useContext(DiscProfilesContext);
   const quickAdd = useContext(QuickAddContext);
   const d = data as OrgNodeData;
 
+  const showQuickAdd = quickAdd.enabled && !!quickAdd.onQuickAdd;
+
+  // ── Handles compartilhados entre box e card normal ─────────────────────────
+  const handles = (
+    <>
+      {SIDES.map(({ dir, pos }) => (
+        <div key={dir}>
+          <Handle id={`${dir}-target`} type="target" position={pos} className="org-handle" />
+          <Handle id={`${dir}-source`} type="source" position={pos} className="org-handle" />
+        </div>
+      ))}
+    </>
+  );
+
+  // ── "+" nos 4 lados (quick-add) ───────────────────────────────────────────
+  const quickAddButtons = showQuickAdd && (
+    <>
+      {SIDES.map(({ dir, plusCls, plusStyle }) => (
+        <button
+          key={dir}
+          type="button"
+          aria-label={quickAdd.addLabel}
+          title={quickAdd.addLabel}
+          style={plusStyle}
+          className={cn(
+            'nodrag nopan absolute z-30 flex h-5 w-5 items-center justify-center rounded-full',
+            'bg-primary text-primary-foreground shadow-md ring-2 ring-background',
+            'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
+            'hover:scale-110',
+            plusCls,
+          )}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            quickAdd.onQuickAdd?.(id, dir);
+          }}
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      ))}
+    </>
+  );
+
+  // ── Render: caixa livre (kind === 'box') ───────────────────────────────────
+  if (d.kind === 'box') {
+    const boxColor = d.sectorColor;
+    const boxFg = boxColor ? idealForeground(boxColor) : undefined;
+    return (
+      <div
+        className={cn(
+          'group relative min-w-[120px] max-w-[280px] rounded-xl border-2 border-dashed transition-shadow',
+          selected ? 'ring-2 ring-primary shadow-md border-solid' : 'hover:shadow-md',
+          !boxColor && 'bg-card border-muted-foreground/30',
+        )}
+        style={boxColor ? { backgroundColor: boxColor, borderColor: boxFg ? `${boxFg}40` : undefined, borderStyle: 'solid' } : undefined}
+      >
+        {handles}
+        {quickAddButtons}
+        <div className="px-4 py-3 text-center">
+          <p
+            className={cn(
+              'break-words text-sm font-semibold leading-snug',
+              !boxColor && 'text-foreground',
+            )}
+            style={boxFg ? { color: boxFg } : undefined}
+          >
+            {d.name || '—'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render: card de funcionário ou manual ──────────────────────────────────
   // Resolve dados vivos do funcionário; cai no snapshot se removido/manual.
   const emp = d.kind === 'employee' && d.employeeId ? employees[d.employeeId] : undefined;
   const name = emp?.name ?? d.name ?? '';
@@ -82,53 +185,6 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
   const sectorColor = d.sectorColor;
   const sectorFg = sectorColor ? idealForeground(sectorColor) : undefined;
 
-  const showQuickAdd = quickAdd.enabled && !!quickAdd.onQuickAdd;
-
-  // Config dos 4 lados: posição do React Flow (handle/bolinha) + posicionamento
-  // do "+" de quick-add.
-  //
-  // Ancoragem do "+": o React Flow centraliza cada handle no MEIO do lado do card
-  // (top/bottom → center-x na borda superior/inferior; left/right → center-y na
-  // borda esquerda/direita — ver style.css do @xyflow). Pra o "+" ficar no MESMO
-  // ponto cardeal do handle, ancoramos o "+" no mesmo eixo central do lado
-  // (`left-1/2 -translate-x-1/2` ou `top-1/2 -translate-y-1/2`) e o empurramos pra
-  // FORA da borda com `top/bottom/left = -100% - gap` via style inline (não usa o
-  // topo do card como referência, então a barra de cor do setor não desloca o "+").
-  //
-  // `OUT` = distância do centro do "+" à borda do card (afastado o suficiente pra
-  // não brigar com o arraste do handle, mas alinhado no eixo central do lado).
-  const OUT = 26;
-  const SIDES = [
-    {
-      dir: 'top' as const,
-      pos: Position.Top,
-      // center-x alinhado ao handle; empurrado pra cima da borda superior.
-      plusCls: 'left-1/2 -translate-x-1/2 -translate-y-1/2',
-      plusStyle: { top: -OUT } as const,
-    },
-    {
-      dir: 'bottom' as const,
-      pos: Position.Bottom,
-      // center-x alinhado ao handle; empurrado pra baixo da borda inferior.
-      plusCls: 'left-1/2 -translate-x-1/2 translate-y-1/2',
-      plusStyle: { bottom: -OUT } as const,
-    },
-    {
-      dir: 'left' as const,
-      pos: Position.Left,
-      // center-y alinhado ao handle; empurrado pra esquerda da borda.
-      plusCls: 'top-1/2 -translate-y-1/2 -translate-x-1/2',
-      plusStyle: { left: -OUT } as const,
-    },
-    {
-      dir: 'right' as const,
-      pos: Position.Right,
-      // center-y alinhado ao handle; empurrado pra direita da borda.
-      plusCls: 'top-1/2 -translate-y-1/2 translate-x-1/2',
-      plusStyle: { right: -OUT } as const,
-    },
-  ];
-
   return (
     <div
       className={cn(
@@ -142,44 +198,13 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
           quanto SOLTAR um fio nele (target). Os ids `<dir>-source` / `<dir>-target`
           entram no sourceHandle/targetHandle da aresta e são persistidos.
           Estilo `org-handle`: bolinha discreta em repouso, realça no hover do nó. */}
-      {SIDES.map(({ dir, pos }) => (
-        <div key={dir}>
-          <Handle id={`${dir}-target`} type="target" position={pos} className="org-handle" />
-          <Handle id={`${dir}-source`} type="source" position={pos} className="org-handle" />
-        </div>
-      ))}
+      {handles}
 
       {/* "+" nos 4 lados (desktop, no hover): adiciona um nó JÁ CONECTADO naquela
           direção. Fica afastado da borda (não sobre o handle) pra não conflitar
           com o arraste de conexão. `nodrag`/`nopan` + stopPropagation garantem
           que o clique não inicie arrasto do nó. */}
-      {showQuickAdd && (
-        <>
-          {SIDES.map(({ dir, plusCls, plusStyle }) => (
-            <button
-              key={dir}
-              type="button"
-              aria-label={quickAdd.addLabel}
-              title={quickAdd.addLabel}
-              style={plusStyle}
-              className={cn(
-                'nodrag nopan absolute z-30 flex h-5 w-5 items-center justify-center rounded-full',
-                'bg-primary text-primary-foreground shadow-md ring-2 ring-background',
-                'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
-                'hover:scale-110',
-                plusCls,
-              )}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                quickAdd.onQuickAdd?.(id, dir);
-              }}
-            >
-              <Plus className="h-3 w-3" />
-            </button>
-          ))}
-        </>
-      )}
+      {quickAddButtons}
 
       {/* Barra/etiqueta do setor no topo do card. */}
       {(d.sector || sectorColor) && (
@@ -198,7 +223,7 @@ function OrgChartNodeInner({ id, data, selected }: NodeProps) {
       <div className="flex items-center gap-3 p-3">
         <Avatar className="h-11 w-11 shrink-0">
           {d.kind === 'employee' && <SignedAvatarImage src={photoUrl} alt={name} />}
-          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+          <AvatarFallback className="bg-muted text-muted-foreground text-xs font-semibold">
             {name ? getInitials(name) : '?'}
           </AvatarFallback>
         </Avatar>

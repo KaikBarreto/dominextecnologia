@@ -145,13 +145,6 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
 // Número sorteado no CLIQUE (rodízio de números do suporte).
 const getWhatsAppSupportUrl = () => `https://wa.me/${getRandomWhatsAppNumber()}`;
 const ICON_SIZE = 'h-[20px] w-[20px] shrink-0';
-// Box FIXO e idêntico pra TODO item no rail colapsado (folha, grupo, header,
-// footer). `mx-auto` + tamanho fixo (h-10 w-10) garantem que o centro de cada
-// box caia no MESMO eixo vertical do rail — independente da largura óptica do
-// ícone (lucide tem viewBox 24, os custom OperacionalIcon/AreaTecnicoIcon
-// não são quadrados) ou do tipo de item. `justify-center` num `w-full` deixava
-// o centro deslocar quando a scrollbar aparecia / paddings divergiam → zigzag.
-const COLLAPSED_ITEM = 'mx-auto flex h-10 w-10 items-center justify-center rounded-lg transition-colors';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -345,63 +338,58 @@ export function SidebarMenuContent() {
           </div>
         )}
 
-        {/* Lista de itens */}
-        <div ref={menuScrollRef} className={cn('flex-1 overflow-y-auto pt-2', collapsed ? 'px-1.5' : 'px-4')}>
-          <nav className={cn(collapsed ? 'flex flex-col items-center gap-2' : 'space-y-0.5')}>
+        {/* Lista de itens
+            Layout UNIFICADO: cada item existe com a MESMA marcação nos dois
+            estados (colapsado/expandido). O que muda é só CSS — o label e o
+            chevron REVELAM por opacidade/largura conforme a sidebar alarga.
+            Nada remonta ao alternar `collapsed`, então a transição CSS roda e
+            a sensação é de UMA sidebar alargando, não duas telas trocando. */}
+        <div ref={menuScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden pt-2 px-2">
+          <nav className="space-y-0.5">
             {activeMenu.map((item) => {
               if (item.children) {
                 const visibleChildren = filterByAccess(item.children);
                 if (visibleChildren.length === 0) return null;
 
-                if (collapsed) {
-                  const hasActiveChild = isSubmenuActive(visibleChildren);
-                  return (
-                    <Tooltip key={item.title}>
-                      <TooltipTrigger asChild>
-                        <button
-                          title={tMenu(item.title)}
-                          onClick={() => toggleMenu(item.title)}
+                const hasActiveSubmenu = isSubmenuActive(visibleChildren);
+                const isOpen = !collapsed && openMenus.includes(item.title);
+                return (
+                  <Collapsible
+                    key={item.title}
+                    open={isOpen}
+                    onOpenChange={() => {
+                      // No colapsado, o Collapsible fica travado fechado — não
+                      // dispara toggle (evita abrir submenu invisível).
+                      if (!collapsed) toggleMenu(item.title);
+                    }}
+                  >
+                        <CollapsibleTrigger
+                          title={collapsed ? tMenu(item.title) : undefined}
                           className={cn(
-                            COLLAPSED_ITEM,
-                            hasActiveChild
+                            'flex w-full items-center rounded-lg px-3 py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-all duration-300 overflow-hidden',
+                            collapsed ? 'justify-center gap-0' : 'gap-3',
+                            hasActiveSubmenu
                               ? 'bg-primary text-primary-foreground'
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
                           )}
                         >
                           <item.icon className={ICON_SIZE} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">{tMenu(item.title)}</TooltipContent>
-                    </Tooltip>
-                  );
-                }
-
-                const hasActiveSubmenu = isSubmenuActive(visibleChildren);
-                return (
-                  <Collapsible
-                    key={item.title}
-                    open={openMenus.includes(item.title)}
-                    onOpenChange={() => toggleMenu(item.title)}
-                  >
-                    <CollapsibleTrigger
-                      className={cn(
-                        'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-colors',
-                        hasActiveSubmenu
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
-                      )}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <item.icon className={ICON_SIZE} />
-                        <span className="whitespace-nowrap overflow-hidden">{tMenu(item.title)}</span>
-                      </div>
-                      <ChevronDown
-                        className={cn(
-                          'h-4 w-4 transition-transform',
-                          (openMenus.includes(item.title) || hasActiveSubmenu) && 'rotate-180'
-                        )}
-                      />
-                    </CollapsibleTrigger>
+                          <span
+                            className={cn(
+                              'min-w-0 truncate whitespace-nowrap text-left transition-all duration-300',
+                              collapsed ? 'w-0 opacity-0' : 'flex-1 opacity-100'
+                            )}
+                          >
+                            {tMenu(item.title)}
+                          </span>
+                          <ChevronDown
+                            className={cn(
+                              'h-4 shrink-0 transition-all duration-300',
+                              collapsed ? 'w-0 opacity-0' : 'w-4 opacity-100',
+                              (isOpen || hasActiveSubmenu) && 'rotate-180'
+                            )}
+                          />
+                        </CollapsibleTrigger>
                     <CollapsibleContent className="ml-3 mt-0.5 space-y-0.5 border-l border-border/40 pl-3 overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 duration-200">
                       {visibleChildren.map((child) => (
                         <NavLink
@@ -425,46 +413,32 @@ export function SidebarMenuContent() {
                 );
               }
 
-              if (collapsed) {
-                return (
-                  <Tooltip key={item.path}>
-                    <TooltipTrigger asChild>
-                      <NavLink
-                        to={L(item.path!)}
-                        title={tMenu(item.title)}
-                        className={({ isActive }) =>
-                          cn(
-                            COLLAPSED_ITEM,
-                            isActive
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
-                          )
-                        }
-                      >
-                        <item.icon className={ICON_SIZE} />
-                      </NavLink>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{tMenu(item.title)}</TooltipContent>
-                  </Tooltip>
-                );
-              }
-
               return (
-                <NavLink
-                  key={item.path}
-                  to={L(item.path!)}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 rounded-lg py-2.5 px-3 text-[13px] font-semibold tracking-[0.01em] transition-colors',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
-                    )
-                  }
-                >
-                  <item.icon className={ICON_SIZE} />
-                  <span className="min-w-0 truncate whitespace-nowrap">{tMenu(item.title)}</span>
-                </NavLink>
+                    <NavLink
+                      key={item.path}
+                      to={L(item.path!)}
+                      title={collapsed ? tMenu(item.title) : undefined}
+                      className={cn(
+                        // className como STRING (não função): dentro de TooltipTrigger
+                        // asChild o Radix Slot stringifica função-className e quebra o
+                        // flex. O NavLink adiciona a classe `active` sozinho → estilizo
+                        // o estado ativo via a variante [&.active].
+                        'flex w-full items-center rounded-lg py-2.5 px-3 text-[13px] font-semibold tracking-[0.01em] transition-all duration-300 overflow-hidden',
+                        collapsed ? 'justify-center gap-0' : 'gap-3',
+                        'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground',
+                        '[&.active]:bg-primary [&.active]:text-primary-foreground'
+                      )}
+                    >
+                      <item.icon className={ICON_SIZE} />
+                      <span
+                        className={cn(
+                          'min-w-0 truncate whitespace-nowrap transition-all duration-300',
+                          collapsed ? 'w-0 opacity-0' : 'flex-1 opacity-100'
+                        )}
+                      >
+                        {tMenu(item.title)}
+                      </span>
+                    </NavLink>
               );
             })}
           </nav>
