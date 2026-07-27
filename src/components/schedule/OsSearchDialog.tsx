@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { getDateFnsLocale } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import { Search as SearchIcon, User as UserIcon, Calendar as CalendarIcon } from 'lucide-react';
 
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -73,10 +74,11 @@ function matchesQuery(order: AgendaSearchOrder, query: string): boolean {
   return haystack.some((field) => normalize(field).includes(q));
 }
 
-function formatScheduledDate(date: string | null | undefined, noDateLabel: string): string {
+function formatScheduledDate(date: string | null | undefined, noDateLabel: string, locale: LocaleCode): string {
   if (!date) return noDateLabel;
   try {
-    return format(parseISO(date), "dd 'de' MMM yyyy", { locale: ptBR });
+    const pattern = locale === 'pt-br' ? "dd 'de' MMM yyyy" : 'd MMM yyyy';
+    return format(parseISO(date), pattern, { locale: getDateFnsLocale(locale) });
   } catch {
     return date;
   }
@@ -222,7 +224,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <CalendarIcon className="h-3 w-3" />
-                        {formatScheduledDate(order.scheduled_date, t.noDate)}
+                        {formatScheduledDate(order.scheduled_date, t.noDate, locale)}
                       </span>
                       {assigneesText && (
                         <span className="inline-flex items-center gap-1 truncate">

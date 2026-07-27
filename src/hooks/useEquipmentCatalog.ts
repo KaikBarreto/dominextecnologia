@@ -22,6 +22,8 @@ export interface EquipmentBrand {
 export interface EquipmentModelCategory {
   id: string;
   name: string;
+  /** JSON de traduções: {"en":{"name":"..."},"es":{...},"fr":{...}} */
+  i18n?: import('@/integrations/supabase/types').Json | null;
 }
 
 /**
@@ -63,6 +65,8 @@ export interface EquipmentModel {
    */
   compressor_model_id?: string | null;
   created_at: string;
+  /** JSON de traduções: {"en":{"name":"..."},"es":{...},"fr":{...}} */
+  i18n?: import('@/integrations/supabase/types').Json | null;
   /** Hidratado nas queries que fazem join com a marca. */
   brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
   /** Hidratado nas queries que fazem join com a categoria (tipo do equipamento). */
@@ -70,23 +74,42 @@ export interface EquipmentModel {
 }
 
 /**
- * Rótulo amigável (PT-BR) do botão de download conforme o `manual_type`.
- * Tipos desconhecidos/null caem no genérico "Baixar Manual".
+ * Tipo do mapa de traduções de tipos de manual, compatível com
+ * `MESSAGES[locale].app.technicianTools.catalog.manualTypes`.
  */
-export function rotuloManual(manualType: string | null | undefined): string {
+export interface ManualTypeLabels {
+  instalacao: string;
+  servico: string;
+  usuario: string;
+  guia: string;
+  datasheet: string;
+  default: string;
+}
+
+/**
+ * Rótulo amigável do botão de download conforme o `manual_type`.
+ * Quando `labels` é passado (objeto de tradução), usa-o; senão cai no pt-br
+ * hardcoded para retrocompatibilidade. Tipos desconhecidos/null → `labels.default`.
+ */
+export function rotuloManual(
+  manualType: string | null | undefined,
+  labels?: ManualTypeLabels,
+): string {
+  const l: ManualTypeLabels = labels ?? {
+    instalacao: 'Manual de Instalação',
+    servico: 'Manual de Serviço',
+    usuario: 'Manual do Usuário',
+    guia: 'Guia Rápido',
+    datasheet: 'Datasheet',
+    default: 'Baixar Manual',
+  };
   switch (manualType) {
-    case 'instalacao':
-      return 'Manual de Instalação';
-    case 'servico':
-      return 'Manual de Serviço';
-    case 'usuario':
-      return 'Manual do Usuário';
-    case 'guia':
-      return 'Guia Rápido';
-    case 'datasheet':
-      return 'Datasheet';
-    default:
-      return 'Baixar Manual';
+    case 'instalacao': return l.instalacao;
+    case 'servico':    return l.servico;
+    case 'usuario':    return l.usuario;
+    case 'guia':       return l.guia;
+    case 'datasheet':  return l.datasheet;
+    default:           return l.default;
   }
 }
 
@@ -99,6 +122,8 @@ export interface EquipmentErrorCode {
   diagnosis: string | null;
   solution: string | null;
   component: string | null;
+  /** JSON de traduções: {"en":{"title","description","diagnosis","solution","component"},...} */
+  i18n?: import('@/integrations/supabase/types').Json | null;
   created_at: string;
 }
 
@@ -164,7 +189,7 @@ export function useEquipmentModelsByBrand(
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, i18n, created_at, category:equipment_model_categories(id, name, i18n)',
         )
         .eq('brand_id', brandId as string)
         .eq('domain', domain)
@@ -184,7 +209,7 @@ export function useEquipmentModel(modelId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, i18n, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name, i18n)',
         )
         .eq('id', modelId as string)
         .maybeSingle();
@@ -207,7 +232,7 @@ export function useEquipmentModelsByCode(term: string) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, domain, i18n, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name, i18n)',
         )
         .ilike('code', `%${trimmed}%`)
         .order('name', { ascending: true })
@@ -230,7 +255,7 @@ export function useAllModelsWithBrand(domain: string = 'ar_condicionado') {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, i18n, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name, i18n)',
         )
         .eq('domain', domain)
         .order('name', { ascending: true });
@@ -270,7 +295,7 @@ export function useAllErrorCodesWithModel(domain: string = 'ar_condicionado') {
       const { data, error } = await supabase
         .from('equipment_error_codes')
         .select(
-          'id, model_id, code, title, description, diagnosis, solution, component, created_at, model:equipment_models!inner(id, name, code, image_url, manual_url, refrigerant, brand_id, domain, brand:equipment_brands(id, name, logo_url))',
+          'id, model_id, code, title, description, diagnosis, solution, component, i18n, created_at, model:equipment_models!inner(id, name, code, image_url, manual_url, refrigerant, brand_id, domain, brand:equipment_brands(id, name, logo_url))',
         )
         .eq('model.domain', domain)
         .order('code', { ascending: true })
@@ -439,7 +464,7 @@ export function useEquipmentErrorCodes(modelId: string | null | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('equipment_error_codes')
-        .select('id, model_id, code, title, description, diagnosis, solution, component, created_at')
+        .select('id, model_id, code, title, description, diagnosis, solution, component, i18n, created_at')
         .eq('model_id', modelId as string)
         .order('code', { ascending: true });
       if (error) throw error;

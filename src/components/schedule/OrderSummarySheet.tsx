@@ -9,7 +9,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { getStatusBadgeClass } from './EventCard';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getDateFnsLocale } from '@/lib/format';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { getOsTypeLabel } from '@/types/database';
@@ -45,6 +46,8 @@ function buildGoogleMapsUrl(customer: any): string | null {
 }
 
 function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void; onReopen?: (id: string) => void; onPause?: (id: string) => void; onResume?: (id: string) => void }) {
+  const { locale } = useAppLocaleContext();
+  const dfnsLocale = getDateFnsLocale(locale);
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date, (order as any).partial_finish);
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -115,7 +118,11 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
           <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
           <span>
             {order.scheduled_date
-              ? format(new Date(order.scheduled_date + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR })
+              ? format(
+                  new Date(order.scheduled_date + 'T12:00:00'),
+                  locale === 'pt-br' ? "dd 'de' MMMM" : 'd MMMM',
+                  { locale: dfnsLocale },
+                )
               : 'Sem data'}{' '}
             às {order.scheduled_time?.slice(0, 5) || '--:--'}
           </span>

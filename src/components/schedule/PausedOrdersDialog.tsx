@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { PauseCircle, Search, MapPin, Play, Eye, AlertCircle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getDateFnsLocale } from '@/lib/format';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,8 @@ function buildAddressShort(customer: any): string {
 
 export function PausedOrdersDialog({ open, onOpenChange, onViewDetails, onResume }: PausedOrdersDialogProps) {
   const { pausedOrders, isLoading } = usePausedOrders();
+  const { locale } = useAppLocaleContext();
+  const dfnsLocale = getDateFnsLocale(locale);
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -114,14 +117,14 @@ export function PausedOrdersDialog({ open, onOpenChange, onViewDetails, onResume
               const customerLabel = order.customer?.name || order.customer?.company_name || 'Cliente sem nome';
               const addressLabel = buildAddressShort(order.customer);
               const scheduledLabel = order.scheduled_date
-                ? format(new Date(order.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                ? format(new Date(order.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: dfnsLocale })
                 : 'Sem data agendada';
               // Usa paused_at real (preenchido por trigger ao pausar a OS).
               // Fallback defensivo pra updated_at caso alguma OS não tenha paused_at
               // (não deve acontecer após o backfill, mas mantém UI coerente).
               const pausedTimestamp = order.paused_at || order.updated_at;
               const pausedSince = pausedTimestamp
-                ? formatDistanceToNow(new Date(pausedTimestamp), { addSuffix: false, locale: ptBR })
+                ? formatDistanceToNow(new Date(pausedTimestamp), { addSuffix: false, locale: dfnsLocale })
                 : null;
 
               const isOldPaused = pausedTimestamp &&

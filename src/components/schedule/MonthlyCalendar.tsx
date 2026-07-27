@@ -11,7 +11,10 @@ import {
   eachDayOfInterval,
   isSameMonth,
   isSameDay,
+  addDays,
 } from 'date-fns';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getDateFnsLocale } from '@/lib/format';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { EventCard } from './EventCard';
@@ -51,6 +54,23 @@ export function MonthlyCalendar({
   holidayMap = {},
 }: MonthlyCalendarProps) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const dfnsLocale = getDateFnsLocale(locale);
+
+  // Gera os 7 nomes de dia a partir de um domingo de referência (2000-01-02 = domingo).
+  // EEEEE = inicial; EEEEEE = abreviação 2 chars (ex "dom", "seg" em pt-br).
+  // Para desktop: usamos EEEEEE e aplicamos .toUpperCase() + ponto apenas no pt-br
+  // (igual ao array original ['DOM.','SEG.',...]) para não forçar ponto em idiomas que não o usam.
+  const SUNDAY_REF = new Date(2000, 0, 2); // domingo
+  const weekDaysDesktop = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(SUNDAY_REF, i);
+    const abbr = format(day, 'EEEEEE', { locale: dfnsLocale }).toUpperCase();
+    return locale === 'pt-br' ? `${abbr}.` : abbr;
+  });
+  const weekDaysMobile = Array.from({ length: 7 }, (_, i) =>
+    format(addDays(SUNDAY_REF, i), 'EEEEE', { locale: dfnsLocale }).toUpperCase(),
+  );
+  const weekDays = isMobile ? weekDaysMobile : weekDaysDesktop;
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -91,9 +111,6 @@ export function MonthlyCalendar({
     if (orderId && onDrop) onDrop(orderId, dateKey, time);
   };
 
-  const weekDaysMobile = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-  const weekDaysDesktop = ['DOM.', 'SEG.', 'TER.', 'QUA.', 'QUI.', 'SEX.', 'SÁB.'];
-  const weekDays = isMobile ? weekDaysMobile : weekDaysDesktop;
 
   // Mobile: compact dot-based calendar like reference
   if (isMobile) {

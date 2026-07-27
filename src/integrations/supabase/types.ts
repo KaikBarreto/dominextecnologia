@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -3153,6 +3128,7 @@ export type Database = {
           created_at: string
           description: string | null
           diagnosis: string | null
+          i18n: Json | null
           id: string
           model_id: string
           solution: string | null
@@ -3164,6 +3140,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           diagnosis?: string | null
+          i18n?: Json | null
           id?: string
           model_id: string
           solution?: string | null
@@ -3175,6 +3152,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           diagnosis?: string | null
+          i18n?: Json | null
           id?: string
           model_id?: string
           solution?: string | null
@@ -3244,18 +3222,21 @@ export type Database = {
         Row: {
           created_at: string
           domain: string
+          i18n: Json | null
           id: string
           name: string
         }
         Insert: {
           created_at?: string
           domain?: string
+          i18n?: Json | null
           id?: string
           name: string
         }
         Update: {
           created_at?: string
           domain?: string
+          i18n?: Json | null
           id?: string
           name?: string
         }
@@ -3270,6 +3251,7 @@ export type Database = {
           consumo_kwh_mes: number | null
           created_at: string
           domain: string
+          i18n: Json | null
           id: string
           image_url: string | null
           manual_type: string | null
@@ -3286,6 +3268,7 @@ export type Database = {
           consumo_kwh_mes?: number | null
           created_at?: string
           domain?: string
+          i18n?: Json | null
           id?: string
           image_url?: string | null
           manual_type?: string | null
@@ -3302,6 +3285,7 @@ export type Database = {
           consumo_kwh_mes?: number | null
           created_at?: string
           domain?: string
+          i18n?: Json | null
           id?: string
           image_url?: string | null
           manual_type?: string | null
@@ -9187,9 +9171,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.43',
+    date: '27 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Área do Técnico e Agenda no idioma escolhido',
+        description: 'Ao usar o app em inglês, espanhol ou francês, a Área do Técnico agora aparece traduzida: nomes de equipamentos, tipos de manual, ficha técnica dos compressores e os códigos de erro, com diagnóstico e solução. A Agenda também acompanha o idioma no nome do mês, nos dias da semana e na legenda.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.42',
     date: '27 de julho de 2026',
     type: 'minor',

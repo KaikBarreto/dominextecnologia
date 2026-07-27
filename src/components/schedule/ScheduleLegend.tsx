@@ -1,5 +1,7 @@
 import { Star } from 'lucide-react';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Legenda de tipos de serviço (chips coloridos) usada no desktop da Agenda.
@@ -10,13 +12,15 @@ import { useServiceTypes } from '@/hooks/useServiceTypes';
  */
 export function ScheduleLegend() {
   const { serviceTypes } = useServiceTypes();
-  const activeTypes = serviceTypes.filter((t) => t.is_active);
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.schedule.legend;
+  const activeTypes = serviceTypes.filter((st) => st.is_active);
 
   if (activeTypes.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-2 items-center pt-3 border-t mt-3">
-      <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
+      <span className="text-xs text-muted-foreground font-medium">{t.label}</span>
       {activeTypes.map((st) => (
         <span
           key={st.id}
@@ -28,7 +32,7 @@ export function ScheduleLegend() {
       ))}
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-secondary-foreground">
         <Star className="h-2.5 w-2.5" />
-        Feriado
+        {t.holiday}
       </span>
     </div>
   );

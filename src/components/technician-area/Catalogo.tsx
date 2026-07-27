@@ -83,6 +83,10 @@ import { RefrigeranteInflamavel } from '@/components/technician-area/Refrigerant
 import { idealForeground } from '@/lib/colorContrast';
 import { slugify } from '@/lib/slugify';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatNumber } from '@/lib/format';
+import { pickI18n } from '@/lib/i18n/pickI18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
+import type { ManualTypeLabels } from '@/hooks/useEquipmentCatalog';
 
 type TCatalog = (typeof MESSAGES)['pt-br']['app']['technicianTools']['catalog'];
 type TErrorCodes = (typeof MESSAGES)['pt-br']['app']['technicianTools']['errorCodes'];
@@ -198,9 +202,9 @@ function btuNumero(name: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Formata um número de BTU para exibição. Ex: 9000 → "9.000 BTUs". */
-function formatarBtu(n: number): string {
-  return `${n.toLocaleString('pt-BR')} BTUs`;
+/** Formata um número de BTU para exibição com separador de milhar do locale. Ex: 9000 → "9.000 BTUs" (pt-br) / "9,000 BTUs" (en). */
+function formatarBtu(n: number, locale: LocaleCode = 'pt-br'): string {
+  return `${formatNumber(n, locale, { maximumFractionDigits: 0 })} BTUs`;
 }
 
 /**
@@ -933,6 +937,7 @@ function BrandsList({
   onSelectModelErrors: (model: EquipmentModel, initialCode?: string) => void;
   t: TCatalog;
 }) {
+  const { locale } = useAppLocaleContext();
   const { data: brands = [], isLoading } = useEquipmentBrands(domain);
 
   // Ordenação compartilhada com o carrossel da tela de modelos (ordenarMarcas):
@@ -988,8 +993,8 @@ function BrandsList({
     }
     return Array.from(set)
       .sort((a, b) => a - b)
-      .map((n) => ({ value: String(n), label: formatarBtu(n) }));
-  }, [allModels]);
+      .map((n) => ({ value: String(n), label: formatarBtu(n, locale) }));
+  }, [allModels, locale]);
 
   // Opções de Tipo derivadas das categorias presentes (alfabético).
   const typeOptions = useMemo(() => {
@@ -1438,6 +1443,7 @@ function ModelosList({
   onSelectDetail: (model: EquipmentModel) => void;
   t: TCatalog;
 }) {
+  const { locale } = useAppLocaleContext();
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
   // IDs com código de erro — usado só na linha branca pra esconder a ação
@@ -1512,8 +1518,8 @@ function ModelosList({
     }
     return Array.from(set)
       .sort((a, b) => a - b)
-      .map((n) => ({ value: String(n), label: formatarBtu(n) }));
-  }, [models]);
+      .map((n) => ({ value: String(n), label: formatarBtu(n, locale) }));
+  }, [models, locale]);
 
   // Opções de Tipo derivadas das categorias presentes nesta marca (alfabético).
   const typeOptions = useMemo(() => {
@@ -2523,7 +2529,12 @@ function ModelCard({
   hasErrorCodes?: boolean;
   t: TCatalog;
 }) {
-  const categoria = model.category?.name ?? null;
+  const { locale } = useAppLocaleContext();
+  // Localização via coluna i18n do banco: pt-br sempre usa o campo base.
+  const localizedName = pickI18n(model.i18n, locale, 'name', model.name) ?? model.name;
+  const categoriaBase = model.category?.name ?? null;
+  const categoria = pickI18n(model.category?.i18n, locale, 'name', categoriaBase) ?? categoriaBase;
+  const manualLabels = MESSAGES[locale].app.technicianTools.catalog.manualTypes as ManualTypeLabels;
   // Compressor de refrigeração comercial (câmara fria): badge dedicado.
   const camaraFria = domain === 'compressor' && ehCamaraFria(categoria);
   const btu = extrairBtu(model.name);
@@ -2612,7 +2623,7 @@ function ModelCard({
       {/* CORPO — identificação centralizada (tokens de tema) */}
       <div className="p-4">
         <p className="text-center text-base font-semibold leading-snug text-foreground">
-          {model.name}
+          {localizedName}
         </p>
         {subtitulo && (
           <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
@@ -2667,7 +2678,7 @@ function ModelCard({
                 )}
               >
                 <FileText className="h-3 w-3 shrink-0" />
-                {rotuloManual(model.manual_type)}
+                {rotuloManual(model.manual_type, manualLabels)}
               </span>
             )}
           </div>
@@ -2732,7 +2743,7 @@ function ModelCard({
               >
                 <FileText className="h-4 w-4 shrink-0" />
                 <span className="truncate">
-                  {model.manual_type ? rotuloManual(model.manual_type) : 'Datasheet'}
+                  {model.manual_type ? rotuloManual(model.manual_type, manualLabels) : 'Datasheet'}
                 </span>
               </Button>
             ) : (
@@ -2921,49 +2932,58 @@ function CodigosErro({
         />
       ) : (
         <div className="space-y-3">
-          {filtrados.map((ec) => (
+          {filtrados.map((ec) => {
+            // Leitura localizada via coluna i18n do banco.
+            // pt-br sempre usa o campo base; outros locales usam i18n quando disponível.
+            const ecTitle       = pickI18n(ec.i18n, locale, 'title', ec.title);
+            const ecDescription = pickI18n(ec.i18n, locale, 'description', ec.description);
+            const ecDiagnosis   = pickI18n(ec.i18n, locale, 'diagnosis', ec.diagnosis);
+            const ecSolution    = pickI18n(ec.i18n, locale, 'solution', ec.solution);
+            const ecComponent   = pickI18n(ec.i18n, locale, 'component', ec.component);
+            return (
             <div key={ec.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center gap-2">
                 <span className="rounded-lg bg-primary px-2.5 py-1 text-sm font-bold uppercase tracking-wide text-primary-foreground">
                   {ec.code}
                 </span>
-                {ec.title && <span className="min-w-0 truncate text-sm font-semibold">{ec.title}</span>}
+                {ecTitle && <span className="min-w-0 truncate text-sm font-semibold">{ecTitle}</span>}
               </div>
 
-              {ec.description && (
-                <p className="mt-3 text-sm leading-relaxed text-foreground/90">{ec.description}</p>
+              {ecDescription && (
+                <p className="mt-3 text-sm leading-relaxed text-foreground/90">{ecDescription}</p>
               )}
 
-              {ec.diagnosis && (
+              {ecDiagnosis && (
                 <div className="mt-3">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <Stethoscope className="h-3.5 w-3.5" />
                     {t.diagnosis}
                   </p>
-                  <TextoAcionavel texto={ec.diagnosis} contador="bg-sky-500" />
+                  <TextoAcionavel texto={ecDiagnosis} contador="bg-sky-500" />
                 </div>
               )}
 
-              {ec.solution && (
+              {ecSolution && (
                 <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                     <Wrench className="h-3.5 w-3.5" />
                     {t.solution}
                   </p>
-                  <TextoAcionavel texto={ec.solution} contador="bg-emerald-600" />
+                  <TextoAcionavel texto={ecSolution} contador="bg-emerald-600" />
                 </div>
               )}
 
-              {ec.component && (
+              {ecComponent && (
                 <div className="mt-3 flex items-center gap-1.5">
                   <span className="text-xs font-medium text-muted-foreground">{t.component}</span>
                   <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
-                    {ec.component}
+                    {ecComponent}
                   </span>
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

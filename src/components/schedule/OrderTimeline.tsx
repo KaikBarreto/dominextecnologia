@@ -1,6 +1,7 @@
 import { Play, Pause, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getDateFnsLocale } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface OrderTimelineProps {
@@ -42,6 +43,8 @@ export function OrderTimeline({
   completedAt,
   className,
 }: OrderTimelineProps) {
+  const { locale } = useAppLocaleContext();
+  const dfnsLocale = getDateFnsLocale(locale);
   const entries: TimelineEntry[] = [];
 
   const started = safeDate(startedAt);
@@ -117,7 +120,11 @@ export function OrderTimeline({
                 <div className="min-w-0">
                   <span className="font-medium text-foreground">{entry.label}</span>{' '}
                   <span className="text-muted-foreground">
-                    {format(entry.date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {format(
+                      entry.date,
+                      locale === 'pt-br' ? "dd/MM/yyyy 'às' HH:mm" : 'dd/MM/yyyy HH:mm',
+                      { locale: dfnsLocale },
+                    )}
                   </span>
                 </div>
               </div>

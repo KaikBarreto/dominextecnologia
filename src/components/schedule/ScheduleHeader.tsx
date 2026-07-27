@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { getDateFnsLocale } from '@/lib/format';
 import type { OsStatus } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -84,7 +84,13 @@ export function ScheduleHeader({
             <ChevronRight className="h-4 w-4" />
           </Button>
           <h2 className="text-lg font-semibold capitalize ml-2">
-            {format(currentDate, viewMode === 'day' ? "dd 'de' MMMM yyyy" : 'MMMM yyyy', { locale: ptBR })}
+            {format(
+              currentDate,
+              viewMode === 'day'
+                ? locale === 'pt-br' ? "dd 'de' MMMM yyyy" : 'd MMMM yyyy'
+                : 'MMMM yyyy',
+              { locale: getDateFnsLocale(locale) },
+            )}
           </h2>
         </div>
 

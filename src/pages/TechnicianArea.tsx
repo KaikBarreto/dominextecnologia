@@ -113,6 +113,7 @@ function useSegmentNav(selectedSegment: string | null) {
   const { settings } = useCompanySettings();
   const { locale } = useAppLocaleContext();
   const tArea = MESSAGES[locale].app.os.technicianArea;
+  const tToolsRegistry = MESSAGES[locale].app.technicianTools.toolsRegistry;
   const companySegment = settings?.segment ?? null;
   const effectiveSegment = selectedSegment ?? companySegment ?? null;
   const isOwnSegment = !!companySegment && effectiveSegment === companySegment;
@@ -124,7 +125,13 @@ function useSegmentNav(selectedSegment: string | null) {
     ? teaserTools.map((t) => ({ value: t.id, label: t.label, icon: t.icon, locked: true }))
     : [
         { value: 'inicio', label: tArea.tabStart, icon: Home, locked: false },
-        ...tools.map((t) => ({ value: t.id, label: t.label, icon: t.icon, locked: false })),
+        ...tools.map((t) => ({
+          value: t.id,
+          // Resolve label via toolsRegistry i18n; fallback para o config (pt-br)
+          label: (tToolsRegistry as Record<string, { label: string } | undefined>)[t.id]?.label ?? t.label,
+          icon: t.icon,
+          locked: false,
+        })),
       ];
 
   return { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems };

@@ -18,6 +18,7 @@ import {
   useRefrigerantGases,
   rotuloManual,
   type EquipmentModel,
+  type ManualTypeLabels,
 } from '@/hooks/useEquipmentCatalog';
 
 /** Cinza neutro pra gás sem cor cadastrada (régua: nunca inventar cor de gás). */
@@ -120,6 +121,7 @@ export function CompressorFicha({
 }) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.compressorSheet;
+  const manualLabels = MESSAGES[locale].app.technicianTools.catalog.manualTypes as ManualTypeLabels;
   const { data: spec, isLoading } = useCompressorSpec(model.id);
   const { data: gases = [] } = useRefrigerantGases();
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -154,23 +156,24 @@ export function CompressorFicha({
   const temManual = Boolean(model.manual_url);
 
   // Campos da ficha, na ordem do briefing. Só entram os preenchidos.
+  // HP, RLA e LRA são siglas universais — não traduzem.
   const rows: { label: string; value: string | null }[] = spec
     ? [
         { label: 'HP', value: spec.hp },
-        { label: 'Capacidade', value: spec.capacidade_btu },
-        { label: 'Aplicação', value: spec.aplicacao },
-        { label: 'Tensão', value: spec.tensao },
-        { label: 'Frequência', value: spec.frequencia },
-        { label: 'Deslocamento', value: spec.deslocamento_cm3 },
+        { label: t.fieldCapacidade, value: spec.capacidade_btu },
+        { label: t.fieldAplicacao, value: spec.aplicacao },
+        { label: t.fieldTensao, value: spec.tensao },
+        { label: t.fieldFrequencia, value: spec.frequencia },
+        { label: t.fieldDeslocamento, value: spec.deslocamento_cm3 },
         { label: 'RLA', value: spec.rla != null ? String(spec.rla) : null },
         { label: 'LRA', value: spec.lra != null ? String(spec.lra) : null },
-        { label: 'Capacitor de trabalho', value: spec.capacitor_trabalho },
-        { label: 'Capacitor de partida', value: spec.capacitor_partida },
-        { label: 'Relé / Protetor', value: spec.rele_protetor },
-        { label: 'Óleo', value: spec.oleo },
-        { label: 'Conexões', value: spec.conexoes },
-        { label: 'Equivalências', value: spec.equivalencias },
-        { label: 'Observações', value: spec.observacoes },
+        { label: t.fieldCapacitorTrabalho, value: spec.capacitor_trabalho },
+        { label: t.fieldCapacitorPartida, value: spec.capacitor_partida },
+        { label: t.fieldReleProtetor, value: spec.rele_protetor },
+        { label: t.fieldOleo, value: spec.oleo },
+        { label: t.fieldConexoes, value: spec.conexoes },
+        { label: t.fieldEquivalencias, value: spec.equivalencias },
+        { label: t.fieldObservacoes, value: spec.observacoes },
       ]
     : [];
   const visibleRows = rows.filter((r) => r.value && r.value.trim().length > 0);
@@ -299,7 +302,7 @@ export function CompressorFicha({
           }
         >
           <Download className="h-5 w-5" />
-          {model.manual_type ? rotuloManual(model.manual_type) : 'Datasheet'}
+          {model.manual_type ? rotuloManual(model.manual_type, manualLabels) : 'Datasheet'}
         </Button>
       )}
 

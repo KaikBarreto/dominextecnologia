@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { Star } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getDateFnsLocale } from '@/lib/format';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -61,6 +62,7 @@ function layoutCascade(
 
 export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchDrop, holidayMap = {} }: WeeklyCalendarProps) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -118,7 +120,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
               )}
             >
               <div className="text-xs text-muted-foreground uppercase">
-                {format(day, 'EEE', { locale: ptBR })}
+                {format(day, 'EEE', { locale: getDateFnsLocale(locale) })}
               </div>
               <div
                 className={cn(

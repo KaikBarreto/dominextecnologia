@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getDateFnsLocale } from '@/lib/format';
 import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
 import { getOsTypeLabel } from '@/types/database';
 
@@ -49,6 +50,7 @@ const statusVariants: Record<OsStatus, 'default' | 'secondary' | 'destructive' |
 };
 
 export function DaySchedule({ date, orders, onOrderSelect }: DayScheduleProps) {
+  const { locale } = useAppLocaleContext();
   const sortedOrders = [...orders].sort((a, b) => {
     const timeA = a.scheduled_time || '00:00';
     const timeB = b.scheduled_time || '00:00';
@@ -60,7 +62,11 @@ export function DaySchedule({ date, orders, onOrderSelect }: DayScheduleProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Clock className="h-5 w-5 text-primary" />
-          {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          {format(
+            date,
+            locale === 'pt-br' ? "EEEE, dd 'de' MMMM" : 'EEEE, d MMMM',
+            { locale: getDateFnsLocale(locale) },
+          )}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           {sortedOrders.length} {sortedOrders.length === 1 ? 'agendamento' : 'agendamentos'}

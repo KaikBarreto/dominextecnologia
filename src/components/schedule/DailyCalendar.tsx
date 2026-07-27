@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { Star } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getDateFnsLocale } from '@/lib/format';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -96,6 +97,7 @@ function layoutOverlapping(
 export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchDrop, holidayMap = {} }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
 
   const dayOrders = useMemo(() => {
     return orders.filter(o => o.scheduled_date === dateKey && o.scheduled_time);
@@ -152,7 +154,11 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
         <h3 className="text-base font-semibold capitalize">
-          {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          {format(
+            currentDate,
+            locale === 'pt-br' ? "EEEE, dd 'de' MMMM" : 'EEEE, d MMMM',
+            { locale: getDateFnsLocale(locale) },
+          )}
         </h3>
         {dayHolidays.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
