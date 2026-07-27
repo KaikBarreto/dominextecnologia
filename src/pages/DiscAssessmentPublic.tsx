@@ -60,6 +60,8 @@ interface DiscPublicPayload {
   locale?: string | null;
   /** Idioma configurado na empresa do tenant. Usado como locale da tela. */
   company_locale?: string | null;
+  /** Se a empresa tem white-label. Gate do rodapé Dominex no PDF público. */
+  white_label_enabled?: boolean | null;
 }
 
 /**
@@ -251,8 +253,9 @@ export default function DiscAssessmentPublic() {
         branding: {
           companyName: payload?.company_name ?? companyName,
           logoUrl: payload?.logo_url ?? null,
-          // Tela pública de tenant: nunca assina Dominex, sempre marca do tenant.
-          isWhiteLabel: true,
+          // Segue o white-label real da empresa: se NÃO for white-label, o rodapé
+          // Dominex aparece (mesma régua do PDF gerado pelo RH). Só some no white-label.
+          isWhiteLabel: !!payload?.white_label_enabled,
         },
         locale,
         generatedAtLabel,
@@ -363,13 +366,16 @@ export default function DiscAssessmentPublic() {
     const profileCode = result?.profile_code ?? payload?.profile_code ?? undefined;
     const dossierUi = (tr as any).dossier;
     body = scores && profileCode ? (
-      <div className="py-2">
-        <div className="mb-4 flex flex-col items-center gap-3">
+      <div>
+        {/* Cabeçalho plano STICKY (sem barra verde): fica fixo no topo enquanto o
+            relatório rola. No desktop, o "Ver PDF" fica inline aqui; no mobile,
+            vira o FAB flutuante abaixo. */}
+        <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex flex-col items-center gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur lg:mx-0 lg:mt-0 lg:px-0">
           <h2 className="text-center text-lg font-bold text-foreground">{tr.ui.resultTitle}</h2>
           <Button
             type="button"
             variant="outline"
-            className="gap-2"
+            className="hidden gap-2 lg:inline-flex"
             disabled={downloadingPdf}
             onClick={handleDownloadPdf}
           >
@@ -382,6 +388,25 @@ export default function DiscAssessmentPublic() {
           </Button>
         </div>
         <DiscReport scores={scores} profileCode={profileCode} locale={locale} variant="full" />
+
+        {/* FAB "Ver PDF" — mobile, flutuante no canto inferior direito, acima do rodapé */}
+        <button
+          type="button"
+          aria-label={dossierUi?.downloadPdf}
+          disabled={downloadingPdf}
+          onClick={handleDownloadPdf}
+          className="lg:hidden fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex items-center gap-2 rounded-2xl px-4 py-3 shadow-lg transition-all active:scale-95 disabled:opacity-60"
+          style={{ backgroundColor: brandColor || '#00C684' }}
+        >
+          {downloadingPdf ? (
+            <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+          ) : (
+            <Eye className="h-5 w-5 text-white" aria-hidden />
+          )}
+          <span className="text-sm font-bold text-white">
+            {downloadingPdf ? dossierUi?.generating : dossierUi?.downloadPdf}
+          </span>
+        </button>
       </div>
     ) : null;
   } else if (phase === 'intro') {
@@ -641,7 +666,12 @@ export default function DiscAssessmentPublic() {
   //   hero próprio, e a fase de perguntas usa um cabeçalho plano (sem cor) no corpo.
   // demais fases (thanks/result): header padrão do shell.
   const isIntro = phase === 'intro';
-  const hideBrandedHeader = isIntro || phase === 'questions';
+  const hideBrandedHeader =
+    isIntro ||
+    phase === 'questions' ||
+    phase === 'result' ||
+    phase === 'thanks' ||
+    phase === 'alreadyHidden';
   const shellTitle = employeeFullName ?? companyName;
   const shellSubtitle = tr.ui.introTitle;
 

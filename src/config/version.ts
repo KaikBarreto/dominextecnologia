@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.41";
+export const APP_VERSION = "1.17.42";
 
-export const VERSION_NOTES = "A tela do teste de Perfil Comportamental que o funcionário responde ficou mais bonita e confortável no celular: perguntas maiores e centralizadas, opções de múltipla escolha com letras A, B, C e D e destaque ao selecionar, botões de Voltar e Avançar fixos e fáceis de tocar, e uma animação suave entre as perguntas. Além disso, o rodapé dos portais públicos (avaliação, portal do cliente e do contrato) agora acompanha o tema claro da página, sem aquele contraste escuro.";
+export const VERSION_NOTES = "Mais acabamento no teste de Perfil Comportamental e nos portais públicos: a tela de resultado ficou com o topo fixo e o botão Ver PDF flutuante, o rodapé agora gruda embaixo ao rolar, a barra da escala ficou mais robusta e os relatórios em PDF não cortam mais texto entre as páginas. O rodapé com a marca Dominex também passou a aparecer no PDF gerado ao final da avaliação quando a empresa não tem identidade própria (white-label).";

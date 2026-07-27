@@ -11,6 +11,9 @@ interface PortalStickyFooterProps {
   ctaColor?: string;
   /** Cor do texto sobre o botao CTA. Fallback: texto escuro. */
   ctaTextColor?: string;
+  /** Classes extras no root (ex.: `lg:hidden`). Sem wrapper, pra o sticky pegar
+   *  o containing block certo (o flex-col do shell) e fixar durante o scroll. */
+  className?: string;
 }
 
 /**
@@ -31,13 +34,14 @@ export function PortalStickyFooter({
   onCta,
   ctaColor,
   ctaTextColor,
+  className,
 }: PortalStickyFooterProps) {
   const brandBg = ctaColor || '#00C597';
   const textColor = ctaTextColor || '#ffffff';
 
   return (
     <div
-      className="sticky bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)] overflow-hidden"
+      className={`sticky bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)] overflow-hidden ${className ?? ''}`}
       style={{
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}

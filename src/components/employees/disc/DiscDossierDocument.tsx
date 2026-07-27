@@ -78,7 +78,7 @@ function SectionTitle({
   accent: string;
 }) {
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div data-pdf-keep style={{ marginBottom: 16 }}>
       {kicker && (
         <div
           style={{
@@ -432,12 +432,13 @@ export function DiscDossierDocument({
       {/* Corpo com padding consistente */}
       <div style={{ padding: '44px 56px' }}>
         {/* ══ 2. SOBRE O MÉTODO ═══════════════════════════════════════════════ */}
-        {/* Seção curta: keep no bloco inteiro (título + parágrafos juntos). */}
-        <section data-pdf-keep style={{ breakInside: 'avoid', marginBottom: 44 }}>
+        {/* Título atômico + cada parágrafo como keep individual (a seção pode ser
+            mais alta que uma página; marcar as folhas evita corte no meio do texto). */}
+        <section style={{ marginBottom: 44 }}>
           <SectionTitle title={d.method.title} accent={accent} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {(d.method.paragraphs as string[]).map((para, i) => (
-              <p key={i} style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: INK_SOFT }}>
+              <p data-pdf-keep key={i} style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: INK_SOFT }}>
                 {para}
               </p>
             ))}

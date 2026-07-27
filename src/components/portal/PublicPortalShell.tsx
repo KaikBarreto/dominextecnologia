@@ -401,16 +401,18 @@ export function PublicPortalShell({
         <div className="hidden lg:block" aria-hidden />
       </div>
 
-      {/* ── Rodape mobile (sticky escuro, oculto no desktop) ── */}
-      <div className="lg:hidden">
-        <PortalStickyFooter
-          status={footerStatus}
-          ctaLabel={footerCtaLabel}
-          onCta={onFooterCta}
-          ctaColor={effectiveBrand}
-          ctaTextColor={ctaTextColor}
-        />
-      </div>
+      {/* ── Rodape mobile (sticky, oculto no desktop) ──
+          SEM wrapper: o PortalStickyFooter é filho DIRETO do flex-col externo pra
+          o `sticky bottom-0` pegar o containing block alto e fixar durante o scroll
+          (um wrapper do tamanho dele anulava o sticky). */}
+      <PortalStickyFooter
+        className="lg:hidden"
+        status={footerStatus}
+        ctaLabel={footerCtaLabel}
+        onCta={onFooterCta}
+        ctaColor={effectiveBrand}
+        ctaTextColor={ctaTextColor}
+      />
 
       {/* ── Rodape desktop (sticky no fluxo normal, oculto no mobile) ──
           Usa `sticky bottom-0` dentro do outer flex column em vez de

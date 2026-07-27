@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.42',
+    date: '27 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Relatórios de perfil em PDF sem texto cortado entre páginas',
+        description: 'Os relatórios em PDF do Perfil Comportamental (o individual e o comparativo) não cortam mais parágrafos e blocos na virada de página. E o PDF gerado pelo funcionário ao terminar a avaliação passou a trazer o rodapé com a marca Dominex quando a empresa não tem identidade própria (some para quem tem white-label).',
+        category: 'correcao',
+      },
+      {
+        title: 'Teste de Perfil Comportamental e portais mais bem acabados',
+        description: 'Na avaliação, a tela de resultado ganhou topo fixo com o botão Ver PDF flutuante, e a barra da escala de resposta ficou mais robusta. Nos portais públicos, o rodapé com a versão e o copyright agora fica fixo embaixo enquanto você rola a página, sem sumir no fim do conteúdo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.41',
     date: '27 de julho de 2026',
     type: 'minor',

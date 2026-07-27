@@ -214,15 +214,22 @@ export function DiscScaleSlider({
             Ocupa 100% do content-box do wrapper (descontados os px-4). */}
         <div ref={trackRef} className="absolute inset-x-4 top-0 bottom-0">
           {/* Trilho base */}
-          <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full bg-slate-200" />
+          <div className="absolute inset-x-0 top-1/2 h-3.5 -translate-y-1/2 rounded-full bg-slate-200" />
 
           {/* Marca do centro (neutro) */}
-          <div className="absolute left-1/2 top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-300" />
+          <div className="absolute left-1/2 top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-300" />
 
-          {/* Preenchimento colorido do centro até o thumb */}
+          {/* Preenchimento colorido do centro até o thumb.
+              A borda que TOCA o divisor central fica RETA (sem arredondar) pra não
+              gerar aresta com a linha do meio; a borda EXTERNA arredonda.
+              Positivo (>3): preenche à direita → arredonda só à direita.
+              Negativo (<3): preenche à esquerda → arredonda só à esquerda. */}
           {answered && (
             <div
-              className="absolute top-1/2 h-2.5 -translate-y-1/2 rounded-full transition-all"
+              className={cn(
+                'absolute top-1/2 h-3.5 -translate-y-1/2 transition-all',
+                (value as number) > 3 ? 'rounded-r-full' : 'rounded-l-full',
+              )}
               style={{
                 left: `${fillLeft}%`,
                 width: `${fillWidth}%`,
