@@ -787,6 +787,82 @@ export const discProfile = {
         sobEstresse:
           'Fala muito para aliviar a tensão e perde o rigor do detalhe. Oscila entre conversar e revisar sem fechar, e recebe a crítica técnica como se fosse pessoal.',
       },
+      CI: {
+        nome: 'O Especialista',
+        biografia:
+          'Você é do tipo que fundamenta tudo com dado e rigor, mas sabe traduzir o complicado para quem está do outro lado. Antes de concluir, você analisa, confere e organiza; só que, diferente do analista fechado, você não guarda a conclusão só para si: sabe apresentar, envolver e fazer as pessoas comprarem o que você provou. A precisão vem primeiro, o jeito de comunicar é o tempero que faz o seu trabalho técnico virar algo que o grupo entende e adota.\n\nA sua força é essa combinação de critério com clareza: você não abre mão da qualidade, mas também não deixa o rigor virar uma parede que ninguém atravessa. Onde um C puro entrega o relatório certo e some, você entrega o relatório certo e ainda explica por que ele importa. O outro lado é que, quando o social esquenta, você pode se alongar demais na explicação, adiar a conclusão em nome de mais uma checagem, e sofrer quando a plateia não valoriza o cuidado que você teve com o detalhe.\n\nVocê rende mais com um bom problema técnico para resolver, tempo para analisar direito e um público que respeite a fundamentação. O cuidado é não deixar o rigor travar a entrega nem a vontade de agradar diluir o padrão que é a sua marca. Manter a análise no comando e usar a comunicação a favor dela transforma o seu talento em algo raro: o especialista em quem as pessoas confiam porque entende e sabe explicar.',
+        qualidades: [
+          'Fundamenta as decisões com dado e rigor, sem chutar no impulso',
+          'Traduz o complexo para quem não é da área, sem perder a precisão',
+          'Analisa e confere antes de concluir, entregando com qualidade alta',
+          'Envolve as pessoas no que provou, em vez de guardar a conclusão só para si',
+          'Sustenta o padrão técnico e ainda faz o time entender por que ele importa',
+        ],
+        pontosDeAtencao: [
+          'Alonga demais a explicação quando o assunto esquenta e cansa a plateia',
+          'Adia a conclusão em nome de mais uma checagem que já não muda o resultado',
+          'Sofre quando o público não valoriza o cuidado que teve com o detalhe',
+          'Pode soar crítico ou minucioso demais ao apontar o que está fora do padrão',
+          'Oscila entre aprofundar e apresentar, sem fechar nenhum dos dois na hora',
+        ],
+        comoLiderar: [
+          'Dê um bom problema técnico e tempo para analisar antes de cobrar a entrega',
+          'Reconheça o rigor da análise e a clareza com que ela explica',
+          'Combine até onde vai a checagem, para o zelo não travar o prazo',
+          'Peça a versão resumida quando a explicação alongar demais',
+          'Traga crítica com fato e respeito, ela leva o padrão a sério',
+        ],
+        oQueEvitar: ['Decisão sem base', 'Descuido com o detalhe', 'Pressa que atropela a análise'],
+        comunicacaoIdeal:
+          'Precisa e bem fundamentada, com espaço para explicar o porquê. Traga o dado que sustenta o ponto e reconheça o rigor, mas peça a versão curta quando o prazo apertar.',
+        ondeBrilha: [
+          'Análise técnica que também precisa ser apresentada e defendida',
+          'Documentação e padrões que exigem rigor e clareza ao mesmo tempo',
+          'Treinamento técnico em que é preciso ensinar o detalhe sem perder ninguém',
+          'Parecer ou laudo que sustenta uma decisão com base sólida',
+          'Ponte entre a análise fina e o time que vai aplicar o resultado',
+        ],
+        sobEstresse:
+          'Refaz a análise em busca da certeza e adia a conclusão. Fica mais crítico ao apontar o que está fora do padrão e se alonga na explicação para se sentir compreendido.',
+      },
+      SD: {
+        nome: 'O Sustentador',
+        biografia:
+          'Você é do tipo que segura a barra com calma e, quando é preciso, também assume e entrega. Combina a constância de quem não larga o time no meio do caminho com uma dose de garra que faz a decisão sair do papel. Onde uns só apoiam e esperam, você apoia e faz acontecer; onde uns cobram no grito, você cobra pela firmeza serena de quem está sempre lá. A estabilidade vem primeiro, a assertividade é o complemento que impede a sua paciência de virar acomodação.\n\nA sua força é essa junção de constância com responsabilidade: você é o pilar que sustenta a rotina e, ao mesmo tempo, o ombro que puxa quando o resultado precisa aparecer. As pessoas confiam em você porque sabem que você não abandona o barco e ainda rema quando falta gente. O outro lado é que você pode segurar tensão demais para não desagradar, adiar o confronto necessário e, por excesso de responsabilidade, carregar sozinho um peso que era para ser dividido.\n\nVocê rende mais com um objetivo claro, um time estável para sustentar e a confiança de que pode assumir sem ser atropelado. O cuidado é não deixar a vontade de manter a paz engolir o resultado, nem a responsabilidade virar sobrecarga silenciosa. Aprender a colocar o limite com a mesma calma com que apoia faz a sua firmeza render sem que você se esgote no processo.',
+        qualidades: [
+          'Sustenta a rotina com constância e ainda assume quando o resultado precisa aparecer',
+          'Combina a paciência de quem apoia com a garra de quem entrega',
+          'Não abandona o time no meio do caminho, mesmo sob pressão',
+          'Cobra pela firmeza serena, sem precisar do grito para ser levado a sério',
+          'É o pilar confiável que rema quando falta gente, sem alarde',
+        ],
+        pontosDeAtencao: [
+          'Segura tensão demais para não desagradar e adia o confronto necessário',
+          'Carrega sozinho um peso que era para ser dividido, por excesso de responsabilidade',
+          'Custa a impor o limite com a mesma clareza com que apoia',
+          'Deixa a vontade de manter a paz engolir uma cobrança que precisava sair',
+          'Acumula desgaste em silêncio até a conta chegar de uma vez',
+        ],
+        comoLiderar: [
+          'Dê um objetivo claro e um time estável para ela sustentar',
+          'Deixe explícito que ela pode assumir e cobrar sem ser atropelada',
+          'Reconheça a constância e a entrega discreta, que raramente pede holofote',
+          'Ajude a dividir o peso, ela tende a carregar tudo sozinha',
+          'Incentive o limite a tempo, para o desgaste não virar bomba silenciosa',
+        ],
+        oQueEvitar: ['Conflito exposto sem necessidade', 'Sobrecarga silenciosa', 'Mudança brusca sem aviso'],
+        comunicacaoIdeal:
+          'Calma e clara, com objetivo firme e espaço para ela se posicionar. Reconheça a constância, deixe explícito que pode assumir e ajude a colocar o limite antes do desgaste.',
+        ondeBrilha: [
+          'Operação estável que exige constância e alguém que assuma o resultado',
+          'Rotinas longas em que a firmeza serena mantém tudo de pé',
+          'Time que precisa de um pilar confiável que também entregue',
+          'Situações em que é preciso apoiar e, ao mesmo tempo, fazer acontecer',
+          'Sustentação de projeto do começo ao fim, sem abandonar no meio',
+        ],
+        sobEstresse:
+          'Segura a tensão em silêncio e carrega sozinho para não desagradar, até o desgaste transbordar. Adia o confronto e, quando a conta chega, reage de uma vez em vez de aos poucos.',
+      },
     },
 
     // ── Relações entre pares de perfis primários ─────────────────────────────
@@ -2056,6 +2132,82 @@ export const discProfile = {
         sobEstresse:
           'Talks a lot to ease tension and loses the rigor of detail. Swings between talking and reviewing without closing, and takes technical criticism as if it were personal.',
       },
+      CI: {
+        nome: 'The Specialist',
+        biografia:
+          'You are the type who backs everything with data and rigor, yet knows how to translate the complicated for the person on the other side. Before concluding, you analyze, check, and organize; but unlike the closed-off analyst, you do not keep the conclusion to yourself: you know how to present, engage, and get people to buy what you have proven. Precision comes first, and the way you communicate is the seasoning that turns your technical work into something the group understands and adopts.\n\nYour strength is that blend of judgment and clarity: you never give up on quality, but you also do not let rigor become a wall no one crosses. Where a pure C delivers the right report and disappears, you deliver the right report and still explain why it matters. The flip side is that, when the social side heats up, you can stretch the explanation too far, delay the conclusion in the name of one more check, and suffer when the audience does not value the care you took with the detail.\n\nYou perform best with a good technical problem to solve, time to analyze properly, and an audience that respects the grounding. The care is not to let rigor stall the delivery, nor let the wish to please dilute the standard that is your signature. Keeping analysis in charge and using communication in its favor turns your talent into something rare: the specialist people trust because they understand and know how to explain.',
+        qualidades: [
+          'Backs decisions with data and rigor, without shooting from the hip',
+          'Translates the complex for outsiders without losing precision',
+          'Analyzes and checks before concluding, delivering at a high standard',
+          'Engages people in what they proved instead of keeping the conclusion to themselves',
+          'Sustains the technical standard and makes the team see why it matters',
+        ],
+        pontosDeAtencao: [
+          'Stretches the explanation too far when the topic heats up and tires the audience',
+          'Delays the conclusion for one more check that no longer changes the result',
+          'Suffers when the audience does not value the care taken with the detail',
+          'Can sound critical or overly meticulous when pointing out what is off-standard',
+          'Swings between going deeper and presenting, without closing either right away',
+        ],
+        comoLiderar: [
+          'Give a good technical problem and time to analyze before pressing for delivery',
+          'Recognize the rigor of the analysis and the clarity of the explanation',
+          'Agree how far the checking goes, so diligence does not stall the deadline',
+          'Ask for the short version when the explanation runs long',
+          'Bring criticism with fact and respect, they take the standard seriously',
+        ],
+        oQueEvitar: ['Decisions without basis', 'Carelessness with detail', 'Haste that runs over the analysis'],
+        comunicacaoIdeal:
+          'Precise and well-grounded, with room to explain the why. Bring the data that backs the point and recognize the rigor, but ask for the short version when time is tight.',
+        ondeBrilha: [
+          'Technical analysis that also needs to be presented and defended',
+          'Documentation and standards that demand rigor and clarity at once',
+          'Technical training where you must teach the detail without losing anyone',
+          'An opinion or report that grounds a decision on solid footing',
+          'Bridging fine analysis and the team that will apply the result',
+        ],
+        sobEstresse:
+          'Redoes the analysis chasing certainty and delays the conclusion. Gets more critical about what is off-standard and stretches the explanation to feel understood.',
+      },
+      SD: {
+        nome: 'The Sustainer',
+        biografia:
+          'You are the type who holds the line calmly and, when needed, also steps up and delivers. You blend the constancy of someone who does not drop the team midway with a dose of grit that gets the decision off the page. Where some only support and wait, you support and make it happen; where some push by shouting, you push through the serene firmness of someone who is always there. Stability comes first, and assertiveness is the complement that keeps your patience from turning into complacency.\n\nYour strength is that union of constancy and responsibility: you are the pillar that sustains the routine and, at the same time, the shoulder that pulls when the result needs to appear. People trust you because they know you do not abandon the boat and still row when hands are short. The flip side is that you can hold too much tension to avoid displeasing, put off the confrontation that is needed, and, out of excess responsibility, carry alone a weight that was meant to be shared.\n\nYou perform best with a clear goal, a stable team to sustain, and the confidence that you can step up without being run over. The care is not to let the wish to keep the peace swallow the result, nor let responsibility become silent overload. Learning to set the limit with the same calm you use to support makes your firmness pay off without burning you out along the way.',
+        qualidades: [
+          'Sustains the routine with constancy and still steps up when the result must appear',
+          'Blends the patience of someone who supports with the grit of someone who delivers',
+          'Does not abandon the team midway, even under pressure',
+          'Pushes through serene firmness, without needing to shout to be taken seriously',
+          'Is the reliable pillar who rows when hands are short, without fuss',
+        ],
+        pontosDeAtencao: [
+          'Holds too much tension to avoid displeasing and puts off the needed confrontation',
+          'Carries alone a weight that was meant to be shared, out of excess responsibility',
+          'Struggles to set the limit with the same clarity they use to support',
+          'Lets the wish to keep the peace swallow a push that needed to come out',
+          'Piles up strain in silence until the bill arrives all at once',
+        ],
+        comoLiderar: [
+          'Give a clear goal and a stable team for them to sustain',
+          'Make it explicit that they can step up and push without being run over',
+          'Recognize the constancy and the quiet delivery that rarely asks for the spotlight',
+          'Help share the weight, they tend to carry everything alone',
+          'Encourage the limit in time, so strain does not become a silent bomb',
+        ],
+        oQueEvitar: ['Conflict exposed without need', 'Silent overload', 'Abrupt change without warning'],
+        comunicacaoIdeal:
+          'Calm and clear, with a firm goal and room for them to take a stand. Recognize the constancy, make it explicit they can step up, and help set the limit before burnout.',
+        ondeBrilha: [
+          'Stable operations that need constancy and someone who owns the result',
+          'Long routines where serene firmness keeps everything standing',
+          'A team that needs a reliable pillar who also delivers',
+          'Situations where you must support and, at the same time, make it happen',
+          'Sustaining a project from start to finish, without abandoning it midway',
+        ],
+        sobEstresse:
+          'Holds the tension in silence and carries it alone to avoid displeasing, until the strain overflows. Puts off the confrontation and, when the bill comes, reacts all at once instead of gradually.',
+      },
     },
 
     // ── Relationships between pairs of primary profiles ──────────────────────
@@ -3323,6 +3475,82 @@ export const discProfile = {
         sobEstresse:
           'Habla mucho para aliviar la tensión y pierde el rigor del detalle. Oscila entre conversar y revisar sin cerrar, y recibe la crítica técnica como si fuera personal.',
       },
+      CI: {
+        nome: 'El Especialista',
+        biografia:
+          'Eres del tipo que fundamenta todo con datos y rigor, pero sabe traducir lo complicado para quien está del otro lado. Antes de concluir, analizas, verificas y organizas; solo que, a diferencia del analista cerrado, no te guardas la conclusión para ti: sabes presentar, involucrar y hacer que las personas compren lo que demostraste. La precisión viene primero, y la forma de comunicar es el condimento que convierte tu trabajo técnico en algo que el grupo entiende y adopta.\n\nTu fuerza es esa combinación de criterio con claridad: no renuncias a la calidad, pero tampoco dejas que el rigor se vuelva un muro que nadie atraviesa. Donde un C puro entrega el informe correcto y desaparece, tú entregas el informe correcto y además explicas por qué importa. El otro lado es que, cuando lo social se calienta, puedes alargarte demasiado en la explicación, aplazar la conclusión en nombre de una verificación más, y sufrir cuando el público no valora el cuidado que pusiste en el detalle.\n\nRindes más con un buen problema técnico para resolver, tiempo para analizar bien y un público que respete la fundamentación. El cuidado es no dejar que el rigor trabe la entrega ni que las ganas de agradar diluyan el estándar que es tu sello. Mantener el análisis al mando y usar la comunicación a su favor convierte tu talento en algo raro: el especialista en quien las personas confían porque entiende y sabe explicar.',
+        qualidades: [
+          'Fundamenta las decisiones con datos y rigor, sin disparar por impulso',
+          'Traduce lo complejo para quien no es del área, sin perder la precisión',
+          'Analiza y verifica antes de concluir, entregando con un estándar alto',
+          'Involucra a las personas en lo que demostró en vez de guardar la conclusión para sí',
+          'Sostiene el estándar técnico y hace que el equipo vea por qué importa',
+        ],
+        pontosDeAtencao: [
+          'Alarga demasiado la explicación cuando el tema se calienta y cansa al público',
+          'Aplaza la conclusión por una verificación más que ya no cambia el resultado',
+          'Sufre cuando el público no valora el cuidado que puso en el detalle',
+          'Puede sonar crítico o demasiado minucioso al señalar lo que está fuera del estándar',
+          'Oscila entre profundizar y presentar, sin cerrar ninguno de los dos al momento',
+        ],
+        comoLiderar: [
+          'Da un buen problema técnico y tiempo para analizar antes de exigir la entrega',
+          'Reconoce el rigor del análisis y la claridad de la explicación',
+          'Acuerda hasta dónde va la verificación, para que el celo no trabe el plazo',
+          'Pide la versión resumida cuando la explicación se alargue',
+          'Trae la crítica con hecho y respeto, se toma el estándar en serio',
+        ],
+        oQueEvitar: ['Decisión sin base', 'Descuido con el detalle', 'Prisa que atropella el análisis'],
+        comunicacaoIdeal:
+          'Precisa y bien fundamentada, con espacio para explicar el porqué. Trae el dato que sostiene el punto y reconoce el rigor, pero pide la versión corta cuando el plazo apriete.',
+        ondeBrilha: [
+          'Análisis técnico que también necesita ser presentado y defendido',
+          'Documentación y estándares que exigen rigor y claridad a la vez',
+          'Capacitación técnica en la que hay que enseñar el detalle sin perder a nadie',
+          'Un dictamen o informe que sostiene una decisión con base sólida',
+          'Puente entre el análisis fino y el equipo que aplicará el resultado',
+        ],
+        sobEstresse:
+          'Rehace el análisis buscando la certeza y aplaza la conclusión. Se vuelve más crítico al señalar lo que está fuera del estándar y se alarga en la explicación para sentirse comprendido.',
+      },
+      SD: {
+        nome: 'El Sostenedor',
+        biografia:
+          'Eres del tipo que aguanta la carga con calma y, cuando hace falta, también asume y entrega. Combinas la constancia de quien no suelta al equipo a mitad de camino con una dosis de garra que hace que la decisión salga del papel. Donde unos solo apoyan y esperan, tú apoyas y haces que suceda; donde unos exigen a los gritos, tú exiges con la firmeza serena de quien siempre está ahí. La estabilidad viene primero, y la asertividad es el complemento que impide que tu paciencia se vuelva conformismo.\n\nTu fuerza es esa unión de constancia con responsabilidad: eres el pilar que sostiene la rutina y, al mismo tiempo, el hombro que empuja cuando el resultado tiene que aparecer. Las personas confían en ti porque saben que no abandonas el barco y aún remas cuando falta gente. El otro lado es que puedes contener demasiada tensión para no disgustar, aplazar el enfrentamiento necesario y, por exceso de responsabilidad, cargar solo un peso que debía repartirse.\n\nRindes más con un objetivo claro, un equipo estable para sostener y la confianza de que puedes asumir sin ser atropellado. El cuidado es no dejar que las ganas de mantener la paz se traguen el resultado, ni que la responsabilidad se vuelva sobrecarga silenciosa. Aprender a poner el límite con la misma calma con que apoyas hace que tu firmeza rinda sin que te agotes en el proceso.',
+        qualidades: [
+          'Sostiene la rutina con constancia y aún asume cuando el resultado tiene que aparecer',
+          'Combina la paciencia de quien apoya con la garra de quien entrega',
+          'No abandona al equipo a mitad de camino, ni bajo presión',
+          'Exige con firmeza serena, sin necesitar el grito para ser tomado en serio',
+          'Es el pilar confiable que rema cuando falta gente, sin alarde',
+        ],
+        pontosDeAtencao: [
+          'Contiene demasiada tensión para no disgustar y aplaza el enfrentamiento necesario',
+          'Carga solo un peso que debía repartirse, por exceso de responsabilidad',
+          'Le cuesta poner el límite con la misma claridad con que apoya',
+          'Deja que las ganas de mantener la paz se traguen una exigencia que debía salir',
+          'Acumula desgaste en silencio hasta que la cuenta llega de golpe',
+        ],
+        comoLiderar: [
+          'Da un objetivo claro y un equipo estable para que lo sostenga',
+          'Deja explícito que puede asumir y exigir sin ser atropellado',
+          'Reconoce la constancia y la entrega discreta, que rara vez pide reflectores',
+          'Ayuda a repartir el peso, tiende a cargar todo solo',
+          'Anima el límite a tiempo, para que el desgaste no se vuelva una bomba silenciosa',
+        ],
+        oQueEvitar: ['Conflicto expuesto sin necesidad', 'Sobrecarga silenciosa', 'Cambio brusco sin aviso'],
+        comunicacaoIdeal:
+          'Calma y clara, con objetivo firme y espacio para que se posicione. Reconoce la constancia, deja explícito que puede asumir y ayuda a poner el límite antes del desgaste.',
+        ondeBrilha: [
+          'Operación estable que exige constancia y alguien que asuma el resultado',
+          'Rutinas largas en las que la firmeza serena mantiene todo en pie',
+          'Un equipo que necesita un pilar confiable que también entregue',
+          'Situaciones en las que hay que apoyar y, a la vez, hacer que suceda',
+          'Sostener un proyecto de principio a fin, sin abandonarlo a mitad',
+        ],
+        sobEstresse:
+          'Contiene la tensión en silencio y carga solo para no disgustar, hasta que el desgaste desborda. Aplaza el enfrentamiento y, cuando llega la cuenta, reacciona de golpe en vez de a poco.',
+      },
     },
 
     // ── Relaciones entre pares de perfiles primarios ──────────────────────────
@@ -4515,6 +4743,82 @@ export const discProfile = {
         ],
         sobEstresse:
           `Parle beaucoup pour apaiser la tension et perd la rigueur du détail. Oscille entre discuter et vérifier sans clore, et reçoit la critique technique comme si elle était personnelle.`,
+      },
+      CI: {
+        nome: `Le Spécialiste`,
+        biografia:
+          `Vous êtes du genre à tout appuyer sur la donnée et la rigueur, mais vous savez traduire le compliqué pour celui qui est en face. Avant de conclure, vous analysez, vous vérifiez et vous organisez ; sauf que, contrairement à l'analyste fermé, vous ne gardez pas la conclusion pour vous : vous savez présenter, impliquer et faire adhérer les gens à ce que vous avez prouvé. La précision vient d'abord, et la manière de communiquer est l'assaisonnement qui transforme votre travail technique en quelque chose que le groupe comprend et adopte.\n\nVotre force, c'est ce mélange de jugement et de clarté : vous ne renoncez pas à la qualité, mais vous ne laissez pas non plus la rigueur devenir un mur que personne ne franchit. Là où un C pur livre le bon rapport et disparaît, vous livrez le bon rapport et vous expliquez en plus pourquoi il compte. Le revers, c'est que, quand le social s'échauffe, vous pouvez trop allonger l'explication, repousser la conclusion au nom d'une vérification de plus, et souffrir quand le public ne valorise pas le soin que vous avez mis dans le détail.\n\nVous donnez le meilleur avec un bon problème technique à résoudre, du temps pour analyser correctement et un public qui respecte le fondement. Le point de vigilance, c'est de ne pas laisser la rigueur bloquer la livraison, ni l'envie de plaire diluer le standard qui est votre signature. Garder l'analyse aux commandes et mettre la communication à son service transforme votre talent en quelque chose de rare : le spécialiste à qui les gens font confiance parce qu'il comprend et sait expliquer.`,
+        qualidades: [
+          `Appuie les décisions sur la donnée et la rigueur, sans tirer à l'instinct`,
+          `Traduit le complexe pour les non-initiés sans perdre la précision`,
+          `Analyse et vérifie avant de conclure, en livrant à un haut standard`,
+          `Implique les gens dans ce qu'il a prouvé au lieu de garder la conclusion pour lui`,
+          `Tient le standard technique et fait voir à l'équipe pourquoi il compte`,
+        ],
+        pontosDeAtencao: [
+          `Allonge trop l'explication quand le sujet s'échauffe et lasse le public`,
+          `Repousse la conclusion pour une vérification de plus qui ne change plus le résultat`,
+          `Souffre quand le public ne valorise pas le soin mis dans le détail`,
+          `Peut sembler critique ou trop minutieux en pointant ce qui est hors standard`,
+          `Oscille entre approfondir et présenter, sans clore ni l'un ni l'autre sur le moment`,
+        ],
+        comoLiderar: [
+          `Donnez un bon problème technique et du temps pour analyser avant d'exiger la livraison`,
+          `Reconnaissez la rigueur de l'analyse et la clarté de l'explication`,
+          `Convenez jusqu'où va la vérification, pour que le zèle ne bloque pas le délai`,
+          `Demandez la version résumée quand l'explication s'allonge`,
+          `Apportez la critique avec du fait et du respect, il prend le standard au sérieux`,
+        ],
+        oQueEvitar: [`Décision sans fondement`, `Négligence du détail`, `Hâte qui bouscule l'analyse`],
+        comunicacaoIdeal:
+          `Précise et bien fondée, avec de la place pour expliquer le pourquoi. Apportez la donnée qui appuie le point et reconnaissez la rigueur, mais demandez la version courte quand le délai presse.`,
+        ondeBrilha: [
+          `Analyse technique qui doit aussi être présentée et défendue`,
+          `Documentation et standards qui exigent rigueur et clarté à la fois`,
+          `Formation technique où il faut enseigner le détail sans perdre personne`,
+          `Un avis ou un rapport qui appuie une décision sur une base solide`,
+          `Pont entre l'analyse fine et l'équipe qui appliquera le résultat`,
+        ],
+        sobEstresse:
+          `Refait l'analyse en quête de certitude et repousse la conclusion. Devient plus critique sur ce qui est hors standard et allonge l'explication pour se sentir compris.`,
+      },
+      SD: {
+        nome: `Le Soutien`,
+        biografia:
+          `Vous êtes du genre à tenir la barre avec calme et, quand il le faut, à assumer et à livrer aussi. Vous mêlez la constance de celui qui ne lâche pas l'équipe en cours de route à une dose de niaque qui fait sortir la décision du papier. Là où certains ne font que soutenir et attendre, vous soutenez et vous faites en sorte que ça se passe ; là où certains exigent en criant, vous exigez avec la fermeté sereine de celui qui est toujours là. La stabilité vient d'abord, et l'assertivité est le complément qui empêche votre patience de virer à la résignation.\n\nVotre force, c'est cette union de constance et de responsabilité : vous êtes le pilier qui soutient la routine et, en même temps, l'épaule qui pousse quand le résultat doit apparaître. Les gens vous font confiance parce qu'ils savent que vous n'abandonnez pas le navire et que vous ramez encore quand il manque du monde. Le revers, c'est que vous pouvez contenir trop de tension pour ne pas déplaire, repousser la confrontation nécessaire et, par excès de responsabilité, porter seul un poids qui devait être partagé.\n\nVous donnez le meilleur avec un objectif clair, une équipe stable à soutenir et la confiance de pouvoir assumer sans être bousculé. Le point de vigilance, c'est de ne pas laisser l'envie de maintenir la paix avaler le résultat, ni la responsabilité devenir une surcharge silencieuse. Apprendre à poser la limite avec le même calme que celui avec lequel vous soutenez fait rendre votre fermeté sans vous épuiser en chemin.`,
+        qualidades: [
+          `Soutient la routine avec constance et assume encore quand le résultat doit apparaître`,
+          `Mêle la patience de celui qui soutient à la niaque de celui qui livre`,
+          `N'abandonne pas l'équipe en cours de route, même sous pression`,
+          `Exige avec une fermeté sereine, sans avoir besoin de crier pour être pris au sérieux`,
+          `Est le pilier fiable qui rame quand il manque du monde, sans faire de bruit`,
+        ],
+        pontosDeAtencao: [
+          `Contient trop de tension pour ne pas déplaire et repousse la confrontation nécessaire`,
+          `Porte seul un poids qui devait être partagé, par excès de responsabilité`,
+          `Peine à poser la limite avec la même clarté qu'il met à soutenir`,
+          `Laisse l'envie de maintenir la paix avaler une exigence qui devait sortir`,
+          `Accumule l'usure en silence jusqu'à ce que l'addition tombe d'un coup`,
+        ],
+        comoLiderar: [
+          `Donnez un objectif clair et une équipe stable à soutenir`,
+          `Rendez explicite qu'il peut assumer et exiger sans être bousculé`,
+          `Reconnaissez la constance et la livraison discrète, qui réclame rarement le projecteur`,
+          `Aidez à partager le poids, il tend à tout porter seul`,
+          `Encouragez la limite à temps, pour que l'usure ne devienne pas une bombe silencieuse`,
+        ],
+        oQueEvitar: [`Conflit exposé sans nécessité`, `Surcharge silencieuse`, `Changement brusque sans prévenir`],
+        comunicacaoIdeal:
+          `Calme et claire, avec un objectif ferme et de la place pour qu'il se positionne. Reconnaissez la constance, rendez explicite qu'il peut assumer et aidez à poser la limite avant l'épuisement.`,
+        ondeBrilha: [
+          `Opération stable qui exige de la constance et quelqu'un qui assume le résultat`,
+          `Routines longues où la fermeté sereine maintient tout debout`,
+          `Une équipe qui a besoin d'un pilier fiable qui livre aussi`,
+          `Situations où il faut soutenir et, en même temps, faire en sorte que ça se passe`,
+          `Soutenir un projet du début à la fin, sans l'abandonner en cours de route`,
+        ],
+        sobEstresse:
+          `Contient la tension en silence et porte seul pour ne pas déplaire, jusqu'à ce que l'usure déborde. Repousse la confrontation et, quand l'addition tombe, réagit d'un coup au lieu de peu à peu.`,
       },
     },
 

@@ -39,7 +39,7 @@ export const PURE_PROFILE_CODES: readonly string[] = ['D', 'I', 'S', 'C'];
 
 /**
  * Códigos combinados cobertos (primário domina, secundário modula).
- * Cobre os pares da fonte: DI, ID, DC, CD, IS, SI, SC, CS, DS, IC.
+ * Cobre os 12 pares da fonte: DI, ID, DC, CD, IS, SI, SC, CS, DS, IC, CI, SD.
  */
 export const BLEND_PROFILE_CODES: readonly string[] = [
   'DI',
@@ -52,6 +52,8 @@ export const BLEND_PROFILE_CODES: readonly string[] = [
   'CS',
   'DS',
   'IC',
+  'CI',
+  'SD',
 ];
 
 /** Todos os códigos com metadados curados. */
