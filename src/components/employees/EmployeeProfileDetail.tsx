@@ -815,6 +815,7 @@ function HistoryTab({
             scores={openVersion.scores as DiscScores}
             profileCode={openVersion.profile_code}
             variant="full"
+            stacked
           />
         )}
       </ResponsiveModal>

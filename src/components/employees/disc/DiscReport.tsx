@@ -63,6 +63,14 @@ export interface DiscReportProps {
    * Nao passe (ou passe false) em contextos publicos ou modais sem cabecalho proprio.
    */
   hideHeader?: boolean;
+  /**
+   * Forca layout single-column (empilhado) em TODAS as secoes multi-coluna.
+   * Use quando o DiscReport esta dentro de um contexto estreito (ex.: modal da
+   * linha do tempo no historico DISC) onde os breakpoints `lg:` do viewport
+   * ativariam o layout lado a lado mesmo com pouco espaco disponivel.
+   * Nao afeta o PDF nem nenhum outro uso do componente.
+   */
+  stacked?: boolean;
   className?: string;
 }
 
@@ -249,6 +257,7 @@ export function DiscReport({
   locale,
   variant = 'full',
   hideHeader = false,
+  stacked = false,
   className,
 }: DiscReportProps) {
   const { t } = useDiscMessages(locale);
@@ -357,7 +366,7 @@ export function DiscReport({
          *   Qualidades + Pontos vem logo abaixo (lg:hidden), antes dos radares.
          * Desktop: grid 2 colunas — DISC a esquerda, Qualidades + Pontos a direita.
          */}
-        <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+        <div className={stacked ? undefined : 'lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start'}>
           {/* Grafico DISC */}
           <div>
             <h4 className="mb-3 text-center text-sm font-semibold text-muted-foreground">
@@ -366,8 +375,10 @@ export function DiscReport({
             <DiscLineChart scores={scores} locale={locale} className="mx-auto" />
           </div>
 
-          {/* Qualidades + Pontos de atencao — visivel SOMENTE no desktop (lg+) */}
-          {variant === 'full' && (
+          {/* Qualidades + Pontos de atencao — no desktop normal ficam ao lado do
+              grafico DISC (coluna direita do bento). No modo stacked ficam
+              sempre abaixo, renderizados pelo bloco seguinte (mesmo do mobile). */}
+          {variant === 'full' && !stacked && (
             <div className="hidden lg:flex lg:flex-col lg:gap-4">
               <ListBlock
                 sectionKey="qualidades"
@@ -383,12 +394,12 @@ export function DiscReport({
           )}
         </div>
 
-        {/* Qualidades + Pontos de atencao — visivel SOMENTE no mobile (< lg).
-            Fica AQUI (logo apos o grafico DISC) para manter a ordem-alvo no
-            mobile: DISC -> Qualidades+Pontos -> radares. No desktop estes dois
-            blocos aparecem ao lado do grafico DISC (bento acima). */}
+        {/* Qualidades + Pontos de atencao — mobile (< lg) OU modo stacked.
+            No desktop normal este bloco e oculto (lg:hidden) pois os dois
+            blocos aparecem ao lado do DISC no bento acima. No modo stacked
+            sempre renderiza (single-column, sem ocultar). */}
         {variant === 'full' && (
-          <div className="lg:hidden space-y-4">
+          <div className={stacked ? 'space-y-4' : 'lg:hidden space-y-4'}>
             <ListBlock
               sectionKey="qualidades"
               title={t.sections.qualidades}
@@ -413,16 +424,17 @@ export function DiscReport({
          * O leve full-bleed (-mx-2 sm:mx-0) dentro de cada radar evita cortar
          * os rotulos externos no mobile.
          */}
-        <div className="flex flex-col lg:flex-row lg:items-stretch lg:gap-6">
+        <div className={stacked ? 'flex flex-col gap-4' : 'flex flex-col lg:flex-row lg:items-stretch lg:gap-6'}>
           {/* Coluna 1: Competencias comportamentais */}
-          <div className="w-full min-w-0 lg:flex-1 lg:flex lg:flex-col">
-            {/* Header — altura reservada igual ao da coluna 2 */}
+          <div className={stacked ? 'w-full min-w-0' : 'w-full min-w-0 lg:flex-1 lg:flex lg:flex-col'}>
+            {/* Header — no layout normal (nao-stacked) reserva altura igual ao da
+                coluna 2 via lg:min-h no subtitulo, para alinhar os radares. No
+                modo stacked nao ha alinhamento cruzado, entao o min-h e omitido. */}
             <div className="shrink-0">
               <h4 className="text-center text-lg font-bold text-foreground">
                 {t.charts.radarTitle}
               </h4>
-              {/* Subtitulo com min-h reservado (lg) para casar com o do emocional */}
-              <div className="lg:min-h-[2.75rem]">
+              <div className={stacked ? undefined : 'lg:min-h-[2.75rem]'}>
                 <p className="mx-auto mt-1 mb-2 max-w-xl text-center text-sm leading-snug text-muted-foreground">
                   {t.dossier.competenciesLead}
                 </p>
@@ -434,14 +446,13 @@ export function DiscReport({
           </div>
 
           {/* Coluna 2: Perfil emocional */}
-          <div className="w-full min-w-0 lg:flex-1 lg:flex lg:flex-col">
-            {/* Header — altura reservada igual ao da coluna 1 */}
+          <div className={stacked ? 'w-full min-w-0' : 'w-full min-w-0 lg:flex-1 lg:flex lg:flex-col'}>
+            {/* Header — idem coluna 1 */}
             <div className="shrink-0">
               <h4 className="text-center text-lg font-bold text-foreground">
                 {t.dossier.emotionalTitle}
               </h4>
-              {/* Subtitulo com min-h reservado (lg) para casar com o de competencias */}
-              <div className="lg:min-h-[2.75rem]">
+              <div className={stacked ? undefined : 'lg:min-h-[2.75rem]'}>
                 <p className="mx-auto mt-1 mb-2 max-w-xl text-center text-sm leading-snug text-muted-foreground">
                   {t.dossier.emotionalLead}
                 </p>
@@ -464,7 +475,7 @@ export function DiscReport({
              * ondeBrilha, comoLiderar, oQueEvitar, comunicacaoIdeal, sobEstresse
              * (5 blocos => 2+2+1 no grid de 2 colunas).
              */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+            <div className={stacked ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start'}>
               {(['ondeBrilha', 'comoLiderar', 'oQueEvitar'] as ListSectionKey[]).map((key) => (
                 <ListBlock
                   key={key}
@@ -513,7 +524,7 @@ export function DiscReport({
               </div>
 
               {/* Grade de 1 ou 2 colunas dependendo de haver secundario */}
-              <div className={`grid grid-cols-1 gap-4 ${careerSecondary ? 'lg:grid-cols-2' : ''}`}>
+              <div className={`grid grid-cols-1 gap-4 ${!stacked && careerSecondary ? 'lg:grid-cols-2' : ''}`}>
                 {/* Bloco do fator primario */}
                 <CareerBlock
                   label={t.dossier.careerPrimaryLabel}
