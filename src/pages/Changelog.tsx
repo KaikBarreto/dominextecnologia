@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.18.0',
+    date: '30 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Pagamento de funcionário no modo CLT com folha',
+        description: 'Ao pagar um funcionário você agora escolhe entre Normal e CLT. No modo CLT, o sistema calcula sozinho os descontos do mês (INSS, Imposto de Renda e vale-transporte) e já mostra o valor líquido a pagar, com proventos, descontos e bases lado a lado. Os valores são estimativas conforme a legislação da competência e não substituem a orientação do seu contador.',
+        category: 'recurso',
+      },
+      {
+        title: 'Holerite (Recibo de Pagamento de Salário) pronto para a contabilidade',
+        description: 'No modo CLT, o comprovante de pagamento sai como um contra-cheque no modelo clássico brasileiro, com proventos, descontos, líquido e as bases de cálculo, pronto para imprimir ou salvar em PDF e entregar à contabilidade. Você pode gerar o mesmo holerite de novo a qualquer momento pelo extrato do funcionário.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cálculo do custo do funcionário mais completo',
+        description: 'O cálculo do custo mensal ganhou detalhamento: separa o que provisionar por mês (férias, 13º e multa) dos encargos do mês (FGTS e INSS patronal), considera o regime tributário da empresa (Simples ou Lucro Real/Presumido) e o adicional de periculosidade ou insalubridade, mostrando o fator sobre o salário e o custo por hora.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.46',
     date: '28 de julho de 2026',
     type: 'minor',
