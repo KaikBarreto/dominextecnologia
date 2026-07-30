@@ -690,10 +690,9 @@ export default function Employees() {
             win.onload = () => URL.revokeObjectURL(url);
           } else {
             URL.revokeObjectURL(url);
-            // TODO i18n:
             toast({
-              title: 'Pagamento registrado.',
-              description: 'Libere os pop-ups para ver o holerite, ou reabra pelo extrato do funcionário.',
+              title: t.toasts.paymentRegistered,
+              description: t.toasts.popupBlockedDesc,
             });
           }
           return;

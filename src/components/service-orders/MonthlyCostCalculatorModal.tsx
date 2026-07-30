@@ -231,8 +231,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           {/* Regime Tributário */}
           <div className="space-y-1">
             <Label className="text-xs">
-              {/* TODO i18n: "Regime tributário da empresa" */}
-              Regime tributário da empresa
+              {t.monthlyCostTaxRegimeLabel}
             </Label>
             <div className="flex rounded-md border overflow-hidden text-xs">
               <button
@@ -240,16 +239,14 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
                 className={`flex-1 py-1.5 px-3 transition-colors ${bd.regime === 'simples' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 onClick={() => setBd(prev => ({ ...prev, regime: 'simples' }))}
               >
-                {/* TODO i18n: "Simples Nacional" */}
-                Simples Nacional
+                {t.monthlyCostSimples}
               </button>
               <button
                 type="button"
                 className={`flex-1 py-1.5 px-3 transition-colors ${bd.regime === 'lucro_real' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 onClick={() => setBd(prev => ({ ...prev, regime: 'lucro_real' }))}
               >
-                {/* TODO i18n: "Lucro Real / Presumido" */}
-                Lucro Real / Presumido
+                {t.monthlyCostLucroReal}
               </button>
             </div>
           </div>
@@ -258,8 +255,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           {bd.regime === 'lucro_real' && (
             <div className="space-y-1">
               <Label className="text-xs">
-                {/* TODO i18n: "INSS patronal %" */}
-                INSS patronal %
+                {t.monthlyCostInssPatronalLabel}
               </Label>
               <div className="relative">
                 <Input
@@ -275,8 +271,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                {/* TODO i18n: "20% INSS + RAT/FAP + terceiros (~28,8% típico). Consulte seu contador." */}
-                20% INSS + RAT/FAP + terceiros (~28,8% típico). Consulte seu contador.
+                {t.monthlyCostInssPatronalHint}
               </p>
             </div>
           )}
@@ -284,8 +279,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           {/* Adicional (Periculosidade / Insalubridade — mutuamente exclusivos) */}
           <div className="space-y-2">
             <Label className="text-xs">
-              {/* TODO i18n: "Adicional" */}
-              Adicional
+              {t.monthlyCostAdicionalLabel}
             </Label>
             <div className="flex rounded-md border overflow-hidden text-[10px]">
               <button
@@ -293,24 +287,21 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
                 className={`flex-1 py-1.5 px-2 transition-colors ${bd.adicionalTipo === 'nenhum' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 onClick={() => setBd(prev => ({ ...prev, adicionalTipo: 'nenhum' }))}
               >
-                {/* TODO i18n: "Nenhum" */}
-                Nenhum
+                {t.monthlyCostAdicionalNone}
               </button>
               <button
                 type="button"
                 className={`flex-1 py-1.5 px-2 transition-colors ${bd.adicionalTipo === 'periculosidade' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 onClick={() => setBd(prev => ({ ...prev, adicionalTipo: 'periculosidade' }))}
               >
-                {/* TODO i18n: "Periculosidade" */}
-                Periculosidade
+                {t.monthlyCostPericulosidade}
               </button>
               <button
                 type="button"
                 className={`flex-1 py-1.5 px-2 transition-colors ${bd.adicionalTipo === 'insalubridade' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 onClick={() => setBd(prev => ({ ...prev, adicionalTipo: 'insalubridade' }))}
               >
-                {/* TODO i18n: "Insalubridade" */}
-                Insalubridade
+                {t.monthlyCostInsalubridade}
               </button>
             </div>
 
@@ -318,8 +309,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
             {bd.adicionalTipo === 'periculosidade' && (
               <div className="space-y-1">
                 <Label className="text-xs">
-                  {/* TODO i18n: "% do salário base (padrão: 30%)" */}
-                  % do salário base (padrão: 30%)
+                  {t.monthlyCostPericulosidadePercentLabel}
                 </Label>
                 <div className="relative">
                   <Input
@@ -344,8 +334,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
             {bd.adicionalTipo === 'insalubridade' && (
               <div className="space-y-1">
                 <Label className="text-xs">
-                  {/* TODO i18n: "Grau de insalubridade (% do salário mínimo)" */}
-                  Grau de insalubridade (% do salário mínimo)
+                  {t.monthlyCostInsalubridadeGrauLabel}
                 </Label>
                 <Select
                   value={String(bd.insalubridadeGrau)}
@@ -356,16 +345,13 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="10">
-                      {/* TODO i18n: "Mínimo — 10%" */}
-                      Mínimo — 10%
+                      {t.monthlyCostInsalubridadeMin}
                     </SelectItem>
                     <SelectItem value="20">
-                      {/* TODO i18n: "Médio — 20%" */}
-                      Médio — 20%
+                      {t.monthlyCostInsalubridadeMid}
                     </SelectItem>
                     <SelectItem value="40">
-                      {/* TODO i18n: "Máximo — 40%" */}
-                      Máximo — 40%
+                      {t.monthlyCostInsalubridadeMax}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -424,8 +410,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
         {/* Disclaimer */}
         <p className="text-[10px] text-muted-foreground border-l-2 border-amber-400 pl-2">
-          {/* TODO i18n key: t.monthlyCostDisclaimer — "Valores estimados com base na legislação trabalhista. Não substitui a orientação do seu contador, consulte sempre um profissional antes de pagamentos e decisões." */}
-          Valores estimados com base na legislação trabalhista. Não substitui a orientação do seu contador, consulte sempre um profissional antes de pagamentos e decisões.
+          {t.monthlyCostDisclaimer}
         </p>
 
         {/* Resumo itemizado */}
@@ -437,8 +422,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           {cost.adicional > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">
-                {/* TODO i18n: "+ Adicional ({tipo})" */}
-                + Adicional ({bd.adicionalTipo === 'periculosidade' ? `${bd.periculosidadePercent}%` : `grau ${bd.insalubridadeGrau}%`})
+                {t.monthlyCostAdicionalSummary.replace('{tipo}', bd.adicionalTipo === 'periculosidade' ? `${bd.periculosidadePercent}%` : `grau ${bd.insalubridadeGrau}%`)}
               </span>
               <span>{fmt(cost.adicional)}</span>
             </div>
@@ -447,8 +431,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           {/* Guardar por mês */}
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">
-              {/* TODO i18n: "+ Guardar/mês (férias + 13º + multa)" */}
-              + Guardar/mês (férias + 13º + multa)
+              {t.monthlyCostGuardarSummary}
             </span>
             <span>{fmt(cost.guardarPorMes.ferias + cost.guardarPorMes.decimoTerceiro + cost.guardarPorMes.multaRescisoria)}</span>
           </div>
@@ -456,8 +439,9 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           {/* Encargos do mês */}
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">
-              {/* TODO i18n: "+ Encargos/mês (FGTS + INSS pat.)" */}
-              + Encargos/mês (FGTS{bd.regime === 'lucro_real' && cost.encargosDoMes.inssPatronal > 0 ? ' + INSS pat.' : ''})
+              {bd.regime === 'lucro_real' && cost.encargosDoMes.inssPatronal > 0
+                ? t.monthlyCostEncargosLucro
+                : t.monthlyCostEncargosSimples}
             </span>
             <span>{fmt(cost.encargosDoMes.fgts + cost.encargosDoMes.fgtsSobre13Fer + cost.encargosDoMes.inssPatronal)}</span>
           </div>
@@ -484,8 +468,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           {bd.baseSalary > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">
-                {/* TODO i18n: "Fator (custo / salário)" */}
-                Fator (custo / salário)
+                {t.monthlyCostFatorLabel}
               </span>
               <span className="text-xs font-semibold">
                 ×{cost.custoPercentual.toLocaleString(locale === 'pt-br' ? 'pt-BR' : locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

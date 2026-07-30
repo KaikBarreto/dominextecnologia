@@ -397,57 +397,48 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
         {/* Campos CLT */}
         <div className="rounded-lg border p-3 space-y-4">
-          {/* TODO i18n: "Contrato de trabalho" */}
-          <Label className="text-sm font-medium">Contrato de trabalho</Label>
+          <Label className="text-sm font-medium">{t.clt.sectionTitle}</Label>
 
           {/* Regime: Informal / CLT */}
           <div className="flex flex-col gap-1.5">
-            {/* TODO i18n: "Regime" */}
-            <Label className="text-xs text-muted-foreground">Regime</Label>
+            <Label className="text-xs text-muted-foreground">{t.clt.regimeLabel}</Label>
             <LabeledSwitch
               value={employmentRegime}
               onChange={(v) => setEmploymentRegime(v as 'informal' | 'clt')}
               off={{ value: 'informal', label: 'Informal' }}
               on={{ value: 'clt', label: 'CLT' }}
-              // TODO i18n: aria-label
-              aria-label="Regime de contratação"
+              aria-label={t.clt.regimeAriaLabel}
             />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             {/* CBO */}
             <div className="space-y-1.5">
-              {/* TODO i18n: "CBO" */}
-              <Label className="text-xs text-muted-foreground">CBO</Label>
+              <Label className="text-xs text-muted-foreground">{t.clt.cboLabel}</Label>
               <Input
                 value={cbo}
                 onChange={e => setCbo(e.target.value)}
-                // TODO i18n: placeholder
-                placeholder="Ex: 7156-10"
+                placeholder={t.clt.cboPlaceholder}
               />
             </div>
 
             {/* Matrícula */}
             <div className="space-y-1.5">
-              {/* TODO i18n: "Matrícula" */}
-              <Label className="text-xs text-muted-foreground">Matrícula</Label>
+              <Label className="text-xs text-muted-foreground">{t.clt.matriculaLabel}</Label>
               <Input
                 value={matricula}
                 onChange={e => setMatricula(e.target.value)}
-                // TODO i18n: placeholder
-                placeholder="Ex: 00123"
+                placeholder={t.clt.matriculaPlaceholder}
               />
             </div>
 
             {/* Dependentes */}
             <div className="space-y-1.5">
-              {/* TODO i18n: "Dependentes (IRRF)" */}
-              <Label className="text-xs text-muted-foreground">Dependentes (IRRF)</Label>
+              <Label className="text-xs text-muted-foreground">{t.clt.dependentsLabel}</Label>
               <NumericInput
                 value={dependentsCount}
                 onValueChange={setDependentsCount}
-                // TODO i18n: placeholder
-                placeholder="0"
+                placeholder={t.clt.dependentsPlaceholder}
               />
             </div>
           </div>
@@ -455,21 +446,18 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           {/* Vale-transporte */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              {/* TODO i18n: "Vale-transporte" */}
-              <Label className="text-xs text-muted-foreground">Vale-transporte</Label>
+              <Label className="text-xs text-muted-foreground">{t.clt.vtLabel}</Label>
               <LabeledSwitch
                 value={vtEnabled ? 'on' : 'off'}
                 onChange={(v) => setVtEnabled(v === 'on')}
                 off={{ value: 'off', label: 'Não' }}
                 on={{ value: 'on', label: 'Sim' }}
-                // TODO i18n: aria-label
-                aria-label="Habilitar vale-transporte"
+                aria-label={t.clt.vtAriaLabel}
               />
             </div>
             {vtEnabled && (
               <div className="space-y-1.5">
-                {/* TODO i18n: "Valor mensal do VT" */}
-                <Label className="text-xs text-muted-foreground">Valor mensal do VT</Label>
+                <Label className="text-xs text-muted-foreground">{t.clt.vtMonthlyLabel}</Label>
                 <Input
                   value={vtMonthlyValue}
                   onChange={e => setVtMonthlyValue(currencyMask(e.target.value))}

@@ -169,8 +169,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
         openHTMLInNewTab(
           generateHoleriteHtml(buildHoleriteData(details.holerite, identity)),
           () => {
-            // TODO i18n:
-            toast({ description: 'Libere os pop-ups para ver o holerite.' });
+              toast({ description: t.toasts.popupBlockedHolerite });
           },
         );
         return;

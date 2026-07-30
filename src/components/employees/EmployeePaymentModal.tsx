@@ -197,8 +197,7 @@ export function EmployeePaymentModal({
     <div className="flex flex-col items-end gap-2">
       {negativo && (
         <p className="text-xs text-destructive font-medium text-right">
-          {/* TODO i18n: employees.paymentModal.negativeNet */}
-          Descontos maiores que os proventos, líquido negativo. Ajuste os vales ou faltas antes de pagar.
+          {t.negativeNet}
         </p>
       )}
       <div className="flex justify-end gap-2">
@@ -233,8 +232,7 @@ export function EmployeePaymentModal({
           <div className="space-y-4">
             {/* Seletor de modo Informal x CLT */}
             <div className="space-y-1">
-              {/* TODO i18n: employees.paymentModal.modeLabel */}
-              <Label className="text-xs">Tipo de pagamento</Label>
+              <Label className="text-xs">{t.modeLabel}</Label>
               <div className="flex rounded-md border overflow-hidden text-sm">
                 {(['informal', 'clt'] as const).map((m) => (
                   <button
@@ -247,8 +245,7 @@ export function EmployeePaymentModal({
                     }`}
                     onClick={() => setPayMode(m)}
                   >
-                    {/* TODO i18n: employees.paymentModal.modeInformal / modeClt */}
-                    {m === 'informal' ? 'Normal / Informal' : 'CLT'}
+                    {m === 'informal' ? t.modeInformal : t.modeClt}
                   </button>
                 ))}
               </div>
@@ -325,8 +322,7 @@ export function EmployeePaymentModal({
               <>
                 {/* PROVENTOS */}
                 <div className="rounded-lg border p-4 space-y-2 text-sm">
-                  {/* TODO i18n: employees.paymentModal.cltSummary.proventos */}
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Proventos</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.cltSummary.proventos}</p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t.summary.salary}</span>
                     <span className="font-medium">{fmt(salary)}</span>
@@ -338,16 +334,14 @@ export function EmployeePaymentModal({
                     </div>
                   )}
                   <div className="border-t pt-2 flex justify-between font-medium">
-                    {/* TODO i18n: employees.paymentModal.cltSummary.totalProventos */}
-                    <span>Total de proventos</span>
+                    <span>{t.cltSummary.totalProventos}</span>
                     <span>{fmt(grossBase)}</span>
                   </div>
                 </div>
 
                 {/* DESCONTOS */}
                 <div className="rounded-lg border p-4 space-y-2 text-sm">
-                  {/* TODO i18n: employees.paymentModal.cltSummary.descontos */}
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Descontos</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.cltSummary.descontos}</p>
                   <div className="flex justify-between text-destructive">
                     <span>INSS</span>
                     <span>{fmt(ded.inss)}</span>
@@ -358,8 +352,7 @@ export function EmployeePaymentModal({
                   </div>
                   {ded.vt > 0 && (
                     <div className="flex justify-between text-destructive">
-                      {/* TODO i18n: employees.paymentModal.cltSummary.vt */}
-                      <span>Vale-transporte</span>
+                      <span>{t.cltSummary.vt}</span>
                       <span>{fmt(ded.vt)}</span>
                     </div>
                   )}
@@ -379,8 +372,7 @@ export function EmployeePaymentModal({
 
                 {/* LÍQUIDO (destaque) */}
                 <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 text-center">
-                  {/* TODO i18n: employees.paymentModal.cltSummary.liquido */}
-                  <p className="text-sm text-muted-foreground mb-1">Líquido a pagar</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t.cltSummary.liquido}</p>
                   <p className={`text-2xl font-bold ${cltLiquido >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                     {fmt(cltLiquido)}
                   </p>
@@ -388,8 +380,7 @@ export function EmployeePaymentModal({
 
                 {/* BASES (informativo) */}
                 <div className="rounded-lg border p-4 space-y-1.5 text-xs text-muted-foreground">
-                  {/* TODO i18n: employees.paymentModal.cltSummary.bases */}
-                  <p className="font-semibold uppercase tracking-wide">Bases de cálculo</p>
+                  <p className="font-semibold uppercase tracking-wide">{t.cltSummary.bases}</p>
                   <div className="flex justify-between">
                     <span>Base INSS</span>
                     <span>{fmt(ded.baseINSS)}</span>
@@ -403,8 +394,7 @@ export function EmployeePaymentModal({
                     <span>{fmt(baseFGTS)}</span>
                   </div>
                   <div className="flex justify-between">
-                    {/* TODO i18n: employees.paymentModal.cltSummary.fgtsMes */}
-                    <span>FGTS do mês (recolhido)</span>
+                    <span>{t.cltSummary.fgtsMes}</span>
                     <span>{fmt(fgtsMes)}</span>
                   </div>
                 </div>
@@ -464,8 +454,7 @@ export function EmployeePaymentModal({
 
             {/* Disclaimer */}
             <p className="text-[11px] leading-snug text-muted-foreground">
-              {/* TODO i18n: employees.paymentModal.disclaimer */}
-              Valores calculados com base nas tabelas vigentes de INSS, IRRF e FGTS. São estimativas, confirme com o seu contador antes de fechar a folha.
+              {t.disclaimer}
             </p>
           </aside>
         </div>
