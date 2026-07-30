@@ -4,18 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calculator, Clock } from 'lucide-react';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings';
+import { calculateEmployeeCost } from '@/utils/employeeCostProvisions';
 
 export interface MonthlyCostBreakdown {
   baseSalary: number;
-  periculosidade: number;
-  periculosidadeMode: 'percent' | 'fixed';
-  leisSociais: number;
-  leisSociaisMode: 'percent' | 'fixed';
+  // --- Adicional (mutuamente exclusivo) ---
+  adicionalTipo: 'nenhum' | 'periculosidade' | 'insalubridade';
+  periculosidadePercent: number;   // % do salário (default 30)
+  insalubridadeGrau: 10 | 20 | 40; // % do salário mínimo (default 40)
+  salarioMinimo: number;
+  horaExtra: number;
+  // --- Regime / INSS patronal ---
+  regime: 'simples' | 'lucro_real';
+  inssPatronalPercent: number;     // default 28.8
+  // --- Benefícios e anuais (inalterados) ---
   planoSaude: number;
   planoOdonto: number;
   seguroVida: number;
@@ -26,14 +35,22 @@ export interface MonthlyCostBreakdown {
   epiAnual: number;
   celularAnual: number;
   monthlyHours: number;
+  // --- LEGADO (compat de leitura de breakdowns antigos; não usar em cálculo novo) ---
+  periculosidade?: number;
+  periculosidadeMode?: 'percent' | 'fixed';
+  leisSociais?: number;
+  leisSociaisMode?: 'percent' | 'fixed';
 }
 
 export const defaultBreakdown: MonthlyCostBreakdown = {
   baseSalary: 0,
-  periculosidade: 30,
-  periculosidadeMode: 'percent',
-  leisSociais: 80,
-  leisSociaisMode: 'percent',
+  adicionalTipo: 'nenhum',
+  periculosidadePercent: 30,
+  insalubridadeGrau: 40,
+  salarioMinimo: 1518,
+  horaExtra: 0,
+  regime: 'simples',
+  inssPatronalPercent: 28.8,
   planoSaude: 0,
   planoOdonto: 0,
   seguroVida: 0,
@@ -70,86 +87,26 @@ function CurrencyField({ label, value, onChange, hint }: { label: string; value:
   );
 }
 
-function ModeToggleField({
-  label,
-  percentValue,
-  fixedValue,
-  mode,
-  onPercentChange,
-  onFixedChange,
-  onModeChange,
-  computedValue,
-}: {
-  label: string;
-  percentValue: number;
-  fixedValue: string;
-  mode: 'percent' | 'fixed';
-  onPercentChange: (v: number) => void;
-  onFixedChange: (v: string) => void;
-  onModeChange: (m: 'percent' | 'fixed') => void;
-  computedValue: number;
-}) {
-  const { locale, currency } = useAppLocaleContext();
-  const fmtLocal = (v: number) => formatMoney(v, currency, locale);
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs">{label}</Label>
-        <div className="flex rounded-md border overflow-hidden text-[10px]">
-          <button
-            type="button"
-            className={`px-2 py-0.5 transition-colors ${mode === 'percent' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-            onClick={() => onModeChange('percent')}
-          >
-            %
-          </button>
-          <button
-            type="button"
-            className={`px-2 py-0.5 transition-colors ${mode === 'fixed' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-            onClick={() => onModeChange('fixed')}
-          >
-            R$
-          </button>
-        </div>
-      </div>
-      {mode === 'percent' ? (
-        <div className="relative">
-          <Input
-            type="number" min={0} max={200} step={1}
-            value={percentValue || ''}
-            onChange={e => onPercentChange(Number(e.target.value) || 0)}
-            placeholder="0"
-            className="h-8 text-sm pr-8"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-        </div>
-      ) : (
-        <Input
-          value={fixedValue}
-          onChange={e => onFixedChange(currencyMask(e.target.value))}
-          placeholder="R$ 0,00"
-          className="h-8 text-sm"
-        />
-      )}
-      {computedValue > 0 && (
-        <p className="text-[10px] text-muted-foreground">
-          = {fmtLocal(computedValue)}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, initialBreakdown, onApply, defaultMonthlyHours }: MonthlyCostCalculatorModalProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm.costModals;
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const [bd, setBd] = useState<MonthlyCostBreakdown>({ ...defaultBreakdown });
 
+  // Auto-detecção do regime da empresa via configurações fiscais
+  const { settings: fiscal } = useFiscalSettings();
+  // Regime da empresa → regime do motor de custo.
+  // Lucro Real e Lucro Presumido compartilham a mesma branch de propósito: ambos
+  // recolhem INSS patronal na folha (Simples não). Qualquer outro valor OU empresa
+  // sem regime configurado (null) assume 'simples' — default mais barato e o mais
+  // provável no ICP (majoritariamente Simples/informal); o usuário pode alternar.
+  const regimeFromCompany: 'simples' | 'lucro_real' =
+    (fiscal?.regime_tributario === 'lucro_real' || fiscal?.regime_tributario === 'lucro_presumido')
+      ? 'lucro_real'
+      : 'simples';
+
   // Currency display states
   const [salaryDisplay, setSalaryDisplay] = useState('');
-  const [pericFixedDisplay, setPericFixedDisplay] = useState('');
-  const [leisFixedDisplay, setLeisFixedDisplay] = useState('');
   const [planoSaudeDisplay, setPlanoSaudeDisplay] = useState('');
   const [planoOdontoDisplay, setPlanoOdontoDisplay] = useState('');
   const [seguroVidaDisplay, setSeguroVidaDisplay] = useState('');
@@ -164,23 +121,40 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     if (!open) return;
     const resolvedHours = defaultMonthlyHours || 176;
     const b: MonthlyCostBreakdown = initialBreakdown
-      ? { ...defaultBreakdown, ...initialBreakdown, monthlyHours: initialBreakdown.monthlyHours || resolvedHours }
-      : { ...defaultBreakdown, baseSalary: initialSalary ?? 0, monthlyHours: resolvedHours };
+      ? {
+          ...defaultBreakdown,
+          ...initialBreakdown,
+          // Back-compat: mapear 'adicionalTipo' ausente (breakdown antigo) para 'nenhum'
+          adicionalTipo: initialBreakdown.adicionalTipo ?? 'nenhum',
+          periculosidadePercent: initialBreakdown.periculosidadePercent ?? 30,
+          insalubridadeGrau: initialBreakdown.insalubridadeGrau ?? 40,
+          salarioMinimo: initialBreakdown.salarioMinimo ?? 1518,
+          horaExtra: initialBreakdown.horaExtra ?? 0,
+          // Regime: usar o salvo se existir, senão auto-detectar da empresa
+          regime: initialBreakdown.regime ?? regimeFromCompany,
+          inssPatronalPercent: initialBreakdown.inssPatronalPercent ?? 28.8,
+          monthlyHours: initialBreakdown.monthlyHours || resolvedHours,
+        }
+      : { ...defaultBreakdown, baseSalary: initialSalary ?? 0, regime: regimeFromCompany, monthlyHours: resolvedHours };
+    // Self-heal: remover chaves legadas para não serem re-persistidas ao aplicar.
+    // Os campos permanecem opcionais no tipo MonthlyCostBreakdown para leitura de dados antigos.
+    delete (b as any).leisSociais;
+    delete (b as any).leisSociaisMode;
+    delete (b as any).periculosidade;
+    delete (b as any).periculosidadeMode;
     setBd(b);
-    const fmt = (v: number) => v > 0 ? currencyMask(String(Math.round(v * 100))) : '';
-    setSalaryDisplay(fmt(b.baseSalary));
-    setPericFixedDisplay(b.periculosidadeMode === 'fixed' ? fmt(b.periculosidade) : '');
-    setLeisFixedDisplay(b.leisSociaisMode === 'fixed' ? fmt(b.leisSociais) : '');
-    setPlanoSaudeDisplay(fmt(b.planoSaude));
-    setPlanoOdontoDisplay(fmt(b.planoOdonto));
-    setSeguroVidaDisplay(fmt(b.seguroVida));
-    setTransporteDisplay(fmt(b.transporte));
-    setRefeicaoDisplay(fmt(b.refeicao));
-    setTreinamentosDisplay(fmt(b.treinamentosAnual));
-    setAsoDisplay(fmt(b.asoAnual));
-    setEpiDisplay(fmt(b.epiAnual));
-    setCelularDisplay(fmt(b.celularAnual));
-  }, [open, initialBreakdown, initialSalary, defaultMonthlyHours]);
+    const fmtCurrency = (v: number) => v > 0 ? currencyMask(String(Math.round(v * 100))) : '';
+    setSalaryDisplay(fmtCurrency(b.baseSalary));
+    setPlanoSaudeDisplay(fmtCurrency(b.planoSaude));
+    setPlanoOdontoDisplay(fmtCurrency(b.planoOdonto));
+    setSeguroVidaDisplay(fmtCurrency(b.seguroVida));
+    setTransporteDisplay(fmtCurrency(b.transporte));
+    setRefeicaoDisplay(fmtCurrency(b.refeicao));
+    setTreinamentosDisplay(fmtCurrency(b.treinamentosAnual));
+    setAsoDisplay(fmtCurrency(b.asoAnual));
+    setEpiDisplay(fmtCurrency(b.epiAnual));
+    setCelularDisplay(fmtCurrency(b.celularAnual));
+  }, [open, initialBreakdown, initialSalary, defaultMonthlyHours]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep monthlyHours in sync when defaultMonthlyHours resolves after initial render
   useEffect(() => {
@@ -198,23 +172,30 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     setBd(prev => ({ ...prev, [field]: parseCurrency(display) }));
   };
 
-  // Computed values
-  const periculosidadeVal = useMemo(() => {
-    if (bd.periculosidadeMode === 'percent') return bd.baseSalary * (bd.periculosidade / 100);
-    return bd.periculosidade;
-  }, [bd.baseSalary, bd.periculosidade, bd.periculosidadeMode]);
+  // Motor puro de custo do empregador (substitui o cálculo inline anterior)
+  const cost = useMemo(() => calculateEmployeeCost({
+    baseSalary: bd.baseSalary,
+    adicionalTipo: bd.adicionalTipo,
+    periculosidadePercent: bd.periculosidadePercent,
+    insalubridadeGrau: bd.insalubridadeGrau,
+    salarioMinimo: bd.salarioMinimo,
+    horaExtra: bd.horaExtra,
+    regime: bd.regime,
+    inssPatronalPercent: bd.inssPatronalPercent,
+    planoSaude: bd.planoSaude,
+    planoOdonto: bd.planoOdonto,
+    seguroVida: bd.seguroVida,
+    transporte: bd.transporte,
+    refeicao: bd.refeicao,
+    treinamentosAnual: bd.treinamentosAnual,
+    asoAnual: bd.asoAnual,
+    epiAnual: bd.epiAnual,
+    celularAnual: bd.celularAnual,
+    monthlyHours: bd.monthlyHours,
+  }), [bd]);
 
-  const subtotalComPeric = bd.baseSalary + periculosidadeVal;
-
-  const leisSociaisVal = useMemo(() => {
-    if (bd.leisSociaisMode === 'percent') return subtotalComPeric * (bd.leisSociais / 100);
-    return bd.leisSociais;
-  }, [subtotalComPeric, bd.leisSociais, bd.leisSociaisMode]);
-
-  const beneficios = bd.planoSaude + bd.planoOdonto + bd.seguroVida + bd.transporte + bd.refeicao;
-  const anuaisRateados = (bd.treinamentosAnual + bd.asoAnual + bd.epiAnual + bd.celularAnual) / 12;
-  const total = subtotalComPeric + leisSociaisVal + beneficios + anuaisRateados;
-  const hourlyRate = bd.monthlyHours > 0 ? total / bd.monthlyHours : 0;
+  const total = cost.totalMensal;
+  const hourlyRate = cost.horaHomem;
 
   const handleApply = () => {
     onApply(Math.round(total * 100) / 100, bd);
@@ -238,7 +219,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           <span className="text-sm font-medium">{t.monthlyCostBadge}</span>
         </div>
 
-        {/* Base + Encargos */}
+        {/* Base Salarial */}
         <div className="space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t.monthlyCostSectionSalary}</h4>
           <CurrencyField
@@ -246,39 +227,153 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
             value={salaryDisplay}
             onChange={v => updateCurrencyField('baseSalary', v, setSalaryDisplay)}
           />
-          <div className="grid grid-cols-2 gap-3">
-            <ModeToggleField
-              label={t.monthlyCostPericulosidadeLabel}
-              percentValue={bd.periculosidadeMode === 'percent' ? bd.periculosidade : 0}
-              fixedValue={pericFixedDisplay}
-              mode={bd.periculosidadeMode}
-              onPercentChange={v => setBd(prev => ({ ...prev, periculosidade: v }))}
-              onFixedChange={v => {
-                setPericFixedDisplay(v);
-                setBd(prev => ({ ...prev, periculosidade: parseCurrency(v) }));
-              }}
-              onModeChange={m => {
-                setBd(prev => ({ ...prev, periculosidadeMode: m, periculosidade: m === 'percent' ? 30 : 0 }));
-                if (m === 'fixed') setPericFixedDisplay('');
-              }}
-              computedValue={periculosidadeVal}
-            />
-            <ModeToggleField
-              label={t.monthlyCostLeisLabel}
-              percentValue={bd.leisSociaisMode === 'percent' ? bd.leisSociais : 0}
-              fixedValue={leisFixedDisplay}
-              mode={bd.leisSociaisMode}
-              onPercentChange={v => setBd(prev => ({ ...prev, leisSociais: v }))}
-              onFixedChange={v => {
-                setLeisFixedDisplay(v);
-                setBd(prev => ({ ...prev, leisSociais: parseCurrency(v) }));
-              }}
-              onModeChange={m => {
-                setBd(prev => ({ ...prev, leisSociaisMode: m, leisSociais: m === 'percent' ? 80 : 0 }));
-                if (m === 'fixed') setLeisFixedDisplay('');
-              }}
-              computedValue={leisSociaisVal}
-            />
+
+          {/* Regime Tributário */}
+          <div className="space-y-1">
+            <Label className="text-xs">
+              {/* TODO i18n: "Regime tributário da empresa" */}
+              Regime tributário da empresa
+            </Label>
+            <div className="flex rounded-md border overflow-hidden text-xs">
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-3 transition-colors ${bd.regime === 'simples' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                onClick={() => setBd(prev => ({ ...prev, regime: 'simples' }))}
+              >
+                {/* TODO i18n: "Simples Nacional" */}
+                Simples Nacional
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-3 transition-colors ${bd.regime === 'lucro_real' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                onClick={() => setBd(prev => ({ ...prev, regime: 'lucro_real' }))}
+              >
+                {/* TODO i18n: "Lucro Real / Presumido" */}
+                Lucro Real / Presumido
+              </button>
+            </div>
+          </div>
+
+          {/* INSS Patronal (só Lucro Real) */}
+          {bd.regime === 'lucro_real' && (
+            <div className="space-y-1">
+              <Label className="text-xs">
+                {/* TODO i18n: "INSS patronal %" */}
+                INSS patronal %
+              </Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={0}
+                  max={50}
+                  step={0.1}
+                  value={bd.inssPatronalPercent || ''}
+                  onChange={e => setBd(prev => ({ ...prev, inssPatronalPercent: Number(e.target.value) || 0 }))}
+                  placeholder="28.8"
+                  className="h-8 text-sm pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {/* TODO i18n: "20% INSS + RAT/FAP + terceiros (~28,8% típico). Consulte seu contador." */}
+                20% INSS + RAT/FAP + terceiros (~28,8% típico). Consulte seu contador.
+              </p>
+            </div>
+          )}
+
+          {/* Adicional (Periculosidade / Insalubridade — mutuamente exclusivos) */}
+          <div className="space-y-2">
+            <Label className="text-xs">
+              {/* TODO i18n: "Adicional" */}
+              Adicional
+            </Label>
+            <div className="flex rounded-md border overflow-hidden text-[10px]">
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-2 transition-colors ${bd.adicionalTipo === 'nenhum' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                onClick={() => setBd(prev => ({ ...prev, adicionalTipo: 'nenhum' }))}
+              >
+                {/* TODO i18n: "Nenhum" */}
+                Nenhum
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-2 transition-colors ${bd.adicionalTipo === 'periculosidade' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                onClick={() => setBd(prev => ({ ...prev, adicionalTipo: 'periculosidade' }))}
+              >
+                {/* TODO i18n: "Periculosidade" */}
+                Periculosidade
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-2 transition-colors ${bd.adicionalTipo === 'insalubridade' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                onClick={() => setBd(prev => ({ ...prev, adicionalTipo: 'insalubridade' }))}
+              >
+                {/* TODO i18n: "Insalubridade" */}
+                Insalubridade
+              </button>
+            </div>
+
+            {/* Periculosidade: campo de % */}
+            {bd.adicionalTipo === 'periculosidade' && (
+              <div className="space-y-1">
+                <Label className="text-xs">
+                  {/* TODO i18n: "% do salário base (padrão: 30%)" */}
+                  % do salário base (padrão: 30%)
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={bd.periculosidadePercent || ''}
+                    onChange={e => setBd(prev => ({ ...prev, periculosidadePercent: Number(e.target.value) || 0 }))}
+                    placeholder="30"
+                    className="h-8 text-sm pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                </div>
+                {cost.adicional > 0 && (
+                  <p className="text-[10px] text-muted-foreground">= {fmt(cost.adicional)}</p>
+                )}
+              </div>
+            )}
+
+            {/* Insalubridade: seletor de grau */}
+            {bd.adicionalTipo === 'insalubridade' && (
+              <div className="space-y-1">
+                <Label className="text-xs">
+                  {/* TODO i18n: "Grau de insalubridade (% do salário mínimo)" */}
+                  Grau de insalubridade (% do salário mínimo)
+                </Label>
+                <Select
+                  value={String(bd.insalubridadeGrau)}
+                  onValueChange={v => setBd(prev => ({ ...prev, insalubridadeGrau: Number(v) as 10 | 20 | 40 }))}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">
+                      {/* TODO i18n: "Mínimo — 10%" */}
+                      Mínimo — 10%
+                    </SelectItem>
+                    <SelectItem value="20">
+                      {/* TODO i18n: "Médio — 20%" */}
+                      Médio — 20%
+                    </SelectItem>
+                    <SelectItem value="40">
+                      {/* TODO i18n: "Máximo — 40%" */}
+                      Máximo — 40%
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {cost.adicional > 0 && (
+                  <p className="text-[10px] text-muted-foreground">= {fmt(cost.adicional)}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -327,44 +422,77 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           </div>
         </div>
 
-        {/* Resumo */}
+        {/* Disclaimer */}
+        <p className="text-[10px] text-muted-foreground border-l-2 border-amber-400 pl-2">
+          {/* TODO i18n key: t.monthlyCostDisclaimer — "Valores estimados com base na legislação trabalhista. Não substitui a orientação do seu contador, consulte sempre um profissional antes de pagamentos e decisões." */}
+          Valores estimados com base na legislação trabalhista. Não substitui a orientação do seu contador, consulte sempre um profissional antes de pagamentos e decisões.
+        </p>
+
+        {/* Resumo itemizado */}
         <div className="rounded-lg border p-3 bg-muted/30 space-y-1.5">
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">{t.monthlyCostSummaryBase}</span>
             <span>{fmt(bd.baseSalary)}</span>
           </div>
-          {periculosidadeVal > 0 && (
+          {cost.adicional > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">
-                {t.monthlyCostSummaryPeric.replace('{pct}', bd.periculosidadeMode === 'percent' ? `(${bd.periculosidade}%)` : '')}
+                {/* TODO i18n: "+ Adicional ({tipo})" */}
+                + Adicional ({bd.adicionalTipo === 'periculosidade' ? `${bd.periculosidadePercent}%` : `grau ${bd.insalubridadeGrau}%`})
               </span>
-              <span>{fmt(periculosidadeVal)}</span>
+              <span>{fmt(cost.adicional)}</span>
             </div>
           )}
-          {leisSociaisVal > 0 && (
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">
-                {t.monthlyCostSummaryLeis.replace('{pct}', bd.leisSociaisMode === 'percent' ? `(${bd.leisSociais}%)` : '')}
-              </span>
-              <span>{fmt(leisSociaisVal)}</span>
-            </div>
-          )}
-          {beneficios > 0 && (
+
+          {/* Guardar por mês */}
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">
+              {/* TODO i18n: "+ Guardar/mês (férias + 13º + multa)" */}
+              + Guardar/mês (férias + 13º + multa)
+            </span>
+            <span>{fmt(cost.guardarPorMes.ferias + cost.guardarPorMes.decimoTerceiro + cost.guardarPorMes.multaRescisoria)}</span>
+          </div>
+
+          {/* Encargos do mês */}
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">
+              {/* TODO i18n: "+ Encargos/mês (FGTS + INSS pat.)" */}
+              + Encargos/mês (FGTS{bd.regime === 'lucro_real' && cost.encargosDoMes.inssPatronal > 0 ? ' + INSS pat.' : ''})
+            </span>
+            <span>{fmt(cost.encargosDoMes.fgts + cost.encargosDoMes.fgtsSobre13Fer + cost.encargosDoMes.inssPatronal)}</span>
+          </div>
+
+          {cost.beneficios > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">{t.monthlyCostSummaryBenefits}</span>
-              <span>{fmt(beneficios)}</span>
+              <span>{fmt(cost.beneficios)}</span>
             </div>
           )}
-          {anuaisRateados > 0 && (
+          {cost.anuaisRateados > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">{t.monthlyCostSummaryAnnual}</span>
-              <span>{fmt(anuaisRateados)}</span>
+              <span>{fmt(cost.anuaisRateados)}</span>
             </div>
           )}
+
           <div className="flex justify-between items-center pt-2 border-t">
             <span className="text-sm font-semibold">{t.monthlyCostSummaryTotal}</span>
             <span className="text-sm font-bold text-primary">{fmt(total)}</span>
           </div>
+
+          {/* Fator multiplicador */}
+          {bd.baseSalary > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                {/* TODO i18n: "Fator (custo / salário)" */}
+                Fator (custo / salário)
+              </span>
+              <span className="text-xs font-semibold">
+                ×{cost.custoPercentual.toLocaleString(locale === 'pt-br' ? 'pt-BR' : locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
+
           {bd.monthlyHours > 0 && total > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-sm font-semibold">{t.monthlyCostSummaryHH}</span>
