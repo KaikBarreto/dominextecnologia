@@ -30,6 +30,12 @@ export interface Employee {
   payment_day: number | null;
   payment_day_2: number | null;
   payment_weekday: number | null;
+  employment_regime: 'informal' | 'clt';
+  dependents_count: number;
+  vt_enabled: boolean;
+  vt_monthly_value: number;
+  cbo: string | null;
+  matricula: string | null;
   created_at: string;
   updated_at: string;
 }
