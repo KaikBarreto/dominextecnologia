@@ -28,10 +28,16 @@ import {
   generateEmployeeThermalReceipt,
   type ThermalPaymentBreakdown, type ThermalValeData,
 } from '@/utils/employeeReceiptThermalGenerator';
+import {
+  buildHoleriteData, generateHoleriteHtml,
+  type HoleriteIdentity, type HoleriteSnapshot,
+} from '@/utils/holeriteHtmlGenerator';
+import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface EmployeeExtractProps {
   open: boolean;
@@ -50,11 +56,36 @@ function MovementIcon({ type }: { type: string }) {
   return <Icon className="h-4 w-4 text-white" />;
 }
 
-function openHTMLInNewTab(html: string) {
+function openHTMLInNewTab(html: string, onBlocked?: () => void) {
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   const win = window.open(url, '_blank');
-  if (win) win.onload = () => URL.revokeObjectURL(url);
+  if (win) {
+    win.onload = () => URL.revokeObjectURL(url);
+  } else {
+    URL.revokeObjectURL(url);
+    onBlocked?.();
+  }
+}
+
+/** Endereço formatado da empresa (logradouro + ", " + número), como o receiptGenerator faz. */
+function formatCompanyAddress(s: CompanySettings | null | undefined): string | undefined {
+  if (!s?.address) return undefined;
+  let a = s.address;
+  if (s.address_number) a += `, ${s.address_number}`;
+  return a;
+}
+
+/** Identidade do holerite a partir das configurações da empresa + funcionário. */
+function buildHoleriteIdentity(s: CompanySettings | null | undefined, employeeName: string): HoleriteIdentity {
+  return {
+    company: {
+      name: s?.name ?? '',
+      cnpj: s?.show_cnpj_in_documents ? (s.document ?? undefined) : undefined,
+      address: s?.show_address_in_documents ? formatCompanyAddress(s) : undefined,
+    },
+    employeeName,
+  };
 }
 
 // Alvo do recibo (movimento + tipo). Quando preenchido abre o modal de formato.
@@ -70,6 +101,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   const { enabled: wlEnabled } = useWhiteLabel();
   const { accounts } = useFinancialAccounts();
   const { profile } = useAuth();
+  const { toast } = useToast();
   const [receiptTarget, setReceiptTarget] = useState<ReceiptTarget | null>(null);
 
   const accountName = (accountId?: string | null) => {
@@ -121,6 +153,29 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
     const employee = { name: employeeName, position: undefined as string | undefined, cpf: undefined as string | undefined };
 
     if (kind === 'pagamento') {
+      // CLT: reabre o holerite clássico a partir do snapshot congelado (mesma
+      // fonte da geração no pagamento). O snapshot vive no payment_details do
+      // movimento `ajuste`, resolvido por buildPaymentDetails.
+      const details = buildPaymentDetails(movement) as {
+        holerite?: HoleriteSnapshot & { mode?: string };
+        holeriteIdentity?: HoleriteIdentity;
+      };
+      if (details.holerite?.mode === 'clt') {
+        // Usa a identidade congelada no snapshot (cargo/CBO/matrícula do momento
+        // do pagamento). Fallback para reconstrução só com nome em pagamentos
+        // CLT antigos que não tenham o campo gravado.
+        const identity: HoleriteIdentity = details.holeriteIdentity
+          ?? buildHoleriteIdentity(companySettings, employeeName);
+        openHTMLInNewTab(
+          generateHoleriteHtml(buildHoleriteData(details.holerite, identity)),
+          () => {
+            // TODO i18n:
+            toast({ description: 'Libere os pop-ups para ver o holerite.' });
+          },
+        );
+        return;
+      }
+
       const b = buildBreakdown(movement);
       const method = accountName(movement.payment_method) || t.extract.fallbacks.bankAccount;
       if (outputFormat === 'a4') {

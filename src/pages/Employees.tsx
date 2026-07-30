@@ -43,11 +43,39 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { generateReceiptHTML } from '@/utils/receiptGenerator';
+import { buildHoleriteData, generateHoleriteHtml, type HoleriteIdentity } from '@/utils/holeriteHtmlGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import type { CompanySettings } from '@/hooks/useCompanySettings';
+
+/** Endereço formatado da empresa (logradouro + ", " + número), como o receiptGenerator faz. */
+function formatCompanyAddress(s: CompanySettings | null | undefined): string | undefined {
+  if (!s?.address) return undefined;
+  let a = s.address;
+  if (s.address_number) a += `, ${s.address_number}`;
+  return a;
+}
+
+/** Identidade do holerite a partir das configurações da empresa + funcionário. */
+function buildHoleriteIdentity(
+  s: CompanySettings | null | undefined,
+  emp: { name: string; position?: string | null; matricula?: string | null; cbo?: string | null },
+): HoleriteIdentity {
+  return {
+    company: {
+      name: s?.name ?? '',
+      cnpj: s?.show_cnpj_in_documents ? (s.document ?? undefined) : undefined,
+      address: s?.show_address_in_documents ? formatCompanyAddress(s) : undefined,
+    },
+    employeeName: emp.name,
+    position: emp.position ?? undefined,
+    codigo: emp.matricula ?? undefined,
+    cbo: emp.cbo ?? undefined,
+  };
+}
 
 export default function Employees() {
   // Deep-links registrados como a MESMA tela Employees (ver App.tsx), todos com
@@ -529,8 +557,16 @@ export default function Employees() {
     const emp = paymentEmployee; // capture reference to avoid stale closure
     const sal = emp.salary;
     const subtotal = sal + activeBalance.totalBonus - activeBalance.totalFaltas;
-    const toPay = subtotal - payload.valeDiscount;
+    // `payload.amount` é o valor efetivamente pago (source of truth): no informal
+    // == toPay de antes (subtotal - valeDiscount); no CLT == líquido do snapshot.
+    const toPay = payload.amount;
     const remainingVales = activeBalance.totalVales - payload.valeDiscount;
+
+    // Identidade congelada no momento do pagamento (empresa + funcionário).
+    // Gravada junto ao payment_details para que o holerite CLT seja 100%
+    // reproduzível ao ser reaberto pelo extrato, mesmo que cargo/CBO/matrícula
+    // mudem depois.
+    const identity = payload.mode === 'clt' ? buildHoleriteIdentity(companySettings, emp) : undefined;
 
     const paymentDetails = {
       salary: sal,
@@ -541,6 +577,13 @@ export default function Employees() {
       remainingVales,
       amountPaid: toPay,
       accountId: payload.accountId,
+      // Snapshot congelado do modo de pagamento — vive no MESMO payment_details
+      // que hoje já vai pro movimento `ajuste` (é dali que o Extract lê).
+      mode: payload.mode,
+      holerite: payload.holeriteSnapshot ?? { mode: 'informal' },
+      // Identidade congelada: empresa + funcionário no momento do pagamento.
+      // Permite reproduzir o holerite CLT fielmente via extrato.
+      ...(identity ? { holeriteIdentity: identity } : {}),
     };
 
     // 1. Register payment movement
@@ -637,7 +680,26 @@ export default function Employees() {
         queryClient.invalidateQueries({ queryKey: ['all-employee-movements'] });
         setPaymentEmployee(null);
 
-        // Show receipt confirmation dialog
+        // CLT: abre o holerite (documento legal) diretamente a partir do snapshot.
+        if (payload.mode === 'clt' && payload.holeriteSnapshot) {
+          const html = generateHoleriteHtml(buildHoleriteData(payload.holeriteSnapshot, identity ?? buildHoleriteIdentity(companySettings, emp)));
+          const blob = new Blob([html], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const win = window.open(url, '_blank');
+          if (win) {
+            win.onload = () => URL.revokeObjectURL(url);
+          } else {
+            URL.revokeObjectURL(url);
+            // TODO i18n:
+            toast({
+              title: 'Pagamento registrado.',
+              description: 'Libere os pop-ups para ver o holerite, ou reabra pelo extrato do funcionário.',
+            });
+          }
+          return;
+        }
+
+        // Informal: mantém o fluxo atual do recibo simples (dialog de confirmação).
         setReceiptConfirmData({
           employee: emp,
           movement: {
@@ -947,11 +1009,16 @@ export default function Employees() {
 
       {paymentEmployee && (
         <EmployeePaymentModal
+          key={paymentEmployee.id}
           open={!!paymentEmployee}
           onOpenChange={o => { if (!o) setPaymentEmployee(null); }}
           employeeName={paymentEmployee.name}
           salary={paymentEmployee.salary}
           balance={activeBalance}
+          employeeRegime={paymentEmployee.employment_regime}
+          dependentsCount={paymentEmployee.dependents_count}
+          vtEnabled={paymentEmployee.vt_enabled}
+          vtMonthlyValue={paymentEmployee.vt_monthly_value}
           onSubmit={handlePayment}
           isPending={addMovement.isPending}
         />
