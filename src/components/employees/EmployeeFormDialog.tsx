@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,6 +75,13 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [paymentDay, setPaymentDay] = useState<number>(5);
   const [paymentDay2, setPaymentDay2] = useState<number>(20);
   const [paymentWeekday, setPaymentWeekday] = useState<number>(5);
+  // Campos CLT
+  const [employmentRegime, setEmploymentRegime] = useState<'informal' | 'clt'>('informal');
+  const [dependentsCount, setDependentsCount] = useState<string>('0');
+  const [vtEnabled, setVtEnabled] = useState<boolean>(false);
+  const [vtMonthlyValue, setVtMonthlyValue] = useState<string>('');
+  const [cbo, setCbo] = useState<string>('');
+  const [matricula, setMatricula] = useState<string>('');
   const TAB_DADOS = 'dados';
   const TAB_REMUNERACAO = 'remuneracao';
   const TAB_DISC = 'disc';
@@ -128,6 +136,12 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setPaymentDay(employee?.payment_day ?? 5);
         setPaymentDay2(employee?.payment_day_2 ?? 20);
         setPaymentWeekday(employee?.payment_weekday ?? 5);
+        setEmploymentRegime(employee?.employment_regime ?? 'informal');
+        setDependentsCount(String(employee?.dependents_count ?? 0));
+        setVtEnabled(employee?.vt_enabled ?? false);
+        setVtMonthlyValue(employee?.vt_monthly_value ? currencyMask(String(Math.round(employee.vt_monthly_value * 100))) : '');
+        setCbo(employee?.cbo ?? '');
+        setMatricula(employee?.matricula ?? '');
       }
       setPhotoUrl(employee?.photo_url || '');
       setPontoEnabled(employee?.ponto_enabled ?? false);
@@ -193,6 +207,12 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
         payment_day_2: paymentFrequency === 'biweekly' ? paymentDay2 : null,
         payment_weekday: paymentFrequency === 'weekly' ? paymentWeekday : null,
+        employment_regime: employmentRegime,
+        dependents_count: parseInt(dependentsCount || '0', 10),
+        vt_enabled: vtEnabled,
+        vt_monthly_value: parseCurrency(vtMonthlyValue),
+        cbo: cbo || null,
+        matricula: matricula || null,
       });
       draft.clearDraft();
       setCreatedEmployeeId(created.id);
@@ -231,6 +251,12 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
       payment_day_2: paymentFrequency === 'biweekly' ? paymentDay2 : null,
       payment_weekday: paymentFrequency === 'weekly' ? paymentWeekday : null,
+      employment_regime: employmentRegime,
+      dependents_count: parseInt(dependentsCount || '0', 10),
+      vt_enabled: vtEnabled,
+      vt_monthly_value: parseCurrency(vtMonthlyValue),
+      cbo: cbo || null,
+      matricula: matricula || null,
       _createAccess: createAccess,
       _password: finalPassword,
     } as any);
@@ -366,6 +392,91 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">{t.fields.monthlyCostHint}</p>
+          </div>
+        </div>
+
+        {/* Campos CLT */}
+        <div className="rounded-lg border p-3 space-y-4">
+          {/* TODO i18n: "Contrato de trabalho" */}
+          <Label className="text-sm font-medium">Contrato de trabalho</Label>
+
+          {/* Regime: Informal / CLT */}
+          <div className="flex flex-col gap-1.5">
+            {/* TODO i18n: "Regime" */}
+            <Label className="text-xs text-muted-foreground">Regime</Label>
+            <LabeledSwitch
+              value={employmentRegime}
+              onChange={(v) => setEmploymentRegime(v as 'informal' | 'clt')}
+              off={{ value: 'informal', label: 'Informal' }}
+              on={{ value: 'clt', label: 'CLT' }}
+              // TODO i18n: aria-label
+              aria-label="Regime de contratação"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {/* CBO */}
+            <div className="space-y-1.5">
+              {/* TODO i18n: "CBO" */}
+              <Label className="text-xs text-muted-foreground">CBO</Label>
+              <Input
+                value={cbo}
+                onChange={e => setCbo(e.target.value)}
+                // TODO i18n: placeholder
+                placeholder="Ex: 7156-10"
+              />
+            </div>
+
+            {/* Matrícula */}
+            <div className="space-y-1.5">
+              {/* TODO i18n: "Matrícula" */}
+              <Label className="text-xs text-muted-foreground">Matrícula</Label>
+              <Input
+                value={matricula}
+                onChange={e => setMatricula(e.target.value)}
+                // TODO i18n: placeholder
+                placeholder="Ex: 00123"
+              />
+            </div>
+
+            {/* Dependentes */}
+            <div className="space-y-1.5">
+              {/* TODO i18n: "Dependentes (IRRF)" */}
+              <Label className="text-xs text-muted-foreground">Dependentes (IRRF)</Label>
+              <NumericInput
+                value={dependentsCount}
+                onValueChange={setDependentsCount}
+                // TODO i18n: placeholder
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          {/* Vale-transporte */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              {/* TODO i18n: "Vale-transporte" */}
+              <Label className="text-xs text-muted-foreground">Vale-transporte</Label>
+              <LabeledSwitch
+                value={vtEnabled ? 'on' : 'off'}
+                onChange={(v) => setVtEnabled(v === 'on')}
+                off={{ value: 'off', label: 'Não' }}
+                on={{ value: 'on', label: 'Sim' }}
+                // TODO i18n: aria-label
+                aria-label="Habilitar vale-transporte"
+              />
+            </div>
+            {vtEnabled && (
+              <div className="space-y-1.5">
+                {/* TODO i18n: "Valor mensal do VT" */}
+                <Label className="text-xs text-muted-foreground">Valor mensal do VT</Label>
+                <Input
+                  value={vtMonthlyValue}
+                  onChange={e => setVtMonthlyValue(currencyMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                />
+              </div>
+            )}
           </div>
         </div>
 
