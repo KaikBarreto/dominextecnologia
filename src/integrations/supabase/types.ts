@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -611,6 +636,7 @@ export type Database = {
           subscription_value: number | null
           trial_days: number | null
           updated_at: string | null
+          whatsapp_tier: number
           zip_code: string | null
         }
         Insert: {
@@ -659,6 +685,7 @@ export type Database = {
           subscription_value?: number | null
           trial_days?: number | null
           updated_at?: string | null
+          whatsapp_tier?: number
           zip_code?: string | null
         }
         Update: {
@@ -707,6 +734,7 @@ export type Database = {
           subscription_value?: number | null
           trial_days?: number | null
           updated_at?: string | null
+          whatsapp_tier?: number
           zip_code?: string | null
         }
         Relationships: [
@@ -744,6 +772,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "salespeople_basic"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_whatsapp_tier_fkey"
+            columns: ["whatsapp_tier"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_tiers"
+            referencedColumns: ["tier"]
           },
         ]
       }
@@ -1095,6 +1130,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_whatsapp_settings: {
+        Row: {
+          company_id: string
+          connected_at: string | null
+          connected_number: string | null
+          connection_status: string
+          created_at: string
+          enabled: boolean
+          id: string
+          instance_name: string | null
+          trigger_a_caminho: boolean
+          trigger_concluida: boolean
+          trigger_em_andamento: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          connected_at?: string | null
+          connected_number?: string | null
+          connection_status?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          instance_name?: string | null
+          trigger_a_caminho?: boolean
+          trigger_concluida?: boolean
+          trigger_em_andamento?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          connected_at?: string | null
+          connected_number?: string | null
+          connection_status?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          instance_name?: string | null
+          trigger_a_caminho?: boolean
+          trigger_concluida?: boolean
+          trigger_em_andamento?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_whatsapp_settings_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: true
             referencedRelation: "companies"
@@ -2829,13 +2917,17 @@ export type Database = {
       employees: {
         Row: {
           address: string | null
+          cbo: string | null
           company_id: string
           cpf: string | null
           created_at: string
+          dependents_count: number
           email: string | null
+          employment_regime: string
           hire_date: string | null
           id: string
           is_active: boolean
+          matricula: string | null
           monthly_cost: number | null
           monthly_cost_breakdown: Json | null
           name: string
@@ -2854,16 +2946,22 @@ export type Database = {
           salary: number | null
           updated_at: string
           user_id: string | null
+          vt_enabled: boolean
+          vt_monthly_value: number
         }
         Insert: {
           address?: string | null
+          cbo?: string | null
           company_id: string
           cpf?: string | null
           created_at?: string
+          dependents_count?: number
           email?: string | null
+          employment_regime?: string
           hire_date?: string | null
           id?: string
           is_active?: boolean
+          matricula?: string | null
           monthly_cost?: number | null
           monthly_cost_breakdown?: Json | null
           name: string
@@ -2882,16 +2980,22 @@ export type Database = {
           salary?: number | null
           updated_at?: string
           user_id?: string | null
+          vt_enabled?: boolean
+          vt_monthly_value?: number
         }
         Update: {
           address?: string | null
+          cbo?: string | null
           company_id?: string
           cpf?: string | null
           created_at?: string
+          dependents_count?: number
           email?: string | null
+          employment_regime?: string
           hire_date?: string | null
           id?: string
           is_active?: boolean
+          matricula?: string | null
           monthly_cost?: number | null
           monthly_cost_breakdown?: Json | null
           name?: string
@@ -2910,6 +3014,8 @@ export type Database = {
           salary?: number | null
           updated_at?: string
           user_id?: string | null
+          vt_enabled?: boolean
+          vt_monthly_value?: number
         }
         Relationships: [
           {
@@ -8263,6 +8369,157 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_events: {
+        Row: {
+          company_id: string
+          error: string | null
+          id: string
+          os_id: string | null
+          phone: string | null
+          sent_at: string
+          status: string
+          template_id: string | null
+          trigger: string | null
+        }
+        Insert: {
+          company_id: string
+          error?: string | null
+          id?: string
+          os_id?: string | null
+          phone?: string | null
+          sent_at?: string
+          status: string
+          template_id?: string | null
+          trigger?: string | null
+        }
+        Update: {
+          company_id?: string
+          error?: string | null
+          id?: string
+          os_id?: string | null
+          phone?: string | null
+          sent_at?: string
+          status?: string
+          template_id?: string | null
+          trigger?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_events_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "whatsapp_events_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_events_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_opt_outs: {
+        Row: {
+          company_id: string
+          id: string
+          opted_out_at: string
+          phone: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          opted_out_at?: string
+          phone: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          opted_out_at?: string
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_opt_outs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          active: boolean
+          body: string
+          context: string
+          created_at: string
+          id: string
+          requires_eta: boolean
+          trigger: string
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          context?: string
+          created_at?: string
+          id?: string
+          requires_eta?: boolean
+          trigger: string
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          context?: string
+          created_at?: string
+          id?: string
+          requires_eta?: boolean
+          trigger?: string
+        }
+        Relationships: []
+      }
+      whatsapp_tiers: {
+        Row: {
+          created_at: string
+          monthly_limit: number | null
+          name: string
+          price: number
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          monthly_limit?: number | null
+          name: string
+          price: number
+          tier: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          monthly_limit?: number | null
+          name?: string
+          price?: number
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       contract_activity_execution: {
@@ -9007,6 +9264,7 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: undefined
       }
+      whatsapp_can_send: { Args: { p_company_id: string }; Returns: boolean }
     }
     Enums: {
       admin_task_priority: "baixa" | "media" | "alta" | "urgente"
@@ -9171,6 +9429,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],
