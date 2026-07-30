@@ -324,7 +324,20 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
           <Button
             size="sm"
             className="w-full h-7 gap-1.5 text-xs bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 text-white"
-            onClick={() => setReceiptTarget({ movement: m, kind: isVale ? 'vale' : 'pagamento' })}
+            onClick={() => {
+              const target: ReceiptTarget = { movement: m, kind: isVale ? 'vale' : 'pagamento' };
+              // Pagamento CLT: gera o holerite diretamente (o formato A4/Térmico é
+              // irrelevante — generateReceipt ignora outputFormat no ramo CLT).
+              // Pagamento informal ou vale: abre o diálogo de escolha de formato.
+              if (isPayment) {
+                const details = buildPaymentDetails(m) as { holerite?: { mode?: string } };
+                if (details.holerite?.mode === 'clt') {
+                  generateReceipt(target, 'a4');
+                  return;
+                }
+              }
+              setReceiptTarget(target);
+            }}
           >
             <FileText className="h-3.5 w-3.5" />
             {t.extract.movement.receiptButton}

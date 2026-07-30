@@ -452,10 +452,12 @@ export function EmployeePaymentModal({
               </>
             )}
 
-            {/* Disclaimer */}
-            <p className="text-[11px] leading-snug text-muted-foreground">
-              {t.disclaimer}
-            </p>
+            {/* Disclaimer — só no modo CLT (INSS/IRRF não se aplicam ao pagamento informal) */}
+            {isClt && (
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                {t.disclaimer}
+              </p>
+            )}
           </aside>
         </div>
       </div>
