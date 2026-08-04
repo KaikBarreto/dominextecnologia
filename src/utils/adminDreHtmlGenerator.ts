@@ -1,3 +1,5 @@
+import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
+
 interface DRELine { name: string; value: number; }
 interface DREData {
   grossRevenue: number;
@@ -37,6 +39,7 @@ export function generateAdminDreHtml(dre: DREData, periodLabel: string): string 
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;padding:20px;color:#1a1a1a;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .page{width:210mm;background:white;margin:0 auto;padding:15mm;box-shadow:0 4px 6px rgba(0,0,0,.1)}
   @media print{body{background:white;padding:0}.page{width:100%;box-shadow:none;padding:0}.no-print{display:none!important}}
+  .print-btn{display:none}
   .title-section{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #e5e5e5}
   .title{font-size:20px;font-weight:700;margin-bottom:6px}
   .subtitle{font-size:12px;color:#888}
@@ -57,6 +60,7 @@ export function generateAdminDreHtml(dre: DREData, periodLabel: string): string 
   .result-label{display:flex;flex-direction:column}
   .print-btn{position:fixed;bottom:20px;right:20px;background:linear-gradient(to right,#1a1a1a,#374151);color:white;border:none;padding:12px 24px;border-radius:8px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 </style></head><body>
+<div id="pdf-root">
 <div class="page">
   <div class="title-section">
     <h1 class="title">DRE - Demonstrativo de Resultados</h1>
@@ -94,6 +98,7 @@ export function generateAdminDreHtml(dre: DREData, periodLabel: string): string 
     </div>
   </div>
 </div>
-<button class="print-btn no-print" onclick="window.print()">Imprimir / Salvar PDF</button>
+</div>
+${pdfDownloadAssets({ filename: 'dre-admin', label: 'Imprimir / Salvar PDF', targetSelector: '#pdf-root' })}
 </body></html>`;
 }

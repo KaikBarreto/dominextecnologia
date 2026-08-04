@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.18.1',
+    date: '5 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Salvar em PDF agora baixa o arquivo na hora',
+        description: 'No extrato do funcionário, nos recibos de pagamento e vale, e nos relatórios financeiros, o botão de salvar em PDF passou a baixar o arquivo direto com um clique, sem abrir a caixa de impressão do navegador. Em documentos longos, o PDF continua bem dividido entre as páginas, sem cortar linhas no meio.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.18.0',
     date: '30 de julho de 2026',
     type: 'minor',

@@ -4,6 +4,7 @@ import { formatMovementType } from '@/utils/employeeCalculations';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
 
 export interface PaymentBreakdown {
   salary: number;
@@ -264,13 +265,11 @@ ${movement.description ? `<div class="row">
   .sig-line { border-top:1px solid #333; margin-bottom:6px; }
   .sig-name { font-size:12px; font-weight:600; }
   .sig-role { font-size:11px; color:#888; }
-  .btn-print { position:fixed; bottom:24px; right:24px; background:linear-gradient(135deg, #1e293b, #0f172a); color:white; border:none; padding:12px 24px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:600; z-index:100; box-shadow:0 4px 14px rgba(0,0,0,0.3); }
-  .btn-print:hover { background:linear-gradient(135deg, #334155, #1e293b); }
-  @media print { .btn-print { display:none; } }
+  @media print { .no-print { display:none; } }
 </style>
 </head>
 <body>
-<button class="btn-print" onclick="window.print()">${t.savePdf}</button>
+<div id="pdf-root">
 
 ${headerHTML}
 
@@ -309,6 +308,8 @@ ${extraAfterTotal}
 ${generatedByName ? `<p style="text-align:center;color:#999;font-size:11px;margin-top:24px">${t.generatedBy}: ${escapeHtml(generatedByName)}</p>` : ''}
 
 ${dominexFooter}
+</div>
+${pdfDownloadAssets({ filename: 'recibo-' + employeeName, label: t.savePdf, targetSelector: '#pdf-root' })}
 </body></html>`;
 }
 
@@ -366,13 +367,11 @@ export function generateExtractHTMLWithHeader(
   .badge-falta { background:#f5f5f5; color:#666; }
   .badge-pagamento { background:#eff6ff; color:#2563eb; }
   .badge-ajuste { background:#f5f5f5; color:#666; }
-  .btn-print { position:fixed; bottom:24px; right:24px; background:linear-gradient(135deg, #1e293b, #0f172a); color:white; border:none; padding:12px 24px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.3); }
-  .btn-print:hover { background:linear-gradient(135deg, #334155, #1e293b); }
-  @media print { .btn-print { display:none; } }
+  @media print { .no-print { display:none; } }
 </style>
 </head>
 <body>
-<button class="btn-print" onclick="window.print()">${t.savePdf}</button>
+<div id="pdf-root">
 
 ${headerHTML}
 
@@ -404,5 +403,7 @@ ${sorted.map(m => {
 </table>
 
 ${dominexFooter}
+</div>
+${pdfDownloadAssets({ filename: 'extrato-' + employeeName, label: t.savePdf, targetSelector: '#pdf-root' })}
 </body></html>`;
 }

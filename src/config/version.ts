@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.18.0";
+export const APP_VERSION = "1.18.1";
 
-export const VERSION_NOTES = "Agora dá para pagar funcionário no modo CLT: o sistema calcula sozinho os descontos do mês (INSS, Imposto de Renda e vale-transporte), mostra o valor líquido a pagar e gera o holerite (Recibo de Pagamento de Salário) no modelo clássico, pronto para imprimir ou salvar em PDF e entregar à contabilidade. O cálculo do custo do funcionário também ficou mais completo, separando provisões e encargos e considerando o regime tributário da empresa. Os valores são estimativas conforme a legislação e não substituem a orientação do contador.";
+export const VERSION_NOTES = "O botão de salvar em PDF ficou mais direto: no extrato do funcionário, nos recibos de pagamento e nos relatórios financeiros, agora o arquivo baixa na hora com um clique, sem precisar passar pela caixa de impressão do navegador.";

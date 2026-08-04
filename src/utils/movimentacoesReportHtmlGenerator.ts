@@ -4,6 +4,7 @@ import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
 
 /**
  * Relatório HTML printável das Movimentações financeiras.
@@ -181,6 +182,7 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
     }
     .page { width: 210mm; min-height: 297mm; background: white; margin: 0 auto; padding: 15mm; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     @media print { body { background: white; padding: 0; } .page { width: 100%; min-height: auto; box-shadow: none; padding: 0; } .no-print { display: none !important; } }
+    .print-btn { display: none; }
     .header { display: flex; gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e5e5e5; }
     .header-logo { width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .header-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -221,6 +223,7 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
   </style>
 </head>
 <body>
+<div id="pdf-root">
   <div class="page">
     ${buildHeader(company)}
 
@@ -265,15 +268,8 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
 
     ${buildDominexFooter(whiteLabel)}
   </div>
-
-  <button class="print-btn no-print" onclick="window.print()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <polyline points="6 9 6 2 18 2 18 9"></polyline>
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-      <rect x="6" y="14" width="12" height="8"></rect>
-    </svg>
-    ${t.printSavePdf}
-  </button>
+</div>
+${pdfDownloadAssets({ filename: 'movimentacoes', label: t.printSavePdf, targetSelector: '#pdf-root' })}
 </body>
 </html>`;
 
