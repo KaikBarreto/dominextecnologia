@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Package,
@@ -43,9 +43,11 @@ import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
 import { PortalContactButton } from '@/components/portal/PortalContactButton';
 import { idealForeground } from '@/lib/colorContrast';
 import {
-  submitPublicOsRating,
-  isAlreadyRatedError,
+  type PublicOsRating,
+  type PublicNpsConfig,
+  type PublicNpsCriterion,
 } from '@/hooks/useServiceRatings';
+import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -79,7 +81,11 @@ interface Equipment {
   photo_url: string | null;
   identifier: string | null;
   custom_fields?: Record<string, unknown> | null;
-  // Campos entregues pelo dev-database (contrato de dados B)
+  // Campos ampliados pelo dev-database (contrato de dados B)
+  capacity?: string | null;
+  install_date?: string | null;
+  warranty_until?: string | null;
+  category?: { name: string; color: string } | null;
   attachments_public?: boolean;
   attachments?: EquipmentAttachment[];
 }
@@ -171,144 +177,24 @@ const OS_STATUS_STYLE: Record<string, { badgeClass: string; color: string }> = {
 
 const TERMINAL_STATUSES = ['concluida', 'cancelada'];
 
+// Chaves que já são mostradas como campos fixos — não devem ser duplicadas
+// via custom_fields, mesmo que existam na config.
 const BUILT_IN_FIELD_KEYS: Record<string, keyof Equipment> = {
   brand: 'brand',
   model: 'model',
   serial_number: 'serial_number',
   location: 'location',
+  capacity: 'capacity',
+  install_date: 'install_date',
+  warranty_until: 'warranty_until',
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Componente de avaliacao de OS (Task 1.6)
-// Reutiliza submitPublicOsRating (RPC anon) e StarRow inline.
-// ─────────────────────────────────────────────────────────────────────────────
+// Conjunto de chaves de campo fixo para lookup O(1) na exclusão de duplicação
+const BUILT_IN_KEYS_SET = new Set(Object.keys(BUILT_IN_FIELD_KEYS));
 
-function StarRow({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  const [hover, setHover] = useState(0);
-  return (
-    <div className="flex gap-1 justify-center" onMouseLeave={() => setHover(0)}>
-      {[1, 2, 3, 4, 5].map((star) => {
-        const active = star <= (hover || value);
-        return (
-          <button
-            key={star}
-            type="button"
-            aria-label={`${star} de 5 estrelas`}
-            aria-pressed={star <= value}
-            onClick={() => onChange(star)}
-            onMouseEnter={() => setHover(star)}
-            className="rounded-md p-1 transition-transform duration-150 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/60"
-          >
-            <Star
-              className={cn(
-                'h-8 w-8 transition-colors duration-150',
-                active ? 'fill-warning text-warning' : 'text-muted-foreground/30',
-              )}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-interface OsRateModalProps {
-  osId: string;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onRated: (osId: string) => void;
-}
-
-function OsRateModal({ osId, open, onOpenChange, onRated }: OsRateModalProps) {
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.customers.portal;
-  const { toast } = useToast();
-
-  const [stars, setStars] = useState(0);
-  const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
-    if (stars === 0) {
-      toast({ variant: 'destructive', title: t.rateChooseScore });
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // Converte estrelas (1-5) para nps_score (0-10) linearmente: 1*->2, 5*->10.
-      const npsScore = Math.round((stars / 5) * 10);
-      await submitPublicOsRating(
-        osId,
-        { nps_score: npsScore, comment: comment.trim() || undefined },
-        supabaseAnon,
-      );
-      toast({ title: t.rateThanks });
-      onRated(osId);
-      onOpenChange(false);
-    } catch (err: unknown) {
-      if (isAlreadyRatedError(err)) {
-        toast({ title: t.rateAlreadySent });
-        onRated(osId);
-        onOpenChange(false);
-        return;
-      }
-      toast({ variant: 'destructive', title: t.rateError, description: getErrorMessage(err) });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <ResponsiveModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t.rateTitle}
-      footer={
-        <div className="flex w-full gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={submitting}
-            className="h-12 text-base"
-            size="lg"
-          >
-            {t.rateClose}
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="h-12 flex-1 text-base"
-            size="lg"
-          >
-            {submitting
-              ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{t.rateSending}</>
-              : t.rateSend}
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-5 py-1">
-        <p className="text-sm text-muted-foreground text-center">{t.rateNpsLabel}</p>
-        <StarRow value={stars} onChange={setStars} />
-        <div className="space-y-1.5">
-          <Label className="text-sm">{t.rateComment}</Label>
-          <Textarea
-            placeholder={t.rateCommentPlaceholder}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            rows={3}
-          />
-        </div>
-      </div>
-    </ResponsiveModal>
-  );
-}
+// StarRow, OsRateModal e lógica de conversão 5→0-10 foram removidos.
+// O portal agora usa OSRatingSurvey (link público) que já carrega critérios
+// dinâmicos, escala NPS 0-10 com slider e StarRows com label por tópico.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Outer shell: carrega dados, resolve locale, envolve no PublicAppLocaleProvider
@@ -530,9 +416,17 @@ function CustomerPortalContent({
   const [ticketEquipmentId, setTicketEquipmentId] = useState('');
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
 
-  // ── Estado de avaliacao (Task 1.6) ──
+  // ── Estado de avaliacao (OSRatingSurvey unificado) ──
   const [ratingOsId, setRatingOsId] = useState<string | null>(null);
+  const [ratingOpen, setRatingOpen] = useState(false);
   const [ratedOsIds, setRatedOsIds] = useState<Set<string>>(new Set());
+  // Dados carregados da RPC get_public_os para a OS sendo avaliada
+  const [ratingData, setRatingData] = useState<{
+    rating: PublicOsRating;
+    npsConfig: PublicNpsConfig | null;
+    npsCriteria: PublicNpsCriterion[];
+  } | null>(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
 
   // ── Busca nas listas ──
   const [osSearch, setOsSearch] = useState('');
@@ -625,14 +519,57 @@ function CustomerPortalContent({
     return String(value ?? '');
   };
 
-  const buildDetailRows = (eq: Equipment) => {
+  // Formata uma data ISO (yyyy-MM-dd) para dd/MM/yyyy usando formatDate do projeto.
+  const formatDateField = (raw: string | null | undefined): string | null => {
+    if (!raw) return null;
+    try {
+      return formatDate(String(raw), locale, timezone);
+    } catch {
+      return raw;
+    }
+  };
+
+  // buildFixedRows: campos fixos do equipamento na ordem do EquipmentDetail logado.
+  // Exclui `notes` (observacao interna). Retorna apenas os preenchidos.
+  const buildFixedRows = (eq: Equipment): { label: string; value: ReactNode }[] => {
+    const rows: { label: string; value: ReactNode }[] = [];
+
+    if (eq.category) {
+      rows.push({
+        label: t.fieldCategory,
+        value: (
+          <span className="flex items-center gap-2 justify-end">
+            <span
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: eq.category.color }}
+            />
+            <span className="text-sm font-medium">{eq.category.name}</span>
+          </span>
+        ),
+      });
+    }
+    if (eq.brand) rows.push({ label: t.fieldBrand, value: <span className="text-sm font-medium">{eq.brand}</span> });
+    if (eq.model) rows.push({ label: t.fieldModel, value: <span className="text-sm font-medium">{eq.model}</span> });
+    if (eq.serial_number) rows.push({ label: t.fieldSerialNumber, value: <span className="font-mono text-sm font-medium">{eq.serial_number}</span> });
+    if (eq.capacity) rows.push({ label: t.fieldCapacity, value: <span className="text-sm font-medium">{eq.capacity}</span> });
+    if (eq.location) rows.push({ label: t.fieldLocation, value: <span className="text-sm font-medium">{eq.location}</span> });
+    const installDateFmt = formatDateField(eq.install_date);
+    if (installDateFmt) rows.push({ label: t.fieldInstallDate, value: <span className="text-sm font-medium">{installDateFmt}</span> });
+    const warrantyFmt = formatDateField(eq.warranty_until);
+    if (warrantyFmt) rows.push({ label: t.fieldWarrantyUntil, value: <span className="text-sm font-medium">{warrantyFmt}</span> });
+
+    return rows;
+  };
+
+  // buildCustomRows: custom_fields visiveis + preenchidos, excluindo chaves ja
+  // mostradas como fixas e excluindo `notes` (observacao interna).
+  const buildCustomRows = (eq: Equipment): { label: string; value: string }[] => {
+    if (!eq.custom_fields || equipmentFieldConfig.length === 0) return [];
     return [...equipmentFieldConfig]
       .sort((a, b) => a.position - b.position)
+      .filter((fc) => !BUILT_IN_KEYS_SET.has(fc.field_key) && fc.field_key !== 'notes')
       .map((fc) => {
-        const builtInProp = BUILT_IN_FIELD_KEYS[fc.field_key];
-        const rawValue = builtInProp
-          ? eq[builtInProp]
-          : eq.custom_fields?.[fc.field_key];
+        const rawValue = eq.custom_fields?.[fc.field_key];
         return { fc, rawValue };
       })
       .filter(({ rawValue, fc }) => {
@@ -640,7 +577,11 @@ function CustomerPortalContent({
           return rawValue !== null && rawValue !== undefined && rawValue !== '';
         }
         return rawValue !== null && rawValue !== undefined && String(rawValue).trim() !== '';
-      });
+      })
+      .map(({ fc, rawValue }) => ({
+        label: fc.label,
+        value: formatFieldValue(rawValue, fc.field_type),
+      }));
   };
 
   const handleSubmitTicket = async () => {
@@ -672,6 +613,53 @@ function CustomerPortalContent({
       setTicketSubmitting(false);
     }
   };
+
+  // Carrega nps_criteria + rating da RPC publica (anon) e abre o survey
+  const openRatingModal = useCallback(async (osId: string) => {
+    setRatingOsId(osId);
+    setRatingLoading(true);
+    setRatingData(null);
+    try {
+      const { data, error } = await supabaseAnon.rpc('get_public_os', { p_os_id: osId });
+      if (error) throw error;
+      const payload = data as Record<string, unknown> | null;
+      setRatingData({
+        rating: (payload?.rating as PublicOsRating | null) ?? {
+          is_concluded: true,
+          already_rated: false,
+          rated_at: null,
+          nps_score: null,
+          quality_rating: null,
+          punctuality_rating: null,
+          professionalism_rating: null,
+          comment: null,
+          rated_by_name: null,
+        },
+        npsConfig: (payload?.nps_config as PublicNpsConfig | null) ?? null,
+        npsCriteria: (payload?.nps_criteria as PublicNpsCriterion[] | null) ?? [],
+      });
+    } catch {
+      // Mesmo sem config carregada, abre com defaults (sem criterios, NPS puro)
+      setRatingData({
+        rating: {
+          is_concluded: true,
+          already_rated: false,
+          rated_at: null,
+          nps_score: null,
+          quality_rating: null,
+          punctuality_rating: null,
+          professionalism_rating: null,
+          comment: null,
+          rated_by_name: null,
+        },
+        npsConfig: null,
+        npsCriteria: [],
+      });
+    } finally {
+      setRatingLoading(false);
+      setRatingOpen(true);
+    }
+  }, []);
 
   const handleRated = (osId: string) => {
     setRatedOsIds((prev) => new Set(prev).add(osId));
@@ -790,7 +778,8 @@ function CustomerPortalContent({
                             size="sm"
                             variant="ghost"
                             className="group h-8 gap-1 text-xs text-warning hover:bg-warning hover:text-white"
-                            onClick={() => setRatingOsId(os.id)}
+                            onClick={() => openRatingModal(os.id)}
+                            disabled={ratingLoading && ratingOsId === os.id}
                           >
                             <Star className="h-3.5 w-3.5 fill-warning text-warning group-hover:fill-white group-hover:text-white" />
                             {t.rateOs}
@@ -894,49 +883,39 @@ function CustomerPortalContent({
       </div>
 
       {/* Sub-aba: Visão geral */}
-      {eqSubTab === 'overview' && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)] divide-y divide-border">
-          {equipmentFieldConfig.length > 0 ? (
-            <>
-              {buildDetailRows(selectedEq).map(({ fc, rawValue }) => (
-                <div key={fc.field_key} className="flex items-start justify-between gap-3 px-4 py-3">
-                  <span className="text-xs text-muted-foreground shrink-0">{fc.label}</span>
-                  <span className="text-sm text-right break-words font-medium">
-                    {formatFieldValue(rawValue, fc.field_type)}
-                  </span>
-                </div>
-              ))}
-              {selectedEq.identifier && (
-                <div className="flex items-start justify-between gap-3 px-4 py-3">
-                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldIdentifier}</span>
-                  <span className="font-mono text-sm text-right break-words">{selectedEq.identifier}</span>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {selectedEq.serial_number && (
-                <div className="flex items-start justify-between gap-3 px-4 py-3">
-                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldSerialNumber}</span>
-                  <span className="font-mono text-sm text-right break-words">{selectedEq.serial_number}</span>
-                </div>
-              )}
-              {selectedEq.identifier && (
-                <div className="flex items-start justify-between gap-3 px-4 py-3">
-                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldIdentifier}</span>
-                  <span className="font-mono text-sm text-right break-words">{selectedEq.identifier}</span>
-                </div>
-              )}
-              {selectedEq.location && (
-                <div className="flex items-start justify-between gap-3 px-4 py-3">
-                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldLocation}</span>
-                  <span className="text-sm text-right break-words">{selectedEq.location}</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {eqSubTab === 'overview' && (() => {
+        const fixedRows = buildFixedRows(selectedEq);
+        const customRows = buildCustomRows(selectedEq);
+        const hasAnyRow = fixedRows.length > 0 || customRows.length > 0 || !!selectedEq.identifier;
+
+        if (!hasAnyRow) return null;
+
+        return (
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)] divide-y divide-border">
+            {/* Campos fixos: categoria, marca, modelo, nº série, capacidade, local, datas */}
+            {fixedRows.map((row, i) => (
+              <div key={`fixed-${i}`} className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="text-xs text-muted-foreground shrink-0">{row.label}</span>
+                <div className="text-right break-words">{row.value}</div>
+              </div>
+            ))}
+            {/* Identificador (campo de sistema) */}
+            {selectedEq.identifier && (
+              <div className="flex items-start justify-between gap-3 px-4 py-3">
+                <span className="text-xs text-muted-foreground shrink-0">{t.fieldIdentifier}</span>
+                <span className="font-mono text-sm text-right break-words font-medium">{selectedEq.identifier}</span>
+              </div>
+            )}
+            {/* Custom fields visiveis e preenchidos (exceto os fixos e notes) */}
+            {customRows.map((row, i) => (
+              <div key={`custom-${i}`} className="flex items-start justify-between gap-3 px-4 py-3">
+                <span className="text-xs text-muted-foreground shrink-0">{row.label}</span>
+                <span className="text-sm text-right break-words font-medium">{row.value}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Sub-aba: Histórico */}
       {eqSubTab === 'history' && (
@@ -1263,13 +1242,21 @@ function CustomerPortalContent({
         </div>
       </ResponsiveModal>
 
-      {/* Modal de avaliacao (Task 1.6) */}
-      {ratingOsId && (
-        <OsRateModal
+      {/* Avaliacao de OS — OSRatingSurvey (mesmo componente do link publico) */}
+      {ratingOsId && ratingData && (
+        <OSRatingSurvey
           osId={ratingOsId}
-          open={!!ratingOsId}
-          onOpenChange={(v) => { if (!v) setRatingOsId(null); }}
-          onRated={handleRated}
+          rating={ratingData.rating}
+          npsConfig={ratingData.npsConfig}
+          criteria={ratingData.npsCriteria}
+          open={ratingOpen}
+          onOpenChange={(v) => {
+            setRatingOpen(v);
+            if (!v) setRatingOsId(null);
+          }}
+          onRated={() => {
+            if (ratingOsId) handleRated(ratingOsId);
+          }}
         />
       )}
 

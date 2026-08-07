@@ -246,6 +246,39 @@ export interface PortalAttachment {
 }
 
 /**
+ * Equipamento da unidade — exposto no payload do portal (2026-08).
+ * SEM `notes` (campo interno, nunca exposto ao cliente final).
+ */
+export interface PortalEquipment {
+  id: string;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  serial_number: string | null;
+  location: string | null;
+  status: string;
+  photo_url: string | null;
+  identifier: string | null;
+  custom_fields: Record<string, unknown> | null;
+  capacity: string | null;
+  install_date: string | null;
+  warranty_until: string | null;
+  category: { name: string; color: string } | null;
+}
+
+/**
+ * Configuração de campo personalizado de equipamento — exposto no payload (2026-08).
+ * Usado para renderizar rótulos e formatar valores dos custom_fields.
+ */
+export interface PortalEquipmentFieldConfig {
+  field_key: string;
+  label: string;
+  field_type: string;
+  position: number;
+  options: string[] | null;
+}
+
+/**
  * Frente F (1.9.0) — uma linha de execução de conformidade PMOC no payload do
  * portal: uma TAREFA do checklist (service_order_activities com freq_code)
  * executada numa visita do contrato, com carimbo de quando/quem e o status de
@@ -348,4 +381,15 @@ export interface PortalPayload {
    * Ausente em payloads antigos.
    */
   attachments?: PortalAttachment[];
+  /**
+   * Equipamentos da unidade (2026-08) — exposto pela edge pmoc-portal-share.
+   * SEM campo `notes` (interno). Ausente em payloads antigos → tratar como [].
+   */
+  equipment?: PortalEquipment[];
+  /**
+   * Configuração de campos personalizados de equipamento (2026-08) — lista
+   * ordenada por `position` com labels e tipos para renderizar custom_fields.
+   * Ausente em payloads antigos → tratar como [].
+   */
+  equipment_field_config?: PortalEquipmentFieldConfig[];
 }

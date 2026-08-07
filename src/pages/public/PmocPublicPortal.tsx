@@ -18,6 +18,8 @@ import {
   MapPin,
   Send,
   Star,
+  Package,
+  ChevronLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -57,6 +59,7 @@ import { idealForeground } from '@/lib/colorContrast';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import type {
   PortalHealthStatus,
   PortalOsStatus,
@@ -67,6 +70,8 @@ import type {
   PortalAttachment,
   PortalTenant,
   PortalExecutionRow,
+  PortalEquipment,
+  PortalEquipmentFieldConfig,
 } from '@/types/pmocPortal';
 import type { OsStatus, OsType } from '@/types/database';
 import {
@@ -123,13 +128,20 @@ function buildNavSections(
   isPmoc: boolean,
   hasExecutionHistory: boolean,
   hasAttachments: boolean,
+  hasEquipment: boolean,
   t: PublicPortalMessages,
 ): PortalNavSection[] {
   const sections: PortalNavSection[] = [
     { value: 'visao-geral', label: t.tabOverview, icon: <House className="h-4 w-4 shrink-0" /> },
+  ];
+  // Aba Equipamentos: logo após visão geral quando há equipamentos na unidade.
+  if (hasEquipment) {
+    sections.push({ value: 'equipamentos', label: t.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> });
+  }
+  sections.push(
     { value: 'cronograma', label: t.tabSchedule, icon: <CalendarClock className="h-4 w-4 shrink-0" /> },
     { value: 'ocorrencias', label: t.tabOccurrences, icon: <Repeat className="h-4 w-4 shrink-0" /> },
-  ];
+  );
   // Aba Documentos: aparece pra PMOC (PDFs gerados) OU quando há anexos externos
   // liberados (vale pra contrato comum também — decisão CEO 2026-08).
   if (isPmoc || hasAttachments) {
@@ -328,6 +340,8 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     execution_history = [],
     attachments = [],
     attachments_released,
+    equipment = [],
+    equipment_field_config = [],
     is_pmoc,
     viewer_can_fill,
   } = payload;
@@ -362,12 +376,15 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   );
   const hasExecutionHistory = isPmoc && executionRows.length > 0;
 
+  const hasEquipment = equipment.length > 0;
+
   const navSections = useMemo(
-    () => buildNavSections(isPmoc, hasExecutionHistory, hasAttachments, t),
-    [isPmoc, hasExecutionHistory, hasAttachments, t],
+    () => buildNavSections(isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, t),
+    [isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, t],
   );
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
 
   // ── Cor de marca (anti-FOUC: inline, nunca localStorage, nunca CSS var global) ──
   // Segue exatamente o mesmo padrão do CustomerPortal: branco-label usa a cor
@@ -540,6 +557,14 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
             contract={contract}
             responsibleTechnician={responsible_technician}
             isPmoc={isPmoc}
+          />
+        )}
+        {activeTab === 'equipamentos' && (
+          <TabEquipment
+            equipment={equipment}
+            fieldConfig={equipment_field_config}
+            selectedId={selectedEquipmentId}
+            onSelectId={setSelectedEquipmentId}
           />
         )}
         {activeTab === 'cronograma' && (
@@ -1041,6 +1066,329 @@ function TabHistory({
         />
       ))}
     </ol>
+  );
+}
+
+// ── Aba Equipamentos ──────────────────────────────────────────────────────────
+
+const BUILT_IN_EQ_FIELDS: Record<string, keyof PortalEquipment> = {
+  brand: 'brand',
+  model: 'model',
+  serial_number: 'serial_number',
+  location: 'location',
+};
+
+function TabEquipment({
+  equipment,
+  fieldConfig,
+  selectedId,
+  onSelectId,
+}: {
+  equipment: PortalEquipment[];
+  fieldConfig: PortalEquipmentFieldConfig[];
+  selectedId: string | null;
+  onSelectId: (id: string | null) => void;
+}) {
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
+
+  if (equipment.length === 0) {
+    return (
+      <EmptyState
+        size="compact"
+        icon={<Package className="h-8 w-8" />}
+        title={t.equipmentEmpty}
+      />
+    );
+  }
+
+  const selected = selectedId ? equipment.find((e) => e.id === selectedId) ?? null : null;
+
+  if (selected) {
+    return (
+      <EquipmentDetail
+        eq={selected}
+        fieldConfig={fieldConfig}
+        onBack={() => onSelectId(null)}
+        locale={locale}
+        timezone={timezone}
+        t={t}
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {equipment.map((eq) => (
+        <EquipmentCard key={eq.id} eq={eq} onSelect={() => onSelectId(eq.id)} t={t} />
+      ))}
+    </div>
+  );
+}
+
+function EquipmentCard({
+  eq,
+  onSelect,
+  t,
+}: {
+  eq: PortalEquipment;
+  onSelect: () => void;
+  t: PublicPortalMessages;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'flex w-full min-h-11 items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left',
+        'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+        'transition-all duration-100 hover:bg-accent/20 active:scale-[0.98]',
+      )}
+    >
+      {/* Foto */}
+      {eq.photo_url ? (
+        <img
+          src={eq.photo_url}
+          alt=""
+          className="h-12 w-12 shrink-0 rounded-xl border border-border object-cover"
+        />
+      ) : (
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
+          <Package className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        </div>
+      )}
+
+      {/* Texto */}
+      <div className="min-w-0 flex-1">
+        <p className="break-words text-sm font-semibold leading-snug">{eq.name}</p>
+        {(eq.brand || eq.model) && (
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {[eq.brand, eq.model].filter(Boolean).join(' · ')}
+          </p>
+        )}
+        {eq.location && (
+          <p className="truncate text-xs text-muted-foreground">{eq.location}</p>
+        )}
+        {eq.category && (
+          <div className="mt-1 flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: eq.category.color || '#888' }}
+              aria-hidden="true"
+            />
+            <span className="text-[11px] text-muted-foreground">{eq.category.name}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Status badge */}
+      <span
+        className={cn(
+          'shrink-0 inline-flex items-center rounded-full px-2 py-0.5',
+          'text-[10px] font-semibold uppercase tracking-wide',
+          eq.status === 'active' ? 'bg-success text-white' : 'bg-muted text-muted-foreground',
+        )}
+      >
+        {eq.status === 'active' ? t.equipmentStatusActive : t.equipmentStatusInactive}
+      </span>
+    </button>
+  );
+}
+
+function EquipmentDetail({
+  eq,
+  fieldConfig,
+  onBack,
+  locale,
+  timezone,
+  t,
+}: {
+  eq: PortalEquipment;
+  fieldConfig: PortalEquipmentFieldConfig[];
+  onBack: () => void;
+  locale: string;
+  timezone: string;
+  t: PublicPortalMessages;
+}) {
+  const fmt = (d: string | null) => formatLocal(d, locale, timezone);
+
+  const formatFieldValue = (value: unknown, fieldType: string): string => {
+    if (fieldType === 'boolean') {
+      const truthy = value === true || value === 'sim' || value === 'true' || value === 1;
+      // Reutiliza os textos do portal do cliente se existirem, senão usa pt-br fixo
+      const msgs = MESSAGES[locale as keyof typeof MESSAGES]?.app?.customers?.portal;
+      return truthy ? (msgs?.booleanYes ?? 'Sim') : (msgs?.booleanNo ?? 'Não');
+    }
+    if (fieldType === 'date') {
+      if (!value) return '';
+      try {
+        return formatLocal(String(value), locale, timezone);
+      } catch {
+        return String(value);
+      }
+    }
+    return String(value ?? '');
+  };
+
+  // Monta linhas dos custom_fields visíveis e preenchidos
+  const customRows = [...fieldConfig]
+    .sort((a, b) => a.position - b.position)
+    .map((fc) => {
+      const builtIn = BUILT_IN_EQ_FIELDS[fc.field_key];
+      const raw = builtIn ? eq[builtIn] : eq.custom_fields?.[fc.field_key];
+      return { fc, raw };
+    })
+    .filter(({ raw, fc }) => {
+      if (fc.field_type === 'boolean') return raw !== null && raw !== undefined && raw !== '';
+      return raw !== null && raw !== undefined && String(raw).trim() !== '';
+    });
+
+  return (
+    <div className="space-y-4">
+      {/* Botão voltar */}
+      <button
+        type="button"
+        onClick={onBack}
+        className={cn(
+          'inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 py-2',
+          'text-sm font-medium text-muted-foreground',
+          'transition-colors hover:bg-muted/60 hover:text-foreground active:scale-[0.98]',
+        )}
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        {t.equipmentBackToList}
+      </button>
+
+      {/* Cabeçalho do equipamento */}
+      <div
+        className={cn(
+          'overflow-hidden rounded-2xl border border-border bg-card',
+          'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+        )}
+      >
+        <div className="flex items-center gap-3 px-4 py-3">
+          {eq.photo_url ? (
+            <img
+              src={eq.photo_url}
+              alt=""
+              className="h-14 w-14 shrink-0 rounded-xl border border-border object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted">
+              <Package className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="break-words text-sm font-semibold leading-snug">{eq.name}</p>
+            {(eq.brand || eq.model) && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {[eq.brand, eq.model].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+          <span
+            className={cn(
+              'shrink-0 inline-flex items-center rounded-full px-2 py-0.5',
+              'text-[10px] font-semibold uppercase tracking-wide',
+              eq.status === 'active' ? 'bg-success text-white' : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {eq.status === 'active' ? t.equipmentStatusActive : t.equipmentStatusInactive}
+          </span>
+        </div>
+      </div>
+
+      {/* Campos do equipamento */}
+      <div
+        className={cn(
+          'overflow-hidden rounded-2xl border border-border bg-card divide-y divide-border',
+          'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+        )}
+      >
+        {/* Categoria com bolinha de cor */}
+        {eq.category && (
+          <div className="flex items-start justify-between gap-3 px-4 py-3">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">
+              {t.equipmentFieldCategory}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: eq.category.color || '#888' }}
+                aria-hidden="true"
+              />
+              <span className="text-sm font-medium">{eq.category.name}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Se há fieldConfig, usar as linhas dinâmicas (podem incluir brand/model/serial/location) */}
+        {fieldConfig.length > 0 ? (
+          <>
+            {customRows.map(({ fc, raw }) => (
+              <div key={fc.field_key} className="flex items-start justify-between gap-3 px-4 py-3">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">
+                  {fc.label}
+                </span>
+                <span className="text-sm text-right break-words font-medium">
+                  {formatFieldValue(raw, fc.field_type)}
+                </span>
+              </div>
+            ))}
+            {/* Identifier (sempre exibir se preenchido, independente do fieldConfig) */}
+            {eq.identifier && (
+              <div className="flex items-start justify-between gap-3 px-4 py-3">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">
+                  {t.equipmentFieldIdentifier}
+                </span>
+                <span className="font-mono text-sm text-right break-words">{eq.identifier}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          /* Sem fieldConfig: exibir campos built-in preenchidos */
+          <>
+            {eq.brand && (
+              <InfoRow label={t.equipmentFieldBrand} value={eq.brand} />
+            )}
+            {eq.model && (
+              <InfoRow label={t.equipmentFieldModel} value={eq.model} />
+            )}
+            {eq.serial_number && (
+              <InfoRow label={t.equipmentFieldSerial} value={eq.serial_number} />
+            )}
+            {eq.location && (
+              <InfoRow label={t.equipmentFieldLocation} value={eq.location} />
+            )}
+            {eq.identifier && (
+              <InfoRow label={t.equipmentFieldIdentifier} value={eq.identifier} />
+            )}
+          </>
+        )}
+
+        {/* Campos built-in extras: capacidade, instalação, garantia (sem notes) */}
+        {/* Exibidos sempre quando preenchidos, independente do fieldConfig */}
+        {eq.capacity && (
+          <InfoRow label={t.equipmentFieldCapacity} value={eq.capacity} />
+        )}
+        {eq.install_date && (
+          <InfoRow label={t.equipmentFieldInstallDate} value={fmt(eq.install_date)} />
+        )}
+        {eq.warranty_until && (
+          <InfoRow label={t.equipmentFieldWarranty} value={fmt(eq.warranty_until)} />
+        )}
+
+        {/* Fallback: nenhum campo preenchido */}
+        {!eq.category &&
+          fieldConfig.length === 0 &&
+          !eq.brand && !eq.model && !eq.serial_number && !eq.location &&
+          !eq.identifier && !eq.capacity && !eq.install_date && !eq.warranty_until && (
+            <div className="px-4 py-3">
+              <p className="text-sm text-muted-foreground">—</p>
+            </div>
+        )}
+      </div>
+    </div>
   );
 }
 

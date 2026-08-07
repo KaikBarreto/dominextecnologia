@@ -397,6 +397,13 @@ export const customers = {
       contractTbd: 'A definir',
       contractOpen: 'Abrir portal do contrato',
       contractPmoc: 'PMOC',
+      // Campos fixos do equipamento (Tarefa 1)
+      fieldBrand: 'Marca',
+      fieldModel: 'Modelo',
+      fieldCapacity: 'Capacidade',
+      fieldInstallDate: 'Data de instalação',
+      fieldWarrantyUntil: 'Garantia até',
+      fieldCategory: 'Categoria',
       // Busca nas listas
       searchOsPlaceholder: 'Buscar ordens de servico...',
       searchEqPlaceholder: 'Buscar equipamentos...',
@@ -754,6 +761,13 @@ export const customers = {
       contractTbd: 'To be defined',
       contractOpen: 'Open contract portal',
       contractPmoc: 'PMOC',
+      // Fixed equipment fields (Task 1)
+      fieldBrand: 'Brand',
+      fieldModel: 'Model',
+      fieldCapacity: 'Capacity',
+      fieldInstallDate: 'Installation date',
+      fieldWarrantyUntil: 'Warranty until',
+      fieldCategory: 'Category',
       // Search in lists
       searchOsPlaceholder: 'Search service orders...',
       searchEqPlaceholder: 'Search equipment...',
@@ -1111,6 +1125,13 @@ export const customers = {
       contractTbd: 'Por definir',
       contractOpen: 'Abrir portal del contrato',
       contractPmoc: 'PMOC',
+      // Campos fijos del equipo (Tarea 1)
+      fieldBrand: 'Marca',
+      fieldModel: 'Modelo',
+      fieldCapacity: 'Capacidad',
+      fieldInstallDate: 'Fecha de instalación',
+      fieldWarrantyUntil: 'Garantía hasta',
+      fieldCategory: 'Categoría',
       // Busqueda en listas
       searchOsPlaceholder: 'Buscar ordenes de servicio...',
       searchEqPlaceholder: 'Buscar equipos...',
@@ -1468,6 +1489,13 @@ export const customers = {
       contractTbd: `A definir`,
       contractOpen: `Ouvrir le portail du contrat`,
       contractPmoc: 'PMOC',
+      // Champs fixes de l'equipement (Tache 1)
+      fieldBrand: 'Marque',
+      fieldModel: 'Modele',
+      fieldCapacity: 'Capacite',
+      fieldInstallDate: `Date d'installation`,
+      fieldWarrantyUntil: `Garantie jusqu'au`,
+      fieldCategory: 'Categorie',
       // Recherche dans les listes
       searchOsPlaceholder: `Rechercher des ordres de service...`,
       searchEqPlaceholder: `Rechercher des equipements...`,

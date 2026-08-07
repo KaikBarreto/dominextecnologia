@@ -1085,6 +1085,89 @@ Deno.serve(async (req) => {
         }
       : null;
 
+    // ─── EQUIPAMENTOS DA UNIDADE (2026-08) ───────────────────────────────────
+    // Espelha o `equipment[]` do get_portal_data (mesma projeção de campos, EXCETO
+    // 'notes' que é observação interna e NUNCA sai; e SEM attachments nesta frente).
+    // Segurança: escopo DUPLO por customer_id E company_id resolvidos do CONTRATO
+    // (nunca do body do cliente). Só retorna equipamentos DA unidade daquele
+    // contrato — não pode vazar entre clientes/empresas.
+    type PortalEquipmentCategory = { name: string | null; color: string | null };
+    type PortalEquipmentRow = {
+      id: string;
+      name: string | null;
+      brand: string | null;
+      model: string | null;
+      serial_number: string | null;
+      location: string | null;
+      status: string | null;
+      photo_url: string | null;
+      identifier: string | null;
+      capacity: string | null;
+      install_date: string | null;
+      warranty_until: string | null;
+      custom_fields: Record<string, unknown> | null;
+      category_id: string | null;
+      equipment_categories: PortalEquipmentCategory | PortalEquipmentCategory[] | null;
+    };
+
+    let equipmentList: Array<Record<string, unknown>> = [];
+    let equipmentFieldConfig: Array<Record<string, unknown>> = [];
+    if (contract.customer_id && contract.company_id) {
+      const [{ data: eqRows }, { data: efcRows }] = await Promise.all([
+        supabase
+          .from("equipment")
+          .select(
+            "id, name, brand, model, serial_number, location, status, photo_url, identifier, capacity, install_date, warranty_until, custom_fields, category_id, equipment_categories(name, color)",
+          )
+          .eq("customer_id", contract.customer_id)
+          .eq("company_id", contract.company_id)
+          .order("name", { ascending: true }),
+        supabase
+          .from("equipment_field_config")
+          .select("field_key, label, field_type, position, options")
+          .eq("company_id", contract.company_id)
+          .eq("is_visible", true)
+          .order("position", { ascending: true }),
+      ]);
+
+      equipmentList = ((eqRows ?? []) as PortalEquipmentRow[]).map((e) => {
+        // O supabase-js pode devolver o join como objeto ou array de 1 elemento.
+        const catRaw = Array.isArray(e.equipment_categories)
+          ? e.equipment_categories[0] ?? null
+          : e.equipment_categories;
+        const category = catRaw
+          ? { name: catRaw.name ?? null, color: catRaw.color ?? null }
+          : null;
+        return {
+          id: e.id,
+          name: e.name ?? null,
+          brand: e.brand ?? null,
+          model: e.model ?? null,
+          serial_number: e.serial_number ?? null,
+          location: e.location ?? null,
+          status: e.status ?? null,
+          photo_url: e.photo_url ?? null,
+          identifier: e.identifier ?? null,
+          capacity: e.capacity ?? null,
+          install_date: e.install_date ?? null,
+          warranty_until: e.warranty_until ?? null,
+          custom_fields: e.custom_fields ?? {},
+          category,
+          // 'notes' propositalmente omitido (observação interna).
+        };
+      });
+
+      equipmentFieldConfig = ((efcRows ?? []) as Array<Record<string, unknown>>).map(
+        (f) => ({
+          field_key: f.field_key ?? null,
+          label: f.label ?? null,
+          field_type: f.field_type ?? null,
+          position: f.position ?? null,
+          options: f.options ?? null,
+        }),
+      );
+    }
+
     const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
       payload_version: "1.10.0", // 1.10.0 — locale da empresa (language/currency/timezone) no tenant
@@ -1154,6 +1237,11 @@ Deno.serve(async (req) => {
       },
       schedule,
       history,
+      // Equipamentos da unidade do contrato (2026-08). Mesma projeção do
+      // get_portal_data (sem 'notes', sem attachments). equipment_field_config
+      // dá os rótulos/tipos pros custom_fields.
+      equipment: equipmentList,
+      equipment_field_config: equipmentFieldConfig,
       // Ocorrências do contrato (espelha a aba "Ocorrências"): linha do tempo
       // completa das visitas, read-only. Carrega o `id` da OS pra montar
       // "Preencher OS" quando viewer_can_fill=true.

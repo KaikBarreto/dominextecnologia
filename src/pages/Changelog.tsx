@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.3',
+    date: '8 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todos os dados do equipamento no portal',
+        description: 'O portal do cliente agora mostra todas as informações de cada equipamento, categoria, capacidade, data de instalação, garantia e os campos personalizados da sua empresa, do mesmo jeito que você vê por dentro do sistema.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Equipamentos no portal do contrato',
+        description: 'O portal do contrato ganhou uma nova aba de Equipamentos, onde o cliente pode ver a lista de equipamentos da unidade e todos os detalhes de cada um.',
+        category: 'recurso',
+      },
+      {
+        title: 'Avaliação do portal mostra as estrelas de cada item',
+        description: 'Ao avaliar um atendimento pelo portal, o cliente agora vê as estrelas de cada item da avaliação, e não só a nota geral, igual ao link público da ordem de serviço. Vale no computador e no celular.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.19.2',
     date: '7 de agosto de 2026',
     type: 'patch',
