@@ -532,14 +532,29 @@ Deno.serve(async (req) => {
     // (section|component|description|freq) — usada SÓ quando NENHUMA atividade
     // tem `contract_item_id` (contrato no formato antigo). Mantém o PDF idêntico
     // ao planilha_v8 pra esses contratos.
-    const seen = new Set<string>();
-    const activities: PlanilhaActivity[] = [];
-    for (const a of allPlanRows) {
-      const key = `${a.section ?? ""}|${a.component ?? ""}|${a.description ?? ""}|${a.freq_code ?? ""}|${a.freq_months ?? ""}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      activities.push(toActivity(a));
-    }
+    // Chave de identidade de uma atividade do plano (a MESMA usada pelo caminho
+    // legado). `contract_plan_activities` NÃO tem coluna form_template_id, então
+    // a identidade é só (section|component|description|freq_code|freq_months).
+    const planActivityKey = (a: PlanRow): string =>
+      `${a.section ?? ""}|${a.component ?? ""}|${a.description ?? ""}|${a.freq_code ?? ""}|${a.freq_months ?? ""}`;
+
+    // Dedup preservando a ordem original (primeira ocorrência vence, igual ao
+    // legado). Usado tanto no legado quanto DENTRO de cada máquina/bloco do
+    // caminho por-equipamento — defesa no gerador contra linhas duplicadas em
+    // contract_plan_activities (um mesmo plano repetido dezenas de vezes vira 1).
+    const dedupRows = (rows: PlanRow[]): PlanRow[] => {
+      const localSeen = new Set<string>();
+      const out: PlanRow[] = [];
+      for (const a of rows) {
+        const key = planActivityKey(a);
+        if (localSeen.has(key)) continue;
+        localSeen.add(key);
+        out.push(a);
+      }
+      return out;
+    };
+
+    const activities: PlanilhaActivity[] = dedupRows(allPlanRows).map(toActivity);
 
     // ---- Plano POR EQUIPAMENTO (Fase 4) -------------------------------------
     // Decisão de caminho: se QUALQUER atividade aponta uma máquina
@@ -603,10 +618,12 @@ Deno.serve(async (req) => {
         title: e.title,
         scope: e.scope,
         startVisit: e.startVisit,
-        activities: e.rows
-          .slice()
-          .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
-          .map(toActivity),
+        // Dedup DENTRO da máquina (após ordenar por sort_order) — mesma chave do
+        // legado. Linhas duplicadas em contract_plan_activities não repetem mais
+        // a mesma atividade dezenas de vezes por equipamento no PDF.
+        activities: dedupRows(
+          e.rows.slice().sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0)),
+        ).map(toActivity),
       }));
 
       // Bloco "Geral / Local": atividades de local (sem máquina, per_eq=false).
@@ -616,9 +633,11 @@ Deno.serve(async (req) => {
         .filter((e) => e.scope === "full")
         .map((e) => e.startVisit);
       const hasFull = fullStarts.length > 0;
-      const localActs = [...localRows, ...contratoRows]
-        .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
-        .map(toActivity);
+      const localActs = dedupRows(
+        [...localRows, ...contratoRows].sort(
+          (x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0),
+        ),
+      ).map(toActivity);
       if (hasFull && localActs.length > 0) {
         const anchor = Math.min(...fullStarts);
         planMachines.push({
@@ -638,9 +657,11 @@ Deno.serve(async (req) => {
           title: "Contrato (atividades gerais)",
           scope: null,
           startVisit: anchor,
-          activities: contratoRows
-            .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
-            .map(toActivity),
+          activities: dedupRows(
+            contratoRows
+              .slice()
+              .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0)),
+          ).map(toActivity),
         });
       }
     }

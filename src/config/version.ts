@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.19.1";
+export const APP_VERSION = "1.19.2";
 
-export const VERSION_NOTES = "Corrigimos uma tela de erro que podia travar o acesso logo depois de uma atualização do sistema, quando o navegador ainda tinha uma versão antiga guardada. Agora o app se recupera sozinho e recarrega na versão nova, sem precisar limpar nada.";
+export const VERSION_NOTES = "Corrigimos a planilha do PMOC que podia sair com a mesma tarefa repetida várias vezes por equipamento, deixando o documento gigante. Agora cada tarefa aparece uma única vez, e resolvemos também a origem do problema, que fazia as tarefas se acumularem a cada edição do contrato.";

@@ -1983,34 +1983,45 @@ export function useContracts() {
           .filter(a => a.description?.trim())
           .map(a => ({ ...a, contract_item_id: resolveContractItemId(a) })),
       );
+      // Persistência ATÔMICA do plano via RPC SECURITY DEFINER — mesmo mecanismo
+      // do updateContract (DELETE+INSERT numa transação real, imune ao furo de RLS
+      // que fazia o plano acumular a cada save). No create a RPC faz DELETE(vazio)+
+      // INSERT — idempotente. Roda DEPOIS do contrato e dos contract_items existirem
+      // (as atividades referenciam contract_item_id). `dedupPlanActivities` já foi
+      // aplicado em `planActivities` (defesa em profundidade; a RPC também dedupa).
       let insertedPlanActivities: { id: string }[] = [];
       if (planActivities.length > 0) {
-        const { data: planRows, error: planError } = await supabase
-          .from('contract_plan_activities')
-          .insert(
-            planActivities.map((a, i) => ({
-              company_id: profile.company_id,
-              contract_id: (contract as any).id,
-              contract_item_id: a.contract_item_id ?? null,
-              catalog_activity_id: a.catalog_activity_id ?? null,
-              form_template_id: a.form_template_id ?? null,
-              section: a.section ?? null,
-              component: a.component ?? null,
-              description: a.description.trim(),
-              guidance: a.guidance ?? null,
-              freq_code: a.freq_code ?? null,
-              freq_months: a.freq_months ?? null,
-              is_measurement: a.is_measurement ?? false,
-              unit: a.unit ?? null,
-              expected_min: a.expected_min ?? null,
-              expected_max: a.expected_max ?? null,
-              applies_per_equipment: a.applies_per_equipment ?? true,
-              is_active: true,
-              sort_order: i,
-            })) as any
-          )
-          .select('id');
+        const planPayload = planActivities.map((a, i) => ({
+          contract_item_id: a.contract_item_id ?? null,
+          catalog_activity_id: a.catalog_activity_id ?? null,
+          form_template_id: a.form_template_id ?? null,
+          section: a.section ?? null,
+          component: a.component ?? null,
+          description: a.description.trim(),
+          guidance: a.guidance ?? null,
+          freq_code: a.freq_code ?? null,
+          freq_months: a.freq_months ?? null,
+          is_measurement: a.is_measurement ?? false,
+          unit: a.unit ?? null,
+          expected_min: a.expected_min ?? null,
+          expected_max: a.expected_max ?? null,
+          applies_per_equipment: a.applies_per_equipment ?? true,
+          is_active: true,
+          sort_order: i,
+        }));
+        const { error: planError } = await supabase.rpc('replace_contract_plan_activities', {
+          p_contract_id: (contract as any).id,
+          p_activities: planPayload as any,
+        });
         if (planError) throw planError;
+        // A RPC retorna só a contagem; recupera os ids persistidos ordenados por
+        // sort_order pra realinhar por índice a `planActivities` (usado como
+        // planActivityIds na geração das visitas → plan_activity_id do snapshot).
+        const { data: planRows } = await supabase
+          .from('contract_plan_activities')
+          .select('id')
+          .eq('contract_id', (contract as any).id)
+          .order('sort_order', { ascending: true });
         insertedPlanActivities = (planRows ?? []) as { id: string }[];
       }
 
@@ -2523,34 +2534,45 @@ export function useContracts() {
         planChanged = sigExisting(existingPlan || []) !== sigNew(newPlanResolved);
 
         if (planChanged) {
-          await supabase.from('contract_plan_activities').delete().eq('contract_id', id);
+          // Substituição ATÔMICA no server via RPC SECURITY DEFINER: DELETE de todo
+          // o plano do contrato + INSERT do novo, numa transação real. Fecha a
+          // causa-raiz do acúmulo — o DELETE cru sob RLS do client às vezes apagava
+          // 0 linhas enquanto o INSERT sempre inseria (cópia inteira empilhada a
+          // cada save). A RPC força company_id/contract_id, dedupa e usa ON CONFLICT
+          // DO NOTHING contra a trava UNIQUE. `dedupPlanActivities` fica como defesa
+          // em profundidade. Array vazio → apaga o plano e insere 0 (limpa correto).
+          const planPayload = newPlanResolved.map((a, i) => ({
+            contract_item_id: a.contract_item_id ?? null,
+            catalog_activity_id: a.catalog_activity_id ?? null,
+            form_template_id: a.form_template_id ?? null,
+            section: a.section ?? null,
+            component: a.component ?? null,
+            description: a.description.trim(),
+            guidance: a.guidance ?? null,
+            freq_code: a.freq_code ?? null,
+            freq_months: a.freq_months ?? null,
+            is_measurement: a.is_measurement ?? false,
+            unit: a.unit ?? null,
+            expected_min: a.expected_min ?? null,
+            expected_max: a.expected_max ?? null,
+            applies_per_equipment: a.applies_per_equipment ?? true,
+            is_active: true,
+            sort_order: i,
+          }));
+          const { error: planErr } = await supabase.rpc('replace_contract_plan_activities', {
+            p_contract_id: id,
+            p_activities: planPayload as any,
+          });
+          if (planErr) throw planErr;
+          // A RPC retorna só a contagem; recupera os ids recém-persistidos ordenados
+          // por sort_order pra realinhar por índice ao plano (usado no snapshot das
+          // visitas via plan_activity_id).
           if (newPlanResolved.length > 0) {
-            const { data: planRows, error: planErr } = await supabase
+            const { data: planRows } = await supabase
               .from('contract_plan_activities')
-              .insert(
-                newPlanResolved.map((a, i) => ({
-                  company_id: profile.company_id,
-                  contract_id: id,
-                  contract_item_id: a.contract_item_id ?? null,
-                  catalog_activity_id: a.catalog_activity_id ?? null,
-                  form_template_id: a.form_template_id ?? null,
-                  section: a.section ?? null,
-                  component: a.component ?? null,
-                  description: a.description.trim(),
-                  guidance: a.guidance ?? null,
-                  freq_code: a.freq_code ?? null,
-                  freq_months: a.freq_months ?? null,
-                  is_measurement: a.is_measurement ?? false,
-                  unit: a.unit ?? null,
-                  expected_min: a.expected_min ?? null,
-                  expected_max: a.expected_max ?? null,
-                  applies_per_equipment: a.applies_per_equipment ?? true,
-                  is_active: true,
-                  sort_order: i,
-                })) as any
-              )
-              .select('id');
-            if (planErr) throw planErr;
+              .select('id')
+              .eq('contract_id', id)
+              .order('sort_order', { ascending: true });
             insertedPlanRows = (planRows ?? []) as { id: string }[];
           }
         } else {

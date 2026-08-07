@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.2',
+    date: '7 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Planilha do PMOC não repete mais as tarefas',
+        description: 'Corrigimos um problema em que a planilha do PMOC podia sair com a mesma tarefa repetida várias vezes em cada equipamento, deixando o documento enorme e confuso. Agora cada tarefa aparece uma única vez. Também resolvemos a origem, que fazia as tarefas se acumularem a cada vez que o contrato era editado e salvo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.19.1',
     date: '7 de agosto de 2026',
     type: 'patch',
