@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.1',
+    date: '7 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'App se recupera sozinho após uma atualização',
+        description: 'Corrigimos um caso em que, logo depois de uma atualização do sistema, o navegador podia ficar preso numa versão antiga e mostrar uma tela de erro ao entrar, sem resolver nem recarregando. Agora o aplicativo detecta essa situação, se limpa e recarrega sozinho na versão nova, sem você precisar fazer nada.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.19.0',
     date: '7 de agosto de 2026',
     type: 'minor',

@@ -15,6 +15,10 @@ import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
 import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
 import { getErrorMessage } from "@/utils/errorMessages";
+import {
+  autoHealStaleBundleIfNeeded,
+  clearCachesAndReload,
+} from "@/lib/pwa";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMarketingViewport } from "@/hooks/useMarketingViewport";
@@ -34,6 +38,15 @@ class ErrorBoundary extends React.Component<
   }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("ErrorBoundary caught:", error, info);
+    // Erro de BUNDLE VELHO após deploy (ex: React.lazy lendo `.default` de
+    // undefined → "Cannot read properties of undefined (reading 'default')").
+    // Esse throw sobe pro render e escapa da rede de chunk-fetch. Se for esse
+    // caso e ainda houver tentativa de auto-heal disponível, dispara a limpeza
+    // forte (SW + cache) e recarrega — fire-and-forget, a função recarrega a
+    // página no fim. Mantemos o estado de erro: a página vai recarregar de
+    // qualquer jeito. Se o teto (1x/sessão) já estourou, retorna false e a tela
+    // de erro aparece com o botão manual (que também limpa tudo).
+    autoHealStaleBundleIfNeeded(error?.message ?? "");
   }
   render() {
     if (this.state.hasError) {
@@ -43,7 +56,7 @@ class ErrorBoundary extends React.Component<
             <h1 className="text-2xl font-bold">Algo deu errado</h1>
             <p className="text-muted-foreground text-sm">{getErrorMessage(this.state.error)}</p>
             <button
-              onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+              onClick={() => { void clearCachesAndReload(); }}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
             >
               Recarregar página

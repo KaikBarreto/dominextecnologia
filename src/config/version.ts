@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.19.0";
+export const APP_VERSION = "1.19.1";
 
-export const VERSION_NOTES = "Agora você pode anexar documentos do seu computador direto na aba Documentos de qualquer contrato, com o nome que quiser. Eles ficam na lista junto com os documentos do sistema, prontos para baixar, renomear ou excluir, e aparecem no portal do cliente quando você libera os documentos.";
+export const VERSION_NOTES = "Corrigimos uma tela de erro que podia travar o acesso logo depois de uma atualização do sistema, quando o navegador ainda tinha uma versão antiga guardada. Agora o app se recupera sozinho e recarrega na versão nova, sem precisar limpar nada.";

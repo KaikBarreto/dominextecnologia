@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { shouldReloadForChunkError, resetChunkErrorGuard } from "@/lib/pwa";
+import {
+  shouldReloadForChunkError,
+  resetChunkErrorGuard,
+  isStaleBundleError,
+  shouldAutoHealStaleBundle,
+} from "@/lib/pwa";
 
 // Storage falso em memória pra exercitar a lógica pura da trava anti-loop sem
 // depender do sessionStorage real nem disparar reload de verdade.
@@ -116,5 +121,63 @@ describe("resetChunkErrorGuard (reset condicional ao tempo)", () => {
     // Falha mais uma vez → agora count >= 2 → DESISTE (sem o reset ter zerado).
     expect(shouldReloadForChunkError(storage, 1_022_000)).toBe(false);
     expect(storage.data.get("chunk-reload-count")).toBe("2");
+  });
+});
+
+describe("isStaleBundleError (classificador de bundle velho)", () => {
+  it("TRUE no erro de render 'reading default' (React.lazy → undefined)", () => {
+    expect(
+      isStaleBundleError(
+        "Cannot read properties of undefined (reading 'default')",
+      ),
+    ).toBe(true);
+  });
+
+  it("TRUE na variante Safari 'undefined is not an object ... .default'", () => {
+    expect(
+      isStaleBundleError("undefined is not an object (evaluating 'm.default')"),
+    ).toBe(true);
+  });
+
+  it("TRUE em 'Loading chunk 42 failed' e 'Loading CSS chunk'", () => {
+    expect(isStaleBundleError("Loading chunk 42 failed.")).toBe(true);
+    expect(isStaleBundleError("Loading CSS chunk 7 failed.")).toBe(true);
+  });
+
+  it("TRUE no erro de fetch já coberto pelo CHUNK_ERROR_RE existente", () => {
+    expect(
+      isStaleBundleError("Failed to fetch dynamically imported module: /x.js"),
+    ).toBe(true);
+  });
+
+  it("FALSE num erro de app comum (não é bundle velho)", () => {
+    expect(isStaleBundleError("foo.bar is not a function")).toBe(false);
+    expect(isStaleBundleError("Network request failed")).toBe(false);
+  });
+});
+
+describe("shouldAutoHealStaleBundle (teto de 1 tentativa por sessão)", () => {
+  let storage: ReturnType<typeof makeStorage>;
+
+  beforeEach(() => {
+    storage = makeStorage();
+  });
+
+  it("libera o auto-heal na 1ª vez e persiste ts/count", () => {
+    expect(shouldAutoHealStaleBundle(storage, 1_000_000)).toBe(true);
+    expect(storage.data.get("stale-heal-count")).toBe("1");
+    expect(storage.data.get("stale-heal-ts")).toBe("1000000");
+  });
+
+  it("2ª chamada na mesma sessão retorna false (teto = 1)", () => {
+    expect(shouldAutoHealStaleBundle(storage, 1_000_000)).toBe(true);
+    // Bem depois da janela de 10s, mas count já == 1 → não repete.
+    expect(shouldAutoHealStaleBundle(storage, 1_100_000)).toBe(false);
+    expect(storage.data.get("stale-heal-count")).toBe("1");
+  });
+
+  it("NÃO dispara um 2º dentro de 10s (evita heal duplo em cima)", () => {
+    expect(shouldAutoHealStaleBundle(storage, 1_000_000)).toBe(true);
+    expect(shouldAutoHealStaleBundle(storage, 1_005_000)).toBe(false);
   });
 });

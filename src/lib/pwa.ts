@@ -249,6 +249,106 @@ export function setupChunkErrorRecovery() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Segunda camada: erro de BUNDLE VELHO que escapa da rede de chunk-fetch.
+//
+// A rede acima (setupChunkErrorRecovery / CHUNK_ERROR_RE) só cobre a FALHA DE
+// FETCH de um chunk (vite:preloadError / unhandledrejection com "Failed to
+// fetch dynamically imported module" / MIME text/html). Mas existe um segundo
+// sintoma do MESMO problema (cliente com HTML+SW antigos após deploy) que NÃO
+// passa por lá: o React.lazy resolve o import como `undefined` e, ao ler
+// `.default`, o React JOGA um erro de RENDER — que sobe pro ErrorBoundary, não
+// vira unhandledrejection e não bate no regex de fetch. Assinatura clássica:
+// "Cannot read properties of undefined (reading 'default')". Foi o que deixou o
+// cliente (Davi/Engetec) preso na tela de erro: o botão fazia reload puro, que
+// não desregistra o SW nem limpa cache → recarregava e quebrava de novo.
+//
+// Aqui adicionamos um classificador (isStaleBundleError) que cobre o
+// CHUNK_ERROR_RE existente MAIS essas assinaturas de render, e um auto-heal
+// que dispara clearCachesAndReload() (limpeza FORTE: SW + CacheStorage + HTTP
+// cache do HTML). Como a limpeza é pesada e desregistra o SW, o teto é de 1
+// tentativa automática por sessão: se o deploy estiver GENUINAMENTE quebrado
+// (não é cliente velho), um segundo auto-heal só viraria loop de limpar+
+// recarregar pra TODO usuário. Após o teto, deixamos a tela de erro aparecer
+// com o botão manual (que sempre executa a limpeza forte no clique).
+
+// Assinaturas do erro de RENDER (React.lazy lendo `.default` de undefined) e de
+// falha de carregamento de chunk que NÃO são cobertas pelo CHUNK_ERROR_RE de
+// fetch. Cobrimos Chrome/Firefox e a variante do Safari ("undefined is not an
+// object").
+const STALE_BUNDLE_RENDER_RE =
+  /Cannot read properties of undefined \(reading 'default'\)|undefined is not an object.*\.default|Loading chunk \d+ failed|Loading CSS chunk/i;
+
+// Classificador puro: true se a mensagem é sintoma de bundle velho após deploy
+// (fetch de chunk OU render lendo `.default` de undefined). Reusa o
+// CHUNK_ERROR_RE de fetch pra não duplicar. Puro/sem efeito → testável.
+export function isStaleBundleError(message: string): boolean {
+  const msg = String(message || "");
+  return CHUNK_ERROR_RE.test(msg) || STALE_BUNDLE_RENDER_RE.test(msg);
+}
+
+// Trava anti-loop dedicada ao auto-heal (chaves próprias, separadas do
+// chunk-reload de fetch). Máximo 1 tentativa automática por sessão porque o
+// auto-heal é PESADO (clearCachesAndReload desregistra o SW): num deploy
+// genuinamente quebrado, um segundo auto-heal viraria loop infinito de
+// limpar+recarregar. Reusa o mesmo intervalo mínimo do chunk-reload pra não
+// disparar dois em cima.
+const STALE_HEAL_TS = "stale-heal-ts";
+const STALE_HEAL_COUNT = "stale-heal-count";
+const STALE_HEAL_MAX_ATTEMPTS = 1;
+
+// Espelha shouldReloadForChunkError, mas com teto de 1 e chaves próprias.
+// Recebe now/storage por injeção pra ser testável sem disparar reload.
+// Quando retorna true, JÁ persistiu timestamp/contador.
+export function shouldAutoHealStaleBundle(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  now: number,
+): boolean {
+  const last = Number(storage.getItem(STALE_HEAL_TS) || 0);
+  const count = Number(storage.getItem(STALE_HEAL_COUNT) || 0);
+
+  // Acabou de limpar+recarregar: não dispara um segundo em cima.
+  if (now - last < CHUNK_RELOAD_MIN_INTERVAL_MS) return false;
+
+  // Já gastou a única tentativa desta sessão → desiste (deixa a tela de erro
+  // com o botão manual). Evita loop num deploy realmente quebrado.
+  if (count >= STALE_HEAL_MAX_ATTEMPTS) return false;
+
+  storage.setItem(STALE_HEAL_TS, String(now));
+  storage.setItem(STALE_HEAL_COUNT, String(count + 1));
+  return true;
+}
+
+// Ponto de entrada do ErrorBoundary. Se a mensagem é de bundle velho E ainda há
+// tentativa de auto-heal disponível, dispara a limpeza forte (fire-and-forget —
+// clearCachesAndReload recarrega a página no fim) e retorna true. Senão false
+// (o ErrorBoundary mostra a tela de erro; o botão manual ainda limpa tudo).
+export function autoHealStaleBundleIfNeeded(errorMessage: string): boolean {
+  if (!isStaleBundleError(errorMessage)) return false;
+
+  // Se um reload por update de SW já está em curso, não brigamos com ele.
+  if (reloadingForUpdate) return false;
+
+  let allowed = false;
+  try {
+    allowed = shouldAutoHealStaleBundle(sessionStorage, Date.now());
+  } catch {
+    // sessionStorage indisponível (modo privado antigo): tenta uma vez mesmo
+    // assim — sem persistência não conseguimos travar loop, mas é melhor tentar
+    // a recuperação uma vez do que deixar o cliente preso.
+    allowed = true;
+  }
+  if (!allowed) return false;
+
+  reloadingForUpdate = true;
+  console.warn(
+    "Bundle antigo detectado (provável deploy novo) — limpando cache/SW e recarregando.",
+  );
+  // Fire-and-forget: a própria função recarrega a página no fim.
+  void clearCachesAndReload();
+  return true;
+}
+
 export async function clearCachesAndReload() {
   try {
     // Clear all caches
