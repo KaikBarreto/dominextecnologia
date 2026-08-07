@@ -31,6 +31,7 @@ import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { ContractEnvironmentsTab } from '@/components/contracts/ContractEnvironmentsTab';
 import { ContractMaintenancePlanDocument } from '@/components/contracts/ContractMaintenancePlanDocument';
 import { ContractVisitsReport } from '@/components/contracts/ContractVisitsReport';
+import { ContractAttachmentsSection } from '@/components/contracts/ContractAttachmentsSection';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
 import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
@@ -757,12 +758,13 @@ export default function ContractDetail() {
           { value: 'cronograma', label: td.tabs.cronograma, icon: Calendar },
         ];
 
-        // Abas de contrato comum (4): Visão Geral + Ocorrências + Equipamentos + Financeiro.
+        // Abas de contrato comum (5): Visão Geral + Ocorrências + Equipamentos + Financeiro + Documentos.
         const commonSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: td.tabs.overview, icon: Info },
           { value: 'ocorrencias', label: td.tabs.ocorrencias, icon: Repeat },
           { value: 'equipamentos', label: td.tabs.equipamentos, icon: Wrench },
           { value: 'financeiro', label: td.tabs.financeiro, icon: DollarSign },
+          { value: 'documentos', label: td.tabs.documentos, icon: FileText },
         ];
 
         const overviewContent = (
@@ -1366,6 +1368,16 @@ export default function ContractDetail() {
                   (contract as unknown as { responsible_technician_id?: string | null })
                     .responsible_technician_id ?? null
                 }
+                portalDocumentsReleased={
+                  (contract as unknown as { portal_documents_released?: boolean | null })
+                    .portal_documents_released ?? false
+                }
+              />
+            )}
+            {!isPmoc && pmocTab === 'documentos' && id && (
+              <ContractAttachmentsSection
+                contractId={id}
+                showPortalToggle
                 portalDocumentsReleased={
                   (contract as unknown as { portal_documents_released?: boolean | null })
                     .portal_documents_released ?? false

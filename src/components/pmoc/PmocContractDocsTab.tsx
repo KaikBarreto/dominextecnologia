@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 
 import { PmocDocEditorDialog } from './PmocDocEditorDialog';
 import { RtSignatureQuickDialog } from './RtSignatureQuickDialog';
+import { ContractAttachmentsSection } from '@/components/contracts/ContractAttachmentsSection';
 import {
   usePmocContractCustomDocs,
 } from '@/hooks/usePmocContractCustomDocs';
@@ -812,6 +813,9 @@ export function PmocContractDocsTab({
 
       {/* Histórico de versões */}
       <VersionHistory documents={documents} isLoading={isLoadingDocs} t={t} />
+
+      {/* Anexos externos — card abaixo dos documentos gerados */}
+      <ContractAttachmentsSection contractId={contractId} />
 
       {/* Editores */}
       <PmocDocEditorDialog

@@ -64,6 +64,7 @@ import type {
   PortalOsEntry,
   PortalOccurrenceEntry,
   PortalRealDocument,
+  PortalAttachment,
   PortalTenant,
   PortalExecutionRow,
 } from '@/types/pmocPortal';
@@ -121,6 +122,7 @@ type PublicPortalMessages = typeof MESSAGES['pt-br']['app']['pmoc']['publicPorta
 function buildNavSections(
   isPmoc: boolean,
   hasExecutionHistory: boolean,
+  hasAttachments: boolean,
   t: PublicPortalMessages,
 ): PortalNavSection[] {
   const sections: PortalNavSection[] = [
@@ -128,7 +130,9 @@ function buildNavSections(
     { value: 'cronograma', label: t.tabSchedule, icon: <CalendarClock className="h-4 w-4 shrink-0" /> },
     { value: 'ocorrencias', label: t.tabOccurrences, icon: <Repeat className="h-4 w-4 shrink-0" /> },
   ];
-  if (isPmoc) {
+  // Aba Documentos: aparece pra PMOC (PDFs gerados) OU quando há anexos externos
+  // liberados (vale pra contrato comum também — decisão CEO 2026-08).
+  if (isPmoc || hasAttachments) {
     sections.push({ value: 'documentos', label: t.tabDocuments, icon: <FileText className="h-4 w-4 shrink-0" /> });
   }
   sections.push({ value: 'historico', label: t.tabHistory, icon: <Wrench className="h-4 w-4 shrink-0" /> });
@@ -322,6 +326,8 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     documents = [],
     documents_released,
     execution_history = [],
+    attachments = [],
+    attachments_released,
     is_pmoc,
     viewer_can_fill,
   } = payload;
@@ -333,6 +339,13 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const isPmoc = is_pmoc !== false;
   const canFill = viewer_can_fill === true;
   const documentsReleased = documents_released !== false;
+  // Anexos externos (contract_attachments): valem pra TODO contrato (PMOC e
+  // comum), sob a MESMA trava `portal_documents_released` (aqui refletida em
+  // `attachments_released`). Diferente de `documentsReleased`, o default é
+  // `false` (payload antigo/sem a chave = sem anexos), pra não vazar seção vazia.
+  const attachmentsReleased = attachments_released === true;
+  const releasedAttachments = attachmentsReleased ? attachments : [];
+  const hasAttachments = releasedAttachments.length > 0;
 
   const executionRows = useMemo<ContractActivityExecutionRow[]>(
     () =>
@@ -350,8 +363,8 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const hasExecutionHistory = isPmoc && executionRows.length > 0;
 
   const navSections = useMemo(
-    () => buildNavSections(isPmoc, hasExecutionHistory, t),
-    [isPmoc, hasExecutionHistory, t],
+    () => buildNavSections(isPmoc, hasExecutionHistory, hasAttachments, t),
+    [isPmoc, hasExecutionHistory, hasAttachments, t],
   );
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
@@ -542,9 +555,14 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
             onOsClick={setSelectedOS}
           />
         )}
-        {/* Documentos: SÓ contrato PMOC. */}
-        {isPmoc && activeTab === 'documentos' && (
-          <TabDocuments documents={documents} released={documentsReleased} />
+        {/* Documentos: PDFs gerados (só PMOC) + anexos externos (PMOC e comum). */}
+        {(isPmoc || hasAttachments) && activeTab === 'documentos' && (
+          <TabDocuments
+            documents={isPmoc ? documents : []}
+            released={documentsReleased}
+            showGeneratedDocs={isPmoc}
+            attachments={releasedAttachments}
+          />
         )}
         {activeTab === 'historico' && (
           <TabHistory history={history} onOsClick={setSelectedOS} />
@@ -857,16 +875,29 @@ function TabOccurrences({
 function TabDocuments({
   documents,
   released,
+  showGeneratedDocs,
+  attachments,
 }: {
   documents: PortalRealDocument[];
   released: boolean;
+  /** Só PMOC mostra os PDFs gerados. Contrato comum só recebe anexos. */
+  showGeneratedDocs: boolean;
+  /** Anexos externos já filtrados (só os liberados). */
+  attachments: PortalAttachment[];
 }) {
   const available = documents.filter((d) => d.available);
   const unavailable = documents.filter((d) => !d.available);
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
 
-  if (!released || documents.length === 0) {
+  // Mostra os PDFs gerados quando é PMOC e o gestor liberou. Anexos externos
+  // seguem trava própria (já filtrados no pai) e podem existir sozinhos num
+  // contrato comum.
+  const showDocs = showGeneratedDocs && released && documents.length > 0;
+  const hasAttachments = attachments.length > 0;
+
+  // Nada liberado em lugar nenhum → aviso neutro.
+  if (!showDocs && !hasAttachments) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
         <p className="text-sm leading-relaxed text-muted-foreground">
@@ -878,14 +909,14 @@ function TabDocuments({
 
   return (
     <div className="space-y-4">
-      {available.length > 0 && (
+      {showDocs && available.length > 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {available.map((doc) => (
             <RealDocumentCard key={doc.type} doc={doc} />
           ))}
         </div>
       )}
-      {unavailable.length > 0 && (
+      {showDocs && unavailable.length > 0 && (
         <>
           {available.length > 0 && (
             <h3 className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -898,6 +929,77 @@ function TabDocuments({
             ))}
           </div>
         </>
+      )}
+      {/* Anexos externos: mesmo card visual, logo abaixo dos PDFs gerados. */}
+      {hasAttachments && (
+        <>
+          {showDocs && (
+            <h3 className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t.docsAttachedTitle}
+            </h3>
+          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {attachments.map((att) => (
+              <AttachmentCard key={att.id} attachment={att} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Card de anexo externo — mesmo estilo visual do RealDocumentCard (documento
+ * gerado): ícone + nome (display_name) + botão baixar (abre o signed URL).
+ * Sem version/assinatura/validade (anexo externo não tem esses conceitos).
+ */
+function AttachmentCard({ attachment }: { attachment: PortalAttachment }) {
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
+  const fmt = (d: string | null) => formatLocal(d, locale, timezone);
+  const available = attachment.available && !!attachment.pdf_url;
+  const sub = available && attachment.generated_at
+    ? `${t.docUpdatedAt} ${fmt(attachment.generated_at)}`
+    : t.docAvailableSoon;
+
+  return (
+    <div
+      className={cn(
+        'flex min-h-[96px] flex-col gap-2 rounded-2xl border p-4 transition-colors',
+        'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+        available ? 'border-border bg-card' : 'border-dashed border-border bg-muted/30',
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+            available ? 'bg-info/10 text-info' : 'bg-muted text-muted-foreground',
+          )}
+        >
+          <FileText className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-medium leading-snug">{attachment.label}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{sub}</p>
+        </div>
+      </div>
+
+      {available && attachment.pdf_url && (
+        <a
+          href={attachment.pdf_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            'mt-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl',
+            'bg-primary px-4 text-sm font-semibold text-primary-foreground',
+            'transition-all duration-100 hover:bg-primary/90 active:scale-[0.98]',
+          )}
+        >
+          <Download className="h-4 w-4" aria-hidden="true" />
+          {t.docDownloadFile}
+        </a>
       )}
     </div>
   );

@@ -226,6 +226,26 @@ export interface PortalRealDocument {
 }
 
 /**
+ * Anexo externo do contrato (2026-08) — arquivo enviado pelo gestor
+ * (contract_attachments) exposto no portal público. Vale pra TODO contrato
+ * (PMOC E comum), sob a MESMA trava `portal_documents_released` dos documentos
+ * gerados. A edge expõe SÓ nome + link assinado (nunca o caminho interno).
+ *  - `available=true` → tem `pdf_url` (signed URL TTL 24h).
+ */
+export interface PortalAttachment {
+  id: string;
+  /** Nome exibível (display_name). */
+  label: string;
+  available: boolean;
+  /** Signed URL TTL 24h; `null` quando indisponível. */
+  pdf_url: string | null;
+  /** created_at do anexo (ISO). */
+  generated_at: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+}
+
+/**
  * Frente F (1.9.0) — uma linha de execução de conformidade PMOC no payload do
  * portal: uma TAREFA do checklist (service_order_activities com freq_code)
  * executada numa visita do contrato, com carimbo de quando/quem e o status de
@@ -317,4 +337,15 @@ export interface PortalPayload {
    * DESC, sort_order ASC. Ausente em payloads antigos / contrato não-PMOC.
    */
   execution_history?: PortalExecutionRow[];
+  /**
+   * Gate de anexos externos (2026-08). Espelha `documents_released`, mas vale
+   * pra TODO contrato (PMOC e comum). `false`/ausente → gestor ainda não liberou.
+   */
+  attachments_released?: boolean;
+  /**
+   * Anexos externos do contrato (contract_attachments) — arquivos enviados pelo
+   * gestor. Presente em contrato PMOC E comum quando `attachments_released`.
+   * Ausente em payloads antigos.
+   */
+  attachments?: PortalAttachment[];
 }

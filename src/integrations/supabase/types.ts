@@ -1502,6 +1502,57 @@ export type Database = {
           },
         ]
       }
+      contract_attachments: {
+        Row: {
+          company_id: string
+          contract_id: string
+          created_at: string
+          display_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          contract_id: string
+          created_at?: string
+          display_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          contract_id?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_attachments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "contract_attachments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_environments: {
         Row: {
           area_climatizada_m2: number | null

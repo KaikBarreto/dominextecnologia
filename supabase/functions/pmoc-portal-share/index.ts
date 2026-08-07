@@ -827,6 +827,66 @@ Deno.serve(async (req) => {
     }
 
     // -------------------------------------------------------------------------
+    // 3.5.1) ANEXOS EXTERNOS do contrato (contract_attachments).
+    //
+    //   Decisão CEO (2026-08): arquivos anexados pelo gestor (PDFs, imagens,
+    //   documentos) aparecem no portal público sob a MESMA trava dos documentos
+    //   gerados (`contracts.portal_documents_released`), MAS valem pra TODO
+    //   contrato — PMOC E comum (ao contrário dos PDFs PMOC, que são is_pmoc-only).
+    //
+    //   Por isso o gate aqui é SÓ `portal_documents_released` (sem exigir isPmoc).
+    //   Também respeita o gate de privacidade (`portalIsPublic`) já aplicado ao
+    //   restante do payload — se o portal é privado e o viewer não é membro, a
+    //   request nem chega aqui (é barrada antes com access:'denied').
+    //
+    //   Formato: array IRMÃO `attachments` (não misturado no `documents` PMOC),
+    //   porque os anexos externos não têm version/assinatura/validade e precisam
+    //   existir também em contrato comum. Cada item expõe SÓ nome + link assinado
+    //   (NUNCA storage_path/tabela — §RLS: não vazar caminho interno).
+    //     { id, label (display_name), available, pdf_url (signed URL TTL 24h),
+    //       generated_at (created_at), mime_type, size_bytes }
+    // -------------------------------------------------------------------------
+    const attachmentsReleased = contract.portal_documents_released === true;
+
+    type PortalAttachment = {
+      id: string;
+      label: string;
+      available: boolean;
+      pdf_url: string | null;
+      generated_at: string | null;
+      mime_type: string | null;
+      size_bytes: number | null;
+    };
+    let attachments: PortalAttachment[] = [];
+
+    if (attachmentsReleased) {
+      const { data: attachmentRows } = await supabase
+        .from("contract_attachments")
+        .select("id, display_name, storage_path, mime_type, size_bytes, created_at")
+        .eq("contract_id", contract.id)
+        .eq("company_id", contract.company_id) // defesa em camada (§RLS)
+        .order("created_at", { ascending: true });
+
+      attachments = await Promise.all(
+        (attachmentRows ?? []).map(async (row) => {
+          const { data: signed } = await supabase.storage
+            .from("contract-attachments")
+            .createSignedUrl(row.storage_path, 86400); // TTL 24h (igual PDFs)
+          return {
+            id: row.id as string,
+            label: (row.display_name as string | null) ?? "Documento",
+            available: !!signed?.signedUrl,
+            pdf_url: signed?.signedUrl ?? null,
+            generated_at: (row.created_at as string | null) ?? null,
+            mime_type: (row.mime_type as string | null) ?? null,
+            size_bytes: (row.size_bytes as number | null) ?? null,
+            // NOTA: storage_path INTENCIONALMENTE não exposto (§RLS não-vazamento).
+          };
+        }),
+      );
+    }
+
+    // -------------------------------------------------------------------------
     // 3.6) Histórico de execução PMOC tarefa-a-tarefa (Frente F).
     //      Espelha a VIEW autenticada `contract_activity_execution`: cada linha é
     //      uma ATIVIDADE DE CONFORMIDADE (service_order_activities com freq_code)
@@ -1112,6 +1172,13 @@ Deno.serve(async (req) => {
       // gate dos documentos (só liberado → não vazio). Escopado ao contrato.
       payload.execution_history = executionHistory;
     }
+
+    // ANEXOS EXTERNOS (contract_attachments): vale pra TODO contrato (PMOC e
+    // comum), sob a MESMA trava `portal_documents_released`. Por isso fica FORA
+    // do `if (isPmoc)`. `attachments_released` explicita "liberado mas sem
+    // anexos" vs "ainda não liberado" pro front.
+    payload.attachments_released = attachmentsReleased;
+    payload.attachments = attachments;
 
     // Quando a request veio autenticada, a resposta VARIA por usuário
     // (viewer_can_fill / portal privado). Nunca cachear publicamente nesse caso.

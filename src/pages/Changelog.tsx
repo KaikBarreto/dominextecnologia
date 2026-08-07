@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.0',
+    date: '7 de agosto de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Anexe seus próprios documentos ao contrato',
+        description: 'Na aba Documentos de qualquer contrato agora tem o botão Anexar documento, para subir arquivos do seu computador (PDF, foto, planilha e outros). Cada anexo entra na lista com o nome que você escolher, ao lado dos documentos gerados pelo sistema, e você pode baixar, renomear ou excluir quando quiser. Quando você libera os documentos no portal, os anexos também ficam disponíveis para o cliente baixar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.18.1',
     date: '5 de agosto de 2026',
     type: 'patch',

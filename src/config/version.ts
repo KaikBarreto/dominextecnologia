@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.18.1";
+export const APP_VERSION = "1.19.0";
 
-export const VERSION_NOTES = "O botão de salvar em PDF ficou mais direto: no extrato do funcionário, nos recibos de pagamento e nos relatórios financeiros, agora o arquivo baixa na hora com um clique, sem precisar passar pela caixa de impressão do navegador.";
+export const VERSION_NOTES = "Agora você pode anexar documentos do seu computador direto na aba Documentos de qualquer contrato, com o nome que quiser. Eles ficam na lista junto com os documentos do sistema, prontos para baixar, renomear ou excluir, e aparecem no portal do cliente quando você libera os documentos.";
