@@ -689,6 +689,14 @@ export const ptBr = {
     trialLine1: '14 dias grátis com acesso total',
     trialLine2: 'Sem cartão de crédito, sem compromisso',
 
+    // Aviso de aceite dos termos (etapa Acesso, junto ao botão Criar Conta).
+    // Montado em partes pra intercalar os dois links (Termos / Privacidade).
+    termsNoticePrefix: 'Ao criar sua conta, você concorda com os ',
+    termsNoticeTermsLink: 'Termos de Uso',
+    termsNoticeAnd: ' e a ',
+    termsNoticePrivacyLink: 'Política de Privacidade',
+    termsNoticeSuffix: '.',
+
     // Botões
     back: 'Voltar',
     continue: 'Continuar',

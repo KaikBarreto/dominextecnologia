@@ -109,6 +109,13 @@ export const esOverrides: MessagesOverride = {
     errorPasswordRequired: 'La contraseña es obligatoria',
     errorPasswordMinReqs: 'La contraseña no cumple los requisitos mínimos',
     errorConfirmPasswordRequired: 'Confirma la contraseña',
+
+    // Aviso de aceptación de los términos (paso Acceso, junto al botón Crear Cuenta).
+    termsNoticePrefix: 'Al crear tu cuenta, aceptas los ',
+    termsNoticeTermsLink: 'Términos de Uso',
+    termsNoticeAnd: ' y la ',
+    termsNoticePrivacyLink: 'Política de Privacidad',
+    termsNoticeSuffix: '.',
   },
 
   // ── Iniciar sesión (/login) + Restablecer contraseña (/reset-password) ─────

@@ -109,6 +109,13 @@ export const enOverrides: MessagesOverride = {
     errorPasswordRequired: 'Password is required',
     errorPasswordMinReqs: 'Password does not meet the minimum requirements',
     errorConfirmPasswordRequired: 'Confirm the password',
+
+    // Terms acceptance notice (Access step, next to the Create Account button).
+    termsNoticePrefix: 'By creating your account, you agree to the ',
+    termsNoticeTermsLink: 'Terms of Use',
+    termsNoticeAnd: ' and the ',
+    termsNoticePrivacyLink: 'Privacy Policy',
+    termsNoticeSuffix: '.',
   },
 
   // ── Log in (/login) + Reset password (/reset-password) ─────────────────────

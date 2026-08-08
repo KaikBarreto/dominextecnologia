@@ -169,6 +169,10 @@ Deno.serve(async (req) => {
     // Endereço da empresa — OPCIONAL (string já formatada pelo frontend).
     // Backward-compat: ausente/vazio grava null, não barra ninguém.
     const company_address = trim(raw.company_address, 500);
+    // Versão dos Termos de Uso aceita no formulário de cadastro. OPCIONAL;
+    // default '1.0' (backward-compat com frontend antigo que não manda o campo).
+    // Usada abaixo pra carimbar a evidência de aceite (LGPD) em consent_records.
+    const terms_version = trim(raw.terms_version, 20) || '1.0';
 
     // ── Seed REGIONAL do tenant (idioma/moeda/fuso) ─────────────────────────────
     // OPCIONAL e NÃO-FATAL. Vive em company_settings (as colunas regionais NÃO
@@ -487,6 +491,53 @@ Deno.serve(async (req) => {
     await supabaseAdmin
       .from('user_roles')
       .insert({ user_id: newUser.user.id, role: 'admin' });
+
+    // ── Aceite dos Termos de Uso (LGPD) — carimbado no CADASTRO, NÃO-FATAL ───────
+    // Antes o aceite dependia de um modal obrigatório no 1º login. Agora o
+    // consentimento acontece no próprio formulário de cadastro (o aviso "ao criar
+    // conta você concorda com os Termos" É o ato de consentimento do titular).
+    // Este bloco só GRAVA A EVIDÊNCIA server-side exigida pela LGPD (Art. 8º §2º —
+    // ônus da prova): quem aceitou (user_id/company_id), qual versão do termo, IP
+    // real e user-agent, com accepted_at (default now() na tabela).
+    //
+    // É BEST-EFFORT: envolvido em try/catch e apenas logado em caso de falha.
+    // O cadastro NUNCA pode quebrar por causa do registro de aceite.
+    try {
+      // user-agent do navegador que fez o cadastro.
+      const userAgent = req.headers.get('user-agent') || null;
+      // IP real: x-forwarded-for vem "ip_cliente, ip_proxy..." → primeiro IP.
+      // consent_records.ip_address é inet: se vier vazio/inválido, grava NULL
+      // em vez de quebrar o INSERT.
+      const rawIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '';
+      const ipForConsent = rawIp && /^[0-9a-fA-F:.]+$/.test(rawIp) ? rawIp : null;
+
+      const { error: consentError } = await supabaseAdmin
+        .from('consent_records')
+        .insert({
+          user_id: newUser.user.id,
+          company_id: company.id,
+          purpose: 'terms_of_use',
+          version: terms_version,
+          ip_address: ipForConsent,
+          user_agent: userAgent,
+          // accepted_at tem default now() na tabela — omitido de propósito.
+        });
+      if (consentError) {
+        console.error('[self-register] Aviso: falha ao registrar aceite de termos (não-fatal):', consentError);
+      }
+
+      // Gate rápido em profiles (mesmo campo que o modal antigo atualizava).
+      // profiles é chaveado por user_id neste repo (ver UPDATE de company_id acima).
+      const { error: profileTermsError } = await supabaseAdmin
+        .from('profiles')
+        .update({ terms_accepted_at: new Date().toISOString() })
+        .eq('user_id', newUser.user.id);
+      if (profileTermsError) {
+        console.error('[self-register] Aviso: falha ao marcar terms_accepted_at em profiles (não-fatal):', profileTermsError);
+      }
+    } catch (consentErr) {
+      console.error('[self-register] Aviso: exceção ao registrar aceite de termos (não-fatal):', consentErr);
+    }
 
     // ── Seed REGIONAL (idioma/moeda/fuso) — NÃO-FATAL ───────────────────────────
     // A company_settings já foi criada pelo TRIGGER (identidade em 2 tabelas) no

@@ -109,6 +109,13 @@ export const frOverrides: MessagesOverride = {
     errorPasswordRequired: 'Le mot de passe est obligatoire',
     errorPasswordMinReqs: 'Le mot de passe ne respecte pas les exigences minimales',
     errorConfirmPasswordRequired: 'Confirmez le mot de passe',
+
+    // Avis d'acceptation des conditions (étape Accès, à côté du bouton Créer un compte).
+    termsNoticePrefix: 'En créant votre compte, vous acceptez les ',
+    termsNoticeTermsLink: 'Conditions d\'utilisation',
+    termsNoticeAnd: ' et la ',
+    termsNoticePrivacyLink: 'Politique de confidentialité',
+    termsNoticeSuffix: '.',
   },
 
   // ── Connexion (/login) + Réinitialiser le mot de passe (/reset-password) ───

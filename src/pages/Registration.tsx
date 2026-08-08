@@ -30,6 +30,8 @@ import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
 import { detectRegionalFromMachine, DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from '@/lib/i18n/regionalDefaults';
+import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
+import { TERMS_VERSION } from '@/data/termsOfUse';
 
 interface RegistrationFormData {
   company_name: string;
@@ -84,6 +86,10 @@ export default function Registration() {
   const [emailTaken, setEmailTaken] = useState(false);
   const emailCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emailCheckSeq = useRef(0);
+  // Modal de LEITURA dos Termos de Uso (readOnly), aberto pelo link do aviso de
+  // aceite na etapa Acesso. O aceite em si é registrado no backend no momento do
+  // cadastro (envia `terms_version`); este modal é só pra quem quer LER antes.
+  const [showTermsModal, setShowTermsModal] = useState(false);
   // Endereço estruturado — OPCIONAL, accordion fechado por padrão na etapa Dados.
   const [addressOpen, setAddressOpen] = useState(false);
   const [addressData, setAddressData] = useState<AddressData>(EMPTY_ADDRESS);
@@ -267,6 +273,10 @@ export default function Registration() {
           company_phone: data.company_phone,
           contact_name: data.contact_name,
           password: data.password,
+          // Aceite dos Termos de Uso: o próprio ato de criar a conta registra o
+          // aceite no backend. Enviamos a VERSÃO vigente dos termos exibidos no
+          // aviso da etapa Acesso (fonte única: src/data/termsOfUse.ts).
+          terms_version: TERMS_VERSION,
           company_address: formattedAddress || null,
           origin: selectedOrigin || null,
           segment: companySegment || null,
@@ -786,6 +796,31 @@ export default function Registration() {
                       <p className="text-sm text-white/70">{t.trialLine1}</p>
                       <p className="text-xs text-white/50">{t.trialLine2}</p>
                     </div>
+
+                    {/* Aviso de aceite dos Termos — SEM checkbox, só informativo.
+                        O aceite é registrado no backend ao criar a conta. "Termos
+                        de Uso" abre o modal de leitura; "Política de Privacidade"
+                        vai pra rota pública /privacidade em nova aba. */}
+                    <p className="text-center text-xs text-white/50 leading-relaxed">
+                      {t.termsNoticePrefix}
+                      <button
+                        type="button"
+                        onClick={() => setShowTermsModal(true)}
+                        className="font-semibold text-white underline underline-offset-2 hover:text-primary transition-colors"
+                      >
+                        {t.termsNoticeTermsLink}
+                      </button>
+                      {t.termsNoticeAnd}
+                      <a
+                        href={localizeInternal('/privacidade', locale)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-white underline underline-offset-2 hover:text-primary transition-colors"
+                      >
+                        {t.termsNoticePrivacyLink}
+                      </a>
+                      {t.termsNoticeSuffix}
+                    </p>
                   </div>
                 )}
                 </StepTransition>
@@ -838,6 +873,13 @@ export default function Registration() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de LEITURA dos Termos de Uso (readOnly) — aberto pelo link do
+          aviso de aceite na etapa Acesso. Só leitura: fecha por ESC/X/clique
+          fora normalmente. O aceite acontece ao criar a conta (terms_version). */}
+      {showTermsModal && (
+        <TermsOfServiceModal readOnly open onOpenChange={setShowTermsModal} />
+      )}
     </div>
   );
 }
