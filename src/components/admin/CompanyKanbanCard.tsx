@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Edit, Trash2, MessageCircle, User, Gift, Tag } from 'lucide-react';
+import { Edit, Trash2, User, Gift, Tag } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { getSegment } from '@/utils/companySegments';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
+import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 
 const PLAN_LABELS: Record<string, string> = {
   starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise',
@@ -118,7 +120,10 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
             <AvatarFallback className="text-white text-[11px] sm:text-xs font-medium bg-transparent">{getInitials(company.name)}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-sm text-foreground truncate">{company.name}</h4>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h4 className="font-bold text-sm text-foreground truncate">{company.name}</h4>
+              <SelfServiceBadge company={company} />
+            </div>
             <p className="text-primary text-sm font-medium truncate">{PLAN_LABELS[company.subscription_plan] || company.subscription_plan || '—'}</p>
           </div>
         </div>
@@ -166,16 +171,13 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
       </div>
 
       <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 flex items-center justify-between border-t pt-2 mt-1">
-        <div onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {company.phone && (
+            <LeadWhatsAppButton company={company} variant="icon" className="h-7 w-7" />
+          )}
           <RowActionsMenu
             triggerClassName="h-7 w-7"
             actions={[
-              {
-                label: 'WhatsApp',
-                icon: MessageCircle,
-                onClick: () => window.open(`https://wa.me/55${company.phone.replace(/\D/g, '')}`, '_blank'),
-                hidden: !company.phone,
-              },
               {
                 label: 'Editar empresa',
                 icon: Edit,

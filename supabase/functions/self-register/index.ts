@@ -354,6 +354,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Rodízio de leads (self-service) ──────────────────────────────────────────
+    // Quando o cadastro chega SEM vendedor no link (nenhum closer resolvido via
+    // referral_code), o lead é "self-service": marcamos a company com is_self_service
+    // e distribuímos o closer pelo rodízio round-robin justo (RPC SECURITY DEFINER
+    // assign_next_lead_salesperson, que só considera vendedores ativos, in_rotation e
+    // com telefone, e carimba last_lead_assigned_at). Se o link JÁ trouxe vendedor,
+    // NÃO mexemos: is_self_service fica false e usa-se o vendedor do link.
+    //
+    // FALLBACK SEGURO: se a RPC retornar NULL (ninguém elegível) ou der erro, o
+    // cadastro NÃO quebra — a company é criada sem salesperson (salespersonId null),
+    // exatamente como antes. O rodízio é um "bônus", nunca um bloqueio.
+    let isSelfService = false;
+    if (!salespersonId) {
+      isSelfService = true; // veio sem link de vendedor
+      try {
+        const { data: rotationId, error: rotErr } = await supabaseAdmin.rpc('assign_next_lead_salesperson');
+        if (rotErr) {
+          console.error('[self-register] Falha no rodízio (assign_next_lead_salesperson) — segue sem vendedor (não-fatal):', rotErr.message);
+        } else if (rotationId) {
+          salespersonId = rotationId as string;
+          console.log('[self-register] Lead self-service atribuído por rodízio ao vendedor:', salespersonId);
+        } else {
+          console.log('[self-register] Nenhum vendedor elegível no rodízio — company criada sem vendedor.');
+        }
+      } catch (rotationErr) {
+        console.error('[self-register] Exceção no rodízio de leads — segue sem vendedor (não-fatal):', rotationErr);
+      }
+    }
+
     // Observação automática de valor personalizado: quando o link trouxe um
     // preço diferente do preço do plano, registra quem deu a promoção.
     // Quem deu = vendedor do link (referral) > 'Link de cadastro'.
@@ -408,6 +437,9 @@ Deno.serve(async (req) => {
         trial_days: isSale ? 0 : (trialDaysOverride || 14),
         salesperson_id: salespersonId,
         sdr_id: sdrId,
+        // Lead que se cadastrou sozinho (sem vendedor no link), distribuído por rodízio.
+        // false quando o link trouxe vendedor (comportamento anterior preservado).
+        is_self_service: isSelfService,
         custom_price: lockedPrice && lockedPrice !== planPrice ? lockedPrice : null,
         custom_price_permanent: lockedPrice ? !promoMonths : true,
         custom_price_months: promoMonths || null,
@@ -421,6 +453,64 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: t.companyCreateError(companyError.message) }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // ── Aviso IN-APP do rodízio pro vendedor sorteado — BEST-EFFORT, NÃO-FATAL ───
+    // Só quando o lead é self-service E o rodízio de fato atribuiu um vendedor.
+    // Insere UMA linha em admin_notifications (type='new_lead') dirigida ao
+    // salespeople.user_id do vendedor sorteado (target_user_id). Se o vendedor ainda
+    // não tem user_id vinculado, target_user_id fica NULL → cai como aviso global de
+    // admin (as policies self-scope + admin cobrem os dois casos). Envolvido em
+    // try/catch: erro aqui NUNCA pode afetar/derrubar o cadastro.
+    if (isSelfService && salespersonId) {
+      try {
+        // Telefone mascarado (só os 4 últimos dígitos visíveis), como a Eco faz.
+        const maskPhone = (p: string): string => {
+          const digits = (p || '').replace(/\D/g, '');
+          if (digits.length < 4) return p || '';
+          return `••••${digits.slice(-4)}`;
+        };
+        const maskedPhone = company_phone ? maskPhone(company_phone) : '';
+
+        // Destinatário: user_id do vendedor sorteado (pode não existir ainda → NULL).
+        let targetUserId: string | null = null;
+        const { data: spRow, error: spErr } = await supabaseAdmin
+          .from('salespeople')
+          .select('user_id')
+          .eq('id', salespersonId)
+          .maybeSingle();
+        if (spErr) {
+          console.error('[self-register] Aviso: falha ao buscar user_id do vendedor do rodízio (aviso vira global):', spErr.message);
+        } else if (spRow?.user_id) {
+          targetUserId = spRow.user_id as string;
+        }
+
+        const messageParts = [`Novo lead: ${company.name}`];
+        if (contact_name) messageParts.push(`Contato: ${contact_name}`);
+        if (maskedPhone) messageParts.push(`Telefone: ${maskedPhone}`);
+        const message = messageParts.join(' • ');
+
+        const { error: notifError } = await supabaseAdmin
+          .from('admin_notifications')
+          .insert({
+            type: 'new_lead',
+            title: 'Novo lead do rodízio',
+            message,
+            data: {
+              company_id: company.id,
+              company_name: company.name,
+              contact_name: contact_name || null,
+              phone: maskedPhone || null,
+              plan: planCode,
+            },
+            target_user_id: targetUserId,
+          });
+        if (notifError) {
+          console.error('[self-register] Aviso: falha ao inserir notificação de novo lead (não-fatal):', notifError.message);
+        }
+      } catch (notifErr) {
+        console.error('[self-register] Aviso: exceção ao notificar vendedor do rodízio (não-fatal):', notifErr);
+      }
     }
 
     // Plano personalizado: grava os módulos contratados (à la carte).

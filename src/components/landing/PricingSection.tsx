@@ -6,9 +6,9 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { PriceAmount } from '@/components/ui/PriceAmount';
-import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n';
+import { useLandingWhatsAppNumbers } from '@/hooks/useLandingWhatsAppNumbers';
 import { localizeHash } from '@/lib/i18n/localizeHash';
 import type { LocaleCode } from '@/lib/i18n/locales';
 
@@ -38,6 +38,7 @@ export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
   const ref = useScrollReveal();
   const { locale, messages } = useLocale();
+  const { getRandom } = useLandingWhatsAppNumbers();
   const t = messages.home.pricing;
   // Junta config (preço/link) + texto i18n (nome/desc/features) por code.
   const plans = PLAN_CONFIG.map((cfg) => {
@@ -54,9 +55,10 @@ export default function PricingSection() {
   // URL montada no CLIQUE (não no load do módulo): garante que a UTM capturada
   // depois do load entre na mensagem e que o rodízio sorteie por clique.
   // O fragmento e o locale são passados para manter a mensagem no idioma certo.
+  // getRandom() usa a lista ao vivo da RPC; se falhar, cai no fallback fixo (Maicon).
   function openEnterpriseWhatsApp() {
     const fragment = ENTERPRISE_WHATSAPP_FRAGMENTS[locale] ?? ENTERPRISE_WHATSAPP_FRAGMENTS['pt-br'];
-    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), fragment, locale);
+    const url = buildWhatsAppUrl(getRandom(), fragment, locale);
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 

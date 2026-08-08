@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useTableSort } from '@/hooks/useTableSort';
-import { Edit, Trash2, ChevronLeft, ChevronRight, CalendarIcon, Loader2, AlertTriangle, MessageCircle, Building2 } from 'lucide-react';
+import { Edit, Trash2, ChevronLeft, ChevronRight, CalendarIcon, Loader2, AlertTriangle, Building2 } from 'lucide-react';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getSelectableSegments, getSegment } from '@/utils/companySegments';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
+import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 
 interface CompanyTableProps {
   companies: any[];
@@ -205,7 +207,12 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                       </Select>
                     </TableCell>
                     <TableCell>{masterName}</TableCell>
-                    <TableCell className="font-medium whitespace-nowrap">{company.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="whitespace-nowrap">{company.name}</span>
+                        <SelfServiceBadge company={company} />
+                      </div>
+                    </TableCell>
                     {/* Origin - inline select */}
                     <TableCell onClick={(e) => e.stopPropagation()} className="py-6 overflow-visible">
                       <Select
@@ -327,15 +334,12 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                       <TableCell>{(company.subscription_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                     )}
                     <TableCell className="text-right">
-                      <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {company.phone && (
+                          <LeadWhatsAppButton company={company} variant="icon" className="h-8 w-8" />
+                        )}
                         <RowActionsMenu
                           actions={[
-                            {
-                              label: 'WhatsApp',
-                              icon: MessageCircle,
-                              onClick: () => window.open(`https://wa.me/55${company.phone.replace(/\D/g, '')}`, '_blank'),
-                              hidden: !company.phone,
-                            },
                             {
                               label: 'Editar empresa',
                               icon: Edit,

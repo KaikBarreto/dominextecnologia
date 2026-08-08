@@ -565,6 +565,11 @@ async function processConfirmedPayment(
         closer_commission: closerCommission,
         sdr_commission: sdrCommission,
         billing_cycle: isYearly ? "annual" : "monthly",
+        // [LEAD SELF-SERVICE] segura a comissão só quando é lead self-service
+        // ainda não trabalhado (espelha a RPC register_manual_company_payment).
+        status: (!company.is_self_service || company.lead_worked_at)
+          ? "confirmed"
+          : "pending_work",
       });
       console.log(
         `[salesperson] venda registrada p/ ${company.name}: comissão total R$ ${total} ` +
@@ -588,7 +593,9 @@ const COMPANY_COLS =
   "billing_cycle, ltv, origin, salesperson_id, sdr_id, asaas_customer_id, asaas_subscription_id, " +
   "pending_subscription_value, pending_plan_code, pending_billing_cycle, pending_modules, pending_max_users, " +
   "custom_price, custom_price_months, custom_price_payments_made, " +
-  "custom_price_permanent";
+  // [LEAD SELF-SERVICE] status da comissão: segura ('pending_work') quando é lead
+  // self-service ainda não trabalhado; senão 'confirmed'.
+  "custom_price_permanent, is_self_service, lead_worked_at";
 
 /** Mantém só dígitos (normaliza CPF/CNPJ pra comparação tolerante a máscara). */
 function digitsOnly(v: unknown): string {

@@ -28,6 +28,7 @@ import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 import { SubscriptionGate } from '@/components/SubscriptionGate';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
 import { TasksDrawer } from '@/components/tasks/TasksDrawer';
@@ -425,7 +426,7 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
       <div className="flex items-center gap-1 justify-end">
         {user && (
           <>
-            <NotificationsBell />
+            {isAdminUser ? <AdminNotificationBell /> : <NotificationsBell />}
             {/* Atalhos compactos só em tablet: no mobile (<lg) o bottom nav é o caminho. */}
             <Button
               variant="ghost"

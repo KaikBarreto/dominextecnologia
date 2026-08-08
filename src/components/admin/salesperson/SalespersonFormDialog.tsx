@@ -46,6 +46,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     monthly_goal: '30',
     is_active: true,
     no_commission: false,
+    in_rotation: true,
     notes: '',
     user_id: 'none' as string,
     role: 'closer' as 'sdr' | 'closer',
@@ -80,13 +81,14 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         monthly_goal: String(editingSalesperson.monthly_goal ?? 30),
         is_active: editingSalesperson.is_active ?? true,
         no_commission: editingSalesperson.no_commission ?? false,
+        in_rotation: (editingSalesperson as any).in_rotation ?? true,
         notes: editingSalesperson.notes || '',
         user_id: (editingSalesperson as any).user_id || 'none',
         role: ((editingSalesperson as any).role as 'sdr' | 'closer') || 'closer',
       });
       setPhotoUrl(editingSalesperson.photo_url || null);
     } else {
-      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: '30', is_active: true, no_commission: false, notes: '', user_id: 'none', role: 'closer' });
+      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: '30', is_active: true, no_commission: false, in_rotation: true, notes: '', user_id: 'none', role: 'closer' });
       setPhotoUrl(null);
     }
   }, [editingSalesperson, open]);
@@ -218,6 +220,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         monthly_goal: parseInt(formData.monthly_goal, 10) || 0,
         is_active: formData.is_active,
         no_commission: formData.no_commission,
+        in_rotation: formData.in_rotation,
         notes: formData.notes.trim() || null,
         user_id: formData.user_id === 'none' ? null : formData.user_id,
         role: formData.role,
@@ -363,6 +366,13 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
               <p className="text-xs text-muted-foreground">Vendas atribuídas a este vendedor não geram comissão</p>
             </div>
             <Switch id="sp-noc" checked={formData.no_commission} onCheckedChange={(c) => setFormData({ ...formData, no_commission: c })} />
+          </div>
+          <div className="sm:col-span-2 flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="sp-rotation" className="cursor-pointer">Participa do rodízio de leads</Label>
+              <p className="text-xs text-muted-foreground">Distribui leads automaticamente e entra nos números do site. Precisa ter telefone cadastrado para aparecer no rodízio.</p>
+            </div>
+            <Switch id="sp-rotation" checked={formData.in_rotation} onCheckedChange={(c) => setFormData({ ...formData, in_rotation: c })} />
           </div>
         </div>
       </form>

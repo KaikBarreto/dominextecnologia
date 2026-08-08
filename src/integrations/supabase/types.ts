@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -295,6 +320,7 @@ export type Database = {
           id: string
           is_read: boolean
           message: string | null
+          target_user_id: string | null
           title: string | null
           type: string
         }
@@ -304,6 +330,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string | null
+          target_user_id?: string | null
           title?: string | null
           type: string
         }
@@ -313,6 +340,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string | null
+          target_user_id?: string | null
           title?: string | null
           type?: string
         }
@@ -584,6 +612,9 @@ export type Database = {
           extra_users: number | null
           ibge_municipality_code: string | null
           id: string
+          is_self_service: boolean
+          lead_worked_at: string | null
+          lead_worked_by: string | null
           logo_url: string | null
           ltv: number
           max_users: number | null
@@ -633,6 +664,9 @@ export type Database = {
           extra_users?: number | null
           ibge_municipality_code?: string | null
           id?: string
+          is_self_service?: boolean
+          lead_worked_at?: string | null
+          lead_worked_by?: string | null
           logo_url?: string | null
           ltv?: number
           max_users?: number | null
@@ -682,6 +716,9 @@ export type Database = {
           extra_users?: number | null
           ibge_municipality_code?: string | null
           id?: string
+          is_self_service?: boolean
+          lead_worked_at?: string | null
+          lead_worked_by?: string | null
           logo_url?: string | null
           ltv?: number
           max_users?: number | null
@@ -6290,7 +6327,9 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          in_rotation: boolean
           is_active: boolean
+          last_lead_assigned_at: string | null
           monthly_goal: number
           name: string
           no_commission: boolean
@@ -6307,7 +6346,9 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          in_rotation?: boolean
           is_active?: boolean
+          last_lead_assigned_at?: string | null
           monthly_goal?: number
           name: string
           no_commission?: boolean
@@ -6324,7 +6365,9 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          in_rotation?: boolean
           is_active?: boolean
+          last_lead_assigned_at?: string | null
           monthly_goal?: number
           name?: string
           no_commission?: boolean
@@ -6453,9 +6496,11 @@ export type Database = {
           id: string
           notes: string | null
           paid_amount: number
+          released_at: string | null
           salesperson_id: string
           sdr_commission: number | null
           sdr_id: string | null
+          status: string
         }
         Insert: {
           amount?: number
@@ -6471,9 +6516,11 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_amount?: number
+          released_at?: string | null
           salesperson_id: string
           sdr_commission?: number | null
           sdr_id?: string | null
+          status?: string
         }
         Update: {
           amount?: number
@@ -6489,9 +6536,11 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_amount?: number
+          released_at?: string | null
           salesperson_id?: string
           sdr_commission?: number | null
           sdr_id?: string | null
+          status?: string
         }
         Relationships: [
           {
@@ -8786,6 +8835,7 @@ export type Database = {
           ref: string
         }[]
       }
+      assign_next_lead_salesperson: { Args: never; Returns: string }
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       can_bootstrap_admin: { Args: never; Returns: boolean }
@@ -8821,6 +8871,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      current_salesperson_id: { Args: never; Returns: string }
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
         Returns: undefined
@@ -8859,6 +8910,7 @@ export type Database = {
         }[]
       }
       get_disc_public: { Args: { p_code: string }; Returns: Json }
+      get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
       get_nps_criteria_averages: {
         Args: { p_end: string; p_start: string }
@@ -9029,6 +9081,10 @@ export type Database = {
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
       lead_valida_cnpj: { Args: { p_doc: string }; Returns: boolean }
       lead_valida_cpf: { Args: { p_doc: string }; Returns: boolean }
+      mark_lead_worked_and_release: {
+        Args: { p_company_id: string }
+        Returns: Json
+      }
       next_compra_numero: { Args: { p_company_id: string }; Returns: number }
       next_equipment_identifier: {
         Args: { p_company_id: string }
@@ -9459,6 +9515,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

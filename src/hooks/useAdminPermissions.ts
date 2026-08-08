@@ -24,12 +24,29 @@ export type AdminPermissionKey =
   | typeof ADMIN_SCREEN_PERMISSIONS[number]['key']
   | typeof ADMIN_FUNCTION_PERMISSIONS[number]['key'];
 
+/**
+ * Telas que um vendedor-only (vinculado a `salespeople.user_id`, sem acesso
+ * master nem permissões amplas de admin) pode enxergar no painel Auctus.
+ * Espelha o `SALESPERSON_ALLOWED_SCREENS` do EcoSistema, adaptado à Dominex:
+ * vendedores (própria ficha) + empresas (leads do rodízio dele). As
+ * notificações não são uma tela roteada aqui (vivem no sino do header, gateado
+ * por RLS via `target_user_id`), então não entram nesta lista.
+ */
+const SALESPERSON_ALLOWED_SCREENS = ['admin_vendedores', 'admin_empresas'] as const;
+
 interface AdminPermissionsResult {
   hasMasterAccess: boolean;
   hasFullAccess: boolean;
   hasScreenAccess: (key: string) => boolean;
   hasFunctionAccess: (key: string) => boolean;
   linkedSalespersonId: string | null;
+  /**
+   * Vendedor-only: tem ficha de vendedor vinculada, NÃO é master e NÃO tem a
+   * função-permissão de ver todos os vendedores. Usado pelos guardrails de UI
+   * (própria ficha, sem seletor de trocar vendedor, sem registrar vale/venda).
+   * A segurança real é a RLS (Fase 1); isto é UX/runtime.
+   */
+  isSalespersonOnly: boolean;
   permissions: string[];
   isLoading: boolean;
 }
@@ -65,13 +82,24 @@ export function useAdminPermissions(): AdminPermissionsResult {
     },
   });
 
-  const hasScreenAccess = (key: string) => {
+  const hasFunctionAccess = (key: string) => {
     if (isMaster) return true;
     return permissions.includes(key);
   };
 
-  const hasFunctionAccess = (key: string) => {
+  // Vendedor-only: tem ficha vinculada, não é master e não pode ver todos os
+  // vendedores. (A ficha vinculada por si só não basta — um coordenador pode
+  // ser vendedor E ter `admin_vendedores_ver_todos`; esse continua vendo tudo.)
+  const canSeeAllSalespeople = hasFunctionAccess('admin_vendedores_ver_todos');
+  const isSalespersonOnly = !!linkedSalespersonId && !isMaster && !canSeeAllSalespeople;
+
+  const hasScreenAccess = (key: string) => {
     if (isMaster) return true;
+    // Vendedor-only só enxerga as telas dele, mesmo que o pool de permissões
+    // tenha vindo mais amplo — o rodízio isola o vendedor às próprias telas.
+    if (isSalespersonOnly) {
+      return (SALESPERSON_ALLOWED_SCREENS as readonly string[]).includes(key);
+    }
     return permissions.includes(key);
   };
 
@@ -81,6 +109,7 @@ export function useAdminPermissions(): AdminPermissionsResult {
     hasScreenAccess,
     hasFunctionAccess,
     linkedSalespersonId,
+    isSalespersonOnly,
     permissions,
     isLoading: permsLoading || spLoading,
   };
