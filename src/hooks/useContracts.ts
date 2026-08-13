@@ -1080,11 +1080,15 @@ function assertAllVisitsPersisted(createdCount: number, expected: number): void 
  * (engole o erro e loga). O id+data permite ao chamador casar a OS nova com a
  * antiga do mesmo mês pra preservar o `public_short_code` (link público).
  */
-async function persistContractVisit(args: {
+/**
+ * Argumentos de contexto pra montar/persistir UMA visita (OS). Compartilhado
+ * pelo builder puro (`buildVisitOrderPayload`) e pela função de persist
+ * (`persistContractVisit`). NÃO inclui a visita nem o índice — esses são
+ * passados à parte, pois o builder é chamado por visita.
+ */
+export interface PersistContractVisitArgs {
   companyId: string;
   contractId: string;
-  visit: BuiltVisit;
-  visitIndex: number;
   contractName: string;
   useGroupedEngine: boolean;
   customerId: string;
@@ -1110,8 +1114,29 @@ async function persistContractVisit(args: {
   equipmentTemplateMap?: Record<string, string[]>;
   assigneeUserIds: string[];
   createdBy: string | null;
-}): Promise<{ id: string; scheduledDate: string } | null> {
-  const { visit, visitIndex } = args;
+}
+
+/** Payload de UMA visita montado (SEM inserir). Fonte única da forma das linhas. */
+export interface VisitOrderPayload {
+  os: Record<string, any>;                    // colunas de service_orders, SEM id
+  equipment: { equipment_id: string; form_template_id: string | null }[];
+  assignees: string[];                        // user_ids
+  activities: Record<string, any>[];          // colunas de service_order_activities, SEM service_order_id
+  preserve_code?: string | null;              // preenchido depois em buildRegenerationPayload
+}
+
+/**
+ * Monta (SEM inserir) o payload de UMA visita: a OS + equipment + assignees +
+ * activities. Fonte única da forma das linhas — usada pelo insert antigo
+ * (persistContractVisit, fallback) e pelo payload da RPC nova. Puro: não toca no
+ * banco, não gera ids. A OS sai SEM `id` e os filhos SEM `service_order_id` —
+ * quem persiste anexa o id depois.
+ */
+export function buildVisitOrderPayload(
+  args: PersistContractVisitArgs,
+  visit: BuiltVisit,
+  visitIndex: number,
+): VisitOrderPayload {
   const date = visit.date;
   // Date parts diretos — evita o shift de timezone do toISOString().
   const y = date.getFullYear();
@@ -1123,7 +1148,7 @@ async function persistContractVisit(args: {
     ? `${args.contractName} — Visita ${visitIndex + 1}`
     : `${args.contractName} — Ocorrência ${visitIndex + 1}`;
 
-  const osPayload = normalizeOptionalForeignKeys(
+  const os = normalizeOptionalForeignKeys(
     {
       company_id: args.companyId,
       customer_id: args.customerId,
@@ -1145,25 +1170,14 @@ async function persistContractVisit(args: {
     ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'equipment_id']
   );
 
-  const { data: os, error: osError } = await supabase
-    .from('service_orders')
-    .insert(osPayload)
-    .select('id')
-    .single();
-
-  if (osError) {
-    console.error(`Error creating contract OS #${visitIndex + 1}:`, osError);
-    return null;
-  }
-
+  // M5 — UMA linha de service_order_equipment por (equipamento × checklist
+  // efetivo). Quando o equipamento tem múltiplos checklists no contrato, cada
+  // um vira uma linha (trio UNIQUE no banco). Sem checklists próprios → 1 linha
+  // com o template de contrato (ou null): preserva exatamente o caso de 1
+  // checklist. Dedup por (equipment_id, templateId) protege contra o UNIQUE.
+  const equipment: { equipment_id: string; form_template_id: string | null }[] = [];
   if (args.equipmentIds.length > 0) {
-    // M5 — UMA linha de service_order_equipment por (equipamento × checklist
-    // efetivo). Quando o equipamento tem múltiplos checklists no contrato, cada
-    // um vira uma linha (trio UNIQUE no banco). Sem checklists próprios → 1 linha
-    // com o template de contrato (ou null): preserva exatamente o caso de 1
-    // checklist. Dedup por (equipment_id, templateId) protege contra o UNIQUE.
     const seen = new Set<string>();
-    const eqRows: { service_order_id: string; equipment_id: string; form_template_id: string | null }[] = [];
     for (const eqId of args.equipmentIds) {
       const effective = args.equipmentTemplateMap?.[eqId] ?? [];
       // Equipamento com checklists próprios → uma linha por template. Sem nenhum
@@ -1173,25 +1187,16 @@ async function persistContractVisit(args: {
         const key = `${eqId}::${tpl ?? ''}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        eqRows.push({ service_order_id: os.id, equipment_id: eqId, form_template_id: tpl });
+        equipment.push({ equipment_id: eqId, form_template_id: tpl });
       }
-    }
-    if (eqRows.length > 0) {
-      const { error: eqErr } = await supabase.from('service_order_equipment').insert(eqRows);
-      if (eqErr) console.error('Error linking equipment:', eqErr);
     }
   }
 
-  if (args.assigneeUserIds.length > 0) {
-    const { error: assignErr } = await supabase.from('service_order_assignees').insert(
-      args.assigneeUserIds.map(uid => ({ service_order_id: os.id, user_id: uid }))
-    );
-    if (assignErr) console.error('Error creating assignees:', assignErr);
-  }
+  const assignees = [...args.assigneeUserIds];
 
   // CAMINHO POR MÁQUINA (Fase 2). Quando a visita já vem com `emissions`
   // resolvidas, o motor por máquina JÁ decidiu o equipamento e a ordenação
-  // (full → ac → local) de cada linha. Aqui só gravamos o snapshot sequencial,
+  // (full → ac → local) de cada linha. Aqui só montamos o snapshot sequencial,
   // sem re-expandir por equipamento. Cada emissão = 1 linha.
   if (visit.emissions && visit.emissions.length > 0) {
     const ordered = [...visit.emissions].sort(
@@ -1200,9 +1205,8 @@ async function persistContractVisit(args: {
         (x.machineRank - y.machineRank) ||
         (x.activitySort - y.activitySort),
     );
-    const emissionRows = ordered.map((e, idx) => ({
+    const activities = ordered.map((e, idx) => ({
       company_id: args.companyId,
-      service_order_id: os.id,
       plan_activity_id: e.planActivityId,
       equipment_id: e.equipmentId,
       section: e.input.section ?? null,
@@ -1219,9 +1223,7 @@ async function persistContractVisit(args: {
       form_template_id: e.input.form_template_id ?? null,
       sort_order: idx,
     }));
-    const actErr = await insertActivitiesBatched(emissionRows);
-    if (actErr) console.error('Error creating service order activities (per-machine):', actErr);
-    return { id: os.id, scheduledDate: dateStr };
+    return { os, equipment, assignees, activities };
   }
 
   if (visit.activities.length > 0) {
@@ -1249,7 +1251,6 @@ async function persistContractVisit(args: {
 
     const baseRow = (a: PlanActivityInput, planActivityId: string | null, eqId: string | null, bucket: number, actSort: number) => ({
       company_id: args.companyId,
-      service_order_id: os.id,
       plan_activity_id: planActivityId,
       equipment_id: eqId,
       section: a.section ?? null,
@@ -1286,13 +1287,60 @@ async function persistContractVisit(args: {
     // Ordena por equipamento (bucket) e depois pela ordem da atividade, então
     // atribui sort_order sequencial estável pro campo.
     rows.sort((x, y) => (x._bucket - y._bucket) || (x._actSort - y._actSort));
-    const finalRows = rows.map((r) => {
+    const activities = rows.map((r) => {
       const { _bucket, _actSort, ...rest } = r;
       return { ...rest, sort_order: globalSort++ };
     });
 
-    const actErr = await insertActivitiesBatched(finalRows);
-    if (actErr) console.error('Error creating service order activities:', actErr);
+    return { os, equipment, assignees, activities };
+  }
+
+  return { os, equipment, assignees, activities: [] };
+}
+
+async function persistContractVisit(
+  args: PersistContractVisitArgs & { visit: BuiltVisit; visitIndex: number },
+): Promise<{ id: string; scheduledDate: string } | null> {
+  const { visit, visitIndex } = args;
+  const payload = buildVisitOrderPayload(args, visit, visitIndex);
+  const dateStr = payload.os.scheduled_date as string;
+
+  const { data: os, error: osError } = await supabase
+    .from('service_orders')
+    .insert(payload.os)
+    .select('id')
+    .single();
+
+  if (osError) {
+    console.error(`Error creating contract OS #${visitIndex + 1}:`, osError);
+    return null;
+  }
+
+  if (payload.equipment.length > 0) {
+    const eqRows = payload.equipment.map((e) => ({ ...e, service_order_id: os.id }));
+    const { error: eqErr } = await supabase.from('service_order_equipment').insert(eqRows);
+    if (eqErr) console.error('Error linking equipment:', eqErr);
+  }
+
+  if (payload.assignees.length > 0) {
+    const { error: assignErr } = await supabase.from('service_order_assignees').insert(
+      payload.assignees.map(uid => ({ service_order_id: os.id, user_id: uid }))
+    );
+    if (assignErr) console.error('Error creating assignees:', assignErr);
+  }
+
+  if (payload.activities.length > 0) {
+    const actRows = payload.activities.map((a) => ({ ...a, service_order_id: os.id }));
+    const actErr = await insertActivitiesBatched(actRows);
+    if (actErr) {
+      // Mensagem depende do caminho — mantém os logs distintos de antes.
+      console.error(
+        visit.emissions && visit.emissions.length > 0
+          ? 'Error creating service order activities (per-machine):'
+          : 'Error creating service order activities:',
+        actErr,
+      );
+    }
   }
 
   return { id: os.id, scheduledDate: dateStr };
