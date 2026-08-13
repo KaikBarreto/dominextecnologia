@@ -106,3 +106,43 @@ it('atribui cada código a um único mês e nega mês já reivindicado', () => {
   expect(codes.filter((c) => c === 'CODE-MAR')).toHaveLength(1);
   expect(codes.filter((c) => c === 'CODE-ABR')).toHaveLength(1);
 });
+
+import { vi } from 'vitest';
+import { regenerateViaRpcOrFallback } from './useContracts';
+
+it('usa a RPC quando ela tem sucesso e NÃO chama o fallback', async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: { created_count: 3, deleted_count: 2 }, error: null });
+  const fallback = vi.fn();
+  const res = await regenerateViaRpcOrFallback({
+    enabled: true,
+    payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
+    rpc, fallback,
+  });
+  expect(rpc).toHaveBeenCalledWith('regenerate_contract_visits', { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] });
+  expect(fallback).not.toHaveBeenCalled();
+  expect(res).toEqual({ createdCount: 3, deletedCount: 2 });
+});
+
+it('cai no fallback quando a RPC erra', async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } });
+  const fallback = vi.fn().mockResolvedValue({ createdCount: 5, deletedCount: 1 });
+  const res = await regenerateViaRpcOrFallback({
+    enabled: true,
+    payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
+    rpc, fallback,
+  });
+  expect(fallback).toHaveBeenCalledOnce();
+  expect(res).toEqual({ createdCount: 5, deletedCount: 1 });
+});
+
+it('vai direto pro fallback quando a flag está desligada (nem chama a RPC)', async () => {
+  const rpc = vi.fn();
+  const fallback = vi.fn().mockResolvedValue({ createdCount: 4, deletedCount: 0 });
+  await regenerateViaRpcOrFallback({
+    enabled: false,
+    payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
+    rpc, fallback,
+  });
+  expect(rpc).not.toHaveBeenCalled();
+  expect(fallback).toHaveBeenCalledOnce();
+});

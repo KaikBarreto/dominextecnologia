@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useFeatureFlag, isFlagEnabledFor } from './useFeatureFlag';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { addDays, addMonths } from 'date-fns';
@@ -1621,6 +1622,35 @@ export function buildRegenerationPayload(input: BuildRegenerationPayloadArgs): R
   };
 }
 
+export interface RegenViaRpcArgs {
+  enabled: boolean;
+  payload: RegenerationRpcPayload;
+  // `any` intencional: a RPC ainda não está nos types gerados; assinatura genérica
+  // espelha a forma { data, error } do supabase-js e é injetada nos call-sites.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rpc: (fn: string, params: any) => Promise<{ data: any; error: any }>;
+  fallback: () => Promise<{ createdCount: number; deletedCount: number }>;
+}
+
+/**
+ * Caminho novo com rede de segurança: flag desligada → fallback direto; flag
+ * ligada → tenta a RPC; erro da RPC → loga e cai no fallback (o antigo). A
+ * cliente nunca vê uma falha nova por causa da RPC.
+ */
+export async function regenerateViaRpcOrFallback(
+  a: RegenViaRpcArgs,
+): Promise<{ createdCount: number; deletedCount: number }> {
+  if (!a.enabled) return a.fallback();
+  try {
+    const { data, error } = await a.rpc('regenerate_contract_visits', a.payload);
+    if (error) throw error;
+    return { createdCount: data?.created_count ?? 0, deletedCount: data?.deleted_count ?? 0 };
+  } catch (e) {
+    console.error('regenerate_contract_visits RPC falhou; usando fallback client-side:', e);
+    return a.fallback();
+  }
+}
+
 /**
  * Cascata de exclusão de OSs regeneráveis de um contrato (dependentes → OS).
  * Fonte ÚNICA da sequência de limpeza — usada pela regeneração (após gerar as
@@ -1825,6 +1855,9 @@ export function useContracts() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  // Flag de rollout da RPC server-side de regeneração de visitas. Lida no TOP do
+  // hook (regra dos hooks); cada call-site decide via isFlagEnabledFor(flag, id).
+  const { data: regenFlag } = useFeatureFlag('regenerate_contract_visits_rpc');
 
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
@@ -2187,27 +2220,50 @@ export function useContracts() {
         // regeneração da edição). RLS de service_orders exige company_id no INSERT
         // (garantido lá dentro). Cada visita é independente → persiste EM PARALELO
         // (concorrência limitada) preservando o visitIndex pra numeração/ordem.
-        osCreatedCount = await runWithConcurrency(visits, async (visit, i) => {
-          const created = await persistContractVisit({
-            companyId: profile.company_id,
-            contractId: (contract as any).id,
-            visit,
-            visitIndex: i,
-            contractName: input.name,
-            useGroupedEngine,
-            customerId: input.customer_id,
-            technicianId: input.technician_id || null,
-            teamId: input.team_id || null,
-            serviceTypeId: input.service_type_id || null,
-            formTemplateId: input.form_template_id || null,
-            equipmentIds,
-            itemEquipmentMap,
-            equipmentTemplateMap,
-            assigneeUserIds,
-            createdBy: user?.id || null,
-          });
-          return created != null;
+        //
+        // Caminho novo (RPC server-side) com rede de segurança: flag ligada pro
+        // contrato → tenta a RPC; flag off/erro → cai no fallback client-side
+        // (runWithConcurrency), byte-idêntico ao antigo. Criação não apaga nada
+        // (oldRegenerableIds vazio → p_delete_ids vazio, deletedCount 0).
+        const persistArgs = {
+          companyId: profile.company_id,
+          contractId: (contract as any).id,
+          contractName: input.name,
+          useGroupedEngine,
+          customerId: input.customer_id,
+          technicianId: input.technician_id || null,
+          teamId: input.team_id || null,
+          serviceTypeId: input.service_type_id || null,
+          formTemplateId: input.form_template_id || null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        };
+        const rpcPayload = buildRegenerationPayload({
+          args: persistArgs,
+          visits,
+          oldRegenerableIds: [],
         });
+        const { createdCount } = await regenerateViaRpcOrFallback({
+          enabled: isFlagEnabledFor(regenFlag ?? null, rpcPayload.p_contract_id),
+          payload: rpcPayload,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
+          rpc: (fn, params) => supabase.rpc(fn as any, params),
+          fallback: async () => {
+            const created = await runWithConcurrency(visits, async (visit, i) => {
+              const ok = await persistContractVisit({
+                ...persistArgs,
+                visit,
+                visitIndex: i,
+              });
+              return ok != null;
+            });
+            return { createdCount: created, deletedCount: 0 };
+          },
+        });
+        osCreatedCount = createdCount;
         osErrorCount = visits.length - osCreatedCount;
 
         if (osErrorCount > 0) {
@@ -2845,26 +2901,54 @@ export function useContracts() {
       const effName = (input.name ?? current.name ?? '') || 'Contrato';
       const effCustomerId = (input.customer_id ?? current.customer_id) as string;
       // Regeneração SEGURA (P0/P1): gera+valida as novas e SÓ DEPOIS apaga as
-      // antigas (regenerableIds). Fonte única compartilhada com as outras
-      // mutations de edição. Erro de geração propaga (toast) sem apagar nada.
-      const { createdCount, deletedCount } = await regenerateFutureVisits({
-        companyId: profile.company_id,
-        contractId: id,
+      // antigas (regenerableIds). Caminho novo (RPC server-side) com rede de
+      // segurança: flag ligada pro contrato → tenta a RPC; flag off/erro → cai
+      // no fallback client-side (regenerateFutureVisits), byte-idêntico ao antigo.
+      const rpcPayload = buildRegenerationPayload({
+        args: {
+          companyId: profile.company_id,
+          contractId: id,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: effCustomerId,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: input.service_type_id ?? null,
+          formTemplateId: input.form_template_id ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        },
         visits,
         oldRegenerableIds: regenerableIds,
         oldRegenerableOss: regenerableOldOss,
-        contractName: effName,
-        useGroupedEngine,
-        customerId: effCustomerId,
-        technicianId: effTechnicianId,
-        teamId: effTeamId,
-        serviceTypeId: input.service_type_id ?? null,
-        formTemplateId: input.form_template_id ?? null,
-        equipmentIds,
-        itemEquipmentMap,
-        equipmentTemplateMap,
-        assigneeUserIds,
-        createdBy: user?.id || null,
+      });
+      const { createdCount, deletedCount } = await regenerateViaRpcOrFallback({
+        enabled: isFlagEnabledFor(regenFlag ?? null, id),
+        payload: rpcPayload,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
+        rpc: (fn, params) => supabase.rpc(fn as any, params),
+        fallback: () => regenerateFutureVisits({
+          companyId: profile.company_id,
+          contractId: id,
+          visits,
+          oldRegenerableIds: regenerableIds,
+          oldRegenerableOss: regenerableOldOss,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: effCustomerId,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: input.service_type_id ?? null,
+          formTemplateId: input.form_template_id ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        }),
       });
 
       return { regenerated: true, deletedCount, createdCount, reassignedCount };
@@ -3080,24 +3164,52 @@ export function useContracts() {
       const effName = (current.name as string | null) || 'Contrato';
 
       // Regeneração SEGURA (P0/P1): gera+valida antes de apagar as antigas.
-      const { createdCount, deletedCount } = await regenerateFutureVisits({
-        companyId: profile.company_id,
-        contractId: id,
+      // Caminho novo (RPC) com fallback client-side idêntico ao antigo.
+      const rpcPayload = buildRegenerationPayload({
+        args: {
+          companyId: profile.company_id,
+          contractId: id,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: current.customer_id as string,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: (current.service_type_id as string | null) ?? null,
+          formTemplateId: (current.form_template_id as string | null) ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        },
         visits,
         oldRegenerableIds: regenerableIds,
         oldRegenerableOss: regenerableOldOss,
-        contractName: effName,
-        useGroupedEngine,
-        customerId: current.customer_id as string,
-        technicianId: effTechnicianId,
-        teamId: effTeamId,
-        serviceTypeId: (current.service_type_id as string | null) ?? null,
-        formTemplateId: (current.form_template_id as string | null) ?? null,
-        equipmentIds,
-        itemEquipmentMap,
-        equipmentTemplateMap,
-        assigneeUserIds,
-        createdBy: user?.id || null,
+      });
+      const { createdCount, deletedCount } = await regenerateViaRpcOrFallback({
+        enabled: isFlagEnabledFor(regenFlag ?? null, id),
+        payload: rpcPayload,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
+        rpc: (fn, params) => supabase.rpc(fn as any, params),
+        fallback: () => regenerateFutureVisits({
+          companyId: profile.company_id,
+          contractId: id,
+          visits,
+          oldRegenerableIds: regenerableIds,
+          oldRegenerableOss: regenerableOldOss,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: current.customer_id as string,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: (current.service_type_id as string | null) ?? null,
+          formTemplateId: (current.form_template_id as string | null) ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        }),
       });
 
       return { regenerated: true, deletedCount, createdCount };
