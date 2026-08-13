@@ -1568,6 +1568,59 @@ export function preserveCodesByMonth(
   return out;
 }
 
+export interface BuildRegenerationPayloadArgs {
+  args: PersistContractVisitArgs;
+  visits: BuiltVisit[];
+  baseVisitIndex?: number;
+  oldRegenerableIds: string[];
+  oldRegenerableOss?: OldOsForPreserve[];
+}
+
+export interface RegenerationRpcPayload {
+  p_contract_id: string;
+  p_orders: VisitOrderPayload[];
+  p_delete_ids: string[];
+}
+
+/**
+ * Converte a lista de visitas calculadas no payload da RPC. Cada visita vira 1
+ * order (via buildVisitOrderPayload). O `preserve_code` é resolvido POR MÊS a
+ * partir das OSs antigas (código é UNIQUE GLOBAL; a RPC aplica após apagar as
+ * antigas). Puro.
+ */
+export function buildRegenerationPayload(input: BuildRegenerationPayloadArgs): RegenerationRpcPayload {
+  const base = input.baseVisitIndex ?? 0;
+  const codeByMonth = new Map<string, string>();
+  for (const o of input.oldRegenerableOss ?? []) {
+    const key = monthKeyFromDateStr(o.scheduled_date);
+    if (!key || !o.public_short_code) continue;
+    if (!codeByMonth.has(key)) codeByMonth.set(key, o.public_short_code);
+  }
+  const usedCode = new Set<string>();
+  const claimedMonth = new Set<string>();
+
+  const p_orders = input.visits.map((visit, i) => {
+    const order = buildVisitOrderPayload(input.args, visit, base + i);
+    const monthKey = monthKeyFromDateStr(order.os.scheduled_date);
+    let preserve: string | null = null;
+    if (monthKey && !claimedMonth.has(monthKey)) {
+      const code = codeByMonth.get(monthKey);
+      if (code && !usedCode.has(code)) {
+        preserve = code;
+        usedCode.add(code);
+        claimedMonth.add(monthKey);
+      }
+    }
+    return { ...order, preserve_code: preserve };
+  });
+
+  return {
+    p_contract_id: input.args.contractId,
+    p_orders,
+    p_delete_ids: input.oldRegenerableIds,
+  };
+}
+
 /**
  * Cascata de exclusão de OSs regeneráveis de um contrato (dependentes → OS).
  * Fonte ÚNICA da sequência de limpeza — usada pela regeneração (após gerar as

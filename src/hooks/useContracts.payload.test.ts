@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildVisitOrderPayload, type BuiltVisit } from './useContracts';
+import { buildVisitOrderPayload, buildRegenerationPayload, type BuiltVisit } from './useContracts';
 
 const baseArgs = {
   companyId: 'co-1',
@@ -54,4 +54,28 @@ it('usa emissions quando presentes (motor por máquina)', () => {
   expect(order.activities[0].equipment_id).toBe('eq-1');
   expect(order.activities[0].description).toBe('Medição');
   expect(order.os.description).toContain('Ocorrência 2');
+});
+
+it('monta payload da RPC com orders e delete_ids, e preserva código por mês', () => {
+  const visits: BuiltVisit[] = [
+    { date: new Date('2026-03-10T12:00:00'), activities: [] },
+    { date: new Date('2026-04-10T12:00:00'), activities: [] },
+  ];
+  const payload = buildRegenerationPayload({
+    args: { ...baseArgs },
+    visits,
+    baseVisitIndex: 0,
+    oldRegenerableIds: ['os-old-1', 'os-old-2'],
+    oldRegenerableOss: [
+      { scheduled_date: '2026-03-20', public_short_code: 'CODE-MAR' },
+    ],
+  });
+
+  expect(payload.p_contract_id).toBe('ct-1');
+  expect(payload.p_delete_ids).toEqual(['os-old-1', 'os-old-2']);
+  expect(payload.p_orders).toHaveLength(2);
+  const marOrder = payload.p_orders.find((o) => o.os.scheduled_date === '2026-03-10');
+  expect(marOrder?.preserve_code).toBe('CODE-MAR');
+  const aprOrder = payload.p_orders.find((o) => o.os.scheduled_date === '2026-04-10');
+  expect(aprOrder?.preserve_code == null).toBe(true);
 });
