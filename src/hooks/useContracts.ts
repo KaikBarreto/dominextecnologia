@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useFeatureFlag, isFlagEnabledFor } from './useFeatureFlag';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { addDays, addMonths } from 'date-fns';
@@ -1080,11 +1081,15 @@ function assertAllVisitsPersisted(createdCount: number, expected: number): void 
  * (engole o erro e loga). O id+data permite ao chamador casar a OS nova com a
  * antiga do mesmo mês pra preservar o `public_short_code` (link público).
  */
-async function persistContractVisit(args: {
+/**
+ * Argumentos de contexto pra montar/persistir UMA visita (OS). Compartilhado
+ * pelo builder puro (`buildVisitOrderPayload`) e pela função de persist
+ * (`persistContractVisit`). NÃO inclui a visita nem o índice — esses são
+ * passados à parte, pois o builder é chamado por visita.
+ */
+export interface PersistContractVisitArgs {
   companyId: string;
   contractId: string;
-  visit: BuiltVisit;
-  visitIndex: number;
   contractName: string;
   useGroupedEngine: boolean;
   customerId: string;
@@ -1110,8 +1115,29 @@ async function persistContractVisit(args: {
   equipmentTemplateMap?: Record<string, string[]>;
   assigneeUserIds: string[];
   createdBy: string | null;
-}): Promise<{ id: string; scheduledDate: string } | null> {
-  const { visit, visitIndex } = args;
+}
+
+/** Payload de UMA visita montado (SEM inserir). Fonte única da forma das linhas. */
+export interface VisitOrderPayload {
+  os: Record<string, any>;                    // colunas de service_orders, SEM id
+  equipment: { equipment_id: string; form_template_id: string | null }[];
+  assignees: string[];                        // user_ids
+  activities: Record<string, any>[];          // colunas de service_order_activities, SEM service_order_id
+  preserve_code?: string | null;              // preenchido depois em buildRegenerationPayload
+}
+
+/**
+ * Monta (SEM inserir) o payload de UMA visita: a OS + equipment + assignees +
+ * activities. Fonte única da forma das linhas — usada pelo insert antigo
+ * (persistContractVisit, fallback) e pelo payload da RPC nova. Puro: não toca no
+ * banco, não gera ids. A OS sai SEM `id` e os filhos SEM `service_order_id` —
+ * quem persiste anexa o id depois.
+ */
+export function buildVisitOrderPayload(
+  args: PersistContractVisitArgs,
+  visit: BuiltVisit,
+  visitIndex: number,
+): VisitOrderPayload {
   const date = visit.date;
   // Date parts diretos — evita o shift de timezone do toISOString().
   const y = date.getFullYear();
@@ -1123,7 +1149,7 @@ async function persistContractVisit(args: {
     ? `${args.contractName} — Visita ${visitIndex + 1}`
     : `${args.contractName} — Ocorrência ${visitIndex + 1}`;
 
-  const osPayload = normalizeOptionalForeignKeys(
+  const os = normalizeOptionalForeignKeys(
     {
       company_id: args.companyId,
       customer_id: args.customerId,
@@ -1145,25 +1171,14 @@ async function persistContractVisit(args: {
     ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'equipment_id']
   );
 
-  const { data: os, error: osError } = await supabase
-    .from('service_orders')
-    .insert(osPayload)
-    .select('id')
-    .single();
-
-  if (osError) {
-    console.error(`Error creating contract OS #${visitIndex + 1}:`, osError);
-    return null;
-  }
-
+  // M5 — UMA linha de service_order_equipment por (equipamento × checklist
+  // efetivo). Quando o equipamento tem múltiplos checklists no contrato, cada
+  // um vira uma linha (trio UNIQUE no banco). Sem checklists próprios → 1 linha
+  // com o template de contrato (ou null): preserva exatamente o caso de 1
+  // checklist. Dedup por (equipment_id, templateId) protege contra o UNIQUE.
+  const equipment: { equipment_id: string; form_template_id: string | null }[] = [];
   if (args.equipmentIds.length > 0) {
-    // M5 — UMA linha de service_order_equipment por (equipamento × checklist
-    // efetivo). Quando o equipamento tem múltiplos checklists no contrato, cada
-    // um vira uma linha (trio UNIQUE no banco). Sem checklists próprios → 1 linha
-    // com o template de contrato (ou null): preserva exatamente o caso de 1
-    // checklist. Dedup por (equipment_id, templateId) protege contra o UNIQUE.
     const seen = new Set<string>();
-    const eqRows: { service_order_id: string; equipment_id: string; form_template_id: string | null }[] = [];
     for (const eqId of args.equipmentIds) {
       const effective = args.equipmentTemplateMap?.[eqId] ?? [];
       // Equipamento com checklists próprios → uma linha por template. Sem nenhum
@@ -1173,25 +1188,16 @@ async function persistContractVisit(args: {
         const key = `${eqId}::${tpl ?? ''}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        eqRows.push({ service_order_id: os.id, equipment_id: eqId, form_template_id: tpl });
+        equipment.push({ equipment_id: eqId, form_template_id: tpl });
       }
-    }
-    if (eqRows.length > 0) {
-      const { error: eqErr } = await supabase.from('service_order_equipment').insert(eqRows);
-      if (eqErr) console.error('Error linking equipment:', eqErr);
     }
   }
 
-  if (args.assigneeUserIds.length > 0) {
-    const { error: assignErr } = await supabase.from('service_order_assignees').insert(
-      args.assigneeUserIds.map(uid => ({ service_order_id: os.id, user_id: uid }))
-    );
-    if (assignErr) console.error('Error creating assignees:', assignErr);
-  }
+  const assignees = [...args.assigneeUserIds];
 
   // CAMINHO POR MÁQUINA (Fase 2). Quando a visita já vem com `emissions`
   // resolvidas, o motor por máquina JÁ decidiu o equipamento e a ordenação
-  // (full → ac → local) de cada linha. Aqui só gravamos o snapshot sequencial,
+  // (full → ac → local) de cada linha. Aqui só montamos o snapshot sequencial,
   // sem re-expandir por equipamento. Cada emissão = 1 linha.
   if (visit.emissions && visit.emissions.length > 0) {
     const ordered = [...visit.emissions].sort(
@@ -1200,9 +1206,8 @@ async function persistContractVisit(args: {
         (x.machineRank - y.machineRank) ||
         (x.activitySort - y.activitySort),
     );
-    const emissionRows = ordered.map((e, idx) => ({
+    const activities = ordered.map((e, idx) => ({
       company_id: args.companyId,
-      service_order_id: os.id,
       plan_activity_id: e.planActivityId,
       equipment_id: e.equipmentId,
       section: e.input.section ?? null,
@@ -1219,9 +1224,7 @@ async function persistContractVisit(args: {
       form_template_id: e.input.form_template_id ?? null,
       sort_order: idx,
     }));
-    const actErr = await insertActivitiesBatched(emissionRows);
-    if (actErr) console.error('Error creating service order activities (per-machine):', actErr);
-    return { id: os.id, scheduledDate: dateStr };
+    return { os, equipment, assignees, activities };
   }
 
   if (visit.activities.length > 0) {
@@ -1249,7 +1252,6 @@ async function persistContractVisit(args: {
 
     const baseRow = (a: PlanActivityInput, planActivityId: string | null, eqId: string | null, bucket: number, actSort: number) => ({
       company_id: args.companyId,
-      service_order_id: os.id,
       plan_activity_id: planActivityId,
       equipment_id: eqId,
       section: a.section ?? null,
@@ -1286,13 +1288,60 @@ async function persistContractVisit(args: {
     // Ordena por equipamento (bucket) e depois pela ordem da atividade, então
     // atribui sort_order sequencial estável pro campo.
     rows.sort((x, y) => (x._bucket - y._bucket) || (x._actSort - y._actSort));
-    const finalRows = rows.map((r) => {
+    const activities = rows.map((r) => {
       const { _bucket, _actSort, ...rest } = r;
       return { ...rest, sort_order: globalSort++ };
     });
 
-    const actErr = await insertActivitiesBatched(finalRows);
-    if (actErr) console.error('Error creating service order activities:', actErr);
+    return { os, equipment, assignees, activities };
+  }
+
+  return { os, equipment, assignees, activities: [] };
+}
+
+async function persistContractVisit(
+  args: PersistContractVisitArgs & { visit: BuiltVisit; visitIndex: number },
+): Promise<{ id: string; scheduledDate: string } | null> {
+  const { visit, visitIndex } = args;
+  const payload = buildVisitOrderPayload(args, visit, visitIndex);
+  const dateStr = payload.os.scheduled_date as string;
+
+  const { data: os, error: osError } = await supabase
+    .from('service_orders')
+    .insert(payload.os)
+    .select('id')
+    .single();
+
+  if (osError) {
+    console.error(`Error creating contract OS #${visitIndex + 1}:`, osError);
+    return null;
+  }
+
+  if (payload.equipment.length > 0) {
+    const eqRows = payload.equipment.map((e) => ({ ...e, service_order_id: os.id }));
+    const { error: eqErr } = await supabase.from('service_order_equipment').insert(eqRows);
+    if (eqErr) console.error('Error linking equipment:', eqErr);
+  }
+
+  if (payload.assignees.length > 0) {
+    const { error: assignErr } = await supabase.from('service_order_assignees').insert(
+      payload.assignees.map(uid => ({ service_order_id: os.id, user_id: uid }))
+    );
+    if (assignErr) console.error('Error creating assignees:', assignErr);
+  }
+
+  if (payload.activities.length > 0) {
+    const actRows = payload.activities.map((a) => ({ ...a, service_order_id: os.id }));
+    const actErr = await insertActivitiesBatched(actRows);
+    if (actErr) {
+      // Mensagem depende do caminho — mantém os logs distintos de antes.
+      console.error(
+        visit.emissions && visit.emissions.length > 0
+          ? 'Error creating service order activities (per-machine):'
+          : 'Error creating service order activities:',
+        actErr,
+      );
+    }
   }
 
   return { id: os.id, scheduledDate: dateStr };
@@ -1520,6 +1569,88 @@ export function preserveCodesByMonth(
   return out;
 }
 
+export interface BuildRegenerationPayloadArgs {
+  args: PersistContractVisitArgs;
+  visits: BuiltVisit[];
+  baseVisitIndex?: number;
+  oldRegenerableIds: string[];
+  oldRegenerableOss?: OldOsForPreserve[];
+}
+
+export interface RegenerationRpcPayload {
+  p_contract_id: string;
+  p_orders: VisitOrderPayload[];
+  p_delete_ids: string[];
+}
+
+/**
+ * Converte a lista de visitas calculadas no payload da RPC. Cada visita vira 1
+ * order (via buildVisitOrderPayload). O `preserve_code` é resolvido POR MÊS a
+ * partir das OSs antigas (código é UNIQUE GLOBAL; a RPC aplica após apagar as
+ * antigas). Puro.
+ */
+export function buildRegenerationPayload(input: BuildRegenerationPayloadArgs): RegenerationRpcPayload {
+  const base = input.baseVisitIndex ?? 0;
+  const codeByMonth = new Map<string, string>();
+  for (const o of input.oldRegenerableOss ?? []) {
+    const key = monthKeyFromDateStr(o.scheduled_date);
+    if (!key || !o.public_short_code) continue;
+    if (!codeByMonth.has(key)) codeByMonth.set(key, o.public_short_code);
+  }
+  const usedCode = new Set<string>();
+  const claimedMonth = new Set<string>();
+
+  const p_orders = input.visits.map((visit, i) => {
+    const order = buildVisitOrderPayload(input.args, visit, base + i);
+    const monthKey = monthKeyFromDateStr(order.os.scheduled_date);
+    let preserve: string | null = null;
+    if (monthKey && !claimedMonth.has(monthKey)) {
+      const code = codeByMonth.get(monthKey);
+      if (code && !usedCode.has(code)) {
+        preserve = code;
+        usedCode.add(code);
+        claimedMonth.add(monthKey);
+      }
+    }
+    return { ...order, preserve_code: preserve };
+  });
+
+  return {
+    p_contract_id: input.args.contractId,
+    p_orders,
+    p_delete_ids: input.oldRegenerableIds,
+  };
+}
+
+export interface RegenViaRpcArgs {
+  enabled: boolean;
+  payload: RegenerationRpcPayload;
+  // `any` intencional: a RPC ainda não está nos types gerados; assinatura genérica
+  // espelha a forma { data, error } do supabase-js e é injetada nos call-sites.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rpc: (fn: string, params: any) => Promise<{ data: any; error: any }>;
+  fallback: () => Promise<{ createdCount: number; deletedCount: number }>;
+}
+
+/**
+ * Caminho novo com rede de segurança: flag desligada → fallback direto; flag
+ * ligada → tenta a RPC; erro da RPC → loga e cai no fallback (o antigo). A
+ * cliente nunca vê uma falha nova por causa da RPC.
+ */
+export async function regenerateViaRpcOrFallback(
+  a: RegenViaRpcArgs,
+): Promise<{ createdCount: number; deletedCount: number }> {
+  if (!a.enabled) return a.fallback();
+  try {
+    const { data, error } = await a.rpc('regenerate_contract_visits', a.payload);
+    if (error) throw error;
+    return { createdCount: data?.created_count ?? 0, deletedCount: data?.deleted_count ?? 0 };
+  } catch (e) {
+    console.error('regenerate_contract_visits RPC falhou; usando fallback client-side:', e);
+    return a.fallback();
+  }
+}
+
 /**
  * Cascata de exclusão de OSs regeneráveis de um contrato (dependentes → OS).
  * Fonte ÚNICA da sequência de limpeza — usada pela regeneração (após gerar as
@@ -1724,6 +1855,9 @@ export function useContracts() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  // Flag de rollout da RPC server-side de regeneração de visitas. Lida no TOP do
+  // hook (regra dos hooks); cada call-site decide via isFlagEnabledFor(flag, id).
+  const { data: regenFlag } = useFeatureFlag('regenerate_contract_visits_rpc');
 
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
@@ -2086,27 +2220,50 @@ export function useContracts() {
         // regeneração da edição). RLS de service_orders exige company_id no INSERT
         // (garantido lá dentro). Cada visita é independente → persiste EM PARALELO
         // (concorrência limitada) preservando o visitIndex pra numeração/ordem.
-        osCreatedCount = await runWithConcurrency(visits, async (visit, i) => {
-          const created = await persistContractVisit({
-            companyId: profile.company_id,
-            contractId: (contract as any).id,
-            visit,
-            visitIndex: i,
-            contractName: input.name,
-            useGroupedEngine,
-            customerId: input.customer_id,
-            technicianId: input.technician_id || null,
-            teamId: input.team_id || null,
-            serviceTypeId: input.service_type_id || null,
-            formTemplateId: input.form_template_id || null,
-            equipmentIds,
-            itemEquipmentMap,
-            equipmentTemplateMap,
-            assigneeUserIds,
-            createdBy: user?.id || null,
-          });
-          return created != null;
+        //
+        // Caminho novo (RPC server-side) com rede de segurança: flag ligada pro
+        // contrato → tenta a RPC; flag off/erro → cai no fallback client-side
+        // (runWithConcurrency), byte-idêntico ao antigo. Criação não apaga nada
+        // (oldRegenerableIds vazio → p_delete_ids vazio, deletedCount 0).
+        const persistArgs = {
+          companyId: profile.company_id,
+          contractId: (contract as any).id,
+          contractName: input.name,
+          useGroupedEngine,
+          customerId: input.customer_id,
+          technicianId: input.technician_id || null,
+          teamId: input.team_id || null,
+          serviceTypeId: input.service_type_id || null,
+          formTemplateId: input.form_template_id || null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        };
+        const rpcPayload = buildRegenerationPayload({
+          args: persistArgs,
+          visits,
+          oldRegenerableIds: [],
         });
+        const { createdCount } = await regenerateViaRpcOrFallback({
+          enabled: isFlagEnabledFor(regenFlag ?? null, rpcPayload.p_contract_id),
+          payload: rpcPayload,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
+          rpc: (fn, params) => supabase.rpc(fn as any, params),
+          fallback: async () => {
+            const created = await runWithConcurrency(visits, async (visit, i) => {
+              const ok = await persistContractVisit({
+                ...persistArgs,
+                visit,
+                visitIndex: i,
+              });
+              return ok != null;
+            });
+            return { createdCount: created, deletedCount: 0 };
+          },
+        });
+        osCreatedCount = createdCount;
         osErrorCount = visits.length - osCreatedCount;
 
         if (osErrorCount > 0) {
@@ -2744,26 +2901,54 @@ export function useContracts() {
       const effName = (input.name ?? current.name ?? '') || 'Contrato';
       const effCustomerId = (input.customer_id ?? current.customer_id) as string;
       // Regeneração SEGURA (P0/P1): gera+valida as novas e SÓ DEPOIS apaga as
-      // antigas (regenerableIds). Fonte única compartilhada com as outras
-      // mutations de edição. Erro de geração propaga (toast) sem apagar nada.
-      const { createdCount, deletedCount } = await regenerateFutureVisits({
-        companyId: profile.company_id,
-        contractId: id,
+      // antigas (regenerableIds). Caminho novo (RPC server-side) com rede de
+      // segurança: flag ligada pro contrato → tenta a RPC; flag off/erro → cai
+      // no fallback client-side (regenerateFutureVisits), byte-idêntico ao antigo.
+      const rpcPayload = buildRegenerationPayload({
+        args: {
+          companyId: profile.company_id,
+          contractId: id,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: effCustomerId,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: input.service_type_id ?? null,
+          formTemplateId: input.form_template_id ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        },
         visits,
         oldRegenerableIds: regenerableIds,
         oldRegenerableOss: regenerableOldOss,
-        contractName: effName,
-        useGroupedEngine,
-        customerId: effCustomerId,
-        technicianId: effTechnicianId,
-        teamId: effTeamId,
-        serviceTypeId: input.service_type_id ?? null,
-        formTemplateId: input.form_template_id ?? null,
-        equipmentIds,
-        itemEquipmentMap,
-        equipmentTemplateMap,
-        assigneeUserIds,
-        createdBy: user?.id || null,
+      });
+      const { createdCount, deletedCount } = await regenerateViaRpcOrFallback({
+        enabled: isFlagEnabledFor(regenFlag ?? null, id),
+        payload: rpcPayload,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
+        rpc: (fn, params) => supabase.rpc(fn as any, params),
+        fallback: () => regenerateFutureVisits({
+          companyId: profile.company_id,
+          contractId: id,
+          visits,
+          oldRegenerableIds: regenerableIds,
+          oldRegenerableOss: regenerableOldOss,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: effCustomerId,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: input.service_type_id ?? null,
+          formTemplateId: input.form_template_id ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        }),
       });
 
       return { regenerated: true, deletedCount, createdCount, reassignedCount };
@@ -2979,24 +3164,52 @@ export function useContracts() {
       const effName = (current.name as string | null) || 'Contrato';
 
       // Regeneração SEGURA (P0/P1): gera+valida antes de apagar as antigas.
-      const { createdCount, deletedCount } = await regenerateFutureVisits({
-        companyId: profile.company_id,
-        contractId: id,
+      // Caminho novo (RPC) com fallback client-side idêntico ao antigo.
+      const rpcPayload = buildRegenerationPayload({
+        args: {
+          companyId: profile.company_id,
+          contractId: id,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: current.customer_id as string,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: (current.service_type_id as string | null) ?? null,
+          formTemplateId: (current.form_template_id as string | null) ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        },
         visits,
         oldRegenerableIds: regenerableIds,
         oldRegenerableOss: regenerableOldOss,
-        contractName: effName,
-        useGroupedEngine,
-        customerId: current.customer_id as string,
-        technicianId: effTechnicianId,
-        teamId: effTeamId,
-        serviceTypeId: (current.service_type_id as string | null) ?? null,
-        formTemplateId: (current.form_template_id as string | null) ?? null,
-        equipmentIds,
-        itemEquipmentMap,
-        equipmentTemplateMap,
-        assigneeUserIds,
-        createdBy: user?.id || null,
+      });
+      const { createdCount, deletedCount } = await regenerateViaRpcOrFallback({
+        enabled: isFlagEnabledFor(regenFlag ?? null, id),
+        payload: rpcPayload,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
+        rpc: (fn, params) => supabase.rpc(fn as any, params),
+        fallback: () => regenerateFutureVisits({
+          companyId: profile.company_id,
+          contractId: id,
+          visits,
+          oldRegenerableIds: regenerableIds,
+          oldRegenerableOss: regenerableOldOss,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: current.customer_id as string,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: (current.service_type_id as string | null) ?? null,
+          formTemplateId: (current.form_template_id as string | null) ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        }),
       });
 
       return { regenerated: true, deletedCount, createdCount };
