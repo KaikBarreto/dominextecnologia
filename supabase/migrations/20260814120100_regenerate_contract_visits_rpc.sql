@@ -44,8 +44,8 @@ BEGIN
   END IF;
 
   IF NOT (
-        public.get_user_company_id(auth.uid()) = v_company_id
-     OR public.is_super_admin(auth.uid())
+        public.is_super_admin(auth.uid())
+     OR public.get_user_company_id(auth.uid()) IS NOT DISTINCT FROM v_company_id
   ) THEN
     RAISE EXCEPTION 'Sem permissao para regenerar visitas do contrato %', p_contract_id
       USING ERRCODE = 'insufficient_privilege';
