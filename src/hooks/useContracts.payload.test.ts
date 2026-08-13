@@ -79,3 +79,30 @@ it('monta payload da RPC com orders e delete_ids, e preserva código por mês', 
   const aprOrder = payload.p_orders.find((o) => o.os.scheduled_date === '2026-04-10');
   expect(aprOrder?.preserve_code == null).toBe(true);
 });
+
+it('atribui cada código a um único mês e nega mês já reivindicado', () => {
+  const visits: BuiltVisit[] = [
+    { date: new Date('2026-03-05T12:00:00'), activities: [] }, // março — reivindica CODE-MAR
+    { date: new Date('2026-04-05T12:00:00'), activities: [] }, // abril  — reivindica CODE-ABR
+    { date: new Date('2026-03-25T12:00:00'), activities: [] }, // março de novo — deve ficar null
+  ];
+  const payload = buildRegenerationPayload({
+    args: { ...baseArgs },
+    visits,
+    baseVisitIndex: 0,
+    oldRegenerableIds: [],
+    oldRegenerableOss: [
+      { scheduled_date: '2026-03-10', public_short_code: 'CODE-MAR' },
+      { scheduled_date: '2026-04-10', public_short_code: 'CODE-ABR' },
+    ],
+  });
+
+  const codes = payload.p_orders.map((o) => o.preserve_code);
+  // março (1º) leva CODE-MAR, abril leva CODE-ABR, março (2º) fica null
+  expect(codes[0]).toBe('CODE-MAR');
+  expect(codes[1]).toBe('CODE-ABR');
+  expect(codes[2] == null).toBe(true);
+  // cada código aparece no máximo uma vez
+  expect(codes.filter((c) => c === 'CODE-MAR')).toHaveLength(1);
+  expect(codes.filter((c) => c === 'CODE-ABR')).toHaveLength(1);
+});
