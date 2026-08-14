@@ -432,6 +432,27 @@ export type Database = {
           },
         ]
       }
+      app_feature_flags: {
+        Row: {
+          contract_allowlist: string[]
+          enabled: boolean
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          contract_allowlist?: string[]
+          enabled?: boolean
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          contract_allowlist?: string[]
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       blog_categories: {
         Row: {
           color: string | null
@@ -7474,6 +7495,38 @@ export type Database = {
           },
         ]
       }
+      stock_access: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          stock_id: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          stock_id: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          stock_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_access_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stocks: {
         Row: {
           company_id: string
@@ -8838,6 +8891,10 @@ export type Database = {
       assign_next_lead_salesperson: { Args: never; Returns: string }
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
+      can_access_stock: {
+        Args: { _stock_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_bootstrap_admin: { Args: never; Returns: boolean }
       can_manage_billing_reminder: {
         Args: { p_transaction_id: string; p_user_id: string }
@@ -9033,6 +9090,7 @@ export type Database = {
         }
       }
       get_rating_with_os_by_token: { Args: { p_token: string }; Returns: Json }
+      get_stock_access: { Args: { p_stock_id: string }; Returns: Json }
       get_stock_balance_at_date: {
         Args: { p_at: string; p_stock_ids?: string[] }
         Returns: {
@@ -9140,6 +9198,15 @@ export type Database = {
       record_quote_view: {
         Args: { _fingerprint?: string; _token: string; _user_agent?: string }
         Returns: number
+      }
+      regenerate_contract_visits: {
+        Args: {
+          p_contract_id: string
+          p_delete_ids?: string[]
+          p_dry_run?: boolean
+          p_orders: Json
+        }
+        Returns: Json
       }
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
@@ -9277,6 +9344,14 @@ export type Database = {
       }
       set_inventory_presence: {
         Args: { p_inventory_id: string; p_stock_ids: string[] }
+        Returns: undefined
+      }
+      set_stock_access: {
+        Args: {
+          p_restricted: boolean
+          p_stock_id: string
+          p_user_ids?: string[]
+        }
         Returns: undefined
       }
       set_stock_materials: {

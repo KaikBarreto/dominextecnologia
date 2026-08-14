@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.5',
+    date: '15 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Controle de acesso por local de estoque',
+        description: 'Agora você escolhe quais usuários enxergam e movimentam cada local de estoque. Por padrão, todos continuam vendo todos os locais, mas você pode restringir um local a pessoas específicas, por exemplo, o técnico de segurança só no estoque de EPI e cada técnico só no carro dele. Administradores e gestores sempre têm acesso a tudo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.19.3',
     date: '8 de agosto de 2026',
     type: 'patch',

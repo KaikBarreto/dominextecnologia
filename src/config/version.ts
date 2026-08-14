@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.19.4";
+export const APP_VERSION = "1.19.5";
 
-export const VERSION_NOTES = "O aceite dos Termos de Uso ficou mais simples: acabou a janela obrigatória que travava a tela no primeiro acesso. Agora, ao criar a conta no cadastro, um aviso discreto informa que você concorda com os Termos, e quem quiser ler é só clicar no aviso. A qualquer momento você consulta e baixa o contrato completo nas Configurações.";
+export const VERSION_NOTES = "Agora cada local de estoque pode ter acesso restrito: você escolhe quais usuários enxergam e movimentam cada estoque. Por padrão, todos continuam vendo tudo, e administradores e gestores sempre têm acesso.";
