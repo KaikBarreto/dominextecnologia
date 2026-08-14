@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.6',
+    date: '15 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Controle de acesso ao Mapa e Rastreamento',
+        description: 'A tela Mapa e Rastreamento agora tem permissão própria, então você decide quais usuários podem acompanhar a localização das equipes em tempo real. Quem não tem a permissão não vê mais o mapa no menu nem consegue abri-lo pelo link direto. Todos que já usavam o mapa continuam com acesso, sem precisar fazer nada.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.19.5',
     date: '15 de agosto de 2026',
     type: 'patch',

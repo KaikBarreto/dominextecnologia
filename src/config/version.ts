@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.19.5";
+export const APP_VERSION = "1.19.6";
 
-export const VERSION_NOTES = "Agora cada local de estoque pode ter acesso restrito: você escolhe quais usuários enxergam e movimentam cada estoque. Por padrão, todos continuam vendo tudo, e administradores e gestores sempre têm acesso.";
+export const VERSION_NOTES = "O acesso à tela Mapa e Rastreamento agora tem permissão própria: você decide quais usuários podem acompanhar a localização das equipes em tempo real. Quem não tem essa permissão não vê mais o mapa no menu nem consegue abri-lo. Todos que já usavam o mapa continuam com acesso normalmente.";

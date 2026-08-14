@@ -711,7 +711,7 @@ const AppRoutes = () => (
       {localizedAppRoutes('orgChart', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('orgChartDetail', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
 <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
-      {localizedAppRoutes('liveMap', <LiveMap />)}
+      {localizedAppRoutes('liveMap', <PermissionRoute screenKey="screen:tracking"><LiveMap /></PermissionRoute>)}
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas
          via <Routes> dentro da página, então registra com /* (wildcard). */}
       {localizedAppRoutes('technicianArea', <PermissionRoute screenKey="screen:technician_tools"><TechnicianAreaRoute><TechnicianArea /></TechnicianAreaRoute></PermissionRoute>)}

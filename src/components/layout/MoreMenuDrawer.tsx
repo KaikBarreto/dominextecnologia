@@ -78,7 +78,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: OperacionalIcon,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
-      { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
+      { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo', screenKey: 'screen:tracking' },
     ],
   },
   { title: 'Área do Técnico™', icon: AreaTecnicoIcon, path: '/area-tecnico', screenKey: 'screen:technician_tools', requiresTechTools: true },

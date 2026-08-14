@@ -43,6 +43,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:quotes', label: 'Orçamentos', group: 'Comercial', category: 'comercial' },
   { key: 'screen:inventory', label: 'Estoque', group: 'Operacional', category: 'operacional' },
   { key: 'screen:technician_tools', label: 'Área do Técnico™', group: 'Operacional', category: 'operacional' },
+  { key: 'screen:tracking', label: 'Mapa e Rastreamento', group: 'Operacional', category: 'operacional' },
   { key: 'screen:finance', label: 'Financeiro', group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:fiscal_notes', label: 'Notas Fiscais', group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:employees', label: 'Funcionários', group: 'Administração', category: 'administracao' },
