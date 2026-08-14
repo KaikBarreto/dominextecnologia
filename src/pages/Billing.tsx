@@ -19,6 +19,7 @@ import { ModulesManagementCard } from '@/components/billing/ModulesManagementCar
 import { NfseTierCard } from '@/components/billing/NfseTierCard';
 import { PaymentHistoryList } from '@/components/billing/PaymentHistoryList';
 import { useSubscriptionPaymentHistory } from '@/hooks/useSubscriptionPaymentHistory';
+import { hasActiveCustomPrice as hasActiveCustomPriceUtil } from '@/utils/subscriptionPricing';
 
 export default function Billing() {
   const navigate = useNavigate();
@@ -163,6 +164,30 @@ export default function Billing() {
     (m: any) => !activeModuleCodes.includes(m.code) && m.code !== 'extra_user' && m.code !== 'basic'
   );
 
+  const fmtBRL = (v: number) =>
+    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  // Preço promocional ainda ativo (promoção temporária custom_price).
+  const hasActiveCustomPrice = hasActiveCustomPriceUtil(company);
+
+  // Renovação automática ativa: assinatura Asaas + último pagamento de cartão confirmado.
+  const hasValidCardPayment = paymentHistory.some(
+    (p) => (p.billingType || '').toUpperCase() === 'CREDIT_CARD'
+      && (p.status === 'RECEIVED' || p.status === 'CONFIRMED')
+  );
+
+  // Dados pendentes para emissão de NFS-e.
+  const missingNfseFields: string[] = [];
+  if (!company.cnpj) missingNfseFields.push('CNPJ/CPF');
+  if (!company.email) missingNfseFields.push('Email');
+  if (!company.contact_name) missingNfseFields.push('Nome do responsável');
+  if (!company.phone) missingNfseFields.push('Telefone');
+
+  // Valor a exibir no box de "Valor a pagar": aplica desconto anual só no display.
+  const displayAmountDue = company.billing_cycle === 'yearly'
+    ? effectiveValue * 12 * 0.8
+    : effectiveValue;
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto p-4 sm:p-6">
       {isTesting ? (
@@ -195,6 +220,7 @@ export default function Billing() {
       ) : (
         <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-4 sm:p-6 md:p-8 text-primary-foreground">
           <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-24 md:w-48 h-24 md:h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
           <div className="relative z-10">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
               <div className="space-y-1 md:space-y-2">
@@ -246,6 +272,193 @@ export default function Billing() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Banners informativos condicionais (só fora do trial e só quando há dado). */}
+      {!isTesting && (
+        <>
+          {/* Preço promocional ativo */}
+          {hasActiveCustomPrice && (
+            <div className="bg-blue-600 rounded-xl p-4 flex items-start gap-3">
+              <div className="p-1.5 bg-white/20 rounded-lg shrink-0 mt-0.5">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-white">{t.bannerPromoTitle}</p>
+                <p className="text-sm text-white/80">
+                  {t.bannerPromoDesc.replace('{value}', fmtBRL(company.subscription_value || 0))}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Valor pendente (mudança agendada pelo admin) */}
+          {company.pending_subscription_value ? (
+            <div className="bg-orange-600 rounded-xl p-4 flex items-start gap-3">
+              <div className="p-1.5 bg-white/20 rounded-lg shrink-0 mt-0.5">
+                <AlertTriangle className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-white">{t.bannerPendingTitle}</p>
+                <p className="text-sm text-white/80">
+                  {t.bannerPendingDesc
+                    .replace('{current}', fmtBRL(effectiveValue))
+                    .replace('{new}', fmtBRL(company.pending_subscription_value))}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Renovação automática ativa */}
+          {(company as any).asaas_subscription_id && hasValidCardPayment && (
+            <div className="bg-background border rounded-xl p-4 flex items-start gap-3">
+              <div className="p-1.5 bg-muted rounded-lg shrink-0 mt-0.5">
+                <CreditCard className="h-4 w-4 text-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">{t.bannerRecurringTitle}</p>
+                <p className="text-sm text-muted-foreground">{t.bannerRecurringDesc}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Dados pendentes para NFS-e */}
+          {missingNfseFields.length > 0 && (
+            <div className="bg-background border rounded-xl p-4 flex items-start gap-3">
+              <div className="p-1.5 bg-muted rounded-lg shrink-0 mt-0.5">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground text-sm">{t.bannerNfseTitle}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t.bannerNfseDesc.replace('{fields}', missingNfseFields.join(', '))}
+                </p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Pagamento + Resumo do plano (logo após os banners, como no EcoSistema). */}
+      {!isTesting && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+          {/* Payment Card */}
+          <Card className="relative overflow-hidden border transition-all duration-300 hover:shadow-xl">
+            <CardHeader className="relative p-4 md:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85 flex items-center gap-2">
+                  <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
+                    <Zap className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
+                  </div>
+                  <span>{t.cardPaymentTitle}</span>
+                </CardTitle>
+                {daysRemaining !== null && daysRemaining <= 7 && (
+                  <Badge variant="outline" className="animate-pulse bg-orange-500/10 text-orange-600 border-orange-300 text-xs shrink-0">
+                    {t.statusExpiringSoon}
+                  </Badge>
+                )}
+              </div>
+              <CardDescription className="mt-2 text-xs md:text-sm">
+                {daysRemaining !== null && daysRemaining < 0
+                  ? t.cardPaymentDescExpired
+                  : t.cardPaymentDescActive}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative p-4 md:p-6 pt-0">
+              <div className="space-y-4 md:space-y-5">
+                <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-background to-muted/50 border p-4 md:p-6">
+                  <div className="absolute top-0 right-0 w-16 md:w-20 h-16 md:h-20 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                    <div>
+                      <p className="text-xs md:text-sm text-muted-foreground font-medium">{t.labelAmountDue}</p>
+                      <p className="text-2xl md:text-4xl font-bold tracking-tight mt-1">
+                        R$ {formatBRL(displayAmountDue)}
+                      </p>
+                      {company.billing_cycle === 'yearly' && (
+                        <p className="text-xs text-emerald-500 mt-1">
+                          {t.paymentYearlyDiscount}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.labelDueDate}</p>
+                      <p className="font-semibold text-base md:text-lg">
+                        {company.subscription_expires_at
+                          ? format(new Date(company.subscription_expires_at), 'dd/MM/yyyy')
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  className="w-full h-12 md:h-14 text-base md:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  size="lg"
+                  onClick={() => {
+                    // Trial ou empresa sem plano/valor definido → escolher plano.
+                    // Senão → renovação direta com o valor atual.
+                    if (company.subscription_status === 'testing' || !effectiveValue) {
+                      navigate('/checkout');
+                    } else {
+                      navigate('/checkout?mode=renewal');
+                    }
+                  }}
+                >
+                  {t.btnPayNow}
+                  <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5 -rotate-45" />
+                </Button>
+
+                <div className="flex items-center justify-center gap-3 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 md:gap-1.5">
+                    <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-emerald-500" />
+                    <span>PIX</span>
+                  </div>
+                  <div className="flex items-center gap-1 md:gap-1.5">
+                    <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-muted-foreground" />
+                    <span>Boleto</span>
+                  </div>
+                  <div className="flex items-center gap-1 md:gap-1.5">
+                    <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-primary" />
+                    <span>Cartão</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Summary Card */}
+          <Card className="relative overflow-hidden border transition-all duration-300 hover:shadow-xl">
+            <CardHeader className="relative p-4 md:p-6">
+              <CardTitle className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85 flex items-center gap-2">
+                <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
+                  <Users className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
+                </div>
+                <span>{t.cardSummaryTitle}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="relative p-4 md:p-6 pt-0 space-y-4">
+              <div className="flex justify-between text-sm py-2 border-b border-border">
+                <span className="text-muted-foreground">{t.summaryPlan}</span>
+                <span className="font-semibold capitalize">{planDisplayName}</span>
+              </div>
+              <div className="flex justify-between text-sm py-2 border-b border-border">
+                <span className="text-muted-foreground">{t.summaryActiveModules}</span>
+                <span className="font-semibold">{modules.length}</span>
+              </div>
+              <div className="flex justify-between text-sm py-2 border-b border-border">
+                <span className="text-muted-foreground">{t.summaryMaxUsers}</span>
+                <span className="font-semibold">{company.max_users || 5}</span>
+              </div>
+              <div className="flex justify-between text-sm py-2 border-b border-border">
+                <span className="text-muted-foreground">{t.summaryCycle}</span>
+                <span className="font-semibold capitalize">{company.billing_cycle === 'yearly' ? t.cycleYearly : t.cycleMonthly}</span>
+              </div>
+              <div className="flex justify-between text-sm py-2">
+                <span className="text-muted-foreground">{t.summaryStatus}</span>
+                {statusConfig.badge}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -330,101 +543,6 @@ export default function Billing() {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {!isTesting && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* Payment Card */}
-          <Card className="relative overflow-hidden border transition-all duration-300 hover:shadow-xl">
-            <CardHeader className="relative p-4 md:p-6">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85 flex items-center gap-2">
-                  <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
-                    <Zap className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
-                  </div>
-                  <span>{t.cardPaymentTitle}</span>
-                </CardTitle>
-              </div>
-              <CardDescription className="mt-2 text-xs md:text-sm">
-                {daysRemaining !== null && daysRemaining < 0
-                  ? t.cardPaymentDescExpired
-                  : t.cardPaymentDescActive}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative p-4 md:p-6 pt-0">
-              <div className="space-y-4 md:space-y-5">
-                <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-background to-muted/50 border p-4 md:p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-                    <div>
-                      <p className="text-xs md:text-sm text-muted-foreground font-medium">{t.labelAmountDue}</p>
-                      <p className="text-2xl md:text-4xl font-bold tracking-tight mt-1">
-                        R$ {formatBRL(effectiveValue)}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.labelDueDate}</p>
-                      <p className="font-semibold text-base md:text-lg">
-                        {company.subscription_expires_at
-                          ? format(new Date(company.subscription_expires_at), 'dd/MM/yyyy')
-                          : '—'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  className="w-full h-12 md:h-14 text-base md:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
-                  size="lg"
-                  onClick={() => {
-                    // Trial ou empresa sem plano/valor definido → escolher plano.
-                    // Senão → renovação direta com o valor atual.
-                    if (company.subscription_status === 'testing' || !effectiveValue) {
-                      navigate('/checkout');
-                    } else {
-                      navigate('/checkout?mode=renewal');
-                    }
-                  }}
-                >
-                  {t.btnPayNow}
-                  <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5 -rotate-45" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Summary Card */}
-          <Card className="relative overflow-hidden border transition-all duration-300 hover:shadow-xl">
-            <CardHeader className="relative p-4 md:p-6">
-              <CardTitle className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85 flex items-center gap-2">
-                <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
-                  <Users className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
-                </div>
-                <span>{t.cardSummaryTitle}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="relative p-4 md:p-6 pt-0 space-y-4">
-              <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">{t.summaryPlan}</span>
-                <span className="font-semibold capitalize">{planDisplayName}</span>
-              </div>
-              <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">{t.summaryActiveModules}</span>
-                <span className="font-semibold">{modules.length}</span>
-              </div>
-              <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">{t.summaryMaxUsers}</span>
-                <span className="font-semibold">{company.max_users || 5}</span>
-              </div>
-              <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">{t.summaryCycle}</span>
-                <span className="font-semibold capitalize">{company.billing_cycle === 'yearly' ? t.cycleYearly : t.cycleMonthly}</span>
-              </div>
-              <div className="flex justify-between text-sm py-2">
-                <span className="text-muted-foreground">{t.summaryStatus}</span>
-                {statusConfig.badge}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
