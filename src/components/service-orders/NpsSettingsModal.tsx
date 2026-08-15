@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Lock, Plus, Trash2, ChevronUp, ChevronDown, Star } from 'lucide-react';
+import { Loader2, Lock, Plus, Trash2, ChevronUp, ChevronDown, Star, Info, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +12,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNpsSettings, NPS_DEFAULT_QUESTION } from '@/hooks/useNpsSettings';
 import { useNpsCriteria } from '@/hooks/useNpsCriteria';
+import { useResolveGoogleMapsLink, ResolveGoogleMapsError } from '@/hooks/useResolveGoogleMapsLink';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -44,6 +48,7 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
     remove: removeCriterion,
     isMutating: criteriaMutating,
   } = useNpsCriteria();
+  const { resolve: resolveGoogleMapsLink, isResolving } = useResolveGoogleMapsLink();
 
   // '*' (Acesso Total) ou a permissão de gestão do sistema liberam a edição.
   // O server (can_manage_system) é a fronteira real; isto é só UX.
@@ -61,6 +66,12 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
   const [googleMinScore, setGoogleMinScore] = useState('');
   const googleEnabled = googleUrl.trim().length > 0;
 
+  // Campo de input do link do Google Maps (auxiliar para gerar o review link).
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+
+  // Dialog de instruções "Como pegar o link?".
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+
   // AlertDialog de confirmação para remover critério (substitui window.confirm).
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removeConfirmLabel, setRemoveConfirmLabel] = useState('');
@@ -77,6 +88,7 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
       setRequireStars(settings.require_stars);
       setGenerateOnFinish(settings.generate_on_finish);
       setGoogleUrl(settings.google_review_url ?? '');
+      setGoogleMapsUrl('');
       const min = settings.google_review_min_score;
       setGoogleWhen(min === null ? 'always' : 'from-score');
       setGoogleMinScore(min === null ? '' : String(min));
@@ -89,6 +101,25 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
     settings.google_review_url,
     settings.google_review_min_score,
   ]);
+
+  const getGoogleErrorMessage = (code: ResolveGoogleMapsError | string): string => {
+    if (code === 'invalid_url') return t.googleErrorInvalidUrl;
+    if (code === 'no_feature_id') return t.googleErrorNoFeatureId;
+    return t.googleErrorGeneric;
+  };
+
+  const handleGenerateReviewLink = async () => {
+    const url = googleMapsUrl.trim();
+    if (!url) return;
+    try {
+      const result = await resolveGoogleMapsLink(url);
+      setGoogleUrl(result.reviewUrl);
+      toast({ title: t.googleGenerateSuccess });
+    } catch (err: any) {
+      const code: ResolveGoogleMapsError = err?.code ?? 'unknown';
+      toast({ variant: 'destructive', title: getGoogleErrorMessage(code) });
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -367,12 +398,59 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
         {/* ——— Avaliação no Google ——— */}
         <div className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="nps-google-url" className="text-sm font-bold">
+            <Label className="text-sm font-bold">
               {t.googleSectionTitle}
             </Label>
             <p className="text-xs text-muted-foreground">{t.googleUrlHelp}</p>
           </div>
 
+          {/* Campo auxiliar: link do Google Maps + botão Gerar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="nps-google-maps-url" className="text-sm font-medium">
+                {t.googleMapsUrlLabel}
+              </Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setInstructionsOpen(true)}
+                disabled={isLoading}
+              >
+                <Info className="h-3.5 w-3.5" />
+                {t.googleHowToBtn}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.googleMapsUrlHelp}</p>
+            <div className="flex gap-2">
+              <Input
+                id="nps-google-maps-url"
+                type="url"
+                inputMode="url"
+                value={googleMapsUrl}
+                onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                placeholder={t.googleMapsUrlPlaceholder}
+                disabled={!canEdit || isLoading || isResolving}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleGenerateReviewLink}
+                disabled={!canEdit || isLoading || isResolving || !googleMapsUrl.trim()}
+                className="shrink-0"
+              >
+                {isResolving
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <MapPin className="h-4 w-4" />
+                }
+                <span className="ml-1.5 hidden sm:inline">{t.googleGenerateBtn}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Campo do link de avaliação final (resultado do Gerar ou colado direto) */}
           <div className="space-y-2">
             <Label htmlFor="nps-google-url" className="text-sm font-medium">
               {t.googleUrlLabel}
@@ -425,6 +503,46 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
         </div>
       </div>
     </ResponsiveModal>
+
+    {/* Dialog "Como pegar o link do Google Maps" */}
+    <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" />
+            {t.googleHowToTitle}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <ol className="space-y-3">
+            {([
+              t.googleHowToStep1,
+              t.googleHowToStep2,
+              t.googleHowToStep3,
+              t.googleHowToStep4,
+              t.googleHowToStep5,
+            ] as string[]).map((step, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  {i + 1}
+                </span>
+                <span className="text-sm text-foreground leading-relaxed">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="rounded-lg border border-border bg-card p-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {t.googleHowToTip}
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={() => setInstructionsOpen(false)} className="w-full sm:w-auto">
+            {t.googleHowToClose}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* AlertDialog de confirmação de remoção de critério (i18n — substitui window.confirm). */}
     <AlertDialog open={!!removeConfirmId} onOpenChange={(o) => !o && setRemoveConfirmId(null)}>

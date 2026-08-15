@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.10',
+    date: '15 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Link de avaliação do Google mais fácil de configurar',
+        description: 'Agora, nas configurações da pesquisa de satisfação, você gera o link de avaliação do Google apenas colando o link da sua empresa no Google Maps, sem precisar procurar o link de avaliação por conta própria. Um botão de instruções mostra o passo a passo para encontrar o link da sua empresa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.19.9',
     date: '15 de agosto de 2026',
     type: 'patch',
