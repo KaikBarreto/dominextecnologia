@@ -30,6 +30,7 @@ import {
   Menu,
   LogOut,
   ChevronDown,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +44,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { EditOsScopeDrawer, type EditOsScopeSeedItem, type AnsweredKey } from '@/components/service-orders/EditOsScopeDrawer';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { trackUsage } from '@/lib/trackUsage';
@@ -400,7 +402,7 @@ function TechnicianOSInner() {
   const { toast } = useToast();
   // Usuário LOGADO agora — carimbo legal da assinatura usa o nome de quem
   // assina de fato (no modo autenticado), não o técnico atribuído à OS.
-  const { profile: currentUserProfile } = useAuth();
+  const { profile: currentUserProfile, isAdminOrGestor, hasPermission } = useAuth();
   // Bloqueio por assinatura do TENANT DO USUÁRIO LOGADO (profile.company_id),
   // reusando a mesma decisão do SubscriptionGate. Só é APLICADO no modo técnico
   // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
@@ -668,6 +670,66 @@ function TechnicianOSInner() {
   // do cabeçalho do equipamento). Estados separados pra mobile e desktop.
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [desktopActionsOpen, setDesktopActionsOpen] = useState(false);
+  // "Editar OS em campo": drawer de gestão de equipamentos/checklists da OS.
+  const [editScopeOpen, setEditScopeOpen] = useState(false);
+  // Guarda online (v1 só edita escopo com internet). Reativo ao online/offline.
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  // Permissão de "Editar OS em campo" (backend pronto por outros Devs). Só admin/
+  // gestor ou quem tem a função explícita. PMOC bloqueia (v1 só OS avulsa) e o
+  // botão nem aparece offline (a edição de escopo exige internet no v1).
+  const canEditarOsCampo = isAdminOrGestor() || hasPermission('fn:editar_os_campo');
+  const showEditScopeAction = canEditarOsCampo && !isPmocOrder;
+
+  // Escopo atual da OS no shape que o drawer hidrata (equip×template + nomes).
+  const editScopeSeedItems = useMemo<EditOsScopeSeedItem[]>(
+    () =>
+      equipmentItems.map((it) => ({
+        equipment_id: it.equipment_id,
+        form_template_id: it.form_template_id,
+        equipment: it.equipment ? { id: it.equipment.id, name: it.equipment.name } : null,
+        form_template: it.form_template
+          ? { id: it.form_template.id, name: it.form_template.name }
+          : null,
+      })),
+    [equipmentItems],
+  );
+
+  // Pares equip×template que JÁ têm ao menos 1 resposta preenchida — pra confirmar
+  // perda antes de remover. Deriva de form_responses (equipment_id + template_id da
+  // pergunta). Só conta respostas com valor/foto/vídeo de fato preenchido.
+  const editScopeAnsweredKeys = useMemo<AnsweredKey[]>(() => {
+    const seen = new Set<string>();
+    const keys: AnsweredKey[] = [];
+    for (const r of publicFormResponses) {
+      const filled =
+        (r.response_value != null && String(r.response_value).trim() !== '') ||
+        !!r.response_photo_url ||
+        !!r.response_video_url;
+      if (!filled) continue;
+      const templateId = r.question?.template_id ?? null;
+      if (!templateId) continue;
+      const equipmentId = r.equipment_id ?? null;
+      const k = `${equipmentId ?? 'null'}::${templateId}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      keys.push({ equipmentId, templateId });
+    }
+    return keys;
+  }, [publicFormResponses]);
+
   // "closing": dispara a animação de SAÍDA (animate-out) antes de desmontar.
   // Máquina de estados: aberto → fechando (roda animate-out) → fechado (desmonta).
   // O desmonte acontece no FIM da animação (onAnimationEnd do backdrop), NÃO por
@@ -4109,6 +4171,23 @@ function TechnicianOSInner() {
                   )}
                 />
                 <div className="absolute bottom-full right-0 z-50 mb-4 flex flex-col gap-2.5 items-end">
+                  {showEditScopeAction && (
+                    <button
+                      type="button"
+                      disabled={!isOnline}
+                      onClick={() => { closeDesktopActions(); setEditScopeOpen(true); }}
+                      title={!isOnline ? tFlow.editScope.offlineHint : undefined}
+                      className={cn(
+                        'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-50 disabled:pointer-events-none',
+                        desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                      )}
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                        <Pencil className="h-4 w-4" />
+                      </span>
+                      <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.editScope.menuItem}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => { closeDesktopActions(); handlePauseOS(); }}
@@ -4194,6 +4273,24 @@ function TechnicianOSInner() {
             className="fixed right-3 z-50 lg:hidden flex flex-col gap-2.5 items-end"
             style={{ bottom: 'calc(env(safe-area-inset-bottom) + 4.5rem)' }}
           >
+            {showEditScopeAction && (
+              <button
+                type="button"
+                disabled={!isOnline}
+                onClick={() => { closeMobileActions(); setEditScopeOpen(true); }}
+                className={cn(
+                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-50 disabled:pointer-events-none',
+                  mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                )}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                  <Pencil className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">
+                  {!isOnline ? tFlow.editScope.offlineHint : tFlow.editScope.menuItem}
+                </span>
+              </button>
+            )}
             {!isPaused ? (
               <button
                 type="button"
@@ -4323,6 +4420,30 @@ function TechnicianOSInner() {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Editar OS em campo — gestão de equipamentos/checklists da OS avulsa.
+          Só monta quando há id resolvido e a ação está liberada (permissão +
+          não-PMOC). O guard offline vive no botão que abre. Ao salvar, recarrega
+          equipamentos e respostas pra refletir o novo escopo nos accordions. */}
+      {showEditScopeAction && resolvedOsId && (
+        <EditOsScopeDrawer
+          open={editScopeOpen}
+          onOpenChange={setEditScopeOpen}
+          serviceOrderId={resolvedOsId}
+          customerId={(serviceOrder as any)?.customer_id ?? serviceOrder?.customer?.id ?? ''}
+          customer={
+            serviceOrder?.customer
+              ? { id: serviceOrder.customer.id, name: serviceOrder.customer.name }
+              : null
+          }
+          seedItems={editScopeSeedItems}
+          answeredKeys={editScopeAnsweredKeys}
+          onSaved={() => {
+            fetchEquipmentItems();
+            fetchFormResponses();
+          }}
+        />
       )}
 
       {/* Equipment photo preview */}

@@ -828,6 +828,52 @@ export const os = {
       // Contagem de checklists no cabeçalho do equipamento (quando há mais de 1)
       checklistsCountSingular: '1 checklist',
       checklistsCountPlural: '{n} checklists',
+
+      // ── Editar OS em campo (EditOsScopeDrawer) ──────────────────────────
+      editScope: {
+        menuItem: 'Editar OS',
+        offlineHint: 'Disponível apenas online',
+        title: 'Editar OS',
+        description: 'Gerencie os equipamentos e checklists desta OS.',
+        tabEquipments: 'Equipamentos',
+        tabStandalone: 'Checklists avulsos',
+        // Aba equipamentos
+        addEquipment: 'Adicionar equipamento',
+        newEquipment: 'Novo equipamento',
+        equipmentChecklistsLabel: 'Checklists',
+        selectChecklists: 'Selecionar checklists',
+        noChecklistOnEquipment: 'Sem checklist neste equipamento',
+        removeEquipment: 'Remover equipamento',
+        emptyEquipmentsTitle: 'Nenhum equipamento',
+        emptyEquipmentsDesc: 'Adicione um equipamento para anexar checklists.',
+        // Aba checklists avulsos
+        addStandalone: 'Adicionar checklist',
+        standaloneHint: 'Checklists a nível de OS, sem equipamento vinculado.',
+        emptyStandaloneTitle: 'Nenhum checklist avulso',
+        emptyStandaloneDesc: 'Adicione um checklist sem equipamento.',
+        // Seletor de checklists
+        selectorTitle: 'Escolher checklists',
+        selectorEmpty: 'Nenhum checklist disponível.',
+        selectorDone: 'Concluir',
+        // Salvar
+        btnSave: 'Salvar',
+        btnSaving: 'Salvando...',
+        btnCancel: 'Cancelar',
+        // Confirmação de perda de respostas
+        confirmLossTitle: 'Respostas serão apagadas',
+        confirmLossDesc: 'Ao remover estes itens, as respostas já preenchidas serão apagadas em definitivo. Deseja continuar?',
+        confirmLossConfirm: 'Apagar e salvar',
+        confirmLossCancel: 'Cancelar',
+        // Toasts
+        toastSaved: 'OS atualizada',
+        toastNoChanges: 'Nada para salvar',
+        errNotAuthenticated: 'Sessão expirada. Entre de novo e tente outra vez.',
+        errOrderNotFound: 'Ordem de serviço não encontrada.',
+        errNoAccess: 'Você não tem acesso a esta ordem de serviço.',
+        errNoPermission: 'Você não tem permissão para editar esta OS.',
+        errPmoc: 'Edição manual indisponível em OS de PMOC.',
+        errGeneric: 'Não foi possível salvar as alterações. Tente de novo.',
+      },
     },
 
     // ── Mapa ao Vivo / Rastreamento ──────────────────────────────────────
@@ -2193,6 +2239,52 @@ export const os = {
       sidebarGeneralLabel: 'General / Site',
       checklistsCountSingular: '1 checklist',
       checklistsCountPlural: '{n} checklists',
+
+      // ── Edit OS in the field (EditOsScopeDrawer) ────────────────────────
+      editScope: {
+        menuItem: 'Edit OS',
+        offlineHint: 'Available online only',
+        title: 'Edit OS',
+        description: 'Manage the equipment and checklists of this work order.',
+        tabEquipments: 'Equipment',
+        tabStandalone: 'Standalone checklists',
+        // Equipment tab
+        addEquipment: 'Add equipment',
+        newEquipment: 'New equipment',
+        equipmentChecklistsLabel: 'Checklists',
+        selectChecklists: 'Select checklists',
+        noChecklistOnEquipment: 'No checklist on this equipment',
+        removeEquipment: 'Remove equipment',
+        emptyEquipmentsTitle: 'No equipment',
+        emptyEquipmentsDesc: 'Add equipment to attach checklists.',
+        // Standalone tab
+        addStandalone: 'Add checklist',
+        standaloneHint: 'Order-level checklists, with no linked equipment.',
+        emptyStandaloneTitle: 'No standalone checklists',
+        emptyStandaloneDesc: 'Add a checklist without equipment.',
+        // Checklist selector
+        selectorTitle: 'Choose checklists',
+        selectorEmpty: 'No checklists available.',
+        selectorDone: 'Done',
+        // Save
+        btnSave: 'Save',
+        btnSaving: 'Saving...',
+        btnCancel: 'Cancel',
+        // Response-loss confirmation
+        confirmLossTitle: 'Responses will be deleted',
+        confirmLossDesc: 'Removing these items will permanently delete the responses already filled in. Do you want to continue?',
+        confirmLossConfirm: 'Delete and save',
+        confirmLossCancel: 'Cancel',
+        // Toasts
+        toastSaved: 'Work order updated',
+        toastNoChanges: 'No changes to save',
+        errNotAuthenticated: 'Session expired. Sign in again and retry.',
+        errOrderNotFound: 'Work order not found.',
+        errNoAccess: 'You do not have access to this work order.',
+        errNoPermission: 'You do not have permission to edit this work order.',
+        errPmoc: 'Manual editing is unavailable for PMOC work orders.',
+        errGeneric: 'Could not save the changes. Please try again.',
+      },
     },
 
     // ── Live Map / Tracking ───────────────────────────────────────────────
@@ -3557,6 +3649,52 @@ export const os = {
       sidebarGeneralLabel: 'General / Local',
       checklistsCountSingular: '1 lista',
       checklistsCountPlural: '{n} listas',
+
+      // ── Editar OS en campo (EditOsScopeDrawer) ──────────────────────────
+      editScope: {
+        menuItem: 'Editar OS',
+        offlineHint: 'Disponible solo en línea',
+        title: 'Editar OS',
+        description: 'Gestione los equipos y las listas de verificación de esta OS.',
+        tabEquipments: 'Equipos',
+        tabStandalone: 'Listas sueltas',
+        // Pestaña equipos
+        addEquipment: 'Agregar equipo',
+        newEquipment: 'Nuevo equipo',
+        equipmentChecklistsLabel: 'Listas de verificación',
+        selectChecklists: 'Seleccionar listas',
+        noChecklistOnEquipment: 'Sin listas en este equipo',
+        removeEquipment: 'Quitar equipo',
+        emptyEquipmentsTitle: 'Sin equipos',
+        emptyEquipmentsDesc: 'Agregue un equipo para adjuntar listas de verificación.',
+        // Pestaña listas sueltas
+        addStandalone: 'Agregar lista',
+        standaloneHint: 'Listas a nivel de OS, sin equipo vinculado.',
+        emptyStandaloneTitle: 'Sin listas sueltas',
+        emptyStandaloneDesc: 'Agregue una lista de verificación sin equipo.',
+        // Selector de listas
+        selectorTitle: 'Elegir listas de verificación',
+        selectorEmpty: 'No hay listas de verificación disponibles.',
+        selectorDone: 'Listo',
+        // Guardar
+        btnSave: 'Guardar',
+        btnSaving: 'Guardando...',
+        btnCancel: 'Cancelar',
+        // Confirmación de pérdida de respuestas
+        confirmLossTitle: 'Se eliminarán respuestas',
+        confirmLossDesc: 'Al quitar estos elementos, las respuestas ya completadas se eliminarán de forma permanente. ¿Desea continuar?',
+        confirmLossConfirm: 'Eliminar y guardar',
+        confirmLossCancel: 'Cancelar',
+        // Toasts
+        toastSaved: 'OS actualizada',
+        toastNoChanges: 'No hay cambios para guardar',
+        errNotAuthenticated: 'Sesión expirada. Inicie sesión de nuevo e intente otra vez.',
+        errOrderNotFound: 'Orden de servicio no encontrada.',
+        errNoAccess: 'No tiene acceso a esta orden de servicio.',
+        errNoPermission: 'No tiene permiso para editar esta OS.',
+        errPmoc: 'Edición manual no disponible en OS de tipo PMOC.',
+        errGeneric: 'No se pudieron guardar los cambios. Intente de nuevo.',
+      },
     },
 
     // ── Mapa en vivo / Rastreo ────────────────────────────────────────────
@@ -4921,6 +5059,52 @@ export const os = {
       sidebarGeneralLabel: 'Général / Site',
       checklistsCountSingular: '1 liste',
       checklistsCountPlural: '{n} listes',
+
+      // ── Éditer l`OS sur le terrain (EditOsScopeDrawer) ──────────────────
+      editScope: {
+        menuItem: 'Modifier l`OS',
+        offlineHint: 'Disponible uniquement en ligne',
+        title: 'Modifier l`OS',
+        description: 'Gérez les équipements et les listes de contrôle de cette OS.',
+        tabEquipments: 'Équipements',
+        tabStandalone: 'Listes indépendantes',
+        // Onglet équipements
+        addEquipment: 'Ajouter un équipement',
+        newEquipment: 'Nouvel équipement',
+        equipmentChecklistsLabel: 'Listes de contrôle',
+        selectChecklists: 'Sélectionner des listes',
+        noChecklistOnEquipment: 'Aucune liste sur cet équipement',
+        removeEquipment: 'Retirer l`équipement',
+        emptyEquipmentsTitle: 'Aucun équipement',
+        emptyEquipmentsDesc: 'Ajoutez un équipement pour attacher des listes de contrôle.',
+        // Onglet listes indépendantes
+        addStandalone: 'Ajouter une liste',
+        standaloneHint: 'Listes au niveau de l`OS, sans équipement lié.',
+        emptyStandaloneTitle: 'Aucune liste indépendante',
+        emptyStandaloneDesc: 'Ajoutez une liste de contrôle sans équipement.',
+        // Sélecteur de liste
+        selectorTitle: 'Choisir des listes de contrôle',
+        selectorEmpty: 'Aucune liste de contrôle disponible.',
+        selectorDone: 'Terminé',
+        // Enregistrer
+        btnSave: 'Enregistrer',
+        btnSaving: 'Enregistrement...',
+        btnCancel: 'Annuler',
+        // Confirmation de perte de réponses
+        confirmLossTitle: 'Des réponses seront supprimées',
+        confirmLossDesc: 'En retirant ces éléments, les réponses déjà remplies seront définitivement supprimées. Voulez-vous continuer ?',
+        confirmLossConfirm: 'Supprimer et enregistrer',
+        confirmLossCancel: 'Annuler',
+        // Toasts
+        toastSaved: 'OS mise à jour',
+        toastNoChanges: 'Aucune modification à enregistrer',
+        errNotAuthenticated: 'Session expirée. Reconnectez-vous et réessayez.',
+        errOrderNotFound: 'Ordre de service introuvable.',
+        errNoAccess: 'Vous n`avez pas accès à cet ordre de service.',
+        errNoPermission: 'Vous n`avez pas la permission de modifier cette OS.',
+        errPmoc: 'Édition manuelle indisponible pour une OS de type PMOC.',
+        errGeneric: 'Impossible d`enregistrer les modifications. Réessayez.',
+      },
     },
 
     // ── Carte en direct / Suivi ───────────────────────────────────────────

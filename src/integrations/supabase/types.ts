@@ -8902,6 +8902,7 @@ export type Database = {
         Returns: boolean
       }
       can_bootstrap_admin: { Args: never; Returns: boolean }
+      can_edit_os: { Args: { _user_id: string }; Returns: boolean }
       can_manage_billing_reminder: {
         Args: { p_transaction_id: string; p_user_id: string }
         Returns: boolean
@@ -8938,6 +8939,10 @@ export type Database = {
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
         Returns: undefined
+      }
+      edit_service_order_scope: {
+        Args: { _items: Json; _service_order_id: string }
+        Returns: Json
       }
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }

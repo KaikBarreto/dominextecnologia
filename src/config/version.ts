@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.19.7";
+export const APP_VERSION = "1.19.8";
 
-export const VERSION_NOTES = "Agora, ao final da pesquisa de satisfação, o cliente pode ser convidado a avaliar a sua empresa no Google. Você cadastra o link nas configurações da pesquisa e escolhe quando o convite aparece: sempre ou só a partir de uma nota que você define. Também corrigimos a pesquisa e o checklist do PMOC que haviam parado de aparecer no link público da ordem de serviço.";
+export const VERSION_NOTES = "Agora dá para ajustar os equipamentos e checklists de uma ordem de serviço durante o próprio atendimento. Um novo botão Editar OS abre uma tela onde você cadastra equipamentos na hora, escolhe um ou mais checklists para cada um e ainda adiciona checklists soltos na ordem. O recurso fica disponível apenas para os usuários que você liberar.";

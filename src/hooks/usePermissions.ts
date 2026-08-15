@@ -73,6 +73,7 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:view_customer_financial', label: 'Ver Financeiro do Cliente', description: 'Visualizar aba financeira na ficha do cliente', group: 'Comercial', category: 'comercial' },
   { key: 'fn:reopen_os', label: 'Reabrir OS', description: 'Reabrir ordens de serviço concluídas para edição', group: 'Serviços', category: 'servicos' },
   { key: 'fn:view_all_schedule', label: 'Ver Toda a Agenda', description: 'Ver todas as tarefas da agenda, não apenas as próprias', group: 'Geral', category: 'geral' },
+  { key: 'fn:editar_os_campo', label: 'Editar OS em campo', description: 'Editar equipamentos e checklists dentro de uma OS em andamento', group: 'Serviços', category: 'servicos' },
 ] as const;
 
 export const ALL_PERMISSIONS = [...SCREEN_PERMISSIONS, ...FUNCTION_PERMISSIONS];

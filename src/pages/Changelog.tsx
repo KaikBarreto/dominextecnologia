@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.8',
+    date: '15 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Editar equipamentos e checklists durante o atendimento',
+        description: 'Durante o preenchimento de uma ordem de serviço, um novo botão Editar OS abre uma tela para você montar o escopo na hora: cadastrar equipamentos do cliente, escolher um ou mais checklists para cada equipamento e também adicionar checklists soltos na ordem. Ideal para quando o técnico chega no cliente e encontra mais aparelhos do que o previsto. O botão fica disponível apenas para os usuários que você liberar nas permissões, e o que já foi preenchido é sempre preservado, com aviso antes de remover qualquer resposta.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.19.7',
     date: '15 de agosto de 2026',
     type: 'patch',
