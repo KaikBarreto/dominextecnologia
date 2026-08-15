@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.19.8";
+export const APP_VERSION = "1.19.9";
 
-export const VERSION_NOTES = "Agora dá para ajustar os equipamentos e checklists de uma ordem de serviço durante o próprio atendimento. Um novo botão Editar OS abre uma tela onde você cadastra equipamentos na hora, escolhe um ou mais checklists para cada um e ainda adiciona checklists soltos na ordem. O recurso fica disponível apenas para os usuários que você liberar.";
+export const VERSION_NOTES = "A Posição de Estoque agora respeita o controle de acesso por local: cada pessoa vê apenas os locais de estoque que tem permissão. A tela também ganhou abas de local no topo, para você alternar rapidamente entre eles.";

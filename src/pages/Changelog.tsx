@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.9',
+    date: '15 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Posição de Estoque respeita o acesso por local',
+        description: 'A tela de Posição de Estoque agora mostra apenas os locais de estoque que cada pessoa tem permissão de ver, seguindo o controle de acesso configurado em cada local. Antes ela exibia todos os locais da empresa, mesmo os restritos.',
+        category: 'correcao',
+      },
+      {
+        title: 'Abas de local na Posição de Estoque',
+        description: 'A Posição de Estoque ganhou abas de local no topo, no mesmo estilo da tela de Estoque, para você alternar rapidamente entre os locais ou ver a soma de todos de uma vez.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.19.8',
     date: '15 de agosto de 2026',
     type: 'patch',

@@ -29,13 +29,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
-import { FilterSheet } from '@/components/mobile/FilterSheet';
-import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
-import { FilterButton } from '@/components/ui/FilterButton';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useStockPosition } from '@/hooks/useStockPosition';
 import { useStocks } from '@/hooks/useStocks';
-import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -43,7 +40,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useToast } from '@/hooks/use-toast';
 import { generateStockPositionPdf } from '@/utils/stockPositionPdfGenerator';
 import { generateStockPositionExcel } from '@/utils/stockPositionExcelGenerator';
-import { fuzzyIncludes } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 
 /** Formata timestamp local para o input datetime-local */
@@ -63,51 +60,39 @@ export function StockPositionTab() {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.stockPosition;
   const { stocks } = useStocks();
-  const { groups } = useMaterialGroups();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const { toast } = useToast();
 
   // Filtro de data (default = agora)
   const [atInput, setAtInput] = useState(() => toLocalInputValue(new Date()));
-  const [stockFilter, setStockFilter] = useState<string[]>([]);
-  const [groupFilter, setGroupFilter] = useState<string[]>([]);
+  // Local de estoque ativo. '' = "Todos os locais" (agregado, respeitando o
+  // guard de acesso do backend). Espelha o comportamento da aba Estoque Atual.
+  const [activeStockId, setActiveStockId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const atIso = localInputToIso(atInput);
 
+  // Se só há 1 local permitido, cravamos ele; caso contrário, '' agrega todos
+  // os locais que o usuário tem permissão de ver (aplicado no backend via RLS).
+  const singleStockId = stocks.length === 1 ? stocks[0].id : null;
+  const resolvedStockIds =
+    singleStockId ? [singleStockId] : activeStockId ? [activeStockId] : null;
+
   const { rows, isLoading, refetch } = useStockPosition({
     at: atIso,
-    stockIds: stockFilter.length > 0 ? stockFilter : null,
+    stockIds: resolvedStockIds,
   });
 
-  // Filtro client-side por grupo e busca
+  // Filtro client-side por busca (o filtro de local vai direto pra RPC)
   const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      if (groupFilter.length > 0) {
-        // A RPC não retorna group_id — filtramos por material_name/sku já que
-        // não temos o group no retorno. Client-side filtra por stockFilter já vai
-        // pra RPC; groupFilter só filtra no resultado.
-        return true; // sem group_id na resposta, skip group filter silenciosamente
-      }
-      if (searchQuery) {
-        return (
-          fuzzyIncludes(r.name, searchQuery) ||
-          fuzzyIncludes(r.sku, searchQuery) ||
-          fuzzyIncludes(r.stock_name, searchQuery)
-        );
-      }
-      return true;
-    }).filter((r) => {
-      if (searchQuery) {
-        return (
-          fuzzyIncludes(r.name, searchQuery) ||
-          fuzzyIncludes(r.sku, searchQuery) ||
-          fuzzyIncludes(r.stock_name, searchQuery)
-        );
-      }
-      return true;
-    });
+    if (!searchQuery) return rows;
+    return rows.filter(
+      (r) =>
+        fuzzyIncludes(r.name, searchQuery) ||
+        fuzzyIncludes(r.sku, searchQuery) ||
+        fuzzyIncludes(r.stock_name, searchQuery),
+    );
   }, [rows, searchQuery]);
 
   const totalValor = filteredRows.reduce((acc, r) => acc + (r.valor ?? 0), 0);
@@ -161,25 +146,56 @@ export function StockPositionTab() {
     </DropdownMenu>
   );
 
-  const hasActiveFilter = stockFilter.length > 0 || searchQuery.length > 0;
-  const activeFilterCount = (stockFilter.length > 0 ? 1 : 0) + (searchQuery.length > 0 ? 1 : 0);
+  const hasActiveFilter = activeStockId.length > 0 || searchQuery.length > 0;
 
-  const filterContent = (
-    <>
-      {stocks.length > 1 && (
-        <FilterCheckboxGroup
-          label={t.filterStocks}
-          options={stocks.map((s) => ({ value: s.id, label: s.name }))}
-          selected={stockFilter}
-          onChange={setStockFilter}
-          emptyLabel={t.filterStocksEmpty}
-        />
-      )}
-    </>
-  );
+  // Pills de local: "Todos os locais" (value '') + um por local permitido.
+  // Só aparecem quando há mais de 1 local (espelha a aba Estoque Atual).
+  const stockPillTabs = [
+    { value: '', label: t.allStocks },
+    ...stocks.map((s) => ({ value: s.id, label: s.name })),
+  ];
 
   return (
     <div className="space-y-4">
+      {/* Abas de local de estoque (só quando há mais de 1 local permitido).
+          Mobile: pills. Desktop: abas underline (espelha a aba Estoque Atual). */}
+      {stocks.length > 1 && (
+        <>
+          {isMobile ? (
+            <MobilePillTabs
+              tabs={stockPillTabs}
+              activeTab={activeStockId}
+              onTabChange={setActiveStockId}
+            />
+          ) : (
+            <div className="flex gap-1 border-b">
+              {stockPillTabs.map((tab) => (
+                <div
+                  key={tab.value || '__all__'}
+                  className={cn(
+                    'inline-flex items-center border-b-2 -mb-px transition-colors',
+                    activeStockId === tab.value
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground',
+                  )}
+                >
+                  <span
+                    role="tab"
+                    aria-selected={activeStockId === tab.value}
+                    tabIndex={0}
+                    onClick={() => setActiveStockId(tab.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(tab.value); } }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium cursor-pointer select-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                  >
+                    {tab.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Controles de filtro */}
       {isMobile ? (
         <div className="space-y-3">
@@ -193,15 +209,6 @@ export function StockPositionTab() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            {stocks.length > 1 && (
-              <FilterSheet
-                triggerLabel={t.filters}
-                activeCount={activeFilterCount}
-                onClear={() => { setStockFilter([]); setSearchQuery(''); }}
-              >
-                {filterContent}
-              </FilterSheet>
-            )}
             {exportDropdown(true)}
             <Button
               variant="outline"
@@ -237,11 +244,6 @@ export function StockPositionTab() {
             onChange={(e) => setAtInput(e.target.value)}
             className="rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary h-10"
           />
-          {stocks.length > 1 && (
-            <FilterButton activeCount={activeFilterCount} onClear={() => setStockFilter([])}>
-              {filterContent}
-            </FilterButton>
-          )}
           <div className="ml-auto flex items-center gap-2">
             {exportDropdown()}
             <Button
