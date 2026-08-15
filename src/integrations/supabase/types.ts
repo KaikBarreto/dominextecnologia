@@ -5189,6 +5189,8 @@ export type Database = {
           company_id: string
           created_at: string
           generate_on_finish: boolean
+          google_review_min_score: number | null
+          google_review_url: string | null
           id: string
           question: string
           require_stars: boolean
@@ -5198,6 +5200,8 @@ export type Database = {
           company_id: string
           created_at?: string
           generate_on_finish?: boolean
+          google_review_min_score?: number | null
+          google_review_url?: string | null
           id?: string
           question?: string
           require_stars?: boolean
@@ -5207,6 +5211,8 @@ export type Database = {
           company_id?: string
           created_at?: string
           generate_on_finish?: boolean
+          google_review_min_score?: number | null
+          google_review_url?: string | null
           id?: string
           question?: string
           require_stars?: boolean

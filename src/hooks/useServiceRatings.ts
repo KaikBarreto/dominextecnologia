@@ -44,6 +44,16 @@ export interface PublicNpsConfig {
   question: string;
   require_stars: boolean;
   generate_on_finish: boolean;
+  /**
+   * Link de avaliação do Google da empresa. null/'' = recurso DESLIGADO (não
+   * mostra o convite pós-avaliação).
+   */
+  google_review_url: string | null;
+  /**
+   * Nota mínima (0..10) pra exibir o convite do Google. null = mostrar SEMPRE
+   * (quando há url); N = só quando a nota do cliente for >= N.
+   */
+  google_review_min_score: number | null;
 }
 
 // Critério dinâmico de estrelas configurado pela empresa (1–5).

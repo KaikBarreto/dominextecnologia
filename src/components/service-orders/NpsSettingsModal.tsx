@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { NumericInput } from '@/components/ui/numeric-input';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -52,6 +53,14 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
   const [requireStars, setRequireStars] = useState(false);
   const [generateOnFinish, setGenerateOnFinish] = useState(true);
 
+  // Avaliação no Google. `googleUrl` vazio = recurso desligado. O modo
+  // "always" ↔ "from-score" só define SE existe nota mínima; o valor da nota
+  // vive como string crua no NumericInput (parse no salvar).
+  const [googleUrl, setGoogleUrl] = useState('');
+  const [googleWhen, setGoogleWhen] = useState<'always' | 'from-score'>('always');
+  const [googleMinScore, setGoogleMinScore] = useState('');
+  const googleEnabled = googleUrl.trim().length > 0;
+
   // AlertDialog de confirmação para remover critério (substitui window.confirm).
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removeConfirmLabel, setRemoveConfirmLabel] = useState('');
@@ -67,15 +76,35 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
       setQuestion(settings.question || NPS_DEFAULT_QUESTION);
       setRequireStars(settings.require_stars);
       setGenerateOnFinish(settings.generate_on_finish);
+      setGoogleUrl(settings.google_review_url ?? '');
+      const min = settings.google_review_min_score;
+      setGoogleWhen(min === null ? 'always' : 'from-score');
+      setGoogleMinScore(min === null ? '' : String(min));
     }
-  }, [open, settings.question, settings.require_stars, settings.generate_on_finish]);
+  }, [
+    open,
+    settings.question,
+    settings.require_stars,
+    settings.generate_on_finish,
+    settings.google_review_url,
+    settings.google_review_min_score,
+  ]);
 
   const handleSave = async () => {
     try {
+      const url = googleUrl.trim();
+      // Sem link = recurso desligado; zeramos também a nota mínima pra não
+      // deixar lixo persistido.
+      let minScore: number | null = null;
+      if (url && googleWhen === 'from-score' && googleMinScore !== '') {
+        minScore = Math.min(10, Math.max(0, parseInt(googleMinScore, 10)));
+      }
       await save({
         question: question.trim() || NPS_DEFAULT_QUESTION,
         require_stars: requireStars,
         generate_on_finish: generateOnFinish,
+        google_review_url: url || null,
+        google_review_min_score: url ? minScore : null,
       });
       toast({ title: t.toastSaved });
       onOpenChange(false);
@@ -332,6 +361,66 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
               on={{ value: 'on', label: t.switchGenerateYes }}
               aria-label={t.labelGenerateOnFinish}
             />
+          </div>
+        </div>
+
+        {/* ——— Avaliação no Google ——— */}
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="nps-google-url" className="text-sm font-bold">
+              {t.googleSectionTitle}
+            </Label>
+            <p className="text-xs text-muted-foreground">{t.googleUrlHelp}</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="nps-google-url" className="text-sm font-medium">
+              {t.googleUrlLabel}
+            </Label>
+            <Input
+              id="nps-google-url"
+              type="url"
+              inputMode="url"
+              value={googleUrl}
+              onChange={(e) => setGoogleUrl(e.target.value)}
+              placeholder="https://g.page/r/..."
+              disabled={!canEdit || isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">{t.googleWhenLabel}</Label>
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <LabeledSwitch
+                value={googleWhen}
+                onChange={(v) => canEdit && setGoogleWhen(v)}
+                off={{ value: 'always', label: t.googleWhenAlways }}
+                on={{ value: 'from-score', label: t.googleWhenFromScore }}
+                aria-label={t.googleWhenLabel}
+                disabled={!canEdit || !googleEnabled}
+              />
+            </div>
+
+            {googleWhen === 'from-score' && (
+              <div className="space-y-1.5 pt-1">
+                <Label htmlFor="nps-google-min" className="text-sm font-medium">
+                  {t.googleMinScoreLabel}
+                </Label>
+                <NumericInput
+                  id="nps-google-min"
+                  value={googleMinScore}
+                  onValueChange={(v) => {
+                    // Trava 0..10 (o cliente dá nota nessa faixa).
+                    if (v === '') return setGoogleMinScore('');
+                    const n = Math.min(10, Math.max(0, parseInt(v, 10)));
+                    setGoogleMinScore(String(n));
+                  }}
+                  placeholder="9"
+                  className="w-24"
+                  disabled={!canEdit || !googleEnabled}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

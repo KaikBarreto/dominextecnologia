@@ -21,15 +21,22 @@ export interface NpsSettings {
   question: string;
   require_stars: boolean;
   generate_on_finish: boolean;
+  /** Link de avaliação do Google da empresa. null/'' = recurso desligado. */
+  google_review_url: string | null;
+  /** Nota mínima (0..10) pra convidar; null = sempre (quando há url). */
+  google_review_min_score: number | null;
 }
 
 const DEFAULTS: NpsSettings = {
   question: NPS_DEFAULT_QUESTION,
   require_stars: false,
   generate_on_finish: true,
+  google_review_url: null,
+  google_review_min_score: null,
 };
 
-const SELECT_COLS = 'question, require_stars, generate_on_finish';
+const SELECT_COLS =
+  'question, require_stars, generate_on_finish, google_review_url, google_review_min_score';
 
 export function useNpsSettings() {
   const { companyId } = useUserCompany();
@@ -51,6 +58,11 @@ export function useNpsSettings() {
         question: data.question || NPS_DEFAULT_QUESTION,
         require_stars: !!data.require_stars,
         generate_on_finish: data.generate_on_finish !== false,
+        google_review_url: data.google_review_url ?? null,
+        google_review_min_score:
+          data.google_review_min_score === null || data.google_review_min_score === undefined
+            ? null
+            : Number(data.google_review_min_score),
       };
     },
   });

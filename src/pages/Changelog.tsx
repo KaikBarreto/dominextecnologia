@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.7',
+    date: '15 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Convite para avaliação no Google na pesquisa de satisfação',
+        description: 'Depois que o cliente responde a pesquisa de satisfação da ordem de serviço, ele pode receber um convite para avaliar a sua empresa no Google. Você cadastra o link nas configurações da pesquisa e escolhe quando o convite aparece: sempre ou só a partir de uma nota que você define. Deixe o link em branco para manter desativado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Pesquisa e checklist do PMOC de volta no link público da OS',
+        description: 'Corrigimos uma falha em que a pesquisa de satisfação e o checklist do PMOC haviam parado de aparecer para o cliente no link público da ordem de serviço. Tudo voltou a ser exibido normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.19.6',
     date: '15 de agosto de 2026',
     type: 'patch',

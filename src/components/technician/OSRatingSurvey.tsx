@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Star, Loader2, CheckCircle2, Smile, Meh, Frown, ChevronUp } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { GoogleGIcon } from '@/components/icons/GoogleGIcon';
+import { GoogleReviewInviteModal } from '@/components/technician/GoogleReviewInviteModal';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { cn } from '@/lib/utils';
@@ -263,12 +267,23 @@ export function OSRatingSurvey({
   onRated,
 }: OSRatingSurveyProps) {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.nps;
   const requireStars = npsConfig?.require_stars === true;
   const question = npsConfig?.question?.trim() || DEFAULT_QUESTION;
   const dynamicCriteria = criteria ?? [];
 
   const [thanked, setThanked] = useState(rating.already_rated === true);
   const [submitting, setSubmitting] = useState(false);
+  // Modal de convite pra avaliar no Google. Abre sozinho após envio bem-sucedido
+  // (quando a régua passa); no caso de OS já avaliada, abre só pelo botão discreto.
+  const [googleInviteOpen, setGoogleInviteOpen] = useState(false);
+
+  // Nota que valeu pra este cliente: a que ele acabou de enviar OU, se a OS
+  // chegou já avaliada, a que veio da RPC. Decide o convite do Google.
+  const [submittedScore, setSubmittedScore] = useState<number | null>(
+    rating.nps_score ?? null,
+  );
 
   const [npsScore, setNpsScore] = useState<number | null>(null);
   // Estrelas por critério (id → 1..5). 0/ausente = "não tocado".
@@ -280,10 +295,13 @@ export function OSRatingSurvey({
   useEffect(() => {
     if (rating.already_rated === true) {
       setThanked(true);
+      if (rating.nps_score !== null && rating.nps_score !== undefined) {
+        setSubmittedScore(rating.nps_score);
+      }
       onOpenChange(false);
       onRated?.();
     }
-  }, [rating.already_rated]);
+  }, [rating.already_rated, rating.nps_score]);
 
   const setCriterion = (id: string, v: number) =>
     setCriteriaValues((prev) => ({ ...prev, [id]: v }));
@@ -315,12 +333,20 @@ export function OSRatingSurvey({
         },
         supabaseAnon,
       );
+      setSubmittedScore(npsScore);
       setThanked(true);
       onOpenChange(false);
       onRated?.();
       toast({ title: 'Avaliação enviada' });
       // Relatório da OS (renderizado abaixo do drawer) fica em foco.
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Convite ao Google abre sozinho quando há link e a régua passa. Avalia a
+      // condição com a nota recém-enviada (o state ainda não propagou aqui).
+      const gUrl = npsConfig?.google_review_url?.trim() || '';
+      const gMin = npsConfig?.google_review_min_score ?? null;
+      if (gUrl.length > 0 && (gMin === null || npsScore >= gMin)) {
+        setGoogleInviteOpen(true);
+      }
     } catch (err: any) {
       if (isAlreadyRatedError(err)) {
         toast({ title: 'Esta avaliação já foi enviada. Obrigado!' });
@@ -339,17 +365,53 @@ export function OSRatingSurvey({
     }
   };
 
+  // Convite pra avaliar no Google: só quando há link E (sem nota mínima OU a
+  // nota do cliente >= mínimo). Sem nota conhecida, não mostra.
+  const googleUrl = npsConfig?.google_review_url?.trim() || '';
+  const googleMin = npsConfig?.google_review_min_score ?? null;
+  const showGoogleCta =
+    googleUrl.length > 0 &&
+    submittedScore !== null &&
+    (googleMin === null || submittedScore >= googleMin);
+
   // Já avaliado / pós-envio: aviso enxuto inline (sem drawer). O relatório da
   // OS abaixo fica em foco para o cliente conferir o serviço.
   if (thanked) {
     return (
-      <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-success/5 px-4 py-3 text-sm animate-in fade-in zoom-in-95 duration-300">
-        <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-        <div className="min-w-0">
-          <p className="font-semibold text-foreground">Avaliação enviada</p>
-          <p className="text-xs text-muted-foreground">Obrigado pelo seu feedback!</p>
+      <>
+        <div className="space-y-3 animate-in fade-in zoom-in-95 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-success/5 px-4 py-3 text-sm">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground">Avaliação enviada</p>
+              <p className="text-xs text-muted-foreground">Obrigado pelo seu feedback!</p>
+            </div>
+          </div>
+
+          {/* Gatilho discreto pra (re)abrir o convite ao Google. No fluxo
+              recém-enviado o modal já abriu sozinho; aqui é o acesso pra quem
+              chegou com a OS já avaliada ou fechou o modal antes. */}
+          {showGoogleCta && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full gap-2 text-sm"
+              onClick={() => setGoogleInviteOpen(true)}
+            >
+              <GoogleGIcon size={18} className="shrink-0" />
+              {t.googleModalCta}
+            </Button>
+          )}
         </div>
-      </div>
+
+        {showGoogleCta && (
+          <GoogleReviewInviteModal
+            open={googleInviteOpen}
+            onOpenChange={setGoogleInviteOpen}
+            googleUrl={googleUrl}
+          />
+        )}
+      </>
     );
   }
 
