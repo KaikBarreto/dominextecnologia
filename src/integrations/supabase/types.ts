@@ -8963,6 +8963,7 @@ export type Database = {
       generate_pmoc_token: { Args: never; Returns: string }
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
+      get_accessible_inventory_ids: { Args: never; Returns: string[] }
       get_company_health_scores: {
         Args: never
         Returns: {

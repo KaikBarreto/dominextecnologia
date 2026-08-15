@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.11',
+    date: '16 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Estoque respeita o acesso de cada usuário aos locais',
+        description: 'Os números do topo do Estoque (total de itens, valor investido e estoque baixo) agora mostram apenas o local selecionado, em vez de somar todos os locais de uma vez. Além disso, quem tem acesso limitado a certos locais não vê mais o valor nem os materiais dos locais que não pode acessar. Assim, cada pessoa enxerga só o que está no seu alcance.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.19.10',
     date: '15 de agosto de 2026',
     type: 'patch',

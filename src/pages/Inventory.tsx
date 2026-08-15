@@ -49,6 +49,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
+import { useAccessibleInventoryIds } from '@/hooks/useAccessibleInventoryIds';
 import { StockConfiguratorDialog } from '@/components/inventory/StockConfiguratorDialog';
 import { useStocks } from '@/hooks/useStocks';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
@@ -97,6 +98,7 @@ export default function Inventory() {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
   const { items, isLoading, stats, deleteItem, getQuantityForStock, getMinQuantityForStock, getPresenceForStock } = useInventory();
+  const { accessibleIds, isLoading: isLoadingAccessible } = useAccessibleInventoryIds();
   const { stocks, defaultStock } = useStocks();
   const { groups } = useMaterialGroups();
   const { settings: companySettings } = useCompanySettings();
@@ -179,7 +181,9 @@ export default function Inventory() {
       !resolvedStockId || searchQuery
         ? true
         : getPresenceForStock(item.id, resolvedStockId);
-    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock && matchesPresence;
+    // Filtro de acesso por local: enquanto carrega, não esconde nada (evita flash).
+    const matchesAccessible = isLoadingAccessible ? true : accessibleIds.has(item.id);
+    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock && matchesPresence && matchesAccessible;
   });
 
   // Enriquece cada item com effectiveQty (saldo do local ativo) para que a
@@ -341,26 +345,46 @@ export default function Inventory() {
     </DropdownMenu>
   );
 
+  // Cards de resumo calculados para o LOCAL ATIVO — nunca vazam dados de locais inacessíveis.
+  // Usa apenas materiais presentes no local selecionado e acessíveis pelo usuário.
+  const activeStockItems = resolvedStockId
+    ? items.filter(
+        (i) =>
+          getPresenceForStock(i.id, resolvedStockId) &&
+          (isLoadingAccessible ? true : accessibleIds.has(i.id)),
+      )
+    : [];
+  const activeStatTotalItems = activeStockItems.length;
+  const activeStatTotalValue = activeStockItems.reduce((acc, i) => {
+    const qty = resolvedStockId ? getQuantityForStock(i.id, resolvedStockId) : 0;
+    return acc + qty * (i.cost_price ?? 0);
+  }, 0);
+  const activeStatLowStock = activeStockItems.filter((i) => {
+    const min = resolvedStockId ? getMinQuantityForStock(i.id, resolvedStockId) : null;
+    const qty = resolvedStockId ? getQuantityForStock(i.id, resolvedStockId) : 0;
+    return min !== null && qty < min;
+  }).length;
+
   const statItems = [
     {
       key: 'total',
       label: t.stats.totalItems,
-      count: stats.totalItems,
+      count: activeStatTotalItems,
       icon: <Boxes className="h-4 w-4" />,
       accentColor: 'hsl(var(--primary))',
     },
     {
       key: 'cost',
       label: t.stats.invested,
-      count: stats.totalValue,
-      displayValue: formatMoney(stats.totalValue, currency, locale),
+      count: activeStatTotalValue,
+      displayValue: formatMoney(activeStatTotalValue, currency, locale),
       icon: <DollarSign className="h-4 w-4" />,
       accentColor: 'hsl(var(--info))',
     },
     {
       key: 'low',
       label: t.stats.lowStock,
-      count: stats.lowStockItems,
+      count: activeStatLowStock,
       icon: <AlertTriangle className="h-4 w-4" />,
       accentColor: 'hsl(var(--warning))',
     },
