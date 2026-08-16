@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.19.12',
+    date: '16 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca na hora de escolher os checklists da ordem de serviço',
+        description: 'Quando você edita os checklists de uma ordem de serviço, agora aparece um campo de busca no topo da lista. Basta digitar parte do nome para filtrar e encontrar o checklist na hora, sem rolar a lista inteira. A busca ignora acentos e maiúsculas, então "agua" já encontra "Água".',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.19.11',
     date: '16 de agosto de 2026',
     type: 'patch',

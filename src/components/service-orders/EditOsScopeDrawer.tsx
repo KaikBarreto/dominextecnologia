@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Plus, Trash2, Wrench, ClipboardList, Check, Loader2, ChevronUp, ChevronDown, X,
+  Plus, Trash2, Wrench, ClipboardList, Check, Loader2, ChevronUp, ChevronDown, X, Search,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -91,11 +92,16 @@ export function EditOsScopeDrawer({
   const [confirmLossOpen, setConfirmLossOpen] = useState(false);
   // Seletor de checklists aberto (chave do grupo ou STANDALONE_KEY), null = fechado.
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  // Busca dentro do seletor de checklists.
+  const [pickerSearch, setPickerSearch] = useState('');
 
   const activeTemplates = useMemo(
     () => (templates ?? []).filter((tpl: any) => tpl.is_active !== false),
     [templates],
   );
+
+  // Zera a busca sempre que o seletor trocar de alvo (ou fechar).
+  useEffect(() => { setPickerSearch(''); }, [pickerFor]);
   const templateName = (id: string) =>
     (templates ?? []).find((tpl: any) => tpl.id === id)?.name ?? id;
 
@@ -413,43 +419,73 @@ export function EditOsScopeDrawer({
           </Button>
         }
       >
-        {activeTemplates.length === 0 ? (
-          <EmptyState
-            size="compact"
-            icon={<ClipboardList className="h-full w-full" />}
-            title={t.selectorEmpty}
-          />
-        ) : (
-          <div className="space-y-1 pt-2">
-            {activeTemplates.map((tpl: any) => {
-              const isStandalone = pickerFor === STANDALONE_KEY;
-              const group = isStandalone
-                ? null
-                : equipmentGroups.find((g) => g.key === pickerFor);
-              const checked = isStandalone
-                ? standaloneTemplateIds.includes(tpl.id)
-                : !!group?.templateIds.includes(tpl.id);
-              return (
-                <label
-                  key={tpl.id}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer select-none transition-colors',
-                    checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/50',
-                  )}
-                >
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={() => {
-                      if (isStandalone) toggleStandaloneTemplate(tpl.id);
-                      else if (pickerFor) toggleEquipmentTemplate(pickerFor, tpl.id);
-                    }}
+        {(() => {
+          const norm = (s: string) =>
+            (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+          const filteredTemplates = pickerSearch.trim()
+            ? activeTemplates.filter((tpl: any) => norm(tpl.name).includes(norm(pickerSearch)))
+            : activeTemplates;
+
+          return (
+            <div className="space-y-3 pt-2">
+              {activeTemplates.length > 5 && (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder={t.selectorSearchPlaceholder}
+                    className="pl-9"
                   />
-                  <span className="min-w-0 flex-1 truncate text-sm">{tpl.name}</span>
-                </label>
-              );
-            })}
-          </div>
-        )}
+                </div>
+              )}
+
+              {activeTemplates.length === 0 ? (
+                <EmptyState
+                  size="compact"
+                  icon={<ClipboardList className="h-full w-full" />}
+                  title={t.selectorEmpty}
+                />
+              ) : filteredTemplates.length === 0 ? (
+                <EmptyState
+                  size="compact"
+                  icon={<Search className="h-full w-full" />}
+                  title={t.selectorSearchEmpty}
+                />
+              ) : (
+                <div className="space-y-1">
+                  {filteredTemplates.map((tpl: any) => {
+                    const isStandalone = pickerFor === STANDALONE_KEY;
+                    const group = isStandalone
+                      ? null
+                      : equipmentGroups.find((g) => g.key === pickerFor);
+                    const checked = isStandalone
+                      ? standaloneTemplateIds.includes(tpl.id)
+                      : !!group?.templateIds.includes(tpl.id);
+                    return (
+                      <label
+                        key={tpl.id}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer select-none transition-colors',
+                          checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/50',
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => {
+                            if (isStandalone) toggleStandaloneTemplate(tpl.id);
+                            else if (pickerFor) toggleEquipmentTemplate(pickerFor, tpl.id);
+                          }}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-sm">{tpl.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </ResponsiveModal>
 
       {/* Quick create de equipamento (reusa o dialog canônico) */}

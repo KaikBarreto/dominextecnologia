@@ -871,6 +871,8 @@ export const os = {
         // Seletor de checklists
         selectorTitle: 'Escolher checklists',
         selectorEmpty: 'Nenhum checklist disponível.',
+        selectorSearchPlaceholder: 'Buscar checklist...',
+        selectorSearchEmpty: 'Nenhum checklist encontrado',
         selectorDone: 'Concluir',
         // Salvar
         btnSave: 'Salvar',
@@ -2299,6 +2301,8 @@ export const os = {
         // Checklist selector
         selectorTitle: 'Choose checklists',
         selectorEmpty: 'No checklists available.',
+        selectorSearchPlaceholder: 'Search checklist...',
+        selectorSearchEmpty: 'No checklist found',
         selectorDone: 'Done',
         // Save
         btnSave: 'Save',
@@ -3726,6 +3730,8 @@ export const os = {
         // Selector de listas
         selectorTitle: 'Elegir listas de verificación',
         selectorEmpty: 'No hay listas de verificación disponibles.',
+        selectorSearchPlaceholder: 'Buscar checklist...',
+        selectorSearchEmpty: 'Ningún checklist encontrado',
         selectorDone: 'Listo',
         // Guardar
         btnSave: 'Guardar',
@@ -5153,6 +5159,8 @@ export const os = {
         // Sélecteur de liste
         selectorTitle: 'Choisir des listes de contrôle',
         selectorEmpty: 'Aucune liste de contrôle disponible.',
+        selectorSearchPlaceholder: 'Rechercher une checklist...',
+        selectorSearchEmpty: 'Aucune checklist trouvée',
         selectorDone: 'Terminé',
         // Enregistrer
         btnSave: 'Enregistrer',
