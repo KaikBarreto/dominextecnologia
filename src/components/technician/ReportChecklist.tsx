@@ -74,7 +74,7 @@ function ConformityBadge({ status }: { status: ReportChecklistItem['conformity_s
   > = {
     conforme: { label: tR.conformityConforme, icon: Check, className: 'bg-success text-success-foreground border-success' },
     nao_conforme: { label: tR.conformityNaoConforme, icon: X, className: 'bg-destructive text-destructive-foreground border-destructive' },
-    na: { label: tR.conformityNa, icon: MinusCircle, className: 'bg-muted text-muted-foreground border-border' },
+    na: { label: tR.conformityNa, icon: MinusCircle, className: 'bg-slate-500 text-white border-transparent' },
   };
   if (!status) {
     return (

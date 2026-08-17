@@ -1494,6 +1494,7 @@ export const os = {
     // ── Relatório de OS (OSReport) ────────────────────────────────────────
     osDocumentReport: {
       sectionClient: 'Cliente',
+      videoAvailableOnline: 'Vídeo disponível no relatório online',
       sectionEquipments: 'Equipamento(s)',
       equipmentsCount: '{n}',
       btnSeeEquipments: 'Ver {n} equipamentos',
@@ -1526,6 +1527,7 @@ export const os = {
       ratingPunctuality: 'Pontualidade',
       ratingProfessionalism: 'Profissionalismo',
       footerGeneratedAt: 'Relatório gerado em {datetime}',
+      viewReportOnline: 'Ver relatório online',
       labelLocalEquipment: 'Local:',
       labelSerialNumber: 'S/N:',
       answerYes: 'Sim',
@@ -2929,6 +2931,7 @@ export const os = {
     // ── Service work order report (OSReport) ─────────────────────────────
     osDocumentReport: {
       sectionClient: 'Customer',
+      videoAvailableOnline: 'Video available in the online report',
       sectionEquipments: 'Equipment(s)',
       equipmentsCount: '{n}',
       btnSeeEquipments: 'See {n} equipment items',
@@ -2961,6 +2964,7 @@ export const os = {
       ratingPunctuality: 'Punctuality',
       ratingProfessionalism: 'Professionalism',
       footerGeneratedAt: 'Report generated on {datetime}',
+      viewReportOnline: 'View report online',
       labelLocalEquipment: 'Location:',
       labelSerialNumber: 'S/N:',
       answerYes: 'Yes',
@@ -4364,6 +4368,7 @@ export const os = {
     // ── Informe de la OT (OSReport) ───────────────────────────────────────
     osDocumentReport: {
       sectionClient: 'Cliente',
+      videoAvailableOnline: 'Video disponible en el informe en línea',
       sectionEquipments: 'Equipo(s)',
       equipmentsCount: '{n}',
       btnSeeEquipments: 'Ver {n} equipos',
@@ -4396,6 +4401,7 @@ export const os = {
       ratingPunctuality: 'Puntualidad',
       ratingProfessionalism: 'Profesionalismo',
       footerGeneratedAt: 'Informe generado el {datetime}',
+      viewReportOnline: 'Ver informe en línea',
       labelLocalEquipment: 'Ubicación:',
       labelSerialNumber: 'N/S:',
       answerYes: 'Sí',
@@ -5799,6 +5805,7 @@ export const os = {
     // ── Rapport du bon de travail (OSReport) ─────────────────────────────
     osDocumentReport: {
       sectionClient: 'Client',
+      videoAvailableOnline: 'Vidéo disponible dans le rapport en ligne',
       sectionEquipments: 'Équipement(s)',
       equipmentsCount: '{n}',
       btnSeeEquipments: 'Voir {n} équipements',
@@ -5831,6 +5838,7 @@ export const os = {
       ratingPunctuality: 'Ponctualité',
       ratingProfessionalism: 'Professionnalisme',
       footerGeneratedAt: 'Rapport généré le {datetime}',
+      viewReportOnline: 'Voir le rapport en ligne',
       labelLocalEquipment: 'Emplacement :',
       labelSerialNumber: 'N/S :',
       answerYes: 'Oui',

@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, Menu, AlertTriangle } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Link as LinkIcon, Star, Menu, AlertTriangle, Video } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 import { formatSignatureStamp } from '@/lib/signatureStamp';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,6 +45,8 @@ interface FormResponseData {
   question_id: string;
   response_value: string | null;
   response_photo_url: string | null;
+  /** URL única do clipe de vídeo respondido (question_type = 'video'). */
+  response_video_url?: string | null;
   /** Equipamento ao qual a resposta pertence (casa com o grupo de equipamento). */
   equipment_id?: string | null;
   /** Nome real do checklist (template) — usado pra rotular o sub-bloco. */
@@ -348,8 +349,9 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     // A response is empty only if BOTH value and photo are missing
     const hasValue = val && val.trim() !== '' && val.trim() !== '-';
     const hasPhoto = !!photo;
+    const hasVideo = !!response.response_video_url;
     if (response.question?.question_type === 'signature') return !val;
-    return !hasValue && !hasPhoto;
+    return !hasValue && !hasPhoto && !hasVideo;
   };
 
   // ── Checklists PERSONALIZADOS por equipamento ────────────────────────────────
@@ -759,7 +761,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const fetchAllResponses = async () => {
     const { data } = await db
       .from('form_responses')
-      .select('id, question_id, response_value, response_photo_url, equipment_id, responded_at, question:form_questions(*, template:form_templates(id, name))')
+      .select('id, question_id, response_value, response_photo_url, response_video_url, equipment_id, responded_at, question:form_questions(*, template:form_templates(id, name))')
       .eq('service_order_id', serviceOrder.id);
     if (data) {
       const normalized = (data as any[]).map(r => {
@@ -778,18 +780,17 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     }
   };
 
-  const formatCurrency = (value: number | null | undefined) => {
-    if (!value) return '-';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  };
+  // URL pública desta OS — MESMA fonte do "Copiar Link" e do link do rodapé
+  // (clicável no PDF via [data-pdf-link]). Não duplicar a lógica de montagem.
+  const shareUrl = buildServiceOrderShareLink({
+    shortCode: (serviceOrder as any).public_short_code,
+    customerName: serviceOrder.customer?.name,
+    serviceName: (serviceOrder as any).service_type?.name,
+    osId: serviceOrder.id,
+  });
 
   const handleCopyLink = () => {
-    const url = buildServiceOrderShareLink({
-      shortCode: (serviceOrder as any).public_short_code,
-      customerName: serviceOrder.customer?.name,
-      serviceName: (serviceOrder as any).service_type?.name,
-      osId: serviceOrder.id,
-    });
+    const url = shareUrl;
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: tR.toastLinkCopied });
     }).catch(() => {
@@ -842,13 +843,20 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     const hasPhoto = !!response.response_photo_url;
 
     return (
-      <div key={response.id} className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
+      <div key={response.id} data-pdf-keep className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
         <span className="text-xs font-bold text-slate-400 mt-0.5 min-w-[20px]">{idx + 1}.</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
           <div className="mt-1 space-y-2">
-            {response.question?.question_type === 'boolean' ? (
-              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+            {response.question?.question_type === 'video' ? (
+              // Num PDF/impressão estático o vídeo não toca → placeholder claro
+              // (documento é sempre tema claro → cores hardcoded slate).
+              <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                <Video className="h-4 w-4 text-slate-400 shrink-0" />
+                <span>{tR.videoAvailableOnline}</span>
+              </div>
+            ) : response.question?.question_type === 'boolean' ? (
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
                 {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                 {response.response_value === 'true' ? tR.answerYes : tR.answerNo}
               </span>
@@ -873,7 +881,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 ((min != null && numericValue < min) || (max != null && numericValue > max));
               return (
                 <div className="space-y-1">
-                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2 py-0.5 rounded-md ${isOutOfRange ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>
+                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2 py-0.5 rounded-md ${isOutOfRange ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700'}`}>
                     {isOutOfRange && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
                     {response.response_value}{unit ? ` ${unit}` : ''}
                   </span>
@@ -896,7 +904,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   response.response_value!.includes('|||') ? (
                     <div className="flex flex-wrap gap-1.5 mt-0.5">
                       {response.response_value!.split('|||').filter(Boolean).map((val, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-600 text-white">
                           <Check className="h-3 w-3" />
                           {val.trim()}
                         </span>
@@ -949,7 +957,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           arredondamento das pontas vem do `rounded-lg` (canto externo) + um
           wrapper de clip SÓ no cabeçalho colorido (sibling do conteúdo, não
           ancestral do sticky). PDF/Imprimir não dependem de sticky. */}
-      <div ref={reportRef} className="bg-white text-black rounded-lg print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+      <div ref={reportRef} data-pdf-margins className="bg-white text-black rounded-lg print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         {/* Wrapper de clip do cabeçalho: arredonda só as pontas de cima sem criar
             um overflow-clip que alcance o conteúdo (sticky) abaixo. */}
         <div className="overflow-hidden rounded-t-lg">
@@ -1235,7 +1243,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
           {/* Photos */}
           {photos.length > 0 && (
-            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            // Sem `data-pdf-section` (não-atômico): a galeria é ALTA e, se fosse
+            // mantida inteira, era empurrada pra próxima página deixando um vão
+            // branco enorme. Deixamos fluir entre páginas — cada <img> já é
+            // protegida individualmente pelo renderer (nunca corta no meio).
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Camera className="h-3.5 w-3.5" /> {tR.sectionPhotos.replace('{n}', String(photos.length))}
               </h3>
@@ -1246,7 +1258,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               ].filter(g => g.items.length > 0).map(group => (
                 <div key={group.label} className="mb-3 last:mb-0">
                   <p className="text-xs font-semibold text-slate-600 mb-2 uppercase">{group.label}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div data-pdf-gallery className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {group.items.map(photo => (
                       <img
                         key={photo.id}
@@ -1327,34 +1339,6 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                     <p className="text-sm text-slate-700 mt-0.5 break-words">{serviceOrder.notes}</p>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* Financial Summary */}
-          {(serviceOrder.labor_value || serviceOrder.parts_value || serviceOrder.total_value) && (
-            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{tR.sectionFinancial}</h3>
-              <div className="space-y-1 text-sm">
-                {serviceOrder.labor_hours && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">{tR.labelLaborHours}</span>
-                    <span className="font-medium text-slate-800">{serviceOrder.labor_hours}h</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-slate-600">{tR.labelLabor}</span>
-                  <span className="font-medium text-slate-800">{formatCurrency(serviceOrder.labor_value)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">{tR.labelParts}</span>
-                  <span className="font-medium text-slate-800">{formatCurrency(serviceOrder.parts_value)}</span>
-                </div>
-                <Separator className="my-2 bg-slate-300" />
-                <div className="flex justify-between text-base">
-                  <span className="font-bold text-slate-900">{tR.labelTotal}</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(serviceOrder.total_value)}</span>
-                </div>
               </div>
             </div>
           )}
@@ -1483,6 +1467,19 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           <div data-pdf-section className="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
             <p>{tR.footerGeneratedAt.replace('{datetime}', formatDateTime(new Date(), locale, timezone))}</p>
             {company?.name && <p className="mt-0.5">{company.name}</p>}
+            {/* Link do relatório online desta OS — clicável na tela (href) e no PDF
+                (o renderer lê [data-pdf-link] e sobrepõe uma anotação clicável à
+                imagem). Documento sempre claro/print → cores slate hardcoded. */}
+            <p className="mt-1">
+              <a
+                href={shareUrl}
+                data-pdf-link={shareUrl}
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700 underline decoration-slate-300 break-all"
+              >
+                <LinkIcon className="h-3 w-3 shrink-0" />
+                {tR.viewReportOnline}
+              </a>
+            </p>
           </div>
 
         </div>

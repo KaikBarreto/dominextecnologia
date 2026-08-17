@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.20.1',
+    date: '17 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de serviço em PDF sem cortes e mais organizado',
+        description: 'Melhoramos o PDF do relatório de serviço da ordem concluída. Os itens do checklist não são mais divididos no meio da quebra de página, as fotos aparecem alinhadas sem sobrepor umas às outras e cada página ganhou uma margem para respirar. O cabeçalho ficou reto no topo e o documento saiu mais limpo e profissional para enviar ao cliente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Selos de status mais legíveis e fotos em galeria',
+        description: 'Os selos de resposta (Conforme, Não Conforme, Sim, Não e as opções selecionadas) agora aparecem preenchidos com cor e texto branco, bem mais fáceis de ler. As fotos do serviço são exibidas em galeria, separadas por Antes, Durante e Depois.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Link para o relatório online direto no PDF',
+        description: 'O PDF passou a trazer no rodapé um link clicável "Ver relatório online" que abre a versão sempre atualizada da ordem de serviço. Quando houver resposta em vídeo, o PDF mostra um aviso indicando que o vídeo está disponível no relatório online.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Relatório de serviço focado no que foi executado',
+        description: 'Para manter o documento entregue ao cliente voltado ao serviço realizado, os valores financeiros (mão de obra, peças e total) deixaram de aparecer no relatório de serviço em PDF. Esses valores continuam disponíveis normalmente dentro do sistema.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.20.0',
     date: '17 de agosto de 2026',
     type: 'minor',

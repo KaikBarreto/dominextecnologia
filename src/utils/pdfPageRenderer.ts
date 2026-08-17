@@ -68,6 +68,15 @@ export async function renderElementToPdfBlob(
     clone.style.overflow = 'visible';
     clone.style.boxShadow = 'none';
 
+    // Zera cantos arredondados de TOPO (wrapper do cabeçalho escuro). Na tela o
+    // `rounded-t-lg` arredonda o topo (bonito); no PDF a página é retangular e
+    // esses cantos deixam 2 triângulos brancos no header escuro. Só `rounded-t*`
+    // — não toca em `rounded-lg` dos cartões internos nem `rounded-full` dos badges.
+    clone.querySelectorAll('[class*="rounded-t"]').forEach(el => {
+      (el as HTMLElement).style.borderTopLeftRadius = '0';
+      (el as HTMLElement).style.borderTopRightRadius = '0';
+    });
+
     // Force every Radix accordion/collapsible open
     clone.querySelectorAll('[data-state]').forEach(el => el.setAttribute('data-state', 'open'));
     clone.querySelectorAll('[role="region"], [data-radix-collapsible-content], [data-radix-accordion-content]').forEach(el => {
@@ -123,8 +132,10 @@ export async function renderElementToPdfBlob(
     };
     clone.querySelectorAll('img').forEach(img => {
       const el = img as HTMLImageElement;
-      // Skip the company logo (usually small, in header) — keep its inline sizing
-      if (el.closest('[data-pdf-logo]') || el.alt?.toLowerCase().includes('logo')) return;
+      // Skip the company logo (usually small, in header) — keep its inline sizing.
+      // Skip the photo gallery (grid object-cover): enlarging overflows the grid
+      // cell and overlaps neighbors — the gallery already sizes itself correctly.
+      if (el.closest('[data-pdf-logo]') || el.closest('[data-pdf-gallery]') || el.alt?.toLowerCase().includes('logo')) return;
       enlargeThumb(el);
     });
 
@@ -155,14 +166,36 @@ export async function renderElementToPdfBlob(
     // with [data-pdf-keep] (atomic content blocks — cards, paragraphs, chart
     // pairs). Reports that don't use the marker keep the historical behavior.
     const SCALE = 2;
-    const cloneTop = clone.getBoundingClientRect().top;
+    const cloneRect = clone.getBoundingClientRect();
+    const cloneTop = cloneRect.top;
+    const cloneLeft = cloneRect.left;
     const toBox = (el: Element) => {
       const r = el.getBoundingClientRect();
-      return { top: (r.top - cloneTop) * SCALE, bottom: (r.bottom - cloneTop) * SCALE };
+      return {
+        top: (r.top - cloneTop) * SCALE,
+        bottom: (r.bottom - cloneTop) * SCALE,
+        left: (r.left - cloneLeft) * SCALE,
+        right: (r.right - cloneLeft) * SCALE,
+      };
     };
     const imageBoxes = Array.from(clone.querySelectorAll('img')).map(toBox);
-    const keepBoxes = Array.from(clone.querySelectorAll('[data-pdf-keep]')).map(toBox);
+    // [data-pdf-keep] (blocos atômicos genéricos) + [data-pdf-section] (cartões do
+    // relatório de OS: cliente, contrato, financeiro, execução, assinaturas). Ambos
+    // ativam o cap na altura real do conteúdo abaixo. Blocos maiores que uma página
+    // seguem fatiando (guarda `boxHeight <= usableHeight` no loop de snap).
+    const keepBoxes = Array.from(
+      clone.querySelectorAll('[data-pdf-keep], [data-pdf-section]'),
+    ).map(toBox);
     const atomicBoxes = [...imageBoxes, ...keepBoxes];
+
+    // Anotações de link clicáveis (jsPDF): cada [data-pdf-link] vira uma área
+    // clicável sobreposta à imagem da página onde o elemento cai. Coletado com o
+    // clone já no offscreen e o layout resolvido, na mesma escala (SCALE=2) das
+    // caixas atômicas — a conversão pra mm acontece por página no loop abaixo.
+    const linkEls = Array.from(clone.querySelectorAll('[data-pdf-link]'));
+    const linkTargets = linkEls
+      .map((el) => ({ box: toBox(el), url: el.getAttribute('data-pdf-link') || '' }))
+      .filter((l) => l.url);
 
     // Slice into A4 pages, snapping page breaks before any image that would be split.
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -260,6 +293,24 @@ export async function renderElementToPdfBlob(
       const imgData = pageCanvas.toDataURL('image/jpeg', 0.92);
       if (pageIndex > 0) pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
+
+      // Anotações de link desta página. box.* / cursorY / topMargin / pageHeightPx
+      // estão em px de canvas (SCALE=2); scaleX/Ymm normalizam pra mm (unidade do
+      // jsPDF), origem no canto superior-esquerdo. O link pertence a esta página
+      // quando o topo dele cai na fatia [cursorY, pageEndY).
+      const scaleXmm = pdfWidthMm / fullCanvas.width;
+      const scaleYmm = pdfHeightMm / pageHeightPx;
+      for (const lt of linkTargets) {
+        if (lt.box.top >= cursorY && lt.box.top < pageEndY) {
+          const yTopPx = topMargin + (lt.box.top - cursorY);
+          const yBotPx = topMargin + (Math.min(lt.box.bottom, pageEndY) - cursorY);
+          const x = lt.box.left * scaleXmm;
+          const y = yTopPx * scaleYmm;
+          const w = (lt.box.right - lt.box.left) * scaleXmm;
+          const h = Math.max(2, (yBotPx - yTopPx) * scaleYmm);
+          pdf.link(x, y, w, h, { url: lt.url });
+        }
+      }
 
       cursorY = pageEndY;
       pageIndex++;

@@ -204,7 +204,7 @@ function PmocItemCard({
   onPreviewPhoto?: Props['onPreviewPhoto'];
 }) {
   return (
-    <div className="space-y-2 p-3 rounded-lg bg-slate-50 border border-slate-100">
+    <div data-pdf-keep className="space-y-2 p-3 rounded-lg bg-slate-50 border border-slate-100">
       <div className="flex items-start gap-2">
         <span className="font-bold text-slate-400 text-sm leading-5">{idx + 1}.</span>
         <div className="flex-1 min-w-0">
