@@ -2,8 +2,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { PanelLeft, PanelTop, Sun, Moon, Palette } from 'lucide-react';
+import { PanelLeft, PanelTop, Sun, Moon, Palette, MoonStar, Contrast } from 'lucide-react';
 import { useNavigationPreference, NavigationStyle } from '@/hooks/useNavigationPreference';
+import { useNavThemePreference, NavTheme } from '@/hooks/useNavThemePreference';
 import { useState } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
@@ -12,6 +13,7 @@ export function SettingsAppearanceContent() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.appearance;
   const { navigationStyle, setNavigationStyle } = useNavigationPreference();
+  const { navTheme, setNavTheme } = useNavThemePreference();
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
   const handleThemeChange = (theme: 'light' | 'dark') => {
@@ -87,6 +89,64 @@ export function SettingsAppearanceContent() {
               <div>
                 <p className="font-medium">{t.navigationStyle.topbar}</p>
                 <p className={`text-xs ${navigationStyle === 'topbar' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{t.navigationStyle.topbarDescription}</p>
+              </div>
+            </div>
+          </Label>
+        </RadioGroup>
+
+        <Separator className="my-6" />
+
+        {/* Nav Theme (menu escuro por padrão) */}
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            {t.navTheme.sectionTitle}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {t.navTheme.sectionDescription}
+          </p>
+        </div>
+
+        <RadioGroup
+          value={navTheme}
+          onValueChange={(value: NavTheme) => setNavTheme(value)}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        >
+          <Label
+            htmlFor="nav-theme-dark"
+            className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
+              navTheme === 'dark'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border hover:border-primary/50 hover:bg-muted/50'
+            }`}
+          >
+            <RadioGroupItem value="dark" id="nav-theme-dark" className={navTheme === 'dark' ? 'border-white text-white' : ''} />
+            <div className="flex items-center gap-3 flex-1">
+              <div className={`p-2 rounded-md ${navTheme === 'dark' ? 'bg-white/20 text-primary-foreground' : 'bg-muted'}`}>
+                <MoonStar className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium">{t.navTheme.dark}</p>
+                <p className={`text-xs ${navTheme === 'dark' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{t.navTheme.darkDescription}</p>
+              </div>
+            </div>
+          </Label>
+
+          <Label
+            htmlFor="nav-theme-system"
+            className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
+              navTheme === 'system'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border hover:border-primary/50 hover:bg-muted/50'
+            }`}
+          >
+            <RadioGroupItem value="system" id="nav-theme-system" className={navTheme === 'system' ? 'border-white text-white' : ''} />
+            <div className="flex items-center gap-3 flex-1">
+              <div className={`p-2 rounded-md ${navTheme === 'system' ? 'bg-white/20 text-primary-foreground' : 'bg-muted'}`}>
+                <Contrast className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium">{t.navTheme.system}</p>
+                <p className={`text-xs ${navTheme === 'system' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{t.navTheme.systemDescription}</p>
               </div>
             </div>
           </Label>

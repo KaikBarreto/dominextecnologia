@@ -56,6 +56,7 @@ export const Sidebar = memo(() => {
   return (
     <SidebarContainer
       collapsible="icon"
+      data-nav-surface
       className="border-r border-border bg-background"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

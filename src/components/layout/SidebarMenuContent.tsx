@@ -296,7 +296,7 @@ export function SidebarMenuContent() {
         {/* Logo */}
         <NavLink
           to={isAdminUser ? adminHomePath : L('/dashboard')}
-          className="relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
+          className="nav-logo-area relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
         >
           {showLogoLoading ? (
             collapsed
@@ -314,8 +314,8 @@ export function SidebarMenuContent() {
                   iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
                 ) : (
                   <>
-                    <img src={iconePreto} alt="Logo" className="h-7 w-7 object-contain dark:hidden" />
-                    <img src={iconeVerde} alt="Logo" className="h-7 w-7 object-contain hidden dark:block" />
+                    <img src={iconePreto} alt="Logo" className="nav-logo-light h-7 w-7 object-contain dark:hidden" />
+                    <img src={iconeVerde} alt="Logo" className="nav-logo-dark h-7 w-7 object-contain hidden dark:block" />
                   </>
                 )}
               </div>
@@ -325,8 +325,8 @@ export function SidebarMenuContent() {
                   collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 )}
               >
-                <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full object-contain dark:hidden" />
-                <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+                <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
+                <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
               </div>
             </>
           )}
@@ -366,7 +366,8 @@ export function SidebarMenuContent() {
                         <CollapsibleTrigger
                           title={collapsed ? tMenu(item.title) : undefined}
                           className={cn(
-                            'flex w-full items-center rounded-lg px-3 py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-all duration-300 overflow-hidden',
+                            'nav-indicator flex w-full items-center rounded-lg px-3 py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-all duration-300 overflow-hidden',
+                            hasActiveSubmenu && 'nav-indicator-active',
                             collapsed ? 'justify-center gap-0' : 'gap-3',
                             hasActiveSubmenu
                               ? 'bg-primary text-primary-foreground'
@@ -397,7 +398,8 @@ export function SidebarMenuContent() {
                           to={L(child.path)}
                           className={({ isActive }) =>
                             cn(
-                              'flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-200',
+                              'nav-indicator flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-200',
+                              isActive && 'nav-indicator-active',
                               isActive
                                 ? 'bg-primary text-primary-foreground'
                                 : 'text-muted-foreground hover:bg-primary hover:text-primary-foreground'
@@ -423,7 +425,7 @@ export function SidebarMenuContent() {
                         // asChild o Radix Slot stringifica função-className e quebra o
                         // flex. O NavLink adiciona a classe `active` sozinho → estilizo
                         // o estado ativo via a variante [&.active].
-                        'flex w-full items-center rounded-lg py-2.5 px-3 text-[13px] font-semibold tracking-[0.01em] transition-all duration-300 overflow-hidden',
+                        'nav-indicator flex w-full items-center rounded-lg py-2.5 px-3 text-[13px] font-semibold tracking-[0.01em] transition-all duration-300 overflow-hidden',
                         collapsed ? 'justify-center gap-0' : 'gap-3',
                         'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground',
                         '[&.active]:bg-primary [&.active]:text-primary-foreground'
@@ -456,6 +458,7 @@ export function SidebarMenuContent() {
               <DropdownMenuTrigger asChild>
                 <button
                   ref={profileTriggerRef}
+                  data-nav-surface
                   className={cn(
                     'min-w-0 flex items-center rounded-xl border border-border/60 hover:bg-muted/60 transition-colors text-left',
                     collapsed ? 'justify-center p-1.5' : 'w-full gap-3 px-2.5 py-2'
@@ -501,6 +504,7 @@ export function SidebarMenuContent() {
               <DropdownMenuContent
                 align="start"
                 side="top"
+                data-nav-surface
                 /* Offset negativo dinâmico = dropdown desce EXATAMENTE a altura
                    do trigger (medida via ResizeObserver) e fica POR CIMA do
                    botão de avatar do rodapé. Cobre 100% independente do estado
@@ -513,7 +517,7 @@ export function SidebarMenuContent() {
                   <>
                     <DropdownMenuItem
                       onClick={() => navigate(L('/perfil'))}
-                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                      className="nav-indicator cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <User className="h-5 w-5 mr-3 shrink-0" />
                       {accountT.profile}
@@ -521,29 +525,29 @@ export function SidebarMenuContent() {
 
                     <DropdownMenuItem
                       onClick={() => navigate(L('/assinatura'))}
-                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                      className="nav-indicator cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <CreditCard className="h-5 w-5 mr-3 shrink-0" />
                       {accountT.subscription}
                     </DropdownMenuItem>
 
                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground">
+                      <DropdownMenuSubTrigger className="nav-indicator cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground">
                         {theme === 'dark' ? <Moon className="h-5 w-5 mr-3 shrink-0" /> : <Sun className="h-5 w-5 mr-3 shrink-0" />}
                         {accountT.theme}
                       </DropdownMenuSubTrigger>
                       <DropdownMenuPortal>
-                        <DropdownMenuSubContent className="w-40 p-1.5">
+                        <DropdownMenuSubContent data-nav-surface className="w-40 p-1.5">
                           <DropdownMenuItem
                             onClick={() => applyTheme('light')}
-                            className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                            className="nav-indicator cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                           >
                             <Sun className="h-5 w-5 mr-3 shrink-0" />
                             {accountT.themeLight}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => applyTheme('dark')}
-                            className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                            className="nav-indicator cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                           >
                             <Moon className="h-5 w-5 mr-3 shrink-0" />
                             {accountT.themeDark}
@@ -566,7 +570,7 @@ export function SidebarMenuContent() {
 
                     <DropdownMenuItem
                       onClick={() => setHelpOpen(true)}
-                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                      className="nav-indicator cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <HelpCircle className="h-5 w-5 mr-3 shrink-0" />
                       {accountT.helpCenter}

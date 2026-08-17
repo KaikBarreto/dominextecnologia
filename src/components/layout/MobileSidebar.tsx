@@ -12,7 +12,7 @@ import { SidebarMenuContent } from './SidebarMenuContent';
  */
 export function MobileSidebar() {
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div data-nav-surface className="flex h-full flex-col bg-background">
       <SidebarMenuContent />
     </div>
   );

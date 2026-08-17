@@ -11,7 +11,31 @@ const WHITE_LABEL_VARS = [
   '--sidebar-accent',
   '--sidebar-ring',
   '--gradient-brand',
+  // Barra neon do menu escuro (Fase 2). Sem white-label volta ao verde neon
+  // default declarado no index.css; com white-label deriva da cor do cliente.
+  // É `--wl-nav-neon` (não `--nav-neon`) porque as superfícies de nav
+  // redeclaram `--nav-neon: var(--wl-nav-neon, <verde>)` no próprio elemento —
+  // setar `--nav-neon` só no :root seria sobrescrito por essa redeclaração.
+  '--wl-nav-neon',
 ] as const;
+
+/**
+ * Deriva a cor da barra NEON (indicador do menu escuro) da cor primária do
+ * white-label. Recebe o HSL "H S% L%" já computado e devolve uma versão um
+ * pouco mais SATURADA e CLARA pra "acender" como neon sobre o fundo escuro do
+ * menu — mas nunca abaixo do original (marcas já vivas/claras não escurecem).
+ */
+export function buildNavNeon(hsl: string): string {
+  const parts = hsl.trim().split(/\s+/);
+  if (parts.length < 3) return hsl;
+  const h = Number.parseInt(parts[0], 10);
+  const s = Number.parseInt(parts[1], 10); // "62%" → 62
+  const l = Number.parseInt(parts[2], 10);
+  if (!Number.isFinite(h) || !Number.isFinite(s) || !Number.isFinite(l)) return hsl;
+  const neonS = Math.min(s + 15, 95);
+  const neonL = Math.min(Math.max(l, 50), 62);
+  return `${h} ${neonS}% ${neonL}%`;
+}
 
 export function hexToHsl(hex: string): string | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -56,10 +80,11 @@ function buildBrandGradient(hsl: string) {
 // eliminando o flash da cor verde padrão da Dominex no reload/pull-to-refresh.
 // Os nomes das chaves são FIXOS e duplicados como string literal no script
 // inline do index.html (que é JS puro e não importa constantes).
-function cacheWhiteLabel(hsl: string, gradient: string) {
+function cacheWhiteLabel(hsl: string, gradient: string, navNeon: string) {
   try {
     localStorage.setItem('__wl_primary', hsl);
     localStorage.setItem('__wl_gradient', gradient);
+    localStorage.setItem('__wl_nav_neon', navNeon);
   } catch (_) {
     /* localStorage pode lançar em modo privado/iOS — ignorar */
   }
@@ -69,6 +94,7 @@ function clearWhiteLabelCache() {
   try {
     localStorage.removeItem('__wl_primary');
     localStorage.removeItem('__wl_gradient');
+    localStorage.removeItem('__wl_nav_neon');
   } catch (_) {
     /* localStorage pode lançar em modo privado/iOS — ignorar */
   }
@@ -91,15 +117,20 @@ export function applyWhiteLabelTheme(enabled: boolean, primaryColor?: string | n
   }
 
   const gradient = buildBrandGradient(hsl);
+  const navNeon = buildNavNeon(hsl);
   root.style.setProperty('--primary', hsl);
   root.style.setProperty('--ring', hsl);
   root.style.setProperty('--sidebar-primary', hsl);
   root.style.setProperty('--sidebar-accent', hsl);
   root.style.setProperty('--sidebar-ring', hsl);
   root.style.setProperty('--gradient-brand', gradient);
+  // Barra neon do menu escuro passa a usar a cor do cliente (todos os itens,
+  // incl. subitens dos grupos colapsáveis, herdam via var(--nav-neon), que
+  // resolve `var(--wl-nav-neon, <verde>)` nas superfícies de nav).
+  root.style.setProperty('--wl-nav-neon', navNeon);
 
   // Persiste a marca já computada para o boot síncrono no próximo load.
-  cacheWhiteLabel(hsl, gradient);
+  cacheWhiteLabel(hsl, gradient, navNeon);
 }
 
 export function useWhiteLabel() {

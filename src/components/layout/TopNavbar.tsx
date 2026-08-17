@@ -202,7 +202,7 @@ export const TopNavbar = memo(() => {
   return (
     <>
       <TooltipProvider delayDuration={200}>
-        <header className="hidden xl:flex h-14 items-center justify-between border-b border-border bg-background px-4">
+        <header data-nav-surface className="hidden xl:flex h-14 items-center justify-between border-b border-border bg-background px-4 text-foreground">
           <div className="flex items-center gap-6 min-w-0 flex-1">
             {logoLoading ? (
               <div className="h-7 w-28 rounded bg-muted animate-pulse shrink-0" />
@@ -243,7 +243,8 @@ export const TopNavbar = memo(() => {
                         <Button
                           variant="ghost"
                           className={cn(
-                            'h-10 px-3 text-[13px] font-semibold gap-1.5 transition-colors group',
+                            'nav-indicator h-10 px-3 text-[13px] font-semibold gap-1.5 transition-colors group text-foreground',
+                            hasActiveSubmenu && 'nav-indicator-active',
                             'hover:bg-primary hover:text-primary-foreground',
                             'data-[state=open]:bg-primary data-[state=open]:text-primary-foreground',
                             hasActiveSubmenu && 'bg-primary text-primary-foreground'
@@ -254,7 +255,7 @@ export const TopNavbar = memo(() => {
                           <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" sideOffset={8} className="min-w-[200px]">
+                      <DropdownMenuContent align="start" sideOffset={8} data-nav-surface className="min-w-[200px]">
                         {visibleSubmenu.map((child) => (
                           <DropdownMenuItem
                             key={child.path}
@@ -280,7 +281,8 @@ export const TopNavbar = memo(() => {
                     to={L(item.path!)}
                     className={({ isActive }) =>
                       cn(
-                        'inline-flex items-center justify-center h-10 px-3 text-[13px] font-semibold rounded-md transition-colors gap-1.5',
+                        'nav-indicator inline-flex items-center justify-center h-10 px-3 text-[13px] font-semibold rounded-md transition-colors gap-1.5 text-foreground',
+                        isActive && 'nav-indicator-active',
                         'hover:bg-primary hover:text-primary-foreground',
                         isActive && 'bg-primary text-primary-foreground'
                       )
@@ -305,7 +307,8 @@ export const TopNavbar = memo(() => {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-xl border border-border/60 hover:bg-muted/60 transition-colors text-left px-2 py-1.5 2xl:max-w-[240px]"
+                  data-nav-surface
+                  className="flex items-center gap-2 rounded-xl border border-border/60 hover:bg-muted/60 transition-colors text-left px-2 py-1.5 2xl:max-w-[240px] text-foreground"
                   aria-label={accountT.accountMenuAria}
                 >
                   <Avatar className="h-8 w-8 shrink-0">
@@ -330,7 +333,7 @@ export const TopNavbar = memo(() => {
                   <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={8} className="w-80 z-50 p-1.5">
+              <DropdownMenuContent align="end" sideOffset={8} data-nav-surface className="w-80 z-50 p-1.5">
                 {/* Card horizontal no TOPO — expansão INLINE via AccountSwitcherDropdown */}
                 <AccountSwitcherDropdown>
                   <div

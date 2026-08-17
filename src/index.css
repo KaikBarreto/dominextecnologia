@@ -206,6 +206,93 @@ Design Premium com Verde da Marca #00C597
     --gradient-brand: linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%);
     --gradient-dark: linear-gradient(180deg, hsl(0 0% 8%) 0%, hsl(0 0% 5%) 100%);
   }
+
+  /* ─── Restyle SÓBRIO — escopado ao APP logado (Fase 1) ──────────────────────
+     `data-app` é ligado no <html> pelo AppLayout enquanto o shell logado está
+     montado. Aqui RE-DECLARAMOS só os tokens que mudam o "sabor" dos CTAs:
+     primary vira PRETO e os cantos ficam mais retos. A LANDING pública NÃO tem
+     `data-app` → segue com o verde da marca (o :root acima).
+     PRESERVADOS de propósito (herdam do :root/.dark): --success (verde positivo),
+     --sidebar-* (verde da nav, é a Fase 2), --accent (já é cinza neutro).
+     Especificidade [data-app] (0,1,1 com o &) > :root (0,1,0), então vence o
+     boot padrão. Exceção conhecida: white-label seta --primary INLINE no <html>
+     (root.style.setProperty), e inline vence qualquer seletor — ver relatório. */
+  [data-app] {
+    /* was: --primary: 160 100% 39%  (verde marca) */
+    --primary: 0 0% 10%;
+    /* was: --primary-foreground: 0 0% 100% */
+    --primary-foreground: 0 0% 100%;
+    /* was: --ring: 160 100% 39% */
+    --ring: 0 0% 10%;
+    /* was: --radius: 0.75rem */
+    --radius: 0.375rem;
+  }
+
+  .dark[data-app] {
+    /* was: --primary: 160 100% 39%  (verde marca) */
+    --primary: 0 0% 88%;
+    /* was: --primary-foreground: 0 0% 100% */
+    --primary-foreground: 0 0% 8%;
+    /* was: --ring: 160 100% 39% */
+    --ring: 0 0% 70%;
+    /* --radius herda de [data-app] acima (0.375rem) */
+  }
+
+  /* ─── MENU ESCURO — nav-theme escopado às superfícies de NAV (Fase 2) ────────
+     Ligado por `data-nav-theme="dark"` no <html> (hook useNavThemePreference +
+     script anti-flash no index.html). Só "acende" ELEMENTOS marcados com
+     `data-nav-surface` OU o container do shadcn (`[data-sidebar="sidebar"]`) —
+     assim o HEADER genérico do app e o CONTEÚDO seguem o tema do sistema.
+       `:not(.dark)` → no tema claro, forçamos a nav a ficar escura (re-declara
+     os tokens locais das superfícies). No tema `.dark` a nav JÁ é escura (herda
+     do bloco `.dark`), então não precisamos re-forçar nada ali.
+       `--nav-neon` = verde NEON da marca (indicador). Definido no escopo pra a
+     barra herdar; existe também no ramo claro (abaixo) pro caso `.dark`. */
+  :root[data-nav-theme="dark"]:not(.dark) [data-nav-surface],
+  :root[data-nav-theme="dark"]:not(.dark) [data-sidebar="sidebar"] {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 62%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 15%;
+    /* Com white-label, `--wl-nav-neon` é injetado em :root (useWhiteLabel /
+       boot inline) e a barra vira a cor do cliente; sem ele, verde neon. */
+    --nav-neon: var(--wl-nav-neon, 160 90% 50%);
+  }
+
+  /* Token neon disponível também quando o app JÁ está no tema escuro (a nav
+     herda o dark do sistema, mas o indicador precisa da cor). */
+  .dark [data-nav-surface],
+  .dark [data-sidebar="sidebar"] {
+    --nav-neon: var(--wl-nav-neon, 160 90% 50%);
+  }
+
+  /* ─── Área do LOGO no sidebar escuro ──────────────────────────────────────
+     A área do logo (`.nav-logo-area`, topo da sidebar) tem `bg-white` fixo no
+     markup (Tailwind), que só cede pro `dark:bg-sidebar` no tema `.dark` do
+     sistema. Quando a NAV é forçada escura via `data-nav-theme="dark"` mas o
+     sistema está claro, ela ficava um bloco BRANCO. Aqui igualamos o fundo ao
+     escuro da sidebar e trocamos a variante do logo:
+       - `.nav-logo-light` = logo de texto ESCURO (pra fundo claro) → esconde.
+       - `.nav-logo-dark`  = logo de texto CLARO/verde (pra fundo escuro) → mostra.
+     No tema `.dark` o Tailwind (`dark:hidden`/`hidden dark:block`) já resolve. */
+  :root[data-nav-theme="dark"]:not(.dark) .nav-logo-area {
+    background-color: hsl(0 0% 8%) !important;
+  }
+  :root[data-nav-theme="dark"]:not(.dark) .nav-logo-area .nav-logo-light {
+    display: none !important;
+  }
+  :root[data-nav-theme="dark"]:not(.dark) .nav-logo-area .nav-logo-dark {
+    display: block !important;
+  }
 }
 
 @layer base {
@@ -680,4 +767,75 @@ html {
   transform: none !important;
   background: hsl(var(--background)) !important;
   z-index: 2147483647 !important;
+}
+
+/* ─── Barra NEON — indicador de item ativo/hover da NAV escura (Fase 2) ────────
+   `.nav-indicator` desenha uma barra fina na BASE do item via ::after, na cor
+   neon da marca (`--nav-neon`, fallback verde 160 90% 50%). Largura animada:
+   0 parado → 60% no hover → 85% no ativo (`.nav-indicator-active`). SEM
+   preenchimento: qualquer bg residual (bg-primary/bg-sidebar-primary/hover:bg-*)
+   é zerado com !important DENTRO do escopo dark-nav, pra o sinal ser só a barra.
+   `position: relative` já vem do item (rounded-lg etc.); reforçamos aqui. */
+.nav-indicator {
+  position: relative;
+}
+.nav-indicator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  height: 2px;
+  width: 0;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: hsl(var(--nav-neon, 160 90% 50%));
+  transition: width 200ms ease-out, opacity 200ms ease-out;
+  opacity: 0;
+  pointer-events: none;
+}
+.nav-indicator:hover::after,
+.nav-indicator:focus-visible::after {
+  width: 85%;
+  opacity: 1;
+}
+.nav-indicator.nav-indicator-active::after,
+.nav-indicator.active::after {
+  width: 85%;
+  opacity: 1;
+}
+
+/* Zera preenchimento residual dos itens de NAV SÓ quando a nav está escura.
+   No dark-nav o "ativo/hover" é a barra neon, não um bloco preenchido. Cobre
+   as duas formas de acionar (claro forçado via data-nav-theme + tema .dark).
+   Escopo restrito a `.nav-indicator` pra não afetar botões fora da nav. */
+:root[data-nav-theme="dark"]:not(.dark) [data-nav-surface] .nav-indicator,
+:root[data-nav-theme="dark"]:not(.dark) [data-sidebar="sidebar"] .nav-indicator,
+.dark [data-nav-surface] .nav-indicator,
+.dark [data-sidebar="sidebar"] .nav-indicator {
+  background-color: transparent !important;
+  color: hsl(var(--sidebar-foreground)) !important;
+}
+:root[data-nav-theme="dark"]:not(.dark) [data-nav-surface] .nav-indicator:hover,
+:root[data-nav-theme="dark"]:not(.dark) [data-sidebar="sidebar"] .nav-indicator:hover,
+:root[data-nav-theme="dark"]:not(.dark) [data-nav-surface] .nav-indicator.nav-indicator-active,
+:root[data-nav-theme="dark"]:not(.dark) [data-sidebar="sidebar"] .nav-indicator.nav-indicator-active,
+:root[data-nav-theme="dark"]:not(.dark) [data-nav-surface] .nav-indicator.active,
+:root[data-nav-theme="dark"]:not(.dark) [data-sidebar="sidebar"] .nav-indicator.active,
+.dark [data-nav-surface] .nav-indicator:hover,
+.dark [data-sidebar="sidebar"] .nav-indicator:hover,
+.dark [data-nav-surface] .nav-indicator.nav-indicator-active,
+.dark [data-sidebar="sidebar"] .nav-indicator.nav-indicator-active,
+.dark [data-nav-surface] .nav-indicator.active,
+.dark [data-sidebar="sidebar"] .nav-indicator.active {
+  background-color: transparent !important;
+  color: hsl(0 0% 100%) !important;
+}
+
+/* Bottom nav (mobile): o item usa uma "pílula" preenchida (bg-primary no div do
+   ícone) + um dot embaixo. No dark-nav o sinal é a barra neon, então neutraliza
+   a pílula preenchida — o ícone/label ficam claros e o ::after (neon) sinaliza.
+   Escopo estreito: só dentro de `.nav-indicator` de superfície de nav. */
+:root[data-nav-theme="dark"]:not(.dark) [data-nav-surface] .nav-indicator > div,
+.dark [data-nav-surface] .nav-indicator > div {
+  background-color: transparent !important;
 }

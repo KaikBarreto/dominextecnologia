@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus, MapPin, Repeat, AlertTriangle, MapPinned } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, ChevronDown, Plus, Check, Eye, UserPlus, MapPin, Repeat, AlertTriangle, MapPinned, ClipboardList, Wrench } from 'lucide-react';
 import { geocodeAddress, buildServiceAddress } from '@/utils/geolocation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,7 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Star } from 'lucide-react';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { ChecklistPreviewDialog } from '@/components/service-orders/ChecklistPreviewDialog';
@@ -109,9 +110,12 @@ export function ServiceOrderFormDialog({
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
+  const [quickCreateServiceTypeOpen, setQuickCreateServiceTypeOpen] = useState(false);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string[]>>({});
   const [selectedStandaloneTemplateIds, setSelectedStandaloneTemplateIds] = useState<string[]>([]);
+  // Equipamentos com o painel de checklists expandido (chevron) na etapa 2.
+  const [expandedEquipmentIds, setExpandedEquipmentIds] = useState<string[]>([]);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
@@ -265,6 +269,7 @@ export function ServiceOrderFormDialog({
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
       setSelectedStandaloneTemplateIds([]);
+      setExpandedEquipmentIds([]);
       setRequireClientSignature(false);
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
@@ -709,18 +714,22 @@ export function ServiceOrderFormDialog({
     );
   };
 
+  const toggleEquipmentExpanded = (eqId: string) => {
+    setExpandedEquipmentIds(prev =>
+      prev.includes(eqId) ? prev.filter(id => id !== eqId) : [...prev, eqId]
+    );
+  };
+
   const STEPS_WITH_LABELS = useMemo(() => [
     { key: 'client' as const, label: t.stepClient },
     { key: 'equipment' as const, label: t.stepEquipment },
     { key: 'details' as const, label: t.stepDetails },
   ], [t.stepClient, t.stepEquipment, t.stepDetails]);
 
-  const activeSteps = useMemo(() => {
-    if (serviceOrder) return STEPS_WITH_LABELS;
-    if (customerMode === 'adhoc') return STEPS_WITH_LABELS.filter(s => s.key !== 'equipment');
-    if (!showEquipmentStep) return STEPS_WITH_LABELS.filter(s => s.key !== 'equipment');
-    return STEPS_WITH_LABELS;
-  }, [showEquipmentStep, serviceOrder, customerMode, STEPS_WITH_LABELS]);
+  // A etapa "Equipamentos e Checklists" agora sempre aparece: além do CRUD de
+  // equipamentos (condicional ao tipo de serviço), ela hospeda os "Checklists
+  // avulsos", que são sempre relevantes. Nunca some por completo.
+  const activeSteps = useMemo(() => STEPS_WITH_LABELS, [STEPS_WITH_LABELS]);
 
   const currentStepKey = activeSteps[step]?.key || 'client';
 
@@ -818,6 +827,264 @@ export function ServiceOrderFormDialog({
     </div>
   );
 
+  // Bloco reutilizado nos dois modos (criar/editar): "Responsáveis" (técnicos /
+  // equipes). Fica junto do agendamento na etapa "Agendamento e Detalhes".
+  const assigneeSection = (
+    <AssigneeMultiSelect
+      technicians={technicians || []}
+      teams={teamsWithMembers}
+      selectedUserIds={selectedAssigneeUserIds}
+      selectedTeamIds={selectedAssigneeTeamIds}
+      onChangeUsers={setSelectedAssigneeUserIds}
+      onChangeTeams={setSelectedAssigneeTeamIds}
+      label={t.labelAssignees}
+    />
+  );
+
+  // Etapa 2 completa — "Equipamentos e Checklists". Reunimos o CRUD de
+  // equipamentos (cada um expansível com os checklists dele dentro, espelhando a
+  // UX do EditOsScopeDrawer) e, logo abaixo, a seção fixa de "Checklists avulsos"
+  // (sempre disponível). Usada de forma idêntica em criar e editar.
+  const equipmentAndChecklistsStep = (
+    <div className="space-y-5">
+      {/* ── Equipamentos (condicional ao tipo de serviço exigir equipamento) ── */}
+      {showEquipmentStep && (
+        <div className="space-y-3">
+          <Label className="text-sm font-medium flex items-center gap-1.5">
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+            {t.equipmentSectionTitle}
+          </Label>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {equipment.length > 1 ? t.equipmentSelectMany : t.equipmentSelectOne}
+            </p>
+            <div className="flex items-center">
+              {equipment.length > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(selectedCustomerId && 'rounded-r-none')}
+                  onClick={() => {
+                    if (selectedEquipmentIds.length === equipment.length) {
+                      setSelectedEquipmentIds([]);
+                    } else {
+                      setSelectedEquipmentIds(equipment.map(eq => eq.id));
+                    }
+                  }}
+                >
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  {selectedEquipmentIds.length === equipment.length ? t.btnDeselectAll : t.btnSelectAll}
+                </Button>
+              )}
+              {selectedCustomerId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label={t.btnCreateEquipment}
+                  title={t.btnCreateEquipment}
+                  onClick={() => setQuickCreateOpen(true)}
+                  className={cn(
+                    'h-9 w-9 shrink-0 bg-muted hover:bg-primary hover:text-primary-foreground',
+                    equipment.length > 1 && 'rounded-l-none border-l-0',
+                  )}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {equipment.length === 0 && selectedCustomerId && (
+            <p className="text-sm text-muted-foreground">{t.equipmentNone}</p>
+          )}
+          {!selectedCustomerId && (
+            <p className="text-sm text-muted-foreground">{t.equipmentSelectFirst}</p>
+          )}
+
+          <div className="space-y-2 max-h-[340px] overflow-y-auto">
+            {equipment.map((eq) => {
+              const checked = selectedEquipmentIds.includes(eq.id);
+              const expanded = expandedEquipmentIds.includes(eq.id);
+              const selectedTemplates = equipmentTemplateMap[eq.id] || [];
+              const availableTemplates = filteredTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
+              return (
+                <div
+                  key={eq.id}
+                  className={cn(
+                    'rounded-lg border transition-colors',
+                    checked && 'border-primary bg-primary/5'
+                  )}
+                >
+                  {/* Linha do equipamento — seleção + expandir */}
+                  <div className="flex items-center gap-3 p-3">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(v) => {
+                        toggleEquipment(eq.id);
+                        // Ao selecionar, já abre o painel de checklists.
+                        if (v && !expandedEquipmentIds.includes(eq.id)) {
+                          setExpandedEquipmentIds(prev => [...prev, eq.id]);
+                        }
+                      }}
+                    />
+                    {(eq as any).photo_url && (
+                      <img
+                        src={(eq as any).photo_url}
+                        alt={eq.name}
+                        className="h-12 w-12 rounded-lg object-cover shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{eq.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[eq.brand, eq.model].filter(Boolean).join(' - ') || t.equipmentNoDetails}
+                      </p>
+                      {(eq as any).location && (
+                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {(eq as any).location}
+                        </p>
+                      )}
+                    </div>
+                    {eq.identifier && (
+                      <span className="text-xs font-mono text-muted-foreground shrink-0">{eq.identifier}</span>
+                    )}
+                    {checked && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 gap-1 text-xs text-muted-foreground"
+                        onClick={() => toggleEquipmentExpanded(eq.id)}
+                        aria-expanded={expanded}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        {selectedTemplates.length > 0
+                          ? t.equipmentChecklistCount.replace('{n}', String(selectedTemplates.length))
+                          : t.equipmentChecklistToggle}
+                        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')} />
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Painel expansível de checklists deste equipamento */}
+                  {checked && expanded && (
+                    <div className="border-t px-3 py-3 space-y-2">
+                      {selectedTemplates.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTemplates.map(tId => {
+                            const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
+                            return (
+                              <Badge key={tId} variant="secondary" className="gap-1 pr-1">
+                                {tmpl?.name || t.checklistStandalone}
+                                <button
+                                  type="button"
+                                  className="ml-1 rounded-full hover:bg-muted p-0.5"
+                                  onClick={() => setEquipmentTemplateMap(prev => ({
+                                    ...prev,
+                                    [eq.id]: (prev[eq.id] || []).filter(id => id !== tId),
+                                  }))}
+                                >
+                                  ✕
+                                </button>
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="flex gap-2 items-center">
+                        <SearchableSelect
+                          className="flex-1"
+                          value=""
+                          onValueChange={(v) => {
+                            if (v && v !== 'none' && !(equipmentTemplateMap[eq.id] || []).includes(v)) {
+                              setEquipmentTemplateMap(prev => ({
+                                ...prev,
+                                [eq.id]: [...(prev[eq.id] || []), v],
+                              }));
+                            }
+                          }}
+                          options={availableTemplates.map((tmpl) => ({
+                            value: tmpl.id,
+                            label: `${tmpl.name} (${tmpl.questions?.length || 0} ${t.checklistQuestionCount.replace('{n}', '').trim()})`,
+                          }))}
+                          placeholder={t.placeholderAddChecklist}
+                          searchPlaceholder={t.searchChecklistPlaceholder}
+                          emptyMessage={t.checklistNoneAvailable}
+                        />
+                        {selectedTemplates.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title={t.btnPreviewChecklist}
+                            onClick={() => setPreviewTemplateId(selectedTemplates[0])}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      )}
+
+      {/* ── Checklists avulsos — seção fixa, sempre disponível ── */}
+      <div className="space-y-3">
+        {showEquipmentStep && <div className="border-t border-border/40" />}
+        <div className="space-y-1">
+          <Label className="text-sm font-medium flex items-center gap-1.5">
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            {t.standaloneSectionTitle}
+          </Label>
+          <p className="text-xs text-muted-foreground">{t.standaloneSectionHint}</p>
+        </div>
+        {selectedStandaloneTemplateIds.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {selectedStandaloneTemplateIds.map(tId => {
+              const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
+              return (
+                <Badge key={tId} variant="secondary" className="gap-1 pr-1">
+                  {tmpl?.name || t.checklistStandalone}
+                  <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
+                    ✕
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+        <div className="flex gap-2 items-center">
+          <SearchableSelect
+            className="flex-1"
+            value=""
+            onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}
+            options={filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).map((tmpl) => ({
+              value: tmpl.id,
+              label: `${tmpl.name} (${tmpl.questions?.length || 0} ${t.checklistQuestionCount.replace('{n}', '').trim()})`,
+            }))}
+            placeholder={t.placeholderAddChecklist}
+            searchPlaceholder={t.searchChecklistPlaceholder}
+            emptyMessage={t.checklistNoneAvailable}
+          />
+          {selectedStandaloneTemplateIds.length > 0 && (
+            <Button type="button" variant="ghost" size="icon" title={t.btnPreview} onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   // Edit mode: same multi-step form as create
   if (serviceOrder) {
     const editFooter = (
@@ -906,114 +1173,55 @@ export function ServiceOrderFormDialog({
                 <FormField control={form.control} name="service_type_id" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.labelServiceType}</FormLabel>
-                    <FormControl>
-                      <SearchableSelect
-                        options={[
-                          { value: 'none', label: t.noServiceType },
-                          ...serviceTypes.filter(st => st.is_active).map((st) => ({
-                            value: st.id,
-                            label: st.name,
-                            icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
-                            sublabel: st.category_id
-                              ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
-                              : undefined,
-                          })),
-                        ]}
-                        value={field.value || 'none'}
-                        onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                        placeholder={t.placeholderSelectService}
-                        searchPlaceholder={t.placeholderSearchService}
-                      />
-                    </FormControl>
+                    <div className="flex">
+                      <div className="flex-1">
+                        <FormControl>
+                          <SearchableSelect
+                            options={[
+                              { value: 'none', label: t.noServiceType },
+                              ...serviceTypes.filter(st => st.is_active).map((st) => ({
+                                value: st.id,
+                                label: st.name,
+                                icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
+                                sublabel: st.category_id
+                                  ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
+                                  : undefined,
+                              })),
+                            ]}
+                            value={field.value || 'none'}
+                            onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
+                            placeholder={t.placeholderSelectService}
+                            searchPlaceholder={t.placeholderSearchService}
+                            className="rounded-r-none"
+                          />
+                        </FormControl>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Criar tipo de serviço"
+                        title="Criar tipo de serviço"
+                        onClick={() => setQuickCreateServiceTypeOpen(true)}
+                        className="rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <AssigneeMultiSelect
-                  technicians={technicians || []}
-                  teams={teamsWithMembers}
-                  selectedUserIds={selectedAssigneeUserIds}
-                  selectedTeamIds={selectedAssigneeTeamIds}
-                  onChangeUsers={setSelectedAssigneeUserIds}
-                  onChangeTeams={setSelectedAssigneeTeamIds}
-                  label={t.labelAssignees}
-                />
               </div>
             )}
 
-            {/* Step 2: Equipment */}
-            {currentStepKey === 'equipment' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{t.equipmentSelectOne}</p>
-                  {equipment.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (selectedEquipmentIds.length === equipment.length) {
-                          setSelectedEquipmentIds([]);
-                        } else {
-                          setSelectedEquipmentIds(equipment.map(eq => eq.id));
-                        }
-                      }}
-                    >
-                      {selectedEquipmentIds.length === equipment.length ? t.btnDeselectAll : t.btnSelectAll}
-                    </Button>
-                  )}
-                </div>
-                {equipment.map((eq) => (
-                  <label key={eq.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
-                    <Checkbox
-                      checked={selectedEquipmentIds.includes(eq.id)}
-                      onCheckedChange={(checked) => {
-                        setSelectedEquipmentIds(prev =>
-                          checked ? [...prev, eq.id] : prev.filter(id => id !== eq.id)
-                        );
-                      }}
-                    />
-                    <div>
-                      <p className="text-sm font-medium">{eq.name}</p>
-                      {(eq.brand || eq.model) && (
-                        <p className="text-xs text-muted-foreground">{[eq.brand, eq.model].filter(Boolean).join(' - ')}</p>
-                      )}
-                    </div>
-                  </label>
-                ))}
-                {equipment.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">{t.equipmentNone}</p>
-                )}
-              </div>
-            )}
+            {/* Step 2: Equipamentos e Checklists */}
+            {currentStepKey === 'equipment' && equipmentAndChecklistsStep}
 
-            {/* Step 3: Details */}
+            {/* Step 3: Agendamento e Detalhes */}
             {currentStepKey === 'details' && (
               <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <FormField control={form.control} name="service_type_id" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.labelServiceType}</FormLabel>
-                      <FormControl>
-                        <SearchableSelect
-                          value={field.value || 'none'}
-                          options={[
-                            { value: 'none', label: t.noServiceType },
-                            ...serviceTypes.filter(st => st.is_active).map(st => ({
-                              value: st.id,
-                              label: st.name,
-                              sublabel: st.category_id
-                                ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
-                                : undefined,
-                            })),
-                          ]}
-                          onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                          placeholder={t.placeholderSelectService}
-                          searchPlaceholder={t.placeholderSearchService}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                {assigneeSection}
+                <div className="grid gap-4 sm:grid-cols-2">
                   <FormField control={form.control} name="scheduled_date" render={({ field }) => (
                     <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
@@ -1043,120 +1251,6 @@ export function ServiceOrderFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
-
-                {/* Checklist per equipment */}
-                {selectedEquipmentIds.length > 0 ? (
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">{t.checklistByEquipment}</p>
-                    {selectedEquipmentIds.map((eqId) => {
-                      const eq = equipment.find(e => e.id === eqId);
-                      const selectedTemplates = equipmentTemplateMap[eqId] || [];
-                      const availableTemplates = filteredTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
-                      return (
-                        <div key={eqId} className="rounded-lg border p-3 space-y-2">
-                          <p className="text-sm font-medium">{eq?.name || t.checklistEquipmentFallback}</p>
-                          {selectedTemplates.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {selectedTemplates.map(tId => {
-                                const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
-                                return (
-                                  <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                                    {tmpl?.name || t.checklistStandalone}
-                                    <button
-                                      type="button"
-                                      className="ml-1 rounded-full hover:bg-muted p-0.5"
-                                      onClick={() => setEquipmentTemplateMap(prev => ({
-                                        ...prev,
-                                        [eqId]: (prev[eqId] || []).filter(id => id !== tId),
-                                      }))}
-                                    >
-                                      ✕
-                                    </button>
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                          )}
-                          <div className="flex gap-2 items-center">
-                            <Select
-                              value=""
-                              onValueChange={(v) => {
-                                if (v && v !== 'none' && !(equipmentTemplateMap[eqId] || []).includes(v)) {
-                                  setEquipmentTemplateMap(prev => ({
-                                    ...prev,
-                                    [eqId]: [...(prev[eqId] || []), v],
-                                  }));
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder={t.placeholderAddChecklist} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableTemplates.map((tmpl) => (
-                                  <SelectItem key={tmpl.id} value={tmpl.id}>
-                                    {tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})
-                                  </SelectItem>
-                                ))}
-                                {availableTemplates.length === 0 && (
-                                  <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
-                                )}
-                              </SelectContent>
-                            </Select>
-                            {selectedTemplates.length > 0 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                title={t.btnPreviewChecklist}
-                                onClick={() => setPreviewTemplateId(selectedTemplates[0])}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">{t.checklistStandalone}</Label>
-                    {selectedStandaloneTemplateIds.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedStandaloneTemplateIds.map(tId => {
-                          const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
-                          return (
-                            <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                              {tmpl?.name || t.checklistStandalone}
-                              <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
-                                ✕
-                              </button>
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <div className="flex gap-2 items-center">
-                      <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
-                        <SelectTrigger className="flex-1"><SelectValue placeholder={t.placeholderAddChecklist} /></SelectTrigger>
-                        <SelectContent>
-                          {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).map((tmpl) => (
-                            <SelectItem key={tmpl.id} value={tmpl.id}>{tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})</SelectItem>
-                          ))}
-                          {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).length === 0 && (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {selectedStandaloneTemplateIds.length > 0 && (
-                        <Button type="button" variant="ghost" size="icon" title={t.btnPreview} onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 <FormField control={form.control} name="description" render={({ field }) => (
                   <FormItem>
@@ -1328,31 +1422,31 @@ export function ServiceOrderFormDialog({
           {/* Step 1: Client & Service */}
           {currentStepKey === 'client' && (
             <div className="space-y-4">
-              {/* Customer mode toggle */}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={customerMode === 'existing' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => { setCustomerMode('existing'); }}
-                >
-                  {t.customerRegistered}
-                </Button>
-                <Button
-                  type="button"
-                  variant={customerMode === 'adhoc' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => { setCustomerMode('adhoc'); form.setValue('customer_id', ''); setSelectedCustomerId(undefined); setSelectedEquipmentIds([]); }}
-                >
-                  {t.customerAdhoc}
-                </Button>
+              {/* Customer mode toggle — alavanca centralizada */}
+              <div className="flex justify-center">
+                <LabeledSwitch
+                  value={customerMode}
+                  onChange={(v) => {
+                    if (v === 'existing') {
+                      setCustomerMode('existing');
+                    } else {
+                      setCustomerMode('adhoc');
+                      form.setValue('customer_id', '');
+                      setSelectedCustomerId(undefined);
+                      setSelectedEquipmentIds([]);
+                    }
+                  }}
+                  off={{ value: 'existing', label: t.customerRegistered }}
+                  on={{ value: 'adhoc', label: t.customerAdhoc }}
+                  aria-label={t.customerRegistered}
+                />
               </div>
 
               {customerMode === 'existing' ? (
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.labelCustomer}</FormLabel>
-                    <div className="flex gap-2">
+                    <div className="flex">
                       <div className="flex-1">
                         <FormControl>
                           <SearchableSelect
@@ -1361,10 +1455,19 @@ export function ServiceOrderFormDialog({
                             onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
                             placeholder={t.placeholderSelectCustomer}
                             searchPlaceholder={t.placeholderSearchCustomer}
+                            className="rounded-r-none"
                           />
                         </FormControl>
                       </div>
-                      <Button type="button" variant="outline" size="icon" title={t.btnCreateCustomer} onClick={() => setQuickCreateCustomerOpen(true)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label={t.btnCreateCustomer}
+                        title={t.btnCreateCustomer}
+                        onClick={() => setQuickCreateCustomerOpen(true)}
+                        className="rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
+                      >
                         <UserPlus className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1437,122 +1540,54 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t.labelServiceType}</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={[
-                        { value: 'none', label: t.noServiceType },
-                        ...serviceTypes.filter(st => st.is_active).map((st) => ({
-                          value: st.id,
-                          label: st.name,
-                          icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
-                          sublabel: st.category_id
-                            ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
-                            : undefined,
-                        })),
-                      ]}
-                      value={field.value || 'none'}
-                      onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                      placeholder={t.placeholderSelectService}
-                      searchPlaceholder={t.placeholderSearchService}
-                    />
-                  </FormControl>
+                  <div className="flex">
+                    <div className="flex-1">
+                      <FormControl>
+                        <SearchableSelect
+                          options={[
+                            { value: 'none', label: t.noServiceType },
+                            ...serviceTypes.filter(st => st.is_active).map((st) => ({
+                              value: st.id,
+                              label: st.name,
+                              icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
+                              sublabel: st.category_id
+                                ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
+                                : undefined,
+                            })),
+                          ]}
+                          value={field.value || 'none'}
+                          onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
+                          placeholder={t.placeholderSelectService}
+                          searchPlaceholder={t.placeholderSearchService}
+                          className="rounded-r-none"
+                        />
+                      </FormControl>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Criar tipo de serviço"
+                      title="Criar tipo de serviço"
+                      onClick={() => setQuickCreateServiceTypeOpen(true)}
+                      className="rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )} />
-              <AssigneeMultiSelect
-                technicians={technicians || []}
-                teams={teamsWithMembers}
-                selectedUserIds={selectedAssigneeUserIds}
-                selectedTeamIds={selectedAssigneeTeamIds}
-                onChangeUsers={setSelectedAssigneeUserIds}
-                onChangeTeams={setSelectedAssigneeTeamIds}
-                label={t.labelAssignees}
-              />
             </div>
           )}
 
-          {/* Step 2: Equipment(s) */}
-          {currentStepKey === 'equipment' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {equipment.length > 1 ? t.equipmentSelectMany : t.equipmentSelectOne}
-                </p>
-                {equipment.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (selectedEquipmentIds.length === equipment.length) {
-                        setSelectedEquipmentIds([]);
-                      } else {
-                        setSelectedEquipmentIds(equipment.map(eq => eq.id));
-                      }
-                    }}
-                  >
-                    <Check className="h-3.5 w-3.5 mr-1" />
-                    {selectedEquipmentIds.length === equipment.length ? t.btnDeselectAll : t.btnSelectAll}
-                  </Button>
-                )}
-              </div>
-              {equipment.length === 0 && selectedCustomerId && (
-                <p className="text-sm text-muted-foreground">{t.equipmentNone}</p>
-              )}
-              {!selectedCustomerId && (
-                <p className="text-sm text-muted-foreground">{t.equipmentSelectFirst}</p>
-              )}
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {equipment.map((eq) => (
-                  <label
-                    key={eq.id}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50",
-                      selectedEquipmentIds.includes(eq.id) && "border-primary bg-primary/5"
-                    )}
-                  >
-                    <Checkbox
-                      checked={selectedEquipmentIds.includes(eq.id)}
-                      onCheckedChange={() => toggleEquipment(eq.id)}
-                    />
-                    {(eq as any).photo_url && (
-                      <img
-                        src={(eq as any).photo_url}
-                        alt={eq.name}
-                        className="h-12 w-12 rounded-lg object-cover shrink-0"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{eq.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {[eq.brand, eq.model].filter(Boolean).join(' - ') || t.equipmentNoDetails}
-                      </p>
-                      {(eq as any).location && (
-                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          {(eq as any).location}
-                        </p>
-                      )}
-                    </div>
-                    {eq.identifier && (
-                      <span className="text-xs font-mono text-muted-foreground shrink-0">{eq.identifier}</span>
-                    )}
-                  </label>
-                ))}
-              </div>
-              {selectedCustomerId && (
-                <Button type="button" variant="outline" size="sm" onClick={() => setQuickCreateOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t.btnCreateEquipment}
-                </Button>
-              )}
-            </div>
-          )}
+          {/* Step 2: Equipamentos e Checklists */}
+          {currentStepKey === 'equipment' && equipmentAndChecklistsStep}
 
-          {/* Step 3: Details */}
+          {/* Step 3: Agendamento e Detalhes */}
           {currentStepKey === 'details' && (
             <div className="space-y-4">
+              {assigneeSection}
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField control={form.control} name="scheduled_date" render={({ field }) => (
                   <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1583,120 +1618,6 @@ export function ServiceOrderFormDialog({
                   </FormItem>
                 )} />
               </div>
-
-              {/* Checklist per equipment */}
-              {selectedEquipmentIds.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">{t.checklistByEquipment}</p>
-                  {selectedEquipmentIds.map((eqId) => {
-                    const eq = equipment.find(e => e.id === eqId);
-                    const selectedTemplates = equipmentTemplateMap[eqId] || [];
-                    const availableTemplates = filteredTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
-                    return (
-                      <div key={eqId} className="rounded-lg border p-3 space-y-2">
-                        <p className="text-sm font-medium">{eq?.name || t.checklistEquipmentFallback}</p>
-                        {selectedTemplates.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {selectedTemplates.map(tId => {
-                              const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
-                              return (
-                                <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                                  {tmpl?.name || t.checklistStandalone}
-                                  <button
-                                    type="button"
-                                    className="ml-1 rounded-full hover:bg-muted p-0.5"
-                                    onClick={() => setEquipmentTemplateMap(prev => ({
-                                      ...prev,
-                                      [eqId]: (prev[eqId] || []).filter(id => id !== tId),
-                                    }))}
-                                  >
-                                    ✕
-                                  </button>
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        )}
-                        <div className="flex gap-2 items-center">
-                          <Select
-                            value=""
-                            onValueChange={(v) => {
-                              if (v && v !== 'none' && !(equipmentTemplateMap[eqId] || []).includes(v)) {
-                                setEquipmentTemplateMap(prev => ({
-                                  ...prev,
-                                  [eqId]: [...(prev[eqId] || []), v],
-                                }));
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder={t.placeholderAddChecklist} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {availableTemplates.map((tmpl) => (
-                                <SelectItem key={tmpl.id} value={tmpl.id}>
-                                  {tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})
-                                </SelectItem>
-                              ))}
-                              {availableTemplates.length === 0 && (
-                                <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
-                              )}
-                            </SelectContent>
-                          </Select>
-                          {selectedTemplates.length > 0 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              title={t.btnPreviewChecklist}
-                              onClick={() => setPreviewTemplateId(selectedTemplates[0])}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">{t.checklistStandalone}</Label>
-                  {selectedStandaloneTemplateIds.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedStandaloneTemplateIds.map(tId => {
-                        const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
-                        return (
-                          <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                            {tmpl?.name || t.checklistStandalone}
-                            <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
-                              ✕
-                            </button>
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <div className="flex gap-2 items-center">
-                    <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
-                      <SelectTrigger className="flex-1"><SelectValue placeholder={t.placeholderAddChecklist} /></SelectTrigger>
-                      <SelectContent>
-                        {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).map((tmpl) => (
-                          <SelectItem key={tmpl.id} value={tmpl.id}>{tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})</SelectItem>
-                        ))}
-                        {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).length === 0 && (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {selectedStandaloneTemplateIds.length > 0 && (
-                      <Button type="button" variant="ghost" size="icon" title={t.btnPreview} onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
 
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem><FormLabel>{t.labelDescription}</FormLabel><FormControl><Textarea placeholder={t.placeholderDescription} {...field} /></FormControl><FormMessage /></FormItem>
@@ -1825,6 +1746,17 @@ export function ServiceOrderFormDialog({
           }
         }}
         isLoading={createCustomer.isPending}
+      />
+
+      {/* Quick create service type */}
+      <QuickServiceTypeDialog
+        open={quickCreateServiceTypeOpen}
+        onOpenChange={setQuickCreateServiceTypeOpen}
+        onCreated={(created) => {
+          // A lista de tipos já é invalidada pela mutation; seleciona o recém-criado.
+          form.setValue('service_type_id', created.id);
+          setSelectedServiceTypeId(created.id);
+        }}
       />
 
       {/* Checklist preview */}

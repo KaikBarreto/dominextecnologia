@@ -120,7 +120,7 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background border-t border-border pb-[env(safe-area-inset-bottom)]">
+      <nav data-nav-surface className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background border-t border-border pb-[env(safe-area-inset-bottom)]">
         <div className="relative flex items-center justify-around px-0.5 py-2">
           {navItems.map((item) => {
             // FAB Agenda: botão grande, redondo, elevado.
@@ -152,7 +152,10 @@ export function MobileBottomNav() {
                     triggerHaptic();
                     setMoreOpen(true);
                   }}
-                  className="flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 active:scale-90"
+                  className={cn(
+                    'nav-indicator flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 active:scale-90',
+                    moreActive && 'nav-indicator-active'
+                  )}
                 >
                   <div
                     className={cn(
@@ -186,7 +189,10 @@ export function MobileBottomNav() {
                 key={item.path}
                 to={L(item.path!)}
                 onClick={triggerHaptic}
-                className="flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl transition-all duration-200 active:scale-90"
+                className={cn(
+                  'nav-indicator flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl transition-all duration-200 active:scale-90',
+                  active && 'nav-indicator-active'
+                )}
               >
                 <div
                   className={cn(

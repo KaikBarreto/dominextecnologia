@@ -14,6 +14,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
+import { useNavThemePreference } from '@/hooks/useNavThemePreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -63,6 +64,9 @@ const TABLET_MAX_WIDTH = 1280; // tablet vai até 1279px; ≥1280 é desktop.
  */
 export function AppLayout() {
   const { navigationStyle } = useNavigationPreference();
+  // Menu escuro por padrão (Fase 2). Mantém `data-nav-theme` no <html> em sync
+  // com a preferência do usuário (localStorage) enquanto o shell está montado.
+  useNavThemePreference();
   const { isAdminUser, user } = useAuth();
   const isMobile = useIsMobile();
   const [isTablet, setIsTablet] = useState(() => {
@@ -78,6 +82,16 @@ export function AppLayout() {
   // Canoniza a URL da tela pro slug do idioma do usuário (bookmark de outro
   // idioma redireciona; troca de idioma re-mapeia). Só age em rotas do registro.
   useCanonicalAppRoute();
+
+  // Restyle sóbrio ESCOPADO AO APP (Fase 1). Liga o atributo `data-app` no <html>
+  // enquanto o shell logado está montado. O bloco `[data-app] { … }` do index.css
+  // re-declara os tokens sóbrios (CTA preto, cantos retos) SÓ aqui — a landing
+  // pública fica intacta (verde/arredondada). Cobre também os portais Radix, que
+  // renderizam no body mas herdam as vars do <html>.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-app', '');
+    return () => document.documentElement.removeAttribute('data-app');
+  }, []);
 
   // Tablet = 1024 ≤ w < 1280. Mobile já é coberto por `useIsMobile`.
   useEffect(() => {
@@ -365,7 +379,7 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0 bg-background">
+          <SheetContent side="left" data-nav-surface className="w-72 p-0 bg-background">
             <MobileSidebar />
           </SheetContent>
         </Sheet>

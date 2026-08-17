@@ -276,6 +276,14 @@ export const settings = {
         light: 'Tema Claro',
         dark: 'Tema Escuro',
       },
+      navTheme: {
+        sectionTitle: 'Menu (lateral e superior)',
+        sectionDescription: 'Escolha a cor do menu de navegação, independente do tema do sistema.',
+        dark: 'Escuro (recomendado)',
+        darkDescription: 'Menu sempre escuro, com destaque na cor da marca',
+        system: 'Seguir o tema',
+        systemDescription: 'Menu acompanha o tema claro ou escuro',
+      },
     },
 
     // ── Aba Atalhos de Teclado ────────────────────────────────────────────────
@@ -1131,6 +1139,14 @@ export const settings = {
         light: 'Light Theme',
         dark: 'Dark Theme',
       },
+      navTheme: {
+        sectionTitle: 'Menu (sidebar and top bar)',
+        sectionDescription: 'Choose the navigation menu color, independent of the system theme.',
+        dark: 'Dark (recommended)',
+        darkDescription: 'Menu always dark, highlighted with the brand color',
+        system: 'Follow the theme',
+        systemDescription: 'Menu follows the light or dark theme',
+      },
     },
 
     shortcuts: {
@@ -1940,6 +1956,14 @@ export const settings = {
         light: 'Tema claro',
         dark: 'Tema oscuro',
       },
+      navTheme: {
+        sectionTitle: 'Menú (lateral y superior)',
+        sectionDescription: 'Elige el color del menú de navegación, independiente del tema del sistema.',
+        dark: 'Oscuro (recomendado)',
+        darkDescription: 'Menú siempre oscuro, resaltado con el color de la marca',
+        system: 'Seguir el tema',
+        systemDescription: 'El menú sigue el tema claro u oscuro',
+      },
     },
 
     shortcuts: {
@@ -2739,6 +2763,14 @@ export const settings = {
         sectionDescription: "Choisissez entre le thème clair ou sombre pour l'interface.",
         light: 'Thème clair',
         dark: 'Thème sombre',
+      },
+      navTheme: {
+        sectionTitle: 'Menu (latéral et supérieur)',
+        sectionDescription: 'Choisissez la couleur du menu de navigation, indépendamment du thème du système.',
+        dark: 'Sombre (recommandé)',
+        darkDescription: 'Menu toujours sombre, mis en valeur par la couleur de la marque',
+        system: 'Suivre le thème',
+        systemDescription: 'Le menu suit le thème clair ou sombre',
       },
     },
 

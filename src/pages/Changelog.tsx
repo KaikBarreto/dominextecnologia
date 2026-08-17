@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.20.0',
+    date: '17 de agosto de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Novo visual: menu escuro por padrão, mais sóbrio e profissional',
+        description: 'O menu lateral e o superior agora vêm num visual escuro, mais elegante, com um realce na cor da sua empresa no item selecionado (inclusive nos subitens de cada seção). Se preferir o menu claro acompanhando o tema, é só mudar em Configurações → Aparência, na opção "Menu (lateral e superior)". O restante do sistema também ficou mais sóbrio, com botões e destaques mais discretos — o verde continua nos valores positivos e confirmações.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ordem de serviço: equipamentos e checklists na mesma etapa',
+        description: 'Ao criar ou editar uma OS, os checklists agora ficam junto dos equipamentos, na etapa "Equipamentos e Checklists" — cada equipamento abre com os seus checklists dentro, e logo abaixo há uma seção de "Checklists avulsos" para o que não é por equipamento. Ficou igual ao fluxo de contrato e ao de editar a OS. Os campos de escolher checklist ganharam busca por nome.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ordem de serviço: criar tipo de serviço na hora e agenda junto do responsável',
+        description: 'No cadastro de OS, dá para criar um tipo de serviço novo direto pelo "+" ao lado do campo, sem sair da tela. O técnico responsável passou para a etapa de agendamento, agrupando "quando e quem executa", e a escolha entre cliente cadastrado e cliente avulso virou uma alavanca mais clara.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.19.12',
     date: '16 de agosto de 2026',
     type: 'patch',

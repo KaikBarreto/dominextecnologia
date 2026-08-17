@@ -189,6 +189,14 @@
     <script>
       (function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})();
     </script>
+    <!-- Anti-flash do MENU ESCURO (Fase 2): aplica data-nav-theme="dark" no <html>
+         ANTES do 1º paint pra a nav já nascer escura (sem piscar clara). Default
+         'dark'; só 'system' remove o atributo (nav segue o tema). O atributo só
+         "acende" as superfícies marcadas com data-nav-surface / data-sidebar
+         (ver index.css), então na landing pública não tem efeito visual. -->
+    <script>
+      (function(){try{var n=localStorage.getItem('nav-theme-preference');if(n!=='system')document.documentElement.setAttribute('data-nav-theme','dark')}catch(e){document.documentElement.setAttribute('data-nav-theme','dark')}})();
+    </script>
     <!-- Sincroniza theme-color da barra do PWA com o tema claro/escuro do app.
          Cor claro (#FAFAFA) = --background :root (HSL 0 0% 98%).
          Cor escuro (#0D0D0D) = --background .dark  (HSL 0 0% 5%).
@@ -215,7 +223,7 @@
          verde padrão da Dominex no reload/pull-to-refresh em tenant white-label.
          Não recomputa nada — só lê as chaves prontas gravadas por applyWhiteLabelTheme. -->
     <script>
-      (function(){try{var p=localStorage.getItem('__wl_primary');if(!p)return;var g=localStorage.getItem('__wl_gradient');var r=document.documentElement.style;r.setProperty('--primary',p);r.setProperty('--ring',p);r.setProperty('--sidebar-primary',p);r.setProperty('--sidebar-accent',p);r.setProperty('--sidebar-ring',p);if(g)r.setProperty('--gradient-brand',g)}catch(e){}})();
+      (function(){try{var p=localStorage.getItem('__wl_primary');if(!p)return;var g=localStorage.getItem('__wl_gradient');var n=localStorage.getItem('__wl_nav_neon');var r=document.documentElement.style;r.setProperty('--primary',p);r.setProperty('--ring',p);r.setProperty('--sidebar-primary',p);r.setProperty('--sidebar-accent',p);r.setProperty('--sidebar-ring',p);if(g)r.setProperty('--gradient-brand',g);if(n)r.setProperty('--wl-nav-neon',n)}catch(e){}})();
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
