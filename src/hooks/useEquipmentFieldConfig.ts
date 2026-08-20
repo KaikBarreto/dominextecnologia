@@ -23,9 +23,15 @@ export function useEquipmentFieldConfig() {
   const fieldsQuery = useQuery({
     queryKey: ['equipment-field-config'],
     queryFn: async () => {
+      // Defesa em profundidade (regra-lei #1): filtro client por empresa,
+      // nunca depender só do RLS. Mesmo padrão do createField abaixo.
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+      if (!company_id) return [] as EquipmentFieldConfig[];
       const { data, error } = await supabase
         .from('equipment_field_config')
         .select('*')
+        .eq('company_id', company_id)
         .order('position');
       if (error) throw error;
       return data as EquipmentFieldConfig[];

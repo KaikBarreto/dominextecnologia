@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.20.2',
+    date: '20 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Reforço no isolamento de dados entre empresas',
+        description: 'Ajustamos o cadastro de equipamentos e as telas de configuração para garantir que cada empresa veja somente os próprios campos, categorias e listas. Os campos personalizados que você cria ou remove passam a valer apenas para a sua conta, sem influência de outras empresas. Também reforçamos a privacidade da localização dos técnicos, que fica restrita à sua equipe.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.20.1',
     date: '17 de agosto de 2026',
     type: 'patch',

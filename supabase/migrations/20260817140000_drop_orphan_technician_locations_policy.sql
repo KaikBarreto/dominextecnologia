@@ -1,0 +1,17 @@
+-- Drop de policy SELECT órfã em public.technician_locations.
+--
+-- Contexto: a policy "System managers can view all locations" foi criada na
+-- migration pré-multi-tenant 20260308210630 com USING (can_manage_system(auth.uid()))
+-- e SEM filtro de company_id. Como policy SELECT permissiva (OR), ela deixava
+-- QUALQUER gestor (can_manage_system=true) ver a localização de técnicos de
+-- TODOS os tenants — vazamento de localização cross-tenant.
+--
+-- A migration 20260524012349 já criou a policy correta tl_select_tenant_scoped
+-- (super_admin via is_super_admin no 1º ramo + admin/gestor da própria empresa +
+-- técnico vendo a própria trilha), mas não dropou a órfã porque o nome divergia.
+-- Não há uso legítimo cross-tenant (useLiveTechnicianLocations é tenant-scoped),
+-- então a órfã é pura redundância insegura.
+--
+-- Ação: apenas dropar a órfã. tl_select_tenant_scoped cobre todos os casos,
+-- inclusive o bypass do super_admin.
+DROP POLICY IF EXISTS "System managers can view all locations" ON public.technician_locations;

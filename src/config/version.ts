@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.20.1";
+export const APP_VERSION = "1.20.2";
 
-export const VERSION_NOTES = "Melhoramos o relatório de serviço em PDF: os itens não são mais cortados na quebra de página, as fotos ficam organizadas em galeria, os selos de status ficaram mais legíveis e o rodapé agora traz um link para a versão online da ordem de serviço.";
+export const VERSION_NOTES = "Reforçamos o isolamento de dados entre empresas: cada conta passa a ver apenas os próprios campos de equipamento e as próprias configurações e cadastros, sem qualquer mistura com dados de outras empresas.";
