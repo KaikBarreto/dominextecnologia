@@ -1031,7 +1031,7 @@ export default function Employees() {
           employeeSalary={extractEmployee.salary || 0}
           movements={movements}
           balance={activeBalance}
-          onDeleteMovement={id => deleteMovement.mutate(id)}
+          onDeleteMovement={id => deleteMovement.mutate({ id, movements, salary: extractEmployee.salary || 0 })}
         />
       )}
 

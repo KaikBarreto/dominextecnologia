@@ -10,15 +10,15 @@ import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
-type ChangeCategory = 'recurso' | 'melhoria' | 'correcao' | 'seguranca';
+export type ChangeCategory = 'recurso' | 'melhoria' | 'correcao' | 'seguranca';
 
-interface Change {
+export interface Change {
   title: string;
   description: string;
   category: ChangeCategory;
 }
 
-interface ChangelogEntry {
+export interface ChangelogEntry {
   version: string;
   date: string;
   type: 'major' | 'minor' | 'patch';
@@ -40,7 +40,31 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 };
 
 
-const changelog: ChangelogEntry[] = [
+export const changelog: ChangelogEntry[] = [
+  {
+    version: '1.20.4',
+    date: '21 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção no saldo do extrato de funcionário',
+        description: 'Ao excluir um lançamento (vale, bônus, etc.) no extrato de um funcionário, o saldo total e o "Saldo após" de cada lançamento podiam ficar diferentes do valor real. Corrigido: agora, ao excluir qualquer lançamento, o saldo é recalculado corretamente — os pagamentos zeram o que estava em aberto e o saldo volta certinho para o salário base.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.20.3',
+    date: '20 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Foto do ponto sai carimbada com data, hora e local',
+        description: 'Ao registrar o ponto e tirar a selfie, a imagem é salva já com uma faixa na parte de baixo mostrando o nome do funcionário, a data e a hora, o endereço e as coordenadas (latitude e longitude) de onde a batida foi feita, além do nome e do logo da sua empresa — a comprovação de quando e onde foi feito fica gravada direto na foto.',
+        category: 'recurso',
+      },
+    ],
+  },
   {
     version: '1.20.2',
     date: '20 de agosto de 2026',

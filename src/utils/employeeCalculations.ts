@@ -69,28 +69,58 @@ export function calculateEmployeeBalance(movements: EmployeeMovement[], salary: 
   return { totalVales, totalBonus, totalFaltas, totalPagamentos, currentBalance };
 }
 
+/**
+ * Descrição canônica do lançamento de "ajuste" que reseta o saldo para o
+ * salário base, gravado pelo fluxo de pagamento (Employees.tsx). O amount desse
+ * lançamento É o próprio salário base (valor ABSOLUTO), não um delta.
+ */
+export const RESET_DESCRIPTION = 'Reset para salário base';
+
+/**
+ * Recalcula os saldos históricos de todas as movimentações.
+ * Usado após edição ou exclusão de uma movimentação para manter consistência.
+ *
+ * Semântica (espelha EcoSistema — mistura de valores ABSOLUTOS e deltas):
+ * - "pagamento": settlement. ZERA o saldo (balance_after = 0). O amount gravado
+ *   é o valor pago (Dominex grava positivo; EcoSistema negativo), NÃO o saldo
+ *   corrido — por isso NÃO é somado.
+ * - "ajuste" com description "Reset para salário base": RESET ABSOLUTO. O amount
+ *   é o próprio salário base, então runningBalance = amount (não empilha resíduo).
+ * - "bonus" / "ajuste" de salário (delta, se existir) / "recebimento":
+ *   DELTA somado ao saldo (runningBalance += amount).
+ * - "vale" / "falta" / "falta_banco": débitos, subtraem em módulo
+ *   (runningBalance -= Math.abs(amount)).
+ *
+ * A ORDEM dos ifs importa: checar pagamento e reset-ajuste ANTES do ramo
+ * genérico de ajuste. Tratar tudo como delta (bug anterior) deixava resíduo no
+ * pagamento e empilhava o salário em cima do resíduo no reset, inflando o saldo.
+ */
 export function recalculateBalances(movements: EmployeeMovement[], salary: number): EmployeeMovement[] {
   let balance = salary;
-  return movements
+  return [...movements]
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     .map(m => {
-      switch (m.type) {
-        case 'vale': case 'falta': case 'falta_banco':
-          balance -= Math.abs(m.amount);
-          break;
-        case 'bonus':
-        case 'recebimento':
-          balance += Math.abs(m.amount);
-          break;
-        // Pagamento usa amount negativo (ex: -130), então += amount diminui o
-        // saldo. Ajuste reseta o saldo para o salário base (amount já é o valor).
-        case 'pagamento':
-          balance += m.amount;
-          break;
-        case 'ajuste':
-          balance = m.amount;
-          break;
+      const amount = Number(m.amount);
+
+      // Pagamento é settlement: zera o saldo (ignora o amount pro saldo corrido).
+      if (m.type === 'pagamento') {
+        balance = 0;
       }
+      // Reset absoluto pro salário base: o amount é o próprio salário gravado.
+      // Cheque ANTES do ramo genérico de "ajuste" (que trata delta).
+      else if (m.type === 'ajuste' && m.description?.startsWith(RESET_DESCRIPTION)) {
+        balance = amount;
+      }
+      // Bônus, ajuste de salário (delta) e recebimentos são deltas somados.
+      else if (m.type === 'bonus' || m.type === 'ajuste' || m.type === 'recebimento') {
+        balance += amount;
+      }
+      // Vales e faltas diminuem o saldo — Math.abs protege contra amounts
+      // armazenados com sinal negativo por bug anterior.
+      else {
+        balance -= Math.abs(amount);
+      }
+
       return { ...m, balance_after: balance };
     });
 }

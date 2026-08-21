@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { recalculateBalances, type EmployeeMovement } from '@/utils/employeeCalculations';
 
 export function useEmployeeMovements(employeeId?: string) {
   const { toast } = useToast();
@@ -44,9 +45,29 @@ export function useEmployeeMovements(employeeId?: string) {
   });
 
   const deleteMovement = useMutation({
-    mutationFn: async (id: string) => {
+    // Recebe a lista completa de movimentos + salário para recalcular os
+    // balance_after seguintes ao deletado (espelho de EcoSistema
+    // EmployeeExtract.tsx:552-574). Sem isso, deletes deixavam os saldos
+    // subsequentes desatualizados (o bug ficava dormente até o próximo delete).
+    mutationFn: async (input: { id: string; movements?: EmployeeMovement[]; salary?: number }) => {
+      const { id, movements = [], salary = 0 } = input;
+
+      // 1. Recalcula os saldos considerando a lista SEM o movimento deletado.
+      const movementsToRecalc = movements.filter((m) => m.id !== id);
+      const recalculated = recalculateBalances(movementsToRecalc, salary);
+
+      // 2. Deleta o movimento.
       const { error } = await supabase.from('employee_movements').delete().eq('id', id);
       if (error) throw error;
+
+      // 3. Persiste os balance_after atualizados (UPDATE 1×1).
+      for (const mov of recalculated) {
+        const { error: updateError } = await supabase
+          .from('employee_movements')
+          .update({ balance_after: mov.balance_after })
+          .eq('id', mov.id);
+        if (updateError) throw updateError;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['employee-movements'] });
