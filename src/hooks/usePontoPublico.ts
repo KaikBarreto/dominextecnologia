@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { compressSelfie } from "@/utils/imageConvert";
+import { stampSelfie, type SelfieStampData } from "@/utils/stampSelfie";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env
@@ -139,17 +140,23 @@ function mapError(status: number, payload: any): PontoError {
 }
 
 /**
- * Comprime a selfie do ponto (caminho dedicado: WebP 1280px, fallback JPEG) e
- * converte pra data URL base64. A edge lê os magic bytes, decide a extensão/
- * content-type reais e sobe no bucket time-photos.
+ * Comprime a selfie do ponto (caminho dedicado: WebP 1280px, fallback JPEG),
+ * carimba a faixa "GPS Camera" (empresa/funcionário/data-hora/endereço/geo +
+ * rodapé Dominex) por cima e converte pra data URL base64. O carimbo é BAKED
+ * nos pixels e nunca bloqueia o ponto (falha -> foto sem carimbo). A edge lê os
+ * magic bytes (o util devolve JPEG, aceito) e sobe no bucket time-photos.
+ *
+ * Ordem obrigatória: compressSelfie primeiro (normaliza HEIC/orientação/tamanho),
+ * carimbo depois (por cima), readAsDataURL por último.
  */
-async function photoToBase64(file: File): Promise<string> {
+async function photoToBase64(file: File, stampData: SelfieStampData): Promise<string> {
   const compressed = await compressSelfie(file);
+  const stamped = await stampSelfie(compressed, stampData);
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error("Falha ao ler a imagem."));
-    reader.readAsDataURL(compressed);
+    reader.readAsDataURL(stamped);
   });
 }
 
@@ -196,8 +203,27 @@ export function usePontoPublico(slug: string | undefined): UsePontoPublicoResult
 
       let photo_base64: string | null = null;
       if (photoFile) {
+        // Monta os dados do carimbo com o que o estado do ponto já possui.
+        // Logo: mesma preferência white-label do header (icon > logo > logo_url).
+        const co = state?.company;
+        const logoUrl = co
+          ? co.white_label_enabled
+            ? co.white_label_logo_url || co.white_label_icon_url || co.logo_url
+            : co.logo_url
+          : null;
+        const stampData: SelfieStampData = {
+          companyName: co?.name || "",
+          employeeName: state?.employee?.name || "",
+          dateTime: new Date().toLocaleString("pt-BR"),
+          address: address ?? null,
+          lat: coords?.latitude ?? null,
+          lng: coords?.longitude ?? null,
+          logoUrl,
+          poweredBy: "Dominex",
+          poweredUrl: "dominex.app",
+        };
         try {
-          photo_base64 = await photoToBase64(photoFile);
+          photo_base64 = await photoToBase64(photoFile, stampData);
         } catch {
           throw {
             status: 0,
@@ -217,7 +243,7 @@ export function usePontoPublico(slug: string | undefined): UsePontoPublicoResult
         device_info: { userAgent: navigator.userAgent, platform: navigator.platform },
       });
     },
-    [slug],
+    [slug, state],
   );
 
   return {
