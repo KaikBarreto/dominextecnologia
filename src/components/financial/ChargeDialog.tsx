@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { EmptyState } from '@/components/mobile/EmptyState';
-import { Loader2, Copy, Check, CheckCircle2, Users } from 'lucide-react';
+import { Loader2, Copy, Check, CheckCircle2, Users, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
@@ -324,9 +324,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
             {/* Aviso discreto no caso órfão (207): sem checkout próprio, usar invoice_url do Asaas */}
             {isOrphan && result ? (
-              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                {result.orphan && result.warning ? result.warning : t.orphan.notice}
-              </p>
+              <div className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+                <p className="text-sm text-muted-foreground">
+                  {result.orphan && result.warning ? result.warning : t.orphan.notice}
+                </p>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">{t.success.description}</p>
             )}

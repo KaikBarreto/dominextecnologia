@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -1306,10 +1306,10 @@ export default function CustomerDetail() {
                 {t.chargesHeading}
               </h2>
               <Button
-                className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90"
+                className="hidden lg:flex"
                 onClick={() => setChargeDialogOpen(true)}
               >
-                <Plus className="mr-2 h-4 w-4" />
+                <Wallet className="mr-2 h-4 w-4" />
                 {t.chargeNewButton}
               </Button>
             </div>
@@ -1403,7 +1403,7 @@ export default function CustomerDetail() {
                       trailing={
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-sm font-semibold">R$ {formatBRL(charge.value)}</span>
-                          <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', chargeStatusClass(charge.status))}>
+                          <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', chargeStatusClass(charge.status))}>
                             {chargeStatusLabel(charge.status)}
                           </span>
                         </div>
@@ -1448,7 +1448,7 @@ export default function CustomerDetail() {
                                 {charge.due_date ? format(new Date(charge.due_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                               </TableCell>
                               <TableCell>
-                                <span className={cn('inline-flex items-center text-xs px-2 py-0.5 rounded-full font-medium', chargeStatusClass(charge.status))}>
+                                <span className={cn('inline-flex items-center text-xs px-2 py-0.5 rounded-full font-semibold', chargeStatusClass(charge.status))}>
                                   {chargeStatusLabel(charge.status)}
                                 </span>
                               </TableCell>
@@ -1503,7 +1503,7 @@ export default function CustomerDetail() {
 
             {isMobile && (
               <FABButton
-                icon={<Plus className="h-5 w-5" />}
+                icon={<Wallet className="h-5 w-5" />}
                 label={t.chargeNewButton}
                 onClick={() => setChargeDialogOpen(true)}
               />

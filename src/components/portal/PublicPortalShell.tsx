@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { portalHeaderStyle } from './portalTheme';
 import { PortalStickyFooter } from './PortalStickyFooter';
@@ -105,7 +105,7 @@ interface PublicPortalShellProps {
  * Casca "app-nativo" compartilhada pelos portais publicos (cliente + contrato/PMOC).
  *
  * Layout MOBILE (< lg):
- *   - Header branded arredondado (rounded-b-3xl), cor do PAYLOAD (anti-FOUC).
+ *   - Header branded arredondado (rounded-b-xl), cor do PAYLOAD (anti-FOUC).
  *   - Pilulas de navegacao de secoes no corpo (quando navSections informado).
  *   - Corpo rolavel com folga pro rodape fixo.
  *   - Rodape sticky escuro (degrede preto-cinza) com status + CTA + SystemFooter.
@@ -161,6 +161,60 @@ export function PublicPortalShell({
   // Mede a altura do header sticky para o offset da sidebar (espelha TechnicianOS).
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [headerH, setHeaderH] = useState(0);
+
+  // Fade dinâmico nas pills mobile (mask-image nas bordas — padrão MobilePillTabs).
+  const pillsScrollRef = useRef<HTMLDivElement | null>(null);
+  const [pillsShowLeft, setPillsShowLeft] = useState(false);
+  const [pillsShowRight, setPillsShowRight] = useState(false);
+
+  const updatePillsFades = useCallback(() => {
+    const el = pillsScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, clientWidth, scrollWidth } = el;
+    setPillsShowLeft(scrollLeft > 1);
+    setPillsShowRight(scrollLeft + clientWidth < scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const el = pillsScrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updatePillsFades, { passive: true });
+    const ro = new ResizeObserver(updatePillsFades);
+    ro.observe(el);
+    updatePillsFades();
+    return () => {
+      el.removeEventListener('scroll', updatePillsFades);
+      ro.disconnect();
+    };
+  }, [updatePillsFades]);
+
+  useEffect(() => {
+    updatePillsFades();
+  }, [navSections, updatePillsFades]);
+
+  const pillsMaskStyle: React.CSSProperties = (() => {
+    if (pillsShowLeft && pillsShowRight) {
+      return {
+        WebkitMaskImage:
+          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+        maskImage:
+          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+      };
+    }
+    if (pillsShowLeft) {
+      return {
+        WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 24px)',
+        maskImage: 'linear-gradient(to right, transparent 0, black 24px)',
+      };
+    }
+    if (pillsShowRight) {
+      return {
+        WebkitMaskImage: 'linear-gradient(to left, transparent 0, black 24px)',
+        maskImage: 'linear-gradient(to left, transparent 0, black 24px)',
+      };
+    }
+    return {};
+  })();
 
   useLayoutEffect(() => {
     const el = headerRef.current;
@@ -370,33 +424,40 @@ export function PublicPortalShell({
           {/* Pilulas de navegacao mobile (visivel so em mobile) */}
           {navSections && navSections.length > 1 && (
             <div className="mb-4 lg:hidden">
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {navSections.map((section) => {
-                  const isActive = activeSection === section.value;
-                  // Pilula ativa: fill saturado com cor de marca + texto de contraste (branco).
-                  // Inativo: card com borda + texto normal.
-                  return (
-                    <button
-                      key={section.value}
-                      type="button"
-                      onClick={() => onSectionChange?.(section.value)}
-                      className={cn(
-                        'flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-                        isActive
-                          ? 'shadow-sm'
-                          : 'bg-card border border-border text-foreground hover:bg-muted',
-                      )}
-                      style={
-                        isActive
-                          ? { backgroundColor: effectiveBrand, color: '#ffffff' }
-                          : undefined
-                      }
-                    >
-                      {section.icon}
-                      {section.label}
-                    </button>
-                  );
-                })}
+              {/* Wrapper relativo p/ o fade não vazar pra fora da região das pills. */}
+              <div className="relative">
+                <div
+                  ref={pillsScrollRef}
+                  style={pillsMaskStyle}
+                  className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200"
+                >
+                  {navSections.map((section) => {
+                    const isActive = activeSection === section.value;
+                    // Pilula ativa: fill saturado com cor de marca + texto de contraste (branco).
+                    // Inativo: card com borda + texto normal.
+                    return (
+                      <button
+                        key={section.value}
+                        type="button"
+                        onClick={() => onSectionChange?.(section.value)}
+                        className={cn(
+                          'flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                          isActive
+                            ? 'shadow-sm'
+                            : 'bg-card border border-border text-foreground hover:bg-muted',
+                        )}
+                        style={
+                          isActive
+                            ? { backgroundColor: effectiveBrand, color: '#ffffff' }
+                            : undefined
+                        }
+                      >
+                        {section.icon}
+                        {section.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

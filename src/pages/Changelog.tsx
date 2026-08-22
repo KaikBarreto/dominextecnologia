@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.3',
+    date: '22 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Telas de cobrança e pagamento mais limpas e alinhadas',
+        description: 'Demos um acabamento nas telas de cobrança e de pagamento para deixá-las com o mesmo visual limpo e sóbrio do resto do sistema, incluindo a tela de "pagamento confirmado" que o seu cliente vê ao pagar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.2',
     date: '22 de agosto de 2026',
     type: 'patch',

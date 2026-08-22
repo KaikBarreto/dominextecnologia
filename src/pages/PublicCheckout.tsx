@@ -65,7 +65,7 @@ function CheckoutInner({
 
   if (isLoading) {
     return (
-      <PublicPortalShell title="Dominex" subtitle={t.subtitle}>
+      <PublicPortalShell title={t.subtitle} subtitle="">
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
           <span className="text-sm">{t.loading}</span>
@@ -76,7 +76,7 @@ function CheckoutInner({
 
   if (isError || !payload) {
     return (
-      <PublicPortalShell title="Dominex" subtitle={t.subtitle}>
+      <PublicPortalShell title={t.subtitle} subtitle="">
         <div className="flex flex-col items-center gap-3 py-14 text-center px-4">
           <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
             <AlertCircle className="h-7 w-7 text-destructive" />
@@ -134,13 +134,13 @@ function CheckoutInner({
 
         {/* ── Estado pago ── */}
         {isPaid ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-8 flex flex-col items-center gap-3 text-center">
+          <div className="rounded-lg border border-border bg-card px-5 py-8 flex flex-col items-center gap-3 text-center">
             <div className="w-14 h-14 rounded-full bg-emerald-600 flex items-center justify-center">
               <CheckCircle2 className="h-7 w-7 text-white" />
             </div>
             <div>
-              <p className="text-base font-bold text-emerald-700">{t.status.paidTitle}</p>
-              <p className="text-sm text-emerald-600 mt-0.5">{t.status.paidDescription}</p>
+              <p className="text-base font-bold text-foreground">{t.status.paidTitle}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{t.status.paidDescription}</p>
             </div>
           </div>
         ) : isCancelled ? (
@@ -170,13 +170,13 @@ function CheckoutInner({
           <div className="space-y-3">
             {/* Banner de vencida — só quando overdue */}
             {isOverdue && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 flex items-start gap-3">
+              <div className="rounded-lg border border-border bg-card px-5 py-4 flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
                   <Clock className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-amber-800">{t.status.overdueTitle}</p>
-                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">{t.status.overdueDescription}</p>
+                  <p className="text-sm font-bold text-foreground">{t.status.overdueTitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t.status.overdueDescription}</p>
                 </div>
               </div>
             )}

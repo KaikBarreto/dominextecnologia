@@ -244,9 +244,9 @@ export function SettingsAsaasContent() {
               <div className="space-y-2">
                 <p className="text-sm font-semibold">{t.activeState.feesTitle}</p>
                 <div className="rounded-lg border divide-y text-sm">
-                  <FeeRow label={t.activeState.feePix} value="R$ 0,00" />
-                  <FeeRow label={t.activeState.feeBoleto} value="R$ 0,99 a R$ 1,99" />
-                  <FeeRow label={t.activeState.feeCard} value="1,99% + R$ 0,49 a 2,99%" />
+                  <FeeRow label={t.activeState.feePix} value={t.activeState.feePixValue} />
+                  <FeeRow label={t.activeState.feeBoleto} value={t.activeState.feeBoletoValue} />
+                  <FeeRow label={t.activeState.feeCard} value={t.activeState.feeCardValue} />
                 </div>
                 <p className="text-xs text-muted-foreground">{t.activeState.feesNote}</p>
               </div>
