@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -30,6 +30,11 @@ import { formatBRL } from '@/utils/currency';
 interface ChargeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Quando informado, o select de cliente começa pré-preenchido com este ID. */
+  presetCustomerId?: string;
+  /** Quando true, o select de cliente fica travado (não editável) para manter
+   *  o contexto do cliente que está sendo visualizado. */
+  lockCustomer?: boolean;
 }
 
 type Method = 'PIX' | 'BOLETO' | 'BOTH';
@@ -49,7 +54,7 @@ function todayISO(): string {
   return new Date(d.getTime() - off).toISOString().slice(0, 10);
 }
 
-export function ChargeDialog({ open, onOpenChange }: ChargeDialogProps) {
+export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer }: ChargeDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
   const { toast } = useToast();
@@ -58,7 +63,7 @@ export function ChargeDialog({ open, onOpenChange }: ChargeDialogProps) {
   const { create } = useTenantCharges();
 
   // Estado do formulário
-  const [customerId, setCustomerId] = useState('');
+  const [customerId, setCustomerId] = useState(presetCustomerId ?? '');
   const [amount, setAmount] = useState(0); // em reais (número), máscara de centavos
   const [dueDate, setDueDate] = useState(todayISO());
   const [description, setDescription] = useState('');
@@ -76,8 +81,15 @@ export function ChargeDialog({ open, onOpenChange }: ChargeDialogProps) {
     [customers, customerId],
   );
 
+  // Sincroniza o cliente pré-selecionado quando o dialog abre com novo preset.
+  useEffect(() => {
+    if (open && presetCustomerId) {
+      setCustomerId(presetCustomerId);
+    }
+  }, [open, presetCustomerId]);
+
   const resetForm = () => {
-    setCustomerId('');
+    setCustomerId(presetCustomerId ?? '');
     setAmount(0);
     setDueDate(todayISO());
     setDescription('');
@@ -197,18 +209,25 @@ export function ChargeDialog({ open, onOpenChange }: ChargeDialogProps) {
             {/* Cliente */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t.fields.customer}</Label>
-              <Select value={customerId} onValueChange={setCustomerId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t.fields.customerPlaceholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {lockCustomer && presetCustomerId ? (
+                // Travado: exibe o nome do cliente sem permitir troca.
+                <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                  {customers.find((c) => c.id === presetCustomerId)?.name ?? presetCustomerId}
+                </div>
+              ) : (
+                <Select value={customerId} onValueChange={setCustomerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t.fields.customerPlaceholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Valor (máscara de dinheiro, NÃO NumericInput) */}

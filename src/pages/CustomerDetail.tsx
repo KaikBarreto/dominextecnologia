@@ -51,13 +51,20 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { CustomerTransactionDetailModal } from '@/components/financial/CustomerTransactionDetailModal';
+import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { parseISO } from 'date-fns';
 import type { FinancialTransaction } from '@/types/database';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { useTenantCharges, buildCheckoutUrl } from '@/hooks/useTenantCharges';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
+import { buildWhatsAppLink } from '@/utils/shareLinks';
+import { formatBRL } from '@/utils/currency';
+import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 
-type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
+type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas';
 
 type FinanceSubTab = 'tudo' | 'a_vencer' | 'pagas';
 
@@ -87,6 +94,9 @@ export default function CustomerDetail() {
   const canViewCustomerFinancial = isAdminOrGestor() || hasPermission('fn:view_customer_financial');
   const { hasModule } = useCompanyModules();
   const hasPortal = hasModule('customer_portal');
+  const hasCobrancas = hasModule('cobrancas');
+  const { isActive: isPaymentActive } = useTenantPaymentAccount();
+  const showCobrancasTab = hasCobrancas && isPaymentActive;
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
   const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
@@ -135,6 +145,7 @@ export default function CustomerDetail() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [financeSubTab, setFinanceSubTab] = useState<FinanceSubTab>('tudo');
   const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
+  const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -213,6 +224,23 @@ export default function CustomerDetail() {
   }, [customerTransactions, financeSubTab]);
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
+  // Cobranças do cliente (hook só faz a query quando showCobrancasTab e id disponíveis).
+  const { charges: customerCharges, isLoading: chargesLoading } = useTenantCharges(
+    showCobrancasTab && id ? { customerId: id } : undefined,
+  );
+  const chargesSummary = useMemo(() => {
+    const open = customerCharges
+      .filter((c) => {
+        const cls = classifyTenantChargeStatus(c.status);
+        return cls === 'pending' || cls === 'overdue';
+      })
+      .reduce((sum, c) => sum + c.value, 0);
+    const received = customerCharges
+      .filter((c) => classifyTenantChargeStatus(c.status) === 'paid')
+      .reduce((sum, c) => sum + c.value, 0);
+    return { open, received };
+  }, [customerCharges]);
+
   // Portal tickets (origin = 'portal')
   const portalTickets = customerOrders.filter(os => (os as any).origin === 'portal');
 
@@ -241,8 +269,11 @@ export default function CustomerDetail() {
     if (canViewCustomerFinancial) {
       allTabs.push({ key: 'financeiro', label: t.tabFinancial });
     }
+    if (showCobrancasTab) {
+      allTabs.push({ key: 'cobrancas', label: t.tabCharges });
+    }
     return allTabs;
-  }, [canViewCustomerFinancial, hasPortal, t]);
+  }, [canViewCustomerFinancial, hasPortal, showCobrancasTab, t]);
 
   // Portal é criado automaticamente para todo cliente: apenas buscamos o token ativo existente.
   useEffect(() => {
@@ -1249,6 +1280,238 @@ export default function CustomerDetail() {
         </div>
       )}
 
+      {activeTab === 'cobrancas' && showCobrancasTab && (() => {
+        // Mapeia status Asaas (MAIÚSCULO) → label i18n + cor do badge (bg saturado + texto branco).
+        function chargeStatusLabel(status: string): string {
+          const cls = classifyTenantChargeStatus(status);
+          if (cls === 'paid') return t.chargeStatusReceived;
+          if (cls === 'overdue') return t.chargeStatusOverdue;
+          if (cls === 'refunded') return t.chargeStatusRefunded;
+          if (cls === 'pending') return t.chargeStatusPending;
+          return t.chargeStatusOther;
+        }
+        function chargeStatusClass(status: string): string {
+          const cls = classifyTenantChargeStatus(status);
+          if (cls === 'paid') return 'bg-emerald-600 text-white';
+          if (cls === 'overdue') return 'bg-red-600 text-white';
+          if (cls === 'refunded') return 'bg-slate-500 text-white';
+          if (cls === 'pending') return 'bg-amber-500 text-white';
+          return 'bg-slate-400 text-white'; // other (status nao reconhecido)
+        }
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
+                {t.chargesHeading}
+              </h2>
+              <Button
+                className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setChargeDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t.chargeNewButton}
+              </Button>
+            </div>
+
+            {/* Resumo: Em aberto / Recebido */}
+            {customerCharges.length > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="bg-card border-border">
+                  <CardContent className="p-4 flex flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">{t.chargesSummaryOpen}</span>
+                    <span className="text-lg font-bold text-destructive">
+                      R$ {formatBRL(chargesSummary.open)}
+                    </span>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card border-border">
+                  <CardContent className="p-4 flex flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">{t.chargesSummaryReceived}</span>
+                    <span className="text-lg font-bold text-emerald-600">
+                      R$ {formatBRL(chargesSummary.received)}
+                    </span>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {chargesLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : customerCharges.length === 0 ? (
+              <EmptyState
+                size="compact"
+                icon={<DollarSign className="h-10 w-10" />}
+                title={t.chargesEmptyTitle}
+                description={t.chargesEmptyDesc}
+                action={{ label: t.chargeNewButton, onClick: () => setChargeDialogOpen(true) }}
+              />
+            ) : isMobile ? (
+              <div className="rounded-xl border bg-card overflow-hidden">
+                {customerCharges.map((charge) => {
+                  const checkoutUrl = charge.public_short_code
+                    ? buildCheckoutUrl(charge.public_short_code)
+                    : charge.invoice_url ?? '';
+                  const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
+                  const phone = customer.celular || customer.phone || '';
+                  const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
+                  const itemActions: ItemAction[] = [
+                    {
+                      key: 'copy',
+                      label: t.chargeCopyLink,
+                      icon: <Copy className="h-4 w-4" />,
+                      onClick: () => {
+                        if (checkoutUrl) {
+                          navigator.clipboard.writeText(checkoutUrl);
+                          toast({ title: t.chargeLinkCopied });
+                        }
+                      },
+                    },
+                    {
+                      key: 'whatsapp',
+                      label: t.chargeWhatsapp,
+                      icon: <WhatsAppIcon className="h-4 w-4" />,
+                      onClick: () => {
+                        const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
+                        window.open(link, '_blank', 'noopener,noreferrer');
+                      },
+                    },
+                    {
+                      key: 'checkout',
+                      label: t.chargeOpenCheckout,
+                      icon: <ExternalLink className="h-4 w-4" />,
+                      onClick: () => checkoutUrl && window.open(checkoutUrl, '_blank', 'noopener,noreferrer'),
+                    },
+                  ];
+                  return (
+                    <MobileListItem
+                      key={charge.id}
+                      actions={itemActions}
+                      title={
+                        <span className="truncate">
+                          {charge.description || '-'}
+                        </span>
+                      }
+                      subtitle={
+                        <span className="text-xs text-muted-foreground">
+                          {charge.due_date ? format(new Date(charge.due_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
+                        </span>
+                      }
+                      trailing={
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-sm font-semibold">R$ {formatBRL(charge.value)}</span>
+                          <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', chargeStatusClass(charge.status))}>
+                            {chargeStatusLabel(charge.status)}
+                          </span>
+                        </div>
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableCell className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colChargeDesc}</TableCell>
+                          <TableCell className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colChargeValue}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colChargeDue}</TableCell>
+                          <TableCell className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colChargeStatus}</TableCell>
+                          <TableCell className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colChargeActions}</TableCell>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {customerCharges.map((charge) => {
+                          const checkoutUrl = charge.public_short_code
+                            ? buildCheckoutUrl(charge.public_short_code)
+                            : charge.invoice_url ?? '';
+                          const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
+                          const phone = customer.celular || customer.phone || '';
+                          const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
+                          return (
+                            <TableRow key={charge.id}>
+                              <TableCell>
+                                <p className="text-sm font-medium truncate max-w-[180px] leading-tight">
+                                  {charge.description || '-'}
+                                </p>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm font-semibold">R$ {formatBRL(charge.value)}</span>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">
+                                {charge.due_date ? format(new Date(charge.due_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
+                              </TableCell>
+                              <TableCell>
+                                <span className={cn('inline-flex items-center text-xs px-2 py-0.5 rounded-full font-medium', chargeStatusClass(charge.status))}>
+                                  {chargeStatusLabel(charge.status)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="min-h-[44px] min-w-[44px]"
+                                    title={t.chargeCopyLink}
+                                    onClick={() => {
+                                      if (checkoutUrl) {
+                                        navigator.clipboard.writeText(checkoutUrl);
+                                        toast({ title: t.chargeLinkCopied });
+                                      }
+                                    }}
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="min-h-[44px] min-w-[44px] text-[#25D366]"
+                                    title={t.chargeWhatsapp}
+                                    onClick={() => {
+                                      const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
+                                      window.open(link, '_blank', 'noopener,noreferrer');
+                                    }}
+                                  >
+                                    <WhatsAppIcon className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="min-h-[44px] min-w-[44px]"
+                                    title={t.chargeOpenCheckout}
+                                    onClick={() => checkoutUrl && window.open(checkoutUrl, '_blank', 'noopener,noreferrer')}
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isMobile && (
+              <FABButton
+                icon={<Plus className="h-5 w-5" />}
+                label={t.chargeNewButton}
+                onClick={() => setChargeDialogOpen(true)}
+              />
+            )}
+          </div>
+        );
+      })()}
+
       {/* Equipment Form Dialog */}
       <EquipmentFormDialog
         open={equipFormOpen}
@@ -1441,6 +1704,15 @@ export default function CustomerDetail() {
         onOpenChange={(open) => { if (!open) setViewingTxn(null); }}
         transaction={viewingTxn}
       />
+
+      {showCobrancasTab && (
+        <ChargeDialog
+          open={chargeDialogOpen}
+          onOpenChange={setChargeDialogOpen}
+          presetCustomerId={id}
+          lockCustomer
+        />
+      )}
     </div>
   );
 }

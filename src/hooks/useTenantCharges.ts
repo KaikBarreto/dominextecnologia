@@ -89,11 +89,21 @@ export function buildCheckoutUrl(shortCode: string): string {
   return `https://dominex.app/pagar/${shortCode}`;
 }
 
-export function useTenantCharges() {
+export interface UseTenantChargesOptions {
+  /** Quando fornecido, a listagem filtra apenas cobranças deste cliente.
+   *  Cache isolado por customerId (queryKey diferente). */
+  customerId?: string;
+}
+
+export function useTenantCharges(options?: UseTenantChargesOptions) {
   const queryClient = useQueryClient();
   const { companyId } = useUserCompany();
+  const { customerId } = options ?? {};
 
-  const listKey = ['tenant-charges', companyId];
+  // queryKey inclui customerId para que o cache seja isolado por cliente.
+  const listKey = customerId
+    ? ['tenant-charges', companyId, 'customer', customerId]
+    : ['tenant-charges', companyId];
 
   const list = useQuery({
     queryKey: listKey,
@@ -101,13 +111,16 @@ export function useTenantCharges() {
     staleTime: 30 * 1000,
     queryFn: async (): Promise<TenantCharge[]> => {
       if (!companyId) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('tenant_charges')
         .select(
           'id, company_id, customer_id, value, description, billing_type, status, due_date, payment_date, public_short_code, invoice_url, pix_copy_paste, boleto_url, created_at',
         )
-        .eq('company_id', companyId)
-        .order('created_at', { ascending: false });
+        .eq('company_id', companyId);
+      if (customerId) {
+        query = query.eq('customer_id', customerId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return (data as TenantCharge[]) ?? [];
     },
@@ -154,7 +167,11 @@ export function useTenantCharges() {
       return { orphan: false, charge };
     },
     onSuccess: () => {
+      // Invalida a listagem filtrada (por cliente, se aplicável) e a geral.
       queryClient.invalidateQueries({ queryKey: listKey });
+      // Garante que a lista sem filtro (Financeiro) também atualiza quando a
+      // mutation veio de um contexto filtrado por cliente.
+      queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
       // Invalida os agregados do Financeiro para que o card "A RECEBER" e as
       // "Últimas movimentações" reflitam a nova transação sem reload de página.
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });

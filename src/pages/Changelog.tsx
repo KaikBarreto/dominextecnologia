@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.2',
+    date: '22 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobranças agora aparecem na ficha de cada cliente',
+        description: 'Na tela de um cliente chegou a aba "Cobranças": você vê num lugar só quanto ele tem em aberto e quanto já pagou, com a lista das cobranças dele. Dá para cobrar com um clique já com o nome dele preenchido, copiar o link, mandar pelo WhatsApp ou abrir a tela de pagamento na hora.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.1',
     date: '22 de agosto de 2026',
     type: 'patch',
