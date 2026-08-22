@@ -123,7 +123,7 @@ export const charges = {
         title: 'Cartão de crédito',
         open: 'Pagar com cartão',
       },
-      securityNote: 'Pagamento processado com segurança pela Asaas.',
+      securityNote: 'Pagamento processado com segurança por',
     },
   },
 
@@ -239,7 +239,7 @@ export const charges = {
         title: 'Credit card',
         open: 'Pay with card',
       },
-      securityNote: 'Payment securely processed by Asaas.',
+      securityNote: 'Payment securely processed by',
     },
   },
 
@@ -355,7 +355,7 @@ export const charges = {
         title: 'Tarjeta de crédito',
         open: 'Pagar con tarjeta',
       },
-      securityNote: 'Pago procesado de forma segura por Asaas.',
+      securityNote: 'Pago procesado de forma segura por',
     },
   },
 
@@ -471,7 +471,7 @@ export const charges = {
         title: 'Carte de crédit',
         open: 'Payer par carte',
       },
-      securityNote: 'Paiement traité en toute sécurité par Asaas.',
+      securityNote: 'Paiement traité en toute sécurité par',
     },
   },
 };

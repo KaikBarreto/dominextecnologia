@@ -28,6 +28,9 @@ import QRCodeStyling, {
 // White-label usa o logo do tenant via `logoUrl` prop.
 import dominexIconBlack from '@/assets/icone_preto.png';
 
+// Fator de super-amostragem: renderiza o QR em Nx e exibe em 1x (nitidez retina).
+const RENDER_SCALE = 3;
+
 export type QRDotStyle = 'square' | 'rounded' | 'dots' | 'classy';
 export type QRCornerStyle = 'square' | 'rounded' | 'dot';
 
@@ -109,8 +112,11 @@ export function BrandedQRCode({
 
   const options = useMemo(
     () => ({
-      width: size,
-      height: size,
+      // Renderiza o buffer em ALTA RESOLUÇÃO (3x) e exibe no tamanho `size` via CSS
+      // (canvas escalado no effect). Sem isso, o canvas sai em 1x e fica pixelado
+      // no retina — inclusive o logo do centro. 3x cobre telas 2x/3x com folga.
+      width: size * RENDER_SCALE,
+      height: size * RENDER_SCALE,
       type: 'canvas' as const,
       data: value,
       image,
@@ -125,7 +131,7 @@ export function BrandedQRCode({
         // Logo pequeno (~20% do lado) — dentro do que o nível H aguenta com folga.
         imageSize: 0.2,
         crossOrigin: 'anonymous',
-        margin: 4,
+        margin: 4 * RENDER_SCALE,
       },
       dotsOptions: {
         type: DOT_TYPE[dotStyle],
@@ -158,10 +164,16 @@ export function BrandedQRCode({
     container.innerHTML = '';
     const qr = new QRCodeStyling(options);
     qr.append(container);
+    // Buffer é 3x; exibe no tamanho real via CSS pra ficar nítido no retina.
+    const canvas = container.querySelector('canvas');
+    if (canvas) {
+      canvas.style.width = `${size}px`;
+      canvas.style.height = `${size}px`;
+    }
     return () => {
       container.innerHTML = '';
     };
-  }, [options]);
+  }, [options, size]);
 
   return (
     <div

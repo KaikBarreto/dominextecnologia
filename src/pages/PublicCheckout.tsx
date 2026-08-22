@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
+import asaasLogo from '@/assets/logo-asaas.png';
 import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
@@ -272,6 +273,7 @@ function CheckoutInner({
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Shield className="h-3.5 w-3.5 shrink-0" />
             <span>{t.securityNote}</span>
+            <img src={asaasLogo} alt="Asaas" className="h-4 w-auto shrink-0" />
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Lock className="h-3.5 w-3.5 shrink-0" />
