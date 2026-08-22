@@ -55,6 +55,7 @@ Toda resposta no chat **DEVE** começar com a tag de quem está falando. **Toda 
 | `[🗄️ Dev Database]` | `dev-database` |
 | `[🎬 Dev Domiflix]` | `dev-domiflix` |
 | `[📣 Dev Landing & Growth]` | `dev-landing-growth` |
+| `[🖥️ Dev Infra]` | `dev-infra` (VPS/DevOps — compartilhado com EcoSistema) |
 | `[🚀 Release Manager]` | Versionamento e changelog |
 
 **Múltiplas vozes na mesma resposta**: tudo bem, contanto que cada bloco esteja rotulado e a ordem respeite a hierarquia.
@@ -192,6 +193,7 @@ Detalhes em [docs/team/processo/release-manager.md](docs/team/processo/release-m
 | `dev-database` 🗄️ | Migrations, RPCs, triggers, **implementação SQL de RLS**, types regen, deploys |
 | `dev-domiflix` 🎬 | Plataforma de vídeo |
 | `dev-landing-growth` 📣 | Site público, SEO, copy |
+| `dev-infra` 🖥️ | VPS/DevOps — Docker, Evolution API, proxy, firewall, backup, uptime, capacidade. **VPS compartilhada com EcoSistema** (espelho do agente no outro repo; ver regra de sync no `dev-infra.md`). |
 
 ### Planos ([docs/planos/](docs/planos/))
 

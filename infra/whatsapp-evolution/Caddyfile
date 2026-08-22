@@ -1,0 +1,48 @@
+# Caddyfile — proxy HTTPS da Evolution API (VPS compartilhada Dominex + EcoSistema)
+# =============================================================================
+# O Caddy roda NO HOST (systemd), obtém e renova o cert TLS automaticamente via
+# Let's Encrypt e encaminha pra Evolution, que escuta SÓ em 127.0.0.1:8080
+# (nunca exposta crua na internet — ver docker-compose.yml).
+#
+# Instalação e recarga: ver RUNBOOK.md, Passo 9.
+#   sudo cp Caddyfile /etc/caddy/Caddyfile   # troque wa.<DOMINIO> pelo real antes
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# -----------------------------------------------------------------------------
+# ⚠️ DNS na Cloudflare: o registro A/AAAA de wa.<DOMINIO> DEVE ficar em "DNS only"
+# (nuvem CINZA, não laranja/proxied). Por quê:
+#   1. ACME/Let's Encrypt: o desafio HTTP-01 do Caddy precisa chegar direto na VPS
+#      (porta 80). Com o proxy laranja da Cloudflare no meio, o Caddy não completa
+#      o desafio e o cert não emite. (Deixe a 80 e a 443 abertas no ufw — RUNBOOK Passo 5.)
+#   2. WebSocket: a Evolution/Baileys usa conexões longas/WebSocket. O proxy da
+#      Cloudflare adiciona timeouts e camadas que atrapalham a sessão. Direto é mais
+#      estável.
+#   3. TLS: quem termina o HTTPS é o Caddy na VPS, com cert próprio. Não precisamos
+#      do TLS da Cloudflare no caminho.
+# Registro correto na Cloudflare:  Tipo A · Nome wa · Conteúdo <IP_DA_VPS> · Proxy OFF (DNS only).
+# -----------------------------------------------------------------------------
+
+wa.<DOMINIO> {
+	# Encaminha tudo pra Evolution local. O Caddy repassa Upgrade/Connection,
+	# então WebSocket funciona sem config extra.
+	reverse_proxy 127.0.0.1:8080
+
+	# HTTPS é automático (Let's Encrypt). Se quiser receber avisos de expiração/
+	# renovação de cert, descomente e ponha um e-mail:
+	# tls kaik@<DOMINIO>
+
+	# Log enxuto do proxy (opcional). Não loga corpo. Ajuda a diagnosticar 502/timeout.
+	log {
+		output file /var/log/caddy/wa.access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+		level ERROR
+	}
+}
+
+# Nota: NÃO adicione aqui nenhum bloco que exponha a 8080 direto, nem outro host que
+# aponte pra Evolution sem TLS. Um único endpoint HTTPS serve os dois produtos; o
+# namespacing é por INSTÂNCIA dentro da Evolution (dominex_<company_id> /
+# ecosistema_cobranca), não por subdomínio.

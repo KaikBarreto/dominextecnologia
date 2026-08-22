@@ -1,0 +1,86 @@
+# =============================================================================
+# Evolution API (auto-hospedada) — infra do add-on "Avisos de WhatsApp" do Dominex.
+# =============================================================================
+# NÃO é a API oficial da Meta: é a Evolution API open source (Baileys) que conecta
+# o WhatsApp do tenant via QR code. Sobe num VPS BRASILEIRO dedicado.
+#
+# Serviços:
+#   - evolution : a API REST (porta interna 8080; NUNCA exposta direto — só atrás
+#     do proxy HTTPS, ver README). Sessão persistida no Postgres + Redis.
+#   - postgres  : store de instâncias/sessões da Evolution (volume nomeado).
+#   - redis     : cache/estado de conexão (volume nomeado).
+#
+# Segredos: NENHUM valor real aqui. Tudo vem do arquivo .env ao lado (gitignored),
+# preenchido no VPS. Ver .env.example e o README de setup.
+# =============================================================================
+
+services:
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    # Bind SOMENTE em 127.0.0.1 — a porta pública é do proxy HTTPS (Caddy/Nginx),
+    # nunca a 8080 crua. Assim a API não fica exposta aberta na internet.
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # ---- Auth global da API (a mesma chave vai em EVOLUTION_API_KEY nos secrets do Supabase).
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      AUTHENTICATION_TYPE: apikey
+
+      # ---- Servidor.
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      # URL pública HTTPS (atrás do proxy). Ex.: https://wa.suaempresa.com.br
+      SERVER_URL: ${EVOLUTION_SERVER_URL}
+
+      # ---- Persistência da sessão no Postgres (sobrevive a restart do container).
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+
+      # ---- Redis (estado de conexão).
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/0
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_LOCAL_ENABLED: "false"
+
+      # ---- Webhook global desligado: cada instância define o webhook próprio
+      # (whatsapp-connect aponta pra edge whatsapp-webhook com o secret no header).
+      WEBHOOK_GLOBAL_ENABLED: "false"
+
+      # ---- Log enxuto (não logar corpo de mensagem).
+      LOG_LEVEL: ERROR
+      LOG_BAILEYS: error
+    volumes:
+      - evolution_instances:/evolution/instances
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: evolution
+    # NÃO expõe porta — só a rede interna do compose acessa.
+    volumes:
+      - evolution_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - evolution_redis:/data
+
+volumes:
+  evolution_instances:
+  evolution_pg:
+  evolution_redis:
