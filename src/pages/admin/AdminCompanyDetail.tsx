@@ -27,6 +27,7 @@ import { CompanyPaymentsTab } from '@/components/admin/CompanyPaymentsTab';
 import { cn } from '@/lib/utils';
 import { cpfCnpjMask } from '@/utils/masks';
 import { AdminNfseTierControl } from '@/components/admin/AdminNfseTierControl';
+import { AdminWhatsappTierControl } from '@/components/admin/AdminWhatsappTierControl';
 import { getSegment } from '@/utils/companySegments';
 import { useSubscriptionModules } from '@/components/admin/ModuleGrid';
 
@@ -409,6 +410,10 @@ export default function AdminCompanyDetail() {
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Nível NFS-e</span>
                 <AdminNfseTierControl companyId={id!} currentTier={company.nfse_tier ?? 1} />
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Nível WhatsApp</span>
+                <AdminWhatsappTierControl companyId={id!} currentTier={company.whatsapp_tier ?? 1} />
               </div>
             </div>
             <div className="border-t pt-3 mt-3">

@@ -139,6 +139,51 @@ verify_jwt = false
 [functions.notify-quote-response]
 verify_jwt = false
 
+# whatsapp-connect (add-on Avisos de WhatsApp): cria/reconecta a instância do
+# tenant na Evolution API e devolve o QR code. Auth de tenant (Authorization
+# Bearer + módulo 'whatsapp' + can_manage_system) validada na própria função —
+# por isso verify_jwt=false (o gate é feito via auth.getUser() com o Bearer).
+[functions.whatsapp-connect]
+verify_jwt = false
+
+# whatsapp-send: dispara o aviso ao cliente final quando a OS muda de status.
+# Duas entradas privilegiadas — usuário autenticado (Bearer + módulo +
+# can_manage_system) OU chamada interna assinada (x-whatsapp-internal-secret ==
+# WHATSAPP_INTERNAL_SECRET, caminho server-to-server da Onda 3). Nenhum caminho
+# anônimo. verify_jwt=false porque o modo interno não manda JWT de usuário.
+[functions.whatsapp-send]
+verify_jwt = false
+
+# whatsapp-webhook: recepção de eventos da Evolution (conexão/BAN/entrega/opt-out).
+# SEM JWT de usuário — segurança é o EVOLUTION_WEBHOOK_SECRET no header
+# x-evolution-webhook-secret, comparado em tempo constante.
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+# tenant-asaas-provision (add-on Cobranças): recebe a API key BYO do tenant, valida
+# no Asaas, guarda no Vault, registra o webhook. Auth de tenant (Bearer + módulo
+# 'cobrancas' + can_manage_system) validada na própria função — por isso verify_jwt=false
+# (o gate roda via auth.getUser() com o Bearer; assim o corpo de erro PT-BR chega no
+# error.context do hook em vez de o gateway rejeitar antes).
+[functions.tenant-asaas-provision]
+verify_jwt = false
+
+# tenant-asaas-create-charge: cria cobrança avulsa na conta Asaas do tenant. Mesmo gate
+# (Bearer + módulo 'cobrancas' + can_manage_system) na própria função.
+[functions.tenant-asaas-create-charge]
+verify_jwt = false
+
+# tenant-asaas-webhook: recepção de eventos da Asaas da conta do TENANT. SEM JWT de
+# usuário — segurança é o header asaas-access-token, validado timing-safe contra o token
+# daquele tenant (resolvido por externalReference → Vault). Fail-closed 401.
+[functions.tenant-asaas-webhook]
+verify_jwt = false
+
+# get-tenant-payment-checkout: dados do checkout público (allowlist). Gate = public_short_code.
+# Sem sessão — verify_jwt=false.
+[functions.get-tenant-payment-checkout]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)

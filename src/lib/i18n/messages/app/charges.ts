@@ -1,0 +1,413 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// i18n do APP — domínio COBRANÇAS (recebimento do cliente final via Asaas).
+//
+// Cobre: o botão/dialog "Cobrar" no financeiro (cobrança avulsa) e o CHECKOUT
+// PÚBLICO (/pagar/:code). As 4 traduções JUNTAS, chaveadas por locale.
+// pt-br é a FONTE; tradução SEMÂNTICA (termos de mercado por idioma).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const charges = {
+  'pt-br': {
+    // ── Botão + dialog de cobrança avulsa (financeiro) ────────────────────────
+    cobrar: {
+      button: 'Cobrar',
+      dialogTitle: 'Nova cobrança',
+      dialogDescription: 'Gere um link de pagamento para enviar ao seu cliente.',
+      notActivated: {
+        title: 'Ative os recebimentos primeiro',
+        description: 'Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações.',
+        cta: 'Ir para Integrações',
+      },
+      fields: {
+        customer: 'Cliente',
+        customerPlaceholder: 'Selecione o cliente',
+        value: 'Valor',
+        valuePlaceholder: '0,00',
+        dueDate: 'Vencimento',
+        description: 'Descrição',
+        descriptionPlaceholder: 'Ex.: Manutenção do ar-condicionado',
+        method: 'Forma de pagamento',
+      },
+      methods: {
+        pix: 'Pix',
+        boleto: 'Boleto',
+        both: 'Pix e boleto',
+      },
+      submit: 'Gerar cobrança',
+      submitting: 'Gerando…',
+      cancel: 'Cancelar',
+      validation: {
+        customerRequired: 'Selecione um cliente.',
+        valueRequired: 'Informe um valor maior que zero.',
+        dueDateRequired: 'Informe o vencimento.',
+      },
+      success: {
+        title: 'Cobrança gerada',
+        description: 'Copie o link ou envie direto pelo WhatsApp.',
+        linkLabel: 'Link de pagamento',
+        copy: 'Copiar link',
+        copied: 'Link copiado!',
+        sendWhatsapp: 'Enviar por WhatsApp',
+        newCharge: 'Nova cobrança',
+        close: 'Fechar',
+      },
+      // Mensagem pré-preenchida do WhatsApp (negrito com *asterisco simples*).
+      whatsappMessage: 'Olá! Segue o link para pagamento de *{value}*{description}. É rápido e seguro:',
+      noCustomers: {
+        title: 'Nenhum cliente cadastrado',
+        description: 'Cadastre um cliente antes de gerar uma cobrança.',
+      },
+      copyFallback: 'Não foi possível copiar automaticamente. Selecione e copie o link manualmente.',
+      error: 'Não foi possível gerar a cobrança. Tente novamente.',
+      orphan: {
+        notice: 'Cobrança criada no Asaas. Use este link para receber o pagamento.',
+        linkLabel: 'Link do Asaas',
+      },
+    },
+
+    // ── Checkout público (/pagar/:code) ───────────────────────────────────────
+    checkout: {
+      loading: 'Carregando cobrança…',
+      notFound: {
+        title: 'Cobrança não encontrada',
+        description: 'Este link de pagamento é inválido ou expirou. Confirme o link com quem o enviou.',
+      },
+      subtitle: 'Pagamento',
+      amountLabel: 'Valor a pagar',
+      dueLabel: 'Vencimento',
+      descriptionLabel: 'Descrição',
+      status: {
+        paidTitle: 'Pagamento confirmado',
+        paidDescription: 'Recebemos seu pagamento. Obrigado!',
+        pendingTitle: 'Aguardando pagamento',
+        overdueTitle: 'Cobrança vencida',
+        overdueDescription: 'Esta cobrança está vencida. Entre em contato com quem emitiu para regularizar.',
+        cancelledTitle: 'Cobrança cancelada',
+        cancelledDescription: 'Esta cobrança foi cancelada. Entre em contato com quem emitiu para mais informações.',
+        refundedTitle: 'Pagamento estornado',
+        refundedDescription: 'O pagamento desta cobrança foi estornado.',
+      },
+      pixCopyFallback: 'Não foi possível copiar automaticamente. Selecione e copie o código manualmente.',
+      methods: {
+        pix: 'Pagar com Pix',
+        boleto: 'Pagar com boleto',
+        card: 'Pagar com cartão',
+      },
+      pix: {
+        title: 'Pague com Pix',
+        instructions: 'Escaneie o QR Code com o app do seu banco ou use o Pix copia e cola abaixo.',
+        copyCode: 'Copiar código Pix',
+        copied: 'Código copiado!',
+      },
+      boleto: {
+        title: 'Boleto bancário',
+        open: 'Abrir boleto',
+      },
+      card: {
+        title: 'Cartão de crédito',
+        open: 'Pagar com cartão',
+      },
+      securityNote: 'Pagamento processado com segurança pela Asaas.',
+    },
+  },
+
+  en: {
+    cobrar: {
+      button: 'Charge',
+      dialogTitle: 'New charge',
+      dialogDescription: 'Generate a payment link to send to your customer.',
+      notActivated: {
+        title: 'Activate payments first',
+        description: 'To charge your customers online, activate the payments integration in Settings, Integrations.',
+        cta: 'Go to Integrations',
+      },
+      fields: {
+        customer: 'Customer',
+        customerPlaceholder: 'Select the customer',
+        value: 'Amount',
+        valuePlaceholder: '0.00',
+        dueDate: 'Due date',
+        description: 'Description',
+        descriptionPlaceholder: 'E.g.: Air conditioning maintenance',
+        method: 'Payment method',
+      },
+      methods: {
+        pix: 'Pix',
+        boleto: 'Bank slip',
+        both: 'Pix and bank slip',
+      },
+      submit: 'Generate charge',
+      submitting: 'Generating…',
+      cancel: 'Cancel',
+      validation: {
+        customerRequired: 'Select a customer.',
+        valueRequired: 'Enter an amount greater than zero.',
+        dueDateRequired: 'Enter the due date.',
+      },
+      success: {
+        title: 'Charge created',
+        description: 'Copy the link or send it straight through WhatsApp.',
+        linkLabel: 'Payment link',
+        copy: 'Copy link',
+        copied: 'Link copied!',
+        sendWhatsapp: 'Send via WhatsApp',
+        newCharge: 'New charge',
+        close: 'Close',
+      },
+      whatsappMessage: 'Hi! Here is the payment link for *{value}*{description}. Quick and secure:',
+      noCustomers: {
+        title: 'No customers registered',
+        description: 'Please register a customer before generating a charge.',
+      },
+      copyFallback: 'Could not copy automatically. Please select and copy the link manually.',
+      error: 'We could not generate the charge. Please try again.',
+      orphan: {
+        notice: 'Charge created on Asaas. Use this link to collect the payment.',
+        linkLabel: 'Asaas link',
+      },
+    },
+    checkout: {
+      loading: 'Loading charge…',
+      notFound: {
+        title: 'Charge not found',
+        description: 'This payment link is invalid or expired. Please confirm the link with the sender.',
+      },
+      subtitle: 'Payment',
+      amountLabel: 'Amount to pay',
+      dueLabel: 'Due date',
+      descriptionLabel: 'Description',
+      status: {
+        paidTitle: 'Payment confirmed',
+        paidDescription: 'We received your payment. Thank you!',
+        pendingTitle: 'Awaiting payment',
+        overdueTitle: 'Charge overdue',
+        overdueDescription: 'This charge is past due. Please contact the issuer to resolve.',
+        cancelledTitle: 'Charge cancelled',
+        cancelledDescription: 'This charge has been cancelled. Please contact the issuer for more information.',
+        refundedTitle: 'Payment refunded',
+        refundedDescription: 'The payment for this charge has been refunded.',
+      },
+      pixCopyFallback: 'Could not copy automatically. Please select and copy the code manually.',
+      methods: {
+        pix: 'Pay with Pix',
+        boleto: 'Pay with bank slip',
+        card: 'Pay with card',
+      },
+      pix: {
+        title: 'Pay with Pix',
+        instructions: 'Scan the QR Code with your bank app or use the Pix copy and paste code below.',
+        copyCode: 'Copy Pix code',
+        copied: 'Code copied!',
+      },
+      boleto: {
+        title: 'Bank slip',
+        open: 'Open bank slip',
+      },
+      card: {
+        title: 'Credit card',
+        open: 'Pay with card',
+      },
+      securityNote: 'Payment securely processed by Asaas.',
+    },
+  },
+
+  es: {
+    cobrar: {
+      button: 'Cobrar',
+      dialogTitle: 'Nuevo cobro',
+      dialogDescription: 'Genera un enlace de pago para enviar a tu cliente.',
+      notActivated: {
+        title: 'Activa los cobros primero',
+        description: 'Para cobrar a tus clientes en línea, activa la integración de cobros en Configuración, Integraciones.',
+        cta: 'Ir a Integraciones',
+      },
+      fields: {
+        customer: 'Cliente',
+        customerPlaceholder: 'Selecciona el cliente',
+        value: 'Importe',
+        valuePlaceholder: '0,00',
+        dueDate: 'Vencimiento',
+        description: 'Descripción',
+        descriptionPlaceholder: 'Ej.: Mantenimiento del aire acondicionado',
+        method: 'Forma de pago',
+      },
+      methods: {
+        pix: 'Pix',
+        boleto: 'Boleto',
+        both: 'Pix y boleto',
+      },
+      submit: 'Generar cobro',
+      submitting: 'Generando…',
+      cancel: 'Cancelar',
+      validation: {
+        customerRequired: 'Selecciona un cliente.',
+        valueRequired: 'Ingresa un importe mayor que cero.',
+        dueDateRequired: 'Ingresa el vencimiento.',
+      },
+      success: {
+        title: 'Cobro generado',
+        description: 'Copia el enlace o envíalo directo por WhatsApp.',
+        linkLabel: 'Enlace de pago',
+        copy: 'Copiar enlace',
+        copied: '¡Enlace copiado!',
+        sendWhatsapp: 'Enviar por WhatsApp',
+        newCharge: 'Nuevo cobro',
+        close: 'Cerrar',
+      },
+      whatsappMessage: '¡Hola! Aquí está el enlace de pago de *{value}*{description}. Rápido y seguro:',
+      noCustomers: {
+        title: 'Sin clientes registrados',
+        description: 'Registra un cliente antes de generar un cobro.',
+      },
+      copyFallback: 'No fue posible copiar automáticamente. Selecciona y copia el enlace manualmente.',
+      error: 'No pudimos generar el cobro. Inténtalo de nuevo.',
+      orphan: {
+        notice: 'Cobro creado en Asaas. Usa este enlace para recibir el pago.',
+        linkLabel: 'Enlace de Asaas',
+      },
+    },
+    checkout: {
+      loading: 'Cargando cobro…',
+      notFound: {
+        title: 'Cobro no encontrado',
+        description: 'Este enlace de pago no es válido o expiró. Confirma el enlace con quien lo envió.',
+      },
+      subtitle: 'Pago',
+      amountLabel: 'Importe a pagar',
+      dueLabel: 'Vencimiento',
+      descriptionLabel: 'Descripción',
+      status: {
+        paidTitle: 'Pago confirmado',
+        paidDescription: 'Recibimos tu pago. ¡Gracias!',
+        pendingTitle: 'Esperando el pago',
+        overdueTitle: 'Cobro vencido',
+        overdueDescription: 'Este cobro está vencido. Contacta a quien lo emitió para regularizarlo.',
+        cancelledTitle: 'Cobro cancelado',
+        cancelledDescription: 'Este cobro fue cancelado. Contacta a quien lo emitió para más información.',
+        refundedTitle: 'Pago devuelto',
+        refundedDescription: 'El pago de este cobro fue reembolsado.',
+      },
+      pixCopyFallback: 'No fue posible copiar automáticamente. Selecciona y copia el código manualmente.',
+      methods: {
+        pix: 'Pagar con Pix',
+        boleto: 'Pagar con boleto',
+        card: 'Pagar con tarjeta',
+      },
+      pix: {
+        title: 'Paga con Pix',
+        instructions: 'Escanea el código QR con la app de tu banco o usa el código Pix copiar y pegar de abajo.',
+        copyCode: 'Copiar código Pix',
+        copied: '¡Código copiado!',
+      },
+      boleto: {
+        title: 'Boleto bancario',
+        open: 'Abrir boleto',
+      },
+      card: {
+        title: 'Tarjeta de crédito',
+        open: 'Pagar con tarjeta',
+      },
+      securityNote: 'Pago procesado de forma segura por Asaas.',
+    },
+  },
+
+  fr: {
+    cobrar: {
+      button: 'Encaisser',
+      dialogTitle: 'Nouvelle facture',
+      dialogDescription: 'Générez un lien de paiement à envoyer à votre client.',
+      notActivated: {
+        title: `Activez d'abord les encaissements`,
+        description: 'Pour encaisser vos clients en ligne, activez l`intégration des encaissements dans Paramètres, Intégrations.',
+        cta: 'Aller aux Intégrations',
+      },
+      fields: {
+        customer: 'Client',
+        customerPlaceholder: 'Sélectionnez le client',
+        value: 'Montant',
+        valuePlaceholder: '0,00',
+        dueDate: `Échéance`,
+        description: 'Description',
+        descriptionPlaceholder: 'Ex. : Entretien de la climatisation',
+        method: 'Mode de paiement',
+      },
+      methods: {
+        pix: 'Pix',
+        boleto: 'Boleto',
+        both: 'Pix et boleto',
+      },
+      submit: 'Générer la facture',
+      submitting: 'Génération…',
+      cancel: 'Annuler',
+      validation: {
+        customerRequired: 'Sélectionnez un client.',
+        valueRequired: 'Saisissez un montant supérieur à zéro.',
+        dueDateRequired: `Saisissez l'échéance.`,
+      },
+      success: {
+        title: 'Facture créée',
+        description: `Copiez le lien ou envoyez-le directement par WhatsApp.`,
+        linkLabel: 'Lien de paiement',
+        copy: 'Copier le lien',
+        copied: 'Lien copié !',
+        sendWhatsapp: 'Envoyer par WhatsApp',
+        newCharge: 'Nouvelle facture',
+        close: 'Fermer',
+      },
+      whatsappMessage: 'Bonjour ! Voici le lien de paiement de *{value}*{description}. Rapide et sécurisé :',
+      noCustomers: {
+        title: 'Aucun client enregistré',
+        description: `Enregistrez un client avant de générer une facture.`,
+      },
+      copyFallback: `Impossible de copier automatiquement. Sélectionnez et copiez le lien manuellement.`,
+      error: `Nous n'avons pas pu générer la facture. Veuillez réessayer.`,
+      orphan: {
+        notice: `Facture créée sur Asaas. Utilisez ce lien pour encaisser le paiement.`,
+        linkLabel: `Lien Asaas`,
+      },
+    },
+    checkout: {
+      loading: 'Chargement de la facture…',
+      notFound: {
+        title: 'Facture introuvable',
+        description: `Ce lien de paiement est invalide ou expiré. Confirmez le lien avec l'expéditeur.`,
+      },
+      subtitle: 'Paiement',
+      amountLabel: 'Montant à payer',
+      dueLabel: `Échéance`,
+      descriptionLabel: 'Description',
+      status: {
+        paidTitle: 'Paiement confirmé',
+        paidDescription: 'Nous avons reçu votre paiement. Merci !',
+        pendingTitle: 'En attente de paiement',
+        overdueTitle: 'Facture en retard',
+        overdueDescription: `Cette facture est en retard. Contactez l'émetteur pour la régulariser.`,
+        cancelledTitle: 'Facture annulée',
+        cancelledDescription: `Cette facture a été annulée. Contactez l'émetteur pour plus d'informations.`,
+        refundedTitle: 'Paiement remboursé',
+        refundedDescription: 'Le paiement de cette facture a été remboursé.',
+      },
+      pixCopyFallback: `Impossible de copier automatiquement. Sélectionnez et copiez le code manuellement.`,
+      methods: {
+        pix: 'Payer avec Pix',
+        boleto: 'Payer avec boleto',
+        card: 'Payer par carte',
+      },
+      pix: {
+        title: 'Payer avec Pix',
+        instructions: `Scannez le QR Code avec l'app de votre banque ou utilisez le code Pix copier-coller ci-dessous.`,
+        copyCode: 'Copier le code Pix',
+        copied: 'Code copié !',
+      },
+      boleto: {
+        title: 'Boleto bancaire',
+        open: 'Ouvrir le boleto',
+      },
+      card: {
+        title: 'Carte de crédit',
+        open: 'Payer par carte',
+      },
+      securityNote: 'Paiement traité en toute sécurité par Asaas.',
+    },
+  },
+};

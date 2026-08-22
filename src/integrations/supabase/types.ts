@@ -3778,6 +3778,7 @@ export type Database = {
           payroll_period: string | null
           receipt_url: string | null
           service_order_id: string | null
+          tenant_charge_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transfer_pair_id: string | null
@@ -3814,6 +3815,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transfer_pair_id?: string | null
@@ -3850,6 +3852,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
           transfer_pair_id?: string | null
@@ -3917,6 +3920,13 @@ export type Database = {
             columns: ["service_order_id"]
             isOneToOne: false
             referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_tenant_charge_id_fkey"
+            columns: ["tenant_charge_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_charges"
             referencedColumns: ["id"]
           },
         ]
@@ -8041,6 +8051,196 @@ export type Database = {
           },
         ]
       }
+      tenant_charges: {
+        Row: {
+          asaas_payment_id: string | null
+          billing_type: string | null
+          boleto_url: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          invoice_url: string | null
+          net_value: number | null
+          payment_date: string | null
+          pix_copy_paste: string | null
+          public_short_code: string | null
+          source_id: string | null
+          source_type: string
+          status: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          asaas_payment_id?: string | null
+          billing_type?: string | null
+          boleto_url?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_url?: string | null
+          net_value?: number | null
+          payment_date?: string | null
+          pix_copy_paste?: string | null
+          public_short_code?: string | null
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          asaas_payment_id?: string | null
+          billing_type?: string | null
+          boleto_url?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_url?: string | null
+          net_value?: number | null
+          payment_date?: string | null
+          pix_copy_paste?: string | null
+          public_short_code?: string | null
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_charges_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_payment_accounts: {
+        Row: {
+          asaas_account_id: string | null
+          asaas_webhook_id: string | null
+          auto_post_to_finance: boolean
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          mode: string
+          provider: string
+          status: string
+          updated_at: string
+          vault_secret_name: string | null
+          wallet_id: string | null
+          webhook_auth_token_name: string | null
+        }
+        Insert: {
+          asaas_account_id?: string | null
+          asaas_webhook_id?: string | null
+          auto_post_to_finance?: boolean
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          provider?: string
+          status?: string
+          updated_at?: string
+          vault_secret_name?: string | null
+          wallet_id?: string | null
+          webhook_auth_token_name?: string | null
+        }
+        Update: {
+          asaas_account_id?: string | null
+          asaas_webhook_id?: string | null
+          auto_post_to_finance?: boolean
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          provider?: string
+          status?: string
+          updated_at?: string
+          vault_secret_name?: string | null
+          wallet_id?: string | null
+          webhook_auth_token_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_payment_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_payment_webhook_events: {
+        Row: {
+          asaas_payment_id: string | null
+          company_id: string | null
+          event_id: string
+          event_type: string | null
+          last_error: string | null
+          payload_hash: string | null
+          raw_payload: Json | null
+          received_at: string
+          retry_count: number
+          status: string
+        }
+        Insert: {
+          asaas_payment_id?: string | null
+          company_id?: string | null
+          event_id: string
+          event_type?: string | null
+          last_error?: string | null
+          payload_hash?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          retry_count?: number
+          status?: string
+        }
+        Update: {
+          asaas_payment_id?: string | null
+          company_id?: string | null
+          event_id?: string
+          event_type?: string | null
+          last_error?: string | null
+          payload_hash?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          retry_count?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_payment_webhook_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_tasks: {
         Row: {
           assigned_to: string | null
@@ -8884,6 +9084,10 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: undefined
       }
+      apply_tenant_charge_payment: {
+        Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
+        Returns: Json
+      }
       asaas_reconciliation_alert: { Args: never; Returns: number }
       asaas_reconciliation_check: {
         Args: never
@@ -8926,6 +9130,17 @@ export type Database = {
           due_date: string
           period: string
         }[]
+      }
+      create_tenant_charge_receivable: {
+        Args: {
+          p_amount: number
+          p_company_id: string
+          p_customer_id: string
+          p_description: string
+          p_due_date: string
+          p_tenant_charge_id: string
+        }
+        Returns: string
       }
       credit_ltv_once_for_payment: {
         Args: {
@@ -9436,6 +9651,12 @@ export type Database = {
       unresolve_billing_reminder: {
         Args: { p_transaction_id: string }
         Returns: undefined
+      }
+      vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
+      vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
+      vault_upsert_tenant_secret: {
+        Args: { p_name: string; p_secret: string }
+        Returns: string
       }
       whatsapp_can_send: { Args: { p_company_id: string }; Returns: boolean }
     }

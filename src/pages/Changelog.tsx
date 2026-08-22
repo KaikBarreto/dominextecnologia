@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.0',
+    date: '22 de agosto de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Cobre seus clientes por Pix, boleto e cartão direto no sistema',
+        description: 'Chegou o módulo Cobranças. Conecte sua conta e gere um link de pagamento em segundos para qualquer cliente: Pix (com código e QR Code), boleto ou cartão de crédito. É só enviar o link, inclusive pelo WhatsApp. Quando o cliente paga, a cobrança dá baixa sozinha no seu Financeiro, saindo de "a receber" e entrando como recebido, sem você precisar lançar nada. Você vê as taxas antes de cobrar e pode ligar ou desligar o lançamento automático quando quiser.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.20.4',
     date: '21 de agosto de 2026',
     type: 'patch',

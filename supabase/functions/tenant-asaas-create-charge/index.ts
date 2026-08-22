@@ -1,0 +1,346 @@
+// tenant-asaas-create-charge
+// ---------------------------
+// PRIVILEGIADA (Bearer + módulo 'cobrancas' + can_manage_system). Cria uma cobrança
+// avulsa na conta Asaas DO TENANT (chave BYO lida do Vault) e grava tenant_charges.
+//
+// company_id vem do profile (payments-auth), nunca do payload.
+//
+// Fluxo (§9.5-B):
+//   1. lê a chave BYO do Vault (via tenant_payment_accounts.vault_secret_name);
+//   2. garante o asaas_customer_id do cliente final (cria via POST /v3/customers se faltar);
+//   3. POST /v3/payments com externalReference = company_id (resolução multi-tenant §9.3);
+//   4. busca o pix copia-e-cola / linha do boleto quando aplicável;
+//   5. grava tenant_charges (idempotência por asaas_payment_id UNIQUE) + public_short_code.
+//
+// Nunca retorna custo/margem interna.
+
+import { handleCors } from "../_shared/cors.ts";
+import {
+  authorizePaymentsManager,
+  jsonResponse,
+  vaultReadSecret,
+  generateShortCode,
+} from "../_shared/payments-auth.ts";
+import { asaasFor, AsaasApiError } from "../_shared/asaas-tenant-client.ts";
+import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
+
+type BillingType = "PIX" | "BOLETO" | "CREDIT_CARD" | "UNDEFINED";
+
+/** billing_types que a Asaas aceita neste fluxo (allowlist estrita). */
+const ALLOWED_BILLING_TYPES: readonly BillingType[] = [
+  "PIX",
+  "BOLETO",
+  "CREDIT_CARD",
+  "UNDEFINED",
+];
+
+/** Valor mínimo aceito pela Asaas por cobrança (R$ 5,00). Abaixo disso a Asaas recusa. */
+const MIN_CHARGE_VALUE = 5;
+
+/** Valida `due_date` no formato YYYY-MM-DD e não no passado (compara em UTC, dia cheio). */
+function validateDueDate(due: string): { ok: true } | { ok: false; error: string } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+    return { ok: false, error: "A data de vencimento deve estar no formato AAAA-MM-DD." };
+  }
+  const parsed = new Date(`${due}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return { ok: false, error: "A data de vencimento é inválida." };
+  }
+  // "Hoje" em UTC (só a data). Vencimento no passado é recusado.
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (parsed.getTime() < todayUtc) {
+    return { ok: false, error: "A data de vencimento não pode estar no passado." };
+  }
+  return { ok: true };
+}
+
+interface CreateChargeInput {
+  customer_id?: string;
+  value?: number;
+  due_date?: string;
+  billing_type?: BillingType;
+  description?: string;
+}
+
+/**
+ * Garante o asaas_customer_id do cliente final. DIVERGÊNCIA DA §9: a tabela `customers`
+ * do tenant NÃO tem coluna asaas_customer_id (só `companies` tem, pro billing SaaS).
+ * Sem lugar pra cachear, deduplicamos no PRÓPRIO Asaas: buscamos por
+ * externalReference = customer.id (GET /v3/customers?externalReference=...); se existir,
+ * reusamos; senão criamos. Idempotente na conta do tenant, sem coluna nova.
+ */
+async function ensureAsaasCustomer(
+  supabase: any,
+  asaas: ReturnType<typeof asaasFor>,
+  companyId: string,
+  customerId: string,
+): Promise<string> {
+  const { data: customer, error } = await supabase
+    .from("customers")
+    .select("id, name, email, phone, celular, document")
+    .eq("id", customerId)
+    .eq("company_id", companyId) // posse: cliente tem que ser do tenant
+    .maybeSingle();
+  if (error || !customer) {
+    // 404 → nunca vaza se o cliente existe em outro tenant (é o mesmo "não encontrado").
+    throw new AsaasApiError("Cliente não encontrado na sua empresa.", 404);
+  }
+
+  // Documento (CPF/CNPJ) é OBRIGATÓRIO na Asaas pra emitir cobrança. Pré-validamos
+  // aqui (antes de tocar a Asaas) pra devolver mensagem PT-BR clara e acionável.
+  const rawDoc = customer.document ? String(customer.document) : "";
+  const doc = unmaskDoc(rawDoc);
+  if (!doc) {
+    throw new AsaasApiError(
+      `O cliente "${customer.name ?? "selecionado"}" não tem CPF/CNPJ cadastrado. Cadastre o documento antes de gerar a cobrança.`,
+      400,
+    );
+  }
+  if (!isValidDocument(doc)) {
+    throw new AsaasApiError(
+      `O CPF/CNPJ do cliente "${customer.name ?? "selecionado"}" é inválido. Corrija o cadastro antes de gerar a cobrança.`,
+      400,
+    );
+  }
+
+  // Dedupe no Asaas por externalReference.
+  try {
+    const existing = await asaas.get<any>(
+      `/customers?externalReference=${encodeURIComponent(customer.id)}&limit=1`,
+    );
+    const found = Array.isArray(existing?.data) ? existing.data[0] : null;
+    if (found?.id) return found.id;
+  } catch {
+    // Busca falhou (não-fatal): segue pra criação.
+  }
+
+  const created = await asaas.post<any>("/customers", {
+    name: customer.name,
+    email: customer.email ?? undefined,
+    phone: customer.phone ?? customer.celular ?? undefined,
+    cpfCnpj: doc, // já validado (CPF/CNPJ só-dígitos)
+    externalReference: customer.id,
+  });
+  const asaasCustomerId: string | undefined = created?.id;
+  if (!asaasCustomerId) {
+    throw new AsaasApiError("Não foi possível cadastrar o cliente na Asaas.", 502);
+  }
+  return asaasCustomerId;
+}
+
+Deno.serve(async (req) => {
+  // Rede de segurança de topo: nenhuma exceção escapa (senão o gateway devolve 502
+  // cru, sem JSON, e o front não lê error.context). Tudo vira Response JSON PT-BR.
+  try {
+    return await handleRequest(req);
+  } catch (e) {
+    console.error("[create-charge] exceção não tratada no topo:", (e as Error)?.message ?? e);
+    return jsonResponse(req, {
+      error: "Ocorreu um erro ao gerar a cobrança. Tente novamente em instantes.",
+    }, 500);
+  }
+});
+
+async function handleRequest(req: Request): Promise<Response> {
+  const cors = handleCors(req);
+  if (cors) return cors;
+
+  const auth = await authorizePaymentsManager(req);
+  if (!auth.ok) return auth.response;
+  const { supabase, userId, companyId } = auth;
+
+  let input: CreateChargeInput;
+  try {
+    input = await req.json();
+  } catch {
+    return jsonResponse(req, { error: "Requisição inválida." }, 400);
+  }
+
+  const value = Number(input.value);
+  if (!input.customer_id || typeof input.customer_id !== "string") {
+    return jsonResponse(req, { error: "Selecione o cliente da cobrança." }, 400);
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    return jsonResponse(req, { error: "Informe um valor válido para a cobrança." }, 400);
+  }
+  if (value < MIN_CHARGE_VALUE) {
+    return jsonResponse(req, {
+      error: `O valor mínimo de uma cobrança é R$ ${MIN_CHARGE_VALUE.toFixed(2).replace(".", ",")}.`,
+    }, 400);
+  }
+  // Arredonda pra 2 casas (a Asaas recusa mais de 2 casas decimais).
+  const chargeValue = Math.round(value * 100) / 100;
+  if (!input.due_date || typeof input.due_date !== "string") {
+    return jsonResponse(req, { error: "Informe a data de vencimento." }, 400);
+  }
+  const dueCheck = validateDueDate(input.due_date.trim());
+  if (!dueCheck.ok) {
+    return jsonResponse(req, { error: dueCheck.error }, 400);
+  }
+  const dueDate = input.due_date.trim();
+  const billingType: BillingType = input.billing_type ?? "UNDEFINED";
+  if (!ALLOWED_BILLING_TYPES.includes(billingType)) {
+    return jsonResponse(req, {
+      error: "Forma de pagamento inválida. Escolha Pix, boleto ou cartão.",
+    }, 400);
+  }
+  // Descrição: opcional, mas se vier, limita (Asaas trunca em 500) e sanitiza tipo.
+  const description =
+    typeof input.description === "string" && input.description.trim()
+      ? input.description.trim().slice(0, 500)
+      : null;
+
+  try {
+    // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro.
+    const { data: account } = await supabase
+      .from("tenant_payment_accounts")
+      .select("status, vault_secret_name, auto_post_to_finance")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (!account || account.status !== "active" || !account.vault_secret_name) {
+      return jsonResponse(req, {
+        error: "Ative o recebimento de pagamentos em Configurações → Integrações antes de gerar cobranças.",
+      }, 400);
+    }
+    const apiKey = await vaultReadSecret(supabase, account.vault_secret_name);
+    if (!apiKey) {
+      return jsonResponse(req, {
+        error: "A chave da Asaas não foi encontrada. Reative a integração em Configurações → Integrações.",
+      }, 400);
+    }
+    const asaas = asaasFor(apiKey);
+
+    // 2) Cliente final no Asaas.
+    const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
+
+    // 3) Cria a cobrança. externalReference = company_id (resolução multi-tenant §9.3).
+    const payment = await asaas.post<any>("/payments", {
+      customer: asaasCustomerId,
+      billingType,
+      value: chargeValue,
+      dueDate: dueDate,
+      description: description ?? undefined,
+      externalReference: companyId,
+    });
+    const asaasPaymentId: string | undefined = payment?.id;
+    if (!asaasPaymentId) {
+      return jsonResponse(req, { error: "A Asaas não retornou a cobrança. Tente novamente." }, 502);
+    }
+
+    // 4) Dados de pagamento (pix copia-e-cola / boleto), best-effort.
+    let pixCopyPaste: string | null = null;
+    let boletoUrl: string | null = payment?.bankSlipUrl ?? null;
+    if (billingType === "PIX" || billingType === "UNDEFINED") {
+      try {
+        const pix = await asaas.get<any>(`/payments/${asaasPaymentId}/pixQrCode`);
+        pixCopyPaste = pix?.payload ?? null;
+      } catch {
+        // Pix pode ainda não estar disponível na criação — o checkout busca depois.
+      }
+    }
+
+    // 5) Grava tenant_charges (idempotência por asaas_payment_id UNIQUE).
+    const shortCode = generateShortCode();
+    const chargeRow = {
+      company_id: companyId,
+      asaas_payment_id: asaasPaymentId,
+      source_type: "avulso",
+      source_id: null,
+      customer_id: input.customer_id,
+      value: chargeValue,
+      net_value: payment?.netValue ?? null,
+      billing_type: billingType,
+      status: payment?.status ?? "PENDING",
+      due_date: dueDate,
+      payment_date: null,
+      description: description,
+      public_short_code: shortCode,
+      invoice_url: payment?.invoiceUrl ?? null,
+      pix_copy_paste: pixCopyPaste,
+      boleto_url: boletoUrl,
+      created_by: userId,
+    };
+    const { data: saved, error: insertErr } = await supabase
+      .from("tenant_charges")
+      .upsert(chargeRow, { onConflict: "asaas_payment_id" })
+      .select("id, public_short_code")
+      .maybeSingle();
+    if (insertErr) {
+      // Cobrança órfã: existe na Asaas mas não gravou aqui. NÃO perdemos o link —
+      // devolvemos a invoice_url (o tenant já pode cobrar) e sinalizamos a
+      // inconsistência pro front avisar "salve/anote o link". A reconciliação
+      // do webhook (por asaas_payment_id) ainda dá baixa quando pagar.
+      console.error(
+        "[create-charge] insert tenant_charges falhou (cobrança órfã na Asaas):",
+        JSON.stringify({ asaas_payment_id: asaasPaymentId, company_id: companyId, error: insertErr.message }),
+      );
+      return jsonResponse(req, {
+        warning: "A cobrança foi gerada, mas não conseguimos registrá-la no sistema. Guarde o link de pagamento abaixo.",
+        charge: {
+          public_short_code: null,
+          checkout_url: payment?.invoiceUrl ?? null,
+          invoice_url: payment?.invoiceUrl ?? null,
+          pix_copy_paste: pixCopyPaste,
+          boleto_url: boletoUrl,
+          value: chargeValue,
+          due_date: dueDate,
+          billing_type: billingType,
+          status: payment?.status ?? "PENDING",
+        },
+      }, 207);
+    }
+    const finalShortCode = saved?.public_short_code ?? shortCode;
+
+    // 6) Lançamento automático no Financeiro (a receber), se habilitado.
+    //    NÃO-FATAL: a cobrança já existe no Asaas e em tenant_charges — um erro
+    //    aqui não pode invalidar nem desfazer o que foi gerado.
+    //    A baixa automática (webhook PAYMENT_RECEIVED) quitará o lançamento.
+    if (account.auto_post_to_finance !== false && saved?.id) {
+      try {
+        const { error: rpcErr } = await supabase.rpc("create_tenant_charge_receivable", {
+          p_company_id: companyId,
+          p_tenant_charge_id: saved.id,
+          p_customer_id: input.customer_id,
+          p_amount: chargeValue,
+          p_due_date: dueDate,
+          p_description: description,
+        });
+        if (rpcErr) {
+          // Loga sem vazar segredo (só mensagem pública do Postgres).
+          console.warn(
+            "[create-charge] create_tenant_charge_receivable falhou (não-fatal):",
+            rpcErr.message,
+          );
+        }
+      } catch (receivableErr) {
+        console.warn(
+          "[create-charge] create_tenant_charge_receivable exceção (não-fatal):",
+          (receivableErr as Error)?.message ?? String(receivableErr),
+        );
+      }
+    }
+
+    return jsonResponse(req, {
+      charge: {
+        public_short_code: finalShortCode,
+        checkout_url: `/pagar/${finalShortCode}`,
+        invoice_url: payment?.invoiceUrl ?? null,
+        pix_copy_paste: pixCopyPaste,
+        boleto_url: boletoUrl,
+        value: chargeValue,
+        due_date: dueDate,
+        billing_type: billingType,
+        status: payment?.status ?? "PENDING",
+      },
+    }, 200);
+  } catch (e) {
+    const status = e instanceof AsaasApiError ? e.status : 500;
+    console.error("[create-charge] erro:", (e as Error).message);
+    return jsonResponse(req, {
+      error: e instanceof AsaasApiError
+        ? (e.message || "Falha ao criar a cobrança na Asaas.")
+        : "Ocorreu um erro ao gerar a cobrança. Tente novamente.",
+    }, status >= 400 && status < 600 ? status : 500);
+  }
+}

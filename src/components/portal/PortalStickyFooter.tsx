@@ -54,7 +54,7 @@ export function PortalStickyFooter({
           <button
             type="button"
             onClick={onCta}
-            className="w-full rounded-xl py-3.5 font-extrabold text-sm transition-opacity active:opacity-80"
+            className="w-full rounded-lg py-3.5 font-extrabold text-sm transition-opacity active:opacity-80"
             style={{ background: brandBg, color: textColor }}
           >
             {ctaLabel}

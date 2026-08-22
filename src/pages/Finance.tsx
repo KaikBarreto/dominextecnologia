@@ -4,6 +4,10 @@ import { useFinancial } from '@/hooks/useFinancial';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
+import { ChargeDialog } from '@/components/financial/ChargeDialog';
+import { Button } from '@/components/ui/button';
+import { Wallet } from 'lucide-react';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { FinanceRelatorio } from '@/components/financial/FinanceRelatorio';
 import { FinanceMovimentacoes } from '@/components/financial/FinanceMovimentacoes';
 import { FinanceContas } from '@/components/financial/FinanceContas';
@@ -70,11 +74,21 @@ export default function Finance() {
   };
 
   const [formOpen, setFormOpen] = useState(false);
+  const [chargeOpen, setChargeOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
   const { toast } = useToast();
   const { hasModule } = useCompanyModules();
+  // Cobrança avulsa (recebimento do cliente final via Asaas): o botão "Cobrar"
+  // só aparece com o add-on `cobrancas` contratado E a conta de recebimentos
+  // ativa. Se o módulo está ativo mas a conta não foi configurada, mostramos um
+  // botão desabilitado com tooltip direcional (UX > silêncio). Gate real é server-side.
+  const { isActive: canCharge } = useTenantPaymentAccount();
+  const hasChargeModule = hasModule('cobrancas');
+  const showChargeButton = hasChargeModule && canCharge;
+  // Módulo contratado mas conta Asaas não configurada/ativa.
+  const showChargeInactiveHint = hasChargeModule && !canCharge;
 
   // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
   // escondia a aba). Acesso direto por URL sem o módulo → cai no Relatório.
@@ -283,6 +297,27 @@ export default function Finance() {
         title={fin.page.title}
         subtitle={screenSubtitle}
         icon={DollarSign}
+        actions={
+          showChargeButton ? (
+            <Button size="sm" onClick={() => setChargeOpen(true)}>
+              <Wallet className="mr-2 h-4 w-4" />
+              {MESSAGES[locale].app.charges.cobrar.button}
+            </Button>
+          ) : showChargeInactiveHint ? (
+            // Módulo contratado mas conta Asaas não ativa: botão direcional
+            // (não some silenciosamente — orienta o usuário).
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                navigate(localizeAppPath('/configuracoes/integracoes', locale))
+              }
+            >
+              <Wallet className="mr-2 h-4 w-4" />
+              {MESSAGES[locale].app.charges.cobrar.notActivated.cta}
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="space-y-4">
@@ -338,6 +373,8 @@ export default function Finance() {
         isLoading={createTransaction.isPending || updateTransaction.isPending}
         defaultType={defaultType}
       />
+
+      {showChargeButton && <ChargeDialog open={chargeOpen} onOpenChange={setChargeOpen} />}
     </div>
   );
 }

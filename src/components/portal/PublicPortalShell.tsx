@@ -146,8 +146,15 @@ export function PublicPortalShell({
   // resolvam no modo claro, independente da preferencia do usuario no app.
   useForceLightTheme();
 
+  // Cor de marca para HEADER: passa null quando nao ha white-label para que
+  // portalHeaderStyle() ative o degradê escuro sóbrio (REPORT_HEADER_DARK_GRADIENT).
+  // Isso espelha o restyle 1.20.0 ("menu escuro por padrao").
+  // Regra-lei n2: texto/icone do header continua BRANCO independente da cor de fundo.
+  const headerStyle = portalHeaderStyle(brandColor ?? null);
+
+  // Cor de marca para CTAs, pilulas de nav e sidebar (interativos).
+  // Usa teal padrao Dominex quando nao ha white-label — so o header e que fica escuro.
   const effectiveBrand = brandColor || '#00C684';
-  const headerStyle = portalHeaderStyle(effectiveBrand);
   const textColor = '#ffffff';
   const ctaTextColor = '#ffffff';
 
@@ -191,7 +198,7 @@ export function PublicPortalShell({
       {!hideHeader && (
       <div
         ref={headerRef}
-        className="sticky top-0 z-20 rounded-b-3xl lg:rounded-b-2xl shadow-md overflow-hidden"
+        className="sticky top-0 z-20 rounded-b-xl lg:rounded-b-lg shadow-md overflow-hidden"
         style={{ ...headerStyle, paddingTop: 'env(safe-area-inset-top)' }}
       >
         {/* Overlay de profundidade (como no PontoPublico) */}
@@ -432,7 +439,7 @@ export function PublicPortalShell({
               <button
                 type="button"
                 onClick={onFooterCta}
-                className="w-full rounded-xl py-3 font-extrabold text-sm transition-opacity active:opacity-80"
+                className="w-full rounded-lg py-3 font-extrabold text-sm transition-opacity active:opacity-80"
                 style={{ background: effectiveBrand, color: ctaTextColor }}
               >
                 {footerCtaLabel}

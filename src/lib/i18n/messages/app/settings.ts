@@ -32,6 +32,7 @@ export const settings = {
         usabilidade: 'Usabilidade',
         atalhos: 'Atalhos',
         aparencia: 'Aparência',
+        integracoes: 'Integrações',
       },
     },
 
@@ -844,6 +845,134 @@ export const settings = {
       toastDeletionError: 'Erro ao registrar solicitação',
     },
 
+    // ── Aba Integrações ───────────────────────────────────────────────────────
+    integrations: {
+      subTabs: {
+        whatsapp: 'WhatsApp',
+        asaas: 'Recebimentos',
+      },
+      asaas: {
+        loading: 'Carregando…',
+        notContracted: {
+          title: 'Recebimentos não contratado',
+          description: 'Este recurso não está incluído no seu plano atual. Fale com nosso time para cobrar seus clientes online por Pix, boleto e cartão.',
+        },
+        card: {
+          title: 'Recebimentos (Asaas)',
+          description: 'Cobre seus clientes por Pix, boleto e cartão usando sua própria conta Asaas.',
+        },
+        status: {
+          active: 'Ativo',
+          pending: 'Em verificação',
+          disabled: 'Desativado',
+          rejected: 'Recusado',
+        },
+        inactive: {
+          intro: 'Cole a chave de API da sua conta Asaas para ativar os recebimentos. Você gera essa chave no painel da Asaas, em Configurações, Integrações.',
+          apiKeyLabel: 'Chave de API da Asaas',
+          apiKeyPlaceholder: 'Cole aqui sua chave de API',
+          activate: 'Ativar recebimentos',
+          activating: 'Ativando…',
+          helpLink: 'Onde encontro minha chave?',
+          apiKeyGuide: {
+            trigger: 'Como consigo minha chave de API da Asaas?',
+            step1: 'Acesse asaas.com e faça login (ou crie sua conta gratuita).',
+            step2: 'No menu, vá em "Configurações da conta" (ícone de engrenagem), depois em "Integrações".',
+            step3: 'Na seção "Chave de API", clique em "Gerar chave de API" ou copie a chave existente.',
+            step4: 'Copie a chave (começa com "$aact_") e cole no campo acima. A chave é secreta, guarde com cuidado.',
+            sandboxHint: 'Para testar sem dinheiro real, use a conta sandbox em sandbox.asaas.com pelo mesmo caminho.',
+          },
+        },
+        activeState: {
+          connected: 'Recebimentos ativos. Já é possível cobrar seus clientes.',
+          pendingDesc: 'Sua conta está em verificação na Asaas. Assim que aprovada, os recebimentos ficam ativos.',
+          feesTitle: 'Taxas da Asaas',
+          feesNote: 'As taxas são cobradas pela Asaas diretamente na sua conta. A Dominex não retém nada por transação.',
+          feePix: 'Pix',
+          feeBoleto: 'Boleto',
+          feeCard: 'Cartão de crédito',
+          deactivate: 'Desativar recebimentos',
+          deactivating: 'Desativando…',
+          autoPostLabel: 'Lançar cobranças no Financeiro automaticamente',
+          autoPostDesc: 'Cada cobrança vira um "a receber" que baixa sozinho quando o cliente paga.',
+          autoPostToastOn: 'Lançamento automático ativado.',
+          autoPostToastOff: 'Lançamento automático desativado.',
+          autoPostToastError: 'Não foi possível salvar a configuração. Tente novamente.',
+        },
+        deactivateConfirm: {
+          title: 'Desativar recebimentos?',
+          description: 'Cobranças já geradas continuam válidas, mas você não poderá criar novas até reativar.',
+          confirm: 'Sim, desativar',
+          cancel: 'Cancelar',
+        },
+        errors: {
+          activateGeneric: 'Não foi possível ativar os recebimentos. Confira a chave e tente novamente.',
+          deactivateGeneric: 'Não foi possível desativar os recebimentos.',
+        },
+        toasts: {
+          activated: 'Recebimentos ativados!',
+          deactivated: 'Recebimentos desativados.',
+        },
+      },
+      whatsapp: {
+        loading: 'Carregando…',
+        comingSoon: {
+          badge: 'Em breve',
+          title: 'Avisos por WhatsApp',
+          description: 'Em breve você poderá avisar seus clientes automaticamente pelo WhatsApp. Estamos finalizando os últimos ajustes.',
+        },
+        notContracted: {
+          title: 'Avisos de WhatsApp não contratado',
+          description: 'Este recurso não está incluído no seu plano atual. Fale com nosso time para liberar os avisos automáticos por WhatsApp aos seus clientes.',
+        },
+        masterToggle: {
+          title: 'Avisos por WhatsApp',
+          description: 'Ativar ou desativar todos os avisos enviados ao cliente via WhatsApp',
+          ariaLabel: 'Ativar avisos por WhatsApp',
+        },
+        connection: {
+          sectionTitle: 'Conexão',
+          sectionDescription: 'Conecte o WhatsApp da sua empresa para enviar avisos aos clientes',
+          statusConnected: 'Conectado',
+          statusQr: 'Aguardando QR',
+          statusDisconnected: 'Desconectado',
+          statusBanned: 'Banido',
+          btnConnect: 'Conectar WhatsApp',
+          connecting: 'Conectando…',
+          qrInstructions: 'Abra o WhatsApp no seu celular, acesse Menu > Aparelhos conectados > Conectar um aparelho e escaneie o QR code abaixo.',
+          connectedDesc: 'WhatsApp conectado e pronto para enviar avisos.',
+          bannedDesc: 'Este número foi banido pelo WhatsApp. Entre em contato com o suporte.',
+          errorTitle: 'Não foi possível conectar',
+          errorHint: 'Verifique sua conexão ou tente novamente em instantes. O servidor de integração pode estar sendo configurado.',
+        },
+        triggers: {
+          sectionTitle: 'Gatilhos de Aviso',
+          sectionDescription: 'Escolha em quais momentos da OS o cliente recebe um aviso automático',
+          aCaminho: {
+            label: 'Técnico a caminho',
+            description: 'Avisa o cliente quando o técnico sai para atender a OS',
+          },
+          emAndamento: {
+            label: 'Serviço iniciado',
+            description: 'Avisa o cliente quando o técnico inicia o atendimento',
+          },
+          concluida: {
+            label: 'OS finalizada',
+            description: 'Avisa o cliente quando a ordem de serviço é concluída',
+          },
+        },
+        quota: {
+          sectionTitle: 'Plano e Cota',
+          sectionDescription: 'Seu nível atual e o consumo de avisos no mês corrente',
+          currentPlan: 'Plano atual',
+          usageLabel: 'Avisos enviados este mês',
+          unlimited: 'Ilimitado',
+          nearLimitWarning: 'Você está próximo do limite mensal.',
+          resetHint: 'A cota é renovada automaticamente no início de cada mês.',
+        },
+      },
+    },
+
     // ── Central de Ajuda ──────────────────────────────────────────────────────
     help: {
       title: 'Central de Ajuda',
@@ -907,6 +1036,7 @@ export const settings = {
         usabilidade: 'Usability',
         atalhos: 'Shortcuts',
         aparencia: 'Appearance',
+        integracoes: 'Integrations',
       },
     },
 
@@ -1662,6 +1792,133 @@ export const settings = {
       toastDeletionError: 'Error registering request',
     },
 
+    integrations: {
+      subTabs: {
+        whatsapp: 'WhatsApp',
+        asaas: 'Payments',
+      },
+      asaas: {
+        loading: 'Loading…',
+        notContracted: {
+          title: 'Payments not included',
+          description: 'This feature is not part of your current plan. Contact our team to charge your customers online via Pix, bank slip and card.',
+        },
+        card: {
+          title: 'Payments (Asaas)',
+          description: 'Charge your customers via Pix, bank slip and card using your own Asaas account.',
+        },
+        status: {
+          active: 'Active',
+          pending: 'Under review',
+          disabled: 'Disabled',
+          rejected: 'Rejected',
+        },
+        inactive: {
+          intro: 'Paste your Asaas API key to activate payments. You generate this key in the Asaas panel, under Settings, Integrations.',
+          apiKeyLabel: 'Asaas API key',
+          apiKeyPlaceholder: 'Paste your API key here',
+          activate: 'Activate payments',
+          activating: 'Activating…',
+          helpLink: 'Where do I find my key?',
+          apiKeyGuide: {
+            trigger: 'How do I get my Asaas API key?',
+            step1: 'Go to asaas.com and log in (or create your free account).',
+            step2: 'In the menu, go to "Account settings" (gear icon), then "Integrations".',
+            step3: 'In the "API key" section, click "Generate API key" or copy your existing key.',
+            step4: 'Copy the key (starts with "$aact_") and paste it in the field above. The key is secret, keep it safe.',
+            sandboxHint: 'To test without real money, use the sandbox account at sandbox.asaas.com following the same steps.',
+          },
+        },
+        activeState: {
+          connected: 'Payments active. You can now charge your customers.',
+          pendingDesc: 'Your account is under review at Asaas. Once approved, payments become active.',
+          feesTitle: 'Asaas fees',
+          feesNote: 'Fees are charged by Asaas directly on your account. Dominex keeps nothing per transaction.',
+          feePix: 'Pix',
+          feeBoleto: 'Bank slip',
+          feeCard: 'Credit card',
+          deactivate: 'Deactivate payments',
+          deactivating: 'Deactivating…',
+          autoPostLabel: 'Automatically post charges to Finance',
+          autoPostDesc: 'Each charge creates a receivable that is automatically cleared when the customer pays.',
+          autoPostToastOn: 'Automatic posting enabled.',
+          autoPostToastOff: 'Automatic posting disabled.',
+          autoPostToastError: 'Could not save the setting. Please try again.',
+        },
+        deactivateConfirm: {
+          title: 'Deactivate payments?',
+          description: 'Existing charges remain valid, but you will not be able to create new ones until you reactivate.',
+          confirm: 'Yes, deactivate',
+          cancel: 'Cancel',
+        },
+        errors: {
+          activateGeneric: 'Could not activate payments. Check the key and try again.',
+          deactivateGeneric: 'Could not deactivate payments.',
+        },
+        toasts: {
+          activated: 'Payments activated!',
+          deactivated: 'Payments deactivated.',
+        },
+      },
+      whatsapp: {
+        loading: 'Loading…',
+        comingSoon: {
+          badge: 'Coming soon',
+          title: 'WhatsApp Notifications',
+          description: 'Soon you will be able to notify your customers automatically via WhatsApp. We are finishing the last adjustments.',
+        },
+        notContracted: {
+          title: 'WhatsApp notifications not included',
+          description: 'This feature is not part of your current plan. Contact our team to enable automatic WhatsApp notifications to your customers.',
+        },
+        masterToggle: {
+          title: 'WhatsApp Notifications',
+          description: 'Enable or disable all WhatsApp notifications sent to customers',
+          ariaLabel: 'Enable WhatsApp notifications',
+        },
+        connection: {
+          sectionTitle: 'Connection',
+          sectionDescription: 'Connect your company WhatsApp to send notifications to customers',
+          statusConnected: 'Connected',
+          statusQr: 'Awaiting QR',
+          statusDisconnected: 'Disconnected',
+          statusBanned: 'Banned',
+          btnConnect: 'Connect WhatsApp',
+          connecting: 'Connecting…',
+          qrInstructions: 'Open WhatsApp on your phone, go to Menu > Linked Devices > Link a Device and scan the QR code below.',
+          connectedDesc: 'WhatsApp connected and ready to send notifications.',
+          bannedDesc: 'This number has been banned by WhatsApp. Please contact support.',
+          errorTitle: 'Could not connect',
+          errorHint: 'Check your connection or try again shortly. The integration server may still be setting up.',
+        },
+        triggers: {
+          sectionTitle: 'Notification Triggers',
+          sectionDescription: 'Choose when the customer receives an automatic notification during a work order',
+          aCaminho: {
+            label: 'Technician on the way',
+            description: 'Notifies the customer when the technician heads out to the job',
+          },
+          emAndamento: {
+            label: 'Service started',
+            description: 'Notifies the customer when the technician begins work',
+          },
+          concluida: {
+            label: 'Work order completed',
+            description: 'Notifies the customer when the work order is completed',
+          },
+        },
+        quota: {
+          sectionTitle: 'Plan & Quota',
+          sectionDescription: 'Your current tier and monthly notification usage',
+          currentPlan: 'Current plan',
+          usageLabel: 'Notifications sent this month',
+          unlimited: 'Unlimited',
+          nearLimitWarning: 'You are close to your monthly limit.',
+          resetHint: 'Your quota resets automatically at the start of each month.',
+        },
+      },
+    },
+
     help: {
       title: 'Help Center',
       intro: 'Frequently asked questions about the system. If you cannot find your answer, contact Support via WhatsApp.',
@@ -1724,6 +1981,7 @@ export const settings = {
         usabilidade: 'Usabilidad',
         atalhos: 'Atajos',
         aparencia: 'Apariencia',
+        integracoes: 'Integraciones',
       },
     },
 
@@ -2470,6 +2728,133 @@ export const settings = {
       toastDeletionError: 'Error al registrar la solicitud',
     },
 
+    integrations: {
+      subTabs: {
+        whatsapp: 'WhatsApp',
+        asaas: 'Cobros',
+      },
+      asaas: {
+        loading: 'Cargando…',
+        notContracted: {
+          title: 'Cobros no contratado',
+          description: 'Este recurso no está incluido en tu plan actual. Habla con nuestro equipo para cobrar a tus clientes en línea por Pix, boleto y tarjeta.',
+        },
+        card: {
+          title: 'Cobros (Asaas)',
+          description: 'Cobra a tus clientes por Pix, boleto y tarjeta usando tu propia cuenta de Asaas.',
+        },
+        status: {
+          active: 'Activo',
+          pending: 'En verificación',
+          disabled: 'Desactivado',
+          rejected: 'Rechazado',
+        },
+        inactive: {
+          intro: 'Pega la clave de API de tu cuenta Asaas para activar los cobros. Generas esa clave en el panel de Asaas, en Configuración, Integraciones.',
+          apiKeyLabel: 'Clave de API de Asaas',
+          apiKeyPlaceholder: 'Pega aquí tu clave de API',
+          activate: 'Activar cobros',
+          activating: 'Activando…',
+          helpLink: '¿Dónde encuentro mi clave?',
+          apiKeyGuide: {
+            trigger: '¿Cómo obtengo mi clave de API de Asaas?',
+            step1: 'Ingresa a asaas.com e inicia sesión (o crea tu cuenta gratuita).',
+            step2: 'En el menú, ve a "Configuración de cuenta" (ícono de engranaje), luego a "Integraciones".',
+            step3: 'En la sección "Clave de API", haz clic en "Generar clave de API" o copia la clave existente.',
+            step4: 'Copia la clave (empieza con "$aact_") y pégala en el campo de arriba. La clave es secreta, guárdala con cuidado.',
+            sandboxHint: 'Para probar sin dinero real, usa la cuenta sandbox en sandbox.asaas.com siguiendo los mismos pasos.',
+          },
+        },
+        activeState: {
+          connected: 'Cobros activos. Ya puedes cobrar a tus clientes.',
+          pendingDesc: 'Tu cuenta está en verificación en Asaas. Una vez aprobada, los cobros se activan.',
+          feesTitle: 'Tarifas de Asaas',
+          feesNote: 'Las tarifas las cobra Asaas directamente en tu cuenta. Dominex no retiene nada por transacción.',
+          feePix: 'Pix',
+          feeBoleto: 'Boleto',
+          feeCard: 'Tarjeta de crédito',
+          deactivate: 'Desactivar cobros',
+          deactivating: 'Desactivando…',
+          autoPostLabel: 'Registrar cobros en Finanzas automáticamente',
+          autoPostDesc: 'Cada cobro genera una cuenta por cobrar que se liquida sola cuando el cliente paga.',
+          autoPostToastOn: 'Registro automático activado.',
+          autoPostToastOff: 'Registro automático desactivado.',
+          autoPostToastError: 'No se pudo guardar la configuración. Inténtalo de nuevo.',
+        },
+        deactivateConfirm: {
+          title: '¿Desactivar los cobros?',
+          description: 'Los cobros ya generados siguen siendo válidos, pero no podrás crear nuevos hasta que vuelvas a activar.',
+          confirm: 'Sí, desactivar',
+          cancel: 'Cancelar',
+        },
+        errors: {
+          activateGeneric: 'No pudimos activar los cobros. Verifica la clave e inténtalo de nuevo.',
+          deactivateGeneric: 'No pudimos desactivar los cobros.',
+        },
+        toasts: {
+          activated: '¡Cobros activados!',
+          deactivated: 'Cobros desactivados.',
+        },
+      },
+      whatsapp: {
+        loading: 'Cargando…',
+        comingSoon: {
+          badge: 'Próximamente',
+          title: 'Avisos por WhatsApp',
+          description: 'Pronto podrás avisar a tus clientes automáticamente por WhatsApp. Estamos terminando los últimos ajustes.',
+        },
+        notContracted: {
+          title: 'Avisos de WhatsApp no contratado',
+          description: 'Esta función no está incluida en tu plan actual. Habla con nuestro equipo para activar los avisos automáticos por WhatsApp a tus clientes.',
+        },
+        masterToggle: {
+          title: 'Avisos por WhatsApp',
+          description: 'Activar o desactivar todos los avisos enviados al cliente por WhatsApp',
+          ariaLabel: 'Activar avisos por WhatsApp',
+        },
+        connection: {
+          sectionTitle: 'Conexión',
+          sectionDescription: 'Conecta el WhatsApp de tu empresa para enviar avisos a los clientes',
+          statusConnected: 'Conectado',
+          statusQr: 'Esperando QR',
+          statusDisconnected: 'Desconectado',
+          statusBanned: 'Bloqueado',
+          btnConnect: 'Conectar WhatsApp',
+          connecting: 'Conectando…',
+          qrInstructions: 'Abre WhatsApp en tu celular, ve a Menú > Dispositivos vinculados > Vincular dispositivo y escanea el código QR.',
+          connectedDesc: 'WhatsApp conectado y listo para enviar avisos.',
+          bannedDesc: 'Este número fue bloqueado por WhatsApp. Contacta al soporte.',
+          errorTitle: 'No se pudo conectar',
+          errorHint: 'Verifica tu conexión o inténtalo de nuevo en unos instantes. El servidor de integración puede estar configurándose.',
+        },
+        triggers: {
+          sectionTitle: 'Disparadores de aviso',
+          sectionDescription: 'Elige en qué momentos de la OT el cliente recibe un aviso automático',
+          aCaminho: {
+            label: 'Técnico en camino',
+            description: 'Avisa al cliente cuando el técnico sale para atender la OT',
+          },
+          emAndamento: {
+            label: 'Servicio iniciado',
+            description: 'Avisa al cliente cuando el técnico comienza el servicio',
+          },
+          concluida: {
+            label: 'OT finalizada',
+            description: 'Avisa al cliente cuando la orden de trabajo es completada',
+          },
+        },
+        quota: {
+          sectionTitle: 'Plan y cuota',
+          sectionDescription: 'Tu nivel actual y el consumo de avisos en el mes corriente',
+          currentPlan: 'Plan actual',
+          usageLabel: 'Avisos enviados este mes',
+          unlimited: 'Ilimitado',
+          nearLimitWarning: 'Estás cerca del límite mensual.',
+          resetHint: 'La cuota se renueva automáticamente al inicio de cada mes.',
+        },
+      },
+    },
+
     help: {
       title: 'Centro de Ayuda',
       intro: 'Preguntas frecuentes sobre el sistema. Si no encuentras tu respuesta, contacta al Soporte por WhatsApp.',
@@ -2532,6 +2917,7 @@ export const settings = {
         usabilidade: 'Ergonomie',
         atalhos: 'Raccourcis',
         aparencia: 'Apparence',
+        integracoes: 'Intégrations',
       },
     },
 
@@ -3276,6 +3662,133 @@ export const settings = {
       toastDeletionRequested: 'Demande de suppression soumise',
       toastDeletionRequestedDesc: 'Notre équipe traitera votre demande dans un délai de 15 jours ouvrables conformément à la loi sur la protection des données.',
       toastDeletionError: "Erreur lors de l'enregistrement de la demande",
+    },
+
+    integrations: {
+      subTabs: {
+        whatsapp: 'WhatsApp',
+        asaas: 'Encaissements',
+      },
+      asaas: {
+        loading: 'Chargement…',
+        notContracted: {
+          title: 'Encaissements non inclus',
+          description: `Cette fonctionnalité ne fait pas partie de votre offre actuelle. Contactez notre équipe pour encaisser vos clients en ligne par Pix, boleto et carte.`,
+        },
+        card: {
+          title: 'Encaissements (Asaas)',
+          description: 'Encaissez vos clients par Pix, boleto et carte avec votre propre compte Asaas.',
+        },
+        status: {
+          active: 'Actif',
+          pending: `En vérification`,
+          disabled: `Désactivé`,
+          rejected: `Refusé`,
+        },
+        inactive: {
+          intro: `Collez la clé d'API de votre compte Asaas pour activer les encaissements. Vous générez cette clé dans le panneau Asaas, sous Paramètres, Intégrations.`,
+          apiKeyLabel: `Clé d'API Asaas`,
+          apiKeyPlaceholder: `Collez votre clé d'API ici`,
+          activate: 'Activer les encaissements',
+          activating: 'Activation…',
+          helpLink: `Où trouver ma clé ?`,
+          apiKeyGuide: {
+            trigger: `Comment obtenir ma clé d'API Asaas ?`,
+            step1: `Accédez à asaas.com et connectez-vous (ou créez votre compte gratuit).`,
+            step2: `Dans le menu, allez dans "Paramètres du compte" (icône d'engrenage), puis "Intégrations".`,
+            step3: `Dans la section "Clé d'API", cliquez sur "Générer une clé d'API" ou copiez la clé existante.`,
+            step4: `Copiez la clé (commence par "$aact_") et collez-la dans le champ ci-dessus. La clé est secrète, conservez-la précieusement.`,
+            sandboxHint: `Pour tester sans argent réel, utilisez le compte sandbox sur sandbox.asaas.com en suivant les mêmes étapes.`,
+          },
+        },
+        activeState: {
+          connected: 'Encaissements actifs. Vous pouvez maintenant encaisser vos clients.',
+          pendingDesc: `Votre compte est en vérification chez Asaas. Une fois approuvé, les encaissements deviennent actifs.`,
+          feesTitle: 'Frais Asaas',
+          feesNote: 'Les frais sont prélevés par Asaas directement sur votre compte. Dominex ne retient rien par transaction.',
+          feePix: 'Pix',
+          feeBoleto: 'Boleto',
+          feeCard: 'Carte de crédit',
+          deactivate: 'Désactiver les encaissements',
+          deactivating: 'Désactivation…',
+          autoPostLabel: 'Enregistrer automatiquement les encaissements en comptabilité',
+          autoPostDesc: `Chaque encaissement crée une créance qui est soldée automatiquement dès que le client paie.`,
+          autoPostToastOn: `Enregistrement automatique activé.`,
+          autoPostToastOff: `Enregistrement automatique désactivé.`,
+          autoPostToastError: `Impossible d'enregistrer le paramètre. Veuillez réessayer.`,
+        },
+        deactivateConfirm: {
+          title: 'Désactiver les encaissements ?',
+          description: `Les factures déjà générées restent valides, mais vous ne pourrez pas en créer de nouvelles avant de réactiver.`,
+          confirm: 'Oui, désactiver',
+          cancel: 'Annuler',
+        },
+        errors: {
+          activateGeneric: `Impossible d'activer les encaissements. Vérifiez la clé et réessayez.`,
+          deactivateGeneric: `Impossible de désactiver les encaissements.`,
+        },
+        toasts: {
+          activated: 'Encaissements activés !',
+          deactivated: 'Encaissements désactivés.',
+        },
+      },
+      whatsapp: {
+        loading: 'Chargement…',
+        comingSoon: {
+          badge: 'Bientôt disponible',
+          title: 'Notifications WhatsApp',
+          description: `Bientôt vous pourrez prévenir vos clients automatiquement par WhatsApp. Nous finalisons les derniers ajustements.`,
+        },
+        notContracted: {
+          title: `Alertes WhatsApp non incluses`,
+          description: `Cette fonctionnalité ne fait pas partie de votre forfait actuel. Contactez notre équipe pour activer les alertes WhatsApp automatiques envoyées à vos clients.`,
+        },
+        masterToggle: {
+          title: 'Notifications WhatsApp',
+          description: 'Activer ou désactiver toutes les notifications envoyées au client via WhatsApp',
+          ariaLabel: 'Activer les notifications WhatsApp',
+        },
+        connection: {
+          sectionTitle: 'Connexion',
+          sectionDescription: 'Connectez le WhatsApp de votre entreprise pour envoyer des notifications aux clients',
+          statusConnected: 'Connecté',
+          statusQr: 'En attente du QR',
+          statusDisconnected: 'Déconnecté',
+          statusBanned: 'Banni',
+          btnConnect: 'Connecter WhatsApp',
+          connecting: 'Connexion…',
+          qrInstructions: 'Ouvrez WhatsApp sur votre téléphone, accédez à Menu > Appareils connectés > Connecter un appareil et scannez le code QR ci-dessous.',
+          connectedDesc: 'WhatsApp connecté et prêt à envoyer des notifications.',
+          bannedDesc: 'Ce numéro a été banni par WhatsApp. Veuillez contacter le support.',
+          errorTitle: 'Impossible de se connecter',
+          errorHint: 'Vérifiez votre connexion ou réessayez dans quelques instants. Le serveur d`intégration est peut-être en cours de configuration.',
+        },
+        triggers: {
+          sectionTitle: 'Déclencheurs de notification',
+          sectionDescription: 'Choisissez à quel moment le client reçoit une notification automatique lors d`un bon de travail',
+          aCaminho: {
+            label: 'Technicien en route',
+            description: 'Notifie le client quand le technicien part pour l`intervention',
+          },
+          emAndamento: {
+            label: 'Service démarré',
+            description: 'Notifie le client quand le technicien commence le travail',
+          },
+          concluida: {
+            label: 'Bon de travail terminé',
+            description: 'Notifie le client quand le bon de travail est finalisé',
+          },
+        },
+        quota: {
+          sectionTitle: 'Plan et quota',
+          sectionDescription: 'Votre niveau actuel et la consommation de notifications du mois en cours',
+          currentPlan: 'Plan actuel',
+          usageLabel: 'Notifications envoyées ce mois',
+          unlimited: 'Illimité',
+          nearLimitWarning: 'Vous approchez de votre limite mensuelle.',
+          resetHint: 'Le quota est renouvelé automatiquement au début de chaque mois.',
+        },
+      },
     },
 
     help: {

@@ -19,7 +19,9 @@ export type ModuleCode =
   | 'customer_portal'
   | 'white_label'
   | 'extra_user'
-  | 'video_questions';
+  | 'video_questions'
+  | 'whatsapp'
+  | 'cobrancas';
 
 /**
  * Mapeamento screen → module_code.

@@ -232,6 +232,23 @@ export function useServiceOrders() {
 
   const updateServiceOrder = useMutation({
     mutationFn: async ({ id, assignee_user_ids, equipment_items, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[]; equipment_items?: Array<{ equipment_id?: string; form_template_id?: string }> }) => {
+      // Snapshot the current status BEFORE the update so we can detect real transitions.
+      // Only bother when the caller is setting one of the three WhatsApp trigger statuses.
+      const WA_TRIGGER_STATUSES = ['a_caminho', 'em_andamento', 'concluida'] as const;
+      type WaTriggerStatus = typeof WA_TRIGGER_STATUSES[number];
+      const isWaTrigger = (s: unknown): s is WaTriggerStatus =>
+        WA_TRIGGER_STATUSES.includes(s as WaTriggerStatus);
+
+      let previousStatus: string | null = null;
+      if (isWaTrigger(input.status)) {
+        const { data: prev } = await supabase
+          .from('service_orders')
+          .select('status')
+          .eq('id', id)
+          .single();
+        previousStatus = prev?.status ?? null;
+      }
+
       const sanitized = normalizeOptionalForeignKeys(input, [
         'technician_id',
         'team_id',
@@ -248,7 +265,7 @@ export function useServiceOrders() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
 
       // Auto-create rating token and save snapshot when status changes to concluida
@@ -355,6 +372,46 @@ export function useServiceOrders() {
             form_template_id: item.form_template_id || null,
           }));
           await supabase.from('service_order_equipment').insert(rows);
+        }
+      }
+
+      // Fire-and-forget WhatsApp dispatch on real status transitions.
+      // NEVER blocking: runs fully outside the await chain; errors are swallowed.
+      if (isWaTrigger(input.status) && input.status !== previousStatus) {
+        const newStatus = input.status;
+        const companyId: string | null = (data as any)?.company_id ?? null;
+        if (companyId) {
+          const triggerKey =
+            newStatus === 'a_caminho'
+              ? 'trigger_a_caminho'
+              : newStatus === 'em_andamento'
+              ? 'trigger_em_andamento'
+              : 'trigger_concluida';
+
+          // Short-circuit: check settings before invoking the edge function.
+          // Wrapped in Promise.resolve so .catch() is available (PromiseLike → Promise).
+          // Intentionally not awaited — fire-and-forget.
+          Promise.resolve(
+            supabase
+              .from('company_whatsapp_settings' as any)
+              .select('enabled, connection_status, trigger_a_caminho, trigger_em_andamento, trigger_concluida')
+              .eq('company_id', companyId)
+              .maybeSingle()
+          )
+            .then(({ data: waCfg }) => {
+              if (
+                waCfg &&
+                (waCfg as any).enabled === true &&
+                (waCfg as any).connection_status === 'connected' &&
+                (waCfg as any)[triggerKey] === true
+              ) {
+                return supabase.functions
+                  .invoke('whatsapp-send', { body: { os_id: id, trigger: newStatus } });
+              }
+            })
+            .catch((err: unknown) => {
+              console.warn('[whatsapp-send] non-blocking error:', err);
+            });
         }
       }
 

@@ -4,7 +4,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,7 @@ import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from '@/components/technician/ReportHeader';
 import { Slider } from '@/components/ui/slider';
 import { DangerZoneCard } from '@/components/settings/DangerZoneCard';
+import { SettingsIntegrationContent } from '@/components/settings/SettingsWhatsappContent';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
@@ -46,7 +47,7 @@ import type { AppRole } from '@/types/database';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
-const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia'];
+const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia', 'integracoes'];
 
 // Snapshot canônico de `settings` no MESMO shape/ordem do payload salvo
 // (buildPayload). Usado em 2 lugares: baseline do auto-save (lastSavedJsonRef)
@@ -93,6 +94,7 @@ export default function Settings() {
     { value: 'usabilidade', label: t.page.tabs.usabilidade, icon: SlidersHorizontal },
     { value: 'atalhos', label: t.page.tabs.atalhos, icon: Keyboard },
     { value: 'aparencia', label: t.page.tabs.aparencia, icon: Palette },
+    { value: 'integracoes', label: t.page.tabs.integracoes, icon: Plug },
   ];
 
   const { hasScreenAccess, hasRole } = useAuth();
@@ -1183,6 +1185,9 @@ export default function Settings() {
             <UsersPage />
           </Suspense>
         );
+
+      case 'integracoes':
+        return <SettingsIntegrationContent />;
 
       default:
         return null;
