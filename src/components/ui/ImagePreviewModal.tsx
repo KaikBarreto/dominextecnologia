@@ -1,7 +1,13 @@
 import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSignedUrl, resolveStorageUrl } from '@/hooks/useSignedUrl';
+
+// Detecta iPhone/iPad (inclui iPadOS que se disfarça de Mac no userAgent).
+const isIOS = () => {
+  const ua = navigator.userAgent || '';
+  return /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
 
 interface ImagePreviewModalProps {
   src: string;
@@ -21,6 +27,49 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
   // Resolve signed URL pra buckets privados (os-photos, team-photos, etc).
   // Pra URLs públicas ou blob:, devolve o próprio src.
   const resolvedSrc = useSignedUrl(src) ?? src;
+
+  // Arquivo pré-carregado em memória pra possibilitar o navigator.share síncrono
+  // no iOS. O share precisa ser disparado NO gesto do toque (transient activation);
+  // qualquer await antes invalida o gesto e o iOS bloqueia silenciosamente.
+  const [preparedFile, setPreparedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Zera o arquivo preparado do src anterior enquanto o novo carrega.
+    setPreparedFile(null);
+
+    let cancelled = false;
+
+    const prefetch = async () => {
+      try {
+        const downloadSrc = (await resolveStorageUrl(src)) ?? src;
+        const response = await fetch(downloadSrc);
+        const blob = await response.blob();
+
+        if (cancelled) return;
+
+        // Deriva nome de arquivo com extensão válida pra que o iOS reconheça
+        // a mídia como imagem ao receber via navigator.share.
+        const ext = blob.type === 'image/png' ? '.png'
+          : blob.type === 'image/gif' ? '.gif'
+          : blob.type === 'image/webp' ? '.webp'
+          : '.jpg';
+        const baseName = (alt || 'imagem').replace(/[^\w\s-]/g, '').trim() || 'imagem';
+        const fileName = baseName.endsWith(ext) ? baseName : `${baseName}${ext}`;
+
+        setPreparedFile(new File([blob], fileName, { type: blob.type || 'image/jpeg' }));
+      } catch {
+        // best-effort: se falhar, handleDownload cai no fluxo async de fallback
+      }
+    };
+
+    prefetch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, src, alt]);
 
   const handlePrev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -53,12 +102,45 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
 
   if (!open) return null;
 
-  const handleDownload = async (e: React.MouseEvent) => {
+  // iOS: navigator.share precisa ser chamado SINCRONAMENTE no gesto do toque
+  // (transient activation). Qualquer await antes do share invalida o gesto e o
+  // iOS bloqueia silenciosamente. Por isso o blob é pré-carregado no useEffect
+  // acima e o handler NÃO é async — chama o share imediatamente com o File pronto.
+  // Android/desktop: usa o caminho <a download> clássico.
+  const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      const downloadSrc = (await resolveStorageUrl(src)) ?? src;
-      const response = await fetch(downloadSrc);
-      const blob = await response.blob();
+
+    // Caminho iOS: share síncrono com o File já em memória.
+    if (isIOS() && preparedFile && typeof navigator.canShare === 'function' && navigator.canShare({ files: [preparedFile] })) {
+      navigator.share({ files: [preparedFile], title: alt || 'Imagem' }).catch(() => {
+        /* cancelado pelo usuário ou sem suporte */
+      });
+      return;
+    }
+
+    // Caminho Android/desktop (ou iOS sem File ainda pronto):
+    // se o blob já está em memória, baixa direto (evita refazer o fetch);
+    // caso contrário, faz o fetch async como fallback.
+    if (preparedFile) {
+      try {
+        const url = URL.createObjectURL(preparedFile);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = preparedFile.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch {
+        window.open(resolvedSrc, '_blank');
+      }
+      return;
+    }
+
+    // Fallback async: blob ainda não pronto (ex.: src trocou faz menos de 1s).
+    resolveStorageUrl(src).then((downloadSrc) => {
+      return fetch(downloadSrc ?? src);
+    }).then((response) => response.blob()).then((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -67,9 +149,9 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
+    }).catch(() => {
       window.open(resolvedSrc, '_blank');
-    }
+    });
   };
 
   const content = (

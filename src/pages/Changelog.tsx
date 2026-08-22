@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.7',
+    date: '22 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Salvar foto do relatório de serviço nas Fotos do iPhone',
+        description: 'Ao abrir uma foto no relatório de serviço e tocar em baixar, o iPhone agora oferece a opção Salvar Imagem para guardar direto nas Fotos. No Android e no computador, a imagem continua sendo baixada na hora, como antes.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.6',
     date: '22 de agosto de 2026',
     type: 'patch',

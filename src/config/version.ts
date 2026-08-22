@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.6";
+export const APP_VERSION = "1.21.7";
 
-export const VERSION_NOTES = "Os QR Codes do sistema agora têm um logo no centro: o da sua empresa se você usa white-label (com estilo personalizável), senão a marca Dominex. E a tela de pagamento ficou mais limpa.";
+export const VERSION_NOTES = "Ao abrir uma foto do relatório de serviço e tocar em baixar, o iPhone agora oferece a opção Salvar Imagem para guardar direto nas Fotos.";
