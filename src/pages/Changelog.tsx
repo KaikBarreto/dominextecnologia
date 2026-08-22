@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.1',
+    date: '22 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A taxa da cobrança entra como despesa para o caixa bater',
+        description: 'No módulo Cobranças, quando o cliente paga, a tarifa cobrada pelo meio de pagamento agora entra sozinha como uma despesa no seu Financeiro. A receita aparece cheia e a taxa fica registrada à parte, deixando seu caixa igual ao que realmente caiu na conta. Dá para ligar ou desligar esse lançamento na tela de Recebimentos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.0',
     date: '22 de agosto de 2026',
     type: 'minor',

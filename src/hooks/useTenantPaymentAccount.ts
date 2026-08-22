@@ -26,6 +26,7 @@ export interface TenantPaymentAccount {
   asaas_account_id: string | null;
   wallet_id: string | null;
   auto_post_to_finance: boolean;
+  auto_post_fees: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -68,7 +69,7 @@ export function useTenantPaymentAccount() {
       const { data, error } = await supabase
         .from('tenant_payment_accounts')
         .select(
-          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, created_at, updated_at',
+          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, auto_post_fees, created_at, updated_at',
         )
         .eq('company_id', companyId)
         .maybeSingle();
@@ -124,6 +125,22 @@ export function useTenantPaymentAccount() {
     },
   });
 
+  // Grava a flag auto_post_fees via UPDATE direto. Espelha exatamente
+  // setAutoPostToFinanceMutation — mesma RLS policy, mesma invalidação.
+  const setAutoPostFeesMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error('Empresa não identificada.');
+      const { error } = await supabase
+        .from('tenant_payment_accounts')
+        .update({ auto_post_fees: enabled })
+        .eq('company_id', companyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   const account = query.data ?? null;
 
   return {
@@ -135,6 +152,9 @@ export function useTenantPaymentAccount() {
     /** Espelha `tenant_payment_accounts.auto_post_to_finance` (DEFAULT true). */
     autoPostToFinance: account?.auto_post_to_finance ?? true,
     setAutoPostToFinance: setAutoPostToFinanceMutation,
+    /** Espelha `tenant_payment_accounts.auto_post_fees` (DEFAULT true). */
+    autoPostFees: account?.auto_post_fees ?? true,
+    setAutoPostFees: setAutoPostFeesMutation,
     provision,
     deactivate,
   };

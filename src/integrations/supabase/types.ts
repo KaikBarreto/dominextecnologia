@@ -8139,6 +8139,7 @@ export type Database = {
         Row: {
           asaas_account_id: string | null
           asaas_webhook_id: string | null
+          auto_post_fees: boolean
           auto_post_to_finance: boolean
           company_id: string
           created_at: string
@@ -8155,6 +8156,7 @@ export type Database = {
         Insert: {
           asaas_account_id?: string | null
           asaas_webhook_id?: string | null
+          auto_post_fees?: boolean
           auto_post_to_finance?: boolean
           company_id: string
           created_at?: string
@@ -8171,6 +8173,7 @@ export type Database = {
         Update: {
           asaas_account_id?: string | null
           asaas_webhook_id?: string | null
+          auto_post_fees?: boolean
           auto_post_to_finance?: boolean
           company_id?: string
           created_at?: string

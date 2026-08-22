@@ -54,7 +54,7 @@ export function SettingsAsaasContent() {
   const { toast } = useToast();
 
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
-  const { status, isActive, isLoading, autoPostToFinance, setAutoPostToFinance, provision, deactivate } = useTenantPaymentAccount();
+  const { status, isActive, isLoading, autoPostToFinance, setAutoPostToFinance, autoPostFees, setAutoPostFees, provision, deactivate } = useTenantPaymentAccount();
 
   const [apiKey, setApiKey] = useState('');
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
@@ -81,6 +81,15 @@ export function SettingsAsaasContent() {
       toast({ title: enabled ? t.activeState.autoPostToastOn : t.activeState.autoPostToastOff });
     } catch {
       toast({ variant: 'destructive', title: t.activeState.autoPostToastError });
+    }
+  };
+
+  const handleAutoFeeChange = async (enabled: boolean) => {
+    try {
+      await setAutoPostFees.mutateAsync(enabled);
+      toast({ title: enabled ? t.activeState.autoFeeToastOn : t.activeState.autoFeeToastOff });
+    } catch {
+      toast({ variant: 'destructive', title: t.activeState.autoFeeError });
     }
   };
 
@@ -255,6 +264,21 @@ export function SettingsAsaasContent() {
                   onCheckedChange={handleAutoPostChange}
                   disabled={setAutoPostToFinance.isPending}
                   aria-label={t.activeState.autoPostLabel}
+                  className="shrink-0 mt-0.5"
+                />
+              </div>
+
+              {/* Toggle: lançar taxa da Asaas como despesa */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5 flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-tight">{t.activeState.autoFeeLabel}</p>
+                  <p className="text-xs text-muted-foreground">{t.activeState.autoFeeDesc}</p>
+                </div>
+                <Switch
+                  checked={autoPostFees}
+                  onCheckedChange={handleAutoFeeChange}
+                  disabled={setAutoPostFees.isPending}
+                  aria-label={t.activeState.autoFeeLabel}
                   className="shrink-0 mt-0.5"
                 />
               </div>
