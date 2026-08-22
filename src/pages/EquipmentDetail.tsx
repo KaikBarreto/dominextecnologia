@@ -4,9 +4,9 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useRef, useCallback } from 'react';
 import { escapeHtml, safeImageUrl } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
-import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
+import { getBrandedQrPngDataUrl } from '@/utils/brandedQrExport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -154,7 +154,8 @@ export default function EquipmentDetail() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  // dataURL do QR com marca para o preview da etiqueta (gerado sob demanda)
+  const [labelQrDataUrl, setLabelQrDataUrl] = useState<string | null>(null);
 
   // Persistir configuração da etiqueta quando mudar
   useEffect(() => {
@@ -210,6 +211,27 @@ export default function EquipmentDetail() {
       : `EQ-${equipment.identifier || equipment.id}`
     : '';
   const hasPortalLink = !!portalToken;
+
+  // Gera o QR com marca para o preview da etiqueta ao abrir o dialog
+  useEffect(() => {
+    if (!labelDialogOpen || !hasPortalLink) {
+      setLabelQrDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    getBrandedQrPngDataUrl({
+      value: qrValue,
+      size: 80,
+      logoUrl: qrConfig.logoUrl,
+      dotStyle: qrConfig.dotStyle,
+      cornerStyle: qrConfig.cornerStyle,
+      color: qrConfig.color,
+    }).then((url) => {
+      if (!cancelled) setLabelQrDataUrl(url);
+    });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labelDialogOpen, hasPortalLink, qrValue, qrConfig]);
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
@@ -267,12 +289,27 @@ export default function EquipmentDetail() {
 
   const tfc = MESSAGES[locale].app.equipment.fieldConfig;
 
-  const handleDownloadLabel = useCallback(() => {
-    if (!labelRef.current || !equipment) return;
+  const handleDownloadLabel = useCallback(async () => {
+    if (!equipment) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    const svgEl = labelRef.current.querySelector('svg');
-    const svgData = svgEl ? new XMLSerializer().serializeToString(svgEl) : '';
+
+    // Gera o QR com marca para embutir como <img> na etiqueta impressa.
+    let qrImgTag = '';
+    if (isLabelItemEnabled('qr') && hasPortalLink) {
+      const qrSize = 80; // px lógico — o helper renderiza em 3x internamente
+      const dataUrl = await getBrandedQrPngDataUrl({
+        value: qrValue,
+        size: qrSize,
+        logoUrl: qrConfig.logoUrl,
+        dotStyle: qrConfig.dotStyle,
+        cornerStyle: qrConfig.cornerStyle,
+        color: qrConfig.color,
+      });
+      if (dataUrl) {
+        qrImgTag = `<img src="${dataUrl}" width="${qrSize}" height="${qrSize}" style="display:block" />`;
+      }
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html><html><head><title>Etiqueta - ${escapeHtml(equipment.name)}</title>
@@ -281,7 +318,7 @@ export default function EquipmentDetail() {
         ${isLabelItemEnabled('companyName') && companySettings ? `<div class="company-name">${escapeHtml(companySettings.name)}</div>` : ''}
         ${isLabelItemEnabled('companyPhone') && companySettings?.phone ? `<div class="company-info">${escapeHtml(companySettings.phone)}</div>` : ''}
         ${isLabelItemEnabled('companyEmail') && companySettings?.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}
-        ${isLabelItemEnabled('qr') ? svgData : ''}
+        ${qrImgTag}
         ${isLabelItemEnabled('eqName') ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemEqName)}</div><div class="eq-name">${escapeHtml(equipment.name)}</div>` : ''}
         ${isLabelItemEnabled('identifier') && equipment.identifier ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemIdentifier)}</div><div class="eq-id">${escapeHtml(equipment.identifier)}</div>` : ''}
         ${isLabelItemEnabled('brand') && equipment.brand ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemBrand)}</div><div class="eq-detail">${escapeHtml(equipment.brand)}</div>` : ''}
@@ -294,13 +331,20 @@ export default function EquipmentDetail() {
     `);
     printWindow.document.close();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipment, labelConfig, companySettings, hasPortalLink, labelWidthPx, labelHeightPx]);
+  }, [equipment, labelConfig, companySettings, hasPortalLink, qrValue, qrConfig, labelWidthPx, labelHeightPx]);
 
-  // Download QR como PNG
-  const handleDownloadQrPng = useCallback(() => {
-    if (!qrCanvasRef.current || !equipment) return;
-    const canvas = qrCanvasRef.current;
-    const dataUrl = canvas.toDataURL('image/png');
+  // Download QR como PNG com marca
+  const handleDownloadQrPng = useCallback(async () => {
+    if (!equipment) return;
+    const dataUrl = await getBrandedQrPngDataUrl({
+      value: qrValue,
+      size: 1024,
+      logoUrl: qrConfig.logoUrl,
+      dotStyle: qrConfig.dotStyle,
+      cornerStyle: qrConfig.cornerStyle,
+      color: qrConfig.color,
+    });
+    if (!dataUrl) return;
     const slug = (equipment.identifier || equipment.name)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -310,7 +354,7 @@ export default function EquipmentDetail() {
     a.download = `qr-${slug}.png`;
     a.click();
     toast({ title: tfc.detailDialogQrDownloaded });
-  }, [equipment, tfc.detailDialogQrDownloaded]);
+  }, [equipment, qrValue, qrConfig, tfc.detailDialogQrDownloaded]);
 
   if (eqLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -464,12 +508,7 @@ export default function EquipmentDetail() {
                   <div className="w-full space-y-2 text-center lg:text-left">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
                     <p className="text-sm text-muted-foreground">{te.qrCaption}</p>
-                    {/* Canvas oculto para download PNG */}
-                    {hasPortalLink && (
-                      <div className="hidden" aria-hidden="true">
-                        <QRCodeCanvas ref={qrCanvasRef} value={qrValue} size={1024} level="M" marginSize={2} />
-                      </div>
-                    )}
+
                     <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-center lg:justify-start">
                       <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setLabelDialogOpen(true)}>
                         <Tag className="mr-2 h-3.5 w-3.5" />{te.generateLabel}
@@ -1001,8 +1040,14 @@ export default function EquipmentDetail() {
                     {isLabelItemEnabled('companyEmail') && companySettings?.email && (
                       <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(6, 8 * scale) }}>{companySettings.email}</p>
                     )}
-                    {isLabelItemEnabled('qr') && (
-                      <QRCodeSVG value={qrValue} size={Math.round(80 * scale)} />
+                    {isLabelItemEnabled('qr') && labelQrDataUrl && (
+                      <img
+                        src={labelQrDataUrl}
+                        width={Math.round(80 * scale)}
+                        height={Math.round(80 * scale)}
+                        alt=""
+                        aria-hidden="true"
+                      />
                     )}
                     {isLabelItemEnabled('eqName') && (
                       <>

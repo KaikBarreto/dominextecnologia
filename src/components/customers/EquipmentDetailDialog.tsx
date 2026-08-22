@@ -3,9 +3,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { escapeHtml } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
-import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
+import { getBrandedQrPngDataUrl } from '@/utils/brandedQrExport';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,9 +128,10 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
     });
   };
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  // dataURL do QR com marca para o preview da etiqueta (gerado sob demanda)
+  const [labelQrDataUrl, setLabelQrDataUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Configuração de etiqueta
   const [labelConfig, setLabelConfig] = useState<LabelConfig>(loadLabelConfig);
@@ -183,6 +184,27 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const portalTokenPending = !!equipment?.customer_id && portalTokenLoading;
   const hasPortalLink = !!qrValue;
 
+  // Gera o QR com marca para o preview da etiqueta ao abrir o dialog
+  useEffect(() => {
+    if (!labelDialogOpen || !hasPortalLink) {
+      setLabelQrDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    getBrandedQrPngDataUrl({
+      value: qrValue,
+      size: 80,
+      logoUrl: qrConfig.logoUrl,
+      dotStyle: qrConfig.dotStyle,
+      cornerStyle: qrConfig.cornerStyle,
+      color: qrConfig.color,
+    }).then((url) => {
+      if (!cancelled) setLabelQrDataUrl(url);
+    });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labelDialogOpen, hasPortalLink, qrValue, qrConfig]);
+
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,13 +245,10 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const isItemEnabled = (key: string) => !!(labelConfig.items[key] && availableItems[key]);
 
   // handleDownloadLabel monta HTML a partir da configuração atual
-  const handleDownloadLabel = useCallback(() => {
-    if (!labelRef.current || !equipment) return;
+  const handleDownloadLabel = useCallback(async () => {
+    if (!equipment) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-
-    const svgEl = labelRef.current.querySelector('svg');
-    const svgData = svgEl ? new XMLSerializer().serializeToString(svgEl) : '';
 
     const showCompanyName = isItemEnabled('companyName');
     const showCompanyPhone = isItemEnabled('companyPhone');
@@ -242,6 +261,23 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
     const showSerial = isItemEnabled('serial');
     const showLocation = isItemEnabled('location');
     const showCustomer = isItemEnabled('customer');
+
+    // Gera o QR com marca para embutir como <img> na etiqueta impressa.
+    let qrImgTag = '';
+    if (showQr && hasPortalLink) {
+      const qrSize = 80; // px lógico — o helper renderiza em 3x internamente
+      const dataUrl = await getBrandedQrPngDataUrl({
+        value: qrValue,
+        size: qrSize,
+        logoUrl: qrConfig.logoUrl,
+        dotStyle: qrConfig.dotStyle,
+        cornerStyle: qrConfig.cornerStyle,
+        color: qrConfig.color,
+      });
+      if (dataUrl) {
+        qrImgTag = `<img src="${dataUrl}" width="${qrSize}" height="${qrSize}" style="display:block" />`;
+      }
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -266,7 +302,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
           ${showCompanyName && companySettings ? `<div class="company-name">${escapeHtml(companySettings.name)}</div>` : ''}
           ${showCompanyPhone && companySettings?.phone ? `<div class="company-info">${escapeHtml(companySettings.phone)}</div>` : ''}
           ${showCompanyEmail && companySettings?.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}
-          ${showQr ? svgData : ''}
+          ${qrImgTag}
           ${showEqName ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemEqName)}</div><div class="eq-name">${escapeHtml(equipment.name)}</div>` : ''}
           ${showIdentifier && equipment.identifier ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemIdentifier)}</div><div class="eq-id">${escapeHtml(equipment.identifier)}</div>` : ''}
           ${showBrand && equipment.brand ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemBrand)}</div><div class="eq-detail">${escapeHtml(equipment.brand)}</div>` : ''}
@@ -281,13 +317,20 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
     `);
     printWindow.document.close();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipment, labelConfig, companySettings, hasPortalLink, labelWidthPx, labelHeightPx]);
+  }, [equipment, labelConfig, companySettings, hasPortalLink, qrValue, qrConfig, labelWidthPx, labelHeightPx]);
 
-  // Feature 2: Download QR como PNG
-  const handleDownloadQrPng = useCallback(() => {
-    if (!qrCanvasRef.current || !equipment) return;
-    const canvas = qrCanvasRef.current;
-    const dataUrl = canvas.toDataURL('image/png');
+  // Download QR como PNG com marca
+  const handleDownloadQrPng = useCallback(async () => {
+    if (!equipment) return;
+    const dataUrl = await getBrandedQrPngDataUrl({
+      value: qrValue,
+      size: 1024,
+      logoUrl: qrConfig.logoUrl,
+      dotStyle: qrConfig.dotStyle,
+      cornerStyle: qrConfig.cornerStyle,
+      color: qrConfig.color,
+    });
+    if (!dataUrl) return;
     const slug = (equipment.identifier || equipment.name)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -297,7 +340,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
     a.download = `qr-${slug}.png`;
     a.click();
     toast({ title: tfc.detailDialogQrDownloaded });
-  }, [equipment, tfc.detailDialogQrDownloaded]);
+  }, [equipment, qrValue, qrConfig, tfc.detailDialogQrDownloaded]);
 
   if (!equipment) return null;
 
@@ -408,19 +451,6 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                       </p>
                     )}
                   </div>
-
-                  {/* Canvas oculto para download PNG (só montado quando tem link) */}
-                  {hasPortalLink && (
-                    <div className="hidden" aria-hidden="true">
-                      <QRCodeCanvas
-                        ref={qrCanvasRef}
-                        value={qrValue}
-                        size={1024}
-                        level="M"
-                        marginSize={2}
-                      />
-                    </div>
-                  )}
 
                   {/* Ações — 2 colunas no mobile, 2 colunas no desktop */}
                   <div className="grid w-full grid-cols-2 gap-2">
@@ -790,12 +820,18 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                       </p>
                     )}
                     {isItemEnabled('qr') ? (
-                      portalTokenPending ? (
+                      portalTokenPending || !labelQrDataUrl ? (
                         <div className="flex items-center justify-center rounded bg-gray-100" style={{ width: Math.round(80 * scale), height: Math.round(80 * scale) }}>
                           <Loader2 className="animate-spin text-gray-400" style={{ width: Math.round(16 * scale), height: Math.round(16 * scale) }} />
                         </div>
                       ) : (
-                        <QRCodeSVG value={qrValue} size={Math.round(80 * scale)} />
+                        <img
+                          src={labelQrDataUrl}
+                          width={Math.round(80 * scale)}
+                          height={Math.round(80 * scale)}
+                          alt=""
+                          aria-hidden="true"
+                        />
                       )
                     ) : null}
                     {isItemEnabled('eqName') && (
