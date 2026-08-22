@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
+import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
@@ -191,9 +191,14 @@ function CheckoutInner({
                   <p className="text-sm font-semibold">{t.pix.title}</p>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">{t.pix.instructions}</p>
-                {/* QR Code visual — fundo branco fixo para leitura independente do tema */}
+                {/* QR Code visual com logo no centro — fundo branco fixo, lê em qualquer tema.
+                    White-label (primary_color presente) → logo do tenant; senão → ícone Dominex. */}
                 <div className="mx-auto w-fit rounded-lg border border-border bg-white p-3">
-                  <QRCodeSVG value={charge.pix_copy_paste} size={180} />
+                  <BrandedQRCode
+                    value={charge.pix_copy_paste}
+                    size={180}
+                    logoUrl={company.primary_color ? company.logo_url : null}
+                  />
                 </div>
                 <div
                   className={cn(
@@ -222,48 +227,42 @@ function CheckoutInner({
               </div>
             )}
 
-            {/* ── Boleto ── */}
+            {/* ── Boleto — botão integrado ao fundo, sem card separado ── */}
             {charge.boleto_url && (
-              <div className="rounded-lg border border-border bg-card px-5 py-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-semibold">{t.boleto.title}</p>
-                </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full rounded-md h-10 font-semibold text-sm gap-2"
-                >
-                  <a href={charge.boleto_url} target="_blank" rel="noopener noreferrer">
-                    <FileText className="h-4 w-4" />
-                    {t.boleto.open}
-                  </a>
-                </Button>
-              </div>
+              <a
+                href={charge.boleto_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'flex w-full items-center justify-center gap-2.5 rounded-md h-11',
+                  'border border-border bg-transparent text-foreground text-sm font-semibold',
+                  'transition-colors duration-150',
+                  'hover:bg-primary hover:text-primary-foreground hover:border-primary',
+                  'active:bg-primary active:text-primary-foreground active:border-primary',
+                )}
+              >
+                <FileText className="h-4 w-4 shrink-0" />
+                {t.boleto.open}
+              </a>
             )}
 
-            {/* ── Cartão / checkout hospedado da Asaas (invoice_url) ── */}
+            {/* ── Cartão / checkout hospedado da Asaas — botão integrado ao fundo ── */}
             {charge.invoice_url && (
-              <div className="rounded-lg border border-border bg-card px-5 py-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
-                    <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-semibold">{t.card.title}</p>
-                </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full rounded-md h-10 font-semibold text-sm gap-2"
-                >
-                  <a href={charge.invoice_url} target="_blank" rel="noopener noreferrer">
-                    <CreditCard className="h-4 w-4" />
-                    {t.card.open}
-                  </a>
-                </Button>
-              </div>
+              <a
+                href={charge.invoice_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'flex w-full items-center justify-center gap-2.5 rounded-md h-11',
+                  'border border-border bg-transparent text-foreground text-sm font-semibold',
+                  'transition-colors duration-150',
+                  'hover:bg-primary hover:text-primary-foreground hover:border-primary',
+                  'active:bg-primary active:text-primary-foreground active:border-primary',
+                )}
+              >
+                <CreditCard className="h-4 w-4 shrink-0" />
+                {t.card.open}
+              </a>
             )}
           </div>
         )}

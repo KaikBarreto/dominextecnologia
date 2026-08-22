@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.6',
+    date: '22 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'QR Codes com a sua marca no centro',
+        description: 'Os QR Codes do sistema (pagamento, equipamento, contrato e portais) agora aparecem com um logo no meio. Se você usa white-label, é o logo da sua empresa, e dá para personalizar o estilo do QR (formato dos pontos, dos cantos e a cor) nas configurações. Sem white-label, aparece a marca Dominex. A tela de pagamento também ficou mais limpa e integrada.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.5',
     date: '22 de agosto de 2026',
     type: 'patch',

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from 'next-themes';
-import { QRCodeSVG } from 'qrcode.react';
+import { BrandedQRCode } from '@/components/BrandedQRCode';
+import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
@@ -96,7 +96,6 @@ const FREQUENCY_MONTHS: Record<string, number> = {
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
-  const { resolvedTheme } = useTheme();
   const { locale } = useAppLocaleContext();
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
@@ -126,6 +125,7 @@ export default function ContractDetail() {
   const { accounts } = useFinancialAccounts();
   const { categories } = useFinancialCategories();
   const { settings: companySettings } = useCompanySettings();
+  const qrConfig = useBrandedQrConfig();
 
   // Aba ativa do contrato. PMOC tem 5 abas; contrato comum tem 3 (Visão Geral
   // + Ocorrências + Financeiro). Default = visão geral. "Ocorrências" e
@@ -876,18 +876,14 @@ export default function ContractDetail() {
                   {/* QR à esquerda, botões empilhados à direita (desktop). Mobile empilha tudo. */}
                   {portalUrl && (
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center min-w-0">
-                      <div
-                        className={cn(
-                          'inline-flex shrink-0 items-center justify-center self-center rounded-xl p-4 transition-colors sm:self-auto',
-                          resolvedTheme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-border',
-                        )}
-                      >
-                        <QRCodeSVG
+                      <div className="inline-flex shrink-0 items-center justify-center self-center rounded-xl border border-border bg-white p-4 transition-colors sm:self-auto">
+                        <BrandedQRCode
                           value={portalUrl}
                           size={isMobile ? 130 : 160}
-                          bgColor="transparent"
-                          fgColor={resolvedTheme === 'dark' ? '#ffffff' : '#000000'}
-                          level="M"
+                          logoUrl={qrConfig.logoUrl}
+                          dotStyle={qrConfig.dotStyle}
+                          cornerStyle={qrConfig.cornerStyle}
+                          color={qrConfig.color}
                         />
                       </div>
 

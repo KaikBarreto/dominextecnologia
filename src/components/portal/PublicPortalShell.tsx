@@ -309,17 +309,13 @@ export function PublicPortalShell({
             </>
           ) : (
             <>
-              {/* Logo da empresa */}
-              {logoUrl ? (
+              {/* Logo da empresa — só renderiza quando há logo (white-label).
+                  Sem logo (Dominex default): círculo omitido, nome centralizado diretamente. */}
+              {logoUrl && (
                 <img
                   src={logoUrl}
                   alt={title}
                   className="mx-auto mb-2 h-14 w-14 rounded-full object-contain border-2 border-white/40 shadow-sm bg-white/10"
-                />
-              ) : (
-                <div
-                  className="mx-auto mb-2 h-14 w-14 rounded-full border-2 border-white/40 shadow-sm"
-                  style={{ background: 'rgba(255,255,255,0.12)' }}
                 />
               )}
 

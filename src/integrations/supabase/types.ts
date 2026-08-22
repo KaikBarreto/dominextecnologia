@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -1051,6 +1076,9 @@ export type Database = {
           white_label_icon_url: string | null
           white_label_logo_url: string | null
           white_label_primary_color: string | null
+          white_label_qr_color: string | null
+          white_label_qr_corner_style: string | null
+          white_label_qr_dot_style: string | null
           zip_code: string | null
         }
         Insert: {
@@ -1092,6 +1120,9 @@ export type Database = {
           white_label_icon_url?: string | null
           white_label_logo_url?: string | null
           white_label_primary_color?: string | null
+          white_label_qr_color?: string | null
+          white_label_qr_corner_style?: string | null
+          white_label_qr_dot_style?: string | null
           zip_code?: string | null
         }
         Update: {
@@ -1133,6 +1164,9 @@ export type Database = {
           white_label_icon_url?: string | null
           white_label_logo_url?: string | null
           white_label_primary_color?: string | null
+          white_label_qr_color?: string | null
+          white_label_qr_corner_style?: string | null
+          white_label_qr_dot_style?: string | null
           zip_code?: string | null
         }
         Relationships: [
@@ -9940,6 +9974,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

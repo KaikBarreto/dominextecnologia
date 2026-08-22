@@ -7,6 +7,7 @@ import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { BrandedQRCode, type QRDotStyle, type QRCornerStyle } from '@/components/BrandedQRCode';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +68,12 @@ function settingsToJson(settings: any): string {
     zip_code: settings.zip_code || null,
     white_label_enabled: !!settings.white_label_enabled,
     white_label_primary_color: settings.white_label_primary_color || '#00C597',
+    // Espelha a hidratação do form (defaults square/square e cor caindo na
+    // primary→preto) pra o baseline bater com o buildPayload e não marcar
+    // "sujo" logo no mount.
+    white_label_qr_dot_style: settings.white_label_qr_dot_style || 'square',
+    white_label_qr_corner_style: settings.white_label_qr_corner_style || 'square',
+    white_label_qr_color: settings.white_label_qr_color || settings.white_label_primary_color || '#000000',
     show_name_in_documents: settings.show_name_in_documents ?? true,
     show_cnpj_in_documents: settings.show_cnpj_in_documents ?? true,
     show_address_in_documents: settings.show_address_in_documents ?? true,
@@ -149,6 +156,10 @@ export default function Settings() {
   const [wlUploading, setWlUploading] = useState(false);
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
+  // Estilo do QR Code branded (só aplica com white-label ligado).
+  const [wlQrDotStyle, setWlQrDotStyle] = useState<QRDotStyle>('square');
+  const [wlQrCornerStyle, setWlQrCornerStyle] = useState<QRCornerStyle>('square');
+  const [wlQrColor, setWlQrColor] = useState('#000000');
   const [wlIconUploading, setWlIconUploading] = useState(false);
   const [showNameInDocs, setShowNameInDocs] = useState(true);
   const [showCnpjInDocs, setShowCnpjInDocs] = useState(true);
@@ -205,6 +216,9 @@ export default function Settings() {
       setCompanySegment((settings as any).segment || '');
       setWlEnabled(!!settings.white_label_enabled);
       setWlColor(settings.white_label_primary_color || '#00C597');
+      setWlQrDotStyle((settings.white_label_qr_dot_style as QRDotStyle) || 'square');
+      setWlQrCornerStyle((settings.white_label_qr_corner_style as QRCornerStyle) || 'square');
+      setWlQrColor(settings.white_label_qr_color || settings.white_label_primary_color || '#000000');
       setShowNameInDocs(settings.show_name_in_documents ?? true);
       setShowCnpjInDocs(settings.show_cnpj_in_documents ?? true);
       setShowAddressInDocs(settings.show_address_in_documents ?? true);
@@ -249,6 +263,9 @@ export default function Settings() {
     zip_code: companyZip || null,
     white_label_enabled: wlEnabled,
     white_label_primary_color: wlColor || null,
+    white_label_qr_dot_style: wlQrDotStyle,
+    white_label_qr_corner_style: wlQrCornerStyle,
+    white_label_qr_color: wlQrColor || null,
     show_name_in_documents: showNameInDocs,
     show_cnpj_in_documents: showCnpjInDocs,
     show_address_in_documents: showAddressInDocs,
@@ -262,7 +279,7 @@ export default function Settings() {
     report_status_bar_color: reportStatusBarColor,
     report_header_logo_type: reportLogoType,
     segment: companySegment || null,
-  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, companySegment]);
+  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, wlQrDotStyle, wlQrCornerStyle, wlQrColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, companySegment]);
 
   useEffect(() => {
     // O gate do auto-save abre quando dá pra salvar (canSave), não quando
@@ -890,6 +907,67 @@ export default function Settings() {
                           className="h-10 flex-1 rounded-md border"
                           style={{ backgroundColor: wlColor }}
                         />
+                      </div>
+                    </div>
+
+                    <Separator className="opacity-50" />
+
+                    {/* QR Code style */}
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium">{t.company.whiteLabelSection.qrSection.title}</Label>
+                        <p className="text-xs text-muted-foreground">{t.company.whiteLabelSection.qrSection.description}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        {/* Controles */}
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>{t.company.whiteLabelSection.qrSection.dotStyleLabel}</Label>
+                            <Select value={wlQrDotStyle} onValueChange={(v) => setWlQrDotStyle(v as QRDotStyle)}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="square">{t.company.whiteLabelSection.qrSection.dotStyle.square}</SelectItem>
+                                <SelectItem value="rounded">{t.company.whiteLabelSection.qrSection.dotStyle.rounded}</SelectItem>
+                                <SelectItem value="dots">{t.company.whiteLabelSection.qrSection.dotStyle.dots}</SelectItem>
+                                <SelectItem value="classy">{t.company.whiteLabelSection.qrSection.dotStyle.classy}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>{t.company.whiteLabelSection.qrSection.cornerStyleLabel}</Label>
+                            <Select value={wlQrCornerStyle} onValueChange={(v) => setWlQrCornerStyle(v as QRCornerStyle)}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="square">{t.company.whiteLabelSection.qrSection.cornerStyle.square}</SelectItem>
+                                <SelectItem value="rounded">{t.company.whiteLabelSection.qrSection.cornerStyle.rounded}</SelectItem>
+                                <SelectItem value="dot">{t.company.whiteLabelSection.qrSection.cornerStyle.dot}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>{t.company.whiteLabelSection.qrSection.colorLabel}</Label>
+                            <div className="flex items-center gap-3">
+                              <ColorPicker value={wlQrColor} onChange={setWlQrColor} />
+                              <div className="h-10 flex-1 rounded-md border" style={{ backgroundColor: wlQrColor }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Preview ao vivo */}
+                        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4">
+                          <BrandedQRCode
+                            value="https://dominex.app"
+                            size={140}
+                            logoUrl={settings?.white_label_logo_url || settings?.logo_url || null}
+                            dotStyle={wlQrDotStyle}
+                            cornerStyle={wlQrCornerStyle}
+                            color={wlQrColor}
+                          />
+                          <p className="text-[11px] text-muted-foreground">{t.company.whiteLabelSection.qrSection.previewCaption}</p>
+                        </div>
                       </div>
                     </div>
 

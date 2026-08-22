@@ -36,6 +36,11 @@ export interface CompanySettings {
   white_label_logo_url?: string;
   white_label_icon_url?: string;
   white_label_primary_color?: string;
+  // Estilo do QR Code branded (só aplica quando white_label_enabled).
+  // NULL no banco = padrão (square/square/preto). Ver useBrandedQrConfig.
+  white_label_qr_dot_style?: string | null;
+  white_label_qr_corner_style?: string | null;
+  white_label_qr_color?: string | null;
   show_name_in_documents?: boolean;
   show_cnpj_in_documents?: boolean;
   show_address_in_documents?: boolean;

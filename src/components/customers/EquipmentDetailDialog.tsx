@@ -4,6 +4,8 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { escapeHtml } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
+import { BrandedQRCode } from '@/components/BrandedQRCode';
+import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,6 +98,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(equipment?.id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(equipment?.id);
   const { settings: companySettings } = useCompanySettings();
+  const qrConfig = useBrandedQrConfig();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const { toast } = useToast();
   const { updateEquipment } = useEquipment();
@@ -377,7 +380,14 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                       </div>
                     ) : qrValue ? (
                       <div className="rounded-lg bg-white p-2 shadow-sm">
-                        <QRCodeSVG value={qrValue} size={116} />
+                        <BrandedQRCode
+                          value={qrValue}
+                          size={116}
+                          logoUrl={qrConfig.logoUrl}
+                          dotStyle={qrConfig.dotStyle}
+                          cornerStyle={qrConfig.cornerStyle}
+                          color={qrConfig.color}
+                        />
                       </div>
                     ) : (
                       <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg bg-muted">

@@ -5,6 +5,8 @@ import { useRef, useCallback } from 'react';
 import { escapeHtml, safeImageUrl } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
+import { BrandedQRCode } from '@/components/BrandedQRCode';
+import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -117,6 +119,7 @@ export default function EquipmentDetail() {
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const isMobile = useIsMobile();
   const { settings: companySettings } = useCompanySettings();
+  const qrConfig = useBrandedQrConfig();
   const { equipment: allEquipment, isLoading: eqLoading } = useEquipment();
 
   // Resolve o equipamento a partir do param (UUID antigo OU código curto).
@@ -449,7 +452,14 @@ export default function EquipmentDetail() {
                     className="shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                     aria-label={te.ariaExpandQr}
                   >
-                    <QRCodeSVG value={qrValue} size={100} />
+                    <BrandedQRCode
+                      value={qrValue}
+                      size={100}
+                      logoUrl={qrConfig.logoUrl}
+                      dotStyle={qrConfig.dotStyle}
+                      cornerStyle={qrConfig.cornerStyle}
+                      color={qrConfig.color}
+                    />
                   </button>
                   <div className="w-full space-y-2 text-center lg:text-left">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
@@ -1059,7 +1069,14 @@ export default function EquipmentDetail() {
             className="flex flex-col items-center gap-4 rounded-2xl bg-white p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <QRCodeSVG value={qrValue} size={280} />
+            <BrandedQRCode
+              value={qrValue}
+              size={280}
+              logoUrl={qrConfig.logoUrl}
+              dotStyle={qrConfig.dotStyle}
+              cornerStyle={qrConfig.cornerStyle}
+              color={qrConfig.color}
+            />
             {equipment.identifier && <p className="text-lg font-mono font-medium text-black">{equipment.identifier}</p>}
           </div>
         </div>,
