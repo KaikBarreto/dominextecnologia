@@ -8122,6 +8122,9 @@ export type Database = {
       }
       tenant_payment_accounts: {
         Row: {
+          allow_boleto: boolean
+          allow_card: boolean
+          allow_pix: boolean
           asaas_account_id: string | null
           asaas_webhook_id: string | null
           auto_post_fees: boolean
@@ -8129,8 +8132,16 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          default_description: string | null
+          default_discount_days: number | null
+          default_discount_percent: number | null
+          default_due_days: number
+          default_fee_category: string
+          default_finance_account_id: string | null
           default_fine_percent: number
+          default_income_category: string | null
           default_interest_percent: number
+          default_max_installments: number
           id: string
           mode: string
           provider: string
@@ -8141,6 +8152,9 @@ export type Database = {
           webhook_auth_token_name: string | null
         }
         Insert: {
+          allow_boleto?: boolean
+          allow_card?: boolean
+          allow_pix?: boolean
           asaas_account_id?: string | null
           asaas_webhook_id?: string | null
           auto_post_fees?: boolean
@@ -8148,8 +8162,16 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          default_description?: string | null
+          default_discount_days?: number | null
+          default_discount_percent?: number | null
+          default_due_days?: number
+          default_fee_category?: string
+          default_finance_account_id?: string | null
           default_fine_percent?: number
+          default_income_category?: string | null
           default_interest_percent?: number
+          default_max_installments?: number
           id?: string
           mode?: string
           provider?: string
@@ -8160,6 +8182,9 @@ export type Database = {
           webhook_auth_token_name?: string | null
         }
         Update: {
+          allow_boleto?: boolean
+          allow_card?: boolean
+          allow_pix?: boolean
           asaas_account_id?: string | null
           asaas_webhook_id?: string | null
           auto_post_fees?: boolean
@@ -8167,8 +8192,16 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          default_description?: string | null
+          default_discount_days?: number | null
+          default_discount_percent?: number | null
+          default_due_days?: number
+          default_fee_category?: string
+          default_finance_account_id?: string | null
           default_fine_percent?: number
+          default_income_category?: string | null
           default_interest_percent?: number
+          default_max_installments?: number
           id?: string
           mode?: string
           provider?: string
@@ -8184,6 +8217,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: true
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_payment_accounts_default_finance_account_id_fkey"
+            columns: ["default_finance_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -9208,7 +9248,9 @@ export type Database = {
       }
       create_tenant_charge_receivable: {
         Args: {
+          p_account_id?: string
           p_amount: number
+          p_category?: string
           p_company_id: string
           p_customer_id: string
           p_description: string

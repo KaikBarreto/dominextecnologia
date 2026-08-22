@@ -20,6 +20,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Lock,
   Loader2,
   CheckCircle2,
@@ -36,6 +43,8 @@ import {
 } from '@/components/ui/collapsible';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,8 +68,21 @@ export function SettingsAsaasContent() {
     autoPostToFinance, setAutoPostToFinance,
     autoPostFees, setAutoPostFees,
     defaultFinePercent, defaultInterestPercent, setLateFees,
+    // preferências de cobrança
+    defaultDueDays, defaultDiscountPercent, defaultDiscountDays,
+    defaultDescription, allowPix, allowBoleto, allowCard,
+    defaultMaxInstallments, defaultFinanceAccountId,
+    defaultIncomeCategory, defaultFeeCategory,
+    setChargePreferences,
     provision, deactivate,
   } = useTenantPaymentAccount();
+
+  const { accounts: financialAccounts } = useFinancialAccounts();
+
+  const { categories: allCategories } = useFinancialCategories();
+  const incomeCategories = allCategories.filter(
+    (c) => c.type === 'income' && c.is_active,
+  );
 
   const [apiKey, setApiKey] = useState('');
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
@@ -75,10 +97,107 @@ export function SettingsAsaasContent() {
     setInterestInput(String(defaultInterestPercent));
   }, [defaultFinePercent, defaultInterestPercent]);
 
+  // ── Estado local das 3 seções novas ────────────────────────────────────────
+  const [dueDaysInput, setDueDaysInput] = useState(String(defaultDueDays));
+  const [descriptionInput, setDescriptionInput] = useState(defaultDescription ?? '');
+  const [pixEnabled, setPixEnabled] = useState(allowPix);
+  const [boletoEnabled, setBoletoEnabled] = useState(allowBoleto);
+  const [cardEnabled, setCardEnabled] = useState(allowCard);
+  const [maxInstallmentsInput, setMaxInstallmentsInput] = useState(
+    String(defaultMaxInstallments),
+  );
+  const [discountPercentInput, setDiscountPercentInput] = useState(
+    defaultDiscountPercent != null ? String(defaultDiscountPercent) : '',
+  );
+  const [discountDaysInput, setDiscountDaysInput] = useState(
+    defaultDiscountDays != null ? String(defaultDiscountDays) : '',
+  );
+  const [financeAccountId, setFinanceAccountId] = useState(defaultFinanceAccountId ?? '');
+  const [incomeCategoryInput, setIncomeCategoryInput] = useState(defaultIncomeCategory ?? '');
+  const [feeCategoryInput, setFeeCategoryInput] = useState(defaultFeeCategory);
+
+  // Sincroniza estado local quando o banco carrega
+  useEffect(() => {
+    setDueDaysInput(String(defaultDueDays));
+    setDescriptionInput(defaultDescription ?? '');
+    setPixEnabled(allowPix);
+    setBoletoEnabled(allowBoleto);
+    setCardEnabled(allowCard);
+    setMaxInstallmentsInput(String(defaultMaxInstallments));
+    setDiscountPercentInput(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
+    setDiscountDaysInput(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
+    setFinanceAccountId(defaultFinanceAccountId ?? '');
+    setIncomeCategoryInput(defaultIncomeCategory ?? '');
+    setFeeCategoryInput(defaultFeeCategory);
+  }, [
+    defaultDueDays, defaultDescription, allowPix, allowBoleto, allowCard,
+    defaultMaxInstallments, defaultDiscountPercent, defaultDiscountDays,
+    defaultFinanceAccountId, defaultIncomeCategory, defaultFeeCategory,
+  ]);
+
   /** Normaliza entrada que aceita vírgula ou ponto como separador decimal. */
   function parsePercent(raw: string): number {
     return parseFloat(raw.replace(',', '.'));
   }
+
+  /** Normaliza entrada inteira (dias, parcelas). */
+  function parseInt10(raw: string): number {
+    return parseInt(raw.replace(',', '.'), 10);
+  }
+
+  // Salvar seção "Preferências de cobrança"
+  const handleSaveChargePrefs = async () => {
+    const dueDays = parseInt10(dueDaysInput);
+    const maxInstallments = parseInt10(maxInstallmentsInput);
+    if (isNaN(dueDays) || dueDays < 0) return;
+    if (cardEnabled && (isNaN(maxInstallments) || maxInstallments < 1)) return;
+    try {
+      await setChargePreferences.mutateAsync({
+        default_due_days: dueDays,
+        default_description: descriptionInput.trim() || null,
+        allow_pix: pixEnabled,
+        allow_boleto: boletoEnabled,
+        allow_card: cardEnabled,
+        default_max_installments: cardEnabled ? maxInstallments : 1,
+      });
+      toast({ title: t.activeState.chargePrefsToastOk });
+    } catch {
+      // toast de erro já é disparado pelo hook
+    }
+  };
+
+  // Salvar seção "Desconto por antecipação"
+  const handleSaveDiscount = async () => {
+    const discPct =
+      discountPercentInput.trim() === '' ? null : parsePercent(discountPercentInput);
+    const discDays =
+      discountDaysInput.trim() === '' ? null : parseInt10(discountDaysInput);
+    if (discPct !== null && (isNaN(discPct) || discPct < 0 || discPct > 100)) return;
+    if (discDays !== null && (isNaN(discDays) || discDays < 0)) return;
+    try {
+      await setChargePreferences.mutateAsync({
+        default_discount_percent: discPct,
+        default_discount_days: discDays,
+      });
+      toast({ title: t.activeState.discountToastOk });
+    } catch {
+      // toast de erro já é disparado pelo hook
+    }
+  };
+
+  // Salvar seção "Lançamento no Financeiro"
+  const handleSaveFinanceConfig = async () => {
+    try {
+      await setChargePreferences.mutateAsync({
+        default_finance_account_id: financeAccountId || null,
+        default_income_category: incomeCategoryInput.trim() || null,
+        default_fee_category: feeCategoryInput.trim() || 'Tarifas e Taxas',
+      });
+      toast({ title: t.activeState.financeConfigToastOk });
+    } catch {
+      // toast de erro já é disparado pelo hook
+    }
+  };
 
   const fineValue = parsePercent(fineInput);
   const interestValue = parsePercent(interestInput);
@@ -399,6 +518,325 @@ export function SettingsAsaasContent() {
                     </>
                   ) : (
                     t.activeState.lateFeesSave
+                  )}
+                </Button>
+              </div>
+
+              <Separator />
+
+              {/* ── Seção: Preferências de cobrança ────────────────────── */}
+              <div className="space-y-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold">{t.activeState.chargePrefsTitle}</p>
+                  <p className="text-xs text-muted-foreground">{t.activeState.chargePrefsDesc}</p>
+                </div>
+
+                {/* Vencimento padrão */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="asaas-due-days" className="text-xs font-medium">
+                    {t.activeState.dueDaysLabel}
+                  </Label>
+                  <div className="relative max-w-[160px]">
+                    <input
+                      id="asaas-due-days"
+                      type="text"
+                      inputMode="numeric"
+                      value={dueDaysInput}
+                      onChange={(e) => setDueDaysInput(e.target.value.replace(/\D/g, ''))}
+                      disabled={setChargePreferences.isPending}
+                      className={cn(
+                        'flex h-9 w-full rounded-md border bg-transparent px-3 pr-12 py-1 text-sm shadow-sm transition-colors',
+                        'placeholder:text-muted-foreground',
+                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                        'disabled:cursor-not-allowed disabled:opacity-50 border-input',
+                      )}
+                      placeholder="0"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
+                      {t.activeState.dueDaysSuffix}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Descrição/instrução padrão */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="asaas-description" className="text-xs font-medium">
+                    {t.activeState.defaultDescriptionLabel}
+                  </Label>
+                  <textarea
+                    id="asaas-description"
+                    rows={2}
+                    value={descriptionInput}
+                    onChange={(e) => setDescriptionInput(e.target.value)}
+                    disabled={setChargePreferences.isPending}
+                    placeholder={t.activeState.defaultDescriptionPlaceholder}
+                    className={cn(
+                      'flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors',
+                      'placeholder:text-muted-foreground resize-none',
+                      'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                      'disabled:cursor-not-allowed disabled:opacity-50',
+                    )}
+                  />
+                </div>
+
+                {/* Meios habilitados */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium">{t.activeState.paymentMethodsLabel}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-sm">{t.activeState.methodPix}</span>
+                      <Switch
+                        checked={pixEnabled}
+                        onCheckedChange={setPixEnabled}
+                        disabled={setChargePreferences.isPending}
+                        aria-label={t.activeState.methodPix}
+                        className="shrink-0"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-sm">{t.activeState.methodBoleto}</span>
+                      <Switch
+                        checked={boletoEnabled}
+                        onCheckedChange={setBoletoEnabled}
+                        disabled={setChargePreferences.isPending}
+                        aria-label={t.activeState.methodBoleto}
+                        className="shrink-0"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-sm">{t.activeState.methodCard}</span>
+                      <Switch
+                        checked={cardEnabled}
+                        onCheckedChange={setCardEnabled}
+                        disabled={setChargePreferences.isPending}
+                        aria-label={t.activeState.methodCard}
+                        className="shrink-0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Parcelas máximas — só aparece se cartão estiver habilitado */}
+                {cardEnabled && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="asaas-installments" className="text-xs font-medium">
+                      {t.activeState.maxInstallmentsLabel}
+                    </Label>
+                    <div className="relative max-w-[160px]">
+                      <input
+                        id="asaas-installments"
+                        type="text"
+                        inputMode="numeric"
+                        value={maxInstallmentsInput}
+                        onChange={(e) => setMaxInstallmentsInput(e.target.value.replace(/\D/g, ''))}
+                        disabled={setChargePreferences.isPending}
+                        className={cn(
+                          'flex h-9 w-full rounded-md border bg-transparent px-3 pr-16 py-1 text-sm shadow-sm transition-colors',
+                          'placeholder:text-muted-foreground',
+                          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          'disabled:cursor-not-allowed disabled:opacity-50 border-input',
+                        )}
+                        placeholder="1"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
+                        {t.activeState.maxInstallmentsSuffix}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  size="sm"
+                  onClick={handleSaveChargePrefs}
+                  disabled={setChargePreferences.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {setChargePreferences.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      {t.activeState.saving}
+                    </>
+                  ) : (
+                    t.activeState.save
+                  )}
+                </Button>
+              </div>
+
+              <Separator />
+
+              {/* ── Seção: Desconto por antecipação ────────────────────── */}
+              <div className="space-y-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold">{t.activeState.discountTitle}</p>
+                  <p className="text-xs text-muted-foreground">{t.activeState.discountDesc}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Desconto % */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="asaas-discount-pct" className="text-xs font-medium">
+                      {t.activeState.discountPercentLabel}
+                    </Label>
+                    <div className="relative">
+                      <input
+                        id="asaas-discount-pct"
+                        type="text"
+                        inputMode="decimal"
+                        value={discountPercentInput}
+                        onChange={(e) => setDiscountPercentInput(e.target.value)}
+                        disabled={setChargePreferences.isPending}
+                        placeholder={t.activeState.discountPercentPlaceholder}
+                        className={cn(
+                          'flex h-9 w-full rounded-md border bg-transparent px-3 pr-8 py-1 text-sm shadow-sm transition-colors',
+                          'placeholder:text-muted-foreground',
+                          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          'disabled:cursor-not-allowed disabled:opacity-50 border-input',
+                        )}
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">%</span>
+                    </div>
+                  </div>
+
+                  {/* Dias antes do vencimento */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="asaas-discount-days" className="text-xs font-medium">
+                      {t.activeState.discountDaysLabel}
+                    </Label>
+                    <div className="relative">
+                      <input
+                        id="asaas-discount-days"
+                        type="text"
+                        inputMode="numeric"
+                        value={discountDaysInput}
+                        onChange={(e) => setDiscountDaysInput(e.target.value.replace(/\D/g, ''))}
+                        disabled={setChargePreferences.isPending}
+                        placeholder={t.activeState.discountDaysPlaceholder}
+                        className={cn(
+                          'flex h-9 w-full rounded-md border bg-transparent px-3 pr-10 py-1 text-sm shadow-sm transition-colors',
+                          'placeholder:text-muted-foreground',
+                          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          'disabled:cursor-not-allowed disabled:opacity-50 border-input',
+                        )}
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
+                        {t.activeState.discountDaysSuffix}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t.activeState.discountHint}</p>
+
+                <Button
+                  size="sm"
+                  onClick={handleSaveDiscount}
+                  disabled={setChargePreferences.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {setChargePreferences.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      {t.activeState.saving}
+                    </>
+                  ) : (
+                    t.activeState.save
+                  )}
+                </Button>
+              </div>
+
+              <Separator />
+
+              {/* ── Seção: Lançamento no Financeiro ────────────────────── */}
+              <div className="space-y-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold">{t.activeState.financeConfigTitle}</p>
+                  <p className="text-xs text-muted-foreground">{t.activeState.financeConfigDesc}</p>
+                </div>
+
+                {/* Conta bancária onde a receita cai */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t.activeState.financeAccountLabel}</Label>
+                  <Select
+                    value={financeAccountId || '__none__'}
+                    onValueChange={(v) => setFinanceAccountId(v === '__none__' ? '' : v)}
+                    disabled={setChargePreferences.isPending}
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder={t.activeState.financeAccountNone} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{t.activeState.financeAccountNone}</SelectItem>
+                      {financialAccounts
+                        .filter((a) => a.is_active && a.type !== 'cartao')
+                        .map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Categoria da receita */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t.activeState.incomeCategoryLabel}</Label>
+                  {incomeCategories.length > 0 ? (
+                    <Select
+                      value={incomeCategoryInput || '__none__'}
+                      onValueChange={(v) => setIncomeCategoryInput(v === '__none__' ? '' : v)}
+                      disabled={setChargePreferences.isPending}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder={t.activeState.incomeCategoryNone} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{t.activeState.incomeCategoryNone}</SelectItem>
+                        {incomeCategories.map((c) => (
+                          <SelectItem key={c.id} value={c.name}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={incomeCategoryInput}
+                      onChange={(e) => setIncomeCategoryInput(e.target.value)}
+                      disabled={setChargePreferences.isPending}
+                      placeholder={t.activeState.incomeCategoryNone}
+                      className="h-9 text-sm"
+                    />
+                  )}
+                </div>
+
+                {/* Categoria da taxa */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="asaas-fee-category" className="text-xs font-medium">
+                    {t.activeState.feeCategoryLabel}
+                  </Label>
+                  <Input
+                    id="asaas-fee-category"
+                    value={feeCategoryInput}
+                    onChange={(e) => setFeeCategoryInput(e.target.value)}
+                    disabled={setChargePreferences.isPending}
+                    placeholder="Tarifas e Taxas"
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">{t.activeState.feeCategoryHint}</p>
+                </div>
+
+                <Button
+                  size="sm"
+                  onClick={handleSaveFinanceConfig}
+                  disabled={setChargePreferences.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {setChargePreferences.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      {t.activeState.saving}
+                    </>
+                  ) : (
+                    t.activeState.save
                   )}
                 </Button>
               </div>

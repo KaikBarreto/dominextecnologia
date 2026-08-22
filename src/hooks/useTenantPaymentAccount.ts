@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { useToast } from '@/hooks/use-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useTenantPaymentAccount — fronteira do Supabase para a conta de recebimentos
@@ -29,9 +30,39 @@ export interface TenantPaymentAccount {
   auto_post_fees: boolean;
   default_fine_percent: number;
   default_interest_percent: number;
+  // ── Preferências de cobrança (adicionadas na migration tenant_subscriptions_e_juros_multa) ──
+  default_due_days: number;
+  default_discount_percent: number | null;
+  default_discount_days: number | null;
+  default_description: string | null;
+  allow_pix: boolean;
+  allow_boleto: boolean;
+  allow_card: boolean;
+  default_max_installments: number;
+  default_finance_account_id: string | null;
+  default_income_category: string | null;
+  default_fee_category: string;
   created_at: string;
   updated_at: string;
 }
+
+/** Subconjunto de campos que `setChargePreferences` aceita atualizar. */
+export type ChargePreferencesInput = Partial<
+  Pick<
+    TenantPaymentAccount,
+    | 'default_due_days'
+    | 'default_discount_percent'
+    | 'default_discount_days'
+    | 'default_description'
+    | 'allow_pix'
+    | 'allow_boleto'
+    | 'allow_card'
+    | 'default_max_installments'
+    | 'default_finance_account_id'
+    | 'default_income_category'
+    | 'default_fee_category'
+  >
+>;
 
 /**
  * Extrai a mensagem PT-BR de erro de uma edge function. O `FunctionsHttpError`
@@ -59,6 +90,7 @@ async function extractEdgeError(error: unknown, data: unknown, fallback: string)
 export function useTenantPaymentAccount() {
   const queryClient = useQueryClient();
   const { companyId } = useUserCompany();
+  const { toast } = useToast();
 
   const queryKey = ['tenant-payment-account', companyId];
 
@@ -71,12 +103,13 @@ export function useTenantPaymentAccount() {
       const { data, error } = await supabase
         .from('tenant_payment_accounts')
         .select(
-          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, auto_post_fees, default_fine_percent, default_interest_percent, created_at, updated_at',
+          // colunas originais + 11 novas (migration tenant_subscriptions_e_juros_multa)
+          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, auto_post_fees, default_fine_percent, default_interest_percent, default_due_days, default_discount_percent, default_discount_days, default_description, allow_pix, allow_boleto, allow_card, default_max_installments, default_finance_account_id, default_income_category, default_fee_category, created_at, updated_at',
         )
         .eq('company_id', companyId)
         .maybeSingle();
       if (error) throw error;
-      return (data as TenantPaymentAccount | null) ?? null;
+      return (data as unknown as TenantPaymentAccount | null) ?? null;
     },
   });
 
@@ -162,6 +195,31 @@ export function useTenantPaymentAccount() {
     },
   });
 
+  // Grava qualquer subconjunto das preferências de cobrança (meios habilitados,
+  // vencimento, desconto, descrição, parcelas, conta/categoria do financeiro).
+  // Mesma RLS policy "Company can manage own payment account".
+  // Toast de erro PT-BR disparado aqui (UI não precisa repetir).
+  const setChargePreferencesMutation = useMutation({
+    mutationFn: async (partial: ChargePreferencesInput) => {
+      if (!companyId) throw new Error('Empresa não identificada.');
+      if (Object.keys(partial).length === 0) return;
+      const { error } = await supabase
+        .from('tenant_payment_accounts')
+        .update(partial as Record<string, unknown>)
+        .eq('company_id', companyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: () => {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível salvar. Tente novamente.',
+      });
+    },
+  });
+
   const account = query.data ?? null;
 
   return {
@@ -181,6 +239,30 @@ export function useTenantPaymentAccount() {
     /** Espelha `tenant_payment_accounts.default_interest_percent` (DEFAULT 1.00). */
     defaultInterestPercent: account?.default_interest_percent ?? 1,
     setLateFees: setLateFeesMutation,
+    // ── Preferências de cobrança ────────────────────────────────────────────
+    /** Prazo de vencimento padrão em dias (DEFAULT 0). */
+    defaultDueDays: account?.default_due_days ?? 0,
+    /** Desconto por antecipação em % (NULL = sem desconto). */
+    defaultDiscountPercent: account?.default_discount_percent ?? null,
+    /** Dias antes do vencimento para desconto (NULL = sem limite). */
+    defaultDiscountDays: account?.default_discount_days ?? null,
+    /** Descrição/instrução padrão que aparece na cobrança. */
+    defaultDescription: account?.default_description ?? null,
+    /** Pix habilitado nas cobranças (DEFAULT true). */
+    allowPix: account?.allow_pix ?? true,
+    /** Boleto habilitado nas cobranças (DEFAULT true). */
+    allowBoleto: account?.allow_boleto ?? true,
+    /** Cartão habilitado nas cobranças (DEFAULT true). */
+    allowCard: account?.allow_card ?? true,
+    /** Número máximo de parcelas no cartão (DEFAULT 1). */
+    defaultMaxInstallments: account?.default_max_installments ?? 1,
+    /** ID da conta bancária onde a receita cai (NULL = sem vinculação). */
+    defaultFinanceAccountId: account?.default_finance_account_id ?? null,
+    /** Categoria de receita padrão para lançamentos (NULL = sem categoria). */
+    defaultIncomeCategory: account?.default_income_category ?? null,
+    /** Categoria de despesa para as taxas da Asaas (DEFAULT 'Tarifas e Taxas'). */
+    defaultFeeCategory: account?.default_fee_category ?? 'Tarifas e Taxas',
+    setChargePreferences: setChargePreferencesMutation,
     provision,
     deactivate,
   };

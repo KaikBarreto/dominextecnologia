@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.5',
+    date: '22 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Personalize suas cobranças do seu jeito',
+        description: 'Agora você configura tudo das cobranças na aba Recebimentos: prazo de vencimento padrão, desconto para quem paga antes, quais meios de pagamento aceitar, número de parcelas no cartão, e em qual conta e categoria a receita entra no seu Financeiro. E, em cada cobrança, dá para ajustar multa, juros e desconto na hora, nas "Opções avançadas".',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.4',
     date: '22 de agosto de 2026',
     type: 'minor',

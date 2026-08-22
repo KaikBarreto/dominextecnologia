@@ -37,6 +37,27 @@ const ALLOWED_BILLING_TYPES: readonly BillingType[] = [
 /** Valor mínimo aceito pela Asaas por cobrança (R$ 5,00). Abaixo disso a Asaas recusa. */
 const MIN_CHARGE_VALUE = 5;
 
+/** Asaas impõe teto de 10% ao mês nos juros; clampamos por segurança. */
+const ASAAS_MAX_INTEREST_PERCENT = 10;
+
+/** hoje + `days` em UTC, formatado YYYY-MM-DD (usado quando due_date não vem no corpo). */
+function dueDateFromDays(days: number): string {
+  const now = new Date();
+  const base = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const safeDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
+  const target = new Date(base + safeDays * 86_400_000);
+  const y = target.getUTCFullYear();
+  const m = String(target.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(target.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Normaliza um percentual vindo do corpo/config: número finito > 0, senão null. */
+function toPositivePercent(raw: unknown): number | null {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 /** Valida `due_date` no formato YYYY-MM-DD e não no passado (compara em UTC, dia cheio). */
 function validateDueDate(due: string): { ok: true } | { ok: false; error: string } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
@@ -61,6 +82,12 @@ interface CreateChargeInput {
   due_date?: string;
   billing_type?: BillingType;
   description?: string;
+  // Overrides opcionais por cobrança (caem no default da conta quando ausentes).
+  fine_percent?: number;
+  interest_percent?: number;
+  discount_percent?: number;
+  discount_days?: number;
+  installment_count?: number;
 }
 
 /**
@@ -171,33 +198,45 @@ async function handleRequest(req: Request): Promise<Response> {
   }
   // Arredonda pra 2 casas (a Asaas recusa mais de 2 casas decimais).
   const chargeValue = Math.round(value * 100) / 100;
-  if (!input.due_date || typeof input.due_date !== "string") {
-    return jsonResponse(req, { error: "Informe a data de vencimento." }, 400);
+  // Vencimento: OPCIONAL. Se vier, valida agora; se não, resolve depois via
+  // default_due_days da conta (hoje + N dias).
+  const rawDueDate =
+    typeof input.due_date === "string" && input.due_date.trim() ? input.due_date.trim() : null;
+  if (rawDueDate) {
+    const dueCheck = validateDueDate(rawDueDate);
+    if (!dueCheck.ok) {
+      return jsonResponse(req, { error: dueCheck.error }, 400);
+    }
   }
-  const dueCheck = validateDueDate(input.due_date.trim());
-  if (!dueCheck.ok) {
-    return jsonResponse(req, { error: dueCheck.error }, 400);
-  }
-  const dueDate = input.due_date.trim();
   const billingType: BillingType = input.billing_type ?? "UNDEFINED";
   if (!ALLOWED_BILLING_TYPES.includes(billingType)) {
     return jsonResponse(req, {
       error: "Forma de pagamento inválida. Escolha Pix, boleto ou cartão.",
     }, 400);
   }
-  // Descrição: opcional, mas se vier, limita (Asaas trunca em 500) e sanitiza tipo.
-  const description =
+  // Descrição do corpo: opcional, limita (Asaas trunca em 500) e sanitiza tipo.
+  // O fallback pro default_description da conta é aplicado após ler a conta.
+  const inputDescription =
     typeof input.description === "string" && input.description.trim()
       ? input.description.trim().slice(0, 500)
       : null;
 
   try {
-    // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro + multa/juros.
-    const { data: account } = await supabase
+    // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro +
+    //    defaults de multa/juros/desconto/vencimento/descrição/parcelamento +
+    //    destino financeiro (conta + categoria de receita) do recebível.
+    const { data: accountData } = await supabase
       .from("tenant_payment_accounts")
-      .select("status, vault_secret_name, auto_post_to_finance, default_fine_percent, default_interest_percent")
+      .select(
+        "status, vault_secret_name, auto_post_to_finance, " +
+          "default_fine_percent, default_interest_percent, " +
+          "default_discount_percent, default_discount_days, " +
+          "default_due_days, default_description, default_max_installments, " +
+          "default_finance_account_id, default_income_category",
+      )
       .eq("company_id", companyId)
       .maybeSingle();
+    const account = accountData as any;
     if (!account || account.status !== "active" || !account.vault_secret_name) {
       return jsonResponse(req, {
         error: "Ative o recebimento de pagamentos em Configurações → Integrações antes de gerar cobranças.",
@@ -214,26 +253,59 @@ async function handleRequest(req: Request): Promise<Response> {
     // 2) Cliente final no Asaas.
     const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
 
-    // Multa e juros por atraso (opcionais — só envia quando > 0).
-    // Asaas impõe teto de 10% ao mês nos juros; clampamos aqui por segurança.
-    const ASAAS_MAX_INTEREST_PERCENT = 10;
-    const rawFine = Number(account.default_fine_percent ?? 0);
-    const rawInterest = Number(account.default_interest_percent ?? 0);
-    const fineValue = Number.isFinite(rawFine) && rawFine > 0 ? rawFine : 0;
-    const interestValue = Number.isFinite(rawInterest) && rawInterest > 0
-      ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT)
+    // --- Resolve config efetiva (override do corpo → default da conta → fallback) ---
+
+    // Vencimento: usa o do corpo (já validado) ou calcula hoje + default_due_days.
+    const dueDate = rawDueDate ?? dueDateFromDays(Number(account.default_due_days ?? 0));
+
+    // Descrição: corpo → default da conta → nada.
+    const accountDescription =
+      typeof account.default_description === "string" && account.default_description.trim()
+        ? account.default_description.trim().slice(0, 500)
+        : null;
+    const description = inputDescription ?? accountDescription;
+
+    // Multa e juros por atraso (override por cobrança; senão default da conta).
+    // Só envia quando > 0. Juros são clampados ao teto de 10% da Asaas.
+    const fineValue = toPositivePercent(input.fine_percent ?? account.default_fine_percent) ?? 0;
+    const rawInterest = toPositivePercent(input.interest_percent ?? account.default_interest_percent);
+    const interestValue = rawInterest !== null ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT) : 0;
+
+    // Desconto por antecipação (override por cobrança; senão default da conta).
+    // Envia o objeto discount só quando o percentual > 0.
+    const discountPercent =
+      toPositivePercent(input.discount_percent ?? account.default_discount_percent) ?? 0;
+    const rawDiscountDays = Number(
+      input.discount_days ?? account.default_discount_days ?? 0,
+    );
+    const discountDays = Number.isFinite(rawDiscountDays) && rawDiscountDays > 0
+      ? Math.floor(rawDiscountDays)
       : 0;
+
+    // Parcelamento: só no cartão E quando pedido > 1. Asaas parcela o totalValue.
+    const rawInstallments = Number(input.installment_count ?? 1);
+    const installmentCount =
+      billingType === "CREDIT_CARD" && Number.isFinite(rawInstallments) && rawInstallments > 1
+        ? Math.floor(rawInstallments)
+        : 1;
 
     // 3) Cria a cobrança. externalReference = company_id (resolução multi-tenant §9.3).
     const payment = await asaas.post<any>("/payments", {
       customer: asaasCustomerId,
       billingType,
-      value: chargeValue,
+      // Parcelamento no cartão: Asaas espera installmentCount + totalValue (parcela
+      // o total). Cobrança simples usa `value`.
+      ...(installmentCount > 1
+        ? { installmentCount, totalValue: chargeValue }
+        : { value: chargeValue }),
       dueDate: dueDate,
       description: description ?? undefined,
       externalReference: companyId,
       ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
       ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
+      ...(discountPercent > 0
+        ? { discount: { value: discountPercent, type: "PERCENTAGE", dueDateLimitDays: discountDays } }
+        : {}),
     });
     const asaasPaymentId: string | undefined = payment?.id;
     if (!asaasPaymentId) {
@@ -317,6 +389,9 @@ async function handleRequest(req: Request): Promise<Response> {
           p_amount: chargeValue,
           p_due_date: dueDate,
           p_description: description,
+          // Destino financeiro do recebível (ambos podem ser null → RPC decide default).
+          p_account_id: account.default_finance_account_id ?? null,
+          p_category: account.default_income_category ?? null,
         });
         if (rpcErr) {
           // Loga sem vazar segredo (só mensagem pública do Postgres).

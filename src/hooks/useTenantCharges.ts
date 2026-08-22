@@ -11,7 +11,7 @@ import { useUserCompany } from '@/hooks/useUserCompany';
 // via PostgREST (RLS por company_id). Nunca expomos custo/margem interna.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type TenantChargeBillingType = 'PIX' | 'BOLETO' | 'UNDEFINED';
+export type TenantChargeBillingType = 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'UNDEFINED';
 export type TenantChargeStatus = 'pending' | 'received' | 'confirmed' | 'overdue' | 'refunded' | string;
 
 export interface TenantCharge {
@@ -37,6 +37,11 @@ export interface CreateChargeInput {
   due_date: string;
   billing_type: TenantChargeBillingType;
   description?: string;
+  fine_percent?: number;
+  interest_percent?: number;
+  discount_percent?: number;
+  discount_days?: number;
+  installment_count?: number;
 }
 
 /** Resultado do gerar cobrança — allowlist: nunca custo/margem interna. */
@@ -128,41 +133,45 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
 
   const create = useMutation({
     mutationFn: async (input: CreateChargeInput): Promise<CreateChargeResult> => {
-      const { data, error } = await supabase.functions.invoke('tenant-asaas-create-charge', {
-        body: {
-          customer_id: input.customer_id,
-          value: input.value,
-          due_date: input.due_date,
-          billing_type: input.billing_type,
-          description: input.description ?? '',
-        },
-      });
+      const body: Record<string, unknown> = {
+        customer_id: input.customer_id,
+        value: input.value,
+        due_date: input.due_date,
+        billing_type: input.billing_type,
+        description: input.description ?? '',
+      };
+      if (input.fine_percent !== undefined) body.fine_percent = input.fine_percent;
+      if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
+      if (input.discount_percent !== undefined) body.discount_percent = input.discount_percent;
+      if (input.discount_days !== undefined) body.discount_days = input.discount_days;
+      if (input.installment_count !== undefined) body.installment_count = input.installment_count;
+      const { data, error } = await supabase.functions.invoke('tenant-asaas-create-charge', { body });
       if (error) throw new Error(await extractEdgeError(error, data, 'Não foi possível gerar a cobrança.'));
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
         throw new Error((data as { error: string }).error);
       }
 
-      const body = data as Record<string, unknown> | null;
+      const responseBody = data as Record<string, unknown> | null;
 
       // ── Caso ÓRFÃO (HTTP 207): cobrança criada no Asaas mas sem linha em
       //    tenant_charges. A edge devolve `warning` + `invoice_url` (sem
       //    `public_short_code`/`charge`). Tratar como sucesso parcial.
       if (
-        body &&
-        ('warning' in body || !('public_short_code' in body && body.public_short_code)) &&
-        'invoice_url' in body &&
-        typeof body.invoice_url === 'string'
+        responseBody &&
+        ('warning' in responseBody || !('public_short_code' in responseBody && responseBody.public_short_code)) &&
+        'invoice_url' in responseBody &&
+        typeof responseBody.invoice_url === 'string'
       ) {
         return {
           orphan: true,
-          invoiceUrl: body.invoice_url as string,
-          asaasPaymentId: typeof body.asaas_payment_id === 'string' ? body.asaas_payment_id : '',
-          warning: typeof body.warning === 'string' ? body.warning : '',
+          invoiceUrl: responseBody.invoice_url as string,
+          asaasPaymentId: typeof responseBody.asaas_payment_id === 'string' ? responseBody.asaas_payment_id : '',
+          warning: typeof responseBody.warning === 'string' ? responseBody.warning : '',
         };
       }
 
       // ── Caso NORMAL: edge devolve `{ charge: { ... } }` com short_code.
-      const charge = (body as { charge?: CreatedCharge } | null)?.charge;
+      const charge = (responseBody as { charge?: CreatedCharge } | null)?.charge;
       if (!charge) throw new Error('Não foi possível gerar a cobrança.');
       return { orphan: false, charge };
     },
