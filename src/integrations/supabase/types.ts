@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -8071,6 +8046,7 @@ export type Database = {
           source_id: string | null
           source_type: string
           status: string
+          subscription_id: string | null
           updated_at: string
           value: number
         }
@@ -8093,6 +8069,7 @@ export type Database = {
           source_id?: string | null
           source_type?: string
           status?: string
+          subscription_id?: string | null
           updated_at?: string
           value: number
         }
@@ -8115,6 +8092,7 @@ export type Database = {
           source_id?: string | null
           source_type?: string
           status?: string
+          subscription_id?: string | null
           updated_at?: string
           value?: number
         }
@@ -8133,6 +8111,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_charges_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_subscriptions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tenant_payment_accounts: {
@@ -8144,6 +8129,8 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          default_fine_percent: number
+          default_interest_percent: number
           id: string
           mode: string
           provider: string
@@ -8161,6 +8148,8 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          default_fine_percent?: number
+          default_interest_percent?: number
           id?: string
           mode?: string
           provider?: string
@@ -8178,6 +8167,8 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          default_fine_percent?: number
+          default_interest_percent?: number
           id?: string
           mode?: string
           provider?: string
@@ -8240,6 +8231,87 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_subscriptions: {
+        Row: {
+          asaas_subscription_id: string | null
+          billing_type: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          credit_card_token_name: string | null
+          customer_id: string | null
+          cycle: string
+          description: string | null
+          fine_percent: number | null
+          id: string
+          interest_percent: number | null
+          next_due_date: string | null
+          pix_auto_authorization_id: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          asaas_subscription_id?: string | null
+          billing_type: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          credit_card_token_name?: string | null
+          customer_id?: string | null
+          cycle: string
+          description?: string | null
+          fine_percent?: number | null
+          id?: string
+          interest_percent?: number | null
+          next_due_date?: string | null
+          pix_auto_authorization_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          asaas_subscription_id?: string | null
+          billing_type?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          credit_card_token_name?: string | null
+          customer_id?: string | null
+          cycle?: string
+          description?: string | null
+          fine_percent?: number | null
+          id?: string
+          interest_percent?: number | null
+          next_due_date?: string | null
+          pix_auto_authorization_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -9826,9 +9898,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

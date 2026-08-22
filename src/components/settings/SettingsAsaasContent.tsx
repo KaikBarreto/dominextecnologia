@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -54,10 +54,47 @@ export function SettingsAsaasContent() {
   const { toast } = useToast();
 
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
-  const { status, isActive, isLoading, autoPostToFinance, setAutoPostToFinance, autoPostFees, setAutoPostFees, provision, deactivate } = useTenantPaymentAccount();
+  const {
+    status, isActive, isLoading,
+    autoPostToFinance, setAutoPostToFinance,
+    autoPostFees, setAutoPostFees,
+    defaultFinePercent, defaultInterestPercent, setLateFees,
+    provision, deactivate,
+  } = useTenantPaymentAccount();
 
   const [apiKey, setApiKey] = useState('');
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+
+  // Campos de multa/juros: string para permitir decimais ("2,5") sem forçar ponto.
+  // Sincroniza com o valor do banco quando ele muda (ex: após salvar ou na carga inicial).
+  const [fineInput, setFineInput] = useState(String(defaultFinePercent));
+  const [interestInput, setInterestInput] = useState(String(defaultInterestPercent));
+
+  useEffect(() => {
+    setFineInput(String(defaultFinePercent));
+    setInterestInput(String(defaultInterestPercent));
+  }, [defaultFinePercent, defaultInterestPercent]);
+
+  /** Normaliza entrada que aceita vírgula ou ponto como separador decimal. */
+  function parsePercent(raw: string): number {
+    return parseFloat(raw.replace(',', '.'));
+  }
+
+  const fineValue = parsePercent(fineInput);
+  const interestValue = parsePercent(interestInput);
+  const fineValid = !isNaN(fineValue) && fineValue >= 0 && fineValue <= 100;
+  const interestValid = !isNaN(interestValue) && interestValue >= 0 && interestValue <= 10;
+  const interestOverCap = !isNaN(interestValue) && interestValue > 10;
+
+  const handleSaveLateFees = async () => {
+    if (!fineValid || !interestValid) return;
+    try {
+      await setLateFees.mutateAsync({ finePercent: fineValue, interestPercent: interestValue });
+      toast({ title: t.activeState.lateFeesToastOk });
+    } catch {
+      toast({ variant: 'destructive', title: t.activeState.lateFeesToastError });
+    }
+  };
 
   const handleActivate = async () => {
     const key = apiKey.trim();
@@ -281,6 +318,89 @@ export function SettingsAsaasContent() {
                   aria-label={t.activeState.autoFeeLabel}
                   className="shrink-0 mt-0.5"
                 />
+              </div>
+
+              <Separator />
+
+              {/* Seção: Multa e juros por atraso */}
+              <div className="space-y-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold">{t.activeState.lateFeesTitle}</p>
+                  <p className="text-xs text-muted-foreground">{t.activeState.lateFeesDesc}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Multa % */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="asaas-fine" className="text-xs font-medium">
+                      {t.activeState.fineLabel}
+                    </Label>
+                    <div className="relative">
+                      <input
+                        id="asaas-fine"
+                        type="text"
+                        inputMode="decimal"
+                        value={fineInput}
+                        onChange={(e) => setFineInput(e.target.value)}
+                        disabled={setLateFees.isPending}
+                        className={cn(
+                          'flex h-9 w-full rounded-md border bg-transparent px-3 pr-8 py-1 text-sm shadow-sm transition-colors',
+                          'placeholder:text-muted-foreground',
+                          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          'disabled:cursor-not-allowed disabled:opacity-50',
+                          !fineValid && fineInput !== '' ? 'border-destructive' : 'border-input',
+                        )}
+                        placeholder="2"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                  {/* Juros % */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="asaas-interest" className="text-xs font-medium">
+                      {t.activeState.interestLabel}
+                    </Label>
+                    <div className="relative">
+                      <input
+                        id="asaas-interest"
+                        type="text"
+                        inputMode="decimal"
+                        value={interestInput}
+                        onChange={(e) => setInterestInput(e.target.value)}
+                        disabled={setLateFees.isPending}
+                        className={cn(
+                          'flex h-9 w-full rounded-md border bg-transparent px-3 pr-8 py-1 text-sm shadow-sm transition-colors',
+                          'placeholder:text-muted-foreground',
+                          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          'disabled:cursor-not-allowed disabled:opacity-50',
+                          interestOverCap || (!interestValid && interestInput !== '') ? 'border-destructive' : 'border-input',
+                        )}
+                        placeholder="1"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                </div>
+                {interestOverCap && (
+                  <p className="flex items-center gap-1.5 text-xs text-destructive">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    {t.activeState.interestCapWarning}
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  onClick={handleSaveLateFees}
+                  disabled={setLateFees.isPending || !fineValid || !interestValid}
+                  className="w-full sm:w-auto"
+                >
+                  {setLateFees.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      {t.activeState.lateFeesSaving}
+                    </>
+                  ) : (
+                    t.activeState.lateFeesSave
+                  )}
+                </Button>
               </div>
 
               <Separator />

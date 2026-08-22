@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.4',
+    date: '22 de agosto de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Multa e juros por atraso automáticos nas cobranças',
+        description: 'Agora você define uma multa e um juros ao mês (por padrão 2% de multa e 1% de juros) e o sistema já aplica isso nas suas cobranças quando o cliente paga em atraso. Configura uma vez na aba Recebimentos e vale para as próximas cobranças. Dá para ajustar os percentuais quando quiser.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.3',
     date: '22 de agosto de 2026',
     type: 'patch',

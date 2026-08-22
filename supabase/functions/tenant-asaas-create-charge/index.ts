@@ -192,10 +192,10 @@ async function handleRequest(req: Request): Promise<Response> {
       : null;
 
   try {
-    // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro.
+    // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro + multa/juros.
     const { data: account } = await supabase
       .from("tenant_payment_accounts")
-      .select("status, vault_secret_name, auto_post_to_finance")
+      .select("status, vault_secret_name, auto_post_to_finance, default_fine_percent, default_interest_percent")
       .eq("company_id", companyId)
       .maybeSingle();
     if (!account || account.status !== "active" || !account.vault_secret_name) {
@@ -214,6 +214,16 @@ async function handleRequest(req: Request): Promise<Response> {
     // 2) Cliente final no Asaas.
     const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
 
+    // Multa e juros por atraso (opcionais — só envia quando > 0).
+    // Asaas impõe teto de 10% ao mês nos juros; clampamos aqui por segurança.
+    const ASAAS_MAX_INTEREST_PERCENT = 10;
+    const rawFine = Number(account.default_fine_percent ?? 0);
+    const rawInterest = Number(account.default_interest_percent ?? 0);
+    const fineValue = Number.isFinite(rawFine) && rawFine > 0 ? rawFine : 0;
+    const interestValue = Number.isFinite(rawInterest) && rawInterest > 0
+      ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT)
+      : 0;
+
     // 3) Cria a cobrança. externalReference = company_id (resolução multi-tenant §9.3).
     const payment = await asaas.post<any>("/payments", {
       customer: asaasCustomerId,
@@ -222,6 +232,8 @@ async function handleRequest(req: Request): Promise<Response> {
       dueDate: dueDate,
       description: description ?? undefined,
       externalReference: companyId,
+      ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
+      ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
     });
     const asaasPaymentId: string | undefined = payment?.id;
     if (!asaasPaymentId) {

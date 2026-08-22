@@ -27,6 +27,8 @@ export interface TenantPaymentAccount {
   wallet_id: string | null;
   auto_post_to_finance: boolean;
   auto_post_fees: boolean;
+  default_fine_percent: number;
+  default_interest_percent: number;
   created_at: string;
   updated_at: string;
 }
@@ -69,7 +71,7 @@ export function useTenantPaymentAccount() {
       const { data, error } = await supabase
         .from('tenant_payment_accounts')
         .select(
-          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, auto_post_fees, created_at, updated_at',
+          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, auto_post_fees, default_fine_percent, default_interest_percent, created_at, updated_at',
         )
         .eq('company_id', companyId)
         .maybeSingle();
@@ -141,6 +143,25 @@ export function useTenantPaymentAccount() {
     },
   });
 
+  // Grava multa (%) e juros ao mês (%) via UPDATE direto. Mesma RLS policy.
+  // Toast de erro PT-BR fica na camada da UI — o hook só lança o erro.
+  const setLateFeesMutation = useMutation({
+    mutationFn: async ({ finePercent, interestPercent }: { finePercent: number; interestPercent: number }) => {
+      if (!companyId) throw new Error('Empresa não identificada.');
+      const { error } = await supabase
+        .from('tenant_payment_accounts')
+        .update({
+          default_fine_percent: finePercent,
+          default_interest_percent: interestPercent,
+        })
+        .eq('company_id', companyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   const account = query.data ?? null;
 
   return {
@@ -155,6 +176,11 @@ export function useTenantPaymentAccount() {
     /** Espelha `tenant_payment_accounts.auto_post_fees` (DEFAULT true). */
     autoPostFees: account?.auto_post_fees ?? true,
     setAutoPostFees: setAutoPostFeesMutation,
+    /** Espelha `tenant_payment_accounts.default_fine_percent` (DEFAULT 2.00). */
+    defaultFinePercent: account?.default_fine_percent ?? 2,
+    /** Espelha `tenant_payment_accounts.default_interest_percent` (DEFAULT 1.00). */
+    defaultInterestPercent: account?.default_interest_percent ?? 1,
+    setLateFees: setLateFeesMutation,
     provision,
     deactivate,
   };

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.3";
+export const APP_VERSION = "1.21.4";
 
-export const VERSION_NOTES = "Acabamento visual das telas de cobrança e pagamento alinhado ao padrão limpo e sóbrio do resto do sistema.";
+export const VERSION_NOTES = "Agora dá para cobrar multa e juros por atraso automaticamente nas suas cobranças, configurável na aba Recebimentos.";
