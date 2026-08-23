@@ -30,8 +30,6 @@ import { AccountUsageCard } from '@/components/billing/AccountUsageCard';
 import { useSubscriptionPaymentHistory } from '@/hooks/useSubscriptionPaymentHistory';
 import { hasActiveCustomPrice as hasActiveCustomPriceUtil } from '@/utils/subscriptionPricing';
 import { cn } from '@/lib/utils';
-import { SubscriptionPaymentModal } from '@/components/billing/SubscriptionPaymentModal';
-
 export default function Billing() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,9 +38,6 @@ export default function Billing() {
   const t = MESSAGES[locale].app.settings.billing;
   const { modules, allPlans, effectiveValue: modulesEffectiveValue } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
-  // Modal de pagamento embutido (renovação de plano JÁ definido). Trial/sem valor
-  // ainda vai pro /checkout pra escolher o plano.
-  const [payModalOpen, setPayModalOpen] = useState(false);
 
   // Deep-link vindo do ModuleGateModal / UserLimitModal:
   //   ?addModule=<code> → abre "Gerenciar Meu Plano" na aba Personalizado com o módulo pré-marcado.
@@ -327,8 +322,8 @@ export default function Billing() {
                   </div>
                 </div>
 
-                {/* Botão Pagar Agora — renovação (plano já definido) abre o modal
-                    embutido; trial/sem valor ainda vai pro /checkout escolher plano. */}
+                {/* Botão Pagar Agora — renovação rota pro /checkout?mode=renewal;
+                    trial/sem valor vai pro /checkout para escolher o plano. */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -340,7 +335,7 @@ export default function Billing() {
                             if (company.subscription_status === 'testing' || !effectiveValue) {
                               navigate('/checkout');
                             } else {
-                              setPayModalOpen(true);
+                              navigate('/checkout?mode=renewal');
                             }
                           }}
                         >
@@ -463,25 +458,6 @@ export default function Billing() {
         </CardContent>
       </Card>
 
-      {/* Modal de pagamento embutido — renovação do plano já definido.
-          Pix/Boleto cobram o valor com desconto anual (displayAmountDue);
-          cartão cobra o valor mensal base (effectiveValue), pois cartão é
-          sempre mensal recorrente. */}
-      <SubscriptionPaymentModal
-        open={payModalOpen}
-        onOpenChange={setPayModalOpen}
-        companyId={company.id}
-        amount={displayAmountDue}
-        cardAmount={effectiveValue}
-        isRenewal
-        planCode={company.subscription_plan}
-        billingCycle={(company.billing_cycle as 'monthly' | 'yearly') || 'monthly'}
-        companyCnpj={company.cnpj}
-        companyPhone={company.phone}
-        companyAddress={company.address}
-        userEmail={user?.email ?? null}
-        companyName={company.name}
-      />
 
     </div>
   );
