@@ -9,10 +9,11 @@ import { ToolDisclaimer } from '../ToolDisclaimer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
-import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { escapeHtml } from '@/utils/escapeHtml';
+import { buildCompanyDocumentHeader, buildDominexDocumentFooter } from '@/utils/companyDocumentHeader';
 import { useToast } from '@/hooks/use-toast';
 
 // ── Tipos de aparelho ────────────────────────────────────────────────────────
@@ -31,10 +32,7 @@ function openHTMLInNewTab(html: string) {
 
 /** Gera o HTML A4 do laudo técnico usando o padrão pdfDownloadAssets. */
 function generateLaudoHtml(opts: {
-  companyName: string;
-  companyDoc?: string;
-  companyPhone?: string;
-  companyAddress?: string;
+  settings: CompanySettings | null | undefined;
   whiteLabel: boolean;
   deviceType: string;
   brand: string;
@@ -51,7 +49,7 @@ function generateLaudoHtml(opts: {
   t: ReturnType<typeof useLaudoT>;
 }): string {
   const {
-    companyName, companyDoc, companyPhone, companyAddress,
+    settings,
     whiteLabel, deviceType, brand, model, imei,
     problem, diagnosis, service, parts, opinion,
     technician, warrantyDays, date, t,
@@ -70,19 +68,9 @@ function generateLaudoHtml(opts: {
   const safeOpinion = escapeHtml(opinion).replace(/\n/g, '<br>');
   const safeWarranty = escapeHtml(warrantyDays);
 
-  const dominexFooter = !whiteLabel ? `
-    <div style="border-top:1px solid #e5e7eb;margin-top:32px;padding-top:12px;text-align:center;">
-      <img src="${DOMINEX_LOGO_BLACK_BASE64}" alt="Dominex" style="height:18px;opacity:0.5;display:block;margin:0 auto 4px;">
-      <p style="font-size:10px;color:#9ca3af;margin:0;">dominex.app</p>
-    </div>` : '';
-
-  const companyBlock = `
-    <div style="margin-bottom:4px;">
-      <strong style="font-size:16px;">${escapeHtml(companyName)}</strong>
-      ${companyDoc ? `<br><span style="font-size:12px;color:#6b7280;">${escapeHtml(companyDoc)}</span>` : ''}
-      ${companyPhone ? `<br><span style="font-size:12px;color:#6b7280;">${escapeHtml(companyPhone)}</span>` : ''}
-      ${companyAddress ? `<br><span style="font-size:12px;color:#6b7280;">${escapeHtml(companyAddress)}</span>` : ''}
-    </div>`;
+  // Cabeçalho e rodapé canônicos (logo + toggles + white-label)
+  const companyHeader = buildCompanyDocumentHeader(settings);
+  const dominexFooter = buildDominexDocumentFooter(whiteLabel);
 
   const sectionStyle = 'margin-bottom:20px;';
   const labelStyle = 'font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;margin-bottom:4px;';
@@ -128,13 +116,15 @@ function generateLaudoHtml(opts: {
 </head>
 <body>
 <div id="pdf-root">
-  <!-- Cabeçalho -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;" data-pdf-keep>
-    <div>${companyBlock}</div>
-    <div style="text-align:right;">
-      <h1 style="font-size:20px;font-weight:700;color:#111827;letter-spacing:0.02em;">${escapeHtml(t.pdfTitle)}</h1>
-      <p style="font-size:12px;color:#6b7280;margin-top:4px;">${escapeHtml(t.pdfDateLabel)} ${safeDate}</p>
-    </div>
+  <!-- Cabeçalho: logo + dados da empresa respeitando toggles show_*_in_documents -->
+  <div data-pdf-keep>
+    ${companyHeader}
+  </div>
+
+  <!-- Título do documento -->
+  <div style="text-align:center;margin-bottom:20px;" data-pdf-keep>
+    <h1 style="font-size:20px;font-weight:700;color:#111827;letter-spacing:0.02em;">${escapeHtml(t.pdfTitle)}</h1>
+    <p style="font-size:12px;color:#6b7280;margin-top:4px;">${escapeHtml(t.pdfDateLabel)} ${safeDate}</p>
   </div>
 
   <hr style="${dividerStyle}">
@@ -263,20 +253,8 @@ export function LaudoTecnico() {
       return;
     }
 
-    const companyAddress = [
-      settings?.address,
-      settings?.address_number,
-      settings?.city,
-      settings?.state,
-    ]
-      .filter(Boolean)
-      .join(', ');
-
     const html = generateLaudoHtml({
-      companyName: settings?.name ?? 'Empresa',
-      companyDoc: settings?.document ?? undefined,
-      companyPhone: settings?.phone ?? undefined,
-      companyAddress: companyAddress || undefined,
+      settings: settings ?? null,
       whiteLabel: wlEnabled,
       deviceType: deviceTypeLabel,
       brand,
