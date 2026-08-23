@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import {
   Package, Settings, Users, CheckCircle2, ArrowRight, Loader2,
   Plus, Minus, Zap, Building2, Crown, TrendingUp, TrendingDown, Info,
+  FileText, XCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +22,14 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { usePlanChange } from '@/hooks/usePlanChange';
 import { useUsers } from '@/hooks/useUsers';
 import { UserExcessModal } from '@/components/billing/UserExcessModal';
+import { CancelSubscriptionModal } from '@/components/billing/CancelSubscriptionModal';
 import { calculateYearlyPrice, calculateMonthlyEquivalent } from '@/utils/subscriptionPricing';
 import { PriceAmount } from '@/components/ui/PriceAmount';
+import { useNfseTiers, formatTierLimit } from '@/hooks/useNfseTiers';
+import { useNfseQuota } from '@/hooks/useNfseQuota';
+import { useNfseTierChange } from '@/hooks/useNfseTierChange';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const EXTRA_USER_PRICE = 50;
 const BASE_USERS = 2; // usuários inclusos no personalizado
@@ -74,8 +81,11 @@ export function ModulesManagementCard({
   focusUsers = false,
   onAutoOpenConsumed,
 }: ModulesManagementCardProps = {}) {
-  const { profile, user } = useAuth();
+  const { profile, user, isAdminOrGestor } = useAuth();
   const companyId = profile?.company_id ?? null;
+  const { locale } = useAppLocaleContext();
+  const tBilling = MESSAGES[locale].app.settings.billing;
+  const canManageSubscription = isAdminOrGestor();
 
   const {
     moduleCodes,
@@ -91,6 +101,15 @@ export function ModulesManagementCard({
 
   const planChange = usePlanChange();
   const { users } = useUsers();
+
+  // NFS-e tier hooks
+  const { tiers: nfseTiers, isLoading: nfseTiersLoading } = useNfseTiers();
+  const { tier: currentNfseTier } = useNfseQuota(companyId);
+  const { changeTier: changeNfseTier, isChanging: isChangingNfseTier } = useNfseTierChange();
+  const [selectedNfseLevel, setSelectedNfseLevel] = useState<number>(1);
+
+  // Cancel subscription modal state
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // Catálogo de módulos (preço + descrição). Read de catálogo — fronteira via hook
   // não é necessária; é leitura pública de billing.
@@ -190,6 +209,11 @@ export function ModulesManagementCard({
     if (company?.billing_cycle) setBillingCycle(company.billing_cycle as 'monthly' | 'yearly');
   }, [company?.billing_cycle]);
 
+  // Sincroniza o nível NFS-e selecionado com o nível atual da empresa ao carregar.
+  useEffect(() => {
+    if (currentNfseTier) setSelectedNfseLevel(currentNfseTier);
+  }, [currentNfseTier]);
+
   // Deep-link: abre o modal já na aba Personalizado, com o módulo pré-marcado ou
   // o foco em usuários, quando vier de /assinatura?addModule=... ou ?addUsers=1.
   // Espera o catálogo carregar pra o pré-marque/foco refletir corretamente.
@@ -237,13 +261,19 @@ export function ModulesManagementCard({
     return 'igual';
   };
 
+  // True quando o plano personalizado inclui o módulo de NF-e.
+  const hasNfeInCustom = customModules.includes('nfe');
+
   // Aplica de fato a mudança de plano via edge (após eventual redução de usuários).
+  // Se o plano personalizado inclui NF-e e o nível selecionado é diferente do atual,
+  // também chama a edge `change-nfse-tier` em seguida.
   const applyChange = (planCode: string, monthlyValue: number) => {
     if (!companyId) {
       toast.error('Empresa não encontrada.');
       return;
     }
     const isCustom = planCode === 'personalizado';
+    const needsTierChange = isCustom && hasNfeInCustom && selectedNfseLevel !== currentNfseTier && selectedNfseLevel > (currentNfseTier ?? 1);
     planChange.mutate(
       {
         companyId,
@@ -253,9 +283,18 @@ export function ModulesManagementCard({
         extraUsers: isCustom ? customExtraUsers : undefined,
       },
       {
-        onSuccess: (result) => {
+        onSuccess: async (result) => {
           toast.success(result.message);
           if (result.asaas_warning) toast.warning(result.asaas_warning);
+          // Aplica upgrade de nível NFS-e se necessário (após o plano ser aceito).
+          if (needsTierChange) {
+            try {
+              const tierResult = await changeNfseTier({ companyId, targetTier: selectedNfseLevel });
+              if (tierResult.asaas_warning) toast.warning(tierResult.asaas_warning);
+            } catch (err) {
+              toast.warning(err instanceof Error ? err.message : 'Plano atualizado, mas não foi possível alterar o nível de NF-e. Tente novamente.');
+            }
+          }
           setOpen(false);
         },
         onError: (err) => {
@@ -399,12 +438,31 @@ export function ModulesManagementCard({
             </div>
           )}
 
-          <Button className="w-full h-12 text-base" onClick={() => handleOpenChange(true)}>
-            <Settings className="h-4 w-4 mr-2" />
-            Gerenciar Meu Plano
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button className="flex-1 h-12 text-base" onClick={() => handleOpenChange(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              {tBilling.btnManagePlan}
+            </Button>
+            {canManageSubscription && (
+              <Button
+                variant="ghost"
+                className="sm:flex-none text-muted-foreground hover:text-destructive text-sm h-12 px-4"
+                onClick={() => setCancelOpen(true)}
+              >
+                <XCircle className="h-4 w-4 mr-1.5" />
+                {tBilling.btnCancelSubscription}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      <CancelSubscriptionModal
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        companyId={companyId ?? ''}
+        subscriptionExpiresAt={company?.subscription_expires_at}
+      />
 
       <ResponsiveModal
         open={open}
@@ -588,6 +646,64 @@ export function ModulesManagementCard({
                 );
               })}
             </div>
+
+            {/* Nível de Notas Fiscais (NFS-e) — só quando o módulo nfe está selecionado */}
+            {hasNfeInCustom && !nfseTiersLoading && nfseTiers.length > 0 && (
+              <div className="space-y-1.5">
+                <h4 className="font-medium text-sm flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  {tBilling.nfseTierSectionTitle}
+                </h4>
+                <div className="grid gap-1.5" role="radiogroup" aria-label={tBilling.nfseTierSectionTitle}>
+                  {nfseTiers.map((t) => {
+                    const isSel = selectedNfseLevel === t.tier;
+                    const isCurrent = t.tier === currentNfseTier;
+                    const isDowngrade = currentNfseTier != null && t.tier < currentNfseTier;
+                    return (
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={isSel}
+                        key={t.tier}
+                        disabled={isDowngrade}
+                        onClick={() => !isDowngrade && setSelectedNfseLevel(t.tier)}
+                        className={cn(
+                          'flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-colors',
+                          isSel
+                            ? 'border-primary/50 ring-1 ring-primary/40 bg-primary/5'
+                            : isDowngrade
+                            ? 'border-border/40 opacity-40 cursor-not-allowed'
+                            : 'border-border/60 hover:bg-muted/50 hover:border-muted-foreground/30',
+                        )}
+                      >
+                        <span className={cn(
+                          'h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center',
+                          isSel ? 'border-primary' : 'border-muted-foreground/40',
+                        )}>
+                          {isSel && <span className="h-2 w-2 rounded-full bg-primary" />}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn('text-sm font-semibold', isSel && 'text-primary')}>
+                            {t.name}
+                            {isCurrent && (
+                              <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">({tBilling.nfseTierCurrent})</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{formatTierLimit(t.monthlyLimit)}</p>
+                        </div>
+                        <span className={cn('text-sm font-bold shrink-0', isSel ? 'text-primary' : 'text-foreground')}>
+                          R$ {formatBRL(t.price)}
+                          <span className="text-[10px] text-muted-foreground font-normal">/mês</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {currentNfseTier != null && selectedNfseLevel !== currentNfseTier && (
+                  <p className="text-[11px] text-muted-foreground">{tBilling.nfseTierUpgradeNote}</p>
+                )}
+              </div>
+            )}
 
             {/* Usuários extras */}
             <div className="space-y-1.5" ref={usersSectionRef}>

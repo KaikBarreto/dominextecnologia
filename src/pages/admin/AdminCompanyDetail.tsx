@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw } from 'lucide-react';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 import { Button } from '@/components/ui/button';
@@ -104,6 +104,18 @@ export default function AdminCompanyDetail() {
   const closerName = company?.salesperson_id ? (salesTeam?.[company.salesperson_id] || null) : null;
   const sdrName = company?.sdr_id ? (salesTeam?.[company.sdr_id] || null) : null;
   const segmentData = getSegment(company?.segment);
+
+  // ===== Recorrência automática (Asaas) =====
+  // Presença de companies.asaas_subscription_id => há renovação automática ativa.
+  // Tipo pelo prefixo: aut_ = Pix Automático, sub_ = Cartão recorrente.
+  const asaasSubscriptionId = company?.asaas_subscription_id ?? null;
+  const hasRecurrence = !!asaasSubscriptionId;
+  const recurrenceLabel = (() => {
+    if (!asaasSubscriptionId) return 'Sem recorrência automática';
+    if (asaasSubscriptionId.startsWith('aut_')) return 'Pix Automático ativo';
+    if (asaasSubscriptionId.startsWith('sub_')) return 'Cartão recorrente ativo';
+    return 'Recorrência ativa';
+  })();
 
   // ===== Módulos do Plano (empresa arbitrária vista no admin) =====
   // Catálogo de módulos ativos (name/description/price/sort_order).
@@ -214,14 +226,14 @@ export default function AdminCompanyDetail() {
           <Button variant="edit-ghost" size={isMobile ? 'sm' : 'default'} className="gap-1.5" onClick={() => setShowEdit(true)}>
             <Edit className="h-4 w-4" /> {!isMobile && 'Editar'}
           </Button>
-          {company.subscription_status !== 'inactive' && (
+          {hasRecurrence && (
             <Button
               variant="destructive-ghost"
               size={isMobile ? 'sm' : 'default'}
               className="gap-1.5"
               onClick={() => setShowCancelSubscriptionDialog(true)}
             >
-              <XCircle className="h-4 w-4" /> {!isMobile && 'Cancelar assinatura'}
+              <XCircle className="h-4 w-4" /> {!isMobile && 'Cancelar recorrência'}
             </Button>
           )}
           <Button variant="destructive-ghost" size={isMobile ? 'sm' : 'default'} className="gap-1.5" onClick={() => setShowDeleteDialog(true)}>
@@ -430,6 +442,39 @@ export default function AdminCompanyDetail() {
                 </div>
               </div>
             </div>
+            {/* Recorrência automática (Asaas) */}
+            <div className="border-t pt-3 mt-3">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Recorrência</span>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                {hasRecurrence ? (
+                  <Badge className="text-xs text-white border-0 bg-emerald-500 hover:bg-emerald-500 gap-1">
+                    <RefreshCw className="h-3 w-3" />
+                    {recurrenceLabel}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    <RefreshCw className="h-3 w-3" />
+                    {recurrenceLabel}
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {company.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}
+                  {company.subscription_expires_at
+                    ? ` · vence ${format(new Date(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR })}`
+                    : ''}
+                </span>
+              </div>
+              {hasRecurrence && (
+                <Button
+                  variant="destructive-ghost"
+                  size="sm"
+                  className="gap-1.5 mt-2 h-7 px-2"
+                  onClick={() => setShowCancelSubscriptionDialog(true)}
+                >
+                  <XCircle className="h-3.5 w-3.5" /> Cancelar recorrência
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -555,18 +600,18 @@ export default function AdminCompanyDetail() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-destructive" /> Cancelar Assinatura
+              <XCircle className="h-5 w-5 text-destructive" /> Cancelar Recorrência
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3 text-left">
               <p className="text-sm">
-                Cancelar a assinatura de <strong className="text-foreground">{company.name}</strong>?
+                Cancelar a recorrência de <strong className="text-foreground">{company.name}</strong> ({recurrenceLabel})?
               </p>
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 space-y-1.5 text-sm">
-                <p className="font-medium text-destructive">Esta ação irá:</p>
+                <p className="font-medium text-destructive">Isto interrompe a cobrança automática.</p>
                 <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                  <li>Cancelar a renovação automática (Asaas)</li>
-                  <li>Cancelar cobranças futuras em aberto</li>
-                  <li>Manter o acesso da empresa até o vencimento já pago</li>
+                  <li>O cliente mantém o acesso até o vencimento já pago</li>
+                  <li>Nenhum dado é perdido</li>
+                  <li>Cobranças futuras em aberto também são canceladas</li>
                 </ul>
               </div>
             </AlertDialogDescription>
@@ -582,13 +627,23 @@ export default function AdminCompanyDetail() {
                   { companyId: id, reason: 'Cancelamento pelo painel administrativo' },
                   {
                     onSuccess: () => {
-                      toast({ title: 'Assinatura cancelada', description: 'A renovação automática foi cancelada. O acesso segue até o vencimento.' });
+                      toast({ title: 'Recorrência cancelada', description: 'A cobrança automática foi interrompida. O acesso segue até o vencimento.' });
                       setShowCancelSubscriptionDialog(false);
+                      queryClient.invalidateQueries({ queryKey: ['admin-company', id] });
                       refetch();
                     },
-                    onError: (error: unknown) => {
-                      console.error('Erro ao cancelar assinatura:', error);
-                      toast({ variant: 'destructive', title: 'Erro ao cancelar assinatura' });
+                    onError: async (error: unknown) => {
+                      console.error('Erro ao cancelar recorrência:', error);
+                      // functions.invoke em resposta não-2xx põe o corpo {error} em error.context (Response).
+                      let description: string | undefined;
+                      const ctx = (error as { context?: unknown })?.context;
+                      if (ctx instanceof Response) {
+                        try {
+                          const body = await ctx.clone().json();
+                          if (body?.error && typeof body.error === 'string') description = body.error;
+                        } catch { /* corpo não-JSON — usa msg genérica */ }
+                      }
+                      toast({ variant: 'destructive', title: 'Erro ao cancelar recorrência', description });
                     },
                   },
                 );
