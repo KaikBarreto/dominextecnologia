@@ -7,7 +7,7 @@ import { formatMoney } from '@/lib/format';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
   ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp,
-  Wallet, BarChart3, FileEdit, Send, Clock, Boxes, Link2,
+  Wallet, BarChart3, FileEdit, Send, Clock, Boxes, Link2, CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,9 @@ import { useQuoteConversion } from '@/hooks/useQuoteConversion';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
 import { ReceivePaymentModal } from '@/components/financial/ReceivePaymentModal';
+import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { PricingTab } from '@/components/pricing/PricingTab';
 import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
 import { GlobalCostsTab } from '@/components/service-orders/GlobalCostsTab';
@@ -141,6 +143,9 @@ function QuotesList() {
   const tq = MESSAGES[locale].app.crm.quotes;
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
+  const hasCobrancas = hasModule('cobrancas');
+  const { isActive: isPaymentActive } = useTenantPaymentAccount();
+  const showChargeAction = hasCobrancas && isPaymentActive;
   const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
   const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
   const { toast } = useToast();
@@ -181,6 +186,7 @@ function QuotesList() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [approvingQuote, setApprovingQuote] = useState<Quote | null>(null);
+  const [chargeQuote, setChargeQuote] = useState<Quote | null>(null);
 
   const filtered = useMemo(() => {
     let list = quotes;
@@ -377,6 +383,15 @@ function QuotesList() {
         label: tq.actionConvertOS,
         icon: <ArrowRight className="h-4 w-4" />,
         onClick: () => convertToServiceOrder.mutate(q),
+      });
+    }
+
+    if (showChargeAction && q.customer_id) {
+      actions.push({
+        key: 'charge',
+        label: tq.actionGenerateChargeMobile,
+        icon: <CreditCard className="h-4 w-4" />,
+        onClick: () => setChargeQuote(q),
       });
     }
 
@@ -661,6 +676,12 @@ function QuotesList() {
                             hidden: !(q.status === 'aprovado' && !q.converted_to_os_id),
                           },
                           {
+                            label: tq.actionGenerateCharge,
+                            icon: CreditCard,
+                            onClick: () => setChargeQuote(q),
+                            hidden: !(showChargeAction && !!q.customer_id),
+                          },
+                          {
                             label: tq.actionEdit,
                             icon: Pencil,
                             variant: 'edit',
@@ -749,6 +770,19 @@ function QuotesList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ChargeDialog: gerar cobrança a partir do orçamento */}
+      {showChargeAction && chargeQuote && (
+        <ChargeDialog
+          open={!!chargeQuote}
+          onOpenChange={(v) => { if (!v) setChargeQuote(null); }}
+          presetCustomerId={chargeQuote.customer_id ?? undefined}
+          lockCustomer
+          presetAmount={Number(chargeQuote.final_price ?? chargeQuote.total_value ?? 0) || undefined}
+          presetDescription={`Orçamento Nº ${chargeQuote.quote_number}`}
+          source={{ type: 'quote', id: chargeQuote.id }}
+        />
+      )}
     </div>
   );
 }

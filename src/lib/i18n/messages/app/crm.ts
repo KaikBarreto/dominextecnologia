@@ -290,11 +290,13 @@ export const crm = {
       actionConvertOS: 'Converter em OS',
       actionEdit: 'Editar',
       actionDelete: 'Excluir',
+      actionGenerateCharge: 'Gerar cobrança',
 
       // Ações mobile
       actionViewMobile: 'Visualizar',
       actionOpenProposalMobile: 'Abrir proposta',
       actionCopyLinkMobile: 'Gerar link da proposta',
+      actionGenerateChargeMobile: 'Gerar cobrança',
 
       // Empty states
       emptyTitle: 'Nenhum orçamento cadastrado',
@@ -452,6 +454,7 @@ export const crm = {
       alreadyRejected: 'Esta proposta foi rejeitada.',
       alreadyResponded: 'Esta proposta já foi respondida.',
       responseError: 'Não foi possível registrar sua resposta. Verifique sua conexão e tente novamente.',
+      payBtn: 'Pagar',
 
       // Configurar proposta (ProposalConfigDialog)
       configTitle: 'Configurar Proposta',
@@ -1242,10 +1245,12 @@ export const crm = {
       actionConvertOS: 'Convert to Work Order',
       actionEdit: 'Edit',
       actionDelete: 'Delete',
+      actionGenerateCharge: 'Generate charge',
 
       actionViewMobile: 'View',
       actionOpenProposalMobile: 'Open proposal',
       actionCopyLinkMobile: 'Generate proposal link',
+      actionGenerateChargeMobile: 'Generate charge',
 
       emptyTitle: 'No quotes yet',
       emptyTitleFiltered: 'No quotes found',
@@ -1393,6 +1398,7 @@ export const crm = {
       alreadyRejected: 'This proposal has been rejected.',
       alreadyResponded: 'This proposal has already been answered.',
       responseError: 'We could not record your response. Please check your connection and try again.',
+      payBtn: 'Pay now',
 
       configTitle: 'Configure Proposal',
 
@@ -2147,10 +2153,12 @@ export const crm = {
       actionConvertOS: 'Convertir en Orden de Servicio',
       actionEdit: 'Editar',
       actionDelete: 'Eliminar',
+      actionGenerateCharge: 'Generar cobro',
 
       actionViewMobile: 'Ver',
       actionOpenProposalMobile: 'Abrir propuesta',
       actionCopyLinkMobile: 'Generar enlace de propuesta',
+      actionGenerateChargeMobile: 'Generar cobro',
 
       emptyTitle: 'Sin presupuestos registrados',
       emptyTitleFiltered: 'Sin presupuestos encontrados',
@@ -2298,6 +2306,7 @@ export const crm = {
       alreadyRejected: 'Esta propuesta fue rechazada.',
       alreadyResponded: 'Esta propuesta ya fue respondida.',
       responseError: 'No pudimos registrar su respuesta. Verifique su conexión e inténtelo de nuevo.',
+      payBtn: 'Pagar',
 
       configTitle: 'Configurar Propuesta',
 
@@ -3052,10 +3061,12 @@ export const crm = {
       actionConvertOS: 'Convertir en Ordre de Travail',
       actionEdit: 'Modifier',
       actionDelete: 'Supprimer',
+      actionGenerateCharge: 'Générer une facture',
 
       actionViewMobile: 'Voir',
       actionOpenProposalMobile: 'Ouvrir la proposition',
       actionCopyLinkMobile: 'Générer le lien de la proposition',
+      actionGenerateChargeMobile: 'Générer une facture',
 
       emptyTitle: 'Aucun devis enregistré',
       emptyTitleFiltered: 'Aucun devis trouvé',
@@ -3203,6 +3214,7 @@ export const crm = {
       alreadyRejected: 'Cette proposition a été refusée.',
       alreadyResponded: `Cette proposition a déjà reçu une réponse.`,
       responseError: `Nous n'avons pas pu enregistrer votre réponse. Vérifiez votre connexion et réessayez.`,
+      payBtn: 'Payer',
 
       configTitle: 'Configurer la Proposition',
 

@@ -76,12 +76,27 @@ function validateDueDate(due: string): { ok: true } | { ok: false; error: string
   return { ok: true };
 }
 
+/** Origem da cobrança (allowlist estrita). 'avulso' é o default histórico. */
+type ChargeSourceType = "avulso" | "quote";
+const ALLOWED_SOURCE_TYPES: readonly ChargeSourceType[] = ["avulso", "quote"];
+
+/** Status que NÃO contam como cobrança válida no dedupe por orçamento (cobra de novo). */
+const DEDUPE_DEAD_STATUSES: readonly string[] = [
+  "CANCELLED",
+  "CANCELED",
+  "REFUNDED",
+  "CHARGEBACK",
+];
+
 interface CreateChargeInput {
   customer_id?: string;
   value?: number;
   due_date?: string;
   billing_type?: BillingType;
   description?: string;
+  // Origem da cobrança (Onda D — Orçamento → Cobrança). Opcionais; default 'avulso'.
+  source_type?: ChargeSourceType;
+  source_id?: string | null;
   // Overrides opcionais por cobrança (caem no default da conta quando ausentes).
   fine_percent?: number;
   interest_percent?: number;
@@ -221,7 +236,56 @@ async function handleRequest(req: Request): Promise<Response> {
       ? input.description.trim().slice(0, 500)
       : null;
 
+  // Origem da cobrança (Onda D). Ausente → 'avulso' (fluxo histórico, sem regressão).
+  const sourceType: ChargeSourceType = input.source_type ?? "avulso";
+  if (!ALLOWED_SOURCE_TYPES.includes(sourceType)) {
+    return jsonResponse(req, { error: "Origem de cobrança inválida." }, 400);
+  }
+  const sourceId =
+    typeof input.source_id === "string" && input.source_id.trim()
+      ? input.source_id.trim()
+      : null;
+  if (sourceType === "quote" && !sourceId) {
+    return jsonResponse(req, {
+      error: "Informe o orçamento de origem da cobrança.",
+    }, 400);
+  }
+
   try {
+    // 0) Dedupe por orçamento (idempotência da Onda D). Se ESTE orçamento já tem uma
+    //    cobrança viva (não cancelada/estornada), NÃO cria outra na Asaas — devolve a
+    //    existente no mesmo shape de sucesso. Evita cobrança duplicada em duplo clique.
+    if (sourceType === "quote" && sourceId) {
+      const { data: existingCharge } = await supabase
+        .from("tenant_charges")
+        .select(
+          "id, public_short_code, invoice_url, pix_copy_paste, boleto_url, value, due_date, billing_type, status",
+        )
+        .eq("company_id", companyId)
+        .eq("source_type", "quote")
+        .eq("source_id", sourceId)
+        .not("status", "in", `(${DEDUPE_DEAD_STATUSES.join(",")})`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingCharge) {
+        const ex = existingCharge as any;
+        return jsonResponse(req, {
+          charge: {
+            public_short_code: ex.public_short_code,
+            checkout_url: ex.public_short_code ? `/pagar/${ex.public_short_code}` : null,
+            invoice_url: ex.invoice_url ?? null,
+            pix_copy_paste: ex.pix_copy_paste ?? null,
+            boleto_url: ex.boleto_url ?? null,
+            value: ex.value,
+            due_date: ex.due_date,
+            billing_type: ex.billing_type,
+            status: ex.status,
+          },
+        }, 200);
+      }
+    }
+
     // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro +
     //    defaults de multa/juros/desconto/vencimento/descrição/parcelamento +
     //    destino financeiro (conta + categoria de receita) do recebível.
@@ -329,8 +393,8 @@ async function handleRequest(req: Request): Promise<Response> {
     const chargeRow = {
       company_id: companyId,
       asaas_payment_id: asaasPaymentId,
-      source_type: "avulso",
-      source_id: null,
+      source_type: sourceType,
+      source_id: sourceType === "quote" ? sourceId : null,
       customer_id: input.customer_id,
       value: chargeValue,
       net_value: payment?.netValue ?? null,

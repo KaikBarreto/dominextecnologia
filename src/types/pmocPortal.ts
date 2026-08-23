@@ -392,4 +392,24 @@ export interface PortalPayload {
    * Ausente em payloads antigos → tratar como [].
    */
   equipment_field_config?: PortalEquipmentFieldConfig[];
+  /**
+   * Cobranças do cliente no portal (Onda E) — array de cobranças geradas via
+   * Asaas para o cliente dono deste contrato. Ausente em payloads antigos →
+   * tratar como []. Status é o valor CRU do Asaas (PENDING, RECEIVED, etc.);
+   * usar `classifyTenantChargeStatus` para converter em classificação semântica.
+   */
+  charges?: PortalCharge[];
+}
+
+/**
+ * Cobrança do cliente exposta no portal público (Onda E).
+ * Status CRU do Asaas — classificar via classifyTenantChargeStatus.
+ */
+export interface PortalCharge {
+  value: number | null;
+  status: string | null;
+  due_date: string | null;
+  description: string | null;
+  billing_type: string | null;
+  public_short_code: string | null;
 }

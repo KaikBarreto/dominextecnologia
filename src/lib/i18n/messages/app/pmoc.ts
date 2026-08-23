@@ -327,6 +327,23 @@ export const pmoc = {
         portalToggleTitle: 'Liberar documentos no portal',
         portalToggleDesc: 'Quando ativado, os anexos ficam visíveis para o cliente no portal público deste contrato.',
       },
+      // ── Seção Faturamento Recorrente (Onda C) ──
+      billing: {
+        sectionTitle: 'Faturamento Recorrente',
+        sectionDesc: 'Emita cobranças automáticas para este contrato via Asaas.',
+        activateBtn: 'Ativar faturamento recorrente',
+        cancelBtn: 'Cancelar faturamento',
+        cycleLabel: 'Frequência',
+        valueLabel: 'Valor',
+        nextDueLabel: 'Próx. vencimento',
+        statusLabel: 'Status',
+        cancelDialog: {
+          title: 'Cancelar faturamento recorrente?',
+          description: 'O faturamento automático deste contrato será cancelado. Cobranças já geradas não são estornadas. Você pode ativar um novo faturamento depois.',
+          confirm: 'Cancelar faturamento',
+          cancel: 'Voltar',
+        },
+      },
     },
 
     // ── Configurações de Contrato (ContractSettings.tsx) ──
@@ -422,6 +439,16 @@ export const pmoc = {
       tabDocuments: 'Documentos',
       tabHistory: 'Histórico',
       tabHistoryPmoc: 'Histórico PMOC',
+      tabCharges: 'Cobranças',
+      // Seção Cobranças (Onda E)
+      chargesEmpty: 'Nenhuma cobrança no momento',
+      chargeStatusPaid: 'Pago',
+      chargeStatusPending: 'Pendente',
+      chargeStatusOverdue: 'Vencido',
+      chargeStatusRefunded: 'Estornado',
+      chargeStatusOther: 'Outro',
+      chargeDueLabel: 'Vencimento',
+      chargePayBtn: 'Pagar',
       // Saúde do contrato
       healthEmDia: 'Em dia',
       healthManutencaoPendente: 'Manutenção pendente',
@@ -1116,6 +1143,23 @@ export const pmoc = {
         portalToggleTitle: 'Release documents on portal',
         portalToggleDesc: 'When enabled, attachments are visible to the customer on the public portal of this contract.',
       },
+      // ── Recurring Billing Section (Wave C) ──
+      billing: {
+        sectionTitle: 'Recurring Billing',
+        sectionDesc: 'Automatically charge this contract through Asaas.',
+        activateBtn: 'Activate recurring billing',
+        cancelBtn: 'Cancel billing',
+        cycleLabel: 'Frequency',
+        valueLabel: 'Amount',
+        nextDueLabel: 'Next due',
+        statusLabel: 'Status',
+        cancelDialog: {
+          title: 'Cancel recurring billing?',
+          description: 'The automatic billing for this contract will be cancelled. Charges already created are not refunded. You can activate a new billing plan later.',
+          confirm: 'Cancel billing',
+          cancel: 'Go back',
+        },
+      },
     },
 
     settingsPage: {
@@ -1199,6 +1243,16 @@ export const pmoc = {
       tabDocuments: 'Documents',
       tabHistory: 'History',
       tabHistoryPmoc: 'HVAC Plan History',
+      tabCharges: 'Charges',
+      // Charges section (Wave E)
+      chargesEmpty: 'No charges at this time',
+      chargeStatusPaid: 'Paid',
+      chargeStatusPending: 'Pending',
+      chargeStatusOverdue: 'Overdue',
+      chargeStatusRefunded: 'Refunded',
+      chargeStatusOther: 'Other',
+      chargeDueLabel: 'Due date',
+      chargePayBtn: 'Pay',
       healthEmDia: 'Up to date',
       healthManutencaoPendente: 'Maintenance pending',
       healthNecessitaAtencao: 'ATTENTION',
@@ -1846,6 +1900,23 @@ export const pmoc = {
         portalToggleTitle: 'Publicar documentos en el portal',
         portalToggleDesc: 'Cuando está activado, los adjuntos son visibles para el cliente en el portal público de este contrato.',
       },
+      // ── Facturación Recurrente (Onda C) ──
+      billing: {
+        sectionTitle: 'Facturación Recurrente',
+        sectionDesc: 'Emite cobros automáticos para este contrato a través de Asaas.',
+        activateBtn: 'Activar facturación recurrente',
+        cancelBtn: 'Cancelar facturación',
+        cycleLabel: 'Frecuencia',
+        valueLabel: 'Importe',
+        nextDueLabel: 'Próx. vencimiento',
+        statusLabel: 'Estado',
+        cancelDialog: {
+          title: '¿Cancelar la facturación recurrente?',
+          description: 'La facturación automática de este contrato será cancelada. Los cobros ya generados no se reembolsan. Puedes activar una nueva facturación más tarde.',
+          confirm: 'Cancelar facturación',
+          cancel: 'Volver',
+        },
+      },
     },
 
     settingsPage: {
@@ -1929,6 +2000,16 @@ export const pmoc = {
       tabDocuments: 'Documentos',
       tabHistory: 'Historial',
       tabHistoryPmoc: 'Historial Plan de Mantenimiento',
+      tabCharges: 'Cobros',
+      // Seccion Cobros (Onda E)
+      chargesEmpty: 'Sin cobros por el momento',
+      chargeStatusPaid: 'Pagado',
+      chargeStatusPending: 'Pendiente',
+      chargeStatusOverdue: 'Vencido',
+      chargeStatusRefunded: 'Devuelto',
+      chargeStatusOther: 'Otro',
+      chargeDueLabel: 'Vencimiento',
+      chargePayBtn: 'Pagar',
       healthEmDia: 'Al día',
       healthManutencaoPendente: 'Mantenimiento pendiente',
       healthNecessitaAtencao: 'ATENCIÓN',
@@ -2576,6 +2657,23 @@ export const pmoc = {
         portalToggleTitle: 'Publier les documents sur le portail',
         portalToggleDesc: `Lorsqu'il est activé, les pièces jointes sont visibles pour le client sur le portail public de ce contrat.`,
       },
+      // ── Facturation Récurrente (Vague C) ──
+      billing: {
+        sectionTitle: 'Facturation Récurrente',
+        sectionDesc: `Émettez des prélèvements automatiques pour ce contrat via Asaas.`,
+        activateBtn: 'Activer la facturation récurrente',
+        cancelBtn: 'Annuler la facturation',
+        cycleLabel: 'Fréquence',
+        valueLabel: 'Montant',
+        nextDueLabel: `Prochaine échéance`,
+        statusLabel: 'Statut',
+        cancelDialog: {
+          title: 'Annuler la facturation récurrente ?',
+          description: `La facturation automatique de ce contrat sera annulée. Les factures déjà générées ne sont pas remboursées. Vous pouvez activer une nouvelle facturation plus tard.`,
+          confirm: 'Annuler la facturation',
+          cancel: 'Retour',
+        },
+      },
     },
 
     settingsPage: {
@@ -2659,6 +2757,16 @@ export const pmoc = {
       tabDocuments: 'Documents',
       tabHistory: 'Historique',
       tabHistoryPmoc: 'Historique Plan de Maintenance',
+      tabCharges: 'Factures',
+      // Section Factures (Vague E)
+      chargesEmpty: 'Aucune facture pour le moment',
+      chargeStatusPaid: `Paye`,
+      chargeStatusPending: 'En attente',
+      chargeStatusOverdue: 'En retard',
+      chargeStatusRefunded: 'Rembourse',
+      chargeStatusOther: 'Autre',
+      chargeDueLabel: `Echeance`,
+      chargePayBtn: 'Payer',
       healthEmDia: 'À jour',
       healthManutencaoPendente: 'Maintenance en attente',
       healthNecessitaAtencao: 'ATTENTION',

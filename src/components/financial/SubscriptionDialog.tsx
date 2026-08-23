@@ -29,6 +29,12 @@ interface SubscriptionDialogProps {
   /** Pré-seleciona o cliente e trava o select quando combinado com lockCustomer. */
   presetCustomerId?: string;
   lockCustomer?: boolean;
+  /** Ciclo inicial sugerido (usuário pode trocar). */
+  presetCycle?: SubscriptionCycle;
+  /** Descrição inicial sugerida. */
+  presetDescription?: string;
+  /** Origem da assinatura (ex: contrato). Enviada ao edge sem exposição ao usuário. */
+  source?: { type: 'avulso' | 'contract' | 'quote'; id: string };
 }
 
 /** Data de hoje em ISO (yyyy-mm-dd), no fuso local. Evita bug de UTC/BRT. */
@@ -52,6 +58,9 @@ export function SubscriptionDialog({
   onOpenChange,
   presetCustomerId,
   lockCustomer,
+  presetCycle,
+  presetDescription,
+  source,
 }: SubscriptionDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
@@ -65,10 +74,10 @@ export function SubscriptionDialog({
   // ── Form state ─────────────────────────────────────────────────────────────
   const [customerId, setCustomerId] = useState(presetCustomerId ?? '');
   const [amount, setAmount] = useState(0);
-  const [cycle, setCycle] = useState<SubscriptionCycle>('MONTHLY');
+  const [cycle, setCycle] = useState<SubscriptionCycle>(presetCycle ?? 'MONTHLY');
   const [billingType, setBillingType] = useState<SubscriptionBillingType>('UNDEFINED');
   const [firstDueDate, setFirstDueDate] = useState(todayISO());
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(presetDescription ?? '');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [finePercent, setFinePercent] = useState('');
   const [interestPercent, setInterestPercent] = useState('');
@@ -104,6 +113,14 @@ export function SubscriptionDialog({
     }
   }, [open, presetCustomerId]);
 
+  // Sincroniza ciclo e descrição sugeridos ao abrir
+  useEffect(() => {
+    if (open) {
+      if (presetCycle) setCycle(presetCycle);
+      if (presetDescription) setDescription(presetDescription);
+    }
+  }, [open, presetCycle, presetDescription]);
+
   // Sincroniza forma de pagamento quando opções carregam
   useEffect(() => {
     if (billingOptions.length > 0 && !billingOptions.find((o) => o.value === billingType)) {
@@ -114,10 +131,10 @@ export function SubscriptionDialog({
   const resetForm = () => {
     setCustomerId(presetCustomerId ?? '');
     setAmount(0);
-    setCycle('MONTHLY');
+    setCycle(presetCycle ?? 'MONTHLY');
     setBillingType(billingOptions[0]?.value ?? 'UNDEFINED');
     setFirstDueDate(todayISO());
-    setDescription('');
+    setDescription(presetDescription ?? '');
     setShowAdvanced(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
@@ -152,6 +169,8 @@ export function SubscriptionDialog({
       description: description.trim() || undefined,
       fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
       interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
+      source_type: source?.type,
+      source_id: source?.id,
     });
 
     // Toast disparado pelo hook — só fecha o dialog aqui.

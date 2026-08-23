@@ -42,6 +42,11 @@ export interface CreateChargeInput {
   discount_percent?: number;
   discount_days?: number;
   installment_count?: number;
+  /** Origem da cobrança. Quando 'quote', usar source_id com o UUID do orçamento.
+   *  A edge faz dedupe: chamar duas vezes pro mesmo source_id devolve a mesma cobrança. */
+  source_type?: 'avulso' | 'quote';
+  /** UUID do orçamento quando source_type === 'quote'. */
+  source_id?: string | null;
 }
 
 /** Resultado do gerar cobrança — allowlist: nunca custo/margem interna. */
@@ -145,6 +150,10 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       if (input.discount_percent !== undefined) body.discount_percent = input.discount_percent;
       if (input.discount_days !== undefined) body.discount_days = input.discount_days;
       if (input.installment_count !== undefined) body.installment_count = input.installment_count;
+      // Repassa origem da cobrança ao edge (source_type + source_id).
+      // Default do edge é 'avulso'; 'quote' ativa o dedupe pelo source_id.
+      if (input.source_type) body.source_type = input.source_type;
+      if (input.source_id != null) body.source_id = input.source_id;
       const { data, error } = await supabase.functions.invoke('tenant-asaas-create-charge', { body });
       if (error) throw new Error(await extractEdgeError(error, data, 'Não foi possível gerar a cobrança.'));
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {

@@ -1168,9 +1168,56 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ─── COBRANÇAS DO CLIENTE (Onda E — "Minhas cobranças") ──────────────────
+    // Cobranças (tenant_charges) emitidas ao cliente DESTE contrato, pro portal
+    // listar e oferecer link de pagamento (via public_short_code). Chegamos aqui
+    // SÓ depois dos gates de módulo e de privacidade (que retornam cedo) — então
+    // o acesso já está concedido; acesso negado nunca popula charges.
+    //
+    // SEGURANÇA (superfície ANON): escopo DUPLO por company_id E customer_id
+    // resolvidos do CONTRATO (nunca do querystring). ALLOWLIST ESTRITA de 6
+    // campos — value, status, due_date, description, billing_type,
+    // public_short_code. NUNCA net_value, source_id, source_type,
+    // asaas_payment_id, customer_id, created_by ou qualquer coluna interna.
+    // Vazar valor líquido/tarifa/origem entre superfícies é incidente (1.8.4).
+    type PortalChargeRow = {
+      value: number | null;
+      status: string | null;
+      due_date: string | null;
+      description: string | null;
+      billing_type: string | null;
+      public_short_code: string | null;
+    };
+    let charges: Array<Record<string, unknown>> = [];
+    if (contract.company_id && contract.customer_id) {
+      const { data: chargeRows } = await supabase
+        .from("tenant_charges")
+        .select("value, status, due_date, description, billing_type, public_short_code, created_at")
+        .eq("company_id", contract.company_id)
+        .eq("customer_id", contract.customer_id)
+        .not("status", "in", "(CANCELLED,CANCELED)")
+        .order("due_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      charges = ((chargeRows ?? []) as Array<PortalChargeRow & { created_at?: string | null }>).map(
+        (c) => ({
+          value: c.value ?? null,
+          status: c.status ?? null,
+          due_date: c.due_date ?? null,
+          description: c.description ?? null,
+          billing_type: c.billing_type ?? null,
+          public_short_code: c.public_short_code ?? null,
+          // NOTA: created_at só entra no SELECT pra ORDER secundário — NÃO é
+          // projetado no payload. net_value/source_*/asaas_payment_id/customer_id
+          // /created_by INTENCIONALMENTE fora da allowlist (superfície anon).
+        }),
+      );
+    }
+
     const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.10.0", // 1.10.0 — locale da empresa (language/currency/timezone) no tenant
+      payload_version: "1.11.0", // 1.11.0 — cobranças do cliente (charges[]) no portal
       // Espelha get_portal_data: acesso liberado (já passamos pelo gate de
       // privacidade) + se o viewer logado pode preencher OS + se é PMOC.
       access: "granted",
@@ -1246,6 +1293,9 @@ Deno.serve(async (req) => {
       // completa das visitas, read-only. Carrega o `id` da OS pra montar
       // "Preencher OS" quando viewer_can_fill=true.
       occurrences,
+      // Cobranças do cliente deste contrato (Onda E). Sempre array ([] quando
+      // não há). ALLOWLIST de 6 campos — ver bloco de montagem acima.
+      charges,
     };
 
     // Documentos SÓ pra contrato PMOC. Para não-PMOC, NÃO incluímos

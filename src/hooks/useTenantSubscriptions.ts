@@ -46,6 +46,8 @@ export interface TenantSubscription {
   description: string | null;
   created_by: string | null;
   created_at: string;
+  source_type: string | null;
+  source_id: string | null;
   // joined
   customers: { id: string; name: string } | null;
 }
@@ -59,6 +61,9 @@ export interface CreateSubscriptionInput {
   description?: string;
   fine_percent?: number;
   interest_percent?: number;
+  /** Origem da assinatura: 'avulso' (padrão) | 'contract' | 'quote'. */
+  source_type?: 'avulso' | 'contract' | 'quote';
+  source_id?: string;
 }
 
 export interface ManageSubscriptionInput {
@@ -90,17 +95,22 @@ async function extractEdgeError(error: unknown, data: unknown, fallback: string)
 export interface UseTenantSubscriptionsOptions {
   /** Quando fornecido, filtra assinaturas deste cliente. Cache isolado por customerId. */
   customerId?: string;
+  /** Quando fornecido, filtra assinaturas desta origem (ex: contrato específico). */
+  sourceType?: string;
+  sourceId?: string;
 }
 
 export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) {
   const queryClient = useQueryClient();
   const { companyId } = useUserCompany();
   const { toast } = useToast();
-  const { customerId } = options ?? {};
+  const { customerId, sourceType, sourceId } = options ?? {};
 
-  const listKey = customerId
-    ? ['tenant-subscriptions', companyId, 'customer', customerId]
-    : ['tenant-subscriptions', companyId];
+  const listKey = sourceType && sourceId
+    ? ['tenant-subscriptions', companyId, 'source', sourceType, sourceId]
+    : customerId
+      ? ['tenant-subscriptions', companyId, 'customer', customerId]
+      : ['tenant-subscriptions', companyId];
 
   const list = useQuery({
     queryKey: listKey,
@@ -111,11 +121,17 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       let query = supabase
         .from('tenant_subscriptions')
         .select(
-          'id, company_id, customer_id, asaas_subscription_id, cycle, value, billing_type, next_due_date, status, fine_percent, interest_percent, description, created_by, created_at, customers(id, name)',
+          'id, company_id, customer_id, asaas_subscription_id, cycle, value, billing_type, next_due_date, status, fine_percent, interest_percent, description, created_by, created_at, source_type, source_id, customers(id, name)',
         )
         .eq('company_id', companyId);
       if (customerId) {
         query = query.eq('customer_id', customerId);
+      }
+      if (sourceType) {
+        query = query.eq('source_type', sourceType);
+      }
+      if (sourceId) {
+        query = query.eq('source_id', sourceId);
       }
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
@@ -124,8 +140,7 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
   });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: listKey });
-    // Invalida a lista geral (sem filtro de cliente) se a mutation veio de contexto filtrado.
+    // Invalida TODAS as queries de assinaturas desta empresa (lista geral + filtros).
     queryClient.invalidateQueries({ queryKey: ['tenant-subscriptions', companyId] });
   };
 
@@ -141,6 +156,8 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       if (input.description?.trim()) body.description = input.description.trim();
       if (input.fine_percent !== undefined) body.fine_percent = input.fine_percent;
       if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
+      if (input.source_type) body.source_type = input.source_type;
+      if (input.source_id) body.source_id = input.source_id;
 
       const { data, error } = await supabase.functions.invoke(
         'tenant-asaas-create-subscription',

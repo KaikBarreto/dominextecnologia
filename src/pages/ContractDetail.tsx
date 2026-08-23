@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -45,6 +45,11 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { useTenantSubscriptions, type TenantSubscription } from '@/hooks/useTenantSubscriptions';
+import { SubscriptionDialog } from '@/components/financial/SubscriptionDialog';
+import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -180,6 +185,28 @@ export default function ContractDetail() {
   // Portal do Contrato — aparece em TODO contrato (PMOC ou não). O token público
   // é gerado pra todo contrato e nunca nulado. PMOC ganha extras (liberação de
   // documentos via aba Documentos); contrato comum tem só QR + link + toggle.
+  // ── Módulo Cobranças + conta de recebimento ────────────────────────────────
+  const { hasModule } = useCompanyModules();
+  const hasCobrancas = hasModule('cobrancas');
+  const { isActive: isPaymentActive } = useTenantPaymentAccount();
+
+  // ── Assinatura recorrente vinculada ao contrato ───────────────────────────
+  // Filtra diretamente por source_type='contract' + source_id=contract.id.
+  // Habilitado só quando o contrato já estiver carregado.
+  const contractSubscriptions = useTenantSubscriptions(
+    id ? { sourceType: 'contract', sourceId: id } : undefined,
+  );
+  // Assinatura "viva" = qualquer status diferente de 'cancelled'.
+  const activeContractSubscription = useMemo<TenantSubscription | null>(() => {
+    return contractSubscriptions.subscriptions.find(
+      (s) => s.status !== 'cancelled',
+    ) ?? null;
+  }, [contractSubscriptions.subscriptions]);
+
+  // Estado local — dialog de ativar faturamento e confirm de cancelamento.
+  const [showBillingDialog, setShowBillingDialog] = useState(false);
+  const [billingCancelTarget, setBillingCancelTarget] = useState<TenantSubscription | null>(null);
+
   const { hasRole } = useAuth();
   const isPmoc = (contract as any)?.is_pmoc === true;
   const canRegenerateToken =
@@ -1207,6 +1234,121 @@ export default function ContractDetail() {
         // (previsto / recebido / pendente / atrasado) + lista das parcelas com
         // status (pago/pendente/atrasado) + ações Nova Receita e Aplicar a todas.
         // NÃO duplica a tela geral de Movimentações — é só o que toca o contrato.
+        // ── Seção Faturamento Recorrente (Onda C) ─────────────────────────────
+        // Gate: módulo 'cobrancas' ativo + conta de recebimento ativa + cliente vinculado.
+        const tdBilling = td.billing;
+        const showBillingSection =
+          hasCobrancas && isPaymentActive && !!contract.customer_id;
+
+        // Badge de status da assinatura (saturado, texto branco — regra CEO).
+        function subStatusBadge(status: string) {
+          const tSub = MESSAGES[locale].app.charges.subscriptions.status;
+          const map: Record<string, { label: string; className: string }> = {
+            active:    { label: tSub.active,    className: 'bg-emerald-500 text-white' },
+            overdue:   { label: tSub.overdue,   className: 'bg-destructive text-white' },
+            cancelled: { label: tSub.cancelled, className: 'bg-slate-500 text-white' },
+            paused:    { label: tSub.paused,    className: 'bg-amber-500 text-white' },
+            pending:   { label: tSub.pending,   className: 'bg-amber-500 text-white' },
+          };
+          const cfg = map[status] ?? { label: status, className: 'bg-muted text-muted-foreground' };
+          return (
+            <Badge className={cn('shrink-0 capitalize', cfg.className)}>
+              {cfg.label}
+            </Badge>
+          );
+        }
+
+        const billingSection = showBillingSection ? (
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+            <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
+                <RefreshCw className="h-5 w-5 shrink-0 text-emerald-500" />
+                <span className="min-w-0 break-words">{tdBilling.sectionTitle}</span>
+              </CardTitle>
+              {!activeContractSubscription && (
+                <Button
+                  size="sm"
+                  className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl"
+                  onClick={() => setShowBillingDialog(true)}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  {tdBilling.activateBtn}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="min-w-0 space-y-3">
+              <p className="text-xs text-muted-foreground break-words">{tdBilling.sectionDesc}</p>
+
+              {contractSubscriptions.isLoading ? (
+                <div className="flex items-center gap-2 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">…</span>
+                </div>
+              ) : activeContractSubscription ? (
+                <div className="rounded-xl border border-border bg-card p-4 min-w-0 space-y-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm min-w-0">
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{tdBilling.valueLabel}</p>
+                      <p className="mt-0.5 font-semibold tabular-nums break-words">
+                        {formatBRL(Number(activeContractSubscription.value))}
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{tdBilling.cycleLabel}</p>
+                      <p className="mt-0.5 font-medium break-words">
+                        {MESSAGES[locale].app.charges.subscriptions.cycles[
+                          activeContractSubscription.cycle as keyof typeof MESSAGES['pt-br']['app']['charges']['subscriptions']['cycles']
+                        ] ?? activeContractSubscription.cycle}
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{tdBilling.nextDueLabel}</p>
+                      <p className="mt-0.5 font-medium break-words">
+                        {activeContractSubscription.next_due_date
+                          ? (() => {
+                              const [y, m, d] = activeContractSubscription.next_due_date.split('-').map(Number);
+                              return new Date(y, m - 1, d).toLocaleDateString('pt-BR', {
+                                day: '2-digit', month: '2-digit', year: 'numeric',
+                              });
+                            })()
+                          : '—'}
+                      </p>
+                    </div>
+                    <div className="min-w-0 flex flex-col gap-0.5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{tdBilling.statusLabel}</p>
+                      <div className="mt-0.5">{subStatusBadge(activeContractSubscription.status)}</div>
+                    </div>
+                  </div>
+                  <div className="border-t pt-3 flex justify-end">
+                    <Button
+                      variant="destructive-ghost"
+                      size="sm"
+                      className="min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl"
+                      onClick={() => setBillingCancelTarget(activeContractSubscription)}
+                      disabled={contractSubscriptions.manageSubscription.isPending}
+                    >
+                      <XCircle className="mr-1 h-3.5 w-3.5" />
+                      {tdBilling.cancelBtn}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl"
+                    onClick={() => setShowBillingDialog(true)}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    {tdBilling.activateBtn}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null;
+
         const financialContent = (
           <div className="space-y-6 min-w-0 w-full">
             {/* Mini-resumo: 4 KPIs do contrato. Grid 2 colunas no mobile, 4 no desktop. */}
@@ -1335,6 +1477,9 @@ export default function ContractDetail() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Faturamento Recorrente — visível quando módulo cobrancas + conta ativa + cliente */}
+            {billingSection}
           </div>
         );
 
@@ -1701,6 +1846,61 @@ export default function ContractDetail() {
           contract={contract}
           onClose={() => setShowVisitsReport(false)}
         />
+      )}
+
+      {/* ── Faturamento Recorrente: dialog de ativar ─────────────────────────── */}
+      {contract && (
+        <SubscriptionDialog
+          open={showBillingDialog}
+          onOpenChange={setShowBillingDialog}
+          presetCustomerId={contract.customer_id ?? undefined}
+          lockCustomer
+          presetCycle={contractFrequencyToCycle(contract.frequency_type, contract.frequency_value)}
+          presetDescription={`Contrato: ${contract.name}`}
+          source={{ type: 'contract', id: contract.id }}
+        />
+      )}
+
+      {/* ── Faturamento Recorrente: confirmação de cancelamento ──────────────── */}
+      {contract && (
+        <AlertDialog
+          open={!!billingCancelTarget}
+          onOpenChange={(open) => { if (!open) setBillingCancelTarget(null); }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{td.billing.cancelDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {td.billing.cancelDialog.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={contractSubscriptions.manageSubscription.isPending}
+                onClick={() => setBillingCancelTarget(null)}
+              >
+                {td.billing.cancelDialog.cancel}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-white hover:bg-destructive/90"
+                disabled={contractSubscriptions.manageSubscription.isPending}
+                onClick={async () => {
+                  if (!billingCancelTarget) return;
+                  await contractSubscriptions.manageSubscription.mutateAsync({
+                    subscription_id: billingCancelTarget.id,
+                    action: 'cancel',
+                  });
+                  setBillingCancelTarget(null);
+                }}
+              >
+                {contractSubscriptions.manageSubscription.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {td.billing.cancelDialog.confirm}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

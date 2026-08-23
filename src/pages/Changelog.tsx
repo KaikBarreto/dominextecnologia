@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.9',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Gere a cobrança direto do orçamento',
+        description: 'No orçamento, agora tem a opção "Gerar cobrança": ela já vem pronta com o cliente e o valor do orçamento, é só confirmar. E na proposta que o cliente recebe, aparece um botão "Pagar" que leva direto para a tela de pagamento. Fecha o ciclo: aprovou, cobrou.',
+        category: 'recurso',
+      },
+      {
+        title: 'Seu cliente paga pelo portal',
+        description: 'Os portais do cliente e do contrato ganharam a seção "Cobranças": o seu cliente vê ali as cobranças em aberto e paga na hora, por Pix, boleto ou cartão. Menos cobrança manual e menos inadimplência.',
+        category: 'recurso',
+      },
+      {
+        title: 'Contrato que cobra sozinho',
+        description: 'No contrato, em Financeiro, você ativa o "Faturamento Recorrente": o sistema cria uma assinatura que cobra automaticamente na frequência do contrato (um contrato mensal já sugere cobrança mensal) e dá baixa quando o cliente paga. Ideal para PMOC e manutenções que se repetem. Cada contrato tem no máximo um faturamento ativo por vez.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.8',
     date: '23 de agosto de 2026',
     type: 'patch',

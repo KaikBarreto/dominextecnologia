@@ -238,6 +238,33 @@ async function handleRequest(req: Request): Promise<Response> {
   const sourceId =
     typeof input.source_id === "string" && input.source_id.trim() ? input.source_id.trim() : null;
 
+  // GUARD anti-double-billing (só ramo 'contract'): um contrato não pode ter
+  // DUAS assinaturas vivas. "Viva" = qualquer status que não seja 'cancelled'
+  // (pending, active, paused, overdue). Roda ANTES de tocar o Asaas — não
+  // criamos assinatura lá pra depois descobrir a duplicata.
+  if (sourceType === "contract" && sourceId) {
+    const { data: existingLive, error: guardErr } = await supabase
+      .from("tenant_subscriptions")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("source_type", "contract")
+      .eq("source_id", sourceId)
+      .neq("status", "cancelled")
+      .limit(1)
+      .maybeSingle();
+    if (guardErr) {
+      console.error("[create-subscription] guard contract falhou:", guardErr.message);
+      return jsonResponse(req, {
+        error: "Não foi possível verificar o faturamento deste contrato. Tente novamente em instantes.",
+      }, 500);
+    }
+    if (existingLive) {
+      return jsonResponse(req, {
+        error: "Este contrato já tem um faturamento recorrente ativo. Cancele o atual antes de criar outro.",
+      }, 409);
+    }
+  }
+
   try {
     // 1) Conta ativa + chave do Vault + defaults (multa/juros/vencimento/descrição/destino).
     const { data: accountData } = await supabase

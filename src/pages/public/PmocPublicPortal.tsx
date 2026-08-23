@@ -20,6 +20,7 @@ import {
   Star,
   Package,
   ChevronLeft,
+  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -54,6 +55,7 @@ import {
 } from '@/utils/pmocPortalApi';
 import PortalUnavailable from '@/components/portal/PortalUnavailable';
 import { PublicPortalShell, type PortalNavSection } from '@/components/portal/PublicPortalShell';
+import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
 import { PortalContactButton } from '@/components/portal/PortalContactButton';
 import { idealForeground } from '@/lib/colorContrast';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
@@ -129,6 +131,7 @@ function buildNavSections(
   hasExecutionHistory: boolean,
   hasAttachments: boolean,
   hasEquipment: boolean,
+  hasCharges: boolean,
   t: PublicPortalMessages,
 ): PortalNavSection[] {
   const sections: PortalNavSection[] = [
@@ -150,6 +153,10 @@ function buildNavSections(
   sections.push({ value: 'historico', label: t.tabHistory, icon: <Wrench className="h-4 w-4 shrink-0" /> });
   if (isPmoc && hasExecutionHistory) {
     sections.push({ value: 'historico-pmoc', label: t.tabHistoryPmoc, icon: <ClipboardCheck className="h-4 w-4 shrink-0" /> });
+  }
+  // Aba Cobranças: aparece quando o cliente tem ao menos 1 cobrança no payload.
+  if (hasCharges) {
+    sections.push({ value: 'cobrancas', label: t.tabCharges, icon: <CreditCard className="h-4 w-4 shrink-0" /> });
   }
   return sections;
 }
@@ -344,9 +351,10 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     equipment_field_config = [],
     is_pmoc,
     viewer_can_fill,
+    charges = [],
   } = payload;
 
-  const { locale, timezone } = useAppLocaleContext();
+  const { locale, timezone, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
   const { toast } = useToast();
 
@@ -377,10 +385,11 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const hasExecutionHistory = isPmoc && executionRows.length > 0;
 
   const hasEquipment = equipment.length > 0;
+  const hasCharges = charges.length > 0;
 
   const navSections = useMemo(
-    () => buildNavSections(isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, t),
-    [isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, t],
+    () => buildNavSections(isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, hasCharges, t),
+    [isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, hasCharges, t],
   );
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
@@ -603,6 +612,25 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
             </div>
             <PmocExecutionHistoryView rows={executionRows} showHeader={false} />
           </div>
+        )}
+        {/* Cobranças: lista de cobranças do cliente (Onda E). */}
+        {activeTab === 'cobrancas' && (
+          <PortalChargesSection
+            charges={charges}
+            t={{
+              chargesEmpty: t.chargesEmpty,
+              chargeStatusPaid: t.chargeStatusPaid,
+              chargeStatusPending: t.chargeStatusPending,
+              chargeStatusOverdue: t.chargeStatusOverdue,
+              chargeStatusRefunded: t.chargeStatusRefunded,
+              chargeStatusOther: t.chargeStatusOther,
+              chargeDueLabel: t.chargeDueLabel,
+              chargePayBtn: t.chargePayBtn,
+            }}
+            locale={locale}
+            currency={currency ?? 'BRL'}
+            timezone={timezone}
+          />
         )}
       </div>
 

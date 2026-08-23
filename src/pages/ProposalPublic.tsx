@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, XCircle, Loader2, FileText, Download } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, FileText, Download, CreditCard } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ProposalRenderer } from '@/components/quotes/ProposalRenderer';
 import { extractQuoteToken } from '@/utils/prettyLinks';
@@ -110,6 +110,8 @@ function ProposalPublicContent({
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
   const [done, setDone] = useState(false);
+  /** short_code da cobrança vinculada (null = sem cobrança). Usado no CTA "Pagar". */
+  const [chargeShortCode, setChargeShortCode] = useState<string | null>(null);
   // Mensagem amigável exibida quando a resposta NÃO persistiu agora:
   // 'already' = o orçamento já tinha sido respondido (não travamos como "aprovado agora");
   // 'error'   = falha de rede (permite tentar de novo, não trava done).
@@ -130,6 +132,7 @@ function ProposalPublicContent({
         items: any[];
         customer: { name: string; email: string | null; phone: string | null } | null;
         company: any | null;
+        charge_public_short_code?: string | null;
       } | null;
 
       const quoteRow = payload?.quote ?? null;
@@ -141,6 +144,8 @@ function ProposalPublicContent({
           customers: payload?.customer ?? null,
         };
         setQuote(q);
+        // Cobrança vinculada — só o short_code, sem expor custo/margem interna.
+        setChargeShortCode(payload?.charge_public_short_code ?? null);
 
         // A empresa vem do tenant DONO do orçamento (company_id), não do tenant
         // logado (que no link anônimo nem existe). proposal_customization sai daqui.
@@ -279,6 +284,20 @@ function ProposalPublicContent({
         <div className="print-area proposal-public-pages shadow-xl rounded-xl overflow-hidden">
           <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
+
+        {/* CTA "Pagar" — exibe só quando há uma cobrança vinculada ao orçamento. */}
+        {chargeShortCode && (
+          <div className="flex justify-center mt-6">
+            <Button
+              size="lg"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-8 text-base rounded-full shadow-lg"
+              onClick={() => window.open(`/pagar/${chargeShortCode}`, '_blank', 'noopener')}
+            >
+              <CreditCard className="h-5 w-5" />
+              {tp.payBtn}
+            </Button>
+          </div>
+        )}
 
         {canRespond && !done && respondNotice !== 'already' && (
           <>

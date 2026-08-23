@@ -1,11 +1,14 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { Quote } from '@/hooks/useQuotes';
-import { Download, Share2, Eye } from 'lucide-react';
+import { Download, Share2, Eye, CreditCard } from 'lucide-react';
+import { ChargeDialog } from '@/components/financial/ChargeDialog';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
 import type { LocaleCode } from '@/lib/i18n/locales';
@@ -35,6 +38,10 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
   const printRef = useRef<HTMLDivElement>(null);
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
+  const { hasModule } = useCompanyModules();
+  const { isActive: isPaymentActive } = useTenantPaymentAccount();
+  const showChargeAction = hasModule('cobrancas') && isPaymentActive;
+  const [chargeOpen, setChargeOpen] = useState(false);
 
   if (!quote) return null;
 
@@ -80,7 +87,12 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
           {viewsLine}
         </span>
       </div>
-      <div className="flex gap-2 justify-end">
+      <div className="flex gap-2 justify-end flex-wrap">
+        {showChargeAction && quote.customer_id && (
+          <Button variant="outline" size="sm" onClick={() => setChargeOpen(true)}>
+            <CreditCard className="h-4 w-4 mr-1.5" /> {tq.actionGenerateCharge}
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={handleWhatsApp}>
           <Share2 className="h-4 w-4 mr-1.5" /> {tq.viewShareWhatsApp}
         </Button>
@@ -103,23 +115,41 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
 
   const title = tq.viewDialogTitle.replace('{number}', String(quote.quote_number));
 
+  const chargeDialog = showChargeAction && quote.customer_id ? (
+    <ChargeDialog
+      open={chargeOpen}
+      onOpenChange={setChargeOpen}
+      presetCustomerId={quote.customer_id}
+      lockCustomer
+      presetAmount={Number(quote.final_price ?? quote.total_value ?? 0) || undefined}
+      presetDescription={`Orçamento Nº ${quote.quote_number}`}
+      source={{ type: 'quote', id: quote.id }}
+    />
+  ) : null;
+
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh]">
-          <DrawerHeader><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
-          <div className="px-4 pb-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 80px)' }}>{content}</div>
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
+            <div className="px-4 pb-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 80px)' }}>{content}</div>
+          </DrawerContent>
+        </Drawer>
+        {chargeDialog}
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-        {content}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+          {content}
+        </DialogContent>
+      </Dialog>
+      {chargeDialog}
+    </>
   );
 }

@@ -17,6 +17,7 @@ import {
   Wrench,
   User,
   Users,
+  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -52,6 +53,7 @@ import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces e constantes
@@ -139,6 +141,15 @@ interface PortalContractSummary {
   public_pmoc_token: string | null;
 }
 
+interface PortalCharge {
+  value: number | null;
+  status: string | null;
+  due_date: string | null;
+  description: string | null;
+  billing_type: string | null;
+  public_short_code: string | null;
+}
+
 interface PortalPayload {
   access?: 'granted' | 'denied' | 'module_unavailable';
   viewer_can_fill?: boolean;
@@ -149,6 +160,7 @@ interface PortalPayload {
   service_orders: ServiceOrder[];
   equipment_field_config?: FieldConfig[];
   contracts?: PortalContractSummary[];
+  charges?: PortalCharge[];
 }
 
 // Cores de badge por status (fundo saturado + texto branco, regra Dominex).
@@ -209,6 +221,7 @@ export default function CustomerPortal() {
   const [equipmentFieldConfig, setEquipmentFieldConfig] = useState<FieldConfig[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [contracts, setContracts] = useState<PortalContractSummary[]>([]);
+  const [charges, setCharges] = useState<PortalCharge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -256,6 +269,7 @@ export default function CustomerPortal() {
       setEquipmentFieldConfig(payload.equipment_field_config ?? []);
       setServiceOrders(payload.service_orders ?? []);
       setContracts(payload.contracts ?? []);
+      setCharges(payload.charges ?? []);
     } catch {
       setError('portal_load_error');
     } finally {
@@ -356,6 +370,7 @@ export default function CustomerPortal() {
         equipmentFieldConfig={equipmentFieldConfig}
         serviceOrders={serviceOrders}
         contracts={contracts}
+        charges={charges}
         viewerCanFill={viewerCanFill}
         onReload={loadPortalData}
       />
@@ -375,6 +390,7 @@ interface ContentProps {
   equipmentFieldConfig: FieldConfig[];
   serviceOrders: ServiceOrder[];
   contracts: PortalContractSummary[];
+  charges: PortalCharge[];
   viewerCanFill: boolean;
   onReload: () => Promise<void>;
 }
@@ -392,6 +408,7 @@ function CustomerPortalContent({
   equipmentFieldConfig,
   serviceOrders,
   contracts,
+  charges,
   viewerCanFill,
   onReload,
 }: ContentProps) {
@@ -399,7 +416,7 @@ function CustomerPortalContent({
   const eqParam = searchParams.get('eq');
   const { toast } = useToast();
 
-  const { locale, timezone } = useAppLocaleContext();
+  const { locale, timezone, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.portal;
 
   const OS_STATUS_LABEL: Record<string, string> = {
@@ -1155,6 +1172,10 @@ function CustomerPortalContent({
     ...(contracts.length > 0
       ? [{ value: 'contratos', label: t.sectionContracts, icon: <FileText className="h-4 w-4 shrink-0" /> }]
       : []),
+    // Aba Cobranças: so aparece quando o cliente tem ao menos 1 cobranca
+    ...(charges.length > 0
+      ? [{ value: 'cobrancas', label: t.sectionCharges, icon: <CreditCard className="h-4 w-4 shrink-0" /> }]
+      : []),
   ];
 
   // ── Render principal com PublicPortalShell ──
@@ -1189,6 +1210,24 @@ function CustomerPortalContent({
       {activeTab === 'os' && osTabContent}
       {activeTab === 'equipamentos' && eqTabContent}
       {activeTab === 'contratos' && contractsTabContent}
+      {activeTab === 'cobrancas' && (
+        <PortalChargesSection
+          charges={charges}
+          t={{
+            chargesEmpty: t.chargesEmpty,
+            chargeStatusPaid: t.chargeStatusPaid,
+            chargeStatusPending: t.chargeStatusPending,
+            chargeStatusOverdue: t.chargeStatusOverdue,
+            chargeStatusRefunded: t.chargeStatusRefunded,
+            chargeStatusOther: t.chargeStatusOther,
+            chargeDueLabel: t.chargeDueLabel,
+            chargePayBtn: t.chargePayBtn,
+          }}
+          locale={locale}
+          currency={currency ?? 'BRL'}
+          timezone={timezone}
+        />
+      )}
 
       {/* Modal de chamado (preservado integralmente) */}
       <ResponsiveModal

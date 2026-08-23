@@ -36,6 +36,13 @@ interface ChargeDialogProps {
   /** Quando true, o select de cliente fica travado (não editável) para manter
    *  o contexto do cliente que está sendo visualizado. */
   lockCustomer?: boolean;
+  /** Pré-preenche o campo de valor (em reais). */
+  presetAmount?: number;
+  /** Pré-preenche o campo de descrição. */
+  presetDescription?: string;
+  /** Origem da cobrança (repassada ao edge). Quando informada, flui para
+   *  createCharge como source_type + source_id (dedupe ativo para 'quote'). */
+  source?: { type: 'quote'; id: string };
 }
 
 // Meios de pagamento efetivos (respeitam as flags allow_* da conta).
@@ -53,7 +60,7 @@ function todayISO(): string {
   return new Date(d.getTime() - off).toISOString().slice(0, 10);
 }
 
-export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer }: ChargeDialogProps) {
+export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, source }: ChargeDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
   const { toast } = useToast();
@@ -120,15 +127,20 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   );
 
   // Inicializa os campos avançados com os defaults da conta ao abrir o dialog.
+  // Quando presetAmount ou presetDescription são fornecidos (ex.: orçamento),
+  // eles têm prioridade sobre os defaults da conta.
   useEffect(() => {
     if (open) {
       setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
       setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
       setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
       setDiscountDays(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
-      setDescription(defaultDescription ?? '');
+      setDescription(presetDescription ?? defaultDescription ?? '');
+      if (presetAmount != null && presetAmount > 0) {
+        setAmount(presetAmount);
+      }
     }
-  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription]);
+  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription, presetAmount, presetDescription]);
 
   // Sincroniza o cliente pré-selecionado quando o dialog abre com novo preset.
   useEffect(() => {
@@ -223,6 +235,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
         discount_days: isNaN(parsedDiscountDays) ? undefined : parsedDiscountDays,
         installment_count: method === 'CREDIT_CARD' && installmentCount > 1 ? installmentCount : undefined,
+        // Origem da cobrança: ativa dedupe no edge quando source_type='quote'.
+        source_type: source?.type,
+        source_id: source?.id ?? null,
       });
       setResult(chargeResult);
       toast({ title: t.success.title, description: t.success.description });
