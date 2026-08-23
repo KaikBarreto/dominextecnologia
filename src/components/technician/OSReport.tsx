@@ -950,10 +950,22 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                           )}
                         />
                       </div>
-                      {/* Desktop-tela + SEMPRE no print: grid com TODAS as fotos visíveis (como antes). */}
+                      {/* Desktop-tela + SEMPRE no print: grid com TODAS as fotos visíveis (como antes).
+                          Na TELA do desktop as fotos são MAIORES e adaptativas à largura da coluna
+                          (largura % com min/max → ~2-4 por linha conforme o espaço, nunca minúsculas).
+                          No PDF (Baixar → html2canvas, `generating`) e na impressão (`print:`) voltam
+                          ao 80px fixo de sempre pra não mexer na paginação do documento. */}
                       <div className="hidden md:flex print:flex flex-wrap gap-2">
                         {urls.map((url, i) => (
-                          <ReportImage key={i} src={url} alt="photo" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openFullscreen(i)} errorLabel={tR.imgError} />
+                          <ReportImage
+                            key={i}
+                            src={url}
+                            alt="photo"
+                            wrapperClassName={`relative ${generating ? 'w-20 h-20' : 'w-20 h-20 md:w-[30%] md:min-w-[120px] md:max-w-[220px] md:h-auto md:aspect-square print:!w-20 print:!h-20 print:!min-w-0 print:!max-w-none print:!aspect-auto'}`}
+                            className="w-full h-full object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => openFullscreen(i)}
+                            errorLabel={tR.imgError}
+                          />
                         ))}
                       </div>
                     </>

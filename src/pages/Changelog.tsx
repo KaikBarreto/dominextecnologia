@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.14',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos maiores no relatório da ordem de serviço no computador',
+        description: 'Quando você abre o relatório online da ordem de serviço no computador, as fotos agora aparecem bem maiores e se ajustam sozinhas ao espaço da tela, deixando cada registro mais fácil de ver, sem precisar clicar em cada uma. No celular a visualização continua igual e o PDF baixado não muda.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.13',
     date: '23 de agosto de 2026',
     type: 'patch',
