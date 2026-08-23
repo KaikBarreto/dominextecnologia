@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.16',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção no cadastro para emissão de Nota Fiscal (NFS-e)',
+        description: 'Ao configurar a emissão de Nota Fiscal, empresas que já tinham o endereço cadastrado podiam receber um aviso de código do município faltando na hora de registrar a emissão ou de enviar o certificado digital. Agora o sistema busca esse código sozinho a partir do CEP, sem você precisar fazer nada, e o cadastro é concluído normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.15',
     date: '23 de agosto de 2026',
     type: 'patch',

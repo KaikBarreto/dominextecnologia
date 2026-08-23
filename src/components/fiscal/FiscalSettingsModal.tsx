@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
   Shield,
@@ -39,6 +39,7 @@ import {
 } from '@/hooks/useFiscalSettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { invokeFisqal } from '@/utils/fisqalEdge';
+import { supabase } from '@/integrations/supabase/client';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { formatDate as formatDateLib } from '@/lib/format';
@@ -144,6 +145,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   const [form, setForm] = useState<FiscalForm>(EMPTY_FORM);
   const hydrated = useRef(false);
   const companyHydrated = useRef(false);
+  /** Garante que o auto-backfill do IBGE rode no máximo 1x por abertura do modal. */
+  const ibgeBackfilledRef = useRef(false);
 
   // Certificado
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -197,6 +200,58 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       }));
     }
   }, [isLoadingCompany, companySettings]);
+
+  // Reseta a flag de backfill quando o modal fecha, para que uma próxima abertura
+  // possa tentar novamente (ex: usuário fechou sem salvar e reabriu).
+  useEffect(() => {
+    if (!open) {
+      ibgeBackfilledRef.current = false;
+    }
+  }, [open]);
+
+  // Auto-backfill do código IBGE: quando ambas as hidratações já rodaram, o
+  // modal está aberto, o IBGE ainda está vazio mas o CEP está disponível,
+  // consulta silenciosamente a edge `cep-lookup` e preenche `municipio_ibge`
+  // em memória — sem toast, sem auto-save.
+  const backfillIbge = useCallback(async (cep: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('cep-lookup', {
+        body: { cep },
+      });
+      if (error || !data) return;
+      const ibge = data.ibge ?? data.codigo_ibge;
+      const ibgeStr = ibge != null ? String(ibge).trim() : '';
+      if (ibgeStr) {
+        setForm((p) => ({ ...p, municipio_ibge: ibgeStr }));
+      }
+    } catch {
+      // Falha silenciosa: o usuário pode resolver via StateCitySelector.
+    }
+  }, []);
+
+  useEffect(() => {
+    // Pré-condições: modal aberto, ambas as hidratações concluídas, ainda não rodou.
+    if (!open) return;
+    if (isLoading || isLoadingCompany) return;
+    if (!hydrated.current || !companyHydrated.current) return;
+    if (ibgeBackfilledRef.current) return;
+
+    // Lê o estado corrente via callback do setForm para não depender da closure.
+    setForm((p) => {
+      // Se IBGE já está preenchido, nada a fazer.
+      if (p.municipio_ibge.trim()) {
+        ibgeBackfilledRef.current = true;
+        return p;
+      }
+      // Se tem CEP com 8 dígitos, dispara o backfill assíncrono.
+      const cepDigits = p.cep.replace(/\D/g, '');
+      if (cepDigits.length === 8) {
+        ibgeBackfilledRef.current = true;
+        void backfillIbge(cepDigits);
+      }
+      return p;
+    });
+  }, [open, isLoading, isLoadingCompany, backfillIbge]);
 
   // Salva tributação / ambiente (company_fiscal_settings via useFiscalSettings).
   // Códigos por-nota (ISS, serviço, NBS, LC 116) saíram daqui — passaram a ser
