@@ -187,6 +187,7 @@ const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
 const AdminSalespeople = React.lazy(() => import("./pages/admin/AdminSalespeople"));
 const AdminSalespersonDetail = React.lazy(() => import("./pages/admin/AdminSalespersonDetail"));
 const AdminDomiflix = React.lazy(() => import("./pages/admin/AdminDomiflix"));
+const AdminCobrancas = React.lazy(() => import("./pages/admin/AdminCobrancas"));
 
 // Domiflix — fullscreen, fora do caminho da landing → tudo lazy.
 const DomiflixLayout = React.lazy(() =>
@@ -736,6 +737,7 @@ const AppRoutes = () => (
       <Route path="/admin/vendedores/:id" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
       <Route path="/admin/configuracoes" element={<AdminScreenRoute screenKey="admin_configuracoes"><AdminSettings /></AdminScreenRoute>} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
+      <Route path="/admin/cobrancas" element={<AdminScreenRoute screenKey="admin_cobrancas"><AdminCobrancas /></AdminScreenRoute>} />
       {localizedAppRoutes('changelog', <Changelog />)}
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />
       <Route path="/tutoriais/:titleId" element={<Navigate to="/domiflix" replace />} />
