@@ -30,6 +30,7 @@ import { AccountUsageCard } from '@/components/billing/AccountUsageCard';
 import { useSubscriptionPaymentHistory } from '@/hooks/useSubscriptionPaymentHistory';
 import { hasActiveCustomPrice as hasActiveCustomPriceUtil } from '@/utils/subscriptionPricing';
 import { cn } from '@/lib/utils';
+import { SubscriptionPaymentModal } from '@/components/billing/SubscriptionPaymentModal';
 
 export default function Billing() {
   const navigate = useNavigate();
@@ -37,8 +38,11 @@ export default function Billing() {
   const { user } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.billing;
-  const { modules, allPlans } = useCompanyModules();
+  const { modules, allPlans, effectiveValue: modulesEffectiveValue } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  // Modal de pagamento embutido (renovação de plano JÁ definido). Trial/sem valor
+  // ainda vai pro /checkout pra escolher o plano.
+  const [payModalOpen, setPayModalOpen] = useState(false);
 
   // Deep-link vindo do ModuleGateModal / UserLimitModal:
   //   ?addModule=<code> → abre "Gerenciar Meu Plano" na aba Personalizado com o módulo pré-marcado.
@@ -114,7 +118,11 @@ export default function Billing() {
   }
 
   const isTesting = company.subscription_status === 'testing';
-  const effectiveValue = company.subscription_value || 0;
+  // Fonte de verdade do valor efetivo: useCompanyModules().effectiveValue aplica
+  // custom_price (promoção) sobre subscription_value — a mesma lógica que o
+  // ModulesManagementCard e o /checkout usam. Fallback: subscription_value direto
+  // da query local (para o caso raro de o hook ainda estar carregando).
+  const effectiveValue = modulesEffectiveValue || company.subscription_value || 0;
 
   const pluralDay = (n: number, tpl: string) =>
     tpl.replace('{days}', String(n)).replace(/\{s\}/g, n === 1 ? '' : 's');
@@ -319,7 +327,8 @@ export default function Billing() {
                   </div>
                 </div>
 
-                {/* Botão Pagar Agora — comportamento inalterado (Onda 1) */}
+                {/* Botão Pagar Agora — renovação (plano já definido) abre o modal
+                    embutido; trial/sem valor ainda vai pro /checkout escolher plano. */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -331,7 +340,7 @@ export default function Billing() {
                             if (company.subscription_status === 'testing' || !effectiveValue) {
                               navigate('/checkout');
                             } else {
-                              navigate('/checkout?mode=renewal');
+                              setPayModalOpen(true);
                             }
                           }}
                         >
@@ -453,6 +462,26 @@ export default function Billing() {
           <PaymentHistoryList payments={paymentHistory} isLoading={isLoadingHistory} />
         </CardContent>
       </Card>
+
+      {/* Modal de pagamento embutido — renovação do plano já definido.
+          Pix/Boleto cobram o valor com desconto anual (displayAmountDue);
+          cartão cobra o valor mensal base (effectiveValue), pois cartão é
+          sempre mensal recorrente. */}
+      <SubscriptionPaymentModal
+        open={payModalOpen}
+        onOpenChange={setPayModalOpen}
+        companyId={company.id}
+        amount={displayAmountDue}
+        cardAmount={effectiveValue}
+        isRenewal
+        planCode={company.subscription_plan}
+        billingCycle={(company.billing_cycle as 'monthly' | 'yearly') || 'monthly'}
+        companyCnpj={company.cnpj}
+        companyPhone={company.phone}
+        companyAddress={company.address}
+        userEmail={user?.email ?? null}
+        companyName={company.name}
+      />
 
     </div>
   );

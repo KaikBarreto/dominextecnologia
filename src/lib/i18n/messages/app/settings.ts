@@ -697,6 +697,28 @@ export const settings = {
       noCompanyTitle: 'Nenhuma empresa vinculada',
       noCompanyDesc: 'Sua conta ainda não está vinculada a uma empresa.',
 
+      // ── Modal de pagamento da assinatura (SubscriptionPaymentModal) ──────────
+      paymentModal: {
+        title: 'Pagar Assinatura',
+        titleSuccess: 'Pagamento Confirmado',
+        amountLabel: 'Valor a pagar',
+        cpfCnpjLabel: 'CPF ou CNPJ',
+        cpfCnpjPlaceholder: '000.000.000-00 ou 00.000.000/0000-00',
+        cpfCnpjHint: 'Obrigatório para gerar a cobrança. Será salvo no seu cadastro.',
+        cpfCnpjInvalid: 'Informe um CPF ou CNPJ válido para continuar.',
+        methodCardTitle: 'Cartão de Crédito',
+        methodCardDesc: 'Cobrança mensal automática',
+        methodCardBadge: 'Recomendado',
+        methodPixTitle: 'PIX',
+        methodPixDesc: 'Aprovação instantânea',
+        methodBoletoTitle: 'Boleto',
+        methodBoletoDesc: 'Até 3 dias úteis',
+        secureNote: 'Seus dados de pagamento são processados com segurança.',
+        successTitle: 'Pagamento confirmado com sucesso!',
+        successDesc: 'Sua assinatura foi renovada.',
+        errorGeneric: 'Não foi possível processar o pagamento. Verifique seus dados e tente novamente.',
+      },
+
       // ── Modal de cancelamento de assinatura (CancelSubscriptionModal) ────────
       cancelSubscription: {
         titleReason: 'Cancelar assinatura',
@@ -1758,6 +1780,27 @@ export const settings = {
       noCompanyTitle: 'No company linked',
       noCompanyDesc: 'Your account is not yet linked to a company.',
 
+      paymentModal: {
+        title: 'Pay Subscription',
+        titleSuccess: 'Payment Confirmed',
+        amountLabel: 'Amount due',
+        cpfCnpjLabel: 'Tax ID (CPF/CNPJ)',
+        cpfCnpjPlaceholder: '000.000.000-00 or 00.000.000/0000-00',
+        cpfCnpjHint: 'Required to generate the charge. It will be saved to your account.',
+        cpfCnpjInvalid: 'Enter a valid tax ID to continue.',
+        methodCardTitle: 'Credit Card',
+        methodCardDesc: 'Automatic monthly billing',
+        methodCardBadge: 'Recommended',
+        methodPixTitle: 'PIX',
+        methodPixDesc: 'Instant approval',
+        methodBoletoTitle: 'Bank slip',
+        methodBoletoDesc: 'Up to 3 business days',
+        secureNote: 'Your payment details are processed securely.',
+        successTitle: 'Payment confirmed successfully!',
+        successDesc: 'Your subscription has been renewed.',
+        errorGeneric: 'We could not process the payment. Check your details and try again.',
+      },
+
       cancelSubscription: {
         titleReason: 'Cancel subscription',
         titleConfirm: 'Confirm cancellation',
@@ -2795,6 +2838,27 @@ export const settings = {
       noCompanyTitle: 'Ninguna empresa vinculada',
       noCompanyDesc: 'Tu cuenta aún no está vinculada a una empresa.',
 
+      paymentModal: {
+        title: 'Pagar Suscripción',
+        titleSuccess: 'Pago Confirmado',
+        amountLabel: 'Importe a pagar',
+        cpfCnpjLabel: 'Documento (CPF/CNPJ)',
+        cpfCnpjPlaceholder: '000.000.000-00 o 00.000.000/0000-00',
+        cpfCnpjHint: 'Obligatorio para generar el cobro. Se guardará en tu registro.',
+        cpfCnpjInvalid: 'Ingresa un documento válido para continuar.',
+        methodCardTitle: 'Tarjeta de Crédito',
+        methodCardDesc: 'Cobro mensual automático',
+        methodCardBadge: 'Recomendado',
+        methodPixTitle: 'PIX',
+        methodPixDesc: 'Aprobación instantánea',
+        methodBoletoTitle: 'Boleto',
+        methodBoletoDesc: 'Hasta 3 días hábiles',
+        secureNote: 'Tus datos de pago se procesan de forma segura.',
+        successTitle: '¡Pago confirmado con éxito!',
+        successDesc: 'Tu suscripción ha sido renovada.',
+        errorGeneric: 'No fue posible procesar el pago. Verifica tus datos e inténtalo de nuevo.',
+      },
+
       cancelSubscription: {
         titleReason: 'Cancelar suscripción',
         titleConfirm: 'Confirmar cancelación',
@@ -3831,6 +3895,27 @@ export const settings = {
       nfseTierUpgradeNote: 'Le nouveau niveau est active immediatement et le nouveau tarif entre en vigueur au prochain prelevement.',
       noCompanyTitle: 'Aucune entreprise liée',
       noCompanyDesc: "Votre compte n'est pas encore lié à une entreprise.",
+
+      paymentModal: {
+        title: "Payer l'abonnement",
+        titleSuccess: 'Paiement Confirmé',
+        amountLabel: 'Montant à payer',
+        cpfCnpjLabel: 'Numéro fiscal (CPF/CNPJ)',
+        cpfCnpjPlaceholder: '000.000.000-00 ou 00.000.000/0000-00',
+        cpfCnpjHint: 'Obligatoire pour générer la facture. Il sera enregistré dans votre compte.',
+        cpfCnpjInvalid: 'Saisissez un numéro fiscal valide pour continuer.',
+        methodCardTitle: 'Carte de Crédit',
+        methodCardDesc: 'Facturation mensuelle automatique',
+        methodCardBadge: 'Recommandé',
+        methodPixTitle: 'PIX',
+        methodPixDesc: 'Approbation instantanée',
+        methodBoletoTitle: 'Boleto',
+        methodBoletoDesc: "Jusqu'à 3 jours ouvrés",
+        secureNote: 'Vos données de paiement sont traitées en toute sécurité.',
+        successTitle: 'Paiement confirmé avec succès !',
+        successDesc: 'Votre abonnement a été renouvelé.',
+        errorGeneric: "Le paiement n'a pas pu être traité. Vérifiez vos données et réessayez.",
+      },
 
       cancelSubscription: {
         titleReason: "Annuler l'abonnement",
