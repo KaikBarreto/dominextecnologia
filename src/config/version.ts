@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.11";
+export const APP_VERSION = "1.21.12";
 
-export const VERSION_NOTES = "Agora você pode cobrar seus clientes de forma recorrente também no cartão de crédito e por Pix Automático. Se a sua conta Asaas ainda não tiver esses recursos liberados, o próprio sistema mostra o passo a passo de como ativar.";
+export const VERSION_NOTES = "No relatório online da ordem de serviço, os vídeos anexados agora aparecem prontos para assistir na hora, em vez de mostrar apenas um aviso. No PDF baixado, o vídeo continua indicado como disponível no relatório online.";

@@ -28,6 +28,7 @@ import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionV
 import { ContractInfoCard } from './ContractInfoCard';
 import type { ReportChecklistItem } from './ReportChecklist';
 import { OsActionFooter } from './OsDesktopShell';
+import { OsVideoPlayer } from './OsVideoPlayer';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -849,12 +850,31 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
           <div className="mt-1 space-y-2">
             {response.question?.question_type === 'video' ? (
-              // Num PDF/impressão estático o vídeo não toca → placeholder claro
-              // (documento é sempre tema claro → cores hardcoded slate).
-              <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                <Video className="h-4 w-4 text-slate-400 shrink-0" />
-                <span>{tR.videoAvailableOnline}</span>
-              </div>
+              // Na tela: toca o vídeo via OsVideoPlayer.
+              // Gerando PDF (html2canvas): placeholder estático (video rasteriza preto).
+              // Imprimindo via window.print(): CSS print:hidden/print:flex resolve.
+              // Documento é sempre tema claro → cores hardcoded slate no placeholder.
+              generating ? (
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <Video className="h-4 w-4 text-slate-400 shrink-0" />
+                  <span>{tR.videoAvailableOnline}</span>
+                </div>
+              ) : (
+                <>
+                  {/* Tela normal: player interativo */}
+                  <div className="print:hidden">
+                    <OsVideoPlayer
+                      src={response.response_video_url}
+                      className="w-full max-w-md rounded-md aspect-video"
+                    />
+                  </div>
+                  {/* window.print(): placeholder estático */}
+                  <div className="hidden print:flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    <Video className="h-4 w-4 text-slate-400 shrink-0" />
+                    <span>{tR.videoAvailableOnline}</span>
+                  </div>
+                </>
+              )
             ) : response.question?.question_type === 'boolean' ? (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
                 {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.12',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vídeos tocam direto no relatório online',
+        description: 'Quando o técnico anexa um vídeo na ordem de serviço, ele agora aparece pronto para assistir no relatório online, tanto para você quanto para o seu cliente pelo link. Antes, no lugar do vídeo aparecia só um aviso de texto. No PDF baixado, o vídeo continua indicado como disponível no relatório online, já que arquivos de vídeo não rodam dentro de um PDF.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.11',
     date: '23 de agosto de 2026',
     type: 'patch',
