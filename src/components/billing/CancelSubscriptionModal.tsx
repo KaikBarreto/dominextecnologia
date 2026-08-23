@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
+import { usePlanChange } from '@/hooks/usePlanChange';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { DowngradeOfferCard } from './DowngradeOfferCard';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { format } from 'date-fns';
 import { type Locale, ptBR, enUS, es, fr } from 'date-fns/locale';
@@ -61,6 +64,40 @@ export function CancelSubscriptionModal({
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
   const cancelMutation = useCancelSubscription();
+  const planChangeMutation = usePlanChange();
+  const { allPlans, effectiveValue, plan: currentPlanCode } = useCompanyModules();
+
+  // Plano mais barato disponível: preço menor que o valor efetivo atual,
+  // com preço > 0, diferente do plano atual. O mais próximo (maior preço menor).
+  const cheaperPlan = allPlans
+    .filter((p) => p.price < effectiveValue && p.price > 0 && p.code !== currentPlanCode)
+    .sort((a, b) => b.price - a.price)[0] ?? null;
+
+  const savings = cheaperPlan ? effectiveValue - cheaperPlan.price : 0;
+
+  const fmtBRL = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+  const handleDowngrade = () => {
+    if (!cheaperPlan) return;
+    planChangeMutation.mutate(
+      {
+        companyId,
+        planCode: cheaperPlan.code,
+        billingCycle: 'monthly',
+      },
+      {
+        onSuccess: () => {
+          toast.success(
+            t.downgradeOfferToastSuccess.replace('{plan}', cheaperPlan.name),
+          );
+          handleClose();
+        },
+        onError: () => {
+          toast.error(t.downgradeOfferToastError);
+        },
+      },
+    );
+  };
 
   const handleClose = () => {
     // Não reseta no meio de um envio em andamento.
@@ -150,7 +187,7 @@ export function CancelSubscriptionModal({
           variant="outline"
           className="flex-1"
           onClick={() => setStep('reason')}
-          disabled={cancelMutation.isPending}
+          disabled={cancelMutation.isPending || planChangeMutation.isPending}
         >
           {t.btnBack}
         </Button>
@@ -158,7 +195,7 @@ export function CancelSubscriptionModal({
           variant="destructive"
           className="flex-1"
           onClick={handleSubmit}
-          disabled={cancelMutation.isPending}
+          disabled={cancelMutation.isPending || planChangeMutation.isPending}
         >
           {cancelMutation.isPending ? t.btnCanceling : t.btnConfirm}
         </Button>
@@ -272,6 +309,24 @@ export function CancelSubscriptionModal({
               <li>{t.confirmBullet4}</li>
             </ul>
           </div>
+
+          {cheaperPlan && (
+            <DowngradeOfferCard
+              currentValue={effectiveValue}
+              cheaperPlanName={cheaperPlan.name}
+              cheaperPlanPrice={cheaperPlan.price}
+              onAccept={handleDowngrade}
+              isLoading={planChangeMutation.isPending}
+              i18n={{
+                title: t.downgradeOfferTitle,
+                desc: t.downgradeOfferDesc
+                  .replace('{plan}', cheaperPlan.name)
+                  .replace('{savings}', fmtBRL(savings)),
+                cta: t.downgradeOfferCta.replace('{plan}', cheaperPlan.name),
+                applying: t.downgradeOfferApplying,
+              }}
+            />
+          )}
 
           <div className="bg-muted/50 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">

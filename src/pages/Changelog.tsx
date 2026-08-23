@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.18',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de Assinatura repaginada',
+        description: 'A tela de Assinatura ficou mais clara e completa. Seu plano e o valor a pagar aparecem juntos, ao lado de um resumo do uso da conta (usuários e notas fiscais emitidas no mês). Ao gerenciar o plano, você vê o resumo com o total atualizando na hora conforme escolhe os módulos, e ajusta o nível de notas fiscais no mesmo lugar. Na hora de cancelar, quando faz sentido, oferecemos um plano mais econômico como alternativa, e o cancelamento passa a interromper a cobrança automática (Pix Automático ou cartão), mantendo seu acesso até o vencimento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.17',
     date: '23 de agosto de 2026',
     type: 'patch',
