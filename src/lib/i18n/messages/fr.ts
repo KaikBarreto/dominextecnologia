@@ -267,6 +267,7 @@ export const frOverrides: MessagesOverride = {
       'sistema-para-elevadores': 'Maintenance préventive et dépannages dans les temps.',
       'sistema-para-limpeza-conservacao': 'Sites, rondes et équipes organisés.',
       'sistema-para-dedetizacao': 'Certificats, gestion des nuisibles et contrats récurrents.',
+      'sistema-para-assistencia-tecnica': `Entrée d'appareil, diagnostic et devis par lien.`,
     },
   },
 
@@ -294,6 +295,7 @@ export const frOverrides: MessagesOverride = {
     'sistema-para-elevadores': 'Ascenseurs',
     'sistema-para-limpeza-conservacao': 'Nettoyage & Facility management',
     'sistema-para-dedetizacao': 'Lutte antiparasitaire',
+    'sistema-para-assistencia-tecnica': `Réparation informatique / Service TI`,
   },
 
   footer: {

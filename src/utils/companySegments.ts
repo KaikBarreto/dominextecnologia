@@ -1,6 +1,6 @@
 import {
   Snowflake, Zap, Sun, Radio, Camera, HardHat, Cog, ArrowUpDown,
-  Bot, Sparkles, Bug, Wrench, SprayCan, MoreHorizontal, type LucideIcon,
+  Bot, Sparkles, Bug, Wrench, SprayCan, MoreHorizontal, Laptop, type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -50,6 +50,7 @@ export const COMPANY_SEGMENTS: CompanySegment[] = [
   { value: 'elevadores',       label: 'Elevadores',                  color: '#ef4444', icon: ArrowUpDown,     description: 'Instalação e manutenção de elevadores e escadas', site: true },
   { value: 'limpeza',          label: 'Limpeza e Conservação',       color: '#10b981', icon: Sparkles,        description: 'Limpeza predial, conservação e zeladoria', site: true },
   { value: 'dedetizacao',      label: 'Dedetização',                 color: '#65a30d', icon: Bug,             description: 'Controle de pragas e sanitização', site: true },
+  { value: 'ti_assistencia',   label: 'Assistência Técnica (TI)',    color: '#6d28d9', icon: Laptop,          description: 'Lojas de informática e assistência técnica de celular, notebook e PC', site: true },
   // Coringa do onboarding — selecionável no cadastro/admin, mas não é nicho do site nem tem ferramentas.
   { value: 'outro',            label: 'Outro',                       color: '#6b7280', icon: MoreHorizontal,  description: 'Personalizar pro seu tipo de negócio', selectableInSignup: true },
   // LEGADO (não-selecionável) — mantidos só para `getSegment` resolver empresas já cadastradas. NÃO remover.

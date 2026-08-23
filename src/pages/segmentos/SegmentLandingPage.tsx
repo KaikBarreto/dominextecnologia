@@ -41,6 +41,7 @@ const SLUG_TO_SEGMENT_VALUE: Record<string, string> = {
   'sistema-para-elevadores': 'elevadores',
   'sistema-para-limpeza-conservacao': 'limpeza',
   'sistema-para-dedetizacao': 'dedetizacao',
+  'sistema-para-assistencia-tecnica': 'ti_assistencia',
 };
 
 // Monta o link de cadastro com o segmento pré-selecionado. NÃO passamos

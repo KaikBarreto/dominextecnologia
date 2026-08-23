@@ -267,6 +267,7 @@ export const esOverrides: MessagesOverride = {
       'sistema-para-elevadores': 'Mantenimiento preventivo y avisos de avería a tiempo.',
       'sistema-para-limpeza-conservacao': 'Sitios, rondas y cuadrillas organizados.',
       'sistema-para-dedetizacao': 'Certificados, control de plagas y contratos recurrentes.',
+      'sistema-para-assistencia-tecnica': 'Registro de entrada, diagnóstico y presupuestos por enlace.',
     },
   },
 
@@ -294,6 +295,7 @@ export const esOverrides: MessagesOverride = {
     'sistema-para-elevadores': 'Ascensores',
     'sistema-para-limpeza-conservacao': 'Limpieza y Facilities',
     'sistema-para-dedetizacao': 'Control de Plagas',
+    'sistema-para-assistencia-tecnica': 'Servicio Técnico / Reparación IT',
   },
 
   footer: {

@@ -29,6 +29,7 @@ import SistemaParaConstrucaoCivil from '@/pages/segmentos/SistemaParaConstrucaoC
 import SistemaParaElevadores from '@/pages/segmentos/SistemaParaElevadores';
 import SistemaParaLimpezaConservacao from '@/pages/segmentos/SistemaParaLimpezaConservacao';
 import SistemaParaDedetizacao from '@/pages/segmentos/SistemaParaDedetizacao';
+import SistemaParaAssistenciaTecnica from '@/pages/segmentos/SistemaParaAssistenciaTecnica';
 
 import OsDigital from '@/pages/modulos/OsDigital';
 import SistemaPmoc from '@/pages/modulos/SistemaPmoc';
@@ -57,6 +58,7 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
   'sistema-para-elevadores': <SistemaParaElevadores />,
   'sistema-para-limpeza-conservacao': <SistemaParaLimpezaConservacao />,
   'sistema-para-dedetizacao': <SistemaParaDedetizacao />,
+  'sistema-para-assistencia-tecnica': <SistemaParaAssistenciaTecnica />,
   // Módulos
   'os-digital': <OsDigital />,
   'sistema-pmoc': <SistemaPmoc />,

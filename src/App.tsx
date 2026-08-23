@@ -90,6 +90,7 @@ import SistemaParaConstrucaoCivil from "./pages/segmentos/SistemaParaConstrucaoC
 import SistemaParaElevadores from "./pages/segmentos/SistemaParaElevadores";
 import SistemaParaLimpezaConservacao from "./pages/segmentos/SistemaParaLimpezaConservacao";
 import SistemaParaDedetizacao from "./pages/segmentos/SistemaParaDedetizacao";
+import SistemaParaAssistenciaTecnica from "./pages/segmentos/SistemaParaAssistenciaTecnica";
 // Landings de módulo (aba "Soluções", SEO) — públicas, sem redirect. Data-driven
 // em src/pages/modulos. Uma rota por slug de modulesData; o prerender captura.
 import OsDigital from "./pages/modulos/OsDigital";
@@ -503,6 +504,7 @@ const publicMarketingRoutes = () => (
     <Route path="sistema-para-elevadores" element={<SistemaParaElevadores />} />
     <Route path="sistema-para-limpeza-conservacao" element={<SistemaParaLimpezaConservacao />} />
     <Route path="sistema-para-dedetizacao" element={<SistemaParaDedetizacao />} />
+    <Route path="sistema-para-assistencia-tecnica" element={<SistemaParaAssistenciaTecnica />} />
 
     {/* Landings de módulo (aba "Soluções", SEO) — uma rota por slug pt-br.
         NOTA: o slug do módulo CRM é /sistema-crm porque /crm já é a tela

@@ -1652,6 +1652,173 @@ const fr: SegmentContentMap = {
         "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos clients, émettez l'attestation automatiquement et automatisez vos contrats de retraitement.",
     },
   },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Réparation informatique / Service TI
+  // ──────────────────────────────────────────────────────────────────────────
+  'sistema-para-assistencia-tecnica': {
+    slug: 'logiciel-reparation-informatique-service-ti',
+    metaTitle:
+      `Logiciel de bon d'intervention pour ateliers de réparation de téléphone, ordinateur et informatique | Dominex`,
+    metaDescription:
+      `Logiciel pour ateliers de service technique : entrée d'appareil, diagnostic, devis par lien, avis de prêt, inventaire de pièces avec déduction automatique et suivi de garantie. Essai gratuit 14 jours, sans carte bancaire.`,
+    hero: {
+      eyebrow: `Pour les ateliers d'informatique et de service technique`,
+      h1: `Logiciel de bon d'intervention pour ateliers de réparation de téléphone, ordinateur et informatique`,
+      h1Highlight: `ateliers de réparation de téléphone, ordinateur et informatique`,
+      subtitle:
+        `Le client dépose un appareil et appelle toutes les heures ? Dominex suit chaque appareil de l'entrée à la restitution, envoie le devis par lien pour approbation à distance et prévient le client quand la réparation est prête.`,
+    },
+    metrics: [
+      { value: '50k+', label: `bons d'intervention par mois sur la plateforme` },
+      { value: 'Devis', label: `approuvé par lien sans que le client vienne à l'atelier` },
+      { value: '100%', label: `sur le téléphone du technicien au poste de travail` },
+      { value: '4,9/5', label: `satisfaction des ateliers qui utilisent la solution` },
+    ],
+    pains: [
+      {
+        pain: `"À quelle étape est le téléphone de ce client ?"`,
+        solution:
+          `Chaque appareil entre avec un bon d'intervention numéroté, la panne déclarée et un statut visible. De l'entrée jusqu'à l'avis de prêt, l'accueil sait où se trouve chaque équipement sans interrompre le technicien.`,
+      },
+      {
+        pain: `Devis donné au téléphone et le client qui ne confirme pas`,
+        solution:
+          `Composez le devis avec pièces et main-d'oeuvre et envoyez le lien. Le client approuve ou refuse depuis son téléphone, avec horodatage. Une fois approuvé, le technicien démarre, aussi simple que ça.`,
+      },
+      {
+        pain: `Pièce changée et personne ne sait d'où elle vient ni ce qu'elle coûte`,
+        solution:
+          `Chaque pièce utilisée sur un bon déstocke automatiquement, avec enregistrement du fournisseur et du coût. Vous savez ce qui est au poste, ce qui est allé dans chaque appareil et quand recommander.`,
+      },
+      {
+        pain: `Garantie expirée, le client revient avec la même panne et il n'y a pas d'historique`,
+        solution:
+          `Chaque appareil porte un historique complet des services, des pièces changées et de l'échéance de garantie. À la prochaine visite du client, l'accueil voit tout et gère le dossier de garantie en toute confiance.`,
+      },
+    ],
+    deepDives: [
+      {
+        icon: ClipboardList,
+        title: `Entrée d'appareil, diagnostic et devis en un seul écran`,
+        body: `L'appareil entre avec un numéro de bon, le modèle, la panne déclarée, le code PIN (chiffré) et des photos de son état physique. Le technicien enregistre le diagnostic, compose le devis avec les pièces du stock et la main-d'oeuvre, et le client reçoit le lien pour approuver depuis son téléphone. Une fois approuvé, le bon avance de statut automatiquement et le technicien commence sans attendre la validation du comptoir.`,
+      },
+      {
+        icon: Smartphone,
+        title: `Avis de prêt et historique client dans la poche`,
+        body: `Quand la réparation est terminée, le système notifie le client. L'accueil imprime le reçu de restitution avec la signature numérique du client et l'historique des prestations. La prochaine fois que le client se présente, l'accueil ouvre la fiche et voit tous les appareils traités, les pièces changées et les garanties en cours, sans dépendre de la mémoire de personne.`,
+      },
+      {
+        icon: Boxes,
+        title: `Inventaire de pièces avec déduction automatique à chaque bon`,
+        body: `Écrans, batteries, connecteurs et composants suivis par modèle d'appareil. Chaque pièce utilisée sur le bon se déstocke automatiquement, avec enregistrement de qui l'a posée et sur quel appareil. L'alerte de stock minimum se déclenche avant la rupture, et l'historique de consommation montre ce qui tourne le plus pour vous aider à négocier avec le bon fournisseur.`,
+      },
+    ],
+    features: [
+      {
+        icon: ClipboardList,
+        title: `Bon d'entrée d'appareil`,
+        desc: `Ouverture du bon avec modèle, panne, PIN, photos de l'état physique et numéro de série de l'appareil.`,
+      },
+      {
+        icon: RefreshCw,
+        title: `Diagnostic et devis par lien`,
+        desc: `Composez le devis avec pièces et main-d'oeuvre et envoyez le lien. Le client approuve ou refuse depuis son téléphone, avec enregistrement.`,
+      },
+      {
+        icon: Calendar,
+        title: `État de la réparation en temps réel`,
+        desc: `Suivez chaque appareil par statut, du diagnostic à la restitution, sans interrompre le technicien.`,
+      },
+      {
+        icon: Boxes,
+        title: `Inventaire de pièces par modèle`,
+        desc: `Suivez écrans, batteries et composants par appareil, avec déduction automatique par bon et alerte de stock minimum.`,
+      },
+      {
+        icon: FileSignature,
+        title: `Reçu de restitution avec signature`,
+        desc: `PDF avec garantie, pièces changées et signature numérique du client à la restitution de l'appareil.`,
+      },
+      {
+        icon: MapPin,
+        title: `Historique par appareil et par client`,
+        desc: `Tous les services, pièces et garanties enregistrés par appareil. L'accueil voit tout en quelques secondes.`,
+      },
+      {
+        icon: Smartphone,
+        title: `Application mobile du technicien`,
+        desc: `Installable sur le téléphone du technicien (PWA) : ouvre le bon, enregistre le diagnostic, pose les pièces et clôture le travail.`,
+      },
+      {
+        icon: BarChart3,
+        title: `Tableau de bord opérationnel`,
+        desc: `Bons par statut, temps moyen de réparation, pièces les plus consommées et évaluation client sur un tableau en direct.`,
+      },
+    ],
+    testimonials: [
+      {
+        quote:
+          `Avant, le client appelait pour demander où était son téléphone et personne ne savait répondre. Maintenant tout le monde voit le statut à l'écran. L'atelier a complètement changé.`,
+        name: 'Rodrigo F.',
+        role: 'Propriétaire',
+        company: `atelier de réparation de téléphones et ordinateurs`,
+      },
+      {
+        quote:
+          `Le devis par lien a tout changé. Le client approuve depuis chez lui et le technicien commence tout de suite. Pas d'appels, pas d'attente.`,
+        name: 'Amanda L.',
+        role: 'Gérante',
+        company: `boutique informatique et centre de service technique`,
+      },
+      {
+        quote:
+          `L'inventaire de pièces était toujours faux. Avec la déduction automatique par bon, pour la première fois le système correspond à ce qu'il y a vraiment au poste.`,
+        name: 'Paulo S.',
+        role: 'Technicien et associé',
+        company: `réparation d'ordinateurs et de PC`,
+      },
+    ],
+    faq: [
+      {
+        q: `Dominex convient-il aux ateliers de réparation de téléphone et d'informatique ?`,
+        a: `Oui. Il a été conçu pour les ateliers qui reçoivent des appareils en réparation, comme des téléphones, des ordinateurs portables et des PC. Vous ouvrez le bon d'entrée, enregistrez le diagnostic, envoyez le devis par lien, gérez l'inventaire de pièces et émettez le reçu de restitution avec garantie, le tout au même endroit.`,
+      },
+      {
+        q: `Puis-je envoyer le devis pour que le client l'approuve sans venir à l'atelier ?`,
+        a: `Oui. Vous composez le devis avec pièces et main-d'oeuvre et envoyez le lien. Le client approuve ou refuse depuis son téléphone, avec un horodatage. Une fois approuvé, le bon avance et le technicien commence à travailler.`,
+      },
+      {
+        q: `Comment fonctionne le suivi de l'inventaire de pièces ?`,
+        a: `Vous configurez les écrans, batteries, connecteurs et composants par modèle d'appareil. Chaque pièce utilisée sur un bon se déstocke automatiquement, avec enregistrement de quel appareil l'a reçue. L'alerte de minimum se déclenche avant la rupture de stock.`,
+      },
+      {
+        q: `Le système conserve-t-il l'historique de chaque appareil et le délai de garantie ?`,
+        a: `Oui. Chaque appareil porte l'historique complet : panne déclarée, diagnostic, pièces changées et échéance de garantie du bon. La prochaine fois que le client se présente, l'accueil voit tout en quelques secondes.`,
+      },
+      {
+        q: `Le technicien l'utilise-t-il sur son téléphone ? Faut-il installer une application ?`,
+        a: `Oui, tout se passe sur le téléphone. Dominex est une application qui s'installe sur l'appareil du technicien (PWA), sans téléchargement depuis un store. Au poste il ouvre le bon, enregistre le diagnostic, pose les pièces et clôture le travail. Le reçu est prêt immédiatement.`,
+      },
+      {
+        q: `Puis-je voir à quel statut se trouve chaque appareil ?`,
+        a: `Oui. Chaque bon a un statut visible, du diagnostic jusqu'au prêt à restituer. L'accueil répond au client sans interrompre le technicien.`,
+      },
+      {
+        q: `Génère-t-il un reçu de dépôt et de restitution pour le client ?`,
+        a: `Oui. Le reçu de restitution sort en PDF avec les pièces changées, le montant, le délai de garantie et la signature numérique du client. Vous prouvez la prestation et protégez l'atelier.`,
+      },
+      {
+        q: `Comment démarrer ? Faut-il une carte bancaire ?`,
+        a: `Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre atelier en quelques minutes, enregistrez les appareils et commencez à ouvrir des bons. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.`,
+      },
+    ],
+    finalCta: {
+      title: `Prenez le contrôle de votre atelier de réparation`,
+      subtitle:
+        `Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez les appareils, organisez votre inventaire de pièces et offrez à vos clients la transparence qu'ils attendent.`,
+    },
+  },
 };
 
 export default fr;

@@ -33,6 +33,9 @@ import { ReguaGases } from '@/components/technician-area/ReguaGases';
 import { RetrofitGas } from '@/components/technician-area/RetrofitGas';
 import { CicloRefrigeracao } from '@/components/technician-area/CicloRefrigeracao';
 import { DiluicaoProduto } from '@/components/technician-area/DiluicaoProduto';
+import { CalculadoraFontePSU } from '@/components/technician-area/ti/CalculadoraFontePSU';
+import { ConversorArmazenamento } from '@/components/technician-area/ti/ConversorArmazenamento';
+import { LaudoTecnico } from '@/components/technician-area/ti/LaudoTecnico';
 import type { ConversaoCategoria } from '@/lib/conversoes';
 
 // Raiz pt-br canônica das Ferramentas. No modo ROTA, a navegação interna usa a
@@ -57,7 +60,11 @@ type ToolTab =
   | 'regua-gases'
   | 'retrofit-gas'
   | 'ciclo-refrigeracao'
-  | 'diluicao-produto';
+  | 'diluicao-produto'
+  // ── TI / Assistência Técnica ──
+  | 'calculadora-fonte'
+  | 'conversor-armazenamento'
+  | 'laudo-tecnico';
 
 /** Slugs de ferramenta válidos (sem 'inicio', que é o index). 'catalogo' tem rota
  *  splat própria (`catalogo/*`), os demais são ferramentas simples. */
@@ -72,6 +79,10 @@ const TOOL_SLUGS = new Set<string>([
   'retrofit-gas',
   'ciclo-refrigeracao',
   'diluicao-produto',
+  // ── TI / Assistência Técnica ──
+  'calculadora-fonte',
+  'conversor-armazenamento',
+  'laudo-tecnico',
 ]);
 
 /** Alvo de deep-link ao trocar de aba a partir de Recentes/Favoritos do Início. */
@@ -525,6 +536,16 @@ function RouteToolFrame(props: {
     case 'diluicao-produto':
       content = <DiluicaoProduto />;
       break;
+    // ── TI / Assistência Técnica ──────────────────────────────────────────────
+    case 'calculadora-fonte':
+      content = <CalculadoraFontePSU />;
+      break;
+    case 'conversor-armazenamento':
+      content = <ConversorArmazenamento />;
+      break;
+    case 'laudo-tecnico':
+      content = <LaudoTecnico />;
+      break;
   }
 
   return (
@@ -601,6 +622,10 @@ function EmbeddedTools() {
   else if (activeTab === 'retrofit-gas') content = <RetrofitGas />;
   else if (activeTab === 'ciclo-refrigeracao') content = <CicloRefrigeracao />;
   else if (activeTab === 'diluicao-produto') content = <DiluicaoProduto />;
+  // ── TI / Assistência Técnica ──────────────────────────────────────────────
+  else if (activeTab === 'calculadora-fonte') content = <CalculadoraFontePSU />;
+  else if (activeTab === 'conversor-armazenamento') content = <ConversorArmazenamento />;
+  else if (activeTab === 'laudo-tecnico') content = <LaudoTecnico />;
 
   return (
     <ToolsShell

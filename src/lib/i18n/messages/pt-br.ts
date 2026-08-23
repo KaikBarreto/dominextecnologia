@@ -72,6 +72,7 @@ export const ptBr = {
       'sistema-para-elevadores': 'Manutenção preventiva e chamados em dia.',
       'sistema-para-limpeza-conservacao': 'Postos, rondas e equipes organizados.',
       'sistema-para-dedetizacao': 'Certificados, MIP e contratos recorrentes.',
+      'sistema-para-assistencia-tecnica': 'Entrada de aparelho, diagnóstico e orçamento por link.',
     },
   },
 
@@ -101,6 +102,7 @@ export const ptBr = {
     'sistema-para-elevadores': 'Elevadores',
     'sistema-para-limpeza-conservacao': 'Limpeza e Conservação',
     'sistema-para-dedetizacao': 'Dedetização',
+    'sistema-para-assistencia-tecnica': 'Assistência Técnica (TI)',
   },
 
   // ── Rodapé ────────────────────────────────────────────────────────────────

@@ -267,6 +267,7 @@ export const enOverrides: MessagesOverride = {
       'sistema-para-elevadores': 'Preventive maintenance and service calls on time.',
       'sistema-para-limpeza-conservacao': 'Sites, patrols and crews organized.',
       'sistema-para-dedetizacao': 'Certificates, pest management and recurring contracts.',
+      'sistema-para-assistencia-tecnica': 'Device intake, diagnosis and quotes by link.',
     },
   },
 
@@ -294,6 +295,7 @@ export const enOverrides: MessagesOverride = {
     'sistema-para-elevadores': 'Elevators',
     'sistema-para-limpeza-conservacao': 'Cleaning & Facilities',
     'sistema-para-dedetizacao': 'Pest Control',
+    'sistema-para-assistencia-tecnica': 'IT Repair & Tech Service',
   },
 
   footer: {

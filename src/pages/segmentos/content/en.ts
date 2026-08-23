@@ -1651,6 +1651,173 @@ const en: SegmentContentMap = {
         'Free for 14 days, no credit card, no hassle. Register your customers, issue the certificate automatically and automate your re-treatment contracts.',
     },
   },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // IT Repair & Tech Service
+  // ──────────────────────────────────────────────────────────────────────────
+  'sistema-para-assistencia-tecnica': {
+    slug: 'it-repair-service-software',
+    metaTitle:
+      'Work order software for IT repair shops, cell phone and laptop service centers | Dominex',
+    metaDescription:
+      'Software for IT repair shops and tech service centers: device intake work order, diagnosis, quote by link, ready notification, parts inventory with automatic deduction and warranty tracking. Free 14-day trial, no credit card.',
+    hero: {
+      eyebrow: 'For IT repair shops and tech service centers',
+      h1: 'Work order software for IT repair shops, cell phone and laptop service centers',
+      h1Highlight: 'IT repair shops, cell phone and laptop service centers',
+      subtitle:
+        'Customer dropping off a device and texting every hour for an update? Dominex tracks every device from intake to pickup, sends the quote by link for remote approval and notifies the customer when the repair is done.',
+    },
+    metrics: [
+      { value: '50k+', label: 'work orders per month on the platform' },
+      { value: 'Quote', label: 'approved by link without the customer coming in' },
+      { value: '100%', label: 'on the technician phone at the bench' },
+      { value: '4.9/5', label: 'satisfaction from the shops that use it' },
+    ],
+    pains: [
+      {
+        pain: '"Which step is this customer phone at right now?"',
+        solution:
+          'Every device gets a work order with a number, reported fault and visible status. From intake to ready notification, the front desk knows where every device is without interrupting the technician.',
+      },
+      {
+        pain: 'Quote given over the phone and the customer never confirms',
+        solution:
+          'Build the quote with parts and labor and send the link. The customer approves or declines from their phone, with a date and time stamp. Approved, the technician gets to work, simple as that.',
+      },
+      {
+        pain: 'Part replaced and no one knows where it came from or what it cost',
+        solution:
+          'Every part used on a work order deducts automatically from stock, with supplier and cost recorded. You know what is on the bench, what went into each device and when to reorder.',
+      },
+      {
+        pain: 'Warranty expired, customer is back with the same fault and there is no history',
+        solution:
+          'Every device carries a complete service history, parts replaced and warranty expiry. When the customer comes back, the front desk sees everything and handles the warranty claim with confidence.',
+      },
+    ],
+    deepDives: [
+      {
+        icon: ClipboardList,
+        title: 'Device intake, diagnosis and quote in one screen',
+        body: 'The device comes in with a work order number, model, reported fault, device PIN (encrypted) and photos of its physical condition. The technician records the diagnosis, builds the quote with parts from stock and labor, and the customer gets the link to approve from their phone. Once approved, the work order advances status automatically and the technician starts without waiting for the counter to confirm.',
+      },
+      {
+        icon: Smartphone,
+        title: 'Ready notification and full customer history in hand',
+        body: 'When the repair is finished, the system notifies the customer. The front desk prints the pickup receipt with the customer digital signature and the service history. The next time the customer walks in, the front desk opens the record and sees every device serviced, parts replaced and open warranties, no one has to remember anything.',
+      },
+      {
+        icon: Boxes,
+        title: 'Parts inventory with automatic deduction on every work order',
+        body: 'Screens, batteries, connectors and components tracked by device model. Every part used on the work order deducts automatically from stock, with a record of who applied it and to which device. The minimum stock alert fires before the part runs out, and the consumption history shows what moves fastest so you can negotiate with the right supplier.',
+      },
+    ],
+    features: [
+      {
+        icon: ClipboardList,
+        title: 'Device intake work order',
+        desc: 'Open a work order with model, fault, PIN, physical condition photos and device serial number.',
+      },
+      {
+        icon: RefreshCw,
+        title: 'Diagnosis and quote by link',
+        desc: 'Build the quote with parts and labor and send the link. The customer approves or declines from their phone, with a record.',
+      },
+      {
+        icon: Calendar,
+        title: 'Real-time repair status',
+        desc: 'Track every device by status, from diagnosis to pickup, without interrupting the technician.',
+      },
+      {
+        icon: Boxes,
+        title: 'Parts inventory by device model',
+        desc: 'Track screens, batteries and components by device, with automatic deduction per work order and minimum stock alert.',
+      },
+      {
+        icon: FileSignature,
+        title: 'Pickup receipt with signature',
+        desc: 'PDF with warranty, parts replaced and customer digital signature at device pickup.',
+      },
+      {
+        icon: MapPin,
+        title: 'History per device and customer',
+        desc: 'All services, parts and warranties recorded per device. The front desk sees everything in seconds.',
+      },
+      {
+        icon: Smartphone,
+        title: 'Technician mobile app',
+        desc: 'Installable on the technician phone (PWA): open work order, record diagnosis, apply parts and close the job.',
+      },
+      {
+        icon: BarChart3,
+        title: 'Operations dashboard',
+        desc: 'Work orders by status, average repair time, top parts consumed and customer rating on a live panel.',
+      },
+    ],
+    testimonials: [
+      {
+        quote:
+          'Before, the customer would call asking about their phone and no one could answer. Now everyone sees the status on screen. The shop is completely different.',
+        name: 'Rodrigo F.',
+        role: 'Owner',
+        company: 'cell phone and laptop repair shop',
+      },
+      {
+        quote:
+          'The quote by link changed everything. The customer approves from home and the technician starts right away. No phone tag, no waiting.',
+        name: 'Amanda L.',
+        role: 'Manager',
+        company: 'IT store and tech service center',
+      },
+      {
+        quote:
+          'The parts inventory was always off. With automatic deduction per work order, for the first time the system matches what is actually on the bench.',
+        name: 'Paulo S.',
+        role: 'Technician and Co-owner',
+        company: 'laptop and PC repair',
+      },
+    ],
+    faq: [
+      {
+        q: 'Is Dominex a good fit for cell phone and IT repair shops?',
+        a: 'Yes. It was built for shops that take in devices for repair, such as cell phones, laptops and PCs. You open the intake work order, record the diagnosis, send the quote by link, track parts inventory and issue the pickup receipt with warranty, all in one place.',
+      },
+      {
+        q: 'Can I send the quote for the customer to approve without them coming to the shop?',
+        a: 'Yes. You build the quote with parts and labor and send the link. The customer approves or declines from their phone, with a date and time stamp. Once approved, the work order advances and the technician gets to work.',
+      },
+      {
+        q: 'How does parts inventory tracking work?',
+        a: 'You set up screens, batteries, connectors and components by device model. Every part used on a work order deducts automatically from stock, with a record of which device received it. The minimum stock alert fires before the part runs out.',
+      },
+      {
+        q: 'Does the system keep a history of each device and the warranty period?',
+        a: 'Yes. Every device carries the full history: reported fault, diagnosis, parts replaced and warranty expiry of the work order. The next time the customer comes in, the front desk sees everything in seconds.',
+      },
+      {
+        q: 'Does the technician use it on their phone? Is there an app to install?',
+        a: 'Yes, it is all on the phone. Dominex is an app that installs on the technician device (PWA), no app store download. At the bench they open the work order, record the diagnosis, apply the parts and close the job. The receipt is ready on the spot.',
+      },
+      {
+        q: 'Can I track which status each device is at?',
+        a: 'Yes. Every work order has a visible status, from diagnosis to ready for pickup. The front desk answers the customer without interrupting the technician.',
+      },
+      {
+        q: 'Does it generate a drop-off and pickup receipt for the customer?',
+        a: 'Yes. The pickup receipt comes out as a PDF with parts replaced, the amount, the warranty period and the customer digital signature. You prove the service and protect the shop.',
+      },
+      {
+        q: 'How do I get started? Do I need a credit card?',
+        a: 'Just create your account and use it free for 14 days, no credit card. You set up your shop in minutes, register the devices and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+      },
+    ],
+    finalCta: {
+      title: 'Put your tech repair shop in control',
+      subtitle:
+        'Free for 14 days, no credit card, no hassle. Register the devices, organize your parts inventory and give your customers the transparency they expect.',
+    },
+  },
 };
 
 export default en;

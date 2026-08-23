@@ -86,6 +86,7 @@ export function Inicio({ onNavigate }: InicioProps) {
   const { settings } = useCompanySettings();
   // Cards = ferramentas do segmento da empresa (fonte única do config).
   const atalhos = getTechToolsForSegment(settings?.segment);
+  const isRefrigeracao = settings?.segment === 'refrigeracao';
   const [buscaGlossario, setBuscaGlossario] = useState('');
 
   const GLOSSARIO_SECOES = useMemo(
@@ -175,8 +176,8 @@ export function Inicio({ onNavigate }: InicioProps) {
         </div>
       </section>
 
-      {/* Termos Técnicos Explicados */}
-      <section className="space-y-3">
+      {/* Termos Técnicos Explicados — exclusivo do segmento refrigeracao */}
+      {isRefrigeracao && <section className="space-y-3">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary shrink-0" />
           <div>
@@ -243,7 +244,7 @@ export function Inicio({ onNavigate }: InicioProps) {
             ))}
           </div>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

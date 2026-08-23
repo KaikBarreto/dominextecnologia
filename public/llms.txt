@@ -2,7 +2,7 @@
 
 > Sistema de ordem de serviço, PMOC e gestão para empresas de refrigeração, climatização e equipes de campo.
 
-O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital, funcionando mesmo offline. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza e dedetização. Teste grátis por 14 dias, sem cartão de crédito.
+O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza, dedetização e assistência técnica de informática (celular, notebook e PC). Teste grátis por 14 dias, sem cartão de crédito.
 
 ## Páginas principais
 
@@ -16,6 +16,7 @@ O Dominex é um software web para empresas que prestam serviços técnicos em ca
 - [Sistema para Elevadores](https://www.dominex.app/sistema-para-elevadores): manutenção e contratos recorrentes para empresas de elevadores.
 - [Sistema para Limpeza e Conservação](https://www.dominex.app/sistema-para-limpeza-conservacao): gestão de equipes de limpeza e conservação predial.
 - [Sistema para Dedetização](https://www.dominex.app/sistema-para-dedetizacao): ordens de serviço e contratos para empresas de dedetização.
+- [Sistema para Assistência Técnica (TI)](https://www.dominex.app/sistema-para-assistencia-tecnica): gestão de OS de entrada de aparelho, diagnóstico, orçamento por link e estoque de peças para lojas de informática e assistência técnica.
 - [Novidades](https://www.dominex.app/changelog): histórico de atualizações e novos recursos do Dominex.
 
 ## Módulos

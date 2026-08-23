@@ -42,6 +42,9 @@ import {
   Waves,
   Car,
   DollarSign,
+  ServerCog,
+  Database,
+  FileText,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -60,7 +63,11 @@ export type TechToolId =
   | 'regua-gases'
   | 'retrofit-gas'
   | 'ciclo-refrigeracao'
-  | 'diluicao-produto';
+  | 'diluicao-produto'
+  // ── TI / Assistência Técnica ──
+  | 'calculadora-fonte'
+  | 'conversor-armazenamento'
+  | 'laudo-tecnico';
 
 export interface TechTool {
   id: TechToolId;
@@ -161,6 +168,29 @@ export const TECH_TOOLS_BY_SEGMENT: Partial<Record<string, TechTool[]>> = {
       descricao: 'Calcule produto + água pela proporção e volume final.',
       icon: FlaskConical,
       accent: 'hsl(173 80% 40%)',
+    },
+  ],
+  ti_assistencia: [
+    {
+      id: 'calculadora-fonte',
+      label: 'Calculadora de Fonte (PSU)',
+      descricao: 'Estime o consumo dos componentes e a wattagem ideal da fonte.',
+      icon: ServerCog,
+      accent: 'hsl(217 91% 55%)',
+    },
+    {
+      id: 'conversor-armazenamento',
+      label: 'Conversor de Armazenamento',
+      descricao: 'Converta GB/GiB/TB/TiB e velocidade Mbps ↔ MB/s.',
+      icon: Database,
+      accent: 'hsl(142 71% 45%)',
+    },
+    {
+      id: 'laudo-tecnico',
+      label: 'Laudo Técnico',
+      descricao: 'Preencha o diagnóstico e gere um laudo em PDF para entregar ao cliente.',
+      icon: FileText,
+      accent: 'hsl(262 83% 58%)',
     },
   ],
 };

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Thermometer, Zap, Sun, Radio, Shield, HardHat, Building, Sparkles, Droplets } from 'lucide-react';
+import { Thermometer, Zap, Sun, Radio, Shield, HardHat, Building, Sparkles, Droplets, Laptop } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { SEGMENTS } from '@/pages/segmentos/segmentsData';
 import { useLocale } from '@/lib/i18n';
@@ -26,6 +26,7 @@ const segments = [
   { icon: Building, label: 'Elevadores', image: '/images/segments/elevadores.jpg' },
   { icon: Sparkles, label: 'Limpeza e Conservação', image: '/images/segments/limpeza.jpg' },
   { icon: Droplets, label: 'Dedetização', image: '/images/segments/dedetizacao.jpg' },
+  { icon: Laptop, label: 'Assistência Técnica (TI)', image: '/images/segments/ti-assistencia.jpg' },
 ];
 
 // Lista duplicada: a track anda de translateX(0) até -50%, então a 2ª metade

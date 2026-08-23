@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.15',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novo segmento: assistência técnica de informática',
+        description: 'A Dominex agora também atende lojas de informática e assistências técnicas de celular, notebook e computador. Para esse ramo, a Área do Técnico ganhou ferramentas próprias: uma calculadora de fonte, que indica a potência ideal da fonte pelo consumo das peças; um conversor de armazenamento e velocidade, que explica, por exemplo, por que um HD de 1 TB aparece com menos espaço no Windows; e um laudo técnico pronto para gerar em PDF e entregar ao cliente, com os dados do aparelho, o diagnóstico, o serviço feito e a garantia. Se o seu negócio é desse ramo, fale com a gente para ativar o segmento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.14',
     date: '23 de agosto de 2026',
     type: 'patch',

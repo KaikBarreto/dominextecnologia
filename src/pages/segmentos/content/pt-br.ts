@@ -1640,6 +1640,172 @@ const ptBr: SegmentContentMap = {
         '14 dias grátis, sem cartão, sem burocracia. Cadastre seus clientes, emita o certificado automaticamente e automatize os contratos de reaplicação.',
     },
   },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Assistência Técnica (TI)
+  // ──────────────────────────────────────────────────────────────────────────
+  'sistema-para-assistencia-tecnica': {
+    metaTitle:
+      'Sistema de ordem de serviço para assistência técnica de celular, notebook e informática | Dominex',
+    metaDescription:
+      'Software para lojas de informática e assistência técnica: ordem de entrada de aparelho, diagnóstico, orçamento por link, aviso de pronto pelo WhatsApp, histórico de peças por equipamento e controle de garantia. Teste grátis 14 dias, sem cartão.',
+    hero: {
+      eyebrow: 'Para lojas de informática e assistência técnica',
+      h1: 'Sistema de ordem de serviço para assistência técnica de celular, notebook e PC',
+      h1Highlight: 'assistência técnica de celular, notebook e PC',
+      subtitle:
+        'Aparelho entrou e o cliente fica perguntando o andamento? O Dominex organiza a entrada do dispositivo, o diagnóstico, o orçamento aprovado por link e avisa o cliente quando está pronto, tudo rastreável do balcão ao técnico.',
+    },
+    metrics: [
+      { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
+      { value: 'Orçamento', label: 'aprovado por link, sem o cliente vir à loja' },
+      { value: '100%', label: 'no celular do técnico na bancada' },
+      { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    ],
+    pains: [
+      {
+        pain: '"Em que etapa está o celular desse cliente?"',
+        solution:
+          'Cada aparelho entra como ordem de serviço com número, defeito relatado e status visível. Da entrada ao aviso de pronto, o atendente sabe onde está cada dispositivo sem precisar perguntar ao técnico.',
+      },
+      {
+        pain: 'Orçamento passado por telefone e cliente que some sem confirmar',
+        solution:
+          'Monte o orçamento com peças e mão de obra e envie por link. O cliente aprova (ou recusa) pelo celular, com registro de data e hora. Aprovado, o técnico executa, simples assim.',
+      },
+      {
+        pain: 'Peça trocada e ninguém sabe o que veio de onde',
+        solution:
+          'Cada peça usada na OS sai automaticamente do estoque, com registro do fornecedor e do custo. Você sabe o que tem na bancada, o que foi aplicado em cada aparelho e quando pedir mais.',
+      },
+      {
+        pain: 'Garantia vencida, cliente voltou com o mesmo defeito e não tem histórico',
+        solution:
+          'Cada aparelho carrega o histórico de serviços, peças trocadas e prazo de garantia. Na próxima entrada do cliente, o atendente vê tudo e atende o chamado de garantia com segurança.',
+      },
+    ],
+    deepDives: [
+      {
+        icon: ClipboardList,
+        title: 'Entrada de aparelho, diagnóstico e orçamento em uma só tela',
+        body: 'O aparelho entra com número de OS, modelo, defeito relatado, senha do dispositivo (criptografada) e fotos do estado físico. O técnico registra o diagnóstico, monta o orçamento com peças do estoque e mão de obra, e o cliente recebe o link para aprovar pelo celular. Aprovado, a OS avança de status automaticamente e o técnico executa sem esperar o balcão confirmar.',
+      },
+      {
+        icon: Smartphone,
+        title: 'Aviso de pronto e histórico do cliente na palma da mão',
+        body: 'Quando o reparo é concluído, o sistema notifica o cliente. O atendente imprime o recibo de retirada com a assinatura digital do cliente e o histórico de serviços prestados. Na próxima vez que o cliente chegar, o atendente abre o cadastro e vê todos os aparelhos atendidos, peças trocadas e garantias em aberto, sem depender da memória de ninguém.',
+      },
+      {
+        icon: Boxes,
+        title: 'Estoque de peças com baixa automática a cada OS',
+        body: 'Telas, baterias, conectores e componentes controlados por modelo de aparelho. Cada peça usada na ordem de serviço sai automaticamente do estoque, com registro de quem aplicou e em qual aparelho. O alerta de mínimo avisa antes da peça acabar, e o histórico de consumo mostra o que gira mais para você negociar com o fornecedor certo.',
+      },
+    ],
+    features: [
+      {
+        icon: ClipboardList,
+        title: 'Ordem de entrada do aparelho',
+        desc: 'Abertura de OS com modelo, defeito, senha, fotos do estado físico e número de série do dispositivo.',
+      },
+      {
+        icon: RefreshCw,
+        title: 'Diagnóstico e orçamento por link',
+        desc: 'Monte o orçamento com peças e mão de obra e envie por link. O cliente aprova ou recusa pelo celular, com registro.',
+      },
+      {
+        icon: Calendar,
+        title: 'Status do reparo em tempo real',
+        desc: 'Acompanhe cada aparelho por status, do diagnóstico à retirada, sem perguntar ao técnico.',
+      },
+      {
+        icon: Boxes,
+        title: 'Estoque de peças por modelo',
+        desc: 'Controle telas, baterias e componentes por aparelho, com baixa automática a cada OS e alerta de mínimo.',
+      },
+      {
+        icon: FileSignature,
+        title: 'Recibo de retirada com assinatura',
+        desc: 'PDF com garantia, peças trocadas e assinatura digital do cliente ao retirar o aparelho.',
+      },
+      {
+        icon: MapPin,
+        title: 'Histórico por aparelho e cliente',
+        desc: 'Todos os serviços, peças e garantias registrados por dispositivo. O atendente vê tudo em segundos.',
+      },
+      {
+        icon: Smartphone,
+        title: 'App no celular do técnico',
+        desc: 'Instalável no aparelho do técnico (PWA): abre OS, registra diagnóstico, aplica peças e finaliza o serviço.',
+      },
+      {
+        icon: BarChart3,
+        title: 'Indicadores da operação',
+        desc: 'OS por status, tempo médio de reparo, peças mais consumidas e avaliação do cliente em um painel ao vivo.',
+      },
+    ],
+    testimonials: [
+      {
+        quote:
+          'Antes o cliente ligava perguntando do celular e ninguém sabia responder. Agora todo mundo vê o status na tela. A loja ficou outra.',
+        name: 'Rodrigo F.',
+        role: 'Proprietário',
+        company: 'assistência técnica de celular e notebook',
+      },
+      {
+        quote:
+          'O orçamento por link mudou tudo. O cliente aprova de casa e o técnico já começa. Sem telefonema, sem espera.',
+        name: 'Amanda L.',
+        role: 'Gerente',
+        company: 'loja de informática e assistência técnica',
+      },
+      {
+        quote:
+          'O estoque de peças estava sempre errado. Com a baixa automática por OS, pela primeira vez o sistema bate com o que tem na bancada.',
+        name: 'Paulo S.',
+        role: 'Técnico e Sócio',
+        company: 'manutenção de notebooks e PCs',
+      },
+    ],
+    faq: [
+      {
+        q: 'O Dominex serve para lojas de assistência técnica de celular e informática?',
+        a: 'Sim. Foi feito para lojas que recebem aparelhos para reparo, como celulares, notebooks e PCs. Você abre a OS de entrada, registra o diagnóstico, envia o orçamento por link, controla o estoque de peças e emite o recibo de retirada com garantia, tudo em um só lugar.',
+      },
+      {
+        q: 'Dá para enviar o orçamento para o cliente aprovar sem ele ir até a loja?',
+        a: 'Sim. Você monta o orçamento com peças e mão de obra e envia por link. O cliente aprova ou recusa pelo celular, com registro de data e hora. Quando aprovado, a OS avança de status e o técnico executa.',
+      },
+      {
+        q: 'Como funciona o controle de estoque de peças?',
+        a: 'Você cadastra telas, baterias, conectores e componentes por modelo de aparelho. Cada peça usada na OS sai automaticamente do estoque, com registro de qual aparelho recebeu. O alerta de mínimo avisa antes da peça acabar.',
+      },
+      {
+        q: 'O sistema guarda o histórico de cada aparelho e o prazo de garantia?',
+        a: 'Sim. Cada aparelho carrega o histórico completo: defeito relatado, diagnóstico, peças trocadas e prazo de garantia da OS. Na próxima visita do cliente, o atendente vê tudo em segundos.',
+      },
+      {
+        q: 'O técnico usa pelo celular? Precisa instalar algum app?',
+        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. Na bancada ele abre a OS, registra o diagnóstico, aplica as peças e finaliza o serviço. O recibo sai pronto na hora.',
+      },
+      {
+        q: 'Consigo acompanhar em que status está cada aparelho?',
+        a: 'Sim. Cada OS tem um status visível, do diagnóstico ao pronto para retirada. O atendente responde o cliente sem precisar interromper o técnico.',
+      },
+      {
+        q: 'Gera recibo de entrega e de retirada para o cliente?',
+        a: 'Sim. O recibo de retirada sai em PDF com as peças trocadas, o valor, o prazo de garantia e a assinatura digital do cliente. Você comprova o serviço e protege a loja.',
+      },
+      {
+        q: 'Como começo a usar? Precisa de cartão?',
+        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua loja em minutos, cadastra os aparelhos e já começa a abrir OS. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+      },
+    ],
+    finalCta: {
+      title: 'Coloque sua assistência técnica no controle',
+      subtitle:
+        '14 dias grátis, sem cartão, sem burocracia. Cadastre os aparelhos, organize o estoque de peças e dê ao cliente a transparência que ele espera.',
+    },
+  },
 };
 
 export default ptBr;

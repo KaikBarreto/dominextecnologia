@@ -63,6 +63,7 @@ const LLMS_SECTIONS = [
       ['/sistema-para-elevadores', 'Sistema para Elevadores', 'manutenção e contratos recorrentes para empresas de elevadores.'],
       ['/sistema-para-limpeza-conservacao', 'Sistema para Limpeza e Conservação', 'gestão de equipes de limpeza e conservação predial.'],
       ['/sistema-para-dedetizacao', 'Sistema para Dedetização', 'ordens de serviço e contratos para empresas de dedetização.'],
+      ['/sistema-para-assistencia-tecnica', 'Sistema para Assistência Técnica (TI)', 'gestão de OS de entrada de aparelho, diagnóstico, orçamento por link e estoque de peças para lojas de informática e assistência técnica.'],
     ],
   },
   {
@@ -102,7 +103,7 @@ const LLMS_HEADER = `# Dominex
 
 > Sistema de ordem de serviço, PMOC e gestão para empresas de refrigeração, climatização e equipes de campo.
 
-O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza e dedetização. Teste grátis por 14 dias, sem cartão de crédito.`;
+O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza, dedetização e assistência técnica de informática (celular, notebook e PC). Teste grátis por 14 dias, sem cartão de crédito.`;
 
 /**
  * URL absoluta localizada de um path base num locale. Prefere a URL EXATA das

@@ -1652,6 +1652,173 @@ const es: SegmentContentMap = {
         'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus clientes, emite el certificado automáticamente y automatiza tus contratos de retratamiento.',
     },
   },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Servicio Técnico / Reparación IT
+  // ──────────────────────────────────────────────────────────────────────────
+  'sistema-para-assistencia-tecnica': {
+    slug: 'software-servicio-tecnico-reparacion-it',
+    metaTitle:
+      'Software de orden de trabajo para talleres de reparación de celular, laptop e informática | Dominex',
+    metaDescription:
+      'Software para talleres de servicio técnico: registro de entrada de equipo, diagnóstico, presupuesto por enlace, aviso de listo, inventario de piezas con descuento automático y control de garantía. Prueba gratis 14 días, sin tarjeta.',
+    hero: {
+      eyebrow: 'Para talleres de informática y servicio técnico',
+      h1: 'Software de orden de trabajo para talleres de reparación de celular, laptop e informática',
+      h1Highlight: 'talleres de reparación de celular, laptop e informática',
+      subtitle:
+        '¿El cliente deja el equipo y llama cada hora preguntando? Dominex rastrea cada dispositivo desde la entrada hasta la entrega, envía el presupuesto por enlace para aprobación remota y avisa al cliente cuando la reparación está lista.',
+    },
+    metrics: [
+      { value: '50k+', label: 'órdenes de trabajo por mes en la plataforma' },
+      { value: 'Presupuesto', label: 'aprobado por enlace sin que el cliente venga al taller' },
+      { value: '100%', label: 'en el teléfono del técnico en el banco de trabajo' },
+      { value: '4,9/5', label: 'satisfacción de los talleres que lo usan' },
+    ],
+    pains: [
+      {
+        pain: '"¿En qué etapa está el celular de este cliente?"',
+        solution:
+          'Cada dispositivo entra como orden de trabajo con número, falla reportada y estado visible. Desde la entrada hasta el aviso de listo, el recepcionista sabe dónde está cada equipo sin interrumpir al técnico.',
+      },
+      {
+        pain: 'Presupuesto dado por teléfono y el cliente que desaparece sin confirmar',
+        solution:
+          'Arma el presupuesto con piezas y mano de obra y envía el enlace. El cliente aprueba o rechaza desde su teléfono, con registro de fecha y hora. Aprobado, el técnico empieza, simple así.',
+      },
+      {
+        pain: 'Pieza cambiada y nadie sabe de dónde vino ni cuánto costó',
+        solution:
+          'Cada pieza usada en la orden descuenta automáticamente del inventario, con registro del proveedor y el costo. Sabes qué hay en el banco, qué se aplicó en cada equipo y cuándo pedir más.',
+      },
+      {
+        pain: 'Garantía vencida, el cliente volvió con la misma falla y no hay historial',
+        solution:
+          'Cada dispositivo lleva el historial completo de servicios, piezas cambiadas y plazo de garantía. En la próxima visita del cliente, el recepcionista ve todo y atiende el reclamo de garantía con seguridad.',
+      },
+    ],
+    deepDives: [
+      {
+        icon: ClipboardList,
+        title: 'Entrada de equipo, diagnóstico y presupuesto en una sola pantalla',
+        body: 'El equipo entra con número de orden, modelo, falla reportada, PIN del dispositivo (cifrado) y fotos del estado físico. El técnico registra el diagnóstico, arma el presupuesto con piezas del inventario y mano de obra, y el cliente recibe el enlace para aprobar desde su teléfono. Aprobado, la orden avanza de estado automáticamente y el técnico ejecuta sin esperar confirmación del mostrador.',
+      },
+      {
+        icon: Smartphone,
+        title: 'Aviso de listo e historial del cliente en la mano',
+        body: 'Cuando la reparación está lista, el sistema notifica al cliente. El recepcionista imprime el recibo de retiro con la firma digital del cliente y el historial de servicios. La próxima vez que el cliente llegue, el recepcionista abre el registro y ve todos los equipos atendidos, piezas cambiadas y garantías vigentes, sin depender de la memoria de nadie.',
+      },
+      {
+        icon: Boxes,
+        title: 'Inventario de piezas con descuento automático en cada orden',
+        body: 'Pantallas, baterías, conectores y componentes controlados por modelo de equipo. Cada pieza usada en la orden descuenta automáticamente del inventario, con registro de quién la aplicó y en qué equipo. La alerta de mínimo avisa antes de que la pieza se agote, y el historial de consumo muestra qué rota más para que negocies con el proveedor adecuado.',
+      },
+    ],
+    features: [
+      {
+        icon: ClipboardList,
+        title: 'Orden de entrada del equipo',
+        desc: 'Apertura de orden con modelo, falla, PIN, fotos del estado físico y número de serie del dispositivo.',
+      },
+      {
+        icon: RefreshCw,
+        title: 'Diagnóstico y presupuesto por enlace',
+        desc: 'Arma el presupuesto con piezas y mano de obra y envía el enlace. El cliente aprueba o rechaza desde su teléfono, con registro.',
+      },
+      {
+        icon: Calendar,
+        title: 'Estado del arreglo en tiempo real',
+        desc: 'Sigue cada equipo por estado, del diagnóstico a la entrega, sin interrumpir al técnico.',
+      },
+      {
+        icon: Boxes,
+        title: 'Inventario de piezas por modelo',
+        desc: 'Controla pantallas, baterías y componentes por equipo, con descuento automático por orden y alerta de mínimo.',
+      },
+      {
+        icon: FileSignature,
+        title: 'Recibo de retiro con firma',
+        desc: 'PDF con garantía, piezas cambiadas y firma digital del cliente al retirar el equipo.',
+      },
+      {
+        icon: MapPin,
+        title: 'Historial por equipo y cliente',
+        desc: 'Todos los servicios, piezas y garantías registrados por dispositivo. El recepcionista ve todo en segundos.',
+      },
+      {
+        icon: Smartphone,
+        title: 'App en el teléfono del técnico',
+        desc: 'Instalable en el teléfono del técnico (PWA): abre orden, registra diagnóstico, aplica piezas y cierra el trabajo.',
+      },
+      {
+        icon: BarChart3,
+        title: 'Panel de operaciones',
+        desc: 'Órdenes por estado, tiempo promedio de reparación, piezas más usadas y calificación del cliente en un panel en vivo.',
+      },
+    ],
+    testimonials: [
+      {
+        quote:
+          'Antes el cliente llamaba preguntando por su celular y nadie sabía responder. Ahora todos ven el estado en pantalla. El taller cambió por completo.',
+        name: 'Rodrigo F.',
+        role: 'Propietario',
+        company: 'taller de celulares y laptops',
+      },
+      {
+        quote:
+          'El presupuesto por enlace cambió todo. El cliente aprueba desde casa y el técnico empieza de inmediato. Sin llamadas, sin espera.',
+        name: 'Amanda L.',
+        role: 'Gerente',
+        company: 'tienda de informática y servicio técnico',
+      },
+      {
+        quote:
+          'El inventario de piezas siempre estaba mal. Con el descuento automático por orden, por primera vez el sistema coincide con lo que hay en el banco.',
+        name: 'Paulo S.',
+        role: 'Técnico y Socio',
+        company: 'reparación de laptops y PCs',
+      },
+    ],
+    faq: [
+      {
+        q: '¿Dominex sirve para talleres de reparación de celular e informática?',
+        a: 'Sí. Fue creado para talleres que reciben equipos para reparación, como celulares, laptops y PCs. Abres la orden de entrada, registras el diagnóstico, envías el presupuesto por enlace, controlas el inventario de piezas y emites el recibo de retiro con garantía, todo en un solo lugar.',
+      },
+      {
+        q: '¿Puedo enviar el presupuesto para que el cliente lo apruebe sin venir al taller?',
+        a: 'Sí. Armas el presupuesto con piezas y mano de obra y envías el enlace. El cliente aprueba o rechaza desde su teléfono, con registro de fecha y hora. Una vez aprobado, la orden avanza y el técnico empieza a trabajar.',
+      },
+      {
+        q: '¿Cómo funciona el control de inventario de piezas?',
+        a: 'Configuras pantallas, baterías, conectores y componentes por modelo de equipo. Cada pieza usada en la orden descuenta automáticamente del inventario, con registro de qué equipo la recibió. La alerta de mínimo se activa antes de que la pieza se agote.',
+      },
+      {
+        q: '¿El sistema guarda el historial de cada equipo y el plazo de garantía?',
+        a: 'Sí. Cada equipo lleva el historial completo: falla reportada, diagnóstico, piezas cambiadas y plazo de garantía de la orden. La próxima vez que el cliente llegue, el recepcionista lo ve todo en segundos.',
+      },
+      {
+        q: '¿El técnico lo usa en su teléfono? ¿Hay una app para instalar?',
+        a: 'Sí, todo pasa en el teléfono. Dominex es una app que se instala en el dispositivo del técnico (PWA), sin descarga de tienda. En el banco abre la orden, registra el diagnóstico, aplica las piezas y cierra el trabajo. El recibo queda listo en el momento.',
+      },
+      {
+        q: '¿Puedo ver en qué estado está cada equipo?',
+        a: 'Sí. Cada orden tiene un estado visible, del diagnóstico al listo para retirar. El recepcionista responde al cliente sin interrumpir al técnico.',
+      },
+      {
+        q: '¿Genera recibo de entrega y de retiro para el cliente?',
+        a: 'Sí. El recibo de retiro sale en PDF con las piezas cambiadas, el importe, el plazo de garantía y la firma digital del cliente. Pruebas el servicio y proteges el taller.',
+      },
+      {
+        q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
+        a: 'Solo crea tu cuenta y úsala gratis por 14 días, sin tarjeta. Configuras tu taller en minutos, registras los equipos y empiezas a abrir órdenes. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+      },
+    ],
+    finalCta: {
+      title: 'Pon tu taller de reparación bajo control',
+      subtitle:
+        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra los equipos, organiza el inventario de piezas y dale a tu cliente la transparencia que espera.',
+    },
+  },
 };
 
 export default es;
