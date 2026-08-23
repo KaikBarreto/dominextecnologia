@@ -31,18 +31,13 @@ import {
   Loader2,
   CheckCircle2,
   AlertTriangle,
-  Wallet,
   ShieldCheck,
-  HelpCircle,
-  ChevronDown,
+  Info,
 } from 'lucide-react';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import asaasLogo from '@/assets/logo-asaas.png';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+// Collapsible removido: guia agora é sempre visível
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { cn } from '@/lib/utils';
@@ -301,9 +296,13 @@ export function SettingsAsaasContent() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-primary" />
-              <div>
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src={asaasLogo}
+                alt="Asaas"
+                className="h-8 w-auto shrink-0"
+              />
+              <div className="min-w-0">
                 <CardTitle className="text-base">{t.card.title}</CardTitle>
                 <CardDescription className="text-sm">{t.card.description}</CardDescription>
               </div>
@@ -361,21 +360,32 @@ export function SettingsAsaasContent() {
                 )}
               </Button>
 
-              {/* Guia discreto: como obter a chave na Asaas */}
-              <Collapsible>
-                <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group">
-                  <HelpCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span>{t.inactive.apiKeyGuide.trigger}</span>
-                  <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-3 rounded-md border border-border bg-muted/40 p-3 space-y-1.5 text-xs text-muted-foreground">
-                  <p><span className="font-medium text-foreground">1.</span> {t.inactive.apiKeyGuide.step1}</p>
-                  <p><span className="font-medium text-foreground">2.</span> {t.inactive.apiKeyGuide.step2}</p>
-                  <p><span className="font-medium text-foreground">3.</span> {t.inactive.apiKeyGuide.step3}</p>
-                  <p><span className="font-medium text-foreground">4.</span> {t.inactive.apiKeyGuide.step4}</p>
-                  <p className="pt-1 border-t border-border/60 text-muted-foreground/80 italic">{t.inactive.apiKeyGuide.sandboxHint}</p>
-                </CollapsibleContent>
-              </Collapsible>
+              {/* Guia sempre visível: como obter a chave na Asaas */}
+              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  {t.inactive.apiKeyGuide.guideTitle}
+                </p>
+                <ol className="space-y-2.5">
+                  {([
+                    t.inactive.apiKeyGuide.step1,
+                    t.inactive.apiKeyGuide.step2,
+                    t.inactive.apiKeyGuide.step3,
+                    t.inactive.apiKeyGuide.step4,
+                  ] as string[]).map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span className="text-xs text-muted-foreground leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground/80 italic border-t border-border/60 pt-2.5">
+                  <Info className="h-3 w-3 shrink-0 mt-0.5" />
+                  {t.inactive.apiKeyGuide.sandboxHint}
+                </p>
+              </div>
             </div>
           )}
 

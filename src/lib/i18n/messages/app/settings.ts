@@ -894,6 +894,7 @@ export const settings = {
           activating: 'Ativando…',
           helpLink: 'Onde encontro minha chave?',
           apiKeyGuide: {
+            guideTitle: 'Como obter sua chave de API da Asaas',
             trigger: 'Como consigo minha chave de API da Asaas?',
             step1: 'Acesse asaas.com e faça login (ou crie sua conta gratuita).',
             step2: 'No menu, vá em "Configurações da conta" (ícone de engrenagem), depois em "Integrações".',
@@ -1912,6 +1913,7 @@ export const settings = {
           activating: 'Activating…',
           helpLink: 'Where do I find my key?',
           apiKeyGuide: {
+            guideTitle: 'How to get your Asaas API key',
             trigger: 'How do I get my Asaas API key?',
             step1: 'Go to asaas.com and log in (or create your free account).',
             step2: 'In the menu, go to "Account settings" (gear icon), then "Integrations".',
@@ -2920,6 +2922,7 @@ export const settings = {
           activating: 'Activando…',
           helpLink: '¿Dónde encuentro mi clave?',
           apiKeyGuide: {
+            guideTitle: 'Cómo obtener tu clave de API de Asaas',
             trigger: '¿Cómo obtengo mi clave de API de Asaas?',
             step1: 'Ingresa a asaas.com e inicia sesión (o crea tu cuenta gratuita).',
             step2: 'En el menú, ve a "Configuración de cuenta" (ícono de engranaje), luego a "Integraciones".',
@@ -3928,6 +3931,7 @@ export const settings = {
           activating: 'Activation…',
           helpLink: `Où trouver ma clé ?`,
           apiKeyGuide: {
+            guideTitle: `Comment obtenir votre clé d'API Asaas`,
             trigger: `Comment obtenir ma clé d'API Asaas ?`,
             step1: `Accédez à asaas.com et connectez-vous (ou créez votre compte gratuit).`,
             step2: `Dans le menu, allez dans "Paramètres du compte" (icône d'engrenage), puis "Intégrations".`,
