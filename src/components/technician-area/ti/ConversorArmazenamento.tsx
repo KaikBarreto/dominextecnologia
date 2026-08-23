@@ -2,6 +2,13 @@ import { useState, useMemo } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ToolDisclaimer } from '../ToolDisclaimer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -141,44 +148,46 @@ export function ConversorArmazenamento() {
 
       {tab === 'storage' && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-muted-foreground">{t.valueLabel}</Label>
+              <Label className="text-base text-muted-foreground md:text-lg">{t.valueLabel}</Label>
               <NumericInput
                 value={storageValue}
                 onValueChange={setStorageValue}
                 min={0}
-                className="h-11 text-base"
+                className="h-14 text-lg"
               />
             </div>
             <div className="flex items-end gap-2">
               <div className="flex-1 space-y-1.5">
-                <Label className="text-sm font-medium text-muted-foreground">{t.fromLabel}</Label>
-                <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring h-10"
-                  value={fromUnit}
-                  onChange={(e) => setFromUnit(e.target.value as StorageUnit)}
-                >
-                  {STORAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <Label className="text-base text-muted-foreground md:text-lg">{t.fromLabel}</Label>
+                <Select value={fromUnit} onValueChange={(v) => setFromUnit(v as StorageUnit)}>
+                  <SelectTrigger className="h-14 text-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STORAGE_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <button
                 type="button"
                 onClick={swapStorage}
-                className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted hover:bg-muted/80 transition-colors"
+                className="mb-0.5 flex h-14 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted hover:bg-muted/80 transition-colors"
                 aria-label={t.swapLabel}
               >
                 <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
               </button>
               <div className="flex-1 space-y-1.5">
-                <Label className="text-sm font-medium text-muted-foreground">{t.toLabel}</Label>
-                <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring h-10"
-                  value={toUnit}
-                  onChange={(e) => setToUnit(e.target.value as StorageUnit)}
-                >
-                  {STORAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <Label className="text-base text-muted-foreground md:text-lg">{t.toLabel}</Label>
+                <Select value={toUnit} onValueChange={(v) => setToUnit(v as StorageUnit)}>
+                  <SelectTrigger className="h-14 text-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STORAGE_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -188,9 +197,9 @@ export function ConversorArmazenamento() {
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.resultLabel}</p>
             {storageResult !== null ? (
               <>
-                <p className="text-4xl font-bold text-primary sm:text-6xl">
+                <p className="text-5xl font-bold leading-none text-primary sm:text-7xl">
                   {fmt(storageResult)}
-                  <span className="ml-2 text-xl font-semibold sm:text-2xl">{toUnit}</span>
+                  <span className="ml-2 text-2xl font-semibold sm:text-3xl">{toUnit}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {storageValue} {fromUnit} = {fmt(storageResult)} {toUnit}
@@ -210,44 +219,46 @@ export function ConversorArmazenamento() {
 
       {tab === 'speed' && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-muted-foreground">{t.speedValueLabel}</Label>
+              <Label className="text-base text-muted-foreground md:text-lg">{t.speedValueLabel}</Label>
               <NumericInput
                 value={speedValue}
                 onValueChange={setSpeedValue}
                 min={0}
-                className="h-11 text-base"
+                className="h-14 text-lg"
               />
             </div>
             <div className="flex items-end gap-2">
               <div className="flex-1 space-y-1.5">
-                <Label className="text-sm font-medium text-muted-foreground">{t.fromLabel}</Label>
-                <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring h-10"
-                  value={speedFrom}
-                  onChange={(e) => setSpeedFrom(e.target.value as SpeedUnit)}
-                >
-                  {SPEED_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <Label className="text-base text-muted-foreground md:text-lg">{t.fromLabel}</Label>
+                <Select value={speedFrom} onValueChange={(v) => setSpeedFrom(v as SpeedUnit)}>
+                  <SelectTrigger className="h-14 text-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SPEED_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <button
                 type="button"
                 onClick={swapSpeed}
-                className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted hover:bg-muted/80 transition-colors"
+                className="mb-0.5 flex h-14 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted hover:bg-muted/80 transition-colors"
                 aria-label={t.swapLabel}
               >
                 <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
               </button>
               <div className="flex-1 space-y-1.5">
-                <Label className="text-sm font-medium text-muted-foreground">{t.toLabel}</Label>
-                <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring h-10"
-                  value={speedTo}
-                  onChange={(e) => setSpeedTo(e.target.value as SpeedUnit)}
-                >
-                  {SPEED_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <Label className="text-base text-muted-foreground md:text-lg">{t.toLabel}</Label>
+                <Select value={speedTo} onValueChange={(v) => setSpeedTo(v as SpeedUnit)}>
+                  <SelectTrigger className="h-14 text-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SPEED_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -256,9 +267,9 @@ export function ConversorArmazenamento() {
           <div className="rounded-lg border border-border bg-background p-5 text-center space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.resultLabel}</p>
             {speedResult !== null ? (
-              <p className="text-4xl font-bold text-primary sm:text-6xl">
+              <p className="text-5xl font-bold leading-none text-primary sm:text-7xl">
                 {fmt(speedResult)}
-                <span className="ml-2 text-xl font-semibold sm:text-2xl">{speedTo}</span>
+                <span className="ml-2 text-2xl font-semibold sm:text-3xl">{speedTo}</span>
               </p>
             ) : (
               <p className="text-muted-foreground text-sm">{t.enterValue}</p>
@@ -266,16 +277,16 @@ export function ConversorArmazenamento() {
           </div>
 
           {/* Tempo de transferência */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
             <p className="text-sm font-medium">{t.transferTimeTitle}</p>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">{t.fileSizeLabel}</Label>
+              <Label className="text-base text-muted-foreground md:text-lg">{t.fileSizeLabel}</Label>
               <div className="flex items-center gap-2">
                 <NumericInput
                   value={fileSize}
                   onValueChange={setFileSize}
                   min={0}
-                  className="h-10 flex-1 text-base"
+                  className="h-14 flex-1 text-lg"
                 />
                 <span className="text-sm font-medium text-muted-foreground shrink-0">MB</span>
               </div>

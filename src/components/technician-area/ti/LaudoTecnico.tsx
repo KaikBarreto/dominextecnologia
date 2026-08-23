@@ -5,6 +5,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { NumericInput } from '@/components/ui/numeric-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ToolDisclaimer } from '../ToolDisclaimer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -284,51 +291,55 @@ export function LaudoTecnico() {
       <div className="rounded-lg border border-border bg-card p-4 space-y-4">
         {/* Tipo de aparelho */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.deviceTypeLabel}</Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-            value={deviceType}
-            onChange={(e) => setDeviceType(e.target.value as DeviceType)}
-          >
-            {deviceTypeOptions.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.deviceTypeLabel}</Label>
+          <Select value={deviceType} onValueChange={(v) => setDeviceType(v as DeviceType)}>
+            <SelectTrigger className="h-14 text-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {deviceTypeOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Marca e Modelo */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-muted-foreground">{t.brandLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.brandLabel}</Label>
             <Input
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               placeholder={t.brandPlaceholder}
+              className="h-14 text-lg"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-muted-foreground">{t.modelLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.modelLabel}</Label>
             <Input
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder={t.modelPlaceholder}
+              className="h-14 text-lg"
             />
           </div>
         </div>
 
         {/* IMEI / Número de série */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.imeiLabel}</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.imeiLabel}</Label>
           <Input
             value={imei}
             onChange={(e) => setImei(e.target.value)}
             placeholder={t.imeiPlaceholder}
+            className="h-14 text-lg"
           />
         </div>
 
         {/* Problema relatado */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.problemLabel}</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.problemLabel}</Label>
           <Textarea
             value={problem}
             onChange={(e) => setProblem(e.target.value)}
@@ -340,7 +351,7 @@ export function LaudoTecnico() {
 
         {/* Diagnóstico técnico */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.diagnosisLabel}</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.diagnosisLabel}</Label>
           <Textarea
             value={diagnosis}
             onChange={(e) => setDiagnosis(e.target.value)}
@@ -352,7 +363,7 @@ export function LaudoTecnico() {
 
         {/* Serviço realizado */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.serviceLabel}</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.serviceLabel}</Label>
           <Textarea
             value={service}
             onChange={(e) => setService(e.target.value)}
@@ -364,7 +375,7 @@ export function LaudoTecnico() {
 
         {/* Peças utilizadas */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.partsLabel}</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.partsLabel}</Label>
           <Textarea
             value={parts}
             onChange={(e) => setParts(e.target.value)}
@@ -376,7 +387,7 @@ export function LaudoTecnico() {
 
         {/* Parecer técnico */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.opinionLabel}</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.opinionLabel}</Label>
           <Textarea
             value={opinion}
             onChange={(e) => setOpinion(e.target.value)}
@@ -389,27 +400,28 @@ export function LaudoTecnico() {
         {/* Técnico responsável e Garantia */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-muted-foreground">{t.technicianLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.technicianLabel}</Label>
             <Input
               value={technician}
               onChange={(e) => setTechnician(e.target.value)}
               placeholder={t.technicianPlaceholder}
+              className="h-14 text-lg"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-muted-foreground">{t.warrantyLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.warrantyLabel}</Label>
             <NumericInput
               value={warrantyDays}
               onValueChange={setWarrantyDays}
-              className="h-10 text-base"
+              className="h-14 text-lg"
             />
           </div>
         </div>
 
         {/* Data (readonly) */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.dateLabel}</Label>
-          <Input value={date} readOnly className="bg-muted/40 cursor-default" />
+          <Label className="text-base text-muted-foreground md:text-lg">{t.dateLabel}</Label>
+          <Input value={date} readOnly className="h-14 text-lg bg-muted/40 cursor-default" />
         </div>
       </div>
 

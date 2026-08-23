@@ -2,6 +2,13 @@ import { useMemo, useState } from 'react';
 import { Zap } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ToolDisclaimer } from '../ToolDisclaimer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -92,31 +99,33 @@ export function CalculadoraFontePSU() {
       <div className="rounded-lg border border-border bg-card p-4 space-y-4">
         {/* CPU */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.cpuLabel}</Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-            value={cpuIdx}
-            onChange={(e) => setCpuIdx(Number(e.target.value))}
-          >
-            {CPU_OPTIONS.map((o, i) => (
-              <option key={i} value={i}>{o.label}</option>
-            ))}
-          </select>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.cpuLabel}</Label>
+          <Select value={String(cpuIdx)} onValueChange={(v) => setCpuIdx(Number(v))}>
+            <SelectTrigger className="h-14 text-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CPU_OPTIONS.map((o, i) => (
+                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-xs text-muted-foreground">{t.cpuWattNote.replace('{w}', String(CPU_OPTIONS[cpuIdx].w))}</p>
         </div>
 
         {/* GPU */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.gpuLabel}</Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-            value={gpuIdx}
-            onChange={(e) => setGpuIdx(Number(e.target.value))}
-          >
-            {GPU_OPTIONS.map((o, i) => (
-              <option key={i} value={i}>{o.label}</option>
-            ))}
-          </select>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.gpuLabel}</Label>
+          <Select value={String(gpuIdx)} onValueChange={(v) => setGpuIdx(Number(v))}>
+            <SelectTrigger className="h-14 text-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {GPU_OPTIONS.map((o, i) => (
+                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {GPU_OPTIONS[gpuIdx].w > 0 && (
             <p className="text-xs text-muted-foreground">{t.gpuWattNote.replace('{w}', String(GPU_OPTIONS[gpuIdx].w))}</p>
           )}
@@ -124,53 +133,54 @@ export function CalculadoraFontePSU() {
 
         {/* Placa-mãe */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-muted-foreground">{t.moboLabel}</Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-            value={moboIdx}
-            onChange={(e) => setMoboIdx(Number(e.target.value))}
-          >
-            {MOBO_OPTIONS.map((o, i) => (
-              <option key={i} value={i}>{o.label}</option>
-            ))}
-          </select>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.moboLabel}</Label>
+          <Select value={String(moboIdx)} onValueChange={(v) => setMoboIdx(Number(v))}>
+            <SelectTrigger className="h-14 text-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MOBO_OPTIONS.map((o, i) => (
+                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Contagens */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">{t.ramLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.ramLabel}</Label>
             <NumericInput
               value={ramSticks}
               onValueChange={setRamSticks}
-              className="h-11 text-base"
+              className="h-14 text-lg"
             />
             <p className="text-xs text-muted-foreground">{t.ramNote.replace('{w}', String(RAM_PER_STICK_W))}</p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">{t.hddLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.hddLabel}</Label>
             <NumericInput
               value={hdds}
               onValueChange={setHdds}
-              className="h-11 text-base"
+              className="h-14 text-lg"
             />
             <p className="text-xs text-muted-foreground">{t.hddNote.replace('{w}', String(HDD_W))}</p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">{t.ssdLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.ssdLabel}</Label>
             <NumericInput
               value={ssds}
               onValueChange={setSsds}
-              className="h-11 text-base"
+              className="h-14 text-lg"
             />
             <p className="text-xs text-muted-foreground">{t.ssdNote.replace('{w}', String(SSD_W))}</p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">{t.coolerLabel}</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.coolerLabel}</Label>
             <NumericInput
               value={coolers}
               onValueChange={setCoolers}
-              className="h-11 text-base"
+              className="h-14 text-lg"
             />
             <p className="text-xs text-muted-foreground">{t.coolerNote.replace('{w}', String(COOLER_W))}</p>
           </div>
@@ -178,11 +188,11 @@ export function CalculadoraFontePSU() {
       </div>
 
       {/* Resultado */}
-      <div className="rounded-lg border border-border bg-background p-5 space-y-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">
+      <div className="rounded-lg border border-border bg-background p-5 text-center space-y-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {t.resultLabel}
         </p>
-        <div className="text-center">
+        <div>
           <p className="text-5xl font-bold leading-none text-primary sm:text-7xl">
             {psuSize}
             <span className="ml-2 text-2xl font-semibold sm:text-3xl">W</span>
