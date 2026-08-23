@@ -2,8 +2,9 @@
 // ---------------------------------
 // PRIVILEGIADA (Bearer + módulo 'cobrancas' + can_manage_system). Cria uma ASSINATURA
 // recorrente na conta Asaas DO TENANT (chave BYO lida do Vault) e grava
-// tenant_subscriptions. MVP: só boleto/Pix (BOLETO | PIX | UNDEFINED). Cartão
-// recorrente e Pix Automático ficam pra depois.
+// tenant_subscriptions. Aceita boleto/Pix (BOLETO | PIX | UNDEFINED) e, DORMENTE
+// atrás do flag tenant_payment_accounts.card_recurring_enabled, CARTÃO recorrente
+// (CREDIT_CARD) — a Asaas tokeniza o cartão e cobra sozinha a cada ciclo.
 //
 // company_id vem do profile (payments-auth), nunca do payload.
 //
@@ -11,8 +12,10 @@
 //   1. lê a chave BYO do Vault (via tenant_payment_accounts.vault_secret_name);
 //   2. garante o asaas_customer_id do cliente final (dedupe por externalReference);
 //   3. POST /v3/subscriptions com externalReference = company_id (resolução multi-tenant),
-//      fine/interest do override → default da conta (juros clampado a 10%);
-//   4. grava tenant_subscriptions (status 'active', asaas_subscription_id, next_due_date...).
+//      fine/interest do override → default da conta (juros clampado a 10%). No cartão,
+//      manda creditCard + creditCardHolderInfo + remoteIp e recebe o token de volta;
+//   4. no cartão, grava o token no Vault e a referência (+ last4/brand) na linha;
+//   5. grava tenant_subscriptions (status 'active', asaas_subscription_id, next_due_date...).
 //
 // As cobranças de cada ciclo são criadas PELO ASAAS e chegam via webhook
 // (tenant-asaas-webhook), que materializa cada uma em tenant_charges + recebível.
@@ -24,13 +27,14 @@ import {
   authorizePaymentsManager,
   jsonResponse,
   vaultReadSecret,
+  vaultUpsertSecret,
 } from "../_shared/payments-auth.ts";
 import { asaasFor, AsaasApiError } from "../_shared/asaas-tenant-client.ts";
 import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
 
-/** billing_types de assinatura aceitos no MVP (só boleto/Pix). */
-type BillingType = "PIX" | "BOLETO" | "UNDEFINED";
-const ALLOWED_BILLING_TYPES: readonly BillingType[] = ["PIX", "BOLETO", "UNDEFINED"];
+/** billing_types de assinatura aceitos. Cartão fica dormente atrás do flag da conta. */
+type BillingType = "PIX" | "BOLETO" | "UNDEFINED" | "CREDIT_CARD";
+const ALLOWED_BILLING_TYPES: readonly BillingType[] = ["PIX", "BOLETO", "UNDEFINED", "CREDIT_CARD"];
 
 /** Ciclos aceitos pela Asaas (mesmo vocabulário do CHECK de tenant_subscriptions). */
 type Cycle = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "SEMIANNUALLY" | "YEARLY";
@@ -84,6 +88,28 @@ function validateDueDate(due: string): { ok: true } | { ok: false; error: string
   return { ok: true };
 }
 
+/**
+ * Dados do cartão. ATENÇÃO PCI (ver bloco CARTÃO no handler): number/ccv/expiry
+ * SÓ transitam em memória pra chamar o Asaas — NUNCA são persistidos nem logados.
+ */
+interface CreditCardInput {
+  holderName?: string;
+  number?: string;
+  expiryMonth?: string;
+  expiryYear?: string;
+  ccv?: string;
+}
+
+/** Dados do titular exigidos pela Asaas no antifraude do cartão. */
+interface CreditCardHolderInfoInput {
+  name?: string;
+  email?: string;
+  cpfCnpj?: string;
+  postalCode?: string;
+  addressNumber?: string;
+  phone?: string;
+}
+
 interface CreateSubscriptionInput {
   customer_id?: string;
   value?: number;
@@ -96,6 +122,51 @@ interface CreateSubscriptionInput {
   // Origem opcional (avulso por padrão). source_id livre (fonte heterogênea).
   source_type?: "avulso" | "contract" | "quote";
   source_id?: string;
+  // Só quando billing_type === 'CREDIT_CARD' (dados sensíveis, não persistidos).
+  credit_card?: CreditCardInput;
+  credit_card_holder_info?: CreditCardHolderInfoInput;
+  remote_ip?: string;
+}
+
+/** Nome determinístico do secret do token de cartão no Vault (por assinatura Asaas). */
+function cardTokenSecretName(companyId: string, asaasSubscriptionId: string): string {
+  return `tenant_asaas_card_token_${companyId}_${asaasSubscriptionId}`;
+}
+
+/**
+ * Valida os blocos de cartão (presença dos campos obrigatórios). NÃO loga valores.
+ * Retorna erro PT-BR claro em qualquer campo faltando.
+ */
+function validateCreditCardPayload(
+  card: CreditCardInput | undefined,
+  holder: CreditCardHolderInfoInput | undefined,
+  remoteIp: unknown,
+): { ok: true } | { ok: false; error: string } {
+  const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  if (!card || typeof card !== "object") {
+    return { ok: false, error: "Informe os dados do cartão para a assinatura no cartão." };
+  }
+  if (!s(card.holderName)) return { ok: false, error: "Informe o nome impresso no cartão." };
+  if (!s(card.number)) return { ok: false, error: "Informe o número do cartão." };
+  if (!s(card.expiryMonth) || !s(card.expiryYear)) {
+    return { ok: false, error: "Informe o mês e o ano de validade do cartão." };
+  }
+  if (!s(card.ccv)) return { ok: false, error: "Informe o código de segurança (CVV) do cartão." };
+
+  if (!holder || typeof holder !== "object") {
+    return { ok: false, error: "Informe os dados do titular do cartão." };
+  }
+  if (!s(holder.name)) return { ok: false, error: "Informe o nome do titular do cartão." };
+  if (!s(holder.email)) return { ok: false, error: "Informe o e-mail do titular do cartão." };
+  if (!s(holder.cpfCnpj)) return { ok: false, error: "Informe o CPF/CNPJ do titular do cartão." };
+  if (!s(holder.postalCode)) return { ok: false, error: "Informe o CEP do titular do cartão." };
+  if (!s(holder.addressNumber)) return { ok: false, error: "Informe o número do endereço do titular do cartão." };
+  if (!s(holder.phone)) return { ok: false, error: "Informe o telefone do titular do cartão." };
+
+  if (!s(remoteIp)) {
+    return { ok: false, error: "Não foi possível identificar o IP do pagador. Recarregue a página e tente novamente." };
+  }
+  return { ok: true };
 }
 
 /**
@@ -211,8 +282,22 @@ async function handleRequest(req: Request): Promise<Response> {
   const billingType: BillingType = input.billing_type ?? "UNDEFINED";
   if (!ALLOWED_BILLING_TYPES.includes(billingType)) {
     return jsonResponse(req, {
-      error: "Forma de pagamento inválida. No momento a assinatura aceita Pix ou boleto.",
+      error: "Forma de pagamento inválida. A assinatura aceita Pix, boleto ou cartão.",
     }, 400);
+  }
+
+  // No cartão, valida a presença dos blocos sensíveis ANTES de tocar o Asaas.
+  // (O gate do flag card_recurring_enabled roda mais abaixo, junto com a conta.)
+  const isCreditCard = billingType === "CREDIT_CARD";
+  if (isCreditCard) {
+    const cardCheck = validateCreditCardPayload(
+      input.credit_card,
+      input.credit_card_holder_info,
+      input.remote_ip,
+    );
+    if (!cardCheck.ok) {
+      return jsonResponse(req, { error: cardCheck.error }, 400);
+    }
   }
 
   const rawDueDate =
@@ -270,7 +355,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const { data: accountData } = await supabase
       .from("tenant_payment_accounts")
       .select(
-        "status, vault_secret_name, " +
+        "status, vault_secret_name, card_recurring_enabled, " +
           "default_fine_percent, default_interest_percent, " +
           "default_due_days, default_description",
       )
@@ -280,6 +365,13 @@ async function handleRequest(req: Request): Promise<Response> {
     if (!account || account.status !== "active" || !account.vault_secret_name) {
       return jsonResponse(req, {
         error: "Ative o recebimento de pagamentos em Configurações → Integrações antes de criar assinaturas.",
+      }, 400);
+    }
+
+    // GATE do cartão recorrente (feature dormente): só quando a conta está habilitada.
+    if (isCreditCard && account.card_recurring_enabled !== true) {
+      return jsonResponse(req, {
+        error: "O pagamento recorrente no cartão ainda não está habilitado para a sua conta. Fale com o suporte.",
       }, 400);
     }
     const apiKey = await vaultReadSecret(supabase, account.vault_secret_name);
@@ -311,6 +403,36 @@ async function handleRequest(req: Request): Promise<Response> {
     const rawInterest = interestOverride ?? toPositivePercent(account.default_interest_percent);
     const interestValue = rawInterest !== null ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT) : 0;
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // BLOCO CARTÃO — REGRA DE SEGURANÇA (PCI):
+    // O dado sensível do cartão (PAN/número, CVV/ccv e validade) SÓ transita em
+    // MEMÓRIA aqui, exclusivamente pra montar o corpo do POST /subscriptions do
+    // Asaas. NUNCA é persistido no banco e NUNCA é logado (não colocamos o objeto
+    // creditCard em console.* nem gravamos number/ccv/expiry em coluna nenhuma).
+    // Do retorno da Asaas guardamos APENAS: o token (no Vault) e last4/brand (só
+    // exibição). A Asaas passa a cobrar o cartão sozinha a cada ciclo pelo token.
+    // ─────────────────────────────────────────────────────────────────────────
+    const creditCardBody = isCreditCard
+      ? {
+          creditCard: {
+            holderName: input.credit_card!.holderName!.trim(),
+            number: input.credit_card!.number!.trim(),
+            expiryMonth: input.credit_card!.expiryMonth!.trim(),
+            expiryYear: input.credit_card!.expiryYear!.trim(),
+            ccv: input.credit_card!.ccv!.trim(),
+          },
+          creditCardHolderInfo: {
+            name: input.credit_card_holder_info!.name!.trim(),
+            email: input.credit_card_holder_info!.email!.trim(),
+            cpfCnpj: unmaskDoc(String(input.credit_card_holder_info!.cpfCnpj)),
+            postalCode: input.credit_card_holder_info!.postalCode!.trim(),
+            addressNumber: input.credit_card_holder_info!.addressNumber!.trim(),
+            phone: input.credit_card_holder_info!.phone!.trim(),
+          },
+          remoteIp: String(input.remote_ip).trim(),
+        }
+      : {};
+
     // 3) Cria a assinatura no Asaas. externalReference = company_id (resolução multi-tenant).
     const subscription = await asaas.post<any>("/subscriptions", {
       customer: asaasCustomerId,
@@ -322,10 +444,47 @@ async function handleRequest(req: Request): Promise<Response> {
       externalReference: companyId,
       ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
       ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
+      ...creditCardBody,
     });
     const asaasSubscriptionId: string | undefined = subscription?.id;
     if (!asaasSubscriptionId) {
       return jsonResponse(req, { error: "A Asaas não retornou a assinatura. Tente novamente." }, 502);
+    }
+
+    // No cartão, a Asaas tokeniza e devolve creditCard.{creditCardToken, creditCardNumber(=4 últimos), creditCardBrand}.
+    // Guardamos o TOKEN no Vault (nunca no banco) e só last4/brand na linha (exibição).
+    let cardTokenName: string | null = null;
+    let cardLast4: string | null = null;
+    let cardBrand: string | null = null;
+    if (isCreditCard) {
+      const returnedToken =
+        typeof subscription?.creditCard?.creditCardToken === "string"
+          ? subscription.creditCard.creditCardToken
+          : null;
+      const returnedLast4 =
+        typeof subscription?.creditCard?.creditCardNumber === "string"
+          ? subscription.creditCard.creditCardNumber.slice(-4)
+          : null;
+      const returnedBrand =
+        typeof subscription?.creditCard?.creditCardBrand === "string"
+          ? subscription.creditCard.creditCardBrand
+          : null;
+
+      if (returnedToken) {
+        const secretName = cardTokenSecretName(companyId, asaasSubscriptionId);
+        // Grava o token no Vault (RPC SECURITY DEFINER). Só o NOME do secret vai pro banco.
+        await vaultUpsertSecret(supabase, secretName, returnedToken);
+        cardTokenName = secretName;
+      } else {
+        // Assinatura criada no cartão, mas sem token no retorno: não conseguimos
+        // reusar o cartão. Sinalizamos por log SEM dado sensível (só o id da assinatura).
+        console.warn(
+          "[create-subscription] cartão sem creditCardToken no retorno da Asaas:",
+          JSON.stringify({ asaas_subscription_id: asaasSubscriptionId, company_id: companyId }),
+        );
+      }
+      cardLast4 = returnedLast4;
+      cardBrand = returnedBrand;
     }
 
     // 4) Grava tenant_subscriptions (idempotência por asaas_subscription_id UNIQUE).
@@ -346,6 +505,14 @@ async function handleRequest(req: Request): Promise<Response> {
       interest_percent: interestOverride,
       description,
       created_by: userId,
+      // Cartão: só referência do token (Vault) + last4/brand (exibição). Nunca PAN/CVV.
+      ...(isCreditCard
+        ? {
+            credit_card_token_name: cardTokenName,
+            credit_card_last4: cardLast4,
+            credit_card_brand: cardBrand,
+          }
+        : {}),
     };
     const { data: saved, error: insertErr } = await supabase
       .from("tenant_subscriptions")

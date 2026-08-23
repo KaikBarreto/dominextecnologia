@@ -42,6 +42,10 @@ export interface TenantPaymentAccount {
   default_finance_account_id: string | null;
   default_income_category: string | null;
   default_fee_category: string;
+  // ── Meios recorrentes avançados (migration cobrancas_cartao_recorrente_pix_auto) ──
+  // Feature dormente: default false; ligada por tenant pelo super_admin após Asaas habilitar.
+  card_recurring_enabled: boolean;
+  pix_auto_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -103,8 +107,8 @@ export function useTenantPaymentAccount() {
       const { data, error } = await supabase
         .from('tenant_payment_accounts')
         .select(
-          // colunas originais + 11 novas (migration tenant_subscriptions_e_juros_multa)
-          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, auto_post_fees, default_fine_percent, default_interest_percent, default_due_days, default_discount_percent, default_discount_days, default_description, allow_pix, allow_boleto, allow_card, default_max_installments, default_finance_account_id, default_income_category, default_fee_category, created_at, updated_at',
+          // colunas originais + preferências de cobrança + flags de meios recorrentes avançados
+          'id, company_id, provider, mode, status, asaas_account_id, wallet_id, auto_post_to_finance, auto_post_fees, default_fine_percent, default_interest_percent, default_due_days, default_discount_percent, default_discount_days, default_description, allow_pix, allow_boleto, allow_card, default_max_installments, default_finance_account_id, default_income_category, default_fee_category, card_recurring_enabled, pix_auto_enabled, created_at, updated_at',
         )
         .eq('company_id', companyId)
         .maybeSingle();
@@ -263,6 +267,11 @@ export function useTenantPaymentAccount() {
     /** Categoria de despesa para as taxas da Asaas (DEFAULT 'Tarifas e Taxas'). */
     defaultFeeCategory: account?.default_fee_category ?? 'Tarifas e Taxas',
     setChargePreferences: setChargePreferencesMutation,
+    // ── Flags de meios recorrentes avançados (feature dormente — DEFAULT false) ────
+    /** Cartão recorrente (assinatura tokenizada) habilitado para este tenant. */
+    cardRecurringEnabled: account?.card_recurring_enabled ?? false,
+    /** Pix Automático (débito recorrente com consentimento) habilitado para este tenant. */
+    pixAutoEnabled: account?.pix_auto_enabled ?? false,
     provision,
     deactivate,
   };

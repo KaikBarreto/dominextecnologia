@@ -8163,6 +8163,7 @@ export type Database = {
           asaas_webhook_id: string | null
           auto_post_fees: boolean
           auto_post_to_finance: boolean
+          card_recurring_enabled: boolean
           company_id: string
           created_at: string
           created_by: string | null
@@ -8178,6 +8179,7 @@ export type Database = {
           default_max_installments: number
           id: string
           mode: string
+          pix_auto_enabled: boolean
           provider: string
           status: string
           updated_at: string
@@ -8193,6 +8195,7 @@ export type Database = {
           asaas_webhook_id?: string | null
           auto_post_fees?: boolean
           auto_post_to_finance?: boolean
+          card_recurring_enabled?: boolean
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -8208,6 +8211,7 @@ export type Database = {
           default_max_installments?: number
           id?: string
           mode?: string
+          pix_auto_enabled?: boolean
           provider?: string
           status?: string
           updated_at?: string
@@ -8223,6 +8227,7 @@ export type Database = {
           asaas_webhook_id?: string | null
           auto_post_fees?: boolean
           auto_post_to_finance?: boolean
+          card_recurring_enabled?: boolean
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -8238,6 +8243,7 @@ export type Database = {
           default_max_installments?: number
           id?: string
           mode?: string
+          pix_auto_enabled?: boolean
           provider?: string
           status?: string
           updated_at?: string
@@ -8316,6 +8322,8 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          credit_card_brand: string | null
+          credit_card_last4: string | null
           credit_card_token_name: string | null
           customer_id: string | null
           cycle: string
@@ -8325,6 +8333,7 @@ export type Database = {
           interest_percent: number | null
           next_due_date: string | null
           pix_auto_authorization_id: string | null
+          pix_auto_status: string | null
           source_id: string | null
           source_type: string | null
           status: string
@@ -8337,6 +8346,8 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          credit_card_brand?: string | null
+          credit_card_last4?: string | null
           credit_card_token_name?: string | null
           customer_id?: string | null
           cycle: string
@@ -8346,6 +8357,7 @@ export type Database = {
           interest_percent?: number | null
           next_due_date?: string | null
           pix_auto_authorization_id?: string | null
+          pix_auto_status?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -8358,6 +8370,8 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          credit_card_brand?: string | null
+          credit_card_last4?: string | null
           credit_card_token_name?: string | null
           customer_id?: string | null
           cycle?: string
@@ -8367,6 +8381,7 @@ export type Database = {
           interest_percent?: number | null
           next_due_date?: string | null
           pix_auto_authorization_id?: string | null
+          pix_auto_status?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string

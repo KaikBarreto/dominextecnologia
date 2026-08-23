@@ -21,7 +21,7 @@ export type SubscriptionCycle =
   | 'SEMIANNUALLY'
   | 'YEARLY';
 
-export type SubscriptionBillingType = 'PIX' | 'BOLETO' | 'UNDEFINED';
+export type SubscriptionBillingType = 'PIX' | 'BOLETO' | 'UNDEFINED' | 'CREDIT_CARD';
 
 export type SubscriptionStatus =
   | 'pending'
@@ -52,6 +52,33 @@ export interface TenantSubscription {
   customers: { id: string; name: string } | null;
 }
 
+/** Dados do cartão de crédito para assinatura recorrente (NUNCA logar). */
+export interface CreditCardInput {
+  holderName: string;
+  number: string;
+  expiryMonth: string;
+  expiryYear: string;
+  ccv: string;
+}
+
+/** Dados do titular do cartão exigidos pela Asaas para tokenização. */
+export interface CreditCardHolderInfo {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  postalCode: string;
+  addressNumber: string;
+  phone: string;
+}
+
+/** Retorno do edge tenant-asaas-pix-auto-authorize (QR de consentimento). */
+export interface PixAutoAuthorization {
+  id: string;
+  qr_code: string;    // base64 PNG do QR (pode ou não ter prefixo data:image)
+  copy_paste: string; // Pix copia e cola
+  status: string;
+}
+
 export interface CreateSubscriptionInput {
   customer_id: string;
   value: number;
@@ -62,6 +89,21 @@ export interface CreateSubscriptionInput {
   fine_percent?: number;
   interest_percent?: number;
   /** Origem da assinatura: 'avulso' (padrão) | 'contract' | 'quote'. */
+  source_type?: 'avulso' | 'contract' | 'quote';
+  source_id?: string;
+  // ── Cartão recorrente (feature dormente — só enviado quando billing_type=CREDIT_CARD) ──
+  credit_card?: CreditCardInput;
+  credit_card_holder_info?: CreditCardHolderInfo;
+  remote_ip?: string;
+}
+
+/** Input para autorizar Pix Automático (gera QR de consentimento). */
+export interface AuthorizePixAutoInput {
+  customer_id: string;
+  value: number;
+  cycle: SubscriptionCycle;
+  next_due_date: string;
+  description?: string;
   source_type?: 'avulso' | 'contract' | 'quote';
   source_id?: string;
 }
@@ -158,6 +200,16 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
       if (input.source_type) body.source_type = input.source_type;
       if (input.source_id) body.source_id = input.source_id;
+      // ── Cartão recorrente (feature dormente) ─────────────────────────────────
+      // INVARIANTE: dados de cartão nunca são logados. Enviados direto ao edge e
+      // nunca persistidos no banco (o edge guarda apenas o token no Vault).
+      if (input.billing_type === 'CREDIT_CARD' && input.credit_card) {
+        body.credit_card = input.credit_card;
+      }
+      if (input.credit_card_holder_info) {
+        body.credit_card_holder_info = input.credit_card_holder_info;
+      }
+      if (input.remote_ip !== undefined) body.remote_ip = input.remote_ip;
 
       const { data, error } = await supabase.functions.invoke(
         'tenant-asaas-create-subscription',
@@ -180,6 +232,49 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       toast({
         variant: 'destructive',
         title: 'Erro ao criar assinatura',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+      });
+    },
+  });
+
+  // ── authorizePixAuto ────────────────────────────────────────────────────────
+  // Chama o edge tenant-asaas-pix-auto-authorize e retorna o objeto
+  // { authorization: { id, qr_code, copy_paste, status } }. O QR gerado é
+  // exibido ao usuário para consentimento — a assinatura só começa a debitar
+  // após o cliente autorizar pelo app do banco. Feature dormente: o edge devolve
+  // 400 PT-BR se pix_auto_enabled=false na conta do tenant.
+  const authorizePixAuto = useMutation({
+    mutationFn: async (input: AuthorizePixAutoInput): Promise<PixAutoAuthorization> => {
+      const body: Record<string, unknown> = {
+        customer_id: input.customer_id,
+        value: input.value,
+        cycle: input.cycle,
+        next_due_date: input.next_due_date,
+      };
+      if (input.description?.trim()) body.description = input.description.trim();
+      if (input.source_type) body.source_type = input.source_type;
+      if (input.source_id) body.source_id = input.source_id;
+
+      const { data, error } = await supabase.functions.invoke(
+        'tenant-asaas-pix-auto-authorize',
+        { body },
+      );
+      if (error) {
+        throw new Error(
+          await extractEdgeError(error, data, 'Não foi possível iniciar o Pix Automático.'),
+        );
+      }
+      if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
+        throw new Error((data as { error: string }).error);
+      }
+      const authorization = (data as { authorization?: PixAutoAuthorization })?.authorization;
+      if (!authorization) throw new Error('Resposta inesperada do servidor. Tente novamente.');
+      return authorization;
+    },
+    onError: (err) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao iniciar Pix Automático',
         description: err instanceof Error ? err.message : 'Tente novamente.',
       });
     },
@@ -232,5 +327,6 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
     companyId,
     createSubscription,
     manageSubscription,
+    authorizePixAuto,
   };
 }
