@@ -29,7 +29,12 @@ import {
   vaultReadSecret,
   vaultUpsertSecret,
 } from "../_shared/payments-auth.ts";
-import { asaasFor, AsaasApiError } from "../_shared/asaas-tenant-client.ts";
+import {
+  asaasFor,
+  AsaasApiError,
+  isMethodNotEnabledError,
+  methodNotEnabledBody,
+} from "../_shared/asaas-tenant-client.ts";
 import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
 
 /** billing_types de assinatura aceitos. Cartão fica dormente atrás do flag da conta. */
@@ -382,6 +387,29 @@ async function handleRequest(req: Request): Promise<Response> {
     }
     const asaas = asaasFor(apiKey);
 
+    // GATE REAL (conta Asaas): cartão recorrente só funciona se a conta do tenant
+    // tiver o recurso liberado no Asaas. Tentamos um PRE-CHECK proativo e barato
+    // via GET /myAccount/status (documentado) pra pegar o caso claro de "conta ainda
+    // não pode receber" ANTES de mandar o cartão — evita lixo no Asaas. Só bloqueia
+    // aqui quando a negativa é INEQUÍVOCA; o gate confiável de fato é a classificação
+    // da negativa do POST (abaixo), porque o /myAccount/status NÃO expõe um booleano
+    // estável de "cartão recorrente habilitado".
+    if (isCreditCard) {
+      try {
+        const acctStatus = await asaas.get<any>("/myAccount/status");
+        const canReceive =
+          acctStatus?.canReceivePayments ??
+          acctStatus?.general ??
+          null;
+        if (canReceive === false) {
+          return jsonResponse(req, methodNotEnabledBody("credit_card"), 409);
+        }
+      } catch {
+        // Pre-check não-fatal (endpoint ausente/variação de shape): seguimos e
+        // deixamos a classificação da negativa do POST decidir.
+      }
+    }
+
     // 2) Cliente final no Asaas.
     const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
 
@@ -434,18 +462,29 @@ async function handleRequest(req: Request): Promise<Response> {
       : {};
 
     // 3) Cria a assinatura no Asaas. externalReference = company_id (resolução multi-tenant).
-    const subscription = await asaas.post<any>("/subscriptions", {
-      customer: asaasCustomerId,
-      billingType,
-      value: subValue,
-      nextDueDate,
-      cycle,
-      description: description ?? undefined,
-      externalReference: companyId,
-      ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
-      ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
-      ...creditCardBody,
-    });
+    // No cartão, a negativa "recurso não habilitado na conta" é capturada e convertida
+    // numa resposta ESTRUTURADA (409 + code/method) — SEM persistir nada quebrado.
+    let subscription: any;
+    try {
+      subscription = await asaas.post<any>("/subscriptions", {
+        customer: asaasCustomerId,
+        billingType,
+        value: subValue,
+        nextDueDate,
+        cycle,
+        description: description ?? undefined,
+        externalReference: companyId,
+        ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
+        ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
+        ...creditCardBody,
+      });
+    } catch (postErr) {
+      if (isCreditCard && isMethodNotEnabledError(postErr, "credit_card")) {
+        // Nada foi persistido (a assinatura nem chegou a ser criada no Asaas).
+        return jsonResponse(req, methodNotEnabledBody("credit_card"), 409);
+      }
+      throw postErr; // erro normal (valor inválido, cartão recusado, etc.) → catch de topo.
+    }
     const asaasSubscriptionId: string | undefined = subscription?.id;
     if (!asaasSubscriptionId) {
       return jsonResponse(req, { error: "A Asaas não retornou a assinatura. Tente novamente." }, 502);

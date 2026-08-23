@@ -14,10 +14,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { EmptyState } from '@/components/mobile/EmptyState';
-import { ChevronDown, ChevronUp, Copy, Loader2, Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, ExternalLink, Info, Loader2, Users } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
   useTenantSubscriptions,
+  MethodNotEnabledError,
   type SubscriptionCycle,
   type SubscriptionBillingType,
   type PixAutoAuthorization,
@@ -132,6 +133,10 @@ export function SubscriptionDialog({
   const [pixAuth, setPixAuth] = useState<PixAutoAuthorization | null>(null);
   const [copiedPixAuto, setCopiedPixAuto] = useState(false);
 
+  // ── Estado do painel "método não habilitado" ──────────────────────────────
+  // Preenchido quando o edge devolve code=method_not_enabled (HTTP 409).
+  const [methodNotEnabled, setMethodNotEnabled] = useState<'credit_card' | 'pix_auto' | null>(null);
+
   // Opções de forma de pagamento disponíveis
   const billingOptions = useMemo<{ value: SubscriptionBillingType; label: string }[]>(() => {
     const opts: { value: SubscriptionBillingType; label: string }[] = [];
@@ -209,6 +214,8 @@ export function SubscriptionDialog({
     // reset pix auto
     setPixAuth(null);
     setCopiedPixAuto(false);
+    // reset painel de método não habilitado
+    setMethodNotEnabled(null);
   };
 
   const handleClose = (next: boolean) => {
@@ -237,17 +244,24 @@ export function SubscriptionDialog({
 
     // ── Fluxo: Pix Automático ─────────────────────────────────────────────
     if (isPixAuto) {
-      const auth = await authorizePixAuto.mutateAsync({
-        customer_id: customerId,
-        value: amount,
-        cycle,
-        next_due_date: firstDueDate,
-        description: description.trim() || undefined,
-        source_type: source?.type,
-        source_id: source?.id,
-      });
-      setPixAuth(auth);
-      // Não fecha o dialog — exibe o QR para o usuário.
+      try {
+        const auth = await authorizePixAuto.mutateAsync({
+          customer_id: customerId,
+          value: amount,
+          cycle,
+          next_due_date: firstDueDate,
+          description: description.trim() || undefined,
+          source_type: source?.type,
+          source_id: source?.id,
+        });
+        setPixAuth(auth);
+        // Não fecha o dialog — exibe o QR para o usuário.
+      } catch (err) {
+        if (err instanceof MethodNotEnabledError) {
+          setMethodNotEnabled(err.method);
+        }
+        // Outros erros: toast já disparado pelo hook.
+      }
       return;
     }
 
@@ -258,38 +272,44 @@ export function SubscriptionDialog({
       const expiryYear = `20${expiryParts.slice(2, 4)}`;
       const remoteIp = await fetchClientIp();
 
-      await createSubscription.mutateAsync({
-        customer_id: customerId,
-        value: amount,
-        cycle,
-        billing_type: 'CREDIT_CARD',
-        next_due_date: firstDueDate || undefined,
-        description: description.trim() || undefined,
-        fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
-        interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
-        source_type: source?.type,
-        source_id: source?.id,
-        // INVARIANTE: dados do cartão nunca logados — enviados diretamente ao edge
-        credit_card: {
-          holderName: cardHolderName.trim(),
-          number: cardNumber.replace(/\s/g, ''),
-          expiryMonth,
-          expiryYear,
-          ccv: cardCvv.trim(),
-        },
-        credit_card_holder_info: {
-          name: holderFullName.trim(),
-          email: holderEmail.trim(),
-          cpfCnpj: holderCpfCnpj.replace(/\D/g, ''),
-          postalCode: holderPostalCode.replace(/\D/g, ''),
-          addressNumber: holderAddressNumber.trim(),
-          phone: holderPhone.replace(/\D/g, ''),
-        },
-        remote_ip: remoteIp,
-      });
-
-      // Toast disparado pelo hook — só fecha o dialog aqui.
-      handleClose(false);
+      try {
+        await createSubscription.mutateAsync({
+          customer_id: customerId,
+          value: amount,
+          cycle,
+          billing_type: 'CREDIT_CARD',
+          next_due_date: firstDueDate || undefined,
+          description: description.trim() || undefined,
+          fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
+          interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
+          source_type: source?.type,
+          source_id: source?.id,
+          // INVARIANTE: dados do cartão nunca logados — enviados diretamente ao edge
+          credit_card: {
+            holderName: cardHolderName.trim(),
+            number: cardNumber.replace(/\s/g, ''),
+            expiryMonth,
+            expiryYear,
+            ccv: cardCvv.trim(),
+          },
+          credit_card_holder_info: {
+            name: holderFullName.trim(),
+            email: holderEmail.trim(),
+            cpfCnpj: holderCpfCnpj.replace(/\D/g, ''),
+            postalCode: holderPostalCode.replace(/\D/g, ''),
+            addressNumber: holderAddressNumber.trim(),
+            phone: holderPhone.replace(/\D/g, ''),
+          },
+          remote_ip: remoteIp,
+        });
+        // Toast disparado pelo hook — só fecha o dialog aqui.
+        handleClose(false);
+      } catch (err) {
+        if (err instanceof MethodNotEnabledError) {
+          setMethodNotEnabled(err.method);
+        }
+        // Outros erros: toast já disparado pelo hook.
+      }
       return;
     }
 
@@ -357,8 +377,66 @@ export function SubscriptionDialog({
           </div>
         ) : (
           <>
-            {/* ── Estado: QR de consentimento do Pix Auto gerado ─────────── */}
-            {pixAuth ? (
+            {/* ── Estado: método não habilitado na conta Asaas (409) ──────── */}
+            {methodNotEnabled ? (
+              (() => {
+                const tMne = t.methodNotEnabled;
+                const isCard = methodNotEnabled === 'credit_card';
+                const steps: string[] = isCard ? tMne.steps.card : tMne.steps.pixAuto;
+                return (
+                  <div className="space-y-4">
+                    {/* Título */}
+                    <p className="text-sm font-semibold text-foreground">
+                      {isCard ? tMne.titleCard : tMne.titlePixAuto}
+                    </p>
+
+                    {/* Explicação */}
+                    <p className="text-sm text-muted-foreground">{tMne.explanation}</p>
+
+                    {/* Passo a passo — mesmo padrão do guia da chave Asaas em SettingsAsaasContent */}
+                    <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+                      <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 shrink-0 text-primary" />
+                        {tMne.guideTitle}
+                      </p>
+                      <ol className="space-y-2.5">
+                        {steps.map((step, i) => (
+                          <li key={i} className="flex items-start gap-2.5">
+                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0 mt-0.5">
+                              {i + 1}
+                            </span>
+                            <span className="text-xs text-muted-foreground leading-relaxed">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setMethodNotEnabled(null)}
+                      >
+                        {tMne.understood}
+                      </Button>
+                      <Button
+                        asChild
+                      >
+                        <a
+                          href="https://www.asaas.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          {tMne.openAsaas}
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : pixAuth ? (
               <div className="space-y-4">
                 <p className="text-sm font-medium text-foreground">{t.pixAuto.sectionTitle}</p>
                 <p className="text-xs text-muted-foreground">{t.pixAuto.authorized}</p>

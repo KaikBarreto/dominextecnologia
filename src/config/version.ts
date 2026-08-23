@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.10";
+export const APP_VERSION = "1.21.11";
 
-export const VERSION_NOTES = "Cobranças mais robustas: estorne uma cobrança paga direto pela tela, e o sistema confirma sozinho os pagamentos mesmo se houver falha de comunicação. O portal do cliente também voltou a mostrar os contratos, no idioma certo.";
+export const VERSION_NOTES = "Agora você pode cobrar seus clientes de forma recorrente também no cartão de crédito e por Pix Automático. Se a sua conta Asaas ainda não tiver esses recursos liberados, o próprio sistema mostra o passo a passo de como ativar.";

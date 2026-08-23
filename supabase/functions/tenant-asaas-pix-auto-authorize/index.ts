@@ -37,7 +37,12 @@ import {
   jsonResponse,
   vaultReadSecret,
 } from "../_shared/payments-auth.ts";
-import { asaasFor, AsaasApiError } from "../_shared/asaas-tenant-client.ts";
+import {
+  asaasFor,
+  AsaasApiError,
+  isMethodNotEnabledError,
+  methodNotEnabledBody,
+} from "../_shared/asaas-tenant-client.ts";
 import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
 
 /**
@@ -316,6 +321,26 @@ async function handleRequest(req: Request): Promise<Response> {
     }
     const asaas = asaasFor(apiKey);
 
+    // GATE REAL (conta Asaas): Pix Automático só funciona se a conta do tenant tiver
+    // o recurso liberado no Asaas. PRE-CHECK proativo e barato via GET /myAccount/status
+    // (documentado) pra pegar o caso claro de "conta ainda não pode receber" ANTES de
+    // criar a autorização — evita lixo no Asaas. O /myAccount/status NÃO expõe um
+    // booleano estável de "Pix Automático habilitado", então o gate confiável de fato
+    // é a classificação da negativa do POST (abaixo).
+    try {
+      const acctStatus = await asaas.get<any>("/myAccount/status");
+      const canReceive =
+        acctStatus?.canReceivePayments ??
+        acctStatus?.general ??
+        null;
+      if (canReceive === false) {
+        return jsonResponse(req, methodNotEnabledBody("pix_auto"), 409);
+      }
+    } catch {
+      // Pre-check não-fatal (endpoint ausente/variação de shape): seguimos e deixamos
+      // a classificação da negativa do POST decidir.
+    }
+
     // 2) Cliente final no Asaas.
     const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
 
@@ -341,19 +366,30 @@ async function handleRequest(req: Request): Promise<Response> {
     // O SaaS (create-asaas-payment) usa `customerId` + `immediateQrCode`; a
     // resposta traz `id` (aut_*), `encodedImage` (QR base64), `payload`
     // (copia-e-cola) e `status`. Confirmar campos opcionais antes de habilitar.
-    const authorization = await asaas.post<any>("/pix/automatic/authorizations", {
-      frequency,
-      contractId,
-      startDate,
-      customerId: asaasCustomerId,
-      value: subValue,
-      description: (description ?? "Cobrança recorrente").substring(0, 35),
-      externalReference: companyId,
-      immediateQrCode: {
-        expirationSeconds: 86400,
-        originalValue: subValue,
-      },
-    });
+    // A negativa "Pix Automático não habilitado na conta" é capturada e convertida
+    // numa resposta ESTRUTURADA (409 + code/method) — SEM persistir nada quebrado.
+    let authorization: any;
+    try {
+      authorization = await asaas.post<any>("/pix/automatic/authorizations", {
+        frequency,
+        contractId,
+        startDate,
+        customerId: asaasCustomerId,
+        value: subValue,
+        description: (description ?? "Cobrança recorrente").substring(0, 35),
+        externalReference: companyId,
+        immediateQrCode: {
+          expirationSeconds: 86400,
+          originalValue: subValue,
+        },
+      });
+    } catch (postErr) {
+      if (isMethodNotEnabledError(postErr, "pix_auto")) {
+        // Nada foi persistido (a autorização nem chegou a ser criada no Asaas).
+        return jsonResponse(req, methodNotEnabledBody("pix_auto"), 409);
+      }
+      throw postErr; // erro normal → catch de topo.
+    }
 
     const authorizationId: string | undefined = authorization?.id;
     if (!authorizationId) {

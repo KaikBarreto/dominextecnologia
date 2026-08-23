@@ -117,21 +117,51 @@ export interface ManageSubscriptionInput {
   description?: string;
 }
 
-async function extractEdgeError(error: unknown, data: unknown, fallback: string): Promise<string> {
-  if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
-    return (data as { error: string }).error;
+// ─────────────────────────────────────────────────────────────────────────────
+// MethodNotEnabledError — lançado quando o edge devolve HTTP 409 com
+// { code: "method_not_enabled", method: "credit_card" | "pix_auto" }.
+// O SubscriptionDialog inspeciona instanceof + .code para exibir o painel
+// de passo a passo em vez do toast de erro genérico.
+// ─────────────────────────────────────────────────────────────────────────────
+export class MethodNotEnabledError extends Error {
+  readonly code = 'method_not_enabled' as const;
+  readonly method: 'credit_card' | 'pix_auto';
+  constructor(message: string, method: 'credit_card' | 'pix_auto') {
+    super(message);
+    this.name = 'MethodNotEnabledError';
+    this.method = method;
   }
+}
+
+interface EdgeErrorBody {
+  error?: string;
+  code?: string;
+  method?: string;
+}
+
+async function extractEdgeError(
+  error: unknown,
+  data: unknown,
+  fallback: string,
+): Promise<{ message: string; body?: EdgeErrorBody }> {
+  // 1. Tenta ler do corpo da resposta (error.context = Response em não-2xx)
   const ctx = (error as { context?: Response } | null)?.context;
   if (ctx && typeof ctx === 'object' && typeof (ctx as Response).json === 'function') {
     try {
-      const body = await (ctx as Response).clone().json();
-      if (body?.error) return String(body.error);
+      const body = await (ctx as Response).clone().json() as EdgeErrorBody;
+      return { message: body?.error ? String(body.error) : fallback, body };
     } catch {
       /* corpo não-JSON — ignora */
     }
   }
-  if (error instanceof Error && error.message) return error.message;
-  return fallback;
+  // 2. Tenta ler de data (respostas 2xx com campo error)
+  if (data && typeof data === 'object' && 'error' in data && (data as EdgeErrorBody).error) {
+    const body = data as EdgeErrorBody;
+    return { message: String(body.error), body };
+  }
+  // 3. Erro JS comum
+  if (error instanceof Error && error.message) return { message: error.message };
+  return { message: fallback };
 }
 
 export interface UseTenantSubscriptionsOptions {
@@ -215,13 +245,13 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
         'tenant-asaas-create-subscription',
         { body },
       );
-      if (error) {
-        throw new Error(
-          await extractEdgeError(error, data, 'Não foi possível criar a assinatura.'),
-        );
-      }
-      if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
-        throw new Error((data as { error: string }).error);
+      if (error || (data && typeof data === 'object' && 'error' in data && (data as EdgeErrorBody).error)) {
+        const { message, body } = await extractEdgeError(error, data, 'Não foi possível criar a assinatura.');
+        if (body?.code === 'method_not_enabled') {
+          const method = body.method === 'pix_auto' ? 'pix_auto' : 'credit_card';
+          throw new MethodNotEnabledError(message, method);
+        }
+        throw new Error(message);
       }
     },
     onSuccess: () => {
@@ -229,6 +259,8 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       toast({ title: 'Assinatura criada', description: 'A assinatura recorrente foi configurada.' });
     },
     onError: (err) => {
+      // MethodNotEnabledError é tratado no SubscriptionDialog — não exibir toast aqui.
+      if (err instanceof MethodNotEnabledError) return;
       toast({
         variant: 'destructive',
         title: 'Erro ao criar assinatura',
@@ -259,19 +291,20 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
         'tenant-asaas-pix-auto-authorize',
         { body },
       );
-      if (error) {
-        throw new Error(
-          await extractEdgeError(error, data, 'Não foi possível iniciar o Pix Automático.'),
-        );
-      }
-      if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
-        throw new Error((data as { error: string }).error);
+      if (error || (data && typeof data === 'object' && 'error' in data && (data as EdgeErrorBody).error)) {
+        const { message, body } = await extractEdgeError(error, data, 'Não foi possível iniciar o Pix Automático.');
+        if (body?.code === 'method_not_enabled') {
+          throw new MethodNotEnabledError(message, 'pix_auto');
+        }
+        throw new Error(message);
       }
       const authorization = (data as { authorization?: PixAutoAuthorization })?.authorization;
       if (!authorization) throw new Error('Resposta inesperada do servidor. Tente novamente.');
       return authorization;
     },
     onError: (err) => {
+      // MethodNotEnabledError é tratado no SubscriptionDialog — não exibir toast aqui.
+      if (err instanceof MethodNotEnabledError) return;
       toast({
         variant: 'destructive',
         title: 'Erro ao iniciar Pix Automático',
@@ -295,13 +328,9 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
         'tenant-asaas-manage-subscription',
         { body },
       );
-      if (error) {
-        throw new Error(
-          await extractEdgeError(error, data, 'Não foi possível atualizar a assinatura.'),
-        );
-      }
-      if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
-        throw new Error((data as { error: string }).error);
+      if (error || (data && typeof data === 'object' && 'error' in data && (data as EdgeErrorBody).error)) {
+        const { message } = await extractEdgeError(error, data, 'Não foi possível atualizar a assinatura.');
+        throw new Error(message);
       }
     },
     onSuccess: (_, vars) => {

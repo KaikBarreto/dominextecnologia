@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.11',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura no cartão e Pix Automático',
+        description: 'As assinaturas agora aceitam também cartão de crédito recorrente (a cobrança sai sozinha a cada ciclo) e Pix Automático. Esses meios aparecem ao criar uma assinatura. Se a sua conta na operadora de pagamento ainda não tiver esses recursos liberados, o próprio sistema te mostra um passo a passo de como ativar, em vez de dar um erro. Os dados do cartão são processados com segurança pela operadora, o sistema nunca guarda o número do cartão.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.10',
     date: '23 de agosto de 2026',
     type: 'patch',

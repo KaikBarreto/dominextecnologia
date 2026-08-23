@@ -248,6 +248,31 @@ export const charges = {
         title: 'Nenhum cliente cadastrado',
         description: 'Cadastre um cliente antes de criar uma assinatura.',
       },
+      // ── Painel "método não habilitado" (code=method_not_enabled) ─────────────
+      methodNotEnabled: {
+        titleCard: 'Ative o cartão recorrente na sua conta Asaas',
+        titlePixAuto: 'Ative o Pix Automático na sua conta Asaas',
+        explanation: 'Este recurso precisa ser habilitado diretamente na sua conta Asaas. Enquanto não estiver liberado, não é possível gerar cobranças com este método.',
+        guideTitle: 'Como habilitar',
+        steps: {
+          card: [
+            'Acesse o painel da sua conta em asaas.com.',
+            'Vá em Configurações da conta, depois em Meios de pagamento ou Cobrança recorrente.',
+            'Solicite a liberação da cobrança recorrente no cartão de crédito. Pode exigir análise de crédito ou documentação pelo Asaas.',
+            'Se não encontrar a opção, abra um chamado no suporte do Asaas pedindo a habilitação do recurso.',
+            'Assim que o Asaas liberar, volte aqui e gere a assinatura normalmente.',
+          ],
+          pixAuto: [
+            'Acesse o painel da sua conta em asaas.com.',
+            'Vá em Configurações da conta, depois em Meios de pagamento ou Pix Automático.',
+            'Solicite a habilitação do Pix Automático. Pode exigir análise ou aprovação pelo Asaas.',
+            'Se não encontrar a opção, abra um chamado no suporte do Asaas pedindo a habilitação do recurso.',
+            'Assim que o Asaas liberar, volte aqui e gere a assinatura normalmente.',
+          ],
+        },
+        openAsaas: 'Abrir o Asaas',
+        understood: 'Entendi',
+      },
     },
   },
 
@@ -484,6 +509,31 @@ export const charges = {
       noCustomers: {
         title: 'No customers registered',
         description: 'Please register a customer before creating a subscription.',
+      },
+      // ── Method not enabled panel ──────────────────────────────────────────────
+      methodNotEnabled: {
+        titleCard: 'Enable recurring card payments in your Asaas account',
+        titlePixAuto: 'Enable Automatic Pix in your Asaas account',
+        explanation: 'This feature must be enabled directly in your Asaas account. Until it is activated, you cannot generate charges with this payment method.',
+        guideTitle: 'How to enable',
+        steps: {
+          card: [
+            'Log in to your account at asaas.com.',
+            'Go to Account Settings, then Payment Methods or Recurring Billing.',
+            'Request activation of recurring credit card billing. Asaas may require a credit analysis or additional documentation.',
+            'If you cannot find the option, open a support ticket with Asaas requesting activation of this feature.',
+            'Once Asaas enables it, come back here and create the subscription normally.',
+          ],
+          pixAuto: [
+            'Log in to your account at asaas.com.',
+            'Go to Account Settings, then Payment Methods or Automatic Pix.',
+            'Request activation of Automatic Pix. Asaas may require analysis or approval.',
+            'If you cannot find the option, open a support ticket with Asaas requesting activation of this feature.',
+            'Once Asaas enables it, come back here and create the subscription normally.',
+          ],
+        },
+        openAsaas: 'Open Asaas',
+        understood: 'Got it',
       },
     },
   },
@@ -722,6 +772,31 @@ export const charges = {
         title: 'Sin clientes registrados',
         description: 'Registra un cliente antes de crear una suscripción.',
       },
+      // ── Panel método no habilitado ───────────────────────────────────────────
+      methodNotEnabled: {
+        titleCard: 'Activa el cobro recurrente con tarjeta en tu cuenta Asaas',
+        titlePixAuto: 'Activa el Pix Automático en tu cuenta Asaas',
+        explanation: 'Este recurso debe habilitarse directamente en tu cuenta Asaas. Mientras no esté activado, no es posible generar cobros con este método.',
+        guideTitle: 'Cómo habilitarlo',
+        steps: {
+          card: [
+            'Accede al panel de tu cuenta en asaas.com.',
+            'Ve a Configuración de la cuenta, luego a Medios de pago o Cobro recurrente.',
+            'Solicita la habilitación del cobro recurrente con tarjeta de crédito. Asaas puede requerir análisis crediticio o documentación adicional.',
+            'Si no encuentras la opción, abre un ticket de soporte en Asaas solicitando la activación del recurso.',
+            'Una vez que Asaas lo habilite, vuelve aquí y genera la suscripción normalmente.',
+          ],
+          pixAuto: [
+            'Accede al panel de tu cuenta en asaas.com.',
+            'Ve a Configuración de la cuenta, luego a Medios de pago o Pix Automático.',
+            'Solicita la habilitación del Pix Automático. Asaas puede requerir análisis o aprobación.',
+            'Si no encuentras la opción, abre un ticket de soporte en Asaas solicitando la activación del recurso.',
+            'Una vez que Asaas lo habilite, vuelve aquí y genera la suscripción normalmente.',
+          ],
+        },
+        openAsaas: 'Abrir Asaas',
+        understood: 'Entendido',
+      },
     },
   },
 
@@ -959,6 +1034,31 @@ export const charges = {
       noCustomers: {
         title: 'Aucun client enregistré',
         description: `Enregistrez un client avant de créer un abonnement.`,
+      },
+      // ── Panneau méthode non activée ──────────────────────────────────────────
+      methodNotEnabled: {
+        titleCard: `Activez les paiements récurrents par carte dans votre compte Asaas`,
+        titlePixAuto: `Activez le Pix Automatique dans votre compte Asaas`,
+        explanation: `Cette fonctionnalité doit être activée directement dans votre compte Asaas. Tant qu'elle n'est pas disponible, il n'est pas possible de générer des prélèvements avec ce mode de paiement.`,
+        guideTitle: `Comment l'activer`,
+        steps: {
+          card: [
+            `Connectez-vous à votre compte sur asaas.com.`,
+            `Allez dans Paramètres du compte, puis Moyens de paiement ou Prélèvement récurrent.`,
+            `Demandez l'activation des prélèvements récurrents par carte de crédit. Asaas peut exiger une analyse ou des documents supplémentaires.`,
+            `Si vous ne trouvez pas l'option, ouvrez un ticket au support Asaas pour demander l'activation.`,
+            `Une fois qu'Asaas l'aura activé, revenez ici et créez l'abonnement normalement.`,
+          ],
+          pixAuto: [
+            `Connectez-vous à votre compte sur asaas.com.`,
+            `Allez dans Paramètres du compte, puis Moyens de paiement ou Pix Automatique.`,
+            `Demandez l'activation du Pix Automatique. Asaas peut exiger une analyse ou une approbation.`,
+            `Si vous ne trouvez pas l'option, ouvrez un ticket au support Asaas pour demander l'activation.`,
+            `Une fois qu'Asaas l'aura activé, revenez ici et créez l'abonnement normalement.`,
+          ],
+        },
+        openAsaas: `Ouvrir Asaas`,
+        understood: `Compris`,
       },
     },
   },
