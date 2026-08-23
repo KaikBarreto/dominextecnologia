@@ -865,7 +865,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   <div className="print:hidden">
                     <OsVideoPlayer
                       src={response.response_video_url}
-                      className="w-full max-w-md rounded-md aspect-video"
+                      className="max-w-full sm:max-w-sm max-h-[70vh] rounded-md"
                     />
                   </div>
                   {/* window.print(): placeholder estático */}
