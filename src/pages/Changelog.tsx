@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.8',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinaturas: cobre seus clientes de forma recorrente',
+        description: 'Agora você pode criar assinaturas para cobrar seus clientes automaticamente, na frequência que escolher (mensal, trimestral, anual e outras), por Pix ou boleto. O sistema gera a cobrança a cada ciclo e dá baixa sozinho quando o cliente paga. Na aba Assinaturas, dentro do Financeiro, você acompanha a lista de assinaturas ativas, o total de receita recorrente por mês e pode cancelar quando quiser. Cobrança no cartão de forma recorrente e Pix Automático chegam em breve.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.7',
     date: '22 de agosto de 2026',
     type: 'patch',

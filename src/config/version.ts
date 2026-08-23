@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.7";
+export const APP_VERSION = "1.21.8";
 
-export const VERSION_NOTES = "Ao abrir uma foto do relatório de serviço e tocar em baixar, o iPhone agora oferece a opção Salvar Imagem para guardar direto nas Fotos.";
+export const VERSION_NOTES = "Chegaram as Assinaturas: cobre seus clientes de forma recorrente (Pix ou boleto), com cobrança e baixa automática a cada ciclo, e acompanhe a receita recorrente por mês numa aba no Financeiro.";

@@ -173,6 +173,17 @@ verify_jwt = false
 [functions.tenant-asaas-create-charge]
 verify_jwt = false
 
+# tenant-asaas-create-subscription: cria assinatura recorrente (boleto/Pix no MVP) na
+# conta Asaas do tenant. Mesmo gate (Bearer + módulo 'cobrancas' + can_manage_system)
+# na própria função — por isso verify_jwt=false (erro PT-BR chega no error.context).
+[functions.tenant-asaas-create-subscription]
+verify_jwt = false
+
+# tenant-asaas-manage-subscription: cancela/atualiza assinatura recorrente do tenant.
+# Posse por company_id + mesmo gate na própria função. verify_jwt=false.
+[functions.tenant-asaas-manage-subscription]
+verify_jwt = false
+
 # tenant-asaas-webhook: recepção de eventos da Asaas da conta do TENANT. SEM JWT de
 # usuário — segurança é o header asaas-access-token, validado timing-safe contra o token
 # daquele tenant (resolvido por externalReference → Vault). Fail-closed 401.
