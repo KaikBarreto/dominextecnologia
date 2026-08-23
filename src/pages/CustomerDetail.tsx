@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -147,6 +147,18 @@ export default function CustomerDetail() {
   const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
   const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  const handleConfirmRefund = async () => {
+    if (!refundConfirmChargeId) return;
+    try {
+      await refundCharge.mutateAsync({ charge_id: refundConfirmChargeId });
+      toast({ title: t.chargeRefundSuccess });
+    } catch (err) {
+      toast({ variant: 'destructive', title: t.chargeRefundError, description: getErrorMessage(err) });
+    } finally {
+      setRefundConfirmChargeId(null);
+    }
+  };
   const queryClient = useQueryClient();
 
   // Auto-canonical: depois que o cliente carrega, normaliza a URL pro formato
@@ -225,9 +237,10 @@ export default function CustomerDetail() {
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
   // Cobranças do cliente (hook só faz a query quando showCobrancasTab e id disponíveis).
-  const { charges: customerCharges, isLoading: chargesLoading } = useTenantCharges(
+  const { charges: customerCharges, isLoading: chargesLoading, refund: refundCharge } = useTenantCharges(
     showCobrancasTab && id ? { customerId: id } : undefined,
   );
+  const [refundConfirmChargeId, setRefundConfirmChargeId] = useState<string | null>(null);
   const chargesSummary = useMemo(() => {
     const open = customerCharges
       .filter((c) => {
@@ -1358,6 +1371,7 @@ export default function CustomerDetail() {
                   const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
                   const phone = customer.celular || customer.phone || '';
                   const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
+                  const isPaid = classifyTenantChargeStatus(charge.status) === 'paid';
                   const itemActions: ItemAction[] = [
                     {
                       key: 'copy',
@@ -1385,6 +1399,12 @@ export default function CustomerDetail() {
                       icon: <ExternalLink className="h-4 w-4" />,
                       onClick: () => checkoutUrl && window.open(checkoutUrl, '_blank', 'noopener,noreferrer'),
                     },
+                    ...(isPaid ? [{
+                      key: 'refund',
+                      label: t.chargeRefundButton,
+                      icon: <RotateCcw className="h-4 w-4" />,
+                      onClick: () => setRefundConfirmChargeId(charge.id),
+                    }] : []),
                   ];
                   return (
                     <MobileListItem
@@ -1434,6 +1454,7 @@ export default function CustomerDetail() {
                           const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
                           const phone = customer.celular || customer.phone || '';
                           const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
+                          const isChargePaid = classifyTenantChargeStatus(charge.status) === 'paid';
                           return (
                             <TableRow key={charge.id}>
                               <TableCell>
@@ -1489,6 +1510,18 @@ export default function CustomerDetail() {
                                   >
                                     <ExternalLink className="h-4 w-4" />
                                   </Button>
+                                  {isChargePaid && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="min-h-[44px] min-w-[44px] text-destructive hover:text-destructive"
+                                      title={t.chargeRefundButton}
+                                      disabled={refundCharge.isPending && refundConfirmChargeId === charge.id}
+                                      onClick={() => setRefundConfirmChargeId(charge.id)}
+                                    >
+                                      <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -1713,6 +1746,32 @@ export default function CustomerDetail() {
           lockCustomer
         />
       )}
+
+      {/* AlertDialog de confirmação de estorno */}
+      <AlertDialog
+        open={!!refundConfirmChargeId}
+        onOpenChange={(open) => { if (!open) setRefundConfirmChargeId(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.chargeRefundDialogTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.chargeRefundDialogDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={refundCharge.isPending}>{t.chargeRefundCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={refundCharge.isPending}
+              onClick={handleConfirmRefund}
+            >
+              {refundCharge.isPending ? (
+                <RotateCcw className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {t.chargeRefundConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

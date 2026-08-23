@@ -190,6 +190,15 @@ verify_jwt = false
 [functions.tenant-asaas-webhook]
 verify_jwt = false
 
+# tenant-asaas-reconcile: JOB DE SISTEMA (cron) que recupera baixas perdidas — varre as
+# cobranças em aberto de TODOS os tenants com Cobranças ativa, consulta o status real no
+# Asaas e aplica a baixa que faltou (RPC idempotente). Autentica por CRON_SECRET no header
+# x-cron-secret (ou Authorization: Bearer <secret>), comparado timing-safe. verify_jwt=false
+# porque o cron manda o segredo cru (não um JWT) — com verify_jwt=true o gateway rejeitava
+# com 401 UNAUTHORIZED_INVALID_JWT_FORMAT antes de a função avaliar o x-cron-secret.
+[functions.tenant-asaas-reconcile]
+verify_jwt = false
+
 # get-tenant-payment-checkout: dados do checkout público (allowlist). Gate = public_short_code.
 # Sem sessão — verify_jwt=false.
 [functions.get-tenant-payment-checkout]

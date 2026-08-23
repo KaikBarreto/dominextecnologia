@@ -136,6 +136,25 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
     },
   });
 
+  const refund = useMutation({
+    mutationFn: async ({ charge_id }: { charge_id: string }): Promise<void> => {
+      const { data, error } = await supabase.functions.invoke('tenant-asaas-refund-charge', {
+        body: { charge_id },
+      });
+      if (error) throw new Error(await extractEdgeError(error, data, 'Não foi possível estornar a cobrança.'));
+      if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
+        throw new Error((data as { error: string }).error);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listKey });
+      queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+
   const create = useMutation({
     mutationFn: async (input: CreateChargeInput): Promise<CreateChargeResult> => {
       const body: Record<string, unknown> = {
@@ -203,5 +222,6 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
     isLoading: list.isLoading,
     companyId,
     create,
+    refund,
   };
 }

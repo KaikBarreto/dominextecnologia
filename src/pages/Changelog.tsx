@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.10',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Estorne uma cobrança pela tela',
+        description: 'Na ficha do cliente, nas cobranças já pagas, agora tem a opção "Estornar": você devolve o valor ao cliente direto pelo sistema, com uma confirmação antes. A cobrança passa a aparecer como "Estornado" assim que o estorno é processado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Confirmação automática de pagamentos',
+        description: 'O sistema passou a reconferir sozinho, de tempos em tempos, as cobranças em aberto direto na operadora de pagamento. Assim, se uma confirmação se perder por falha de comunicação, o pagamento é reconhecido e baixado automaticamente do mesmo jeito. Você não perde uma baixa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Portal do cliente: contratos e idioma de volta',
+        description: 'Corrigimos o portal do cliente, que havia deixado de listar os contratos e de respeitar o idioma configurado. Agora o cliente vê os contratos dele e o portal aparece no idioma certo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.9',
     date: '23 de agosto de 2026',
     type: 'patch',
