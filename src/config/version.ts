@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.16";
+export const APP_VERSION = "1.21.17";
 
-export const VERSION_NOTES = "Correção na configuração de emissão de Nota Fiscal (NFS-e): empresas que já tinham o endereço cadastrado agora têm o código do município preenchido automaticamente pelo CEP, evitando o aviso de dado faltando ao registrar a emissão ou enviar o certificado digital.";
+export const VERSION_NOTES = "As Configurações fiscais ganharam um visual mais organizado: no computador, as etapas (Empresa, Certificado e Impostos) agora ficam em um menu lateral, com o conteúdo ao lado; no celular, viram uma barra deslizável no topo.";

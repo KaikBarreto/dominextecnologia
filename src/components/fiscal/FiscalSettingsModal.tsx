@@ -411,7 +411,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       open={open}
       onOpenChange={onOpenChange}
       title={t.settings.title}
-      className="sm:max-w-[640px]"
+      className="sm:max-w-[760px]"
     >
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
@@ -419,7 +419,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         </div>
       ) : (
         <div className="space-y-4 py-1">
-          {/* Selo "apto a emitir" + navegação de seções */}
+          {/* Selo "apto a emitir" — largura total, acima do rail */}
           <div className="flex flex-wrap items-center gap-2">
             {settings.pode_emitir && (
               <Badge className="bg-success text-success-foreground gap-1">
@@ -428,53 +428,64 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             )}
           </div>
 
-          {/* Navegação por passos: grade de abas com nº do passo, ícone e
-              indicador de estado. Mobile-first: rótulo encolhe pro ícone. */}
-          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-muted/50 p-1">
-            {SECTIONS.map((s) => {
-              const Icon = s.icon;
-              const active = section === s.value;
-              const locked = s.value === 'certificado' && !isRegistered;
-              const done =
-                (s.value === 'empresa' && isRegistered) ||
-                (s.value === 'certificado' && hasCertificate);
-              return (
-                <button
-                  key={s.value}
-                  type="button"
-                  onClick={() => setSection(s.value)}
-                  className={cn(
-                    'relative flex flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] font-medium transition-colors',
-                    active
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
-                  )}
-                >
-                  <span className="flex items-center gap-1">
-                    <Icon className="h-4 w-4" />
-                    {locked && <Lock className="h-3 w-3 text-muted-foreground" />}
-                    {done && !locked && <CheckCircle2 className="h-3 w-3 text-success" />}
-                  </span>
-                  <span className="truncate max-w-full">
-                    <span className="opacity-60 mr-0.5">{s.step}.</span>
-                    {s.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Rail de navegação + coluna de conteúdo */}
+          <div className="flex flex-col lg:flex-row lg:gap-4">
+            {/* Rail: fileira rolável no mobile/tablet, coluna fixa no desktop */}
+            <div
+              className="
+                shrink-0 h-auto bg-muted/50 p-1 rounded-lg
+                flex flex-row gap-1.5 overflow-x-auto
+                lg:overflow-visible lg:flex-col lg:w-48 lg:self-start
+              "
+            >
+              {SECTIONS.map((s) => {
+                const Icon = s.icon;
+                const active = section === s.value;
+                const locked = s.value === 'certificado' && !isRegistered;
+                const done =
+                  (s.value === 'empresa' && isRegistered) ||
+                  (s.value === 'certificado' && hasCertificate);
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => setSection(s.value)}
+                    className={cn(
+                      'relative flex items-center gap-2 shrink-0 rounded-md px-2 py-2 text-[11px] font-medium transition-colors lg:w-full lg:justify-start',
+                      active
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      <span className="opacity-60 mr-0.5">{s.step}.</span>
+                      {s.label}
+                    </span>
+                    {locked && (
+                      <Lock className="h-3 w-3 text-muted-foreground lg:ml-auto shrink-0" />
+                    )}
+                    {done && !locked && (
+                      <CheckCircle2 className="h-3 w-3 text-success lg:ml-auto shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Dica do passo atual — reforça a ordem empresa → certificado. */}
-          {(section === 'empresa' || section === 'certificado') && (
-            <Alert className="border-primary/20 bg-muted/40">
-              <Info className="h-4 w-4" />
-              <AlertDescription className="text-xs">
-                {section === 'empresa'
-                  ? t.settings.steps.hintEmpresa
-                  : t.settings.steps.hintCertificado}
-              </AlertDescription>
-            </Alert>
-          )}
+            {/* Coluna de conteúdo: dica do passo + seção ativa */}
+            <div className="flex-1 min-w-0 space-y-4">
+              {/* Dica do passo atual — reforça a ordem empresa → certificado. */}
+              {(section === 'empresa' || section === 'certificado') && (
+                <Alert className="border-primary/20 bg-muted/40">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    {section === 'empresa'
+                      ? t.settings.steps.hintEmpresa
+                      : t.settings.steps.hintCertificado}
+                  </AlertDescription>
+                </Alert>
+              )}
 
           {/* ---- Seção: Empresa ---- */}
           {section === 'empresa' && (
@@ -828,6 +839,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             </div>
           )}
 
+            </div>{/* fim: coluna de conteúdo */}
+          </div>{/* fim: container flex (rail + conteúdo) */}
         </div>
       )}
     </ResponsiveModal>

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.17',
+    date: '23 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configurações fiscais mais organizadas',
+        description: 'A tela de Configurações fiscais ficou mais fácil de navegar. No computador, as etapas (Empresa, Certificado e Impostos) agora aparecem em um menu lateral à esquerda, com o conteúdo ao lado, deixando claro em que passo você está. No celular, as etapas viram uma barra deslizável no topo. Nada mudou no que você preenche, só ficou mais bem organizado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.16',
     date: '23 de agosto de 2026',
     type: 'patch',
