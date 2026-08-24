@@ -81,12 +81,12 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
-                  variant="ghost"
+                  variant="destructive-ghost"
                   size="icon"
-                  className="h-7 w-7 hover:bg-destructive hover:text-destructive-foreground group"
+                  className="h-7 w-7"
                   title={t.actions.delete}
                 >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive group-hover:text-destructive-foreground" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

@@ -400,7 +400,7 @@ export function CostResourceFormSheet({
                       onChange={e => handleItemChange(index, 'name', e.target.value)}
                       className="flex-1"
                     />
-                    <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(index)}>
+                    <Button variant="destructive-ghost" size="icon" className="shrink-0" onClick={() => handleRemoveItem(index)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

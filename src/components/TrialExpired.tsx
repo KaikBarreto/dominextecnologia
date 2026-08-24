@@ -78,8 +78,8 @@ export function TrialExpired({ expirationDate }: TrialExpiredProps) {
           </Button>
 
           <Button
-            variant="outline"
-            className="w-full hover:bg-destructive hover:text-destructive-foreground"
+            variant="destructive-ghost"
+            className="w-full"
             size="lg"
             onClick={signOut}
           >

@@ -63,7 +63,7 @@ export function FinancialSettingsSection() {
                       <Edit className="h-3.5 w-3.5" />
                     </Button>
                     {!c.is_system && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}>
+                      <Button size="icon" variant="destructive-ghost" className="h-7 w-7" onClick={() => setDeleteId(c.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}

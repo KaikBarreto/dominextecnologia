@@ -490,7 +490,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                       </Button>
                     </label>
                     {colors.logo_url && (
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleRemoveProposalLogo}>
+                      <Button size="sm" variant="destructive-ghost" onClick={handleRemoveProposalLogo}>
                         <Trash2 className="h-4 w-4 mr-2" />
                         {tp.logoRemove}
                       </Button>

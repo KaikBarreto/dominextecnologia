@@ -157,8 +157,8 @@ function ServiceItemsList({
                   </td>
                   <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
                   <td className="p-2">
-                    <Button type="button" variant="ghost" size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
+                    <Button type="button" variant="destructive-ghost" size="icon"
+                      className="h-7 w-7"
                       onClick={() => onRemove(globalIdx)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -1228,8 +1228,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                               </td>
                               <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
                               <td className="p-2">
-                                <Button type="button" variant="ghost" size="icon"
-                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                <Button type="button" variant="destructive-ghost" size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => removeItem(globalIdx)}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>

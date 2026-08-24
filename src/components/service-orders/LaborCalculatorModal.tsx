@@ -272,9 +272,9 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                     </div>
                     {workers.length > 1 && (
                       <Button
-                        variant="ghost"
+                        variant="destructive-ghost"
                         size="icon"
-                        className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive"
+                        className="h-8 w-8 flex-shrink-0"
                         onClick={() => removeWorker(w.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

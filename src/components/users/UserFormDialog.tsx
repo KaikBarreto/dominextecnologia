@@ -229,7 +229,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                       {photoPreview ? tf.photoReplace : tf.photoSelect}
                     </Button>
                     {photoPreview && (
-                      <Button type="button" variant="ghost" size="sm" onClick={handleRemovePhoto} className="text-destructive hover:text-destructive">
+                      <Button type="button" variant="destructive-ghost" size="sm" onClick={handleRemovePhoto}>
                         <X className="h-4 w-4 mr-1" />
                         {tf.photoRemove}
                       </Button>

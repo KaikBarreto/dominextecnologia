@@ -352,9 +352,9 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
                             )}
                           </div>
                           <Button
-                            variant="ghost"
+                            variant="destructive-ghost"
                             size="icon"
-                            className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                            className="h-8 w-8 shrink-0"
                             onClick={() => removeItem(r.key)}
                             aria-label={tMat.ariaRemove}
                           >

@@ -358,9 +358,9 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
                       />
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="destructive-ghost"
                         size="icon"
-                        className="h-9 w-9 text-destructive hover:text-destructive"
+                        className="h-9 w-9"
                         onClick={() => handleRemoveRequest(c.id, c.label)}
                         disabled={criteriaMutating}
                         aria-label={t.ariaRemoveCriterion}

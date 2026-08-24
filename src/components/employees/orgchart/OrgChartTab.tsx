@@ -141,9 +141,9 @@ export function OrgChartTab({ openChartId: openChartIdProp, onSelectChart }: Org
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
-                variant="ghost"
+                variant="destructive-ghost"
                 size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
+                className="h-8 w-8"
                 onClick={() => setDeleting(chart)}
                 aria-label={t.delete}
               >

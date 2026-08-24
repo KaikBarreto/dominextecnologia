@@ -166,9 +166,8 @@ export function FinanceAssinaturas() {
                   <td className="px-4 py-3 text-right">
                     {sub.status !== 'cancelled' && (
                       <Button
-                        variant="ghost"
+                        variant="destructive-ghost"
                         size="sm"
-                        className="text-destructive hover:text-destructive"
                         onClick={() => setCancelTarget(sub)}
                         disabled={manageSubscription.isPending}
                       >
@@ -210,9 +209,9 @@ export function FinanceAssinaturas() {
                     {statusBadge(sub.status, t.status)}
                     {sub.status !== 'cancelled' && (
                       <Button
-                        variant="ghost"
+                        variant="destructive-ghost"
                         size="sm"
-                        className="h-7 px-2 text-destructive hover:text-destructive"
+                        className="h-7 px-2"
                         onClick={() => setCancelTarget(sub)}
                         disabled={manageSubscription.isPending}
                       >

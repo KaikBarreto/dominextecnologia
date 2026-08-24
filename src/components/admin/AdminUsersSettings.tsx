@@ -103,7 +103,7 @@ export function AdminUsersSettings() {
                     <KeyRound className="h-3.5 w-3.5" /> Senha
                   </Button>
                   {!u.is_master && (
-                    <Button size="sm" variant="outline" onClick={() => setDeleteUser(u)} className="gap-1 text-destructive hover:text-destructive">
+                    <Button size="sm" variant="destructive-ghost" onClick={() => setDeleteUser(u)} className="gap-1">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   )}

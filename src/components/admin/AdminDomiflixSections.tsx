@@ -351,7 +351,7 @@ function SortableSectionCard({
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+              <Button variant="destructive-ghost" size="icon">
                 <Trash2 className="w-4 h-4" />
               </Button>
             </AlertDialogTrigger>

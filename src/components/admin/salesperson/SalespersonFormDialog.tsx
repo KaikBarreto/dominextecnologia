@@ -294,9 +294,9 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           {photoUrl && (
             <Button
               type="button"
-              variant="ghost"
+              variant="destructive-ghost"
               size="sm"
-              className="h-7 text-xs text-muted-foreground hover:text-destructive"
+              className="h-7 text-xs"
               onClick={handleRemovePhoto}
               disabled={uploading}
             >

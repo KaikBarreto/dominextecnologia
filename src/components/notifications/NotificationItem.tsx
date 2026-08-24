@@ -77,9 +77,9 @@ export function NotificationItem({ notification, onClick, onDismiss }: Notificat
             {notification.title}
           </p>
           <Button
-            variant="ghost"
+            variant="destructive-ghost"
             size="icon"
-            className="h-5 w-5 shrink-0 -mt-0.5 -mr-1 hover:bg-destructive hover:text-destructive-foreground"
+            className="h-5 w-5 shrink-0 -mt-0.5 -mr-1"
             onClick={onDismiss}
             aria-label={tPrimitives.dismissNotification}
           >

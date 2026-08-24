@@ -1111,7 +1111,7 @@ export default function ContractDetail() {
                         {isActive && (
                           <div className="flex items-center justify-end gap-1">
                             <Button
-                              variant="ghost" size="icon" className="min-h-11 min-w-11 text-muted-foreground hover:text-destructive active:scale-90 transition-transform rounded-xl"
+                              variant="destructive-ghost" size="icon" className="min-h-11 min-w-11 active:scale-90 transition-transform rounded-xl"
                               title={td.occurrences.skipTitle}
                               onClick={(e) => { e.stopPropagation(); setCancelingOsId(os.id); }}
                             >
@@ -1208,7 +1208,7 @@ export default function ContractDetail() {
                               <div className="flex items-center gap-1">
                                 {isActive && (
                                   <Button
-                                    variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    variant="destructive-ghost" size="icon" className="h-7 w-7"
                                     title={td.occurrences.skipTitle}
                                     onClick={(e) => { e.stopPropagation(); setCancelingOsId(os.id); }}
                                   >

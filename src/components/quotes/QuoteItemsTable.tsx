@@ -312,9 +312,9 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                         {!readOnly && (
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="destructive-ghost"
                             size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            className="h-7 w-7"
                             onClick={() => removeItem(idx)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -388,9 +388,9 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                         {!readOnly && (
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="destructive-ghost"
                             size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            className="h-7 w-7"
                             onClick={() => removeItem(idx)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />

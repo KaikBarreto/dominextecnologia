@@ -324,9 +324,9 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
               </Button>
               <Button
                 type="button"
-                variant="ghost"
+                variant="destructive-ghost"
                 size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
+                className="h-8 w-8"
                 onClick={() => handleRemoveSaved(att)}
                 disabled={removeMutation.isPending}
                 title={tf.attachmentRemoveTitle}
@@ -356,9 +356,9 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
               </div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="destructive-ghost"
                 size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
+                className="h-8 w-8"
                 onClick={() => removePending(p.id)}
                 title={tf.attachmentRemoveTitle}
               >

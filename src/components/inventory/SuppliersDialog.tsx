@@ -96,9 +96,9 @@ export function SuppliersDialog({ open, onOpenChange }: SuppliersDialogProps) {
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="destructive-ghost"
                       size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      className="h-8 w-8"
                       onClick={() => setToDelete(s)}
                       aria-label={t.ariaDelete}
                     >

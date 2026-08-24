@@ -1512,9 +1512,9 @@ export default function CustomerDetail() {
                                   </Button>
                                   {isChargePaid && (
                                     <Button
-                                      variant="ghost"
+                                      variant="destructive-ghost"
                                       size="icon"
-                                      className="min-h-[44px] min-w-[44px] text-destructive hover:text-destructive"
+                                      className="min-h-[44px] min-w-[44px]"
                                       title={t.chargeRefundButton}
                                       disabled={refundCharge.isPending && refundConfirmChargeId === charge.id}
                                       onClick={() => setRefundConfirmChargeId(charge.id)}

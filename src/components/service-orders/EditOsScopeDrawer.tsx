@@ -329,8 +329,8 @@ export function EditOsScopeDrawer({
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                       <Button
-                        type="button" variant="ghost" size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        type="button" variant="destructive-ghost" size="icon"
+                        className="h-8 w-8"
                         onClick={() => removeEquipmentGroup(g.key)}
                         aria-label={t.removeEquipment}
                       >
@@ -551,8 +551,8 @@ function ChecklistRow({
         <ChevronDown className="h-3.5 w-3.5" />
       </Button>
       <Button
-        type="button" variant="ghost" size="icon"
-        className="h-7 w-7 text-destructive hover:text-destructive"
+        type="button" variant="destructive-ghost" size="icon"
+        className="h-7 w-7"
         onClick={onRemove} aria-label="X"
       >
         <X className="h-3.5 w-3.5" />

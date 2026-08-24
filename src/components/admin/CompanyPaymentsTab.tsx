@@ -202,9 +202,9 @@ export function CompanyPaymentsTab({ companyId, company }: CompanyPaymentsTabPro
                   </span>
                   {payment.source === 'manual' && (
                     <Button
-                      variant="ghost"
+                      variant="destructive-ghost"
                       size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="h-8 w-8"
                       title="Excluir pagamento"
                       disabled={deletePayment.isPending}
                       onClick={() => setPaymentToDelete(payment)}

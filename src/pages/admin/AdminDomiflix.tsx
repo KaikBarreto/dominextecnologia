@@ -802,7 +802,7 @@ function SortableEpisodeRow({
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+            <Button variant="destructive-ghost" size="icon" className="h-7 w-7">
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </AlertDialogTrigger>
@@ -903,7 +903,7 @@ function SortableSeasonSection({
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+              <Button variant="destructive-ghost" size="icon" className="h-7 w-7">
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </AlertDialogTrigger>
@@ -1346,9 +1346,8 @@ function SortableTitleRow({
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
-              variant="ghost"
+              variant="destructive-ghost"
               size="icon"
-              className="text-destructive hover:text-destructive"
               onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="w-4 h-4" />

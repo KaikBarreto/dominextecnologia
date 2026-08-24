@@ -93,7 +93,7 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
                     <Button variant="ghost" size="sm" onClick={() => onEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => onDelete(p.id)} className="hover:bg-destructive hover:text-destructive-foreground">
+                    <Button variant="destructive-ghost" size="sm" onClick={() => onDelete(p.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
