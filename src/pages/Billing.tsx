@@ -36,7 +36,7 @@ export default function Billing() {
   const { user } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.billing;
-  const { modules, allPlans, effectiveValue: modulesEffectiveValue } = useCompanyModules();
+  const { modules, allPlans, effectiveValue: modulesEffectiveValue, plan: currentPlanCode } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
   // Deep-link vindo do ModuleGateModal / UserLimitModal:
@@ -152,10 +152,10 @@ export default function Billing() {
   const StatusIcon = statusConfig.icon;
 
   // Nome de exibição do plano
-  const planDisplayName = company.subscription_plan
-    ? (allPlans.find((p) => p.code === company.subscription_plan)?.name
-        ?? company.subscription_plan.charAt(0).toUpperCase() + company.subscription_plan.slice(1))
-    : 'Starter';
+  // Mesma lógica do card "Sua Assinatura" (ModulesManagementCard): nome do plano
+  // pelo catálogo, com "Personalizado" quando é plano customizado.
+  const planDisplayName = allPlans.find((p) => p.code === currentPlanCode)?.name
+    || (currentPlanCode === 'personalizado' ? 'Personalizado' : currentPlanCode);
 
   const fmtBRL = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
