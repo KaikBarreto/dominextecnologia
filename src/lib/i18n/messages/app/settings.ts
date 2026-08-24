@@ -632,6 +632,9 @@ export const settings = {
 
     // ── Tela Assinatura/Cobrança (Billing) ───────────────────────────────────
     billing: {
+      // Cabeçalho da tela
+      pageTitle: 'Assinatura',
+      pageSubtitle: 'Gerencie seu plano, módulos e pagamentos',
       // Hero de trial
       heroTrialTitle: 'Ative sua Assinatura',
       heroTrialDesc: 'Você está no período de teste. Escolha o plano ideal e garanta acesso completo.',
@@ -1734,6 +1737,8 @@ export const settings = {
     },
 
     billing: {
+      pageTitle: 'Subscription',
+      pageSubtitle: 'Manage your plan, modules and payments',
       heroTrialTitle: 'Activate Your Subscription',
       heroTrialDesc: 'You are in the trial period. Choose the ideal plan and get full access.',
       heroTrialDaysLeft: '{days} day{s} remaining in trial',
@@ -2798,6 +2803,8 @@ export const settings = {
     },
 
     billing: {
+      pageTitle: 'Suscripción',
+      pageSubtitle: 'Gestiona tu plan, módulos y pagos',
       heroTrialTitle: 'Activa tu Suscripción',
       heroTrialDesc: 'Estás en el período de prueba. Elige el plan ideal y obtén acceso completo.',
       heroTrialDaysLeft: '{days} día{s} restante{s} de prueba',
@@ -3862,6 +3869,8 @@ export const settings = {
     },
 
     billing: {
+      pageTitle: 'Abonnement',
+      pageSubtitle: 'Gérez votre forfait, vos modules et vos paiements',
       heroTrialTitle: 'Activez votre abonnement',
       heroTrialDesc: "Vous êtes en période d'essai. Choisissez le plan idéal et obtenez un accès complet.",
       heroTrialDaysLeft: "{days} jour{s} restant{s} d'essai",

@@ -641,8 +641,8 @@ export function ModulesManagementCard({
             </Button>
             {canManageSubscription && (
               <Button
-                variant="ghost"
-                className="sm:flex-none text-muted-foreground hover:text-destructive text-sm h-12 px-4"
+                variant="destructive-ghost"
+                className="sm:flex-none text-sm h-12 px-4"
                 onClick={() => setCancelOpen(true)}
               >
                 <XCircle className="h-4 w-4 mr-1.5" />

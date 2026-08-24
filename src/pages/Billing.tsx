@@ -13,6 +13,7 @@ import {
   QrCode,
   Barcode,
 } from 'lucide-react';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -183,6 +184,12 @@ export default function Billing() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6">
+
+      <MobilePageHeader
+        title={t.pageTitle}
+        subtitle={t.pageSubtitle}
+        icon={CreditCard}
+      />
 
       {/* ═══════════════════════════════════════════════════════════════════
           HERO: Trial → CTA de ativar | Ativo → não exibido (integrado abaixo)
