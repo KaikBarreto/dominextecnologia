@@ -5,6 +5,7 @@ import {
   XCircle,
   Ban,
   AlertTriangle,
+  FileEdit,
   type LucideIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,11 @@ interface StatusMeta {
 /** Mapa de status da NFS-e — somente metadados visuais (ícone + cores).
  *  Labels são sempre resolvidos via MESSAGES[locale].app.nfse.status. */
 const STATUS_META: Record<string, StatusMeta> = {
+  rascunho: {
+    icon: FileEdit,
+    badgeClass: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border-transparent',
+    iconClass: 'text-gray-500',
+  },
   pendente: {
     icon: Clock,
     badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-transparent',
@@ -95,6 +101,7 @@ export function getNfseStatusMeta(status: NfseStatus): StatusMeta {
 
 /** Valores canônicos de status (sem tradução) — usados pelo filtro. */
 export const NFSE_STATUS_FILTER_OPTIONS = [
+  { value: 'rascunho' },
   { value: 'pendente' },
   { value: 'processando' },
   { value: 'autorizada' },

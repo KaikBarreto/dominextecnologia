@@ -97,6 +97,17 @@ verify_jwt = false
 [functions.fisqal-nfse-status]
 verify_jwt = false
 
+# fisqal-save-nfse-draft (Onda 1b): upsert de rascunho de NFS-e (status='rascunho').
+# NÃO chama a Fisqal / NÃO consome cota. Mesmo gate de tenant (Authorization Bearer
+# + módulo 'nfe' + can_manage_system) via fiscal-auth.ts.
+[functions.fisqal-save-nfse-draft]
+verify_jwt = false
+
+# fisqal-delete-nfse-draft (Onda 1b): apaga um rascunho de NFS-e (nunca nota emitida).
+# Mesmo gate de tenant.
+[functions.fisqal-delete-nfse-draft]
+verify_jwt = false
+
 # fisqal-cancel-nfse (Fase 2.4): cancela uma NFS-e autorizada. Mesmo gate de
 # tenant (Authorization Bearer + módulo 'nfe' + can_manage_system).
 [functions.fisqal-cancel-nfse]

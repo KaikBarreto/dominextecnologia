@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.19";
+export const APP_VERSION = "1.21.20";
 
-export const VERSION_NOTES = "Ao configurar a emissão de notas fiscais, se o registro da sua empresa não concluir, agora mostramos o motivo com clareza e o que fazer, em vez de deixar o envio do certificado travado sem explicação.";
+export const VERSION_NOTES = "Emitir NFS-e agora é um passo a passo guiado (tomador, serviço, valores e revisão), dá pra salvar como rascunho e continuar depois, e a tela de Notas Fiscais foi renovada com busca, filtros e ações por nota.";

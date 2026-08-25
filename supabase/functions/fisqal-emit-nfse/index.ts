@@ -82,6 +82,11 @@ function friendlyFiscalMessage(code: string | undefined, fallback: string): stri
 }
 
 interface EmitBody {
+  // emissionId: emite A PARTIR de um rascunho já salvo (status='rascunho').
+  // Quando presente, o rascunho é a FONTE dos dados; o body sobrescreve campo a
+  // campo se vier. Em vez de INSERT, a MESMA linha do rascunho "vira" emitida.
+  // Ausente → comportamento standalone original (INSERT novo). Ver bloco emitFromDraft.
+  emissionId?: string;
   customerId?: string;
   servico?: { descricao?: string; codigoServico?: string; codigoNbs?: string };
   // aliquotaIss: override da alíquota de ISS por nota (em %, ex.: 5 = 5%).
@@ -159,7 +164,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    const customerId = clean(body?.customerId);
+    // ---- Emissão A PARTIR de um rascunho (opcional). Quando `emissionId` vem,
+    // carregamos a linha status='rascunho' do PRÓPRIO tenant e a usamos como FONTE
+    // (customer, valores ricos, códigos, município, descrição, competência). O body
+    // ainda pode sobrescrever campo a campo. No fim, em vez de INSERT, damos UPDATE
+    // nessa MESMA linha (ver bloco de persistência). Sem emissionId → comportamento
+    // standalone original 100% preservado.
+    const emissionId = clean(body?.emissionId);
+    let draft: Record<string, any> | null = null;
+    if (emissionId) {
+      const { data: draftRow } = await supabase
+        .from("nfse_emissions")
+        .select("*")
+        .eq("id", emissionId)
+        .eq("company_id", companyId)
+        .eq("status", "rascunho")
+        .maybeSingle();
+      if (!draftRow) {
+        return jsonResponse(
+          {
+            error: "draft_not_found",
+            message: "Rascunho não encontrado.",
+          },
+          404,
+        );
+      }
+      draft = draftRow;
+    }
+
+    // customerId: body sobrescreve; senão vem do rascunho.
+    const customerId = clean(body?.customerId) || clean(draft?.customer_id);
     if (!customerId) {
       return jsonResponse(
         { error: "missing_customer", message: "Cliente não informado." },
@@ -167,7 +201,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const valorServico = Number(body?.valores?.valorServico ?? 0);
+    // valorServico: body sobrescreve; senão vem do rascunho.
+    const valorServico = Number(
+      body?.valores?.valorServico ?? draft?.valor_servico ?? 0,
+    );
     if (!(valorServico > 0)) {
       return jsonResponse(
         { error: "invalid_value", message: "Informe um valor de serviço maior que zero." },
@@ -175,8 +212,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // dataCompetencia: do body (YYYY-MM-DD) OU hoje.
+    // dataCompetencia: body (YYYY-MM-DD) OU rascunho OU hoje.
     const dataCompetencia = cleanDate(body?.dataCompetencia) ||
+      cleanDate(draft?.data_competencia) ||
       new Date().toISOString().slice(0, 10);
 
     // ---- Idempotency-Key: body OU determinística estável (sem OS).
@@ -184,13 +222,16 @@ Deno.serve(async (req) => {
       deterministicKey(companyId, customerId, valorServico, dataCompetencia);
 
     // ---- Idempotência local: se já existe emissão com essa chave, devolve a existente.
+    // Emitindo de rascunho: só é "reuso" se a linha achada NÃO for este próprio
+    // rascunho (o rascunho ainda tem idempotency_key=null, então não colide sozinho;
+    // mas se OUTRA nota já foi emitida com essa chave determinística, devolvemos ela).
     const { data: existing } = await supabase
       .from("nfse_emissions")
       .select("*")
       .eq("company_id", companyId)
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
-    if (existing) {
+    if (existing && existing.id !== emissionId) {
       return jsonResponse(
         {
           emission: existing,
@@ -303,8 +344,9 @@ Deno.serve(async (req) => {
       missing.push("Empresa não registrada na emissão fiscal");
     }
 
-    // Código de serviço: do body OU o padrão da empresa.
+    // Código de serviço: body → rascunho → padrão da empresa.
     const codigoServico = clean(body?.servico?.codigoServico) ||
+      clean(draft?.codigo_servico) ||
       clean(fiscal.codigo_servico_default);
     if (!codigoServico) {
       missing.push("Código de serviço");
@@ -324,8 +366,9 @@ Deno.serve(async (req) => {
       missing.push("CPF/CNPJ do cliente");
     }
 
-    // Código NBS do serviço: do body OU o padrão da empresa. Obrigatório (servico.required).
+    // Código NBS do serviço: body → rascunho → padrão da empresa. Obrigatório (servico.required).
     const codigoNbs = clean(body?.servico?.codigoNbs) ||
+      clean(draft?.codigo_nbs) ||
       clean(fiscal.codigo_nbs_default);
     if (!codigoNbs) {
       return jsonResponse(
@@ -353,12 +396,15 @@ Deno.serve(async (req) => {
     const tomadorTipoInscricao = tomadorDocumento.length > 11 ? "2" : "1"; // 2=CNPJ, 1=CPF
     const razaoSocialTomador =
       clean(customer?.company_name) || clean(customer?.name) || "Consumidor";
-    const discriminacao =
-      clean(body?.servico?.descricao) || "Prestação de serviços técnicos.";
+    // Discriminação: body → rascunho (descricao_servico) → fallback.
+    const discriminacao = clean(body?.servico?.descricao) ||
+      clean(draft?.descricao_servico) ||
+      "Prestação de serviços técnicos.";
 
-    // ---- Alíquota de ISS (%): override da nota (valores.aliquotaIss) tem
-    // precedência sobre o default da empresa (company_fiscal_settings.iss_aliquota).
+    // ---- Alíquota de ISS (%): body (valores.aliquotaIss) → rascunho (aliquota_issqn)
+    // → default da empresa (company_fiscal_settings.iss_aliquota).
     const issAliquota = parseAliquota(body?.valores?.aliquotaIss) ??
+      parseAliquota(draft?.aliquota_issqn) ??
       parseAliquota(fiscal.iss_aliquota) ?? 0;
     const valorIss = issAliquota > 0
       ? Math.round(valorServico * (issAliquota / 100) * 100) / 100
@@ -412,29 +458,32 @@ Deno.serve(async (req) => {
       valoresPayload.aliquotaIssqn = issAliquota;
       valoresPayload.tribIssqn = "1"; // default: operação normal tributada
     }
-    // Override da situação do ISSQN, se o body trouxer enum válido ('1'..'4').
+    // Situação do ISSQN: body → rascunho (trib_issqn). Enum válido ('1'..'4').
     {
-      const t = clean(body?.valores?.tribIssqn);
+      const t = clean(body?.valores?.tribIssqn) || clean(draft?.trib_issqn);
       if (/^[1-4]$/.test(t)) valoresPayload.tribIssqn = t;
     }
-    // Tipo de retenção do ISSQN (ISS retido), se presente ('1'..'3').
+    // Tipo de retenção do ISSQN (ISS retido): body → rascunho (tp_ret_issqn). ('1'..'3').
     {
-      const t = clean(body?.valores?.tpRetIssqn);
+      const t = clean(body?.valores?.tpRetIssqn) || clean(draft?.tp_ret_issqn);
       if (/^[1-3]$/.test(t)) valoresPayload.tpRetIssqn = t;
     }
-    // Tributos federais (só quando presentes e > 0).
+    // Tributos federais (só quando presentes e > 0). body → rascunho.
     {
-      const pis = parseNonNegative(body?.valores?.valorPis);
+      const pis = parseNonNegative(body?.valores?.valorPis ?? draft?.valor_pis);
       if (pis != null && pis > 0) valoresPayload.valorPis = pis;
-      const cofins = parseNonNegative(body?.valores?.valorCofins);
+      const cofins = parseNonNegative(
+        body?.valores?.valorCofins ?? draft?.valor_cofins,
+      );
       if (cofins != null && cofins > 0) valoresPayload.valorCofins = cofins;
-      const csll = parseNonNegative(body?.valores?.valorCsll);
+      const csll = parseNonNegative(body?.valores?.valorCsll ?? draft?.valor_csll);
       if (csll != null && csll > 0) valoresPayload.valorCsll = csll;
     }
-    // Percentual total de tributos (Simples Nacional), se presente.
+    // Percentual total de tributos (Simples Nacional): body → rascunho (percentual_trib_sn).
     {
       const pct = parseNonNegative(
-        body?.valores?.percentualTotalTributosSimplesNacional,
+        body?.valores?.percentualTotalTributosSimplesNacional ??
+          draft?.percentual_trib_sn,
       );
       if (pct != null) {
         valoresPayload.percentualTotalTributosSimplesNacional = pct;
@@ -478,25 +527,58 @@ Deno.serve(async (req) => {
     const status = clean(created?.status) || "pending";
 
     // ---- Grava a emissão (company_id carimbado — RLS exige).
-    // STANDALONE: sem service_order_id, sem financial_transaction_id derivado de OS.
-    const { data: emission, error: insertErr } = await supabase
-      .from("nfse_emissions")
-      .insert({
-        company_id: companyId,
-        customer_id: customer.id,
-        financial_transaction_id: null,
-        status,
-        fisqal_dps_id: fisqalDpsId,
-        fisqal_fiscal_request_id: fisqalRequestId,
-        idempotency_key: idempotencyKey,
-        valor_servico: valorServico,
-        valor_iss: valorIss,
-        descricao_servico: discriminacao,
-      })
-      .select("*")
-      .single();
+    // Emitindo de rascunho (emissionId) → UPDATE da MESMA linha: a nota "vira" emitida
+    // no mesmo registro (mantém o id do rascunho). Standalone (sem emissionId) → INSERT
+    // novo, comportamento original preservado.
+    let emission: Record<string, any> | null = null;
+    let insertErr: { message: string } | null = null;
 
-    if (insertErr) {
+    if (emissionId) {
+      const { data: updated, error: updateErr } = await supabase
+        .from("nfse_emissions")
+        .update({
+          customer_id: customer.id,
+          status,
+          fisqal_dps_id: fisqalDpsId,
+          fisqal_fiscal_request_id: fisqalRequestId,
+          idempotency_key: idempotencyKey,
+          valor_servico: valorServico,
+          valor_iss: valorIss,
+          descricao_servico: discriminacao,
+          emitida_em: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        // Escopo: só este rascunho, deste tenant, ainda em rascunho.
+        .eq("id", emissionId)
+        .eq("company_id", companyId)
+        .eq("status", "rascunho")
+        .select("*")
+        .maybeSingle();
+      emission = updated ?? null;
+      insertErr = updateErr;
+    } else {
+      // STANDALONE: sem service_order_id, sem financial_transaction_id derivado de OS.
+      const { data: inserted, error: insErr } = await supabase
+        .from("nfse_emissions")
+        .insert({
+          company_id: companyId,
+          customer_id: customer.id,
+          financial_transaction_id: null,
+          status,
+          fisqal_dps_id: fisqalDpsId,
+          fisqal_fiscal_request_id: fisqalRequestId,
+          idempotency_key: idempotencyKey,
+          valor_servico: valorServico,
+          valor_iss: valorIss,
+          descricao_servico: discriminacao,
+        })
+        .select("*")
+        .single();
+      emission = inserted ?? null;
+      insertErr = insErr;
+    }
+
+    if (insertErr || !emission) {
       // Corrida: outra emissão com a mesma chave entrou em paralelo → devolve a existente.
       const { data: raced } = await supabase
         .from("nfse_emissions")
@@ -510,9 +592,9 @@ Deno.serve(async (req) => {
           200,
         );
       }
-      console.error("[fisqal-emit-nfse] insert error", {
+      console.error("[fisqal-emit-nfse] persist error", {
         company_id: companyId.slice(0, 8) + "...",
-        message: insertErr.message,
+        message: insertErr?.message ?? "row not persisted",
       });
       return jsonResponse(
         {

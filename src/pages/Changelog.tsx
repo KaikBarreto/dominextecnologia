@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.20',
+    date: '25 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova experiência para emitir NFS-e',
+        description: 'Emitir nota fiscal de serviço ficou mais simples e organizado. Agora você preenche a nota em etapas guiadas (dados do tomador, serviço, valores e uma revisão final antes de emitir), com o total e o que ainda falta sempre à vista. Dá pra salvar como rascunho e continuar depois. A tela de Notas Fiscais também foi renovada: lista com busca e filtros, a situação de cada nota bem visível (rascunho, processando, autorizada, cancelada) e as ações certas em cada linha, como continuar um rascunho, emitir, baixar PDF ou XML, ver o histórico ou cancelar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.21.19',
     date: '25 de agosto de 2026',
     type: 'patch',

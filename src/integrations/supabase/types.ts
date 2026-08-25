@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -5012,10 +4987,14 @@ export type Database = {
       }
       nfse_emissions: {
         Row: {
+          aliquota_issqn: number | null
           chave_acesso: string | null
+          codigo_nbs: string | null
+          codigo_servico: string | null
           company_id: string
           created_at: string | null
           customer_id: string | null
+          data_competencia: string | null
           descricao_servico: string | null
           emitida_em: string | null
           error_message: string | null
@@ -5024,20 +5003,33 @@ export type Database = {
           fisqal_fiscal_request_id: string | null
           id: string
           idempotency_key: string | null
+          intermediario_customer_id: string | null
+          municipio_incidencia_ibge: string | null
           numero_nfse: string | null
           pdf_url: string | null
+          percentual_trib_sn: number | null
           protocolo: string | null
+          regime_apuracao: string | null
           status: string
+          tp_ret_issqn: string | null
+          trib_issqn: string | null
           updated_at: string | null
+          valor_cofins: number | null
+          valor_csll: number | null
           valor_iss: number | null
+          valor_pis: number | null
           valor_servico: number | null
           xml_url: string | null
         }
         Insert: {
+          aliquota_issqn?: number | null
           chave_acesso?: string | null
+          codigo_nbs?: string | null
+          codigo_servico?: string | null
           company_id: string
           created_at?: string | null
           customer_id?: string | null
+          data_competencia?: string | null
           descricao_servico?: string | null
           emitida_em?: string | null
           error_message?: string | null
@@ -5046,20 +5038,33 @@ export type Database = {
           fisqal_fiscal_request_id?: string | null
           id?: string
           idempotency_key?: string | null
+          intermediario_customer_id?: string | null
+          municipio_incidencia_ibge?: string | null
           numero_nfse?: string | null
           pdf_url?: string | null
+          percentual_trib_sn?: number | null
           protocolo?: string | null
+          regime_apuracao?: string | null
           status?: string
+          tp_ret_issqn?: string | null
+          trib_issqn?: string | null
           updated_at?: string | null
+          valor_cofins?: number | null
+          valor_csll?: number | null
           valor_iss?: number | null
+          valor_pis?: number | null
           valor_servico?: number | null
           xml_url?: string | null
         }
         Update: {
+          aliquota_issqn?: number | null
           chave_acesso?: string | null
+          codigo_nbs?: string | null
+          codigo_servico?: string | null
           company_id?: string
           created_at?: string | null
           customer_id?: string | null
+          data_competencia?: string | null
           descricao_servico?: string | null
           emitida_em?: string | null
           error_message?: string | null
@@ -5068,12 +5073,21 @@ export type Database = {
           fisqal_fiscal_request_id?: string | null
           id?: string
           idempotency_key?: string | null
+          intermediario_customer_id?: string | null
+          municipio_incidencia_ibge?: string | null
           numero_nfse?: string | null
           pdf_url?: string | null
+          percentual_trib_sn?: number | null
           protocolo?: string | null
+          regime_apuracao?: string | null
           status?: string
+          tp_ret_issqn?: string | null
+          trib_issqn?: string | null
           updated_at?: string | null
+          valor_cofins?: number | null
+          valor_csll?: number | null
           valor_iss?: number | null
+          valor_pis?: number | null
           valor_servico?: number | null
           xml_url?: string | null
         }
@@ -5097,6 +5111,13 @@ export type Database = {
             columns: ["financial_transaction_id"]
             isOneToOne: false
             referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_emissions_intermediario_customer_id_fkey"
+            columns: ["intermediario_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -9363,6 +9384,36 @@ export type Database = {
       get_disc_public: { Args: { p_code: string }; Returns: Json }
       get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
+      get_nfse_emissions_paged: {
+        Args: {
+          p_date_end?: string
+          p_date_start?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort_dir?: string
+          p_sort_key?: string
+          p_statuses?: string[]
+        }
+        Returns: {
+          chave_acesso: string
+          created_at: string
+          customer_id: string
+          customer_name: string
+          data_competencia: string
+          emitida_em: string
+          error_message: string
+          id: string
+          numero_nfse: string
+          pdf_url: string
+          protocolo: string
+          status: string
+          total_count: number
+          valor_iss: number
+          valor_servico: number
+          xml_url: string
+        }[]
+      }
       get_nps_criteria_averages: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -9990,9 +10041,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

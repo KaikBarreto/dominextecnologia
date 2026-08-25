@@ -1,378 +1,803 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, FileText, AlertTriangle } from 'lucide-react';
-import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import {
+  ArrowLeft,
+  ArrowRight,
+  AlertTriangle,
+  CircleCheck,
+  Receipt,
+  Save,
+  Send,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
 import { useUserCompany } from '@/hooks/useUserCompany';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import {
-  NfseQuotaBlockModal,
-  type NfseQuotaBlockInfo,
-} from '@/components/fiscal/NfseQuotaBlockModal';
+import { formatMoney } from '@/lib/format';
+import { invokeFisqal } from '@/utils/fisqalEdge';
+import { calculateNfseFisqalTaxes } from '@/utils/nfseFisqalTaxes';
+import { NfseQuotaBlockModal, type NfseQuotaBlockInfo } from '@/components/fiscal/NfseQuotaBlockModal';
 
-interface NovaNotaModalProps {
+import { PessoasStep } from './nova-nota/PessoasStep';
+import { ServicoStep } from './nova-nota/ServicoStep';
+import { ValoresStep } from './nova-nota/ValoresStep';
+import { EmitirStep } from './nova-nota/EmitirStep';
+import type {
+  NfseCustomer,
+  NfseServicoState,
+  NfseValoresState,
+  NfseInitialDraft,
+} from './nova-nota/types';
+
+/**
+ * NovaNotaModal — stepper de 4 etapas para emissão de NFS-e via Fisqal.
+ * Espelha o padrão visual do EcoSistema (abas sublinhadas, barra de resumo
+ * fixa, footer com Voltar/Cancelar/Salvar rascunho/Avançar-Emitir).
+ *
+ * Campos Fisqal suportados: valorServico, aliquotaIssqn, tribIssqn, tpRetIssqn,
+ * valorPis, valorCofins, valorCsll, percentualTribSn.
+ * Campos OMITIDOS (a Fisqal não aceita): INSS, IRRF, deduções, descontos.
+ *
+ * Edges usadas:
+ *  - fisqal-save-nfse-draft (rascunho — upsert por id)
+ *  - fisqal-delete-nfse-draft (cancelar com id de rascunho)
+ *  - fisqal-emit-nfse (emissão — via emissionId ou body completo)
+ */
+
+type StepKey = 'pessoas' | 'servico' | 'valores' | 'emitir';
+
+const STEPS: { key: StepKey }[] = [
+  { key: 'pessoas' },
+  { key: 'servico' },
+  { key: 'valores' },
+  { key: 'emitir' },
+];
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+const emptyServico = (): NfseServicoState => ({
+  codigoServico: '',
+  codigoNbs: '',
+  municipioIncidenciaIbge: '',
+  municipioIncidenciaNome: '',
+  tribIssqn: '1',
+  discriminacao: '',
+});
+
+const emptyValores = (): NfseValoresState => ({
+  valorServico: 0,
+  aliquotaIssqn: 0,
+  tpRetIssqn: '2',
+  valorPis: 0,
+  valorCofins: 0,
+  valorCsll: 0,
+  percentualTribSn: 0,
+});
+
+export interface NovaNotaModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * Chamado após emissão bem-sucedida (a lista já é invalidada pelo hook).
-   * Recebe a emissão recém-criada (quando a edge a devolve) pra o pai poder
-   * abrir o detalhe e iniciar o polling automático de status.
+   * Chamado após emissão bem-sucedida. Recebe a emissão recém-criada pra o pai
+   * abrir o detalhe e ligar o polling automático de status.
    */
   onEmitted?: (emission?: NfseEmission | null) => void;
+  /** Chamado após salvar um rascunho com sucesso (pra a tela religar a lista/estado). */
+  onSaved?: () => void;
+  /**
+   * Rascunho inicial (Onda 3 — reabrir nota salva).
+   * Default undefined = nova nota.
+   */
+  initialDraft?: NfseInitialDraft;
 }
 
-/** String crua → number (sem prender "0" à esquerda). null se vazio/ inválido. */
-function num(s: string): number | null {
-  const t = s.trim().replace(/\./g, '').replace(',', '.');
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalProps) {
-  const { customers } = useCustomers();
-  const { emitNfse, isEmitting } = useNfse();
-  const { companyId } = useUserCompany();
-  const { serviceTypes, gapFillServiceTypeFiscal } = useServiceTypes();
-  const { locale } = useAppLocaleContext();
+export function NovaNotaModal({
+  open,
+  onOpenChange,
+  onEmitted,
+  onSaved,
+  initialDraft,
+}: NovaNotaModalProps) {
+  const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
+  const s = t.stepper;
+  const { companyId } = useUserCompany();
+  const { customers, isLoading: customersLoading } = useCustomers();
+  const { settings, isLoading: settingsLoading } = useFiscalSettings();
+  const { invalidate: invalidateNfse } = useNfse();
 
-  const [customerId, setCustomerId] = useState('');
-  const [serviceTypeId, setServiceTypeId] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [valor, setValor] = useState(''); // string crua
-  const [codigoServico, setCodigoServico] = useState('');
-  const [codigoNbs, setCodigoNbs] = useState('');
-  const [issAliquota, setIssAliquota] = useState(''); // string crua (%)
+  // ---- Estado do stepper ----
+  const [activeStep, setActiveStep] = useState<StepKey>('pessoas');
+  const [loading, setLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  /** ID do rascunho salvo (retornado pela edge). Null = não salvo ainda. */
+  const [draftId, setDraftId] = useState<string | null>(null);
 
-  // Bloqueio de cota (HTTP 402 nfse_quota_exceeded): abre o modal de upgrade.
+  // ---- Estado do formulário ----
+  const [dataCompetencia, setDataCompetencia] = useState(todayISO());
+  const [regimeApuracao, setRegimeApuracao] = useState('competencia');
+  const [tomador, setTomador] = useState<NfseCustomer | null>(null);
+  const [intermediario, setIntermediario] = useState<NfseCustomer | null>(null);
+  const [servico, setServico] = useState<NfseServicoState>(emptyServico());
+  const [valores, setValores] = useState<NfseValoresState>(emptyValores());
+
+  // ---- Bloqueio de cota ----
   const [blockInfo, setBlockInfo] = useState<NfseQuotaBlockInfo | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
 
-  // Reseta ao abrir. Os códigos fiscais começam vazios — a fonte é o tipo de
-  // serviço selecionado (ou digitação manual). Sem default da empresa.
-  useEffect(() => {
-    if (open) {
-      setCustomerId('');
-      setServiceTypeId('');
-      setDescricao('');
-      setValor('');
-      setCodigoServico('');
-      setCodigoNbs('');
-      setIssAliquota('');
-    }
-  }, [open]);
+  // ---- Defaults da config fiscal ----
+  const isSimples = settings.regime_tributario === 'simples_nacional';
 
-  const customerOptions = useMemo(
-    () => (customers ?? []).map((c) => ({ value: c.id, label: c.name })),
+  // Pré-preenche campos de defaults a partir das configurações fiscais.
+  useEffect(() => {
+    if (!open) return;
+    if (initialDraft) return; // o rascunho sobrescreve
+    if (settings.municipio_ibge && !servico.municipioIncidenciaIbge) {
+      setServico((prev) => ({
+        ...prev,
+        municipioIncidenciaIbge: settings.municipio_ibge ?? '',
+      }));
+    }
+    if (settings.codigo_servico_default && !servico.codigoServico) {
+      setServico((prev) => ({
+        ...prev,
+        codigoServico: settings.codigo_servico_default ?? '',
+      }));
+    }
+    if (settings.codigo_nbs_default && !servico.codigoNbs) {
+      setServico((prev) => ({
+        ...prev,
+        codigoNbs: settings.codigo_nbs_default ?? '',
+      }));
+    }
+    if (settings.iss_aliquota != null && !valores.aliquotaIssqn) {
+      setValores((prev) => ({
+        ...prev,
+        aliquotaIssqn: settings.iss_aliquota ?? 0,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, settings]);
+
+  // ---- Hidratação de rascunho inicial ----
+  useEffect(() => {
+    if (!open || !initialDraft) return;
+    setDraftId(initialDraft.id ?? null);
+    if (initialDraft.dataCompetencia) setDataCompetencia(initialDraft.dataCompetencia);
+    if (initialDraft.regimeApuracao) setRegimeApuracao(initialDraft.regimeApuracao);
+    if (initialDraft.servico) {
+      setServico((prev) => ({ ...prev, ...initialDraft.servico }));
+    }
+    if (initialDraft.valores) {
+      setValores((prev) => ({ ...prev, ...initialDraft.valores }));
+    }
+    // Tomador/intermediário: resolve da lista de customers pelo id
+    if (initialDraft.customerId && customers.length) {
+      const c = customers.find((x) => x.id === initialDraft.customerId);
+      if (c) setTomador(c as unknown as NfseCustomer);
+    }
+    if (initialDraft.intermediarioCustomerId && customers.length) {
+      const c = customers.find((x) => x.id === initialDraft.intermediarioCustomerId);
+      if (c) setIntermediario(c as unknown as NfseCustomer);
+    }
+  }, [open, initialDraft, customers]);
+
+  // ---- Patch helpers ----
+  const patchServico = (patch: Partial<NfseServicoState>) =>
+    setServico((prev) => ({ ...prev, ...patch }));
+  const patchValores = (patch: Partial<NfseValoresState>) =>
+    setValores((prev) => ({ ...prev, ...patch }));
+
+  // ---- Cálculo em tempo real (função pura, fonte única) ----
+  const taxes = useMemo(
+    () =>
+      calculateNfseFisqalTaxes({
+        valorServico: valores.valorServico,
+        aliquotaIssqn: valores.aliquotaIssqn,
+        tpRetIssqn: valores.tpRetIssqn,
+        valorPis: valores.valorPis,
+        valorCofins: valores.valorCofins,
+        valorCsll: valores.valorCsll,
+      }),
+    [valores],
+  );
+
+  // ---- Validação por etapa ----
+  const pessoasErrors = useMemo(() => {
+    const e: string[] = [];
+    if (!dataCompetencia) e.push(s.pessoas.competencia.required);
+    else if (dataCompetencia > todayISO()) e.push(s.pessoas.competencia.futureError);
+    if (!tomador) e.push(s.pessoas.tomador.required);
+    return e;
+  }, [dataCompetencia, tomador, s]);
+
+  const servicoErrors = useMemo(() => {
+    const e: string[] = [];
+    if (!servico.discriminacao.trim()) e.push(s.servico.discriminacao.required);
+    return e;
+  }, [servico, s]);
+
+  const valoresErrors = useMemo(() => {
+    const e: string[] = [];
+    if (!(valores.valorServico > 0)) e.push(s.valores.valorServico.required);
+    return e;
+  }, [valores, s]);
+
+  const habilitacaoErrors = useMemo(() => {
+    const e: string[] = [];
+    if (!settings.pode_emitir) e.push(s.emitir.habilitacaoError);
+    return e;
+  }, [settings.pode_emitir, s]);
+
+  const habilitacaoWarnings = useMemo(() => {
+    const w: string[] = [];
+    if (settings.pode_emitir && !settings.inscricao_municipal) {
+      w.push('Inscrição Municipal não configurada. A maioria dos municípios exige. Confira nas Configurações Fiscais.');
+    }
+    return w;
+  }, [settings]);
+
+  const allErrors = useMemo(
+    () => [...habilitacaoErrors, ...pessoasErrors, ...servicoErrors, ...valoresErrors],
+    [habilitacaoErrors, pessoasErrors, servicoErrors, valoresErrors],
+  );
+
+  const stepPendencias: Record<StepKey, number> = {
+    pessoas: pessoasErrors.length,
+    servico: servicoErrors.length,
+    valores: valoresErrors.length,
+    emitir: habilitacaoErrors.length,
+  };
+
+  const totalPendencias = allErrors.length;
+  const canEmit = totalPendencias === 0 && valores.valorServico > 0;
+
+  // ---- Navegação ----
+  const currentIdx = STEPS.findIndex((s) => s.key === activeStep);
+  const isFirstStep = currentIdx <= 0;
+  const isLastStep = currentIdx >= STEPS.length - 1;
+  const goPrev = () => { if (!isFirstStep) setActiveStep(STEPS[currentIdx - 1].key); };
+  const goNext = () => { if (!isLastStep) setActiveStep(STEPS[currentIdx + 1].key); };
+
+  // ---- Indicador de pendência na aba ----
+  const renderStepIndicator = (key: StepKey) => {
+    const count = stepPendencias[key];
+    if (count > 0) {
+      return (
+        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+          {count}
+        </span>
+      );
+    }
+    if (key === 'pessoas' && !!tomador) {
+      return <CircleCheck className="ml-1.5 h-3.5 w-3.5 text-emerald-500" />;
+    }
+    return null;
+  };
+
+  // ---- Dados do prestador p/ revisão ----
+  const prestador = useMemo(
+    () => ({
+      razaoSocial: (settings as any).razao_social ?? null,
+      cnpj: (settings as any).cnpj ?? null,
+      inscricaoMunicipal: settings.inscricao_municipal,
+      cidade: (settings as any).cidade ?? null,
+      uf: (settings as any).uf ?? null,
+    }),
+    [settings],
+  );
+
+  // ---- Reset ----
+  const resetForm = useCallback(() => {
+    setActiveStep('pessoas');
+    setDataCompetencia(todayISO());
+    setRegimeApuracao('competencia');
+    setTomador(null);
+    setIntermediario(null);
+    setServico(emptyServico());
+    setValores(emptyValores());
+    setDraftId(null);
+  }, []);
+
+  const hasUnsavedData =
+    !!tomador ||
+    servico.discriminacao.trim() !== '' ||
+    valores.valorServico > 0;
+
+  const handleClose = () => {
+    if (hasUnsavedData) {
+      setShowCancelConfirm(true);
+    } else {
+      resetForm();
+      onOpenChange(false);
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setShowCancelConfirm(false);
+    resetForm();
+    onOpenChange(false);
+  };
+
+  // ---- Montar body do rascunho ----
+  const buildDraftBody = useCallback(() => ({
+    ...(draftId ? { id: draftId } : {}),
+    customerId: tomador?.id ?? null,
+    intermediarioCustomerId: intermediario?.id ?? null,
+    dataCompetencia: dataCompetencia || null,
+    regimeApuracao: isSimples ? regimeApuracao : null,
+    servico: {
+      codigoServico: servico.codigoServico || undefined,
+      codigoNbs: servico.codigoNbs || undefined,
+      municipioIncidenciaIbge: servico.municipioIncidenciaIbge || undefined,
+      descricao: servico.discriminacao || undefined,
+    },
+    valores: {
+      valorServico: valores.valorServico || undefined,
+      aliquotaIssqn: valores.aliquotaIssqn || undefined,
+      tribIssqn: servico.tribIssqn || undefined,
+      tpRetIssqn: valores.tpRetIssqn || undefined,
+      valorPis: valores.valorPis || undefined,
+      valorCofins: valores.valorCofins || undefined,
+      valorCsll: valores.valorCsll || undefined,
+      percentualTribSn: valores.percentualTribSn || undefined,
+    },
+  }), [draftId, tomador, intermediario, dataCompetencia, isSimples, regimeApuracao, servico, valores]);
+
+  // ---- Trava anti-duplo-toque ----
+  const submittingRef = useRef(false);
+
+  const handleSaveDraft = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setLoading(true);
+    try {
+      const res = await invokeFisqal<{ emission?: { id: string } }>('fisqal-save-nfse-draft', buildDraftBody());
+      if (!res.ok) {
+        toast.error(res.message ?? s.toasts.draftError);
+        return;
+      }
+      const id = res.data?.emission?.id ?? null;
+      if (id) setDraftId(id);
+      toast.success(s.toasts.draftSaved);
+      onSaved?.();
+    } finally {
+      submittingRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Emite a nota:
+   * - Se há draftId: salva o estado atual (upsert) e depois emite por emissionId.
+   * - Caso contrário: emite direto com o body completo.
+   */
+  const handleEmit = async () => {
+    if (submittingRef.current) return;
+    if (!canEmit) {
+      toast.error(s.toasts.fixPendencias);
+      return;
+    }
+    submittingRef.current = true;
+    setLoading(true);
+    try {
+      let emissionIdToUse = draftId;
+
+      // Salva/atualiza o rascunho primeiro (persistência do estado atual).
+      const saveRes = await invokeFisqal<{ emission?: { id: string } }>(
+        'fisqal-save-nfse-draft',
+        buildDraftBody(),
+      );
+      if (saveRes.ok && saveRes.data?.emission?.id) {
+        emissionIdToUse = saveRes.data.emission.id;
+        setDraftId(emissionIdToUse);
+      }
+
+      // Emite: via emissionId (se rascunho salvo) ou body completo.
+      const emitBody = emissionIdToUse
+        ? { emissionId: emissionIdToUse }
+        : {
+            customerId: tomador!.id,
+            dataCompetencia: dataCompetencia || undefined,
+            servico: {
+              descricao: servico.discriminacao,
+              ...(servico.codigoServico ? { codigoServico: servico.codigoServico } : {}),
+              ...(servico.codigoNbs ? { codigoNbs: servico.codigoNbs } : {}),
+              ...(servico.municipioIncidenciaIbge ? { municipioIncidenciaIbge: servico.municipioIncidenciaIbge } : {}),
+            },
+            valores: {
+              valorServico: valores.valorServico,
+              ...(valores.aliquotaIssqn ? { aliquotaIssqn: valores.aliquotaIssqn } : {}),
+              tribIssqn: servico.tribIssqn,
+              tpRetIssqn: valores.tpRetIssqn,
+              ...(valores.valorPis ? { valorPis: valores.valorPis } : {}),
+              ...(valores.valorCofins ? { valorCofins: valores.valorCofins } : {}),
+              ...(valores.valorCsll ? { valorCsll: valores.valorCsll } : {}),
+              ...(valores.percentualTribSn ? { percentualTribSn: valores.percentualTribSn } : {}),
+            },
+          };
+
+      const emitRes = await invokeFisqal<{ emission?: NfseEmission }>('fisqal-emit-nfse', emitBody);
+
+      if (!emitRes.ok) {
+        if (emitRes.errorCode === 'nfse_quota_exceeded') {
+          const b = emitRes.errorBody ?? {};
+          const nt = b.next_tier as Record<string, unknown> | null | undefined;
+          setBlockInfo({
+            used: typeof b.used === 'number' ? b.used : 0,
+            limit: typeof b.limit === 'number' ? b.limit : 0,
+            tier: typeof b.tier === 'number' ? b.tier : 1,
+            nextTier: nt
+              ? {
+                  tier: Number(nt.tier),
+                  name: String(nt.name ?? t.newNote.quotaBlock.tierFallback.replace('{tier}', String(nt.tier))),
+                  limit: nt.limit == null ? null : Number(nt.limit),
+                  price: Number(nt.price ?? 0),
+                }
+              : null,
+          });
+          setBlockOpen(true);
+          return;
+        }
+        toast.error(emitRes.message ?? s.toasts.emitError);
+        return;
+      }
+
+      toast.success(emitRes.message ?? s.toasts.emitSuccess);
+      invalidateNfse();
+      const created = (emitRes.data?.emission as NfseEmission | undefined) ?? null;
+      resetForm();
+      onOpenChange(false);
+      onEmitted?.(created);
+    } finally {
+      submittingRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  // Pós-upgrade de cota: reexecuta a emissão.
+  const handleUpgraded = async () => {
+    await handleEmit();
+  };
+
+  // ---- Lista de customers como NfseCustomer (subconjunto) ----
+  const nfseCustomers = useMemo(
+    () =>
+      customers.map((c): NfseCustomer => ({
+        id: c.id,
+        name: c.name,
+        company_name: c.company_name,
+        nome_fantasia: c.nome_fantasia,
+        document: c.document,
+        address: c.address,
+        address_number: c.address_number,
+        complement: c.complement,
+        neighborhood: c.neighborhood,
+        city: c.city,
+        state: c.state,
+        zip_code: c.zip_code,
+        ibge_municipality_code: c.ibge_municipality_code,
+        inscricao_municipal: c.inscricao_municipal,
+      })),
     [customers],
   );
 
-  // Só tipos ativos no seletor da nota.
-  const serviceTypeOptions = useMemo(
-    () =>
-      (serviceTypes ?? [])
-        .filter((s) => s.is_active)
-        .map((s) => ({ value: s.id, label: s.name })),
-    [serviceTypes],
+  // ---- Barra de resumo ----
+  const summaryBar = (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-4 py-2.5">
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {s.summary.total}
+          </p>
+          <p className="text-lg font-bold leading-tight text-emerald-500 dark:text-emerald-400 tabular-nums">
+            {formatMoney(taxes.valorLiquido, currency, locale as any)}
+          </p>
+        </div>
+        <Separator orientation="vertical" className="h-8" />
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {s.summary.baseIss}
+          </p>
+          <p className="text-lg font-bold leading-tight text-foreground tabular-nums">
+            {formatMoney(taxes.baseCalculo, currency, locale as any)}
+          </p>
+        </div>
+      </div>
+      {totalPendencias > 0 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0} className="inline-flex cursor-help outline-none">
+                <Badge className="gap-1.5 whitespace-nowrap shrink-0 bg-red-600 text-white border-0 py-1.5 px-3">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {s.summary.pendencias.replace('{n}', String(totalPendencias))}
+                </Badge>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end" className="max-w-[300px]">
+              <p className="font-medium mb-1">
+                {s.summary.tooltipTitle}
+              </p>
+              <ul className="text-xs list-disc pl-4 space-y-0.5">
+                {allErrors.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <Badge className="gap-1.5 whitespace-nowrap shrink-0 bg-emerald-600 text-white border-0 py-1.5 px-3">
+          <CircleCheck className="h-3.5 w-3.5" />
+          {s.summary.pronta}
+        </Badge>
+      )}
+    </div>
   );
 
-  /**
-   * Ao escolher um tipo de serviço, pré-preenche os campos fiscais a partir das
-   * colunas do catálogo do PRÓPRIO serviço (cada um segue editável depois).
-   * Sem fallback pro default da empresa — a fonte é o serviço (ou digitação
-   * manual). Se o serviço estiver incompleto, o usuário completa na nota e a
-   * emissão grava de volta no serviço (gap-fill), pra próxima vez já puxar tudo.
-   */
-  const handleServiceTypeChange = (id: string) => {
-    setServiceTypeId(id);
-    const st = (serviceTypes ?? []).find((s) => s.id === id);
-    if (!st) {
-      // Limpou a seleção: zera os campos fiscais (sem serviço, sem fonte).
-      setCodigoServico('');
-      setCodigoNbs('');
-      setIssAliquota('');
-      return;
-    }
-    setCodigoServico(st.codigo_servico || '');
-    setCodigoNbs(st.codigo_nbs || '');
-    setIssAliquota(
-      st.iss_aliquota != null
-        ? String(st.iss_aliquota).replace('.', ',')
-        : '',
-    );
-    // Pré-preenche a descrição com o nome do serviço só se ainda estiver vazia.
-    setDescricao((prev) => (prev.trim() ? prev : st.name));
-  };
-
-  const selectedCustomer = useMemo(
-    () => (customers ?? []).find((c) => c.id === customerId) ?? null,
-    [customers, customerId],
+  // ---- Abas do stepper ----
+  const stepTabs = (
+    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-border">
+      {STEPS.map((step) => (
+        <button
+          key={step.key}
+          type="button"
+          onClick={() => setActiveStep(step.key)}
+          className={`flex items-center whitespace-nowrap px-4 py-3 text-sm border-b-[3px] transition-colors -mb-[1px] ${
+            activeStep === step.key
+              ? 'border-primary text-primary font-bold'
+              : 'border-transparent text-muted-foreground font-semibold hover:text-foreground hover:border-muted-foreground/30'
+          }`}
+        >
+          {(s.tabs as Record<string, string>)[step.key]}
+          {renderStepIndicator(step.key)}
+        </button>
+      ))}
+    </div>
   );
 
-  // O tomador precisa de documento (CPF/CNPJ) pra Fisqal aceitar (senão 422).
-  const customerMissingDoc = !!selectedCustomer && !selectedCustomer.document?.trim();
+  // ---- Conteúdo das etapas ----
+  const stepContent = (
+    <div className="space-y-4">
+      {summaryBar}
+      {stepTabs}
 
-  const valorNum = num(valor);
-  const canSubmit =
-    !!customerId &&
-    !customerMissingDoc &&
-    descricao.trim().length > 0 &&
-    valorNum != null &&
-    !isEmitting;
+      {activeStep === 'pessoas' && (
+        <PessoasStep
+          customers={nfseCustomers}
+          isSimples={isSimples}
+          dataCompetencia={dataCompetencia}
+          onDataCompetencia={setDataCompetencia}
+          regimeApuracao={regimeApuracao}
+          onRegimeApuracao={setRegimeApuracao}
+          tomador={tomador}
+          onTomadorChange={setTomador}
+          intermediario={intermediario}
+          onIntermediarioChange={setIntermediario}
+          errors={pessoasErrors}
+        />
+      )}
 
-  /**
-   * Emite com os valores já validados. Trata o bloqueio de cota (402) abrindo o
-   * modal de upgrade em vez do toast genérico. Reutilizada na reexecução
-   * automática pós-upgrade.
-   */
-  const runEmit = async (v: number) => {
-    // Valores fiscais resolvidos: o que estiver nos campos (serviço escolhido ou
-    // digitação manual). Se vazios, NÃO enviamos esses campos.
-    const issNum = num(issAliquota);
-    const res = await emitNfse({
-      customerId,
-      descricao: descricao.trim(),
-      valorServico: v,
-      codigoServico: codigoServico.trim() || undefined,
-      codigoNbs: codigoNbs.trim() || undefined,
-      aliquotaIss: issNum ?? undefined,
-    });
+      {activeStep === 'servico' && (
+        <ServicoStep
+          servico={servico}
+          onServicoChange={patchServico}
+          defaultCodigoServico={settings.codigo_servico_default}
+          defaultCodigoNbs={settings.codigo_nbs_default}
+          defaultMunicipioIbge={settings.municipio_ibge}
+          errors={servicoErrors}
+        />
+      )}
 
-    if (!res.ok) {
-      // Cota estourada: o servidor recusou (402). Abre o modal de upgrade com os
-      // campos preservados pelo invokeFisqal (errorBody).
-      if (res.errorCode === 'nfse_quota_exceeded') {
-        const b = res.errorBody ?? {};
-        const nt = b.next_tier as Record<string, unknown> | null | undefined;
-        setBlockInfo({
-          used: typeof b.used === 'number' ? b.used : 0,
-          limit: typeof b.limit === 'number' ? b.limit : 0,
-          tier: typeof b.tier === 'number' ? b.tier : 1,
-          nextTier: nt
-            ? {
-                tier: Number(nt.tier),
-                name: String(nt.name ?? t.newNote.quotaBlock.tierFallback.replace('{tier}', String(nt.tier))),
-                limit: nt.limit == null ? null : Number(nt.limit),
-                price: Number(nt.price ?? 0),
-              }
-            : null,
-        });
-        setBlockOpen(true);
-        return;
-      }
-      // 503 (não ativada), 422 (dados faltando) e demais erros já vêm com
-      // mensagem PT-BR pronta do helper invokeFisqal.
-      toast.error(res.message ?? t.newNote.toasts.emitError);
-      return;
-    }
+      {activeStep === 'valores' && (
+        <ValoresStep
+          valores={valores}
+          onChange={patchValores}
+          taxes={taxes}
+          errors={valoresErrors}
+        />
+      )}
 
-    toast.success(res.message ?? t.newNote.toasts.emitSuccess);
+      {activeStep === 'emitir' && (
+        <EmitirStep
+          loading={loading}
+          prestador={prestador}
+          tomador={tomador}
+          intermediario={intermediario}
+          dataCompetencia={dataCompetencia}
+          servico={servico}
+          valores={valores}
+          taxes={taxes}
+          habilitacaoErrors={habilitacaoErrors}
+          habilitacaoWarnings={habilitacaoWarnings}
+        />
+      )}
+    </div>
+  );
 
-    // Gap-fill silencioso: se a nota foi emitida a partir de um tipo de serviço
-    // e o usuário completou códigos fiscais que estavam VAZIOS naquele serviço,
-    // grava de volta no serviço (só os campos vazios — não clobbera config
-    // deliberada). Roda em segundo plano; falha não atrapalha a nota.
-    if (serviceTypeId) {
-      const st = (serviceTypes ?? []).find((s) => s.id === serviceTypeId);
-      if (st) {
-        const fill: Record<string, string | number> = {};
-        const cs = codigoServico.trim();
-        if (cs && !st.codigo_servico) fill.codigo_servico = cs;
-        const cn = codigoNbs.trim();
-        if (cn && !st.codigo_nbs) fill.codigo_nbs = cn;
-        if (issNum != null && st.iss_aliquota == null) fill.iss_aliquota = issNum;
-        if (Object.keys(fill).length > 0) {
-          void gapFillServiceTypeFiscal(st.id, fill);
-        }
-      }
-    }
+  // ---- Footer ----
+  const footerContent = (
+    <div
+      className={`flex w-full gap-2 ${
+        isMobile ? 'flex-col' : 'items-center justify-between'
+      }`}
+    >
+      {/* Esquerda: Voltar (esconde na 1ª etapa) */}
+      <div className={isMobile ? 'order-2' : ''}>
+        {!isFirstStep && (
+          <Button
+            variant="outline"
+            onClick={goPrev}
+            disabled={loading}
+            className={isMobile ? 'w-full' : ''}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {s.footer.voltar}
+          </Button>
+        )}
+      </div>
 
-    onOpenChange(false);
-    // A edge devolve a emissão recém-criada em `data.emission`; repassa pro pai
-    // abrir o detalhe e ligar o polling automático até virar terminal.
-    const created = (res.data?.emission as NfseEmission | undefined) ?? null;
-    onEmitted?.(created);
-  };
-
-  const handleSubmit = async () => {
-    if (!customerId) {
-      toast.error(t.newNote.toasts.noCustomer);
-      return;
-    }
-    if (customerMissingDoc) {
-      toast.error(t.newNote.toasts.missingDoc);
-      return;
-    }
-    if (!descricao.trim()) {
-      toast.error(t.newNote.toasts.noDescription);
-      return;
-    }
-    const v = num(valor);
-    if (v == null) {
-      toast.error(t.newNote.toasts.invalidValue);
-      return;
-    }
-    await runEmit(v);
-  };
-
-  // Pós-upgrade: reexecuta a emissão que o usuário já tinha preenchido.
-  const handleUpgraded = async () => {
-    const v = num(valor);
-    if (v == null) return; // dados ainda válidos no form; nada a refazer.
-    await runEmit(v);
-  };
+      {/* Direita: Cancelar · Salvar Rascunho · Avançar/Emitir */}
+      <div className={`flex gap-2 ${isMobile ? 'flex-col order-1' : 'items-center'}`}>
+        <Button
+          variant="ghost"
+          onClick={handleClose}
+          disabled={loading}
+          className={`${isMobile ? 'w-full' : ''} text-destructive hover:bg-red-600 hover:text-white`}
+        >
+          {s.footer.cancelar}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleSaveDraft}
+          disabled={loading}
+          className={`${isMobile ? 'w-full' : ''} bg-white border-border hover:bg-gray-900 hover:text-white hover:border-transparent`}
+        >
+          <Save className="h-4 w-4 mr-2" />
+          {s.footer.salvarRascunho}
+        </Button>
+        {!isLastStep ? (
+          <Button
+            onClick={goNext}
+            disabled={loading}
+            className={isMobile ? 'w-full' : ''}
+          >
+            {s.footer.avancar}
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        ) : (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={isMobile ? 'w-full' : ''}>
+                  <Button
+                    onClick={handleEmit}
+                    disabled={loading || !canEmit}
+                    className={isMobile ? 'w-full' : ''}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    {s.footer.emitir}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canEmit && (
+                <TooltipContent>
+                  <p>{s.toasts.fixPendencias}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
-    <ResponsiveModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t.newNote.title}
-      footer={
-        <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isEmitting}>
-            {t.newNote.cancelBtn}
-          </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {isEmitting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <FileText className="h-4 w-4 mr-2" />
-            )}
-            {t.newNote.submitBtn}
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-4 py-1">
-        <div className="space-y-2">
-          <Label>{t.newNote.customer.label}</Label>
-          <SearchableSelect
-            options={customerOptions}
-            value={customerId}
-            onValueChange={setCustomerId}
-            placeholder={t.newNote.customer.placeholder}
-            searchPlaceholder={t.newNote.customer.searchPlaceholder}
-            emptyMessage={t.newNote.customer.emptyMessage}
-          />
-          {customerMissingDoc && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-xs">
-                {t.newNote.customer.missingDoc}
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
+      {/* Modal principal — Dialog (desktop) / Drawer (mobile) */}
+      {isMobile ? (
+        <Drawer
+          open={open}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) handleClose();
+          }}
+          handleOnly
+        >
+          <DrawerContent
+            className="max-h-[95vh] flex flex-col"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+          >
+            <DrawerHeader className="border-b pb-3 flex-shrink-0">
+              <DrawerTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                {s.title}
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="flex-1 overflow-y-auto px-4 py-4 overscroll-contain">
+              {stepContent}
+            </div>
+            <DrawerFooter className="border-t pt-4 flex-shrink-0 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+              {footerContent}
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog
+          open={open}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) handleClose();
+          }}
+        >
+          <DialogContent
+            className="max-w-4xl w-[95vw] h-[92dvh] max-h-[92dvh] flex flex-col min-h-0 overflow-hidden p-0"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
+              <DialogTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                {s.title}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+              {stepContent}
+            </div>
+            <DialogFooter className="gap-2 shrink-0 px-6 py-4 border-t">
+              {footerContent}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
-        {serviceTypeOptions.length > 0 && (
-          <div className="space-y-2">
-            <Label>{t.newNote.serviceType.label}</Label>
-            <SearchableSelect
-              options={serviceTypeOptions}
-              value={serviceTypeId}
-              onValueChange={handleServiceTypeChange}
-              placeholder={t.newNote.serviceType.placeholder}
-              searchPlaceholder={t.newNote.serviceType.searchPlaceholder}
-              emptyMessage={t.newNote.serviceType.emptyMessage}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              {t.newNote.serviceType.hint}
-            </p>
+      {/* Confirmação de cancelamento com dados não salvos */}
+      <ResponsiveModal
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+        title={s.cancelConfirm.title}
+        description={s.cancelConfirm.description}
+        footer={
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowCancelConfirm(false)}>
+              {s.cancelConfirm.back}
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmClose}>
+              {s.cancelConfirm.confirm}
+            </Button>
           </div>
-        )}
+        }
+      >
+        {null}
+      </ResponsiveModal>
 
-        <div className="space-y-2">
-          <Label>{t.newNote.description.label}</Label>
-          <Textarea
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder={t.newNote.description.placeholder}
-            rows={3}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t.newNote.value.label}</Label>
-            <Input
-              inputMode="decimal"
-              placeholder={t.newNote.value.placeholder}
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>
-              {t.newNote.iss.label}
-              <span className="ml-1 font-normal text-muted-foreground">{t.newNote.iss.optional}</span>
-            </Label>
-            <Input
-              inputMode="decimal"
-              placeholder={t.newNote.iss.placeholder}
-              value={issAliquota}
-              onChange={(e) => setIssAliquota(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Classificação fiscal: códigos do serviço. Pré-preenchidos pelo tipo de
-            serviço selecionado — editáveis. */}
-        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
-          <p className="text-sm font-medium">{t.newNote.fiscalClassification.sectionTitle}</p>
-          <div className="space-y-2">
-            <Label className="text-sm">
-              {t.newNote.fiscalClassification.serviceCode.label}
-              <span className="ml-1 font-normal text-muted-foreground">
-                {t.newNote.fiscalClassification.serviceCode.optional}
-              </span>
-            </Label>
-            <TaxCodeCombobox
-              type="servico"
-              value={codigoServico}
-              onSelect={(codigo) => setCodigoServico(codigo)}
-              placeholder={t.newNote.fiscalClassification.serviceCode.placeholder}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm">
-              {t.newNote.fiscalClassification.nbs.label}
-              <span className="ml-1 font-normal text-muted-foreground">
-                {t.newNote.fiscalClassification.nbs.optional}
-              </span>
-            </Label>
-            <TaxCodeCombobox
-              type="nbs"
-              value={codigoNbs}
-              onSelect={(codigo) => setCodigoNbs(codigo)}
-              placeholder={t.newNote.fiscalClassification.nbs.placeholder}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              {t.newNote.fiscalClassification.nbs.hint}
-            </p>
-          </div>
-        </div>
-      </div>
-    </ResponsiveModal>
-
-    <NfseQuotaBlockModal
-      open={blockOpen}
-      onOpenChange={setBlockOpen}
-      info={blockInfo}
-      companyId={companyId}
-      onUpgraded={handleUpgraded}
-    />
+      {/* Bloqueio de cota (HTTP 402 nfse_quota_exceeded) */}
+      <NfseQuotaBlockModal
+        open={blockOpen}
+        onOpenChange={setBlockOpen}
+        info={blockInfo}
+        companyId={companyId}
+        onUpgraded={handleUpgraded}
+      />
     </>
   );
 }
+
+export default NovaNotaModal;
