@@ -279,6 +279,11 @@ export const nfse = {
           registerWarning:
             'Dados salvos, mas o registro para emissão falhou: {error}. Revise os dados e salve novamente.',
         },
+        registerFailedTitle: 'Empresa ainda não registrada para emissão',
+        registerFailedData:
+          'Não conseguimos registrar sua empresa na emissão fiscal. Motivo: {error} Corrija os dados acima e salve novamente.',
+        registerFailedPlatform:
+          'Não foi possível registrar sua empresa na emissão fiscal no momento: {error} Isso não é problema nos seus dados — já estamos verificando. Tente novamente em alguns minutos ou fale com o suporte.',
       },
       impostos: {
         regime: 'Regime tributário',
@@ -577,6 +582,11 @@ export const nfse = {
           registerWarning:
             'Details saved, but issuance registration failed: {error}. Review the data and save again.',
         },
+        registerFailedTitle: 'Company not yet registered for invoicing',
+        registerFailedData:
+          'We could not register your company for invoice issuance. Reason: {error} Please correct the details above and save again.',
+        registerFailedPlatform:
+          'We could not register your company for invoice issuance at this time: {error} This is not a problem with your data — our team is already looking into it. Please try again in a few minutes or contact support.',
       },
       impostos: {
         regime: 'Tax regime',
@@ -877,6 +887,11 @@ export const nfse = {
           registerWarning:
             'Datos guardados, pero el registro para emisión falló: {error}. Revisa los datos y guarda de nuevo.',
         },
+        registerFailedTitle: 'Empresa aún no registrada para emisión',
+        registerFailedData:
+          'No pudimos registrar tu empresa para la emisión de facturas fiscales. Motivo: {error} Corrige los datos anteriores y guarda de nuevo.',
+        registerFailedPlatform:
+          'No fue posible registrar tu empresa para la emisión de facturas en este momento: {error} Esto no es un problema en tus datos — ya lo estamos revisando. Intenta de nuevo en unos minutos o contacta con el soporte.',
       },
       impostos: {
         regime: 'Régimen tributario',
@@ -1177,6 +1192,11 @@ export const nfse = {
           registerWarning:
             "Données enregistrées, mais l'enregistrement pour émission a échoué : {error}. Vérifiez les données et enregistrez à nouveau.",
         },
+        registerFailedTitle: "Entreprise pas encore enregistrée pour l`émission",
+        registerFailedData:
+          "Nous n`avons pas pu enregistrer votre entreprise pour l`émission de factures fiscales. Motif : {error} Corrigez les données ci-dessus et enregistrez à nouveau.",
+        registerFailedPlatform:
+          "Nous n`avons pas pu enregistrer votre entreprise pour l`émission de factures pour le moment : {error} Ce n`est pas un problème lié à vos données — notre équipe vérifie déjà. Réessayez dans quelques minutes ou contactez le support.",
       },
       impostos: {
         regime: 'Régime fiscal',

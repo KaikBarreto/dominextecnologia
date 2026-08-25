@@ -86,9 +86,35 @@ interface EmitBody {
   servico?: { descricao?: string; codigoServico?: string; codigoNbs?: string };
   // aliquotaIss: override da alíquota de ISS por nota (em %, ex.: 5 = 5%).
   // Mora em `valores` por ser um parâmetro de cálculo do valor da nota.
-  valores?: { valorServico?: number | string; aliquotaIss?: number | string };
+  //
+  // Os demais campos abaixo são overrides OPCIONAIS que mapeiam 1:1 pros nomes
+  // reais do NfseValoresDto da Fisqal (§8.1) — forward-compat para as próximas
+  // ondas do frontend. Só entram no payload se vierem e forem válidos.
+  valores?: {
+    valorServico?: number | string;
+    aliquotaIss?: number | string;
+    // tribIssqn: situação do ISSQN — enum '1'..'4' (1=operação normal tributada,
+    // 2=exportação, 3=imunidade, 4=não incidência). Sobrescreve o default '1'.
+    tribIssqn?: string;
+    // tpRetIssqn: tipo de retenção do ISSQN (ISS retido na fonte) — enum '1'..'3'.
+    tpRetIssqn?: string;
+    valorPis?: number | string;
+    valorCofins?: number | string;
+    valorCsll?: number | string;
+    percentualTotalTributosSimplesNacional?: number | string;
+  };
   dataCompetencia?: string;
   idempotencyKey?: string;
+}
+
+/**
+ * Resolve um valor monetário/tributo (>= 0) a partir de um valor cru do body.
+ * Retorna `null` se ausente, inválido ou negativo.
+ */
+function parseNonNegative(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 /**
@@ -365,19 +391,55 @@ Deno.serve(async (req) => {
     }
     const numeroDps = String(numeroDpsRaw);
 
-    // ---- idDps: layout nacional da DPS.
+    // ---- idDps: layout nacional da DPS (45 chars, conferido contra o layout nacional).
     // "DPS" + codigoMunicipioEmissor(7) + tipoInscricaoPrestador(1) +
     // inscricaoFederalPrestador zero-padded em 14 + serieDps zero-padded em 5 +
-    // numeroDps zero-padded em 15.
-    // TODO(homologação): confirmar o formato EXATO do idDps com a Fisqal/SEFIN —
-    // o exemplo da doc (§8.1) é placeholder e o tamanho final deve ser validado
-    // em ambiente de homologação antes de emitir em produção.
+    // numeroDps zero-padded em 15 = 3 + 7 + 1 + 14 + 5 + 15 = 45 chars.
     const idDps = "DPS" +
       padLeft(codigoMunicipioEmissor, 7) +
       tipoInscricaoPrestador +
       padLeft(cnpjPrestador, 14) +
       padLeft(serieDps, 5) +
       padLeft(numeroDps, 15);
+
+    // ---- Monta o bloco `valores` (NfseValoresDto §8.1) com os NOMES REAIS da Fisqal.
+    // `valorServico` é obrigatório. Quando há alíquota de ISS resolvida (> 0),
+    // enviamos `aliquotaIssqn` (nome correto — o campo antigo `aliquota` era ignorado
+    // pela Fisqal) e `tribIssqn` = '1' (operação normal tributada) por padrão.
+    // Os demais campos entram só quando o body os traz e são válidos.
+    const valoresPayload: Record<string, unknown> = { valorServico };
+    if (issAliquota > 0) {
+      valoresPayload.aliquotaIssqn = issAliquota;
+      valoresPayload.tribIssqn = "1"; // default: operação normal tributada
+    }
+    // Override da situação do ISSQN, se o body trouxer enum válido ('1'..'4').
+    {
+      const t = clean(body?.valores?.tribIssqn);
+      if (/^[1-4]$/.test(t)) valoresPayload.tribIssqn = t;
+    }
+    // Tipo de retenção do ISSQN (ISS retido), se presente ('1'..'3').
+    {
+      const t = clean(body?.valores?.tpRetIssqn);
+      if (/^[1-3]$/.test(t)) valoresPayload.tpRetIssqn = t;
+    }
+    // Tributos federais (só quando presentes e > 0).
+    {
+      const pis = parseNonNegative(body?.valores?.valorPis);
+      if (pis != null && pis > 0) valoresPayload.valorPis = pis;
+      const cofins = parseNonNegative(body?.valores?.valorCofins);
+      if (cofins != null && cofins > 0) valoresPayload.valorCofins = cofins;
+      const csll = parseNonNegative(body?.valores?.valorCsll);
+      if (csll != null && csll > 0) valoresPayload.valorCsll = csll;
+    }
+    // Percentual total de tributos (Simples Nacional), se presente.
+    {
+      const pct = parseNonNegative(
+        body?.valores?.percentualTotalTributosSimplesNacional,
+      );
+      if (pct != null) {
+        valoresPayload.percentualTotalTributosSimplesNacional = pct;
+      }
+    }
 
     // ---- Monta o CreateNfseDpsDto (§8.1).
     const payload: Record<string, unknown> = {
@@ -401,16 +463,7 @@ Deno.serve(async (req) => {
         municipioIncidencia: codigoMunicipioEmissor,
         discriminacao,
       },
-      valores: {
-        valorServico,
-        // TODO(homologação): a doc §8.1 só documenta `valorServico` em `valores`.
-        // O campo da alíquota de ISS na DPS nacional (provável `aliquota`/`tribIssqn`)
-        // ainda não está confirmado na doc — reconferir no OpenAPI ao vivo
-        // (docs-json) e em homologação. Enviamos `aliquota` de forma otimista
-        // (a Fisqal ignora campos extras); o cálculo de `valor_iss` já usa a
-        // alíquota resolvida localmente, então a nota fica correta de qualquer forma.
-        ...(issAliquota > 0 ? { aliquota: issAliquota } : {}),
-      },
+      valores: valoresPayload,
     };
 
     // ---- POST /v1/nfse (§8.1) com Idempotency-Key (§4).

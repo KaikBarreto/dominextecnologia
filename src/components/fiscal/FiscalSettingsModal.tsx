@@ -148,6 +148,16 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   /** Garante que o auto-backfill do IBGE rode no máximo 1x por abertura do modal. */
   const ibgeBackfilledRef = useRef(false);
 
+  // Erro persistente de registro na Fisqal (visível até a empresa ser registrada).
+  const [registerError, setRegisterError] = useState<{ kind: 'data' | 'platform'; message: string } | null>(null);
+
+  // Limpa o erro de registro quando a empresa já está registrada.
+  useEffect(() => {
+    if (settings.fisqal_company_id) {
+      setRegisterError(null);
+    }
+  }, [settings.fisqal_company_id]);
+
   // Certificado
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [certFile, setCertFile] = useState<File | null>(null);
@@ -301,27 +311,31 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         }),
         save(fiscalPayload),
       ]);
-      toast.success(t.settings.certificado.toasts.saveSuccess);
 
       // Após salvar, registra/atualiza a empresa na Fisqal automaticamente
       // (cria na 1ª vez, atualiza nas demais). Falha aqui NÃO derruba o fluxo:
-      // o save já confirmou sucesso, então só avisamos.
+      // os dados foram salvos com sucesso — mas o estado de registro é exibido
+      // de forma persistente para que o usuário entenda o que aconteceu.
       try {
+        setRegisterError(null);
         const res = await invokeFisqal('fisqal-register-company');
-        if (!res.ok) {
+        if (res.ok) {
+          // Registro ok: toast de sucesso completo.
+          toast.success(t.settings.certificado.toasts.saveSuccess);
+        } else {
+          // Registro falhou: determina a causa e exibe alerta persistente.
+          const kind = res.errorCode === 'missing_fields' ? 'data' : 'platform';
+          const msg = res.message ?? 'erro desconhecido';
+          setRegisterError({ kind, message: msg });
           toast.warning(
-            t.settings.certificado.toasts.registerWarning.replace(
-              '{error}',
-              res.message ?? 'erro desconhecido',
-            ),
+            t.settings.certificado.toasts.registerWarning.replace('{error}', msg),
           );
         }
       } catch (regErr) {
+        const msg = regErr instanceof Error ? regErr.message : 'erro desconhecido';
+        setRegisterError({ kind: 'platform', message: msg });
         toast.warning(
-          t.settings.certificado.toasts.registerWarning.replace(
-            '{error}',
-            regErr instanceof Error ? regErr.message : 'erro desconhecido',
-          ),
+          t.settings.certificado.toasts.registerWarning.replace('{error}', msg),
         );
       } finally {
         // Atualiza isRegistered / status da emissão na UI.
@@ -646,6 +660,35 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 </div>
               </div>
 
+              {/* Alerta persistente de falha de registro — visível até a empresa
+                  ser registrada com sucesso. Distingue causa (dado vs plataforma). */}
+              {registerError && !isRegistered && (
+                <Alert
+                  className={
+                    registerError.kind === 'data'
+                      ? 'border-warning/40 bg-warning/10'
+                      : 'border-destructive/40 bg-destructive/10'
+                  }
+                >
+                  {registerError.kind === 'data' ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4" />
+                  )}
+                  <AlertDescription className="text-xs space-y-0.5">
+                    <p className="font-semibold">
+                      {t.settings.certificado.registerFailedTitle}
+                    </p>
+                    <p>
+                      {(registerError.kind === 'data'
+                        ? t.settings.certificado.registerFailedData
+                        : t.settings.certificado.registerFailedPlatform
+                      ).replace('{error}', registerError.message)}
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {isRegistered && (
                 <Button onClick={() => setSection('certificado')} className="w-full sm:w-auto">
                   {t.settings.empresa.nextBtn} <ArrowRight className="h-4 w-4 ml-2" />
@@ -707,20 +750,49 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
           {section === 'certificado' && (
             <div className="space-y-4">
               {!isRegistered && (
-                <Alert className="border-warning/40 bg-warning/10">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    {t.settings.certificado.notRegisteredWarning.split('{link}')[0]}
-                    <button
-                      type="button"
-                      onClick={() => setSection('empresa')}
-                      className="font-semibold underline underline-offset-2"
-                    >
-                      {t.settings.certificado.notRegisteredLink}
-                    </button>
-                    {t.settings.certificado.notRegisteredWarning.split('{link}')[1]}
-                  </AlertDescription>
-                </Alert>
+                registerError ? (
+                  /* Motivo real da falha de registro — substitui o aviso genérico */
+                  <Alert
+                    className={
+                      registerError.kind === 'data'
+                        ? 'border-warning/40 bg-warning/10'
+                        : 'border-destructive/40 bg-destructive/10'
+                    }
+                  >
+                    {registerError.kind === 'data' ? (
+                      <AlertCircle className="h-4 w-4" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4" />
+                    )}
+                    <AlertDescription className="text-xs space-y-0.5">
+                      <p className="font-semibold">
+                        {t.settings.certificado.registerFailedTitle}
+                      </p>
+                      <p>
+                        {(registerError.kind === 'data'
+                          ? t.settings.certificado.registerFailedData
+                          : t.settings.certificado.registerFailedPlatform
+                        ).replace('{error}', registerError.message)}
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  /* Aviso genérico: ainda não tentou salvar ou erro foi limpo */
+                  <Alert className="border-warning/40 bg-warning/10">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      {t.settings.certificado.notRegisteredWarning.split('{link}')[0]}
+                      <button
+                        type="button"
+                        onClick={() => setSection('empresa')}
+                        className="font-semibold underline underline-offset-2"
+                      >
+                        {t.settings.certificado.notRegisteredLink}
+                      </button>
+                      {t.settings.certificado.notRegisteredWarning.split('{link}')[1]}
+                    </AlertDescription>
+                  </Alert>
+                )
               )}
 
               {hasCertificate && (

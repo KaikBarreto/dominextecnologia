@@ -157,19 +157,32 @@ processing → sent → authorized | rejected | failed → cancelled
 | Consulta por chave externa | `POST /v1/nfse/consulta-chave` |
 | Sincronizar externas | `POST /v1/nfse/external/sync` |
 
-### 8.1 `POST /v1/nfse` — payload (campos conhecidos)
-DTO: `CreateNfseDpsDto` (schema completo no OpenAPI ao vivo; abaixo os campos confirmados na doc).
+### 8.1 `POST /v1/nfse` — payload (schema real do `docs-json`)
+DTO: `CreateNfseDpsDto` (schema puxado do OpenAPI ao vivo `docs-json`; campos abaixo são fiéis ao schema — não inventar campo).
 
+**Topo (`CreateNfseDpsDto`)**
 - `companyId` (UUID do emitente)
-- `idDps` (ex: `"DPS355030812345678900019900000000001"`)
+- `idDps` (layout nacional, **45 chars** = `"DPS"` + cMun(7) + tpInsc(1) + nInsc(14) + serie(5) + nDPS(15); ex: `"DPS355030812345678900019900000000001"`)
 - `serieDps`, `numeroDps`
 - `codigoMunicipioEmissor` (IBGE 7 díg.)
 - `tipoInscricaoPrestador` (`"2"` = CNPJ), `inscricaoFederalPrestador` (CNPJ)
 - `dataCompetencia` (`YYYY-MM-DD`)
-- **`tomador`**: `tipoInscricao`, `inscricaoFederal`, `inscricaoMunicipal`, `razaoSocial`, `email`
-- **`servico`**: `codigoServico` (cTribNac, 6 díg.), `municipioIncidencia` (IBGE), `discriminacao` (descrição)
-- **`valores`**: `valorServico`
-- **`salaoParceiro`** (opcional, dedução `tpDedRed=9`): `documentos[]` (`numeroDocumento`, `dataEmissaoDocumento`, `valorDedutivel`, `valorDeducao`) + `profissionalParceiro`
+- **opcionais**: `inscricaoMunicipalPrestador`, `opSimpNac`, `regEspTrib`, `regApTribSN`
+
+**`tomador`**: `tipoInscricao`, `inscricaoFederal`, `inscricaoMunicipal`, `razaoSocial`, `email`
+
+**`servico`** (`NfseServicoDto`) — obrigatórios: `codigoServico` (cTribNac, 6 díg.), `municipioIncidencia` (IBGE), `discriminacao` (descrição), `codigoNbs`. Opcionais relevantes: `codigoTributacaoMunicipio`, `tipoOperacao`.
+
+**`valores`** (`NfseValoresDto`):
+- `valorServico` (number) — **OBRIGATÓRIO**
+- `tribIssqn` (string, enum `['1','2','3','4']`) — situação do ISSQN: `1`=operação normal tributada, `2`=exportação, `3`=imunidade, `4`=não incidência
+- `tpRetIssqn` (string, enum `['1','2','3']`) — tipo de retenção do ISSQN (ISS retido na fonte)
+- `aliquotaIssqn` (number) — Alíquota ISSQN (%) (XML `pAliq`); obrigatória quando `tribIssqn=1` e o município exige. **É o nome correto — não usar `aliquota`.**
+- `percentualTotalTributosSimplesNacional` (number)
+- `valorPis`, `valorCofins`, `valorCsll` (number)
+- `valorCsrf` (number) — **DESCONTINUADO, não usar**
+
+**`salaoParceiro`** (opcional, dedução `tpDedRed=9`): `documentos[]` (`numeroDocumento`, `dataEmissaoDocumento`, `valorDedutivel`, `valorDeducao`) + `profissionalParceiro`
 
 **Resposta 202:** `{ "dpsId", "status": "pending", "fiscalRequestId" }`
 
@@ -243,6 +256,7 @@ Suporte a **IBS/CBS** (NF-e/NFC-e) conforme notas técnicas da Receita. Para NFS
 
 ## 13. Pendências abertas (TODO antes/durante o build)
 - [ ] Confirmar com Fisqal: detalhes de assinatura HMAC do webhook + schema de criação + retry (seção 11).
-- [ ] Puxar do `docs-json` o schema **completo** de `CreateNfseDpsDto` e `CreateCompanyDto` e fixar aqui (campos opcionais, formatos, obrigatoriedade).
+- [x] Puxar do `docs-json` o schema **completo** de `CreateNfseDpsDto` e fixar aqui — feito na §8.1 (`NfseValoresDto`/`NfseServicoDto` reais, com obrigatoriedade e enums de `tribIssqn`/`tpRetIssqn`).
+- [ ] Puxar do `docs-json` o schema **completo** de `CreateCompanyDto` e fixar aqui (campos opcionais, formatos, obrigatoriedade).
 - [ ] Confirmar credenciais: ambiente de **homologação** disponível? (campo `fiscal_ambiente: homologacao` sugere que sim — validar 1 município piloto).
 - [ ] Conferir cobertura dos **municípios dos clientes atuais** via `/v1/public/nfse/municipios/cobertura`.

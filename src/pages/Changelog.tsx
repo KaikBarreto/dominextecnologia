@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.19',
+    date: '25 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configuração fiscal explica quando o registro não conclui',
+        description: 'Ao configurar a emissão de notas fiscais, se o registro da sua empresa não for concluído, agora explicamos o motivo com clareza e o que fazer. Quando é algo nos seus dados, mostramos exatamente o que corrigir, quando é uma indisponibilidade momentânea do serviço fiscal, avisamos que não é problema seu e que basta tentar de novo em instantes. Antes, o aviso sumia rápido e o envio do certificado ficava bloqueado sem explicação, dando a impressão de que faltava salvar algo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.18',
     date: '23 de agosto de 2026',
     type: 'patch',
