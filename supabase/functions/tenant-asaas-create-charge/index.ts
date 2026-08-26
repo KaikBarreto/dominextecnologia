@@ -23,6 +23,10 @@ import {
 } from "../_shared/payments-auth.ts";
 import { asaasFor, AsaasApiError } from "../_shared/asaas-tenant-client.ts";
 import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
+import { resolveTenantCardFees, grossUpForCustomer } from "../_shared/asaas-card-fees.ts";
+
+/** Quem paga a taxa do cartão nesta cobrança. */
+type CardFeePayer = "company" | "customer";
 
 type BillingType = "PIX" | "BOLETO" | "CREDIT_CARD" | "UNDEFINED";
 
@@ -103,6 +107,8 @@ interface CreateChargeInput {
   discount_percent?: number;
   discount_days?: number;
   installment_count?: number;
+  // Quem paga a taxa do cartão. Ausente → default da conta (card_fee_payer).
+  fee_payer?: CardFeePayer;
 }
 
 /**
@@ -296,7 +302,8 @@ async function handleRequest(req: Request): Promise<Response> {
           "default_fine_percent, default_interest_percent, " +
           "default_discount_percent, default_discount_days, " +
           "default_due_days, default_description, default_max_installments, " +
-          "default_finance_account_id, default_income_category",
+          "default_finance_account_id, default_income_category, " +
+          "card_fee_payer, card_fee_override, card_fees_cache, card_fees_synced_at",
       )
       .eq("company_id", companyId)
       .maybeSingle();
@@ -353,6 +360,34 @@ async function handleRequest(req: Request): Promise<Response> {
         ? Math.floor(rawInstallments)
         : 1;
 
+    // Quem paga a taxa do cartão: corpo → default da conta → 'company'.
+    const feePayer: CardFeePayer =
+      input.fee_payer === "customer" || input.fee_payer === "company"
+        ? input.fee_payer
+        : account.card_fee_payer === "customer"
+          ? "customer"
+          : "company";
+
+    // Gross-up (repasse ao cliente): só no cartão E quando cliente paga a taxa.
+    // A empresa passa a receber ~o valor cheio líquido; o cliente paga o total
+    // inflado. Fonte da taxa: override → cache → Asaas (myAccount/fees) → fallback.
+    // AUTORITATIVO no server — nunca confiamos em cálculo do client.
+    let billedValue = chargeValue;
+    if (feePayer === "customer" && billingType === "CREDIT_CARD") {
+      const { fees } = await resolveTenantCardFees({
+        account,
+        asaas,
+        nowMs: Date.now(),
+        persistCache: async (table) => {
+          await supabase
+            .from("tenant_payment_accounts")
+            .update({ card_fees_cache: table, card_fees_synced_at: new Date().toISOString() })
+            .eq("company_id", companyId);
+        },
+      });
+      billedValue = grossUpForCustomer(chargeValue, installmentCount, fees).totalValue;
+    }
+
     // 3) Cria a cobrança. externalReference = company_id (resolução multi-tenant §9.3).
     const payment = await asaas.post<any>("/payments", {
       customer: asaasCustomerId,
@@ -360,8 +395,8 @@ async function handleRequest(req: Request): Promise<Response> {
       // Parcelamento no cartão: Asaas espera installmentCount + totalValue (parcela
       // o total). Cobrança simples usa `value`.
       ...(installmentCount > 1
-        ? { installmentCount, totalValue: chargeValue }
-        : { value: chargeValue }),
+        ? { installmentCount, totalValue: billedValue }
+        : { value: billedValue }),
       dueDate: dueDate,
       description: description ?? undefined,
       externalReference: companyId,
@@ -396,7 +431,7 @@ async function handleRequest(req: Request): Promise<Response> {
       source_type: sourceType,
       source_id: sourceType === "quote" ? sourceId : null,
       customer_id: input.customer_id,
-      value: chargeValue,
+      value: billedValue,
       net_value: payment?.netValue ?? null,
       billing_type: billingType,
       status: payment?.status ?? "PENDING",
@@ -431,7 +466,7 @@ async function handleRequest(req: Request): Promise<Response> {
           invoice_url: payment?.invoiceUrl ?? null,
           pix_copy_paste: pixCopyPaste,
           boleto_url: boletoUrl,
-          value: chargeValue,
+          value: billedValue,
           due_date: dueDate,
           billing_type: billingType,
           status: payment?.status ?? "PENDING",
@@ -450,7 +485,7 @@ async function handleRequest(req: Request): Promise<Response> {
           p_company_id: companyId,
           p_tenant_charge_id: saved.id,
           p_customer_id: input.customer_id,
-          p_amount: chargeValue,
+          p_amount: billedValue,
           p_due_date: dueDate,
           p_description: description,
           // Destino financeiro do recebível (ambos podem ser null → RPC decide default).
@@ -479,7 +514,7 @@ async function handleRequest(req: Request): Promise<Response> {
         invoice_url: payment?.invoiceUrl ?? null,
         pix_copy_paste: pixCopyPaste,
         boleto_url: boletoUrl,
-        value: chargeValue,
+        value: billedValue,
         due_date: dueDate,
         billing_type: billingType,
         status: payment?.status ?? "PENDING",

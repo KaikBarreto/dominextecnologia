@@ -184,6 +184,12 @@ verify_jwt = false
 [functions.tenant-asaas-create-charge]
 verify_jwt = false
 
+# tenant-asaas-card-fees: devolve a tabela de taxa de cartão efetiva do tenant
+# (override → cache → Asaas myAccount/fees → fallback) para o preview do repasse
+# na cobrança. Mesmo gate na própria função — por isso verify_jwt=false.
+[functions.tenant-asaas-card-fees]
+verify_jwt = false
+
 # tenant-asaas-create-subscription: cria assinatura recorrente (boleto/Pix no MVP) na
 # conta Asaas do tenant. Mesmo gate (Bearer + módulo 'cobrancas' + can_manage_system)
 # na própria função — por isso verify_jwt=false (erro PT-BR chega no error.context).

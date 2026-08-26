@@ -110,6 +110,14 @@ export const charges = {
         interestRateHint: 'Se 0, a loja absorve os juros e o cliente paga sem acréscimo.',
         summary: (n: number, installment: string, total: string, interest: string) =>
           `${n}x de ${installment} = ${total} (juros: ${interest})`,
+        feePayerLabel: 'Quem paga a taxa do cartão?',
+        feePayerCompany: 'Empresa',
+        feePayerCustomer: 'Cliente',
+        feePayerCompanyHint: 'A empresa absorve a taxa; o cliente paga o valor cheio parcelado.',
+        feePayerCustomerHint: 'A taxa é repassada ao cliente; a empresa recebe o valor cheio.',
+        feePayerLoading: 'Consultando a taxa do seu Asaas…',
+        feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
+          `Cliente paga ${total} em ${n}x de ${installment} — você recebe o valor cheio (taxa repassada: ${fee}).`,
       },
       quickCustomer: {
         title: 'Novo cliente',
@@ -460,6 +468,14 @@ export const charges = {
         interestRateHint: 'If 0, the store absorbs the interest and the customer pays no extra.',
         summary: (n: number, installment: string, total: string, interest: string) =>
           `${n}x of ${installment} = ${total} (interest: ${interest})`,
+        feePayerLabel: 'Who pays the card fee?',
+        feePayerCompany: 'Business',
+        feePayerCustomer: 'Customer',
+        feePayerCompanyHint: 'The business absorbs the fee; the customer pays the full amount in installments.',
+        feePayerCustomerHint: 'The fee is passed on to the customer; the business receives the full amount.',
+        feePayerLoading: 'Checking your Asaas fee…',
+        feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
+          `Customer pays ${total} in ${n}x of ${installment} — you receive the full amount (fee passed on: ${fee}).`,
       },
       quickCustomer: {
         title: 'New customer',
@@ -804,6 +820,14 @@ export const charges = {
         interestRateHint: 'Si es 0, el negocio absorbe el interés y el cliente no paga adicional.',
         summary: (n: number, installment: string, total: string, interest: string) =>
           `${n}x de ${installment} = ${total} (interés: ${interest})`,
+        feePayerLabel: '¿Quién paga la tarifa de la tarjeta?',
+        feePayerCompany: 'Negocio',
+        feePayerCustomer: 'Cliente',
+        feePayerCompanyHint: 'El negocio absorbe la tarifa; el cliente paga el importe completo en cuotas.',
+        feePayerCustomerHint: 'La tarifa se traslada al cliente; el negocio recibe el importe completo.',
+        feePayerLoading: 'Consultando la tarifa de tu Asaas…',
+        feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
+          `El cliente paga ${total} en ${n}x de ${installment} — tú recibes el importe completo (tarifa trasladada: ${fee}).`,
       },
       quickCustomer: {
         title: 'Nuevo cliente',
@@ -1148,6 +1172,14 @@ export const charges = {
         interestRateHint: `Si 0, le magasin absorbe les intérêts et le client ne paie pas de supplément.`,
         summary: (n: number, installment: string, total: string, interest: string) =>
           `${n}x de ${installment} = ${total} (intérêts : ${interest})`,
+        feePayerLabel: 'Qui paie les frais de carte ?',
+        feePayerCompany: 'Entreprise',
+        feePayerCustomer: 'Client',
+        feePayerCompanyHint: `L'entreprise absorbe les frais ; le client paie le montant total en plusieurs fois.`,
+        feePayerCustomerHint: `Les frais sont répercutés sur le client ; l'entreprise reçoit le montant total.`,
+        feePayerLoading: 'Consultation des frais de votre Asaas…',
+        feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
+          `Le client paie ${total} en ${n}x de ${installment} — vous recevez le montant total (frais répercutés : ${fee}).`,
       },
       quickCustomer: {
         title: 'Nouveau client',

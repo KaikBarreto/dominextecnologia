@@ -29,6 +29,7 @@ import {
   type CreateChargeResult,
 } from '@/hooks/useTenantCharges';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { useTenantCardFees, grossUpForCustomer } from '@/hooks/useTenantCardFees';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { formatBRL } from '@/utils/currency';
 
@@ -62,32 +63,6 @@ function todayISO(): string {
   const d = new Date();
   const off = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - off).toISOString().slice(0, 10);
-}
-
-/**
- * Calcula o total com juros compostos pela tabela Price.
- * i  = taxa mensal (ex.: 0.02 para 2%)
- * n  = número de parcelas
- * PV = valor original (Present Value)
- *
- * Coeficiente = i / (1 - (1+i)^(-n))
- * Parcela     = PV * coeficiente
- * Total       = parcela * n
- *
- * Se i = 0: total = PV (sem juros, sem divisão por zero).
- */
-function calcPriceTotal(pv: number, iMonthly: number, n: number): { installment: number; total: number } {
-  if (n <= 1 || iMonthly <= 0) {
-    const installment = pv / Math.max(n, 1);
-    return { installment, total: pv };
-  }
-  const coef = iMonthly / (1 - Math.pow(1 + iMonthly, -n));
-  const installment = pv * coef;
-  const total = installment * n;
-  return {
-    installment: Math.round(installment * 100) / 100,
-    total: Math.round(total * 100) / 100,
-  };
 }
 
 export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, source }: ChargeDialogProps) {
@@ -138,11 +113,14 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [description, setDescription] = useState('');
   const [method, setMethod] = useState<BillingMethod>('UNDEFINED');
   const [installmentCount, setInstallmentCount] = useState(1);
-  // Juros de parcelamento (% ao mês) — só relevante quando cartão + parcelas > 1.
-  // Conceito distinto de mora (finePercent/interestPercent): este é embutido no total
-  // enviado ao Asaas, não é multa/juros por atraso.
-  const [installmentInterestRate, setInstallmentInterestRate] = useState('');
+  // Quem paga a taxa do cartão: 'company' (empresa absorve) ou 'customer'
+  // (repasse ao cliente — o total é inflado no servidor pela taxa real do Asaas).
+  const [feePayer, setFeePayer] = useState<'company' | 'customer'>('company');
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Tabela de taxa de cartão do tenant (para o PREVIEW do repasse). O cálculo
+  // autoritativo roda no edge de criação; aqui é só o número mostrado ao usuário.
+  const { fees: cardFees, feePayerDefault, isLoading: feesLoading } = useTenantCardFees({ enabled: open });
 
   // Quick-create de cliente na hora
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
@@ -195,6 +173,13 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     }
   }, [open, presetCustomerId]);
 
+  // Inicializa o "quem paga a taxa" com o default da conta ao abrir o dialog.
+  useEffect(() => {
+    if (open) {
+      setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
+    }
+  }, [open, feePayerDefault]);
+
   // Sincroniza o método selecionado sempre que a lista de opções mudar (ex.: conta carregou).
   useEffect(() => {
     if (methodOptions.length > 0 && !methodOptions.find((o) => o.value === method)) {
@@ -209,7 +194,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setDescription(defaultDescription ?? '');
     setMethod(methodOptions[0]?.value ?? 'UNDEFINED');
     setInstallmentCount(1);
-    setInstallmentInterestRate('');
+    setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
     setShowAdvanced(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
@@ -236,23 +221,16 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     return '';
   })();
 
-  // ── Juros de parcelamento (tabela Price) ───────────────────────────────────
-  // Só se aplica quando: forma = Cartão E parcelas > 1 E juros > 0.
-  // Resultado: valor a ser enviado ao Asaas como `value` (totalValue).
+  // ── Repasse de taxa ao cliente (preview) ───────────────────────────────────
+  // Só se aplica quando: forma = Cartão E parcelas > 1 E cliente paga a taxa.
+  // O valor enviado ao Asaas é SEMPRE o valor original; o gross-up autoritativo
+  // é feito no edge com a taxa real do Asaas. Aqui só mostramos o número.
   const isCardInstallment = method === 'CREDIT_CARD' && installmentCount > 1;
-  const parsedInstallmentRate = parseDecimalInput(installmentInterestRate);
-  const installmentInterestMonthly =
-    isCardInstallment && !isNaN(parsedInstallmentRate) && parsedInstallmentRate > 0
-      ? parsedInstallmentRate / 100
-      : 0;
 
-  const priceResult = useMemo(() => {
-    if (!isCardInstallment || installmentInterestMonthly <= 0 || amount <= 0) return null;
-    return calcPriceTotal(amount, installmentInterestMonthly, installmentCount);
-  }, [amount, installmentInterestMonthly, installmentCount, isCardInstallment]);
-
-  // Valor real a ser enviado ao Asaas (com juros embutidos quando aplicável).
-  const effectiveValue = priceResult ? priceResult.total : amount;
+  const grossUp = useMemo(() => {
+    if (feePayer !== 'customer' || !isCardInstallment || !cardFees || amount <= 0) return null;
+    return grossUpForCustomer(amount, installmentCount, cardFees);
+  }, [feePayer, isCardInstallment, cardFees, amount, installmentCount]);
 
   const handleClose = (next: boolean) => {
     if (!next) resetForm();
@@ -296,9 +274,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     try {
       const chargeResult = await create.mutateAsync({
         customer_id: customerId,
-        // effectiveValue = total com juros de parcelamento embutidos (tabela Price).
-        // Se juros = 0 ou não se aplica (Pix/Boleto/1x), é igual ao valor original.
-        value: effectiveValue,
+        // Valor ORIGINAL — o repasse de taxa (quando cliente paga) é calculado
+        // no servidor com a taxa real do Asaas. Nunca inflamos no client.
+        value: amount,
         due_date: dueDate,
         billing_type: method,
         description: description.trim() || undefined,
@@ -307,6 +285,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
         discount_days: isNaN(parsedDiscountDays) ? undefined : parsedDiscountDays,
         installment_count: method === 'CREDIT_CARD' && installmentCount > 1 ? installmentCount : undefined,
+        // Quem paga a taxa — só faz sentido no cartão; o edge ignora nos demais.
+        fee_payer: method === 'CREDIT_CARD' ? feePayer : undefined,
         // Origem da cobrança: ativa dedupe no edge quando source_type='quote'.
         source_type: source?.type,
         source_id: source?.id ?? null,
@@ -476,37 +456,54 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   </SelectContent>
                 </Select>
 
-                {/* Juros de parcelamento (tabela Price) — só quando parcelas > 1 */}
+                {/* Quem paga a taxa do cartão — só quando parcelas > 1 */}
                 {installmentCount > 1 && (
                   <div className="space-y-1.5 pt-1">
-                    <Label htmlFor="installment-interest-rate" className="text-sm font-medium">
-                      {t.installments.interestRate}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="installment-interest-rate"
-                        inputMode="decimal"
-                        placeholder={t.installments.interestRatePlaceholder}
-                        value={installmentInterestRate}
-                        onChange={(e) => setInstallmentInterestRate(e.target.value)}
-                        className="pr-8"
-                      />
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        %
-                      </span>
+                    <Label className="text-sm font-medium">{t.installments.feePayerLabel}</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFeePayer('company')}
+                        className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                          feePayer === 'company'
+                            ? 'border-primary bg-primary/10 text-foreground'
+                            : 'border-input bg-background text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {t.installments.feePayerCompany}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFeePayer('customer')}
+                        className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                          feePayer === 'customer'
+                            ? 'border-primary bg-primary/10 text-foreground'
+                            : 'border-input bg-background text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {t.installments.feePayerCustomer}
+                      </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">{t.installments.interestRateHint}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {feePayer === 'customer'
+                        ? t.installments.feePayerCustomerHint
+                        : t.installments.feePayerCompanyHint}
+                    </p>
 
-                    {/* Resumo em tempo real — só quando há juros e valor preenchido */}
-                    {priceResult && amount > 0 && (
-                      <p className="rounded-md bg-muted px-3 py-2 text-xs text-foreground">
-                        {t.installments.summary(
-                          installmentCount,
-                          formatMoney(priceResult.installment, 'BRL', locale),
-                          formatMoney(priceResult.total, 'BRL', locale),
-                          formatMoney(priceResult.total - amount, 'BRL', locale),
-                        )}
-                      </p>
+                    {/* Preview do repasse — só quando cliente paga, com taxa e valor prontos */}
+                    {feePayer === 'customer' && amount > 0 && (
+                      feesLoading && !cardFees ? (
+                        <p className="text-xs text-muted-foreground">{t.installments.feePayerLoading}</p>
+                      ) : grossUp ? (
+                        <p className="rounded-md bg-muted px-3 py-2 text-xs text-foreground">
+                          {t.installments.feePayerCustomerSummary(
+                            installmentCount,
+                            formatMoney(grossUp.installmentValue, 'BRL', locale),
+                            formatMoney(grossUp.totalValue, 'BRL', locale),
+                            formatMoney(grossUp.feePassedOn, 'BRL', locale),
+                          )}
+                        </p>
+                      ) : null
                     )}
                   </div>
                 )}

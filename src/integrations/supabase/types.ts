@@ -8277,6 +8277,10 @@ export type Database = {
           asaas_webhook_id: string | null
           auto_post_fees: boolean
           auto_post_to_finance: boolean
+          card_fee_override: Json | null
+          card_fee_payer: string
+          card_fees_cache: Json | null
+          card_fees_synced_at: string | null
           card_recurring_enabled: boolean
           company_id: string
           created_at: string
@@ -8309,6 +8313,10 @@ export type Database = {
           asaas_webhook_id?: string | null
           auto_post_fees?: boolean
           auto_post_to_finance?: boolean
+          card_fee_override?: Json | null
+          card_fee_payer?: string
+          card_fees_cache?: Json | null
+          card_fees_synced_at?: string | null
           card_recurring_enabled?: boolean
           company_id: string
           created_at?: string
@@ -8341,6 +8349,10 @@ export type Database = {
           asaas_webhook_id?: string | null
           auto_post_fees?: boolean
           auto_post_to_finance?: boolean
+          card_fee_override?: Json | null
+          card_fee_payer?: string
+          card_fees_cache?: Json | null
+          card_fees_synced_at?: string | null
           card_recurring_enabled?: boolean
           company_id?: string
           created_at?: string
