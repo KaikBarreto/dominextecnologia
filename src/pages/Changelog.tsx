@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.25',
+    date: '26 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Renovação da assinatura no cartão reconhecida na hora',
+        description: 'Quando a renovação mensal da sua assinatura é paga no cartão de crédito, o sistema agora reconhece o pagamento automaticamente e já atualiza a data de vencimento na hora. Antes, em alguns casos, a renovação era paga mas a data não avançava sozinha, o que podia gerar bloqueio indevido e precisava de ajuste manual. Agora o fluxo é automático e seguro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.24',
     date: '26 de agosto de 2026',
     type: 'patch',

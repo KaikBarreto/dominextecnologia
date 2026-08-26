@@ -179,6 +179,7 @@ const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPorta
 const AdminCompanies = React.lazy(() => import("./pages/admin/AdminCompanies"));
 const AdminCompanyDetail = React.lazy(() => import("./pages/admin/AdminCompanyDetail"));
 const AdminHealthScore = React.lazy(() => import("./pages/admin/AdminHealthScore"));
+const AdminMonitoramento = React.lazy(() => import("./pages/admin/AdminMonitoramento"));
 const AdminDashboard = React.lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminBlog = React.lazy(() => import("./pages/admin/AdminBlog"));
 const AdminBlogEditor = React.lazy(() => import("./pages/admin/AdminBlogEditor"));
@@ -740,6 +741,7 @@ const AppRoutes = () => (
       <Route path="/admin/configuracoes" element={<AdminScreenRoute screenKey="admin_configuracoes"><AdminSettings /></AdminScreenRoute>} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
       <Route path="/admin/cobrancas" element={<AdminScreenRoute screenKey="admin_cobrancas"><AdminCobrancas /></AdminScreenRoute>} />
+      <Route path="/admin/monitoramento" element={<AdminScreenRoute screenKey="admin_monitoramento"><AdminMonitoramento /></AdminScreenRoute>} />
       {localizedAppRoutes('changelog', <Changelog />)}
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />
       <Route path="/tutoriais/:titleId" element={<Navigate to="/domiflix" replace />} />

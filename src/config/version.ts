@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.24";
+export const APP_VERSION = "1.21.25";
 
-export const VERSION_NOTES = "Corrigimos a edição de material no Estoque: os campos de preço não vêm mais com um zero grudado, aceitam valores com vírgula (como 490,00) e materiais sem código não travam mais o salvamento.";
+export const VERSION_NOTES = "A renovação mensal da assinatura paga no cartão passa a ser reconhecida automaticamente, atualizando a data de vencimento na hora, sem risco de bloqueio indevido ou ajuste manual.";

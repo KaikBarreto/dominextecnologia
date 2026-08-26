@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -2493,6 +2493,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      db_compute_catalog: {
+        Row: {
+          captured_at: string
+          cpu_cores: number | null
+          cpu_dedicated: boolean | null
+          id: number
+          identifier: string | null
+          memory_gb: number
+          name: string
+          price_hourly: number | null
+          price_monthly: number | null
+        }
+        Insert: {
+          captured_at?: string
+          cpu_cores?: number | null
+          cpu_dedicated?: boolean | null
+          id?: never
+          identifier?: string | null
+          memory_gb: number
+          name: string
+          price_hourly?: number | null
+          price_monthly?: number | null
+        }
+        Update: {
+          captured_at?: string
+          cpu_cores?: number | null
+          cpu_dedicated?: boolean | null
+          id?: never
+          identifier?: string | null
+          memory_gb?: number
+          name?: string
+          price_hourly?: number | null
+          price_monthly?: number | null
+        }
+        Relationships: []
+      }
+      db_health_history: {
+        Row: {
+          active_queries: number | null
+          blocked: number | null
+          cache_hit: number | null
+          captured_at: string
+          conn_max: number | null
+          conn_used: number | null
+          cpu_idle_seconds: number | null
+          cpu_pct: number | null
+          cpu_total_seconds: number | null
+          disk_pct: number | null
+          id: number
+          mem_available_bytes: number | null
+          mem_pct: number | null
+          mem_total_bytes: number | null
+          raw: Json | null
+          slow_queries: number | null
+        }
+        Insert: {
+          active_queries?: number | null
+          blocked?: number | null
+          cache_hit?: number | null
+          captured_at?: string
+          conn_max?: number | null
+          conn_used?: number | null
+          cpu_idle_seconds?: number | null
+          cpu_pct?: number | null
+          cpu_total_seconds?: number | null
+          disk_pct?: number | null
+          id?: never
+          mem_available_bytes?: number | null
+          mem_pct?: number | null
+          mem_total_bytes?: number | null
+          raw?: Json | null
+          slow_queries?: number | null
+        }
+        Update: {
+          active_queries?: number | null
+          blocked?: number | null
+          cache_hit?: number | null
+          captured_at?: string
+          conn_max?: number | null
+          conn_used?: number | null
+          cpu_idle_seconds?: number | null
+          cpu_pct?: number | null
+          cpu_total_seconds?: number | null
+          disk_pct?: number | null
+          id?: never
+          mem_available_bytes?: number | null
+          mem_pct?: number | null
+          mem_total_bytes?: number | null
+          raw?: Json | null
+          slow_queries?: number | null
+        }
+        Relationships: []
       }
       destructive_actions_audit: {
         Row: {
@@ -9257,6 +9350,7 @@ export type Database = {
       }
     }
     Functions: {
+      _assert_super_admin: { Args: never; Returns: undefined }
       accept_terms_of_service: {
         Args: { p_version?: string }
         Returns: undefined
@@ -9381,7 +9475,26 @@ export type Database = {
           subscription_status: string
         }[]
       }
+      get_db_health_history: {
+        Args: { p_bucket?: string; p_from: string; p_to: string }
+        Returns: {
+          avg_conn_used: number
+          avg_cpu_pct: number
+          avg_disk_pct: number
+          avg_mem_pct: number
+          bucket_ts: string
+          max_conn_used: number
+          max_cpu_pct: number
+          max_disk_pct: number
+          max_mem_pct: number
+          max_slow_queries: number
+          samples: number
+        }[]
+      }
+      get_db_health_snapshot: { Args: never; Returns: Json }
       get_disc_public: { Args: { p_code: string }; Returns: Json }
+      get_instance_health_verdict: { Args: never; Returns: Json }
+      get_instance_recommendation: { Args: never; Returns: Json }
       get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
       get_nfse_emissions_paged: {
@@ -9552,6 +9665,20 @@ export type Database = {
           valor: number
         }[]
       }
+      get_top_cpu_queries: {
+        Args: { p_limit?: number }
+        Returns: {
+          calls: number
+          max_ms: number
+          mean_ms: number
+          pct_total_time: number
+          query_normalized: string
+          queryid: number
+          rows_returned: number
+          total_ms: number
+        }[]
+      }
+      get_usage_peaks: { Args: { p_from: string; p_to: string }; Returns: Json }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }
       has_admin_permission: {
@@ -9624,6 +9751,7 @@ export type Database = {
         }
         Returns: Json
       }
+      prune_db_health_history: { Args: never; Returns: number }
       reassign_contract_pending_orders: {
         Args: {
           p_contract_id: string
@@ -9870,6 +9998,7 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: undefined
       }
+      upsert_compute_catalog: { Args: { p_payload: Json }; Returns: number }
       vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
       vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
       vault_upsert_tenant_secret: {

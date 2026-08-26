@@ -283,6 +283,79 @@ async function processConfirmedPayment(
     return { processed: false, reason: "valor inválido" };
   }
 
+  // ===== FALLBACK DE MATERIALIZAÇÃO DA RENOVAÇÃO (FURO 3) =====
+  // Root cause do incidente VS Project (17/ago): na renovação recorrente de CARTÃO,
+  // a Asaas gera um pay_* NOVO pela subscription, mas NÃO existe mais uma linha
+  // subscription_payments PENDING com asaas_payment_id NULL pra o PAYMENT_CREATED
+  // linkar (a única já foi consumida na 1ª venda). Sem linha pra esse pay_*, o mutex
+  // abaixo (credit_ltv_once_for_payment) reivindica 0 → retorna FALSE → o webhook
+  // trata como "já processado" e PULA a extensão do vencimento. Resultado sistêmico:
+  // type='renovacao' nunca materializou.
+  //
+  // Correção (aditiva, fail-safe): quando NÃO existe subscription_payments pra este
+  // pay_*, MATERIALIZAMOS a linha AQUI, ANTES do mutex, com company já resolvida.
+  // Regras invioláveis:
+  //  - ltv_credited_at fica NULL de propósito → quem credita é o mutex (não pré-creditar).
+  //  - INSERT ... ON CONFLICT (asaas_payment_id) DO NOTHING (coluna UNIQUE) → reprocessar
+  //    o webhook (RECEIVED + CONFIRMED do mesmo pay_*) NÃO cria 2ª linha.
+  //  - due_date = HOJE (BRT via toISOString().split) e paid_at = agora, IDÊNTICO ao
+  //    UPSERT canônico de rastro mais abaixo. due_date importa: o Guard 2 do mutex
+  //    dedup por ciclo usa (company_id + amount + due_date).
+  //  - NÃO estende vencimento nem credita LTV aqui — só CRIA a linha pro mutex reivindicar.
+  //  - 1ª venda intacta: nela a linha JÁ existe (linkada pelo PAYMENT_CREATED), então
+  //    o SELECT abaixo acha e este bloco vira no-op.
+  {
+    const { data: existingRow, error: existErr } = await supabase
+      .from("subscription_payments")
+      .select("id")
+      .eq("asaas_payment_id", opts.asaasPaymentId)
+      .maybeSingle();
+
+    if (existErr) {
+      console.error(
+        `[materialize] falha ao checar subscription_payments de ${opts.asaasPaymentId}:`,
+        existErr.message,
+      );
+    } else if (!existingRow) {
+      // Sem linha pra este pay_* → renovação recorrente que nunca materializou.
+      // Cria a linha de renovação. O `type` real (primeira_venda vs renovacao) é
+      // reconfirmado logo abaixo por detectIsFirstSale; aqui gravamos 'renovacao'
+      // porque, se a linha não existe, a 1ª venda (que sempre cria a linha PENDING)
+      // já passou — é sempre um ciclo posterior.
+      const materializedBillingCycle = company.billing_cycle === "yearly" ? "yearly" : "monthly";
+      const nowIso = new Date().toISOString();
+      const { error: matErr } = await supabase.from("subscription_payments").insert({
+        company_id: companyId,
+        asaas_payment_id: opts.asaasPaymentId,
+        asaas_customer_id: opts.customerId ?? company.asaas_customer_id ?? null,
+        amount: paymentAmount,
+        status: "CONFIRMED",
+        billing_type: opts.billingType || "PIX",
+        billing_cycle: materializedBillingCycle,
+        type: "renovacao",
+        payment_method: (opts.billingType || "PIX").toLowerCase(),
+        due_date: nowIso.split("T")[0],
+        paid_at: nowIso,
+        ltv_credited_at: null, // o mutex é quem credita — NÃO pré-creditar aqui.
+      });
+      // 23505 (unique_violation) = corrida entre RECEIVED e CONFIRMED do mesmo pay_*
+      // criando a linha ao mesmo tempo. É o "ON CONFLICT DO NOTHING" na prática:
+      // um ganha, o outro bate no UNIQUE e segue — idempotente, não é erro.
+      if (matErr && matErr.code !== "23505") {
+        console.error(
+          `[materialize] insert da renovação falhou (${opts.asaasPaymentId}):`,
+          matErr.message,
+        );
+      } else {
+        console.log(
+          `[materialize] linha de renovação criada p/ ${company.name} ` +
+            `(${opts.matchedBy}): ${opts.asaasPaymentId} R$ ${paymentAmount}` +
+            (matErr?.code === "23505" ? " [corrida — já criada, idempotente]" : ""),
+        );
+      }
+    }
+  }
+
   // ===== GATING DE IDEMPOTÊNCIA (FURO 1) =====
   // A Asaas envia PAYMENT_RECEIVED **e** PAYMENT_CONFIRMED pro MESMO pay_*. Sem portão,
   // a EXTENSÃO de subscription_expires_at rodaria 2x (cliente ganharia mês grátis).
