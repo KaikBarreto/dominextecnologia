@@ -130,6 +130,9 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     e.preventDefault();
     let savedItemId: string | null = null;
 
+    // Normaliza SKU: vazio ou só espaços → null, para não colidir com UNIQUE(company_id, sku)
+    const normalized = { ...formData, sku: formData.sku?.trim() ? formData.sku.trim() : null };
+
     if (isEditing && item) {
       // Use stock-specific qty as the "previous" so the adjustment targets the
       // active local (not the global sum). Falls back to item.quantity when no
@@ -137,12 +140,12 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       const previousQty = activeStockId
         ? getQuantityForStock(item.id, activeStockId)
         : (item.quantity ?? 0);
-      await updateItem.mutateAsync({ id: item.id, ...formData, previousQuantity: previousQty, activeStockId: activeStockId ?? undefined });
+      await updateItem.mutateAsync({ id: item.id, ...normalized, previousQuantity: previousQty, activeStockId: activeStockId ?? undefined });
       savedItemId = item.id;
     } else {
       // Extrai a quantidade inicial do formData — ela NÃO vai no payload do catálogo
       // (quantity fica 0 na tabela; o saldo real nasce pela RPC de entrada no hook).
-      const { quantity: initialQty, ...catalogFields } = formData;
+      const { quantity: initialQty, ...catalogFields } = normalized;
       const created = await createItem.mutateAsync({
         ...(catalogFields as InventoryItemInsert),
         initialQuantity: initialQty ?? 0,
@@ -315,12 +318,22 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>{t.fields.costPrice}</Label>
-            <Input type="number" min="0" step="0.01" value={formData.cost_price || 0} onChange={(e) => handleChange('cost_price', parseFloat(e.target.value) || 0)} />
+            <NumericInput
+              decimal
+              maxDecimals={2}
+              value={formData.cost_price ? String(formData.cost_price).replace('.', ',') : ''}
+              onValueChange={(v) => handleChange('cost_price', parseFloat(v.replace(',', '.')) || 0)}
+            />
             <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
           </div>
           <div className="space-y-2">
             <Label>{t.fields.salePrice}</Label>
-            <Input type="number" min="0" step="0.01" value={formData.sale_price || 0} onChange={(e) => handleChange('sale_price', parseFloat(e.target.value) || 0)} />
+            <NumericInput
+              decimal
+              maxDecimals={2}
+              value={formData.sale_price ? String(formData.sale_price).replace('.', ',') : ''}
+              onValueChange={(v) => handleChange('sale_price', parseFloat(v.replace(',', '.')) || 0)}
+            />
             <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
           </div>
         </div>

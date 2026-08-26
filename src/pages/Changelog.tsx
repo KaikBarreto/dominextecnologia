@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.24',
+    date: '26 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de material no Estoque mais fácil e sem travar',
+        description: 'Ajustamos a tela de editar material no Estoque. Os campos de preço de custo e de venda não vêm mais com um zero grudado na frente que você precisava apagar, e agora aceitam valores com vírgula normalmente, como 490,00. Também corrigimos um erro que impedia salvar quando você tinha mais de um material sem código cadastrado, que mostrava a mensagem "já existe um registro com esses dados" mesmo sendo materiais diferentes.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.23',
     date: '26 de agosto de 2026',
     type: 'patch',
