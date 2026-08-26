@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { formatMoney } from '@/lib/format';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
-import { EmptyState } from '@/components/mobile/EmptyState';
-import { Loader2, Copy, Check, CheckCircle2, Users, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
@@ -58,6 +60,32 @@ function todayISO(): string {
   const d = new Date();
   const off = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - off).toISOString().slice(0, 10);
+}
+
+/**
+ * Calcula o total com juros compostos pela tabela Price.
+ * i  = taxa mensal (ex.: 0.02 para 2%)
+ * n  = número de parcelas
+ * PV = valor original (Present Value)
+ *
+ * Coeficiente = i / (1 - (1+i)^(-n))
+ * Parcela     = PV * coeficiente
+ * Total       = parcela * n
+ *
+ * Se i = 0: total = PV (sem juros, sem divisão por zero).
+ */
+function calcPriceTotal(pv: number, iMonthly: number, n: number): { installment: number; total: number } {
+  if (n <= 1 || iMonthly <= 0) {
+    const installment = pv / Math.max(n, 1);
+    return { installment, total: pv };
+  }
+  const coef = iMonthly / (1 - Math.pow(1 + iMonthly, -n));
+  const installment = pv * coef;
+  const total = installment * n;
+  return {
+    installment: Math.round(installment * 100) / 100,
+    total: Math.round(total * 100) / 100,
+  };
 }
 
 export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, source }: ChargeDialogProps) {
@@ -106,7 +134,21 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [description, setDescription] = useState('');
   const [method, setMethod] = useState<BillingMethod>('UNDEFINED');
   const [installmentCount, setInstallmentCount] = useState(1);
+  // Juros de parcelamento (% ao mês) — só relevante quando cartão + parcelas > 1.
+  // Conceito distinto de mora (finePercent/interestPercent): este é embutido no total
+  // enviado ao Asaas, não é multa/juros por atraso.
+  const [installmentInterestRate, setInstallmentInterestRate] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Quick-create de cliente na hora
+  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
+  const [quickCustomerInitialName, setQuickCustomerInitialName] = useState('');
+
+  // Opções para o SearchableSelect de clientes
+  const customerOptions = useMemo(
+    () => customers.map((c) => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
+    [customers],
+  );
 
   // Opções avançadas — inicializadas com o default da conta, editáveis por cobrança.
   const [finePercent, setFinePercent] = useState('');
@@ -163,6 +205,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setDescription(defaultDescription ?? '');
     setMethod(methodOptions[0]?.value ?? 'UNDEFINED');
     setInstallmentCount(1);
+    setInstallmentInterestRate('');
     setShowAdvanced(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
@@ -183,6 +226,24 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     }
     return '';
   })();
+
+  // ── Juros de parcelamento (tabela Price) ───────────────────────────────────
+  // Só se aplica quando: forma = Cartão E parcelas > 1 E juros > 0.
+  // Resultado: valor a ser enviado ao Asaas como `value` (totalValue).
+  const isCardInstallment = method === 'CREDIT_CARD' && installmentCount > 1;
+  const parsedInstallmentRate = parseDecimalInput(installmentInterestRate);
+  const installmentInterestMonthly =
+    isCardInstallment && !isNaN(parsedInstallmentRate) && parsedInstallmentRate > 0
+      ? parsedInstallmentRate / 100
+      : 0;
+
+  const priceResult = useMemo(() => {
+    if (!isCardInstallment || installmentInterestMonthly <= 0 || amount <= 0) return null;
+    return calcPriceTotal(amount, installmentInterestMonthly, installmentCount);
+  }, [amount, installmentInterestMonthly, installmentCount, isCardInstallment]);
+
+  // Valor real a ser enviado ao Asaas (com juros embutidos quando aplicável).
+  const effectiveValue = priceResult ? priceResult.total : amount;
 
   const handleClose = (next: boolean) => {
     if (!next) resetForm();
@@ -226,7 +287,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     try {
       const chargeResult = await create.mutateAsync({
         customer_id: customerId,
-        value: amount,
+        // effectiveValue = total com juros de parcelamento embutidos (tabela Price).
+        // Se juros = 0 ou não se aplica (Pix/Boleto/1x), é igual ao valor original.
+        value: effectiveValue,
         due_date: dueDate,
         billing_type: method,
         description: description.trim() || undefined,
@@ -289,40 +352,45 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       <div className="space-y-4 px-4 pb-4 sm:px-1">
         {!result ? (
           <>
-            {/* Estado "sem clientes": orienta o usuário, não mostra select vazio */}
-            {customers.length === 0 ? (
-              <div className="py-2">
-                <EmptyState
-                  icon={<Users className="h-full w-full" />}
-                  title={t.noCustomers.title}
-                  description={t.noCustomers.description}
-                />
-              </div>
-            ) : (
-            <>
             {/* Cliente */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t.fields.customer}</Label>
               {lockCustomer && presetCustomerId ? (
                 // Travado: exibe o nome do cliente sem permitir troca.
+                // Quando 0 clientes E travado, este branch nunca renderiza
+                // (presetCustomerId virá do contexto que abriu o dialog).
                 <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
                   {customers.find((c) => c.id === presetCustomerId)?.name ?? presetCustomerId}
                 </div>
               ) : (
-                <Select value={customerId} onValueChange={setCustomerId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t.fields.customerPlaceholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                // Seleção livre: sempre mostra o SearchableSelect, mesmo com
+                // 0 clientes — o botão "Criar <nome>" é mais útil justamente
+                // quando o catálogo está vazio.
+                <SearchableSelect
+                  options={customerOptions}
+                  value={customerId}
+                  onValueChange={setCustomerId}
+                  placeholder={t.fields.customerPlaceholder}
+                  searchPlaceholder={t.quickCustomer.searchPlaceholder}
+                  onCreateOption={(query) => {
+                    setQuickCustomerInitialName(query);
+                    setQuickCustomerOpen(true);
+                  }}
+                  createOptionLabel={t.quickCustomer.createOptionLabel}
+                />
               )}
             </div>
+
+            {/* Quick-create de cliente (mini-dialog) */}
+            <QuickCustomerDialog
+              open={quickCustomerOpen}
+              initialName={quickCustomerInitialName}
+              onOpenChange={setQuickCustomerOpen}
+              onCreated={(id) => {
+                setCustomerId(id);
+                setQuickCustomerOpen(false);
+              }}
+            />
 
             {/* Valor (máscara de dinheiro, NÃO NumericInput) */}
             <div className="space-y-2">
@@ -378,7 +446,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
             {/* Parcelas — só visível quando cartão selecionado e há mais de 1 parcela */}
             {method === 'CREDIT_CARD' && installmentOptions.length > 1 && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">{t.installments.label}</Label>
+                <div className="flex items-baseline justify-between gap-2">
+                  <Label className="text-sm font-medium">{t.installments.label}</Label>
+                  <span className="text-xs text-muted-foreground">{t.installments.hint}</span>
+                </div>
                 <Select
                   value={String(installmentCount)}
                   onValueChange={(v) => setInstallmentCount(Number(v))}
@@ -394,6 +465,41 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     ))}
                   </SelectContent>
                 </Select>
+
+                {/* Juros de parcelamento (tabela Price) — só quando parcelas > 1 */}
+                {installmentCount > 1 && (
+                  <div className="space-y-1.5 pt-1">
+                    <Label htmlFor="installment-interest-rate" className="text-sm font-medium">
+                      {t.installments.interestRate}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="installment-interest-rate"
+                        inputMode="decimal"
+                        placeholder={t.installments.interestRatePlaceholder}
+                        value={installmentInterestRate}
+                        onChange={(e) => setInstallmentInterestRate(e.target.value)}
+                        className="pr-8"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        %
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t.installments.interestRateHint}</p>
+
+                    {/* Resumo em tempo real — só quando há juros e valor preenchido */}
+                    {priceResult && amount > 0 && (
+                      <p className="rounded-md bg-muted px-3 py-2 text-xs text-foreground">
+                        {t.installments.summary(
+                          installmentCount,
+                          formatMoney(priceResult.installment, 'BRL', locale),
+                          formatMoney(priceResult.total, 'BRL', locale),
+                          formatMoney(priceResult.total - amount, 'BRL', locale),
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -456,8 +562,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     </div>
                   </div>
 
-                  {/* Desconto e Dias para desconto lado a lado */}
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Desconto e Dias para desconto: empilhado no mobile, lado a lado em sm+ */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="adv-discount" className="text-xs font-medium">
                         {t.advanced.discountPercent}
@@ -471,7 +577,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="adv-discount-days" className="text-xs font-medium">
+                      <Label htmlFor="adv-discount-days" className="text-xs font-medium leading-snug">
                         {t.advanced.discountDays}
                       </Label>
                       <Input
@@ -505,8 +611,6 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 )}
               </Button>
             </div>
-            </>
-            )}
           </>
         ) : (
           /* ── Sucesso: link + copiar + WhatsApp ─────────────────────────── */

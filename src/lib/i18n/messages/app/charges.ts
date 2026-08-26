@@ -8,6 +8,70 @@
 
 export const charges = {
   'pt-br': {
+    // ── Central de cobranças (aba Cobranças no Financeiro) ────────────────────
+    central: {
+      tabLabel: 'Cobranças',
+      newButton: 'Nova cobrança',
+      // Cards de totais
+      cards: {
+        pending: 'A receber',
+        paid: 'Recebido',
+        overdue: 'Vencido',
+      },
+      // Filtros
+      filters: {
+        all: 'Todos',
+        pending: 'A receber',
+        paid: 'Pago',
+        overdue: 'Vencido',
+        refunded: 'Estornado',
+        searchPlaceholder: 'Buscar cliente…',
+        period: 'Período',
+      },
+      // Tabela / cards
+      table: {
+        customer: 'Cliente',
+        value: 'Valor',
+        status: 'Status',
+        dueDate: 'Vencimento',
+        method: 'Forma',
+        actions: 'Ações',
+      },
+      // Ações por linha
+      actions: {
+        copyLink: 'Copiar link',
+        linkCopied: 'Link copiado!',
+        refund: 'Estornar',
+        refundConfirmTitle: 'Estornar cobrança?',
+        refundConfirmDescription: 'Ao estornar, o valor será devolvido ao pagador. Esta ação não pode ser desfeita.',
+        refundConfirm: 'Estornar',
+        refundCancel: 'Cancelar',
+        refundSuccess: 'Estorno solicitado com sucesso.',
+        refundError: 'Erro ao estornar',
+        refundErrorFallback: 'Não foi possível estornar a cobrança.',
+      },
+      // Status badges
+      status: {
+        paid: 'Pago',
+        pending: 'A receber',
+        overdue: 'Vencido',
+        refunded: 'Estornado',
+        other: 'Outro',
+      },
+      // Método
+      methods: {
+        PIX: 'Pix',
+        BOLETO: 'Boleto',
+        CREDIT_CARD: 'Cartão',
+        UNDEFINED: 'Cliente escolhe',
+      },
+      // Empty state
+      empty: {
+        title: 'Nenhuma cobrança',
+        description: 'Gere a primeira cobrança e envie o link de pagamento para o seu cliente.',
+      },
+    },
+
     // ── Botão + dialog de cobrança avulsa (financeiro) ────────────────────────
     cobrar: {
       button: 'Cobrar',
@@ -37,9 +101,33 @@ export const charges = {
       },
       installments: {
         label: 'Parcelas',
+        hint: 'Parcelamento disponível no cartão',
         placeholder: 'Número de parcelas',
         once: '1x (à vista)',
         times: (n: number) => `${n}x`,
+        interestRate: 'Juros de parcelamento (% ao mês)',
+        interestRatePlaceholder: '0',
+        interestRateHint: 'Se 0, a loja absorve os juros e o cliente paga sem acréscimo.',
+        summary: (n: number, installment: string, total: string, interest: string) =>
+          `${n}x de ${installment} = ${total} (juros: ${interest})`,
+      },
+      quickCustomer: {
+        title: 'Novo cliente',
+        description: 'Preencha os dados mínimos para criar e já cobrar o cliente.',
+        name: 'Nome',
+        namePlaceholder: 'Nome completo ou razão social',
+        document: 'CPF / CNPJ',
+        documentPlaceholder: '000.000.000-00',
+        email: 'E-mail (opcional)',
+        emailPlaceholder: 'email@exemplo.com',
+        phone: 'Telefone (opcional)',
+        phonePlaceholder: '(11) 99999-9999',
+        create: 'Criar cliente',
+        creating: 'Criando…',
+        cancel: 'Cancelar',
+        searchPlaceholder: 'Buscar cliente…',
+        createOptionLabel: 'Criar "{name}"',
+        customerRequired: 'Informe o CPF ou CNPJ do cliente para cobrar.',
       },
       advanced: {
         toggle: 'Opções avançadas',
@@ -277,6 +365,62 @@ export const charges = {
   },
 
   en: {
+    central: {
+      tabLabel: 'Charges',
+      newButton: 'New charge',
+      cards: {
+        pending: 'To receive',
+        paid: 'Received',
+        overdue: 'Overdue',
+      },
+      filters: {
+        all: 'All',
+        pending: 'To receive',
+        paid: 'Paid',
+        overdue: 'Overdue',
+        refunded: 'Refunded',
+        searchPlaceholder: 'Search customer…',
+        period: 'Period',
+      },
+      table: {
+        customer: 'Customer',
+        value: 'Amount',
+        status: 'Status',
+        dueDate: 'Due date',
+        method: 'Method',
+        actions: 'Actions',
+      },
+      actions: {
+        copyLink: 'Copy link',
+        linkCopied: 'Link copied!',
+        refund: 'Refund',
+        refundConfirmTitle: 'Refund charge?',
+        refundConfirmDescription: 'Refunding will return the amount to the payer. This action cannot be undone.',
+        refundConfirm: 'Refund',
+        refundCancel: 'Cancel',
+        refundSuccess: 'Refund successfully requested.',
+        refundError: 'Refund error',
+        refundErrorFallback: 'Could not refund the charge.',
+      },
+      status: {
+        paid: 'Paid',
+        pending: 'To receive',
+        overdue: 'Overdue',
+        refunded: 'Refunded',
+        other: 'Other',
+      },
+      methods: {
+        PIX: 'Pix',
+        BOLETO: 'Bank slip',
+        CREDIT_CARD: 'Card',
+        UNDEFINED: 'Customer chooses',
+      },
+      empty: {
+        title: 'No charges',
+        description: 'Create the first charge and send the payment link to your customer.',
+      },
+    },
+
     cobrar: {
       button: 'Charge',
       dialogTitle: 'New charge',
@@ -305,9 +449,33 @@ export const charges = {
       },
       installments: {
         label: 'Installments',
+        hint: 'Installment plan available for card payments',
         placeholder: 'Number of installments',
         once: '1x (full amount)',
         times: (n: number) => `${n}x`,
+        interestRate: 'Installment interest rate (% per month)',
+        interestRatePlaceholder: '0',
+        interestRateHint: 'If 0, the store absorbs the interest and the customer pays no extra.',
+        summary: (n: number, installment: string, total: string, interest: string) =>
+          `${n}x of ${installment} = ${total} (interest: ${interest})`,
+      },
+      quickCustomer: {
+        title: 'New customer',
+        description: 'Fill in the minimum details to create and charge the customer.',
+        name: 'Name',
+        namePlaceholder: 'Full name or company name',
+        document: 'CPF / CNPJ',
+        documentPlaceholder: '000.000.000-00',
+        email: 'Email (optional)',
+        emailPlaceholder: 'email@example.com',
+        phone: 'Phone (optional)',
+        phonePlaceholder: '+1 555 000 0000',
+        create: 'Create customer',
+        creating: 'Creating…',
+        cancel: 'Cancel',
+        searchPlaceholder: 'Search customer…',
+        createOptionLabel: 'Create "{name}"',
+        customerRequired: 'Please provide the customer\'s CPF or CNPJ to charge.',
       },
       advanced: {
         toggle: 'Advanced options',
@@ -539,6 +707,62 @@ export const charges = {
   },
 
   es: {
+    central: {
+      tabLabel: 'Cobros',
+      newButton: 'Nuevo cobro',
+      cards: {
+        pending: 'Por cobrar',
+        paid: 'Cobrado',
+        overdue: 'Vencido',
+      },
+      filters: {
+        all: 'Todos',
+        pending: 'Por cobrar',
+        paid: 'Pagado',
+        overdue: 'Vencido',
+        refunded: 'Devuelto',
+        searchPlaceholder: 'Buscar cliente…',
+        period: 'Período',
+      },
+      table: {
+        customer: 'Cliente',
+        value: 'Importe',
+        status: 'Estado',
+        dueDate: 'Vencimiento',
+        method: 'Forma',
+        actions: 'Acciones',
+      },
+      actions: {
+        copyLink: 'Copiar enlace',
+        linkCopied: '¡Enlace copiado!',
+        refund: 'Reembolsar',
+        refundConfirmTitle: '¿Reembolsar cobro?',
+        refundConfirmDescription: 'Al reembolsar, el importe será devuelto al pagador. Esta acción no puede deshacerse.',
+        refundConfirm: 'Reembolsar',
+        refundCancel: 'Cancelar',
+        refundSuccess: 'Reembolso solicitado correctamente.',
+        refundError: 'Error al reembolsar',
+        refundErrorFallback: 'No fue posible reembolsar el cobro.',
+      },
+      status: {
+        paid: 'Pagado',
+        pending: 'Por cobrar',
+        overdue: 'Vencido',
+        refunded: 'Devuelto',
+        other: 'Otro',
+      },
+      methods: {
+        PIX: 'Pix',
+        BOLETO: 'Boleto',
+        CREDIT_CARD: 'Tarjeta',
+        UNDEFINED: 'Cliente elige',
+      },
+      empty: {
+        title: 'Sin cobros',
+        description: 'Genera el primer cobro y envía el enlace de pago a tu cliente.',
+      },
+    },
+
     cobrar: {
       button: 'Cobrar',
       dialogTitle: 'Nuevo cobro',
@@ -567,9 +791,33 @@ export const charges = {
       },
       installments: {
         label: 'Cuotas',
+        hint: 'Pago en cuotas disponible con tarjeta',
         placeholder: 'Número de cuotas',
         once: '1x (contado)',
         times: (n: number) => `${n}x`,
+        interestRate: 'Interés de cuotas (% mensual)',
+        interestRatePlaceholder: '0',
+        interestRateHint: 'Si es 0, el negocio absorbe el interés y el cliente no paga adicional.',
+        summary: (n: number, installment: string, total: string, interest: string) =>
+          `${n}x de ${installment} = ${total} (interés: ${interest})`,
+      },
+      quickCustomer: {
+        title: 'Nuevo cliente',
+        description: 'Completa los datos mínimos para crear y cobrar al cliente.',
+        name: 'Nombre',
+        namePlaceholder: 'Nombre completo o razón social',
+        document: 'CPF / CNPJ',
+        documentPlaceholder: '000.000.000-00',
+        email: 'Correo electrónico (opcional)',
+        emailPlaceholder: 'email@ejemplo.com',
+        phone: 'Teléfono (opcional)',
+        phonePlaceholder: '(11) 99999-9999',
+        create: 'Crear cliente',
+        creating: 'Creando…',
+        cancel: 'Cancelar',
+        searchPlaceholder: 'Buscar cliente…',
+        createOptionLabel: 'Crear "{name}"',
+        customerRequired: 'Ingresa el CPF o CNPJ del cliente para cobrar.',
       },
       advanced: {
         toggle: 'Opciones avanzadas',
@@ -801,6 +1049,62 @@ export const charges = {
   },
 
   fr: {
+    central: {
+      tabLabel: 'Encaissements',
+      newButton: 'Nouvel encaissement',
+      cards: {
+        pending: `À encaisser`,
+        paid: 'Encaissé',
+        overdue: 'En retard',
+      },
+      filters: {
+        all: 'Tous',
+        pending: `À encaisser`,
+        paid: 'Payé',
+        overdue: 'En retard',
+        refunded: 'Remboursé',
+        searchPlaceholder: 'Rechercher un client…',
+        period: 'Période',
+      },
+      table: {
+        customer: 'Client',
+        value: 'Montant',
+        status: 'Statut',
+        dueDate: `Échéance`,
+        method: 'Mode',
+        actions: 'Actions',
+      },
+      actions: {
+        copyLink: 'Copier le lien',
+        linkCopied: 'Lien copié !',
+        refund: 'Rembourser',
+        refundConfirmTitle: 'Rembourser cet encaissement ?',
+        refundConfirmDescription: `En remboursant, le montant sera restitué au payeur. Cette action ne peut pas être annulée.`,
+        refundConfirm: 'Rembourser',
+        refundCancel: 'Annuler',
+        refundSuccess: 'Remboursement demandé avec succès.',
+        refundError: 'Erreur de remboursement',
+        refundErrorFallback: `Impossible de rembourser l'encaissement.`,
+      },
+      status: {
+        paid: 'Payé',
+        pending: `À encaisser`,
+        overdue: 'En retard',
+        refunded: 'Remboursé',
+        other: 'Autre',
+      },
+      methods: {
+        PIX: 'Pix',
+        BOLETO: 'Boleto',
+        CREDIT_CARD: 'Carte',
+        UNDEFINED: 'Le client choisit',
+      },
+      empty: {
+        title: 'Aucun encaissement',
+        description: `Créez le premier encaissement et envoyez le lien de paiement à votre client.`,
+      },
+    },
+
     cobrar: {
       button: 'Encaisser',
       dialogTitle: 'Nouvelle facture',
@@ -829,9 +1133,33 @@ export const charges = {
       },
       installments: {
         label: 'Mensualités',
+        hint: 'Paiement en plusieurs fois disponible par carte',
         placeholder: 'Nombre de mensualités',
         once: '1x (comptant)',
         times: (n: number) => `${n}x`,
+        interestRate: `Intérêt de fractionnement (% par mois)`,
+        interestRatePlaceholder: '0',
+        interestRateHint: `Si 0, le magasin absorbe les intérêts et le client ne paie pas de supplément.`,
+        summary: (n: number, installment: string, total: string, interest: string) =>
+          `${n}x de ${installment} = ${total} (intérêts : ${interest})`,
+      },
+      quickCustomer: {
+        title: 'Nouveau client',
+        description: 'Renseignez les informations minimales pour créer et encaisser le client.',
+        name: 'Nom',
+        namePlaceholder: 'Nom complet ou raison sociale',
+        document: 'CPF / CNPJ',
+        documentPlaceholder: '000.000.000-00',
+        email: `E-mail (facultatif)`,
+        emailPlaceholder: 'email@exemple.com',
+        phone: 'Téléphone (facultatif)',
+        phonePlaceholder: '+33 6 00 00 00 00',
+        create: 'Créer le client',
+        creating: 'Création…',
+        cancel: 'Annuler',
+        searchPlaceholder: 'Rechercher un client…',
+        createOptionLabel: 'Créer "{name}"',
+        customerRequired: `Veuillez saisir le CPF ou CNPJ du client pour encaisser.`,
       },
       advanced: {
         toggle: 'Options avancées',

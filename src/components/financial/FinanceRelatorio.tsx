@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { LayoutDashboard, FileBarChart, Tags, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, FileBarChart, Tags, RefreshCw, Wallet } from 'lucide-react';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { FinanceOverview } from './FinanceOverview';
 import { FinanceDRE } from './FinanceDRE';
 import { FinanceCategorias } from './FinanceCategorias';
 import { FinanceAssinaturas } from './FinanceAssinaturas';
+import { FinanceCobrancas } from './FinanceCobrancas';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import type { FinancialTransaction } from '@/types/database';
@@ -48,11 +49,13 @@ export function FinanceRelatorio({
   const { locale } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const sub = MESSAGES[locale].app.charges.subscriptions;
+  const centralT = MESSAGES[locale].app.charges.central;
   const { hasModule } = useCompanyModules();
   const hasAdvanced = hasModule('finance_advanced');
   const hasChargeModule = hasModule('cobrancas');
   const { isActive: isPaymentAccountActive } = useTenantPaymentAccount();
-  // A aba Assinaturas só aparece com o módulo cobrancas contratado E conta ativa.
+  // As abas Cobranças e Assinaturas só aparecem com o módulo cobrancas contratado E conta ativa.
+  const showChargesTab = hasChargeModule && isPaymentAccountActive;
   const showSubscriptionsTab = hasChargeModule && isPaymentAccountActive;
 
   const tabs: SettingsTab[] = [
@@ -61,6 +64,9 @@ export function FinanceRelatorio({
       ? [{ value: 'dre', label: fin.report.tabs.incomeStatement, icon: FileBarChart } as SettingsTab]
       : []),
     { value: 'categorias', label: fin.report.tabs.categories, icon: Tags },
+    ...(showChargesTab
+      ? [{ value: 'cobrancas', label: centralT.tabLabel, icon: Wallet } as SettingsTab]
+      : []),
     ...(showSubscriptionsTab
       ? [{ value: 'assinaturas', label: sub.tabLabel, icon: RefreshCw } as SettingsTab]
       : []),
@@ -71,6 +77,11 @@ export function FinanceRelatorio({
   useEffect(() => {
     if (activeTab === 'dre' && !hasAdvanced) onTabChange('visao-geral');
   }, [activeTab, hasAdvanced, onTabChange]);
+
+  // Deep-link `?tab=cobrancas` sem o módulo → cai na Visão Geral.
+  useEffect(() => {
+    if (activeTab === 'cobrancas' && !showChargesTab) onTabChange('visao-geral');
+  }, [activeTab, showChargesTab, onTabChange]);
 
   // Deep-link `?tab=assinaturas` sem o módulo → cai na Visão Geral.
   useEffect(() => {
@@ -85,6 +96,8 @@ export function FinanceRelatorio({
         <FinanceDRE transactions={transactions} />
       ) : safeTab === 'categorias' ? (
         <FinanceCategorias />
+      ) : safeTab === 'cobrancas' ? (
+        <FinanceCobrancas />
       ) : safeTab === 'assinaturas' ? (
         <FinanceAssinaturas />
       ) : (

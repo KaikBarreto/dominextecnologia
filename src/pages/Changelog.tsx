@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.21',
+    date: '26 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Central de Cobranças no Financeiro',
+        description: 'O Financeiro agora tem uma aba "Cobranças" com todas as suas cobranças num lugar só: totais de quanto você tem a receber, já recebeu e está vencido, filtros por situação, busca por cliente e o botão de gerar uma nova cobrança. De cada cobrança você copia o link de pagamento e, quando já foi paga, pode estornar por ali mesmo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Buscar e cadastrar o cliente na hora de cobrar',
+        description: 'Ao gerar uma cobrança, o campo de cliente agora tem busca: é só digitar o nome. E se o cliente ainda não estiver cadastrado, você cria na hora, ali mesmo (preenchendo o CNPJ, os dados vêm preenchidos automaticamente), sem sair da tela.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Parcelamento no cartão com ou sem juros pro cliente',
+        description: 'Ao cobrar no cartão, você escolhe em quantas vezes parcelar e se quer repassar os juros ao cliente. Se informar uma taxa de juros, o sistema já mostra o valor de cada parcela e o total, de forma transparente. Deixando os juros em zero, o parcelamento sai sem acréscimo para o cliente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ajuste de alinhamento no celular',
+        description: 'Corrigimos o alinhamento dos campos das opções avançadas da cobrança no celular, que ficavam desencontrados em telas menores.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.20',
     date: '25 de agosto de 2026',
     type: 'patch',

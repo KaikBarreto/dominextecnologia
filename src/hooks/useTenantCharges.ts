@@ -28,6 +28,7 @@ export interface TenantCharge {
   invoice_url: string | null;
   pix_copy_paste: string | null;
   boleto_url: string | null;
+  asaas_payment_id: string | null;
   created_at: string;
 }
 
@@ -124,7 +125,7 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       let query = supabase
         .from('tenant_charges')
         .select(
-          'id, company_id, customer_id, value, description, billing_type, status, due_date, payment_date, public_short_code, invoice_url, pix_copy_paste, boleto_url, created_at',
+          'id, company_id, customer_id, value, description, billing_type, status, due_date, payment_date, public_short_code, invoice_url, pix_copy_paste, boleto_url, asaas_payment_id, created_at',
         )
         .eq('company_id', companyId);
       if (customerId) {
@@ -152,6 +153,13 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+    // Espelha o tratamento de erro de `create`: lê a mensagem da edge via
+    // extractEdgeError (error.context.clone().json()) e propaga para o caller.
+    // O FinanceCobrancas captura no try/catch do handleConfirmRefund.
+    onError: async (_err: unknown) => {
+      // Erro já foi re-throw pelo mutationFn como Error com mensagem legível.
+      // O handler no componente (try/catch) cuida do toast e do fechamento.
     },
   });
 
