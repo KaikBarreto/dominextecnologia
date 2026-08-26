@@ -127,6 +127,7 @@ export const charges = {
         cancel: 'Cancelar',
         searchPlaceholder: 'Buscar cliente…',
         createOptionLabel: 'Criar "{name}"',
+        createAlwaysLabel: 'Cadastrar novo cliente',
         customerRequired: 'Informe o CPF ou CNPJ do cliente para cobrar.',
       },
       advanced: {
@@ -148,6 +149,7 @@ export const charges = {
       success: {
         title: 'Cobrança gerada',
         description: 'Copie o link ou envie direto pelo WhatsApp.',
+        qrCaption: 'Aponte a câmera para pagar',
         linkLabel: 'Link de pagamento',
         copy: 'Copiar link',
         copied: 'Link copiado!',
@@ -475,6 +477,7 @@ export const charges = {
         cancel: 'Cancel',
         searchPlaceholder: 'Search customer…',
         createOptionLabel: 'Create "{name}"',
+        createAlwaysLabel: 'Add new customer',
         customerRequired: 'Please provide the customer\'s CPF or CNPJ to charge.',
       },
       advanced: {
@@ -496,6 +499,7 @@ export const charges = {
       success: {
         title: 'Charge created',
         description: 'Copy the link or send it straight through WhatsApp.',
+        qrCaption: 'Point the camera to pay',
         linkLabel: 'Payment link',
         copy: 'Copy link',
         copied: 'Link copied!',
@@ -817,6 +821,7 @@ export const charges = {
         cancel: 'Cancelar',
         searchPlaceholder: 'Buscar cliente…',
         createOptionLabel: 'Crear "{name}"',
+        createAlwaysLabel: 'Registrar nuevo cliente',
         customerRequired: 'Ingresa el CPF o CNPJ del cliente para cobrar.',
       },
       advanced: {
@@ -838,6 +843,7 @@ export const charges = {
       success: {
         title: 'Cobro generado',
         description: 'Copia el enlace o envíalo directo por WhatsApp.',
+        qrCaption: 'Apunta la cámara para pagar',
         linkLabel: 'Enlace de pago',
         copy: 'Copiar enlace',
         copied: '¡Enlace copiado!',
@@ -1159,6 +1165,7 @@ export const charges = {
         cancel: 'Annuler',
         searchPlaceholder: 'Rechercher un client…',
         createOptionLabel: 'Créer "{name}"',
+        createAlwaysLabel: 'Enregistrer un nouveau client',
         customerRequired: `Veuillez saisir le CPF ou CNPJ du client pour encaisser.`,
       },
       advanced: {
@@ -1180,6 +1187,7 @@ export const charges = {
       success: {
         title: 'Facture créée',
         description: `Copiez le lien ou envoyez-le directement par WhatsApp.`,
+        qrCaption: `Pointez la caméra pour payer`,
         linkLabel: 'Lien de paiement',
         copy: 'Copier le lien',
         copied: 'Lien copié !',

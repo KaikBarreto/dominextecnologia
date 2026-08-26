@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.22',
+    date: '26 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'QR Code na cobrança para o cliente pagar na hora',
+        description: 'Ao gerar uma cobrança, agora aparece um QR Code do link de pagamento logo acima do link. Se você estiver com o cliente por perto, ele aponta a câmera e paga na hora. O QR usa a identidade visual da sua empresa quando você tem marca própria (white-label).',
+        category: 'recurso',
+      },
+      {
+        title: 'Link de pagamento completo',
+        description: 'Corrigimos o link de pagamento gerado, que vinha sem o endereço do site. Agora ele já vem completo e funcional, pronto para copiar ou enviar pelo WhatsApp.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cadastrar cliente na hora, bem à vista',
+        description: 'Na hora de escolher o cliente da cobrança, a opção de cadastrar um cliente novo agora aparece sempre, logo na lista, sem precisar digitar primeiro. Mais rápido quando o cliente ainda não está no sistema.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Parcelamento no cartão até 12x',
+        description: 'Ao cobrar no cartão, o parcelamento (de 1 a 12 vezes) agora aparece por padrão, junto com a opção de repassar ou não os juros ao cliente. Você ainda pode ajustar o limite de parcelas nas configurações de recebimentos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.21',
     date: '26 de agosto de 2026',
     type: 'patch',

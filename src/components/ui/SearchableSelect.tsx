@@ -58,6 +58,14 @@ interface SearchableSelectProps {
   onCreateOption?: (query: string) => void;
   /** Rótulo do item de criação. `{name}` é substituído pelo texto digitado. */
   createOptionLabel?: string;
+  /**
+   * Quando presente, renderiza SEMPRE um item de criar no rodapé da lista
+   * (mesmo com busca vazia), chamando `onCreateOption(query)` — query pode ser ''.
+   * Rótulo fixo (não usa `{name}`), padrão EcoSistema de "+" sempre visível.
+   * Continua exigindo `onCreateOption`. Não substitui o "Criar '<texto>'" ao digitar:
+   * quando há texto sem match exato, o item passa a exibir o `createOptionLabel`.
+   */
+  createAlwaysLabel?: string;
 }
 
 export function SearchableSelect({
@@ -73,6 +81,7 @@ export function SearchableSelect({
   emptyContent,
   onCreateOption,
   createOptionLabel = 'Criar "{name}"',
+  createAlwaysLabel,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -111,7 +120,16 @@ export function SearchableSelect({
     return all.some((o) => o.label.trim().toLocaleLowerCase() === q);
   }, [groups, options, trimmedQuery]);
 
-  const canCreate = !!onCreateOption && trimmedQuery.length > 0 && !hasExactMatch;
+  // "Criar '<texto>'" ao digitar algo que não existe.
+  const canCreateFromQuery = !!onCreateOption && trimmedQuery.length > 0 && !hasExactMatch;
+  // "+" sempre visível (padrão EcoSistema): item de criar no rodapé mesmo com busca vazia.
+  const alwaysCreate = !!onCreateOption && !!createAlwaysLabel;
+  // Renderiza o item de criar quando qualquer um dos dois modos se aplica.
+  const canCreate = canCreateFromQuery || alwaysCreate;
+  // Se há texto sem match exato, o rótulo é "Criar '<texto>'"; senão o rótulo fixo.
+  const createLabel = canCreateFromQuery
+    ? createOptionLabel.replace('{name}', trimmedQuery)
+    : (createAlwaysLabel ?? '');
 
   // Guarda contra disparo duplo (Enter repetido / dois CommandItem): só cria uma
   // vez por abertura. Reseta quando o popover fecha.
@@ -121,7 +139,9 @@ export function SearchableSelect({
   }, [open]);
 
   const handleCreate = () => {
-    if (!onCreateOption || !trimmedQuery) return;
+    // No modo "sempre visível" a query pode ser vazia (cadastrar do zero).
+    if (!onCreateOption) return;
+    if (!trimmedQuery && !alwaysCreate) return;
     if (creatingRef.current) return;
     creatingRef.current = true;
     onCreateOption(trimmedQuery);
@@ -151,13 +171,14 @@ export function SearchableSelect({
   );
 
   const createItem = canCreate ? (
+    // Valor com sentinela estável (mesmo com query vazia) pra cmdk não filtrar o item.
     <CommandItem
-      value={`__create__${trimmedQuery}`}
+      value={`__create__ ${createLabel}`}
       onSelect={handleCreate}
       className="text-primary"
     >
       <Plus className="mr-2 h-4 w-4 shrink-0" />
-      <span className="truncate">{createOptionLabel.replace('{name}', trimmedQuery)}</span>
+      <span className="truncate">{createLabel}</span>
     </CommandItem>
   ) : null;
 
@@ -190,8 +211,9 @@ export function SearchableSelect({
             onValueChange={setQuery}
           />
           <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain touch-pan-y">
-            {/* Catálogo vazio (nada cadastrado, sem busca) → CTA custom quando fornecido. */}
-            {isEmptyCatalog && !trimmedQuery && emptyContent ? (
+            {/* Catálogo vazio (nada cadastrado, sem busca) → CTA custom quando fornecido.
+                No modo "sempre visível" ignoramos o emptyContent pra garantir o "+". */}
+            {isEmptyCatalog && !trimmedQuery && emptyContent && !alwaysCreate ? (
               <div className="p-2">{emptyContent}</div>
             ) : (
               <>

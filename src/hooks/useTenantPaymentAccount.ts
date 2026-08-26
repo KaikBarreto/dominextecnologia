@@ -258,8 +258,9 @@ export function useTenantPaymentAccount() {
     allowBoleto: account?.allow_boleto ?? true,
     /** Cartão habilitado nas cobranças (DEFAULT true). */
     allowCard: account?.allow_card ?? true,
-    /** Número máximo de parcelas no cartão (DEFAULT 1). */
-    defaultMaxInstallments: account?.default_max_installments ?? 1,
+    /** Número máximo de parcelas no cartão. Fallback 12 (padrão sensato de cartão)
+     *  quando o dado ainda não veio da conta — evita esconder o seletor de parcelas. */
+    defaultMaxInstallments: account?.default_max_installments ?? 12,
     /** ID da conta bancária onde a receita cai (NULL = sem vinculação). */
     defaultFinanceAccountId: account?.default_finance_account_id ?? null,
     /** Categoria de receita padrão para lançamentos (NULL = sem categoria). */

@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
+import { BrandedQRCode } from '@/components/BrandedQRCode';
+import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -96,6 +98,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const { customers } = useCustomers();
   const { create } = useTenantCharges();
   const paymentAccount = useTenantPaymentAccount();
+  // Personalização do QR (logo do tenant white-label + estilo/cor das settings).
+  const qrConfig = useBrandedQrConfig();
 
   // ── Defaults da conta ──────────────────────────────────────────────────────
   const {
@@ -217,12 +221,17 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
   // URL exibida no bloco de resultado — checkout próprio no caso normal,
   // invoice_url do Asaas no caso órfão.
+  //
+  // No caso normal usamos SEMPRE a URL COMPLETA via buildCheckoutUrl(short_code)
+  // (https://dominex.app/pagar/<code>). O `charge.checkout_url` do edge vem
+  // RELATIVO ('/pagar/<code>'), que não funciona ao copiar/compartilhar — por isso
+  // NÃO o usamos aqui. O invoice_url do Asaas (caso órfão) já é URL completa.
   const displayUrl = (() => {
     if (!result) return '';
     if (result.orphan === true) return result.invoiceUrl;
     if (result.orphan === false) {
       const { charge } = result;
-      return charge.checkout_url || (charge.public_short_code ? buildCheckoutUrl(charge.public_short_code) : '');
+      return charge.public_short_code ? buildCheckoutUrl(charge.public_short_code) : '';
     }
     return '';
   })();
@@ -377,6 +386,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     setQuickCustomerOpen(true);
                   }}
                   createOptionLabel={t.quickCustomer.createOptionLabel}
+                  createAlwaysLabel={t.quickCustomer.createAlwaysLabel}
                 />
               )}
             </div>
@@ -630,6 +640,24 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">{t.success.description}</p>
+            )}
+
+            {/* QR do link de pagamento — o dono mostra a tela pro cliente escanear
+                e pagar na hora. Personalização (logo/estilo) vem do tenant via
+                useBrandedQrConfig (white-label). Serve tanto no caso normal quanto
+                órfão, pois ambos têm URL completa e funcional. */}
+            {displayUrl && (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-white p-4">
+                <BrandedQRCode
+                  value={displayUrl}
+                  size={170}
+                  logoUrl={qrConfig.logoUrl}
+                  dotStyle={qrConfig.dotStyle}
+                  cornerStyle={qrConfig.cornerStyle}
+                  color={qrConfig.color}
+                />
+                <p className="text-xs font-medium text-muted-foreground">{t.success.qrCaption}</p>
+              </div>
             )}
 
             <div className="space-y-2">
