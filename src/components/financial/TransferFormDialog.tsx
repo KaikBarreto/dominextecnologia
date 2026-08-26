@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { AccountFormDialog } from './AccountFormDialog';
 import { Loader2, ArrowRight } from 'lucide-react';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -28,6 +27,10 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
+  // Quick-create de conta inline. `accountTarget` diz qual select recebe a nova conta.
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [accountInitialName, setAccountInitialName] = useState('');
+  const [accountTarget, setAccountTarget] = useState<'from' | 'to'>('from');
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
@@ -48,6 +51,16 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
 
   const activeAccounts = accounts.filter(a => a.is_active);
 
+  // Opções da origem (todas as contas ativas) e do destino (exclui a origem escolhida).
+  const fromOptions = useMemo(
+    () => activeAccounts.map(a => ({ value: a.id, label: a.name })),
+    [activeAccounts],
+  );
+  const toOptions = useMemo(
+    () => activeAccounts.filter(a => a.id !== fromId).map(a => ({ value: a.id, label: a.name })),
+    [activeAccounts, fromId],
+  );
+
   const footer = (
     <div className="flex justify-end gap-3">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
@@ -59,27 +72,44 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
   );
 
   return (
+    <>
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.title} className="sm:max-w-[460px]" footer={footer}>
       <form id="transfer-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
           <div className="space-y-1.5">
             <Label>{t.originLabel}</Label>
-            <Select value={fromId} onValueChange={setFromId}>
-              <SelectTrigger><SelectValue placeholder={t.originPlaceholder} /></SelectTrigger>
-              <SelectContent>
-                {activeAccounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={fromOptions}
+              value={fromId}
+              onValueChange={setFromId}
+              placeholder={t.originPlaceholder}
+              searchPlaceholder={t.accountSearchPlaceholder}
+              onCreateOption={(query) => {
+                setAccountTarget('from');
+                setAccountInitialName(query);
+                setAccountFormOpen(true);
+              }}
+              createOptionLabel={t.accountCreateLabel}
+              createAlwaysLabel={t.accountCreateAlwaysLabel}
+            />
           </div>
           <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
           <div className="space-y-1.5">
             <Label>{t.destLabel}</Label>
-            <Select value={toId} onValueChange={setToId}>
-              <SelectTrigger><SelectValue placeholder={t.destPlaceholder} /></SelectTrigger>
-              <SelectContent>
-                {activeAccounts.filter(a => a.id !== fromId).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={toOptions}
+              value={toId}
+              onValueChange={setToId}
+              placeholder={t.destPlaceholder}
+              searchPlaceholder={t.accountSearchPlaceholder}
+              onCreateOption={(query) => {
+                setAccountTarget('to');
+                setAccountInitialName(query);
+                setAccountFormOpen(true);
+              }}
+              createOptionLabel={t.accountCreateLabel}
+              createAlwaysLabel={t.accountCreateAlwaysLabel}
+            />
           </div>
         </div>
 
@@ -101,5 +131,17 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
 
       </form>
     </ResponsiveModal>
+
+    {/* Quick-create de conta — auto-seleciona na origem ou destino conforme o gatilho. */}
+    <AccountFormDialog
+      open={accountFormOpen}
+      onOpenChange={setAccountFormOpen}
+      initialName={accountInitialName}
+      onCreated={(account) => {
+        if (accountTarget === 'from') setFromId(account.id);
+        else setToId(account.id);
+      }}
+    />
+    </>
   );
 }

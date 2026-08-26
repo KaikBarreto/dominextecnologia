@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,16 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
   CreditCard, ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowLeft,
 } from 'lucide-react';
 import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
+import { AccountFormDialog } from './AccountFormDialog';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
@@ -78,8 +77,19 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const [payNotes, setPayNotes] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [draftStatusFilter, setDraftStatusFilter] = useState<string[]>([]);
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [accountInitialName, setAccountInitialName] = useState('');
 
   const cashBankAccounts = accounts.filter(a => a.type !== 'cartao' && a.is_active);
+
+  // Opções do SearchableSelect de conta — só contas não-cartão e ativas.
+  const payAccountOptions = useMemo(
+    () => cashBankAccounts.map(a => ({
+      value: a.id,
+      label: a.name,
+    })),
+    [cashBankAccounts],
+  );
 
   const filteredBills = statusFilter.length === 0
     ? bills
@@ -513,22 +523,21 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
             <div className="space-y-1.5">
               <Label>{cc.payWith}</Label>
-              <Select value={payAccountId} onValueChange={setPayAccountId}>
-                <SelectTrigger><SelectValue placeholder={cc.payWithPlaceholder} /></SelectTrigger>
-                <SelectContent>
-                  {cashBankAccounts.map(a => (
-                    <SelectItem key={a.id} value={a.id}>
-                      <div className="flex items-center gap-2">
-                        {a.institution_name
-                          ? <BankLogo code={a.institution_code} name={a.institution_name} size={16} />
-                          : <div className="h-4 w-4 rounded-full" style={{ backgroundColor: a.color }} />
-                        }
-                        {a.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={payAccountOptions}
+                value={payAccountId}
+                onValueChange={setPayAccountId}
+                placeholder={cc.payWithPlaceholder}
+                searchPlaceholder={cc.payWithSearchPlaceholder}
+                onCreateOption={(query) => {
+                  setAccountInitialName(query);
+                  setAccountFormOpen(true);
+                }}
+                createAlwaysLabel={cc.payWithNewAccount}
+              />
+              {cashBankAccounts.length === 0 && (
+                <p className="text-xs text-destructive mt-1">{cc.noAccountHint}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -580,6 +589,14 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
           );
         })()}
       </ResponsiveModal>
+
+      {/* Quick-create de conta — auto-seleciona a nova conta ao criar. */}
+      <AccountFormDialog
+        open={accountFormOpen}
+        onOpenChange={setAccountFormOpen}
+        initialName={accountInitialName}
+        onCreated={(account) => setPayAccountId(account.id)}
+      />
     </div>
   );
 }

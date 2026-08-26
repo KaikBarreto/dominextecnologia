@@ -13,9 +13,11 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers, Plus } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { CategoryFormDialog } from './CategoryFormDialog';
+import { AccountFormDialog } from './AccountFormDialog';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -418,6 +420,11 @@ export function TransactionFormDialog({
   // que criava dois installment_group_id idênticos). Regra-lei #7.
   const submitGuard = useRef(false);
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  // Nome pré-preenchido no quick-create de categoria (texto digitado no SearchableSelect).
+  const [categoryInitialName, setCategoryInitialName] = useState('');
+  // Quick-create de conta bancária inline.
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [accountInitialName, setAccountInitialName] = useState('');
   const uploadSharedMutation = useUploadTransactionAttachmentShared();
 
   const getCategoriesForType = (type: 'entrada' | 'saida') => {
@@ -610,6 +617,42 @@ export function TransactionFormDialog({
   const dbCats = getCategoriesForType(transactionType);
   const busy = isLoading || submitting;
 
+  // Opções do SearchableSelect de categoria — filtradas pelo tipo da transação
+  // (o filtro já vem de getCategoriesForType). O `value` continua sendo o NOME
+  // da categoria (contrato pré-existente do form). Ícone colorido no item.
+  const categoryOptions = useMemo(() => {
+    if (dbCats) {
+      return dbCats.map((cat) => {
+        const Icon = getCategoryIcon(cat.icon);
+        return {
+          value: cat.name,
+          label: cat.name,
+          icon: (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
+              <Icon className="h-3 w-3 text-white" />
+            </span>
+          ),
+        };
+      });
+    }
+    return fallbackCategories[transactionType].map((cat) => ({ value: cat, label: cat }));
+  }, [dbCats, transactionType]);
+
+  // Opções do SearchableSelect de conta bancária / caixa.
+  const accountOptions = useMemo(
+    () => accounts.filter((a) => a.is_active).map((a) => ({
+      value: a.id,
+      label: a.type === 'caixa' ? `${a.name} ${tf.cashSuffix}` : a.name,
+      icon: (
+        <span className="flex items-center gap-1.5">
+          <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />
+          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+        </span>
+      ),
+    })),
+    [accounts, tf.cashSuffix],
+  );
+
   const footer = (
     <div className="flex justify-end gap-3">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tf.cancelLabel}</Button>
@@ -675,50 +718,27 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Category — Select + botão "+" inline pra criar categoria sem
-              precisar sair do form. Auto-seleciona a nova categoria criada
-              (UX premium: usuário sente que faltou X, cria, e ela já está
-              selecionada). */}
+          {/* Category — SearchableSelect com busca + criar-na-hora (padrão EcoSistema).
+              O "+" (Nova categoria) fica sempre visível dentro da lista. Ao criar,
+              abre o CategoryFormDialog pré-preenchido com o nome digitado e o tipo
+              da transação atual; a nova categoria é auto-selecionada no submit.
+              As options são filtradas pelo tipo (entrada/saída/ambos) da transação. */}
           <FormField control={form.control} name="category" render={({ field }) => (
             <FormItem>
               <FormLabel>{tf.categoryLabel}</FormLabel>
-              <div className="flex gap-2">
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder={tf.categoryPlaceholder} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {dbCats ? dbCats.map((cat) => {
-                      const Icon = getCategoryIcon(cat.icon);
-                      return (
-                        <SelectItem key={cat.id} value={cat.name}>
-                          <span className="flex items-center gap-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
-                              <Icon className="h-3 w-3 text-white" />
-                            </span>
-                            {cat.name}
-                          </span>
-                        </SelectItem>
-                      );
-                    }) : fallbackCategories[transactionType].map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => setCategoryFormOpen(true)}
-                  title={tf.newCategoryAriaLabel}
-                  aria-label={tf.newCategoryAriaLabel}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              <SearchableSelect
+                options={categoryOptions}
+                value={field.value || ''}
+                onValueChange={field.onChange}
+                placeholder={tf.categoryPlaceholder}
+                searchPlaceholder={tf.categorySearchPlaceholder}
+                onCreateOption={(query) => {
+                  setCategoryInitialName(query);
+                  setCategoryFormOpen(true);
+                }}
+                createOptionLabel={tf.categoryCreateLabel}
+                createAlwaysLabel={tf.categoryCreateAlwaysLabel}
+              />
               <FormMessage />
             </FormItem>
           )} />
@@ -756,20 +776,19 @@ export function TransactionFormDialog({
             <FormField control={form.control} name="account_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>{tf.accountLabel} <span className="text-destructive">*</span></FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ''}>
-                  <FormControl><SelectTrigger><SelectValue placeholder={tf.accountPlaceholder} /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    {accounts.filter(a => a.is_active).map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        <span className="flex items-center gap-2">
-                          <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
-                          {a.type === 'caixa' ? `${a.name} ${tf.cashSuffix}` : a.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={accountOptions}
+                  value={field.value || ''}
+                  onValueChange={field.onChange}
+                  placeholder={tf.accountPlaceholder}
+                  searchPlaceholder={tf.accountSearchPlaceholder}
+                  onCreateOption={(query) => {
+                    setAccountInitialName(query);
+                    setAccountFormOpen(true);
+                  }}
+                  createOptionLabel={tf.accountCreateLabel}
+                  createAlwaysLabel={tf.accountCreateAlwaysLabel}
+                />
                 <FormMessage />
               </FormItem>
             )} />
@@ -950,8 +969,20 @@ export function TransactionFormDialog({
       open={categoryFormOpen}
       onOpenChange={setCategoryFormOpen}
       category={null}
+      initialName={categoryInitialName}
+      initialType={transactionType}
       onSubmit={handleCreateCategoryInline}
       isLoading={createCategory.isPending}
+    />
+
+    {/* Quick-create de conta bancária / caixa — auto-seleciona a nova conta no form. */}
+    <AccountFormDialog
+      open={accountFormOpen}
+      onOpenChange={setAccountFormOpen}
+      initialName={accountInitialName}
+      onCreated={(account) => {
+        form.setValue('account_id', account.id, { shouldDirty: true });
+      }}
     />
     </>
   );

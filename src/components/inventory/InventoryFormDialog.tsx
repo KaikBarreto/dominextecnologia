@@ -7,6 +7,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
@@ -35,7 +36,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   const { toast } = useToast();
   const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity, getPresenceForStock, setInventoryPresence } = useInventory();
   const { stocks } = useStocks();
-  const { groups } = useMaterialGroups();
+  const { groups, createGroup } = useMaterialGroups();
   const isEditing = !!item;
 
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
@@ -259,31 +260,32 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>{t.fields.group}</Label>
-            {groups.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2">{t.fields.groupEmpty}</p>
-            ) : (
-              <Select
-                value={formData.group_id || ''}
-                onValueChange={(value) => handleChange('group_id', value || null)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t.fields.groupPlaceholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: g.color ?? '#6B7280' }}
-                        />
-                        {g.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <SearchableSelect
+              value={formData.group_id ?? ''}
+              onValueChange={(value) => handleChange('group_id', value || null)}
+              placeholder={t.fields.groupPlaceholder}
+              searchPlaceholder={t.fields.groupSearchPlaceholder}
+              createOptionLabel={t.fields.groupCreateLabel}
+              createAlwaysLabel={t.fields.groupCreateAlways}
+              onCreateOption={async (query) => {
+                // Sem nome digitado → no-op (o "+" com busca vazia é só affordance;
+                // não cria grupo "Novo grupo" lixo). Digite o nome pra criar.
+                const name = query.trim();
+                if (!name) return;
+                const created = await createGroup.mutateAsync({ name });
+                if (created) handleChange('group_id', created.id);
+              }}
+              options={groups.map((g) => ({
+                value: g.id,
+                label: g.name,
+                icon: (
+                  <div
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: g.color ?? '#6B7280' }}
+                  />
+                ),
+              }))}
+            />
           </div>
           <div className="space-y-2">
             <Label>{t.fields.supplier}</Label>

@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Loader2, Upload, Users, User, FileText } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,7 +89,7 @@ export function CustomerFormDialog({
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.form;
-  const { activeOrigins } = useCustomerOrigins();
+  const { activeOrigins, createOrigin } = useCustomerOrigins();
 
   const isEditing = !!customer;
   const draft = useFormDraft<CustomerFormData>({ key: 'customer-form', isOpen: open, isEditing });
@@ -346,23 +347,41 @@ export function CustomerFormDialog({
                 <FormField control={form.control} name="origin" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.origin}</FormLabel>
-                    <Select onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)} value={field.value || '__none__'}>
-                      <FormControl><SelectTrigger><SelectValue placeholder={t.originPlaceholder} /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">{t.originNone}</SelectItem>
-                        {activeOrigins.map((o) => {
-                          const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
-                          return (
-                            <SelectItem key={o.id} value={o.name}>
-                              <div className="flex items-center gap-2">
-                                {LucideIcon && <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: o.color }}><LucideIcon className="h-2.5 w-2.5 text-white" /></div>}
-                                <span>{o.name}</span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <SearchableSelect
+                        options={[
+                          { value: '__none__', label: t.originNone },
+                          ...activeOrigins.map((o) => {
+                            const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
+                            return {
+                              value: o.name,
+                              label: o.name,
+                              icon: LucideIcon ? (
+                                <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: o.color }}>
+                                  <LucideIcon className="h-2.5 w-2.5 text-white" />
+                                </div>
+                              ) : undefined,
+                            };
+                          }),
+                          // Preserva o valor salvo caso a origem não esteja mais no catálogo ativo.
+                          ...(field.value && !activeOrigins.some((o) => o.name === field.value)
+                            ? [{ value: field.value as string, label: field.value as string }]
+                            : []),
+                        ]}
+                        value={field.value || '__none__'}
+                        onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
+                        placeholder={t.originPlaceholder}
+                        searchPlaceholder={t.originSearch}
+                        onCreateOption={async (query) => {
+                          const name = query.trim();
+                          if (!name) return;
+                          await createOrigin.mutateAsync({ name });
+                          field.onChange(name);
+                        }}
+                        createOptionLabel={t.originCreate}
+                        createAlwaysLabel={t.originCreateAlways}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

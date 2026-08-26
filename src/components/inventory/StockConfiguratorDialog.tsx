@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
@@ -249,27 +249,24 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
         {/* Adicionar por grupo */}
         {groups.length > 0 && (
           <div className="flex items-center gap-2">
-            <Select
-              value={selectedGroupId}
-              onValueChange={setSelectedGroupId}
-            >
-              <SelectTrigger className="flex-1 min-w-0">
-                <SelectValue placeholder={t.addByGroupPlaceholder} />
-              </SelectTrigger>
-              <SelectContent>
-                {groups.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: g.color ?? '#6B7280' }}
-                      />
-                      {g.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                value={selectedGroupId}
+                onValueChange={setSelectedGroupId}
+                placeholder={t.addByGroupPlaceholder}
+                searchPlaceholder={t.addByGroupSearchPlaceholder}
+                options={groups.map((g) => ({
+                  value: g.id,
+                  label: g.name,
+                  icon: (
+                    <div
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: g.color ?? '#6B7280' }}
+                    />
+                  ),
+                }))}
+              />
+            </div>
             <Button
               type="button"
               variant="outline"

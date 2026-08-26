@@ -30,9 +30,13 @@ interface CategoryFormDialogProps {
   category?: FinancialCategory | null;
   onSubmit: (data: FormData) => Promise<void>;
   isLoading?: boolean;
+  /** Nome pré-preenchido ao criar (ex.: texto digitado no SearchableSelect). Só vale na criação. */
+  initialName?: string;
+  /** Tipo pré-selecionado ao criar (entrada/saida/ambos). Só vale na criação. */
+  initialType?: string;
 }
 
-export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading }: CategoryFormDialogProps) {
+export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading, initialName, initialType }: CategoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.categoryForm;
 
@@ -45,8 +49,8 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: category?.name ?? '',
-      type: category?.type ?? 'ambos',
+      name: category?.name ?? initialName ?? '',
+      type: category?.type ?? initialType ?? 'ambos',
       color: category?.color ?? '#00C597',
       icon: category?.icon ?? 'Tag',
       dre_group: (category as any)?.dre_group ?? 'opex',
@@ -57,15 +61,16 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   useEffect(() => {
     if (open) {
       form.reset({
-        name: category?.name ?? '',
-        type: category?.type ?? 'ambos',
+        // Na criação, respeita o nome/tipo pré-preenchidos (quick-create do SearchableSelect).
+        name: category?.name ?? initialName ?? '',
+        type: category?.type ?? initialType ?? 'ambos',
         color: category?.color ?? '#00C597',
         icon: category?.icon ?? 'Tag',
         dre_group: (category as any)?.dre_group ?? 'opex',
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, category?.id]);
+  }, [open, category?.id, initialName, initialType]);
 
   const selectedColor = form.watch('color');
 

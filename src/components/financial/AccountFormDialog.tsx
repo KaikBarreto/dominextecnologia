@@ -42,6 +42,10 @@ interface AccountFormDialogProps {
   editing?: FinancialAccount | null;
   /** Tipo inicial na criação ('banco' | 'cartao' | 'caixa'). */
   defaultType?: string;
+  /** Nome pré-preenchido ao criar (ex.: texto digitado no SearchableSelect). Só vale na criação. */
+  initialName?: string;
+  /** Callback com a conta recém-criada (usado pelo quick-create pra auto-selecionar). */
+  onCreated?: (account: FinancialAccount) => void;
 }
 
 /**
@@ -49,7 +53,7 @@ interface AccountFormDialogProps {
  * pra ser reusado pela tela "Movimentações Financeiras" (sidebar de contas).
  * Fonte única da regra de saldo inicial + fechamento/vencimento do cartão.
  */
-export function AccountFormDialog({ open, onOpenChange, editing, defaultType = 'banco' }: AccountFormDialogProps) {
+export function AccountFormDialog({ open, onOpenChange, editing, defaultType = 'banco', initialName, onCreated }: AccountFormDialogProps) {
   const { createAccount, updateAccount } = useFinancialAccounts();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.accountForm;
@@ -83,10 +87,11 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
       setDueDay(editing.due_day ?? (editing.payment_due_days ? (editing.closing_day ?? 10) + editing.payment_due_days : 20));
       setCreditLimit(editing.credit_limit ?? 0);
     } else {
-      setName(''); setType(defaultType); setInstitution(null); setInitialBalance(0); setColor('#3b82f6');
+      // Na criação, respeita o nome pré-preenchido (quick-create do SearchableSelect).
+      setName(initialName ?? ''); setType(defaultType); setInstitution(null); setInitialBalance(0); setColor('#3b82f6');
       setClosingDay(10); setDueDay(20); setCreditLimit(0);
     }
-  }, [open, editing, defaultType]);
+  }, [open, editing, defaultType, initialName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +119,8 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
     if (editing) {
       await updateAccount.mutateAsync({ ...input, id: editing.id });
     } else {
-      await createAccount.mutateAsync(input);
+      const created = await createAccount.mutateAsync(input);
+      if (created) onCreated?.(created as FinancialAccount);
     }
     onOpenChange(false);
   };

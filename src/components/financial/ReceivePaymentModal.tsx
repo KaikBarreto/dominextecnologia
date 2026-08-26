@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { AccountFormDialog } from './AccountFormDialog';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -85,6 +87,23 @@ export function ReceivePaymentModal({
   const { accounts } = useFinancialAccounts();
   const activeAccounts = useMemo(() => accounts.filter(a => a.is_active), [accounts]);
 
+  // Opções do SearchableSelect de conta (busca por nome + ícone por tipo).
+  const accountOptions = useMemo(
+    () => activeAccounts.map(a => {
+      const Icon = getAccIcon(a.type);
+      return {
+        value: a.id,
+        label: a.name,
+        icon: (
+          <span className="rounded-full p-1" style={{ backgroundColor: a.color }}>
+            <Icon className="h-3 w-3 text-white" />
+          </span>
+        ),
+      };
+    }),
+    [activeAccounts],
+  );
+
   const paymentMethods = [
     { value: 'dinheiro', label: t.paymentMethods.dinheiro },
     { value: 'pix', label: t.paymentMethods.pix },
@@ -104,6 +123,9 @@ export function ReceivePaymentModal({
   const partialEnabled = allowPartial && !isParcelada;
 
   const [accountId, setAccountId] = useState<string>('');
+  // Quick-create de conta bancária inline.
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [accountInitialName, setAccountInitialName] = useState('');
   const [method, setMethod] = useState(defaultMethod);
   const [paidDate, setPaidDate] = useState(new Date().toISOString().split('T')[0]);
   const [feeAmount, setFeeAmount] = useState('');
@@ -179,6 +201,7 @@ export function ReceivePaymentModal({
   );
 
   return (
+    <>
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
@@ -232,26 +255,19 @@ export function ReceivePaymentModal({
 
         <div>
           <Label>{t.accountLabel}</Label>
-          <Select value={accountId} onValueChange={setAccountId}>
-            <SelectTrigger>
-              <SelectValue placeholder={t.accountPlaceholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {activeAccounts.map(a => {
-                const Icon = getAccIcon(a.type);
-                return (
-                  <SelectItem key={a.id} value={a.id}>
-                    <span className="flex items-center gap-2">
-                      <span className="rounded-full p-1" style={{ backgroundColor: a.color }}>
-                        <Icon className="h-3 w-3 text-white" />
-                      </span>
-                      {a.name}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={accountOptions}
+            value={accountId}
+            onValueChange={setAccountId}
+            placeholder={t.accountPlaceholder}
+            searchPlaceholder={t.accountSearchPlaceholder}
+            onCreateOption={(query) => {
+              setAccountInitialName(query);
+              setAccountFormOpen(true);
+            }}
+            createOptionLabel={t.accountCreateLabel}
+            createAlwaysLabel={t.accountCreateAlwaysLabel}
+          />
           {activeAccounts.length === 0 && (
             <p className="text-xs text-destructive mt-1">{t.noAccountHint}</p>
           )}
@@ -334,5 +350,14 @@ export function ReceivePaymentModal({
 
       </div>
     </ResponsiveModal>
+
+    {/* Quick-create de conta — auto-seleciona a nova conta ao criar. */}
+    <AccountFormDialog
+      open={accountFormOpen}
+      onOpenChange={setAccountFormOpen}
+      initialName={accountInitialName}
+      onCreated={(account) => setAccountId(account.id)}
+    />
+    </>
   );
 }

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.23',
+    date: '26 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Buscar e cadastrar direto nos campos de seleção',
+        description: 'Vários campos de escolha ficaram mais rápidos: cliente, categoria, conta, origem e grupo agora têm busca (é só começar a digitar) e a opção de cadastrar um novo item ali mesmo, sem sair da tela. Isso vale em vários lugares do sistema, como leads, lançamentos e transferências no financeiro, pagamento de fatura de cartão e cadastro de materiais.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.22',
     date: '26 de agosto de 2026',
     type: 'patch',

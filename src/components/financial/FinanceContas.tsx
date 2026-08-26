@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { isTransactionInDateRange } from '@/lib/finance-date';
@@ -40,6 +41,7 @@ function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
 }
 import { ContaFormDialog } from './ContaFormDialog';
+import { AccountFormDialog } from './AccountFormDialog';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
 import { ReceivableDetailModal } from './ReceivableDetailModal';
 import type { TransactionType } from '@/types/database';
@@ -95,6 +97,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const [payDespDate, setPayDespDate] = useState('');
   const [payDespMethod, setPayDespMethod] = useState('pix');
   const [payDespNotes, setPayDespNotes] = useState('');
+  const [payDespAccountFormOpen, setPayDespAccountFormOpen] = useState(false);
+  const [payDespAccountInitialName, setPayDespAccountInitialName] = useState('');
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
@@ -102,6 +106,11 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const { deleteTransaction } = useFinancial();
   const { accounts: allAccounts } = useFinancialAccounts();
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
+  // Opções do SearchableSelect — só contas não-cartão e ativas.
+  const cashBankAccountOptions = useMemo(
+    () => cashBankAccounts.map(a => ({ value: a.id, label: a.name })),
+    [cashBankAccounts],
+  );
   // Faturas de cartão — usadas em subTab='pagar' pra agrupar despesas em
   // linhas-de-fatura (uma linha por fatura) em vez de listar cada despesa solta.
   // v1.9.15 — refactor cartão/faturas.
@@ -1024,14 +1033,18 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>{fin.accounts.payExpenseModal.paidWith}</Label>
-            <Select value={payDespAccountId} onValueChange={setPayDespAccountId}>
-              <SelectTrigger><SelectValue placeholder={fin.accounts.payExpenseModal.selectAccount} /></SelectTrigger>
-              <SelectContent>
-                {cashBankAccounts.map(a => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={cashBankAccountOptions}
+              value={payDespAccountId}
+              onValueChange={setPayDespAccountId}
+              placeholder={fin.accounts.payExpenseModal.selectAccount}
+              searchPlaceholder={fin.accounts.payExpenseModal.searchAccount}
+              onCreateOption={(query) => {
+                setPayDespAccountInitialName(query);
+                setPayDespAccountFormOpen(true);
+              }}
+              createAlwaysLabel={fin.accounts.payExpenseModal.newAccount}
+            />
             {cashBankAccounts.length === 0 && (
               <p className="text-xs text-destructive">{fin.accounts.payExpenseModal.noAccountWarning}</p>
             )}
@@ -1070,6 +1083,14 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           </div>
         </div>
       </ResponsiveModal>
+
+      {/* Quick-create de conta a partir do modal de pagar despesa. */}
+      <AccountFormDialog
+        open={payDespAccountFormOpen}
+        onOpenChange={setPayDespAccountFormOpen}
+        initialName={payDespAccountInitialName}
+        onCreated={(account) => setPayDespAccountId(account.id)}
+      />
 
       {/* FAB mobile — "Nova Conta". Desktop usa o botão inline do header. */}
       {isMobile && (

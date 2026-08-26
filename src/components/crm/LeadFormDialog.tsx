@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
 import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
@@ -40,8 +41,12 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const { customers } = useCustomers();
   const { users } = useUsers();
   const { stages } = useCrmStages();
-  const { activeOrigins } = useCustomerOrigins();
+  const { activeOrigins, createOrigin } = useCustomerOrigins();
   const isEditing = !!lead;
+
+  // Quick-create de cliente na hora (mesmo padrão do ChargeDialog).
+  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
+  const [quickCustomerInitialName, setQuickCustomerInitialName] = useState('');
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
     title: '',
@@ -140,6 +145,21 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                 }
                 placeholder={t.form.customerPlaceholder}
                 searchPlaceholder={t.form.customerSearch}
+                onCreateOption={(query) => {
+                  setQuickCustomerInitialName(query);
+                  setQuickCustomerOpen(true);
+                }}
+                createOptionLabel={t.form.customerCreate}
+                createAlwaysLabel={t.form.customerCreateAlways}
+              />
+              <QuickCustomerDialog
+                open={quickCustomerOpen}
+                initialName={quickCustomerInitialName}
+                onOpenChange={setQuickCustomerOpen}
+                onCreated={(id) => {
+                  handleChange('customer_id', id);
+                  setQuickCustomerOpen(false);
+                }}
               />
             </div>
 
@@ -169,31 +189,37 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="source">{t.form.origin}</Label>
-              <Select
+              <SearchableSelect
+                options={[
+                  { value: 'none', label: t.form.originNone },
+                  ...activeOrigins.map((origin) => ({
+                    value: origin.name,
+                    label: origin.name,
+                    icon: (
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: origin.color }}
+                      />
+                    ),
+                  })),
+                  // Preserva o valor salvo mesmo se a origem não estiver mais no catálogo ativo.
+                  ...(formData.source && !activeOrigins.some((o) => o.name === formData.source)
+                    ? [{ value: formData.source, label: formData.source }]
+                    : []),
+                ]}
                 value={formData.source || 'none'}
                 onValueChange={(value) => handleChange('source', value === 'none' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t.form.originPlaceholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t.form.originNone}</SelectItem>
-                  {activeOrigins.map((origin) => (
-                    <SelectItem key={origin.id} value={origin.name}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: origin.color }}
-                        />
-                        {origin.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                  {formData.source && !activeOrigins.some((o) => o.name === formData.source) && (
-                    <SelectItem value={formData.source}>{formData.source}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                placeholder={t.form.originPlaceholder}
+                searchPlaceholder={t.form.originSearch}
+                onCreateOption={async (query) => {
+                  const name = query.trim();
+                  if (!name) return;
+                  await createOrigin.mutateAsync({ name });
+                  handleChange('source', name);
+                }}
+                createOptionLabel={t.form.originCreate}
+                createAlwaysLabel={t.form.originCreateAlways}
+              />
             </div>
 
             <div className="space-y-2">
