@@ -43,6 +43,9 @@ export interface CreateChargeInput {
   discount_percent?: number;
   discount_days?: number;
   installment_count?: number;
+  /** Quem paga a taxa do cartão nesta cobrança: 'company' (empresa absorve) ou
+   *  'customer' (repasse ao cliente via gross-up). Ausente → default da conta. */
+  fee_payer?: 'company' | 'customer';
   /** Origem da cobrança. Quando 'quote', usar source_id com o UUID do orçamento.
    *  A edge faz dedupe: chamar duas vezes pro mesmo source_id devolve a mesma cobrança. */
   source_type?: 'avulso' | 'quote';
@@ -177,6 +180,7 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       if (input.discount_percent !== undefined) body.discount_percent = input.discount_percent;
       if (input.discount_days !== undefined) body.discount_days = input.discount_days;
       if (input.installment_count !== undefined) body.installment_count = input.installment_count;
+      if (input.fee_payer !== undefined) body.fee_payer = input.fee_payer;
       // Repassa origem da cobrança ao edge (source_type + source_id).
       // Default do edge é 'avulso'; 'quote' ativa o dedupe pelo source_id.
       if (input.source_type) body.source_type = input.source_type;
