@@ -130,7 +130,19 @@ function ProposalPublicContent({
       const payload = (data ?? null) as {
         quote: any;
         items: any[];
-        customer: { name: string; email: string | null; phone: string | null } | null;
+        customer: {
+          name: string;
+          email: string | null;
+          phone: string | null;
+          document: string | null;
+          address: string | null;
+          address_number: string | null;
+          complement: string | null;
+          neighborhood: string | null;
+          city: string | null;
+          state: string | null;
+          zip_code: string | null;
+        } | null;
         company: any | null;
         charge_public_short_code?: string | null;
       } | null;

@@ -215,6 +215,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           <p className="text-base font-bold mt-1.5" style={{ color: '#0f172a' }}>{d.clientName}</p>
           <div className="text-xs mt-1 leading-relaxed" style={{ color: '#64748b' }}>
             {d.clientDoc && <p>{d.clientDoc}</p>}
+            {d.clientAddressLine && <p>{d.clientAddressLine}</p>}
             {d.clientPhone && <p>{d.clientPhone}</p>}
             {d.clientEmail && <p>{d.clientEmail}</p>}
           </div>

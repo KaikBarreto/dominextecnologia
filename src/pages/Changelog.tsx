@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.26',
+    date: '28 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Orçamentos e propostas com CNPJ e endereço do cliente',
+        description: 'Agora o documento do orçamento e da proposta mostra também o CNPJ e o endereço completo do cliente, além do nome, telefone e e-mail. Assim o documento fica mais formal e completo, do mesmo jeito que já exibe os dados da sua empresa. Quando o cliente ainda não tem esses dados cadastrados, o documento simplesmente mostra o que estiver disponível, sem nada em branco.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.25',
     date: '26 de agosto de 2026',
     type: 'patch',

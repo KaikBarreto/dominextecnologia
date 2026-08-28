@@ -25,6 +25,7 @@ export interface ProposalData {
   logoUrl?: string;
   clientName: string;
   clientDoc?: string;
+  clientAddressLine?: string;
   clientEmail?: string;
   clientPhone?: string;
   serviceItems: QuoteItem[];
@@ -61,6 +62,17 @@ export function buildProposalData(
   const clientEmail = quote.customers?.email ?? quote.prospect_email ?? undefined;
   const clientPhone = quote.customers?.phone ?? quote.prospect_phone ?? undefined;
 
+  // Linha de endereço do cliente — espelha o padrão da empresa (addressParts abaixo).
+  const c = quote.customers as any;
+  const clientAddressParts = [
+    c?.address,
+    c?.address_number,
+    c?.neighborhood,
+    c?.city && c?.state ? `${c.city}/${c.state}` : c?.city,
+    c?.zip_code ? `CEP ${c.zip_code}` : undefined,
+  ].filter(Boolean);
+  const clientAddressLine = clientAddressParts.length ? clientAddressParts.join(' · ') : undefined;
+
   const byPos = (a: QuoteItem, b: QuoteItem) => (a.position ?? 0) - (b.position ?? 0);
   const serviceItems = items.filter(i => i.item_type === 'servico' || i.item_type === 'mao_de_obra').sort(byPos);
   const materialItems = items.filter(i => i.item_type === 'material').sort(byPos);
@@ -88,6 +100,7 @@ export function buildProposalData(
     logoUrl,
     clientName,
     clientDoc,
+    clientAddressLine,
     clientEmail,
     clientPhone,
     serviceItems,

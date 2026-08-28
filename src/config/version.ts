@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.25";
+export const APP_VERSION = "1.21.26";
 
-export const VERSION_NOTES = "A renovação mensal da assinatura paga no cartão passa a ser reconhecida automaticamente, atualizando a data de vencimento na hora, sem risco de bloqueio indevido ou ajuste manual.";
+export const VERSION_NOTES = "Os orçamentos e propostas agora mostram o CNPJ e o endereço completo do cliente, deixando o documento mais formal e pronto para uso.";

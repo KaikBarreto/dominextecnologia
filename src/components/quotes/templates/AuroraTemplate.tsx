@@ -189,6 +189,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
             <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: PINK }}>{t.preparedFor}</p>
             <p className="font-bold text-base mt-1.5 text-white leading-tight">{d.clientName}</p>
             {d.clientDoc && <p className="text-[11px] text-white/40 mt-0.5">{d.clientDoc}</p>}
+            {d.clientAddressLine && <p className="text-[11px] text-white/40 mt-0.5">{d.clientAddressLine}</p>}
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: PINK }}>{t.presentedBy}</p>
