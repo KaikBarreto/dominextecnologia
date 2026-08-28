@@ -109,7 +109,19 @@ export interface Quote {
   include_gifts?: boolean | null;
   card_discount_rate?: number | null;
   card_installments?: number | null;
-  customers?: { name: string; email: string | null; phone: string | null };
+  customers?: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    document?: string | null;
+    address?: string | null;
+    address_number?: string | null;
+    complement?: string | null;
+    neighborhood?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
+  };
   quote_items?: QuoteItem[];
   proposal_templates?: { slug: string; name: string } | null;
 }
@@ -182,11 +194,11 @@ export function useQuotes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, customers(name, email, phone), quote_items(*), proposal_templates(slug, name)')
+        .select('*, customers(name, email, phone, document, address, address_number, complement, neighborhood, city, state, zip_code), quote_items(*), proposal_templates(slug, name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Quote[];
+      return data as unknown as Quote[];
     },
   });
 
@@ -372,12 +384,12 @@ export function useQuotes() {
   const fetchQuoteByToken = async (token: string) => {
     const { data, error } = await supabase
       .from('quotes')
-      .select('*, customers(name, email, phone), quote_items(*)')
+      .select('*, customers(name, email, phone, document, address, address_number, complement, neighborhood, city, state, zip_code), quote_items(*)')
       .eq('token', token)
       .single();
 
     if (error) throw error;
-    return data as Quote;
+    return data as unknown as Quote;
   };
 
   const respondByToken = async (token: string, status: 'aprovado' | 'rejeitado') => {
