@@ -191,11 +191,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
 
         <Button
           size="sm"
-          className={`h-8 w-full gap-1.5 text-xs ${
-            isMobile
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-              : 'bg-gradient-to-r from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-600 text-white dark:from-primary dark:to-primary dark:text-primary-foreground dark:hover:from-primary/90 dark:hover:to-primary/90'
-          }`}
+          className="h-8 w-full gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={onExtract}
         >
           <FileText className="h-3.5 w-3.5" /> {t.card.viewExtract}

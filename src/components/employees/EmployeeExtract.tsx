@@ -323,7 +323,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
         {(isPayment || isVale) && (
           <Button
             size="sm"
-            className="w-full h-7 gap-1.5 text-xs bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 text-white"
+            className="w-full h-7 gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => {
               const target: ReceiptTarget = { movement: m, kind: isVale ? 'vale' : 'pagamento' };
               // Pagamento CLT: gera o holerite diretamente (o formato A4/Térmico é

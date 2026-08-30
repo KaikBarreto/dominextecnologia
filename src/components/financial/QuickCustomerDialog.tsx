@@ -18,6 +18,8 @@ interface QuickCustomerDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Chamado ao criar com sucesso; passa o id do novo cliente. */
   onCreated: (customerId: string) => void;
+  /** Exige CPF/CNPJ (default true — cobrança Asaas). Passe false em contextos sem cobrança (ex: equipamento). */
+  requireDocument?: boolean;
 }
 
 /**
@@ -30,6 +32,7 @@ export function QuickCustomerDialog({
   initialName = '',
   onOpenChange,
   onCreated,
+  requireDocument = true,
 }: QuickCustomerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar.quickCustomer;
@@ -73,7 +76,7 @@ export function QuickCustomerDialog({
 
   const handleCreate = async () => {
     const trimmedDoc = document.replace(/\D/g, '');
-    if (!trimmedDoc) {
+    if (requireDocument && !trimmedDoc) {
       toast({ variant: 'destructive', title: t.customerRequired });
       return;
     }
@@ -82,7 +85,7 @@ export function QuickCustomerDialog({
       const created = await createCustomer.mutateAsync({
         name: name.trim(),
         customer_type: trimmedDoc.length === 14 ? 'pj' : 'pf',
-        document: document.trim(),
+        document: document.trim() || undefined,
         email: email.trim() || undefined,
         celular: phone.trim() || undefined,
       });

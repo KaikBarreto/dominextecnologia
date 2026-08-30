@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.28',
+    date: '30 de agosto de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastre um cliente novo sem sair da tela de equipamentos',
+        description: 'Ao cadastrar um equipamento, se o cliente ainda não existe você cria ele na hora ali mesmo: no campo de cliente, é só digitar o nome e tocar em criar. O cliente já fica selecionado no equipamento, sem precisar abrir outra tela. Nesse cadastro rápido, informar o CPF ou CNPJ é opcional, então dá para registrar só com o nome quando você ainda não tem o documento em mãos.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ajustes visuais no tema escuro',
+        description: 'Corrigimos uma aba que aparecia com o texto quase invisível no tema escuro e padronizamos o visual de alguns botões para acompanhar melhor o tema, deixando a leitura mais confortável.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.27',
     date: '28 de agosto de 2026',
     type: 'patch',

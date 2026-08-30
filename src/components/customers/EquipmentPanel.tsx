@@ -331,10 +331,10 @@ export function EquipmentPanel() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button
+              variant="outline"
               onClick={() => setConfigOpen(true)}
               title={tEq.configureFields}
               size="sm"
-              className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
             >
               <Settings className="h-4 w-4 mr-2" />
               {tEq.configureFields}

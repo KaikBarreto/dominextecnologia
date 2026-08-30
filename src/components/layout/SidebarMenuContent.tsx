@@ -642,7 +642,7 @@ export function SidebarMenuContent() {
                   type="button"
                   onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : L('/configuracoes'))}
                   aria-label={accountT.settings}
-                  className="flex-[3] h-9 flex items-center justify-center gap-2 rounded-md text-[13px] font-semibold text-sidebar-foreground hover:bg-gradient-to-r hover:from-gray-800 hover:to-gray-900 hover:text-white transition-colors duration-300"
+                  className="flex-[3] h-9 flex items-center justify-center gap-2 rounded-md text-[13px] font-semibold text-sidebar-foreground hover:bg-secondary hover:text-secondary-foreground transition-colors duration-300"
                 >
                   <SettingsIcon className="h-4 w-4 shrink-0" />
                   <span>{accountT.settings}</span>

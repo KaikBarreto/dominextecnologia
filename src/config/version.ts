@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.27";
+export const APP_VERSION = "1.21.28";
 
-export const VERSION_NOTES = "Os orçamentos e propostas agora mostram o CNPJ e o endereço completo do cliente, deixando o documento mais formal e pronto para uso.";
+export const VERSION_NOTES = "Agora dá para cadastrar um cliente novo na hora, direto pela tela de equipamentos, sem abrir outra tela. Também ajustamos detalhes visuais no tema escuro para uma leitura mais confortável.";

@@ -677,7 +677,7 @@ export default function Users() {
                             </div>
                             <p className="text-sm text-muted-foreground truncate">{userProfile.phone || '—'}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-2">
-                              <Badge className="bg-gradient-to-r from-gray-800 to-gray-900 text-white border-0 text-xs">
+                              <Badge className="bg-secondary text-secondary-foreground border-0 text-xs">
                                 <Shield className="h-3 w-3 mr-1.5" />
                                 {preset ? preset.name : isAllPerms ? t.badgeAllPerms : t.badgePermCount.replace('{count}', String(permCount))}
                               </Badge>
