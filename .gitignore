@@ -30,6 +30,7 @@ docs/planos/
 docs/decisoes/
 docs/superpowers/
 .claude/
+.context/
 
 # Worktrees isolados de execução (nunca versionar)
 .worktrees/

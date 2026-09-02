@@ -1,0 +1,10 @@
+# Arquivos gitignored que ajudam novos workspaces Conductor.
+# Nunca commitar valores secretos; este arquivo contem apenas patterns.
+# Nao copiar .claude/worktrees/**.
+
+.claude/agents/**
+.claude/commands/**
+.claude/secrets.local.env
+.claude/settings.json
+docs/team/**
+.env

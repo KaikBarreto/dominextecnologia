@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dominex Release"
+  short_description: "Fecha releases Dominex com segurança."
+  default_prompt: "Use $dominex-release para fechar entrega, classificar bump/changelog, commitar e pushar com segurança."
