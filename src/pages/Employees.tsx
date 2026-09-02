@@ -24,7 +24,7 @@ import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeesListView } from '@/components/employees/EmployeesListView';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
-import { getErrorMessage } from '@/utils/errorMessages';
+import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
@@ -371,7 +371,8 @@ export default function Employees() {
                   },
                 });
 
-                if (response.error) throw new Error(response.error.message || 'Erro na chamada da função');
+                // Re-lança o erro original (preserva error.context com o corpo real da edge)
+                if (response.error) throw response.error;
                 const fnData = response.data;
                 if (fnData?.error) throw new Error(fnData.error);
 
@@ -385,10 +386,11 @@ export default function Employees() {
                   duration: 15000,
                 });
               } catch (err: any) {
+                const realMsg = await getInvokeErrorMessage(err);
                 toast({
                   variant: 'destructive',
                   title: t.toasts.employeeUpdatedAccessError,
-                  description: getErrorMessage(err),
+                  description: getErrorMessage(realMsg || err),
                 });
               }
             }
@@ -418,25 +420,27 @@ export default function Employees() {
                 },
               });
               
-              if (response.error) throw new Error(response.error.message || 'Erro na chamada da função');
+              // Re-lança o erro original (preserva error.context com o corpo real da edge)
+              if (response.error) throw response.error;
               const fnData = response.data;
               if (fnData?.error) throw new Error(fnData.error);
-              
+
               // Link user_id to employee
               if (fnData?.user?.id && newEmployee?.id) {
                 await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', newEmployee.id);
               }
-              
+
               toast({
                 title: t.toasts.accessCreated,
                 description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
                 duration: 15000,
               });
             } catch (err: any) {
+              const realMsg = await getInvokeErrorMessage(err);
               toast({
                 variant: 'destructive',
                 title: t.toasts.employeeCreatedAccessError,
-                description: getErrorMessage(err),
+                description: getErrorMessage(realMsg || err),
               });
             }
           }

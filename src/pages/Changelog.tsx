@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.21.29',
+    date: '2 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criação de usuários mais confiável',
+        description: 'Corrigimos uma falha em que criar um novo usuário podia parar no meio do caminho e deixar um acesso incompleto, que não funcionava e ainda impedia novas tentativas com o mesmo e-mail. Agora o cadastro é sempre concluído por inteiro, e se você tentar de novo um acesso que ficou incompleto, o sistema completa sozinho.',
+        category: 'correcao',
+      },
+      {
+        title: 'Mensagens de erro mais claras ao criar usuário',
+        description: 'Quando algo impede a criação de um usuário, a tela agora mostra o motivo real em português, por exemplo quando o e-mail já está cadastrado, em vez de um aviso técnico genérico.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.28',
     date: '30 de agosto de 2026',
     type: 'patch',

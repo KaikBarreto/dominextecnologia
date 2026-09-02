@@ -224,6 +224,32 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
   },
 ];
 
+/**
+ * Erro do `supabase.functions.invoke` em resposta NÃO-2xx.
+ *
+ * Gotcha do supabase-js: em resposta não-2xx, o corpo real da Response ({error})
+ * fica em `error.context` (um objeto Response), NÃO em `error.message` (que é
+ * genérico: "Edge Function returned a non-2xx status code") nem em `data`.
+ *
+ * Este helper tenta ler o corpo real e devolve `body.error` quando existir.
+ * Retorna `null` se não houver context legível — quem chama cai no fallback.
+ */
+export async function getInvokeErrorMessage(error: unknown): Promise<string | null> {
+  if (!error || typeof error !== 'object') return null;
+  const context = (error as { context?: unknown }).context;
+  // `context` é um Response quando a edge respondeu com status de erro.
+  if (context && typeof (context as Response).clone === 'function') {
+    try {
+      const body = await (context as Response).clone().json();
+      const real = body?.error;
+      if (typeof real === 'string' && real.trim().length > 0) return real;
+    } catch {
+      // corpo não-JSON ou já consumido — ignora
+    }
+  }
+  return null;
+}
+
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
   // 1) SQLSTATE / PostgREST code primeiro — mais confiável que substring.
   //    Erros do Supabase tipicamente vêm como { code, message, details, hint }.

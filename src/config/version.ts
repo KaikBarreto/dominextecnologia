@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.28";
+export const APP_VERSION = "1.21.29";
 
-export const VERSION_NOTES = "Agora dá para cadastrar um cliente novo na hora, direto pela tela de equipamentos, sem abrir outra tela. Também ajustamos detalhes visuais no tema escuro para uma leitura mais confortável.";
+export const VERSION_NOTES = "Corrigimos a criação de usuários: cadastros que antes falhavam pela metade agora são concluídos corretamente, e quando algo dá errado a tela mostra uma mensagem clara explicando o motivo.";

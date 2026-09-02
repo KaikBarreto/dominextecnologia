@@ -30,7 +30,7 @@ import { UserListMobile } from '@/components/users/UserListMobile';
 import { PresetListMobile } from '@/components/users/PresetListMobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
-import { getErrorMessage } from '@/utils/errorMessages';
+import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
 
 export default function Users() {
   const isMobile = useIsMobile();
@@ -153,10 +153,13 @@ export default function Users() {
       toast({ title: t.toastCreated });
       window.location.reload();
     } catch (e: any) {
-      const msg = (e.message || '').toLowerCase();
-      const friendlyMsg = msg.includes('already') || msg.includes('duplicate') || msg.includes('already been registered')
+      // Lê o corpo real da Response quando a edge respondeu com erro (não-2xx),
+      // senão cai na mensagem/erro comum.
+      const realMsg = (await getInvokeErrorMessage(e)) || e.message || '';
+      const lower = realMsg.toLowerCase();
+      const friendlyMsg = lower.includes('já cadastrado') || lower.includes('already') || lower.includes('duplicate') || lower.includes('already been registered')
         ? t.toastCreateErrorDuplicate
-        : getErrorMessage(e);
+        : getErrorMessage(realMsg || e);
       toast({ title: t.toastCreateError, description: friendlyMsg, variant: 'destructive' });
       throw e;
     }
