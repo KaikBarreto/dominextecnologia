@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Info,
   Landmark,
+  Wrench,
   Eye,
   EyeOff,
   type LucideIcon,
@@ -20,6 +21,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Lock, ArrowRight } from 'lucide-react';
 import {
@@ -40,8 +42,12 @@ import {
   type RegApTribSN,
 } from '@/hooks/useFiscalSettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { invokeFisqal } from '@/utils/fisqalEdge';
+import { useCertificateCustodyConsent } from '@/hooks/useCertificateCustodyConsent';
+import { useFiscalCertificateAuditInvalidator } from '@/hooks/useFiscalCertificateAudit';
+import { CertificateAuditList } from '@/components/fiscal/CertificateAuditList';
+import { invokeNfse } from '@/utils/nfseEdge';
 import { supabase } from '@/integrations/supabase/client';
+import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { formatDate as formatDateLib } from '@/lib/format';
@@ -49,7 +55,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Seções internas do modal de configuração fiscal. */
-export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos';
+export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos' | 'servicos';
 
 interface FiscalSettingsModalProps {
   open: boolean;
@@ -59,7 +65,7 @@ interface FiscalSettingsModalProps {
 }
 
 /**
- * Ordem do onboarding segue a doc da Fisqal (§5): registrar a EMPRESA primeiro
+ * Ordem do onboarding: registrar a EMPRESA primeiro
  * (precisa dos dados — incluindo status e cobertura, que vivem aqui agora) →
  * subir o CERTIFICADO A1 (precisa do companyId já criado) → impostos. O `step`
  * numera a sequência guiada.
@@ -133,6 +139,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     { value: 'empresa', label: t.settings.sections.empresa, icon: Building2, step: 1 },
     { value: 'certificado', label: t.settings.sections.certificado, icon: Shield, step: 2 },
     { value: 'impostos', label: t.settings.sections.impostos, icon: Landmark, step: 3 },
+    { value: 'servicos', label: t.settings.sections.servicos, icon: Wrench, step: 4 },
   ];
 
   const REGIMES = [
@@ -160,7 +167,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   /** Garante que o auto-backfill do IBGE rode no máximo 1x por abertura do modal. */
   const ibgeBackfilledRef = useRef(false);
 
-  // Erro persistente de registro na Fisqal (visível até a empresa ser registrada).
+  // Erro persistente de registro no provedor (visível até a empresa ser registrada).
   const [registerError, setRegisterError] = useState<{ kind: 'data' | 'platform'; message: string } | null>(null);
 
   // Resultado da checagem de cobertura do município. `kind: 'not_covered'` = o
@@ -171,10 +178,10 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
 
   // Limpa o erro de registro quando a empresa já está registrada.
   useEffect(() => {
-    if (settings.fisqal_company_id) {
+    if (settings.provider_company_id) {
       setRegisterError(null);
     }
-  }, [settings.fisqal_company_id]);
+  }, [settings.provider_company_id]);
 
   // Cobertura confirmada → limpa o aviso.
   useEffect(() => {
@@ -190,6 +197,14 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   const [certName, setCertName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [uploadingCert, setUploadingCert] = useState(false);
+  /**
+   * Consentimento específico de custódia (Seção 12 dos Termos). Começa SEMPRE
+   * desmarcado: aceite tácito não vale para guarda de chave privada de
+   * terceiro. Ver `useCertificateCustodyConsent`.
+   */
+  const [consentChecked, setConsentChecked] = useState(false);
+  const { recordConsent, isRecordingConsent } = useCertificateCustodyConsent();
+  const refreshCertificateAudit = useFiscalCertificateAuditInvalidator();
 
   // Aplica a seção inicial sempre que o modal abre.
   useEffect(() => {
@@ -211,8 +226,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         iss_aliquota: settings.iss_aliquota != null ? String(settings.iss_aliquota) : '',
         municipio_ibge: settings.municipio_ibge || '',
         // Empresa já registrada → respeita o ambiente salvo. Setup novo (sem
-        // companyId Fisqal) → assume Produção (default do time).
-        fiscal_ambiente: settings.fisqal_company_id ? settings.fiscal_ambiente : 'producao',
+        // registro no provedor) → assume Produção (default do time).
+        fiscal_ambiente: settings.provider_company_id ? settings.fiscal_ambiente : 'producao',
         reg_ap_trib_sn: normalizeRegApTribSN(settings.reg_ap_trib_sn),
       }));
     }
@@ -242,6 +257,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   useEffect(() => {
     if (!open) {
       ibgeBackfilledRef.current = false;
+      // Autorização é por envio: reabrir a tela exige marcar de novo.
+      setConsentChecked(false);
     }
   }, [open]);
 
@@ -310,7 +327,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       }
       setCheckingCoverage(true);
       try {
-        const res = await invokeFisqal<{ pode_emitir?: boolean }>('fisqal-check-coverage', { ibge });
+        const res = await invokeNfse<{ pode_emitir?: boolean }>('nfse-check-coverage', { ibge });
         if (!res.ok) {
           // Mensagem crua só quando é acionável pelo usuário (dado faltando ou
           // inválido) ou quando a emissão ainda não foi ativada. Falha técnica
@@ -394,13 +411,13 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         save(fiscalPayload),
       ]);
 
-      // Após salvar, registra/atualiza a empresa na Fisqal automaticamente
+      // Após salvar, registra/atualiza a empresa no provedor automaticamente
       // (cria na 1ª vez, atualiza nas demais). Falha aqui NÃO derruba o fluxo:
       // os dados foram salvos com sucesso — mas o estado de registro é exibido
       // de forma persistente para que o usuário entenda o que aconteceu.
       try {
         setRegisterError(null);
-        const res = await invokeFisqal('fisqal-register-company');
+        const res = await invokeNfse('nfse-register-company');
         if (res.ok) {
           // Registro ok: toast de sucesso completo.
           toast.success(t.settings.certificado.toasts.saveSuccess);
@@ -479,13 +496,27 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       toast.error(t.settings.certificado.toasts.noPassword);
       return;
     }
+    if (!consentChecked) {
+      toast.error(t.settings.certificado.toasts.consentRequired);
+      return;
+    }
     setUploadingCert(true);
     try {
+      // A ORDEM IMPORTA: a autorização é registrada ANTES de o arquivo sair
+      // daqui. Se o registro falhar, abortamos o envio — guardar chave privada
+      // de terceiro sem prova de consentimento é pior do que não guardar.
+      try {
+        await recordConsent();
+      } catch {
+        toast.error(t.settings.certificado.toasts.consentError);
+        return;
+      }
+
       const fd = new FormData();
       fd.append('file', certFile, certFile.name);
       fd.append('password', certPassword);
       fd.append('nome', certName.trim() || certFile.name);
-      const res = await invokeFisqal('fisqal-upload-certificate', fd);
+      const res = await invokeNfse('nfse-upload-certificate', fd);
       if (!res.ok) {
         toast.error(res.message ?? t.settings.certificado.toasts.uploadError);
         return;
@@ -493,15 +524,18 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       toast.success(res.message ?? t.settings.certificado.toasts.uploadSuccess);
       setCertFile(null);
       setCertPassword('');
+      setConsentChecked(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       invalidate();
+      // O envio vira uma linha nova no registro de uso — atualiza a lista.
+      void refreshCertificateAudit();
     } finally {
       setUploadingCert(false);
     }
   };
 
-  const hasCertificate = !!settings.fisqal_certificate_id;
-  const isRegistered = !!settings.fisqal_company_id;
+  const hasCertificate = !!settings.provider_certificate_id;
+  const isRegistered = !!settings.provider_company_id;
   const expiresDays = daysUntil(settings.certificate_expires_at);
   const expiringSoon = expiresDays != null && expiresDays <= 30;
   const expired = expiresDays != null && expiresDays < 0;
@@ -932,6 +966,24 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             </div>
           )}
 
+          {/* ---- Seção: Serviços ----------------------------------------------
+           * REUSO do cadastro de tipos de serviço (mesma lista usada nas OS e
+           * na agenda). Uma tabela só, duas portas de entrada: aqui e no
+           * cadastro do dia a dia. Como o contexto é fiscal, o formulário abre
+           * direto na aba Fiscal.
+           * ------------------------------------------------------------------ */}
+          {section === 'servicos' && (
+            <div className="space-y-4">
+              <Alert className="border-primary/20 bg-muted/40">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  {t.settings.servicos.hint}
+                </AlertDescription>
+              </Alert>
+              <ServiceTypesPanel embedded defaultFormTab="fiscal" />
+            </div>
+          )}
+
           {/* ---- Seção: Certificado A1 ---- */}
           {section === 'certificado' && (
             <div className="space-y-4">
@@ -1082,18 +1134,65 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 </p>
               </div>
 
+              {/* Autorização específica de guarda do certificado.
+                  Por que existe: subir a versão dos Termos NÃO re-pede aceite,
+                  então o cliente antigo nunca veria a cláusula de custódia.
+                  Aqui a autorização é explícita, no ato do envio, e fica
+                  registrada antes de o arquivo sair do navegador. */}
+              <div className="space-y-2 rounded-lg border p-3">
+                <p className="text-sm font-medium">{t.settings.certificado.consent.title}</p>
+                <div className="flex items-start gap-2.5">
+                  <Checkbox
+                    id="cert-custody-consent"
+                    checked={consentChecked}
+                    onCheckedChange={(checked) => setConsentChecked(checked === true)}
+                    disabled={!isRegistered || uploadingCert}
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor="cert-custody-consent"
+                    className="cursor-pointer text-xs font-normal leading-relaxed"
+                  >
+                    {t.settings.certificado.consent.checkbox}
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t.settings.certificado.consent.hint}
+                </p>
+                {/* Abre os Termos em modo leitura por evento global — sem sair
+                    da tela nem perder o que já foi preenchido. */}
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('dominex:open-terms'))}
+                  className="text-xs font-semibold text-primary underline underline-offset-2"
+                >
+                  {t.settings.certificado.consent.termsLink}
+                </button>
+              </div>
+
               <Button
                 onClick={handleUploadCertificate}
-                disabled={!isRegistered || uploadingCert || !certFile || !certPassword.trim()}
+                disabled={
+                  !isRegistered ||
+                  uploadingCert ||
+                  isRecordingConsent ||
+                  !certFile ||
+                  !certPassword.trim() ||
+                  !consentChecked
+                }
                 className="w-full sm:w-auto"
               >
-                {uploadingCert ? (
+                {uploadingCert || isRecordingConsent ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Shield className="h-4 w-4 mr-2" />
                 )}
                 {t.settings.certificado.uploadBtn}
               </Button>
+
+              {/* Item 12.5 dos Termos: o registro de uso do certificado "fica
+                  disponível para consulta da sua empresa". É esta lista. */}
+              <CertificateAuditList />
             </div>
           )}
 

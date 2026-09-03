@@ -1,0 +1,35 @@
+# Tudo que NÃO pode entrar no contexto de build.
+# Regra dura: certificado, chave, senha e segredo NUNCA entram na imagem.
+*.pfx
+*.p12
+*.pem
+*.key
+*.crt
+.env
+.env.*
+!.env.example
+kek*
+*secret*
+*token*
+
+# Ruído de dev
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
+# Documentação e artefatos de operação (não são código do serviço)
+RUNBOOK.md
+Caddyfile
+systemd/
+fail2ban/
+*.sh
+
+# Testes e modelos de segredo não vão pra imagem de produção.
+tests/
+requirements-dev.txt
+service.env.example

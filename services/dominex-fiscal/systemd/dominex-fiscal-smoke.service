@@ -1,0 +1,21 @@
+# Verificação rasa (sem certificado) do motor fiscal. Disparada pelo .timer.
+# Instalar: sudo cp systemd/*.service systemd/*.timer /etc/systemd/system/
+[Unit]
+Description=dominex-fiscal — verificacao rasa (health, TLS, assinatura, egresso)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# root porque precisa (a) falar com o docker e (b) ler o token em
+# /etc/dominex-fiscal/fiscal_service_token (0640 root:10001).
+User=root
+ExecStart=/home/deploy/dominex-fiscal/smoke-test.sh
+TimeoutStartSec=180
+
+# Blindagem: mesmo sendo root, o serviço só enxerga o que precisa.
+NoNewPrivileges=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dominex-fiscal /var/log/dominex-fiscal
+PrivateTmp=false

@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
+import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse, useNfseListPolling, type NfseEmission } from '@/hooks/useNfse';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -58,7 +59,7 @@ export default function NotasFiscais() {
   // salvo fica invisível até o onboarding concluir. A ação de EMITIR continua
   // travada por `fiscalConfigured` (canEmit).
   const hasFiscalActivity =
-    settings.pode_emitir || !!settings.fisqal_company_id || emissions.length > 0;
+    settings.pode_emitir || !!settings.provider_company_id || emissions.length > 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<'visao-geral' | 'nfse'>('visao-geral');
@@ -79,9 +80,15 @@ export default function NotasFiscais() {
     }
   }, [searchParams, setSearchParams]);
 
+  // Resolve o nome do tomador para a Visão Geral. Antes esta função IGNORAVA o
+  // id e devolvia sempre o rótulo genérico "Cliente" — era um esboço que ficou
+  // pela metade, e o resumo mostrava "Cliente" no lugar do nome em toda linha.
+  const { customers } = useCustomers();
   const customerName = useMemo(() => {
-    return (id: string | null) => (id ? t.list.customerFallback : t.list.customerFallback);
-  }, [t.list.customerFallback]);
+    const porId = new Map(customers.map((c) => [c.id, c.name]));
+    return (id: string | null) =>
+      (id ? porId.get(id) : null) || t.list.customerFallback;
+  }, [customers, t.list.customerFallback]);
 
   // Notas NÃO-terminais → polling automático em lote enquanto a tela está
   // aberta. A Visão Geral usa `emissions` do `useNfse`.

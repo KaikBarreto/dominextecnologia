@@ -1,8 +1,8 @@
 /**
- * Tipos compartilhados do stepper de Nova Nota (Fisqal).
- * Espelha o conjunto de campos que a Fisqal aceita — NÃO inclui
+ * Tipos compartilhados do stepper de Nova Nota.
+ * Espelha o conjunto de campos que a emissão aceita — NÃO inclui
  * INSS, IRRF, deduções da base, desconto condicionado nem desconto
- * incondicionado (a Fisqal não suporta esses campos).
+ * incondicionado (não suportados).
  */
 
 import type { Customer } from '@/types/database';
@@ -27,7 +27,7 @@ export type NfseCustomer = Pick<
 >;
 
 /**
- * Situação do ISSQN conforme a Fisqal.
+ * Situação do ISSQN (layout nacional da NFS-e).
  * '1' = Operação tributada normalmente
  * '2' = Exportação de serviço
  * '3' = Imunidade
@@ -45,8 +45,22 @@ export type TpRetIssqn = '1' | '2' | '3';
 
 /** Estado da etapa Serviço. */
 export interface NfseServicoState {
+  /**
+   * Tipo de serviço escolhido no seletor do topo da etapa (id de `service_types`).
+   * Serve só de atalho de preenchimento e memória visual do que foi puxado —
+   * a emissão continua usando os códigos abaixo, que seguem editáveis.
+   * Vazio = nenhum serviço puxado (preenchimento manual).
+   */
+  serviceTypeId: string;
   /** Código de tributação / serviço (cTribNac — 6 dígitos). */
   codigoServico: string;
+  /**
+   * Código de tributação municipal (cTribMun — 3 dígitos).
+   * Complementa o cTribNac: a prefeitura registra o serviço como
+   * cTribNac + cTribMun (ex.: "14.01.01.001"). Vazio = herda do tipo de
+   * serviço no momento da emissão. Sem ele a prefeitura pode recusar a nota.
+   */
+  codigoTributacaoMunicipal: string;
   /** Código NBS (Nomenclatura Brasileira de Serviços). */
   codigoNbs: string;
   /** Código IBGE do município de incidência. */
@@ -59,7 +73,7 @@ export interface NfseServicoState {
   discriminacao: string;
 }
 
-/** Estado da etapa Valores (apenas campos suportados pela Fisqal). */
+/** Estado da etapa Valores (apenas campos suportados pela emissão). */
 export interface NfseValoresState {
   /** Valor bruto do serviço (> 0 pra emitir). */
   valorServico: number;
@@ -80,9 +94,9 @@ export interface NfseValoresState {
   percentualTribSn: number;
 }
 
-/** Resultado do cálculo Fisqal (sem deduções — a Fisqal não tem). */
-export interface NfseFisqalTaxResult {
-  /** valorServico (sem deduções — a Fisqal não aceita). */
+/** Resultado do cálculo de impostos da nota (sem deduções — não suportadas). */
+export interface NfseTaxResult {
+  /** valorServico (sem deduções — não suportadas). */
   baseCalculo: number;
   /** baseCalculo × aliquotaIssqn/100 (2 casas). */
   issValor: number;

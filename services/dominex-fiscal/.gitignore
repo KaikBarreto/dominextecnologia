@@ -1,0 +1,14 @@
+# ⚠️ Nada de segredo neste diretório entra no git.
+.env
+service.env
+*.pfx
+*.p12
+*.pem
+*.key
+kek*
+
+# Artefatos locais
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

@@ -73,6 +73,62 @@ verify_jwt = false
 [functions.sync-asaas-ledger]
 verify_jwt = false
 
+# -----------------------------------------------------------------------------
+# NFS-e — rotas ATUAIS (`nfse-*`). B4 do plano "NFS-e motor próprio".
+# Todas com verify_jwt=false: o gate (Authorization Bearer + módulo 'nfe' +
+# can_manage_system) roda DENTRO da função, via _shared/fiscal-auth.ts, pra
+# poder traduzir os erros em PT-BR e checar módulo/permissão. Mesmas
+# configurações das rotas legadas `fisqal-*` logo abaixo.
+# -----------------------------------------------------------------------------
+
+# nfse-register-company: onboarding fiscal (registro/atualização da empresa).
+[functions.nfse-register-company]
+verify_jwt = false
+
+# nfse-upload-certificate: upload do certificado A1 (multipart). Mesmo gate.
+[functions.nfse-upload-certificate]
+verify_jwt = false
+
+# nfse-check-coverage: checa cobertura de NFS-e do município. Mesmo gate.
+[functions.nfse-check-coverage]
+verify_jwt = false
+
+# nfse-emit: emite NFS-e (standalone ou a partir de rascunho). Mesmo gate.
+[functions.nfse-emit]
+verify_jwt = false
+
+# nfse-status: polling de status da emissão. Mesmo gate.
+[functions.nfse-status]
+verify_jwt = false
+
+# nfse-save-draft: upsert de rascunho (status='rascunho'). Não fala com provedor,
+# não consome cota. Mesmo gate.
+[functions.nfse-save-draft]
+verify_jwt = false
+
+# nfse-delete-draft: apaga um rascunho (nunca nota emitida). Mesmo gate.
+[functions.nfse-delete-draft]
+verify_jwt = false
+
+# nfse-cancel: cancela uma NFS-e autorizada. Mesmo gate.
+[functions.nfse-cancel]
+verify_jwt = false
+
+# nfse-webhook: recepção assíncrona do provedor. SEM JWT de usuário — segurança
+# é HMAC-SHA256 do corpo cru contra FISQAL_WEBHOOK_SECRET.
+[functions.nfse-webhook]
+verify_jwt = false
+
+# nfse-tax-codes: catálogos fiscais (cTribNac/LC116 e NBS). Leitura, mesmo gate.
+[functions.nfse-tax-codes]
+verify_jwt = false
+
+# -----------------------------------------------------------------------------
+# NFS-e — rotas LEGADAS (`fisqal-*`). ⚠️ SAEM NO RELEASE SEGUINTE.
+# Mantidas por 1 release só para o cliente com bundle antigo em cache não
+# quebrar. São cascas que chamam o MESMO handler das rotas `nfse-*`.
+# -----------------------------------------------------------------------------
+
 # fisqal-register-company: onboarding fiscal (NFS-e). Authorization Bearer +
 # módulo 'nfe' + can_manage_system validados DENTRO da função (gateway não valida
 # o JWT pra a função poder traduzir os erros em PT-BR + checar módulo/permissão).
@@ -224,3 +280,9 @@ verify_jwt = false
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)
+
+# nfse-danfse: devolve o PDF (DANFSE) da nota. Mesmo gate das outras rotas
+# fiscais (Authorization + módulo nfe + can_manage_system), validado DENTRO da
+# função para traduzir o erro em PT-BR.
+[functions.nfse-danfse]
+verify_jwt = false

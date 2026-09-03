@@ -696,7 +696,7 @@ const AppRoutes = () => (
       <Route path="/financeiro/caixas-bancos" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/movimentacoes" replace />} />
-      {/* Notas Fiscais (NFS-e via Fisqal) — gateada pelo módulo pago `nfe`. */}
+      {/* Notas Fiscais (NFS-e) — gateada pelo módulo pago `nfe`. */}
       {localizedAppRoutes('fiscalSettings', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('fiscalNotes', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('pmoc', <PMOC />)}

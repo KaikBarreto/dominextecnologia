@@ -23,6 +23,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Badge } from '@/components/ui/badge';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
@@ -54,6 +56,8 @@ interface ServiceTypeForm {
   category_id: string;
   // Fiscal (NFS-e) — opcionais. iss_aliquota fica como string crua no form.
   codigo_servico: string;
+  /** cTribMun: complemento municipal de 3 dígitos do código de tributação. */
+  codigo_tributacao_municipal: string;
   codigo_nbs: string;
   iss_aliquota: string;
   item_lc116: string;
@@ -70,13 +74,36 @@ const defaultForm: ServiceTypeForm = {
   number_prefix: '',
   category_id: '',
   codigo_servico: '',
+  codigo_tributacao_municipal: '',
   codigo_nbs: '',
   iss_aliquota: '',
   item_lc116: '',
   default_price: '',
 };
 
-export function ServiceTypesPanel() {
+/** Abas do formulário de tipo de serviço. */
+export type ServiceTypeFormTab = 'dados' | 'fiscal';
+
+export interface ServiceTypesPanelProps {
+  /**
+   * Aba aberta por padrão ao criar/editar um tipo de serviço.
+   * Em contexto fiscal (Configurações fiscais → Serviços) abre direto em
+   * `fiscal`; no cadastro do dia a dia continua em `dados`.
+   * Só tem efeito quando a empresa tem o módulo de nota fiscal.
+   */
+  defaultFormTab?: ServiceTypeFormTab;
+  /**
+   * Modo embutido: o painel está dentro de outro modal/drawer.
+   * Troca o botão flutuante do mobile por um botão inline (o flutuante fica
+   * atrás do drawer e vira ação inalcançável) e enxuga o cabeçalho.
+   */
+  embedded?: boolean;
+}
+
+export function ServiceTypesPanel({
+  defaultFormTab = 'dados',
+  embedded = false,
+}: ServiceTypesPanelProps = {}) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.serviceTypes;
   const tCat = MESSAGES[locale].app.os.serviceTypeCategories;
@@ -120,15 +147,20 @@ export function ServiceTypesPanel() {
   const [form, setForm] = useState<ServiceTypeForm>(defaultForm);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toDeleteId, setToDeleteId] = useState<string | null>(null);
+  // Aba ativa do formulário. Sem o módulo de nota fiscal só existe "Dados".
+  const [formTab, setFormTab] = useState<ServiceTypeFormTab>('dados');
+  const activeFormTab: ServiceTypeFormTab = showFiscal ? formTab : 'dados';
 
   const handleNew = () => {
     setEditingId(null);
     setForm(defaultForm);
+    setFormTab(showFiscal ? defaultFormTab : 'dados');
     setFormOpen(true);
   };
 
   const handleEdit = (st: any) => {
     setEditingId(st.id);
+    setFormTab(showFiscal ? defaultFormTab : 'dados');
     setForm({
       name: st.name,
       color: st.color,
@@ -138,6 +170,7 @@ export function ServiceTypesPanel() {
       number_prefix: (st as any).number_prefix || '',
       category_id: (st as any).category_id || '',
       codigo_servico: (st as any).codigo_servico || '',
+      codigo_tributacao_municipal: st.codigo_tributacao_municipal || '',
       codigo_nbs: (st as any).codigo_nbs || '',
       iss_aliquota: (st as any).iss_aliquota != null ? String((st as any).iss_aliquota) : '',
       item_lc116: (st as any).item_lc116 || '',
@@ -146,14 +179,22 @@ export function ServiceTypesPanel() {
     setFormOpen(true);
   };
 
+  // cTribMun é opcional, mas quando preenchido tem que ter os 3 dígitos.
+  const cTribMunInvalid =
+    form.codigo_tributacao_municipal.length > 0 && form.codigo_tributacao_municipal.length !== 3;
+
   const handleSave = async () => {
-    const { iss_aliquota, codigo_servico, codigo_nbs, item_lc116, default_price, category_id, ...rest } = form;
+    const {
+      iss_aliquota, codigo_servico, codigo_tributacao_municipal, codigo_nbs,
+      item_lc116, default_price, category_id, ...rest
+    } = form;
     const payload = {
       ...rest,
       // Categoria: string vazia vira null.
       category_id: category_id.trim() || null,
       // Fiscal: campos opcionais — string vazia vira null pra não poluir o cadastro.
       codigo_servico: codigo_servico.trim() || null,
+      codigo_tributacao_municipal: codigo_tributacao_municipal.trim() || null,
       codigo_nbs: codigo_nbs.trim() || null,
       item_lc116: item_lc116.trim() || null,
       iss_aliquota: iss_aliquota.trim() === '' ? null : num(iss_aliquota, 0),
@@ -201,16 +242,19 @@ export function ServiceTypesPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Header: no mobile escondemos texto explicativo e o botão vira FAB. */}
+      {/* Header: no mobile escondemos texto explicativo e o botão vira FAB.
+          Embutido em outro modal, o título some (o modal já tem o dele). */}
       {!isMobile && (
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">{t.title}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t.subtitle}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3">
+          {!embedded && (
+            <div>
+              <h2 className="text-lg font-semibold">{t.title}</h2>
+              <p className="text-sm text-muted-foreground">
+                {t.subtitle}
+              </p>
+            </div>
+          )}
+          <div className="flex items-center gap-2 ml-auto">
             <Button variant="outline" size="sm" onClick={() => setCategoriesDialogOpen(true)}>
               <Tags className="mr-2 h-4 w-4" />
               {tCat.btnManage}
@@ -223,12 +267,26 @@ export function ServiceTypesPanel() {
         </div>
       )}
 
-      {/* Botão Categorias no mobile (acima da busca) */}
+      {/* Ações no mobile (acima da busca). Embutido não tem botão flutuante
+          (ele ficaria atrás do drawer), então o "Novo Tipo" vem inline aqui. */}
       {isMobile && (
-        <Button variant="outline" size="sm" className="w-full" onClick={() => setCategoriesDialogOpen(true)}>
-          <Tags className="mr-2 h-4 w-4" />
-          {tCat.btnManage}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => setCategoriesDialogOpen(true)}
+          >
+            <Tags className="mr-2 h-4 w-4" />
+            {tCat.btnManage}
+          </Button>
+          {embedded && (
+            <Button size="sm" className="flex-1" onClick={handleNew}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t.btnNew}
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Campo de busca — aparece sempre que há tipos cadastrados */}
@@ -430,8 +488,8 @@ export function ServiceTypesPanel() {
         </Card>
       )}
 
-      {/* FAB mobile-only para criar novo tipo de serviço. */}
-      {isMobile && (
+      {/* FAB mobile-only para criar novo tipo de serviço (só fora de modal). */}
+      {isMobile && !embedded && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={t.fabLabel}
@@ -450,15 +508,41 @@ export function ServiceTypesPanel() {
         onOpenChange={setFormOpen}
         title={editingId ? t.modalTitleEdit : t.modalTitleCreate}
         footer={
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setFormOpen(false)}>{t.btnCancel}</Button>
-            <Button onClick={handleSave} disabled={!form.name.trim()}>
-              {editingId ? t.btnSave : t.btnCreate}
-            </Button>
+          <div className="space-y-2">
+            {/* O erro pode estar na aba Fiscal enquanto o usuário olha a de
+                Dados — sem esta linha o botão fica travado sem explicação. */}
+            {cTribMunInvalid && activeFormTab !== 'fiscal' && (
+              <p className="text-xs text-destructive text-right">{t.errorCTribMun}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setFormOpen(false)}>{t.btnCancel}</Button>
+              <Button onClick={handleSave} disabled={!form.name.trim() || cTribMunInvalid}>
+                {editingId ? t.btnSave : t.btnCreate}
+              </Button>
+            </div>
           </div>
         }
       >
-        <div className="space-y-4">
+        <Tabs
+          value={activeFormTab}
+          onValueChange={(v) => setFormTab(v as ServiceTypeFormTab)}
+          className="space-y-4"
+        >
+          {/* Abas dentro de modal = pills roláveis, nunca abas cinza.
+              Sem o módulo de nota fiscal não existe segunda aba. */}
+          {showFiscal && (
+            <MobilePillTabs
+              tabs={[
+                { value: 'dados', label: t.tabDados },
+                { value: 'fiscal', label: t.tabFiscal },
+              ]}
+              activeTab={activeFormTab}
+              onTabChange={(v) => setFormTab(v as ServiceTypeFormTab)}
+            />
+          )}
+
+          {/* ---- Aba: Dados (uso do dia a dia) ---- */}
+          <TabsContent value="dados" className="mt-0 space-y-4">
           <div className="space-y-2">
             <Label>{t.labelName}</Label>
             <Input
@@ -567,14 +651,16 @@ export function ServiceTypesPanel() {
             />
             <p className="text-[11px] text-muted-foreground">{t.helperDefaultPrice}</p>
           </div>
+          </TabsContent>
 
           {/* -------------------------------------------------------------------
-           * Fiscal (NFS-e): classificação tributária por tipo de serviço.
+           * Aba Fiscal (NFS-e): classificação tributária por tipo de serviço.
            * Só aparece pra empresas com o módulo `nfe`. Todos os campos são
            * opcionais — o tipo de serviço salva normalmente sem eles.
+           * Preenchidos aqui, a emissão da nota puxa tudo de uma vez.
            * ------------------------------------------------------------------- */}
           {showFiscal && (
-            <div className="space-y-5 rounded-lg border bg-muted/30 p-4">
+            <TabsContent value="fiscal" className="mt-0 space-y-5">
               <div className="space-y-0.5">
                 <p className="text-sm font-semibold">{t.fiscalTitle}</p>
                 <p className="text-xs text-muted-foreground">
@@ -601,6 +687,30 @@ export function ServiceTypesPanel() {
                   />
                   <p className="text-[11px] text-muted-foreground">
                     {t.helperCTribNac}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">{t.labelCTribMun}</Label>
+                  <Input
+                    value={form.codigo_tributacao_municipal}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        // Só dígitos, no máximo 3 (formato do cTribMun).
+                        codigo_tributacao_municipal: e.target.value.replace(/\D/g, '').slice(0, 3),
+                      })
+                    }
+                    placeholder={t.placeholderCTribMun}
+                    inputMode="numeric"
+                    maxLength={3}
+                    className="sm:max-w-[160px]"
+                  />
+                  {cTribMunInvalid && (
+                    <p className="text-sm text-destructive">{t.errorCTribMun}</p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {t.helperCTribMun}
                   </p>
                 </div>
 
@@ -640,10 +750,9 @@ export function ServiceTypesPanel() {
                   className="sm:max-w-[160px]"
                 />
               </div>
-            </div>
+            </TabsContent>
           )}
-
-        </div>
+        </Tabs>
       </ResponsiveModal>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

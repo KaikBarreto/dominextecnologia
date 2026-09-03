@@ -48,12 +48,12 @@ export const DOMINEX_LEGAL = {
   foro: 'Comarca do Rio de Janeiro — RJ',
 } as const;
 
-export const TERMS_VERSION = '1.0';
+export const TERMS_VERSION = '1.1';
 /**
  * Data da última revisão do TEXTO destes Termos (formato DD/MM/YYYY).
  * Atualize SEMPRE que o conteúdo das cláusulas mudar (junto com TERMS_VERSION).
  */
-export const TERMS_LAST_UPDATED = '15/06/2026';
+export const TERMS_LAST_UPDATED = '03/09/2026';
 
 /**
  * Linha única de metadados (versão + data) exibida na tela e no PDF.
@@ -332,35 +332,86 @@ const TERMS_PT_BR: TermsSection[] = [
     ],
   },
   {
-    title: '12. DISPOSIÇÕES GERAIS',
+    title: '12. CERTIFICADO DIGITAL E EMISSÃO DE NOTAS FISCAIS',
     items: [
       {
         subtitle: '12.1.',
-        text: 'O Dominex poderá **atualizar estes Termos** periodicamente. As atualizações relevantes serão **informadas por meio de aviso dentro do sistema**, e o uso continuado da plataforma após a publicação das alterações implica **aceite automático** da versão atualizada.',
+        text: 'Se a sua empresa usar o recurso de **emissão de notas fiscais de serviço** do Dominex, será preciso enviar o seu **certificado digital A1** e a senha dele. O envio é **opcional** e só acontece por ação sua. Sem o certificado, apenas a emissão de notas fica indisponível, o restante da plataforma continua funcionando normalmente.',
       },
       {
         subtitle: '12.2.',
-        text: 'Caso qualquer cláusula destes Termos seja considerada inválida ou inexequível, as demais permanecem em **pleno vigor** (nulidade parcial).',
+        text: '**O que guardamos.** O arquivo do certificado digital e a senha dele ficam armazenados **sempre criptografados**, nunca em texto legível. Eles não aparecem em tela, relatório, registro técnico ou cópia de segurança em formato que alguém consiga ler.',
       },
       {
         subtitle: '12.3.',
-        text: 'As comunicações entre as partes poderão ser feitas por **meios eletrônicos** (e-mail e avisos dentro do sistema), que terão validade e eficácia.',
+        text: '**Para que usamos.** O seu certificado é usado **exclusivamente** para assinar e transmitir aos órgãos públicos as notas fiscais que a sua própria empresa mandar emitir pelo Dominex, e para as operações ligadas a essas notas (consultar e cancelar). Nenhum outro uso: não assinamos nenhum outro documento com ele, não o entregamos a terceiros e não o utilizamos em nome de outra empresa.',
       },
       {
         subtitle: '12.4.',
-        text: 'A tolerância quanto ao descumprimento de qualquer cláusula não significa renúncia ou novação, podendo o Dominex exigir seu cumprimento a qualquer tempo.',
+        text: '**Como protegemos.** Entre outras medidas, adotamos:',
+        list: [
+          'criptografia forte do arquivo e da senha, com uma chave de abertura **exclusiva de cada empresa**;',
+          'guarda dessa chave de abertura em **servidor separado** daquele onde o arquivo criptografado fica armazenado, de modo que o acesso a apenas um dos dois não permita ler o certificado;',
+          'uso do certificado **somente durante a emissão**, sem deixar cópia gravada depois da operação;',
+          'registro de todas as utilizações do certificado, conforme o item 12.5.',
+        ],
       },
       {
         subtitle: '12.5.',
+        text: '**Registro de uso.** Toda vez que o seu certificado é utilizado, gravamos um registro com data, hora, empresa e operação realizada. Esse registro é **somente de inclusão**: novos usos são acrescentados e os anteriores não são editados nem removidos. Ele fica **disponível para consulta da sua empresa**, para que você sempre possa saber quando e para quê o certificado foi usado.',
+      },
+      {
+        subtitle: '12.6.',
+        text: '**Remoção a qualquer momento.** Você pode pedir a remoção do certificado quando quiser, pela plataforma ou pelo nosso canal de atendimento. A remoção apaga tanto o arquivo criptografado quanto a chave que o abre, fica registrada e, a partir dela, o Dominex **deixa de emitir notas fiscais** em nome da sua empresa até que um novo certificado válido seja enviado. As notas já emitidas continuam válidas e disponíveis para consulta.',
+      },
+      {
+        subtitle: '12.7.',
+        text: '**Suas responsabilidades.** Cabe a você manter o certificado válido, enviar um novo antes do vencimento para não interromper as emissões e **avisar o Dominex imediatamente** caso o certificado seja revogado ou substituído, ou caso haja suspeita de que a senha foi exposta. A responsabilidade pelo conteúdo fiscal das notas (valores, códigos de serviço, tributos e destinatário) continua sendo do usuário, conforme a Seção 3.',
+      },
+      {
+        subtitle: '12.8.',
+        text: '**Autorização.** Ao enviar o certificado digital, você declara ser o titular dele ou estar devidamente autorizado a utilizá-lo e **autoriza expressamente** o Dominex a guardá-lo de forma criptografada e a usá-lo, dentro dos limites do item 12.3, para assinar e transmitir as notas fiscais solicitadas por você. Essa autorização vale enquanto o certificado estiver sob nossa guarda e se encerra com a remoção prevista no item 12.6.',
+      },
+      {
+        subtitle: '12.9.',
+        text: '**Sobre o risco, com honestidade.** Nenhum sistema é infalível. O Dominex aplica as medidas descritas acima, mas **não promete segurança absoluta** contra ataques sofisticados, falhas de serviços de terceiros ou eventos de força maior. Se ocorrer algum incidente de segurança que possa ter afetado o seu certificado, vamos **comunicar a sua empresa o quanto antes**, explicar o que aconteceu e o que já foi feito, e orientar a revogação e a substituição do certificado junto à autoridade certificadora que o emitiu.',
+      },
+      {
+        subtitle: '12.10.',
+        text: '**Dependência de serviços públicos.** A emissão de notas fiscais depende de sistemas da administração pública, cuja disponibilidade, regras e prazos não estão sob controle do Dominex. Indisponibilidades ou mudanças nesses sistemas podem impedir ou atrasar a emissão, aplicando-se o disposto no item 6.3.',
+      },
+    ],
+  },
+  {
+    title: '13. DISPOSIÇÕES GERAIS',
+    items: [
+      {
+        subtitle: '13.1.',
+        text: 'O Dominex poderá **atualizar estes Termos** periodicamente. As atualizações relevantes serão **informadas por meio de aviso dentro do sistema**, e o uso continuado da plataforma após a publicação das alterações implica **aceite automático** da versão atualizada.',
+      },
+      {
+        subtitle: '13.2.',
+        text: 'Caso qualquer cláusula destes Termos seja considerada inválida ou inexequível, as demais permanecem em **pleno vigor** (nulidade parcial).',
+      },
+      {
+        subtitle: '13.3.',
+        text: 'As comunicações entre as partes poderão ser feitas por **meios eletrônicos** (e-mail e avisos dentro do sistema), que terão validade e eficácia.',
+      },
+      {
+        subtitle: '13.4.',
+        text: 'A tolerância quanto ao descumprimento de qualquer cláusula não significa renúncia ou novação, podendo o Dominex exigir seu cumprimento a qualquer tempo.',
+      },
+      {
+        subtitle: '13.5.',
         text: 'Estes Termos de Uso ficam **permanentemente disponíveis para consulta dentro do próprio sistema**, podendo o usuário acessá-los e baixá-los a qualquer momento na área de Configurações.',
       },
     ],
   },
   {
-    title: '13. FORO',
+    title: '14. FORO',
     items: [
       {
-        subtitle: '13.1.',
+        subtitle: '14.1.',
         text: `Fica eleito o foro da **${DOMINEX_LEGAL.foro}** para dirimir quaisquer controvérsias decorrentes destes Termos, com renúncia a qualquer outro, por mais privilegiado que seja.`,
       },
     ],
@@ -600,35 +651,86 @@ const TERMS_EN: TermsSection[] = [
     ],
   },
   {
-    title: '12. GENERAL PROVISIONS',
+    title: '12. DIGITAL CERTIFICATE AND ISSUANCE OF TAX INVOICES',
     items: [
       {
         subtitle: '12.1.',
-        text: 'Dominex may **update these Terms** periodically. Material updates will be **notified via an in-system notice**, and continued use of the platform after publication of changes constitutes **automatic acceptance** of the updated version.',
+        text: 'If your company uses the Dominex **service tax invoice issuance** feature, you will need to upload your **A1 digital certificate** and its password. Uploading it is **optional** and only happens through your own action. Without the certificate, only invoice issuance becomes unavailable; the rest of the platform continues to work normally.',
       },
       {
         subtitle: '12.2.',
-        text: 'If any clause of these Terms is found to be invalid or unenforceable, the remaining clauses continue in **full force and effect** (partial invalidity).',
+        text: '**What we store.** The certificate file and its password are stored **always encrypted**, never as readable text. They do not appear on any screen, report, technical log or backup in a form that anyone can read.',
       },
       {
         subtitle: '12.3.',
-        text: 'Communications between the parties may be conducted by **electronic means** (email and in-system notices), which shall be valid and effective.',
+        text: '**What we use it for.** Your certificate is used **exclusively** to sign and transmit to the public tax authorities the invoices your own company instructs Dominex to issue, and for operations related to those invoices (querying and cancelling them). No other use: we do not sign any other document with it, we do not hand it over to third parties and we do not use it on behalf of another company.',
       },
       {
         subtitle: '12.4.',
-        text: 'Tolerance of any breach of a clause shall not constitute waiver or novation, and Dominex may enforce compliance at any time.',
+        text: '**How we protect it.** Among other measures, we adopt:',
+        list: [
+          'strong encryption of both the file and the password, with an unlocking key that is **unique to each company**;',
+          'storage of that unlocking key on a **separate server** from the one holding the encrypted file, so that access to only one of them does not allow the certificate to be read;',
+          'use of the certificate **only during issuance**, leaving no stored copy after the operation;',
+          'logging of every use of the certificate, as described in clause 12.5.',
+        ],
       },
       {
         subtitle: '12.5.',
+        text: '**Usage log.** Every time your certificate is used, we record the date, time, company and the operation performed. This log is **append-only**: new uses are added and previous entries are not edited or removed. It is **available for your company to consult**, so you can always know when and why the certificate was used.',
+      },
+      {
+        subtitle: '12.6.',
+        text: '**Removal at any time.** You may request removal of the certificate whenever you wish, through the platform or our support channel. Removal deletes both the encrypted file and the key that unlocks it, is recorded in the log and, from that point on, Dominex **stops issuing tax invoices** on behalf of your company until a new valid certificate is uploaded. Invoices already issued remain valid and available for consultation.',
+      },
+      {
+        subtitle: '12.7.',
+        text: '**Your responsibilities.** It is up to you to keep the certificate valid, to upload a new one before it expires so that issuance is not interrupted, and to **notify Dominex immediately** if the certificate is revoked or replaced, or if there is any suspicion that the password has been exposed. Responsibility for the tax content of the invoices (amounts, service codes, taxes and recipient) remains with the user, as set out in Section 3.',
+      },
+      {
+        subtitle: '12.8.',
+        text: '**Authorisation.** By uploading the digital certificate, you declare that you are its holder or are duly authorised to use it, and you **expressly authorise** Dominex to store it in encrypted form and to use it, within the limits of clause 12.3, to sign and transmit the invoices requested by you. This authorisation lasts while the certificate remains in our custody and ends with the removal described in clause 12.6.',
+      },
+      {
+        subtitle: '12.9.',
+        text: '**About risk, honestly.** No system is infallible. Dominex applies the measures described above, but **does not promise absolute security** against sophisticated attacks, third-party service failures or force majeure events. If any security incident occurs that may have affected your certificate, we will **notify your company as soon as possible**, explain what happened and what has already been done, and advise on revoking and replacing the certificate with the certification authority that issued it.',
+      },
+      {
+        subtitle: '12.10.',
+        text: '**Dependency on public services.** Invoice issuance depends on public administration systems, whose availability, rules and deadlines are beyond Dominex\'s control. Outages or changes in those systems may prevent or delay issuance, and clause 6.3 applies.',
+      },
+    ],
+  },
+  {
+    title: '13. GENERAL PROVISIONS',
+    items: [
+      {
+        subtitle: '13.1.',
+        text: 'Dominex may **update these Terms** periodically. Material updates will be **notified via an in-system notice**, and continued use of the platform after publication of changes constitutes **automatic acceptance** of the updated version.',
+      },
+      {
+        subtitle: '13.2.',
+        text: 'If any clause of these Terms is found to be invalid or unenforceable, the remaining clauses continue in **full force and effect** (partial invalidity).',
+      },
+      {
+        subtitle: '13.3.',
+        text: 'Communications between the parties may be conducted by **electronic means** (email and in-system notices), which shall be valid and effective.',
+      },
+      {
+        subtitle: '13.4.',
+        text: 'Tolerance of any breach of a clause shall not constitute waiver or novation, and Dominex may enforce compliance at any time.',
+      },
+      {
+        subtitle: '13.5.',
         text: 'These Terms of Use are **permanently available for reference within the system itself**, and the user may access and download them at any time from the Settings area.',
       },
     ],
   },
   {
-    title: '13. GOVERNING LAW AND JURISDICTION',
+    title: '14. GOVERNING LAW AND JURISDICTION',
     items: [
       {
-        subtitle: '13.1.',
+        subtitle: '14.1.',
         text: `The courts of the **${DOMINEX_LEGAL.foro}** (Brazil) are elected as the exclusive jurisdiction for resolving any disputes arising from these Terms, to the exclusion of any other, however privileged.`,
       },
     ],
@@ -868,35 +970,86 @@ const TERMS_ES: TermsSection[] = [
     ],
   },
   {
-    title: '12. DISPOSICIONES GENERALES',
+    title: '12. CERTIFICADO DIGITAL Y EMISIÓN DE FACTURAS',
     items: [
       {
         subtitle: '12.1.',
-        text: 'Dominex podrá **actualizar estos Términos** periódicamente. Las actualizaciones relevantes serán **comunicadas mediante aviso dentro del sistema**, y el uso continuado de la plataforma tras la publicación de los cambios implica la **aceptación automática** de la versión actualizada.',
+        text: 'Si su empresa utiliza la función de **emisión de facturas de servicio** de Dominex, será necesario enviar su **certificado digital A1** y su contraseña. El envío es **opcional** y solo ocurre por acción suya. Sin el certificado, únicamente la emisión de facturas queda indisponible; el resto de la plataforma sigue funcionando con normalidad.',
       },
       {
         subtitle: '12.2.',
-        text: 'Si alguna cláusula de estos Términos se considera inválida o inaplicable, las demás permanecerán en **plena vigencia** (nulidad parcial).',
+        text: '**Qué almacenamos.** El archivo del certificado digital y su contraseña se almacenan **siempre cifrados**, nunca en texto legible. No aparecen en ninguna pantalla, informe, registro técnico ni copia de seguridad en un formato que alguien pueda leer.',
       },
       {
         subtitle: '12.3.',
-        text: 'Las comunicaciones entre las partes podrán realizarse por **medios electrónicos** (correo y avisos dentro del sistema), que tendrán plena validez y eficacia.',
+        text: '**Para qué lo usamos.** Su certificado se utiliza **exclusivamente** para firmar y transmitir a los organismos públicos las facturas que su propia empresa ordene emitir mediante Dominex, y para las operaciones vinculadas a esas facturas (consulta y cancelación). Ningún otro uso: no firmamos ningún otro documento con él, no lo entregamos a terceros y no lo utilizamos en nombre de otra empresa.',
       },
       {
         subtitle: '12.4.',
-        text: 'La tolerancia ante el incumplimiento de cualquier cláusula no implica renuncia ni novación, pudiendo Dominex exigir su cumplimiento en cualquier momento.',
+        text: '**Cómo lo protegemos.** Entre otras medidas, adoptamos:',
+        list: [
+          'cifrado fuerte del archivo y de la contraseña, con una clave de apertura **exclusiva de cada empresa**;',
+          'custodia de esa clave de apertura en un **servidor separado** de aquel donde se guarda el archivo cifrado, de modo que el acceso a solo uno de ellos no permita leer el certificado;',
+          'uso del certificado **solo durante la emisión**, sin dejar copia guardada después de la operación;',
+          'registro de todos los usos del certificado, conforme a la cláusula 12.5.',
+        ],
       },
       {
         subtitle: '12.5.',
+        text: '**Registro de uso.** Cada vez que se utiliza su certificado, guardamos un registro con fecha, hora, empresa y operación realizada. Ese registro es **solo de incorporación**: los nuevos usos se añaden y los anteriores no se editan ni se eliminan. Está **disponible para consulta de su empresa**, para que siempre pueda saber cuándo y para qué se usó el certificado.',
+      },
+      {
+        subtitle: '12.6.',
+        text: '**Retirada en cualquier momento.** Usted puede solicitar la retirada del certificado cuando quiera, a través de la plataforma o de nuestro canal de atención. La retirada elimina tanto el archivo cifrado como la clave que lo abre, queda registrada y, a partir de ella, Dominex **deja de emitir facturas** en nombre de su empresa hasta que se envíe un nuevo certificado válido. Las facturas ya emitidas siguen siendo válidas y disponibles para consulta.',
+      },
+      {
+        subtitle: '12.7.',
+        text: '**Sus responsabilidades.** Le corresponde mantener el certificado vigente, enviar uno nuevo antes del vencimiento para no interrumpir las emisiones y **avisar de inmediato a Dominex** si el certificado es revocado o sustituido, o si existe sospecha de que la contraseña fue expuesta. La responsabilidad por el contenido fiscal de las facturas (importes, códigos de servicio, tributos y destinatario) sigue siendo del usuario, conforme a la Sección 3.',
+      },
+      {
+        subtitle: '12.8.',
+        text: '**Autorización.** Al enviar el certificado digital, usted declara ser su titular o estar debidamente autorizado a utilizarlo y **autoriza expresamente** a Dominex a custodiarlo de forma cifrada y a usarlo, dentro de los límites de la cláusula 12.3, para firmar y transmitir las facturas solicitadas por usted. Esta autorización rige mientras el certificado esté bajo nuestra custodia y termina con la retirada prevista en la cláusula 12.6.',
+      },
+      {
+        subtitle: '12.9.',
+        text: '**Sobre el riesgo, con honestidad.** Ningún sistema es infalible. Dominex aplica las medidas descritas arriba, pero **no promete seguridad absoluta** frente a ataques sofisticados, fallos de servicios de terceros o eventos de fuerza mayor. Si ocurre algún incidente de seguridad que pueda haber afectado a su certificado, **comunicaremos a su empresa lo antes posible**, explicaremos qué ocurrió y qué se hizo, y orientaremos sobre la revocación y sustitución del certificado ante la autoridad certificadora que lo emitió.',
+      },
+      {
+        subtitle: '12.10.',
+        text: '**Dependencia de servicios públicos.** La emisión de facturas depende de sistemas de la administración pública, cuya disponibilidad, reglas y plazos escapan al control de Dominex. Las interrupciones o cambios en esos sistemas pueden impedir o retrasar la emisión, aplicándose lo dispuesto en la cláusula 6.3.',
+      },
+    ],
+  },
+  {
+    title: '13. DISPOSICIONES GENERALES',
+    items: [
+      {
+        subtitle: '13.1.',
+        text: 'Dominex podrá **actualizar estos Términos** periódicamente. Las actualizaciones relevantes serán **comunicadas mediante aviso dentro del sistema**, y el uso continuado de la plataforma tras la publicación de los cambios implica la **aceptación automática** de la versión actualizada.',
+      },
+      {
+        subtitle: '13.2.',
+        text: 'Si alguna cláusula de estos Términos se considera inválida o inaplicable, las demás permanecerán en **plena vigencia** (nulidad parcial).',
+      },
+      {
+        subtitle: '13.3.',
+        text: 'Las comunicaciones entre las partes podrán realizarse por **medios electrónicos** (correo y avisos dentro del sistema), que tendrán plena validez y eficacia.',
+      },
+      {
+        subtitle: '13.4.',
+        text: 'La tolerancia ante el incumplimiento de cualquier cláusula no implica renuncia ni novación, pudiendo Dominex exigir su cumplimiento en cualquier momento.',
+      },
+      {
+        subtitle: '13.5.',
         text: 'Estos Términos de Uso están **permanentemente disponibles para consulta dentro del propio sistema**, y el usuario puede acceder a ellos y descargarlos en cualquier momento desde el área de Configuración.',
       },
     ],
   },
   {
-    title: '13. JURISDICCIÓN',
+    title: '14. JURISDICCIÓN',
     items: [
       {
-        subtitle: '13.1.',
+        subtitle: '14.1.',
         text: `Se elige el foro de la **${DOMINEX_LEGAL.foro}** (Brasil) para dirimir cualquier controversia derivada de estos Términos, con renuncia a cualquier otro, por más privilegiado que sea.`,
       },
     ],
@@ -1139,35 +1292,86 @@ const TERMS_FR: TermsSection[] = [
     ],
   },
   {
-    title: '12. DISPOSITIONS GÉNÉRALES',
+    title: '12. CERTIFICAT NUMÉRIQUE ET ÉMISSION DE FACTURES',
     items: [
       {
         subtitle: '12.1.',
-        text: "Dominex peut **mettre à jour les présentes Conditions** périodiquement. Les mises à jour importantes seront **notifiées par un avis dans le système**, et la poursuite de l'utilisation de la plateforme après publication des modifications vaut **acceptation automatique** de la version mise à jour.",
+        text: "Si votre entreprise utilise la fonction d'**émission de factures de service** de Dominex, vous devrez transmettre votre **certificat numérique A1** et son mot de passe. Cet envoi est **facultatif** et n'a lieu que par votre propre action. Sans le certificat, seule l'émission de factures devient indisponible, le reste de la plateforme continue de fonctionner normalement.",
       },
       {
         subtitle: '12.2.',
-        text: "Si une clause des présentes Conditions est jugée invalide ou inapplicable, les autres clauses restent en **pleine vigueur** (nullité partielle).",
+        text: "**Ce que nous conservons.** Le fichier du certificat numérique et son mot de passe sont conservés **toujours chiffrés**, jamais en texte lisible. Ils n'apparaissent sur aucun écran, rapport, journal technique ou sauvegarde dans un format lisible par qui que ce soit.",
       },
       {
         subtitle: '12.3.',
-        text: "Les communications entre les parties pourront être effectuées par **voie électronique** (e-mail et avis dans le système), qui auront pleine valeur et efficacité.",
+        text: "**À quoi il sert.** Votre certificat est utilisé **exclusivement** pour signer et transmettre aux administrations publiques les factures que votre propre entreprise demande d'émettre via Dominex, ainsi que pour les opérations liées à ces factures (consultation et annulation). Aucun autre usage : nous ne signons aucun autre document avec lui, nous ne le remettons pas à des tiers et nous ne l'utilisons pas au nom d'une autre entreprise.",
       },
       {
         subtitle: '12.4.',
-        text: "La tolérance à l'égard du non-respect d'une clause ne constitue pas une renonciation ni une novation, Dominex pouvant en exiger le respect à tout moment.",
+        text: "**Comment nous le protégeons.** Nous adoptons notamment les mesures suivantes :",
+        list: [
+          "chiffrement fort du fichier et du mot de passe, avec une clé d'ouverture **propre à chaque entreprise** ;",
+          "conservation de cette clé d'ouverture sur un **serveur distinct** de celui qui héberge le fichier chiffré, de sorte que l'accès à un seul des deux ne permette pas de lire le certificat ;",
+          "utilisation du certificat **uniquement pendant l'émission**, sans copie conservée après l'opération ;",
+          "journalisation de toutes les utilisations du certificat, conformément à la clause 12.5.",
+        ],
       },
       {
         subtitle: '12.5.',
+        text: "**Journal d'utilisation.** Chaque fois que votre certificat est utilisé, nous enregistrons la date, l'heure, l'entreprise et l'opération réalisée. Ce journal est **en ajout seul** : les nouvelles utilisations s'ajoutent et les entrées précédentes ne sont ni modifiées ni supprimées. Il est **consultable par votre entreprise**, afin que vous puissiez toujours savoir quand et pourquoi le certificat a été utilisé.",
+      },
+      {
+        subtitle: '12.6.',
+        text: "**Retrait à tout moment.** Vous pouvez demander le retrait du certificat quand vous le souhaitez, via la plateforme ou notre canal d'assistance. Le retrait supprime aussi bien le fichier chiffré que la clé qui l'ouvre, il est journalisé et, à partir de ce moment, Dominex **cesse d'émettre des factures** au nom de votre entreprise jusqu'à l'envoi d'un nouveau certificat valide. Les factures déjà émises restent valides et consultables.",
+      },
+      {
+        subtitle: '12.7.',
+        text: "**Vos responsabilités.** Il vous appartient de maintenir le certificat valide, d'en transmettre un nouveau avant son expiration afin de ne pas interrompre les émissions, et d'**informer Dominex immédiatement** si le certificat est révoqué ou remplacé, ou en cas de suspicion d'exposition du mot de passe. La responsabilité du contenu fiscal des factures (montants, codes de service, taxes et destinataire) demeure celle de l'utilisateur, conformément à la Section 3.",
+      },
+      {
+        subtitle: '12.8.',
+        text: "**Autorisation.** En transmettant le certificat numérique, vous déclarez en être le titulaire ou être dûment autorisé à l'utiliser, et vous **autorisez expressément** Dominex à le conserver sous forme chiffrée et à l'utiliser, dans les limites de la clause 12.3, pour signer et transmettre les factures que vous demandez. Cette autorisation vaut tant que le certificat reste sous notre garde et prend fin avec le retrait prévu à la clause 12.6.",
+      },
+      {
+        subtitle: '12.9.',
+        text: "**Au sujet du risque, en toute honnêteté.** Aucun système n'est infaillible. Dominex applique les mesures décrites ci-dessus, mais **ne promet pas une sécurité absolue** contre des attaques sophistiquées, des défaillances de services tiers ou des événements de force majeure. En cas d'incident de sécurité susceptible d'avoir affecté votre certificat, nous **informerons votre entreprise dans les meilleurs délais**, expliquerons ce qui s'est passé et ce qui a déjà été fait, et vous orienterons sur la révocation et le remplacement du certificat auprès de l'autorité de certification qui l'a émis.",
+      },
+      {
+        subtitle: '12.10.',
+        text: "**Dépendance aux services publics.** L'émission de factures dépend de systèmes de l'administration publique, dont la disponibilité, les règles et les délais échappent au contrôle de Dominex. Des indisponibilités ou des changements de ces systèmes peuvent empêcher ou retarder l'émission ; la clause 6.3 s'applique.",
+      },
+    ],
+  },
+  {
+    title: '13. DISPOSITIONS GÉNÉRALES',
+    items: [
+      {
+        subtitle: '13.1.',
+        text: "Dominex peut **mettre à jour les présentes Conditions** périodiquement. Les mises à jour importantes seront **notifiées par un avis dans le système**, et la poursuite de l'utilisation de la plateforme après publication des modifications vaut **acceptation automatique** de la version mise à jour.",
+      },
+      {
+        subtitle: '13.2.',
+        text: "Si une clause des présentes Conditions est jugée invalide ou inapplicable, les autres clauses restent en **pleine vigueur** (nullité partielle).",
+      },
+      {
+        subtitle: '13.3.',
+        text: "Les communications entre les parties pourront être effectuées par **voie électronique** (e-mail et avis dans le système), qui auront pleine valeur et efficacité.",
+      },
+      {
+        subtitle: '13.4.',
+        text: "La tolérance à l'égard du non-respect d'une clause ne constitue pas une renonciation ni une novation, Dominex pouvant en exiger le respect à tout moment.",
+      },
+      {
+        subtitle: '13.5.',
         text: "Les présentes Conditions d'utilisation sont **disponibles en permanence pour consultation dans le système lui-même**, et l'utilisateur peut y accéder et les télécharger à tout moment depuis la section Paramètres.",
       },
     ],
   },
   {
-    title: '13. JURIDICTION',
+    title: '14. JURIDICTION',
     items: [
       {
-        subtitle: '13.1.',
+        subtitle: '14.1.',
         text: `Le tribunal de la **${DOMINEX_LEGAL.foro}** (Brésil) est élu comme juridiction exclusive pour résoudre tout litige découlant des présentes Conditions, à l'exclusion de tout autre, si privilégié soit-il.`,
       },
     ],

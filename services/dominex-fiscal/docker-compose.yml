@@ -1,0 +1,143 @@
+# =============================================================================
+# dominex-fiscal — motor NFS-e próprio (Sefin Nacional) na VPS BR compartilhada
+# =============================================================================
+# ⚠️ ESTA VPS É COMPARTILHADA: além deste serviço, ela roda a Evolution API
+# (WhatsApp) que atende **Dominex E EcoSistema**. Toda operação aqui tem que ser
+# inofensiva pro stack do WhatsApp.
+#
+# DECISÃO: stack SEPARADO (diretório próprio ~/dominex-fiscal), NÃO um serviço a
+# mais no docker-compose.yml da Evolution. Motivos:
+#   1. Blast radius. `docker compose down` no diretório da Evolution derruba o
+#      WhatsApp dos DOIS produtos. Se o fiscal morasse lá, todo deploy de nota
+#      fiscal seria uma janela de risco pro WhatsApp — e o fiscal vai ser
+#      redeployado com frequência (esteira de layout), a Evolution quase nunca.
+#   2. Volumes. Projetos separados = prefixos separados. Um `down -v` acidental
+#      neste projeto NÃO chega perto de `evolution_instances` (que, se apagado,
+#      obriga re-parear QR de todos os tenants).
+#   3. Classe de risco. Este é o único container que toca chave privada de
+#      cliente. Ele tem cap_drop/read_only/no-new-privileges/limite de RAM que
+#      seriam inadequados pro Node da Evolution. Config separada, postura separada.
+#   4. O Caddy roda NO HOST e serve os dois por site block distinto — não existe
+#      necessidade técnica de compartilhar rede de compose.
+# Custo aceito: `logs` e `ps` viram dois comandos em vez de um.
+#
+# SEGREDOS: NENHUM valor real neste arquivo, e nunca pode passar a ter. Eles vêm
+# do arquivo `/etc/dominex-fiscal/service.env` (fora do repo, fora da imagem,
+# fora do git). Ver RUNBOOK §1.4.
+# =============================================================================
+
+name: dominex-fiscal
+
+services:
+  dominex-fiscal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Depois do primeiro build, troque por requirements.lock.txt (ver §2.2 do RUNBOOK).
+        REQ_FILE: ${REQ_FILE:-requirements.txt}
+    image: dominex-fiscal:local
+    container_name: dominex-fiscal
+    restart: always
+    init: true                      # tini: repassa SIGTERM e colhe zumbi
+
+    # ---- Porta: SÓ loopback. NUNCA "8099:8000" (isso publicaria na internet e o
+    # Docker fura o ufw escrevendo direto na chain DOCKER). A porta pública é a
+    # 443 do Caddy. 8099 porque a 8080 já é da Evolution.
+    ports:
+      - "127.0.0.1:8099:8000"
+
+    # ---- Segredos: arquivo no host, 0640 root:deploy, NUNCA no git.
+    #   FISCAL_SERVICE_TOKEN       — segredo compartilhado com as Edge Functions
+    #   FISCAL_SERVICE_TOKEN_PREV  — token anterior (só durante a rotação)
+    #   FISCAL_KEKS                — anel de KEK: "2:<b64>,1:<b64>" (a 1ª é a atual)
+    # ⚠️ Trade-off assumido: como `env_file` vira variável de ambiente, os valores
+    # aparecem em `docker inspect` e em /proc/<pid>/environ. Quem consegue rodar
+    # `docker inspect` tem acesso ao socket do Docker — o que já é equivalente a
+    # root no host, e root lê /etc/dominex-fiscal de qualquer jeito. Ou seja: o
+    # env NÃO amplia quem consegue ver a KEK. O que ele exige é disciplina de
+    # log e de dump (ver §8 do RUNBOOK: nada de LOG_LEVEL=DEBUG em produção).
+    env_file:
+      - /etc/dominex-fiscal/service.env
+
+    environment:
+      # ---- Custódia: diretório do material efêmero de mTLS (tmpfs, ver abaixo).
+      FISCAL_TMPFS_DIR: /run/dominex-fiscal
+
+      # ---- Timeout da chamada ao governo. O POST /nfse é SÍNCRONO.
+      FISCAL_HTTP_TIMEOUT: ${FISCAL_HTTP_TIMEOUT:-90}
+
+      # ---- Verificação de TLS da ponta do governo. NUNCA "0" em produção:
+      # sem verificar o servidor, o mTLS perde metade do sentido.
+      FISCAL_TLS_VERIFY: "1"
+
+      # ---- Identificação do emissor no XML (campo verAplic).
+      FISCAL_VER_APLIC: ${FISCAL_VER_APLIC:-Dominex-1.0}
+
+      # ⚠️ NÃO existe "ambiente" fixo aqui de propósito: produção (1) x
+      # homologação (2) vem no CORPO de cada requisição. Não há chave global pra
+      # alguém virar sem querer — e o smoke diário roda em homologação sem mexer
+      # em nada do que os clientes usam.
+
+    # ---- Sistema de arquivos: raiz READ-ONLY. Nada de escrita persistente.
+    # O serviço é stateless por design: certificado nenhum fica aqui em repouso.
+    read_only: true
+    tmpfs:
+      # /run/dominex-fiscal — ÚNICO lugar onde PEM/chave privada podem tocar
+      # "arquivo". É requisito de SEGURANÇA, não conveniência: o `requests` exige
+      # um CAMINHO de arquivo pra mTLS (cert=(pem,key)) e a §Custódia do plano
+      # proíbe chave privada em disco persistente. tmpfs = RAM.
+      #   size=16m   → um PEM tem KBs; 16 MB é folga e teto contra abuso
+      #   mode=0700  → só o dono lê
+      #   uid/gid    → 10001 = usuário do container (dono do processo)
+      #   noexec/nosuid/nodev
+      # ⚠️ tmpfs é lastreado por SWAP no kernel. Sem o memswap_limit abaixo, uma
+      # página com a chave privada do cliente poderia ir parar no disco (e, aí
+      # sim, dentro do snapshot semanal da Hostinger). memswap_limit == mem_limit
+      # desliga swap PRO CGROUP — é o que fecha esse buraco.
+      - /run/dominex-fiscal:size=16m,mode=0700,uid=10001,gid=10001,noexec,nosuid,nodev
+      # /tmp — o Python precisa de um scratch gravável com rootfs read-only.
+      - /tmp:size=32m,mode=1777,noexec,nosuid,nodev
+
+    # ---- Blindagem do runtime ----
+    security_opt:
+      - no-new-privileges:true      # nenhum binário suid escala privilégio
+    cap_drop:
+      - ALL                         # não precisa de capability nenhuma
+    pids_limit: 256                 # trava fork bomb
+
+    # ---- Capacidade (a box tem 8 GB e é DIVIDIDA — ver RUNBOOK §7) ----
+    # Conta: SO+journald+fail2ban ~0,5 GB · Caddy ~50 MB · Postgres (Evolution)
+    # ~250 MB · Redis ~50 MB · Evolution ~400 MB + 30–80 MB por sessão Baileys.
+    # O fiscal em regime: ~60–90 MB de Python/FastAPI + ~40–80 MB dos bindings
+    # xsdata da nfelib + pico de dezenas de MB por nota (o XML é KB). ~150 MB.
+    # 512 MB = ~3x folga e — o ponto principal — é um FUSÍVEL: vazamento de
+    # memória no lxml/xsdata mata SÓ este container (restart: always levanta), em
+    # vez de o OOM killer do host escolher a Evolution e derrubar o WhatsApp dos
+    # dois produtos.
+    mem_limit: 512m
+    mem_reservation: 192m
+    memswap_limit: 512m             # == mem_limit ⇒ swap DESLIGADO pro cgroup
+    cpus: 1.0                       # metade das 2 vCPU: não starva a Evolution
+
+    # ---- Encerramento: o POST /nfse do governo é SÍNCRONO. Matar no meio pode
+    # deixar a nota autorizada no governo e perdida pra gente. 30s dá tempo da
+    # requisição em voo terminar. Recuperação: GET /dps/{idDPS} — RUNBOOK §5.4.
+    stop_grace_period: 30s
+
+    # ---- Healthcheck: /healthz é o único endpoint sem autenticação e devolve só
+    # {"ok": true}. Sem curl na imagem de propósito — usamos a stdlib do Python.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; assert u.urlopen('http://127.0.0.1:8000/healthz', timeout=4).status == 200"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+    # ---- Logs: teto explícito. O disco é 100 GB e é COMPARTILHADO com a
+    # Evolution; log sem rotação enche o disco e derruba os dois produtos.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

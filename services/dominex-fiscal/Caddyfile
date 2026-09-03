@@ -1,0 +1,99 @@
+# =============================================================================
+# Caddyfile — bloco do motor fiscal. ADICIONE ao /etc/caddy/Caddyfile existente.
+# =============================================================================
+# ⚠️ NÃO substitua o /etc/caddy/Caddyfile da VPS: ele já tem o bloco
+# `wa.<DOMINIO>` da Evolution API, que atende WhatsApp do Dominex E do EcoSistema.
+# Trocar o arquivo inteiro derruba os dois produtos. ANEXE este bloco no fim.
+# (RUNBOOK §4 tem o passo com backup + `caddy validate` antes do reload.)
+#
+# O Caddy roda NO HOST (systemd) e é o único processo com porta pública. O
+# container fiscal escuta só em 127.0.0.1:8099.
+#
+# -----------------------------------------------------------------------------
+# DNS — antes de recarregar o Caddy, o registro tem que existir e resolver:
+#   Tipo A · Nome `fiscal` · Conteúdo <IP_DA_VPS> (46.202.149.193) · TTL automático
+#
+#   ⚠️ Se `dominex.app` estiver na CLOUDFLARE: o registro TEM que ficar em
+#   "DNS only" (nuvem CINZA, proxy DESLIGADO). Com a nuvem laranja:
+#     a) o desafio HTTP-01 do Let's Encrypt não chega na VPS e o cert não emite;
+#     b) a Cloudflare passa a ver, em claro, o corpo das requisições — que aqui
+#        carregam certificado cifrado e dados fiscais de cliente. Terceiro no meio
+#        do caminho de material de custódia é inaceitável (§Custódia do plano).
+#   Se estiver na VERCEL DNS (o site é Vercel): registro A comum, sem proxy.
+#
+#   Verificar antes de recarregar:  dig +short fiscal.dominex.app
+#     → tem que devolver EXATAMENTE o IP da VPS (nenhum IP 104.x/172.6x da Cloudflare)
+#
+# Firewall: nada a abrir. 80 e 443 já estão liberadas no ufw (a 80 é obrigatória
+# pra renovação ACME). ⚠️ NUNCA abrir a 8099.
+# -----------------------------------------------------------------------------
+
+fiscal.dominex.app {
+	# ---- Superfície mínima -------------------------------------------------
+	# Só as rotas conhecidas passam. Todo o resto morre aqui com 404.
+	# Isso mata de graça a exposição de /docs, /redoc e /openapi.json do FastAPI
+	# (que também são desligados no app — cinto e suspensório) e de qualquer rota
+	# nova que alguém publique sem querer.
+	# Contrato do serviço: /healthz (público), /readyz + /admin/* (infra) e
+	# /v1/* (motor: emitir, consultar, cancelar, DANFSE, selar certificado).
+	@permitido path /healthz /readyz /v1/* /admin/*
+	handle @permitido {
+		reverse_proxy 127.0.0.1:8099 {
+			# O POST /nfse do governo é SÍNCRONO e pode demorar. Sem isto, o Caddy
+			# poderia cortar uma emissão já aceita pelo governo.
+			transport http {
+				dial_timeout 10s
+				response_header_timeout 90s
+				read_timeout 120s
+				write_timeout 120s
+			}
+			# Repassa o IP real pro log/rate-limit do app.
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle {
+		respond 404
+	}
+
+	# ---- Teto de corpo -----------------------------------------------------
+	# Uma requisição legítima carrega o .pfx cifrado (KBs) + o XML da DPS (KBs).
+	# 4 MB é folga larga e impede que alguém empurre gigabytes na RAM da box.
+	request_body {
+		max_size 4MB
+	}
+
+	# ---- Cabeçalhos --------------------------------------------------------
+	header {
+		-Server                       # não anunciar "Caddy"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+
+	# ---- Log ---------------------------------------------------------------
+	# ⚠️ NÃO colocar `level ERROR` aqui (como está no bloco da Evolution): o
+	# fail2ban precisa VER os 401 pra banir quem fica tentando o token, e 401 é
+	# logado em nível INFO. Volume é baixinho (só as edges chamam).
+	# time_format rfc3339 é o que o filtro do fail2ban espera.
+	log {
+		output file /var/log/caddy/fiscal.access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+		format json {
+			time_format rfc3339
+		}
+	}
+
+	# HTTPS automático (Let's Encrypt). Para receber aviso de problema de cert:
+	# tls suporte@dominex.app
+}
+
+# =============================================================================
+# ⚠️ O que NUNCA colocar aqui:
+#   - um bloco sem TLS (http://) apontando pro fiscal;
+#   - `reverse_proxy` da 8099 em qualquer host que não seja este;
+#   - `basicauth` como substituto do Bearer (o token é validado NO APP, em tempo
+#     constante, e o app é quem sabe rotacionar);
+#   - autenticação nenhuma no /healthz — ele é público de propósito, e por isso
+#     devolve só {"status":"ok"}, sem versão, sem dependência, sem hostname.
+# =============================================================================

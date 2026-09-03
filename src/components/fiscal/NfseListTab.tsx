@@ -54,7 +54,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useNfseEmissionsPaged, type NfseEmissionRow } from '@/hooks/useNfseEmissionsPaged';
 import { useNfseEmission } from '@/hooks/useNfseEmission';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
-import { invokeFisqal } from '@/utils/fisqalEdge';
+import { invokeNfse } from '@/utils/nfseEdge';
 import { formatMoney, formatDate as formatDateLib } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -197,7 +197,14 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
       dataCompetencia: draftEmission.data_competencia ?? null,
       regimeApuracao: draftEmission.regime_apuracao ?? null,
       servico: {
+        // Seletor de serviço: guarda a ESCOLHA, não só os códigos. Vazio quando
+        // o serviço foi apagado depois (a coluna vira nulo) — nesse caso os
+        // códigos continuam na nota e ela segue emitível, só o seletor abre em
+        // branco.
+        serviceTypeId: draftEmission.service_type_id ?? '',
         codigoServico: draftEmission.codigo_servico ?? '',
+        // cTribMun salvo na própria nota (override do herdado do tipo de serviço).
+        codigoTributacaoMunicipal: draftEmission.codigo_tributacao_municipal ?? '',
         codigoNbs: draftEmission.codigo_nbs ?? '',
         municipioIncidenciaIbge: draftEmission.municipio_incidencia_ibge ?? '',
         // O nome do município não é persistido (não existe coluna): a etapa
@@ -233,7 +240,7 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     }
     const tid = toast.loading('Enviando NFS-e...');
     try {
-      const result = await invokeFisqal('fisqal-emit-nfse', { emissionId: row.id });
+      const result = await invokeNfse('nfse-emit', { emissionId: row.id });
       toast.dismiss(tid);
       if (!result.ok) {
         toast.error(result.message ?? 'Erro ao emitir a nota.');
@@ -252,7 +259,7 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
   const handleDeleteDraft = async (row: NfseEmissionRow) => {
     const tid = toast.loading('Excluindo rascunho...');
     try {
-      const result = await invokeFisqal('fisqal-delete-nfse-draft', { id: row.id });
+      const result = await invokeNfse('nfse-delete-draft', { id: row.id });
       toast.dismiss(tid);
       if (!result.ok) {
         toast.error(result.message ?? 'Erro ao excluir o rascunho.');
@@ -304,9 +311,53 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
 
   // ─── Ação: Download PDF ───────────────────────────────────────────────────
 
-  const handleDownloadPdf = (row: NfseEmissionRow) => {
-    if (!row.pdf_url) { toast.error('PDF não disponível.'); return; }
-    window.open(row.pdf_url, '_blank', 'noopener');
+  /**
+   * Baixa o DANFSE (PDF) da nota.
+   *
+   * Antes isto exigia `row.pdf_url` e abria em ABA NOVA — duas coisas erradas:
+   * o motor próprio não guarda o PDF numa URL (o documento é gerado sob demanda
+   * pela rota `nfse-danfse`), então a ação nunca aparecia; e abrir documento em
+   * aba nova é anti-padrão da casa. Agora pedimos o PDF e entregamos o ARQUIVO,
+   * que é o que o usuário quer fazer com uma nota fiscal: mandar pro cliente.
+   */
+  const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+  const handleDownloadPdf = async (row: NfseEmissionRow) => {
+    setPdfLoadingId(row.id);
+    const tid = toast.loading(tList.pdfLoading);
+    try {
+      const res = await invokeNfse<{ pdfBase64?: string | null; pdfUrl?: string | null; nomeArquivo?: string }>(
+        'nfse-danfse',
+        { emissionId: row.id },
+      );
+      toast.dismiss(tid);
+      if (!res.ok || (!res.data?.pdfBase64 && !res.data?.pdfUrl)) {
+        toast.error(res.message ?? tList.pdfError);
+        return;
+      }
+      const nome = res.data.nomeArquivo || `NFSe-${row.numero_nfse ?? row.id.slice(0, 8)}.pdf`;
+      const href = res.data.pdfBase64
+        ? URL.createObjectURL(
+            new Blob(
+              [Uint8Array.from(atob(res.data.pdfBase64), (c) => c.charCodeAt(0))],
+              { type: 'application/pdf' },
+            ),
+          )
+        : res.data.pdfUrl!;
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Só revoga o que nós criamos, e depois do clique (revogar antes cancela
+      // o download em alguns navegadores).
+      if (res.data.pdfBase64) setTimeout(() => URL.revokeObjectURL(href), 60_000);
+    } catch {
+      toast.dismiss(tid);
+      toast.error(tList.pdfError);
+    } finally {
+      setPdfLoadingId(null);
+    }
   };
 
   // ─── Ação: Download XML ───────────────────────────────────────────────────
@@ -330,8 +381,6 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
       customer_id: row.customer_id ?? null,
       financial_transaction_id: null,
       status: row.status,
-      fisqal_dps_id: null,
-      fisqal_fiscal_request_id: null,
       numero_nfse: row.numero_nfse ?? '',
       chave_acesso: row.chave_acesso ?? null,
       protocolo: row.protocolo ?? null,
@@ -377,7 +426,10 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     const canEmitRow = (isDraft || isRejected) && canEmit;
     const canCheckStatus = isPending || isCancelPending;
     // O documento existe e vale enquanto o cancelamento não é efetivado.
-    const canDownloadPdf = (isAuthorized || isCancelPending) && !!row.pdf_url;
+    // O DANFSE é gerado sob demanda pela rota `nfse-danfse` — NÃO depende de
+    // `pdf_url` (que o motor próprio nunca preenche). Cancelada também tem
+    // direito ao documento: ele existiu, tem número e chave.
+    const canDownloadPdf = isAuthorized || isCancelPending || isCancelled;
     const canDownloadXml = (isAuthorized || isCancelPending || isCancelled) && !!row.xml_url;
     const canHistory = !isDraft;
     const canCancelRow = canEmit && (isAuthorized || isPending);
@@ -463,7 +515,14 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => handleCancel(row)}
+                // NUNCA cancelar direto daqui. Cancelamento de NFS-e é
+                // irreversível, tem efeito na prefeitura e exige motivo de 15 a
+                // 255 caracteres por exigência do layout nacional. Abrimos o
+                // detalhe em modo cancelamento, que já tem a confirmação e o
+                // campo de motivo — antes isto chamava a edge na hora, sem
+                // perguntar nada, e o motivo registrado era um texto genérico
+                // nosso em vez da justificativa do usuário.
+                onClick={() => openDetail(row, 'cancel')}
                 className="gap-2 text-destructive focus:bg-destructive focus:text-white hover:bg-destructive hover:text-white"
               >
                 <Ban className="h-4 w-4" />
@@ -566,8 +625,16 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
 
       {/* Lista */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
+        // Girador SEM texto deixa o usuário no escuro por alguns segundos e a
+        // tela parece vazia/quebrada. O rótulo também dá acessibilidade — um
+        // ícone animado sozinho não é anunciado por leitor de tela.
+        <div
+          className="flex flex-col items-center justify-center gap-3 py-16"
+          role="status"
+          aria-live="polite"
+        >
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">{tList.loading}</p>
         </div>
       ) : isEmpty ? (
         <EmptyState
@@ -714,6 +781,7 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         initialAction={detailAction}
+        onChanged={refetch}
       />
     </div>
   );

@@ -78,7 +78,7 @@ const FALLBACK: StatusMeta = {
 
 /**
  * Status TERMINAIS: a nota chegou a um desfecho e NÃO deve mais ser pollada.
- * Inclui as duas grafias (PT-BR canônica do banco + variantes EN da Fisqal),
+ * Inclui as duas grafias (PT-BR canônica do banco + variantes EN do provedor),
  * pra o polling parar mesmo que o status venha cru da integração.
  *
  * ATENÇÃO: `cancelamento_pendente` NÃO entra aqui — é transitório e o polling

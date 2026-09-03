@@ -30,8 +30,8 @@ import { useUserCompany } from '@/hooks/useUserCompany';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { invokeFisqal } from '@/utils/fisqalEdge';
-import { calculateNfseFisqalTaxes } from '@/utils/nfseFisqalTaxes';
+import { invokeNfse } from '@/utils/nfseEdge';
+import { calculateNfseTaxes } from '@/utils/nfseTaxes';
 import { NfseQuotaBlockModal, type NfseQuotaBlockInfo } from '@/components/fiscal/NfseQuotaBlockModal';
 
 import { PessoasStep } from './nova-nota/PessoasStep';
@@ -46,18 +46,17 @@ import type {
 } from './nova-nota/types';
 
 /**
- * NovaNotaModal — stepper de 4 etapas para emissão de NFS-e via Fisqal.
+ * NovaNotaModal — stepper de 4 etapas para emissão de NFS-e.
  * Espelha o padrão visual do EcoSistema (abas sublinhadas, barra de resumo
  * fixa, footer com Voltar/Cancelar/Salvar rascunho/Avançar-Emitir).
  *
- * Campos Fisqal suportados: valorServico, aliquotaIssqn, tribIssqn, tpRetIssqn,
+ * Campos suportados: valorServico, aliquotaIssqn, tribIssqn, tpRetIssqn,
  * valorPis, valorCofins, valorCsll, percentualTribSn.
- * Campos OMITIDOS (a Fisqal não aceita): INSS, IRRF, deduções, descontos.
+ * Campos OMITIDOS (não suportados): INSS, IRRF, deduções, descontos.
  *
  * Edges usadas:
- *  - fisqal-save-nfse-draft (rascunho — upsert por id)
- *  - fisqal-delete-nfse-draft (cancelar com id de rascunho)
- *  - fisqal-emit-nfse (emissão — via emissionId ou body completo)
+ *  - nfse-save-draft (rascunho — upsert por id)
+ *  - nfse-emit (emissão — via emissionId ou body completo)
  */
 
 type StepKey = 'pessoas' | 'servico' | 'valores' | 'emitir';
@@ -72,7 +71,9 @@ const STEPS: { key: StepKey }[] = [
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const emptyServico = (): NfseServicoState => ({
+  serviceTypeId: '',
   codigoServico: '',
+  codigoTributacaoMunicipal: '',
   codigoNbs: '',
   municipioIncidenciaIbge: '',
   municipioIncidenciaNome: '',
@@ -139,6 +140,15 @@ export function NovaNotaModal({
   const [intermediario, setIntermediario] = useState<NfseCustomer | null>(null);
   const [servico, setServico] = useState<NfseServicoState>(emptyServico());
   const [valores, setValores] = useState<NfseValoresState>(emptyValores());
+
+  /**
+   * Serviços cujo convite de "completar o cadastro" já foi resolvido nesta
+   * nota (salvo ou dispensado). Mora aqui, e não na etapa, porque a etapa
+   * desmonta ao trocar de aba e o convite voltaria a aparecer. Guardado por id
+   * de serviço: trocar de serviço no meio da nota volta a oferecer, pro
+   * serviço novo.
+   */
+  const [gapFillResolved, setGapFillResolved] = useState<string[]>([]);
 
   // ---- Bloqueio de cota ----
   const [blockInfo, setBlockInfo] = useState<NfseQuotaBlockInfo | null>(null);
@@ -210,7 +220,7 @@ export function NovaNotaModal({
   // ---- Cálculo em tempo real (função pura, fonte única) ----
   const taxes = useMemo(
     () =>
-      calculateNfseFisqalTaxes({
+      calculateNfseTaxes({
         valorServico: valores.valorServico,
         aliquotaIssqn: valores.aliquotaIssqn,
         tpRetIssqn: valores.tpRetIssqn,
@@ -241,6 +251,12 @@ export function NovaNotaModal({
     if (!servico.codigoNbs.trim() && !settings.codigo_nbs_default) {
       e.push(s.servico.codigos.codigoNbs.required);
     }
+    // cTribMun é opcional (em branco herda do tipo de serviço), mas quando
+    // preenchido tem que ter exatamente os 3 dígitos do layout.
+    const cTribMun = servico.codigoTributacaoMunicipal.trim();
+    if (cTribMun && cTribMun.length !== 3) {
+      e.push(s.servico.codigos.codigoTributacaoMunicipal.invalid);
+    }
     return e;
   }, [servico, s, settings.codigo_servico_default, settings.codigo_nbs_default]);
 
@@ -260,15 +276,15 @@ export function NovaNotaModal({
   // `pode_emitir` sozinho só diz que o município é coberto.
   const habilitacaoErrors = useMemo(() => {
     const e: string[] = [];
-    if (!settings.fisqal_company_id) e.push(s.emitir.habilitacaoErrorRegistro);
+    if (!settings.provider_company_id) e.push(s.emitir.habilitacaoErrorRegistro);
     else if (!settings.pode_emitir) e.push(s.emitir.habilitacaoErrorMunicipio);
-    else if (!settings.fisqal_certificate_id) e.push(s.emitir.habilitacaoError);
+    else if (!settings.provider_certificate_id) e.push(s.emitir.habilitacaoError);
     return e;
-  }, [settings.fisqal_company_id, settings.pode_emitir, settings.fisqal_certificate_id, s]);
+  }, [settings.provider_company_id, settings.pode_emitir, settings.provider_certificate_id, s]);
 
   const habilitacaoWarnings = useMemo(() => {
     const w: string[] = [];
-    if (settings.fisqal_company_id && !settings.inscricao_municipal) {
+    if (settings.provider_company_id && !settings.inscricao_municipal) {
       w.push('Inscrição Municipal não configurada. A maioria dos municípios exige. Confira nas Configurações Fiscais.');
     }
     return w;
@@ -334,6 +350,7 @@ export function NovaNotaModal({
     setServico(emptyServico());
     setValores(emptyValores());
     setDraftId(null);
+    setGapFillResolved([]);
   }, []);
 
   const hasUnsavedData =
@@ -364,7 +381,15 @@ export function NovaNotaModal({
     dataCompetencia: dataCompetencia || null,
     regimeApuracao: isSimples ? regimeApuracao : null,
     servico: {
+      // A ESCOLHA do serviço (não só os códigos que ela preencheu). Mandado
+      // SEMPRE, inclusive nulo: é assim que "nenhum serviço" volta a valer ao
+      // reabrir o rascunho. Sem isso o seletor abre vazio com os campos cheios.
+      serviceTypeId: servico.serviceTypeId || null,
       codigoServico: servico.codigoServico || undefined,
+      // Mandado SEMPRE (mesmo vazio): string vazia é como o rascunho volta a
+      // herdar o código do tipo de serviço. Com `undefined` a chave sumiria do
+      // JSON e o valor antigo ficaria gravado, sem como limpar pela tela.
+      codigoTributacaoMunicipal: servico.codigoTributacaoMunicipal,
       codigoNbs: servico.codigoNbs || undefined,
       municipioIncidenciaIbge: servico.municipioIncidenciaIbge || undefined,
       descricao: servico.discriminacao || undefined,
@@ -389,7 +414,7 @@ export function NovaNotaModal({
     submittingRef.current = true;
     setLoading(true);
     try {
-      const res = await invokeFisqal<{ emission?: { id: string } }>('fisqal-save-nfse-draft', buildDraftBody());
+      const res = await invokeNfse<{ emission?: { id: string } }>('nfse-save-draft', buildDraftBody());
       if (!res.ok) {
         toast.error(res.message ?? s.toasts.draftError);
         return;
@@ -421,8 +446,8 @@ export function NovaNotaModal({
       let emissionIdToUse = draftId;
 
       // Salva/atualiza o rascunho primeiro (persistência do estado atual).
-      const saveRes = await invokeFisqal<{ emission?: { id: string } }>(
-        'fisqal-save-nfse-draft',
+      const saveRes = await invokeNfse<{ emission?: { id: string } }>(
+        'nfse-save-draft',
         buildDraftBody(),
       );
       if (saveRes.ok && saveRes.data?.emission?.id) {
@@ -439,6 +464,9 @@ export function NovaNotaModal({
             servico: {
               descricao: servico.discriminacao,
               ...(servico.codigoServico ? { codigoServico: servico.codigoServico } : {}),
+              ...(servico.codigoTributacaoMunicipal
+                ? { codigoTributacaoMunicipal: servico.codigoTributacaoMunicipal }
+                : {}),
               ...(servico.codigoNbs ? { codigoNbs: servico.codigoNbs } : {}),
               ...(servico.municipioIncidenciaIbge ? { municipioIncidenciaIbge: servico.municipioIncidenciaIbge } : {}),
             },
@@ -459,7 +487,7 @@ export function NovaNotaModal({
             },
           };
 
-      const emitRes = await invokeFisqal<{ emission?: NfseEmission }>('fisqal-emit-nfse', emitBody);
+      const emitRes = await invokeNfse<{ emission?: NfseEmission }>('nfse-emit', emitBody);
 
       if (!emitRes.ok) {
         if (emitRes.errorCode === 'nfse_quota_exceeded') {
@@ -625,6 +653,12 @@ export function NovaNotaModal({
         <ServicoStep
           servico={servico}
           onServicoChange={patchServico}
+          onValoresChange={patchValores}
+          aliquotaIssqn={valores.aliquotaIssqn}
+          gapFillResolved={gapFillResolved}
+          onGapFillResolved={(id) =>
+            setGapFillResolved((prev) => (prev.includes(id) ? prev : [...prev, id]))
+          }
           defaultCodigoServico={settings.codigo_servico_default}
           defaultCodigoNbs={settings.codigo_nbs_default}
           defaultMunicipioIbge={settings.municipio_ibge}
@@ -695,7 +729,9 @@ export function NovaNotaModal({
           variant="outline"
           onClick={handleSaveDraft}
           disabled={loading}
-          className={`${isMobile ? 'w-full' : ''} bg-white border-border hover:bg-gray-900 hover:text-white hover:border-transparent`}
+          // Sem cor cravada: `bg-white` + texto claro do tema escuro deixava o
+          // botão branco no branco. O variant outline já resolve claro/escuro.
+          className={isMobile ? 'w-full' : ''}
         >
           <Save className="h-4 w-4 mr-2" />
           {s.footer.salvarRascunho}

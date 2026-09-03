@@ -1,26 +1,25 @@
 /**
- * Cálculo de impostos da NFS-e para o provedor Fisqal — FONTE ÚNICA da verdade
- * pra prévia de emissão de serviço na Dominex.
+ * Cálculo de impostos da NFS-e — FONTE ÚNICA da verdade pra prévia de emissão
+ * de serviço na Dominex.
  *
- * Espelha a lógica de `EcoSistema/src/utils/nfseTaxes.ts`, mas restrita aos
- * campos que a Fisqal aceita. Campos OMITIDOS deliberadamente (a Fisqal não
- * suporta): INSS, IRRF, deduções da base, desconto condicionado, desconto
- * incondicionado.
+ * Espelha a lógica de `EcoSistema/src/utils/nfseTaxes.ts`, restrita aos campos
+ * que a emissão aceita hoje. Campos OMITIDOS deliberadamente (não suportados):
+ * INSS, IRRF, deduções da base, desconto condicionado, desconto incondicionado.
  *
- * `NfseValoresFisqal.valorPis/valorCofins/valorCsll` são valores em R$ (não %),
- * pois a Fisqal recebe o valor absoluto de cada retenção federal.
+ * `valorPis/valorCofins/valorCsll` são valores em R$ (não %), pois a emissão
+ * recebe o valor absoluto de cada retenção federal.
  */
 
-import type { NfseValoresState, NfseFisqalTaxResult, TpRetIssqn } from '@/components/fiscal/nova-nota/types';
+import type { NfseValoresState, NfseTaxResult, TpRetIssqn } from '@/components/fiscal/nova-nota/types';
 
 /** Arredonda a 2 casas (padrão monetário). */
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 
 /**
- * Calcula os impostos da NFS-e (Fisqal) de forma PURA.
+ * Calcula os impostos da NFS-e de forma PURA.
  *
  * Regras:
- * - Base = valorServico (sem deduções — a Fisqal não aceita).
+ * - Base = valorServico (sem deduções — não suportadas).
  * - ISS = base × aliquotaIssqn/100.
  * - tpRetIssqn segue a tabela do layout nacional da NFS-e:
  *     '1' = NÃO retido · '2' = retido pelo tomador · '3' = retido pelo intermediário.
@@ -28,9 +27,9 @@ const round2 = (v: number): number => Math.round(v * 100) / 100;
  * - Retenções federais = soma dos valores absolutos (PIS+COFINS+CSLL).
  * - Líquido = valorServico − totalRetencoesFederais − (ISS se retido).
  */
-export function calculateNfseFisqalTaxes(
+export function calculateNfseTaxes(
   valores: Pick<NfseValoresState, 'valorServico' | 'aliquotaIssqn' | 'tpRetIssqn' | 'valorPis' | 'valorCofins' | 'valorCsll'>,
-): NfseFisqalTaxResult {
+): NfseTaxResult {
   const {
     valorServico,
     aliquotaIssqn,

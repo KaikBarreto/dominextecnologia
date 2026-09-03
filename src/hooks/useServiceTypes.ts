@@ -15,6 +15,8 @@ export interface ServiceType {
   category_id: string | null;
   // Campos fiscais (NFS-e por tipo de serviço) — opcionais por tenant.
   codigo_servico: string | null;
+  /** cTribMun: complemento municipal de 3 dígitos do código de tributação. */
+  codigo_tributacao_municipal: string | null;
   codigo_nbs: string | null;
   iss_aliquota: number | null;
   item_lc116: string | null;
@@ -35,6 +37,8 @@ export interface ServiceTypeInput {
   category_id?: string | null;
   // Campos fiscais (NFS-e por tipo de serviço) — opcionais.
   codigo_servico?: string | null;
+  /** cTribMun: complemento municipal de 3 dígitos do código de tributação. */
+  codigo_tributacao_municipal?: string | null;
   codigo_nbs?: string | null;
   iss_aliquota?: number | null;
   item_lc116?: string | null;
@@ -102,20 +106,59 @@ export function useServiceTypes() {
   });
 
   /**
-   * Gap-fill silencioso dos campos fiscais de um tipo de serviço (sem toast).
-   * Usado na emissão de NFS-e: quando o usuário completa códigos que estavam
-   * vazios no serviço, gravamos de volta pra próxima emissão já puxar tudo.
-   * Falha não atrapalha o fluxo de quem chamou (devolve sucesso/erro).
+   * Completa os campos fiscais VAZIOS de um tipo de serviço (sem toast).
+   * Usado na emissão de NFS-e: quando o usuário informa na nota um código que
+   * ainda não está no cadastro do serviço, gravamos de volta pra próxima
+   * emissão já puxar tudo. Falha não atrapalha o fluxo de quem chamou.
+   *
+   * Regra dura: só preenche buraco. Campo que JÁ tem valor diferente nunca é
+   * sobrescrito, mesmo que a nota use outro código — pode ser exceção legítima
+   * daquela nota, e trocar o cadastro por causa dela seria pior que não fazer
+   * nada. A checagem é feita contra o banco na hora (não contra o cache), pra
+   * não sobrescrever algo que outra pessoa acabou de cadastrar.
    */
   const gapFillServiceTypeFiscal = async (
     id: string,
-    fields: Partial<Pick<ServiceTypeInput, 'codigo_servico' | 'codigo_nbs' | 'iss_aliquota' | 'item_lc116'>>,
+    fields: Partial<
+      Pick<
+        ServiceTypeInput,
+        | 'codigo_servico'
+        | 'codigo_tributacao_municipal'
+        | 'codigo_nbs'
+        | 'iss_aliquota'
+        | 'item_lc116'
+      >
+    >,
   ): Promise<boolean> => {
-    if (Object.keys(fields).length === 0) return true;
+    const requested = Object.entries(fields).filter(
+      ([, v]) => v !== undefined && v !== null && v !== '',
+    );
+    if (requested.length === 0) return true;
+
+    // Defense-in-depth: escopo da própria empresa (RLS continua a fronteira).
+    const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+    const companyId = await getCurrentUserCompanyId();
+
+    const { data: current, error: readError } = await supabase
+      .from('service_types')
+      .select('codigo_servico, codigo_tributacao_municipal, codigo_nbs, iss_aliquota, item_lc116')
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (readError || !current) return false;
+
+    const row = current as Record<string, unknown>;
+    // Vazio é nulo/em branco. Zero NÃO é vazio: alíquota 0% é uma decisão
+    // fiscal legítima (serviço isento) e não pode ser sobrescrita.
+    const isEmpty = (v: unknown) => v === null || v === undefined || v === '';
+    const patch = Object.fromEntries(requested.filter(([k]) => isEmpty(row[k])));
+    if (Object.keys(patch).length === 0) return true;
+
     const { error } = await supabase
       .from('service_types')
-      .update(fields as any)
-      .eq('id', id);
+      .update(patch as never)
+      .eq('id', id)
+      .eq('company_id', companyId);
     if (error) return false;
     queryClient.invalidateQueries({ queryKey: ['service-types'] });
     return true;

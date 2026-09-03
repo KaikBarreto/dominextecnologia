@@ -1,0 +1,15 @@
+[Unit]
+Description=dominex-fiscal — verificacao rasa a cada 15 min
+
+[Timer]
+# A cada 15 minutos. Barato (não emite nota, não usa certificado) e pega rápido
+# container caído, TLS vencido, disco cheio e quebra de biblioteca de assinatura.
+OnCalendar=*:0/15
+# Se a VPS estava desligada na hora marcada, roda ao voltar.
+Persistent=true
+# Espalha até 60s pra não bater sempre no mesmo segundo.
+RandomizedDelaySec=60
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { formatMoney, formatDateTime as formatDateTimeLib } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { useCustomers } from '@/hooks/useCustomers';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
   useNfse,
@@ -43,6 +44,18 @@ interface NfseDetailModalProps {
   onOpenChange: (open: boolean) => void;
   /** Dispara automaticamente uma ação ao abrir (deep-link do menu da lista). */
   initialAction?: NfseDetailAction | null;
+  /**
+   * Avisa o dono da lista que o STATUS da nota mudou (cancelamento concluído
+   * ou consulta de status que trouxe novidade), para ele refazer a busca.
+   *
+   * Sem isto o cancelamento fica invisível: a prefeitura registra, o banco
+   * grava `cancelada`, o modal fecha — e a linha na tela continua
+   * "Autorizada" até um F5. O usuário conclui que falhou e tenta de novo.
+   * A lista paginada vem de uma RPC própria (`get_nfse_emissions_paged`), que
+   * NÃO compartilha estado com o `useNfse()` usado aqui dentro; por isso o
+   * religamento tem que ser explícito.
+   */
+  onChanged?: () => void;
 }
 
 /** Extrai uma mensagem legível do payload do evento, se houver. */
@@ -53,9 +66,12 @@ function eventMessage(payload: unknown): string | null {
   return typeof candidate === 'string' && candidate.trim() ? candidate : null;
 }
 
-export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, initialAction }: NfseDetailModalProps) {
+export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, initialAction, onChanged }: NfseDetailModalProps) {
   const { emissions, refreshStatus, isRefreshingStatus, cancel, isCancelling } = useNfse();
   const { locale, currency, timezone } = useAppLocaleContext();
+  // Só para identificar a nota na confirmação de cancelamento: o tipo da
+  // emissão não traz o nome do tomador (o SELECT não faz o join).
+  const { customers } = useCustomers();
   const t = MESSAGES[locale].app.nfse;
 
   // O `emissionProp` é um snapshot do momento em que a lista abriu o modal.
@@ -92,6 +108,7 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
       return;
     }
     toast.success(res.message ?? t.detail.toasts.refreshSuccess);
+    onChanged?.();
   };
 
   // Deep-link de ação vinda do menu da lista: ao abrir, dispara a ação 1x.
@@ -119,8 +136,13 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
 
   const canCancel = emission.status === 'autorizada';
 
+  /** Mínimo exigido pelo layout nacional da NFS-e (15 a 255 caracteres). */
+  const MOTIVO_MIN = 15;
+  const motivoValido = cancelMotivo.trim().length >= MOTIVO_MIN;
+
   const handleConfirmCancel = async () => {
-    const res = await cancel({ emissionId: emission.id, motivo: cancelMotivo.trim() || undefined });
+    if (!motivoValido) return;
+    const res = await cancel({ emissionId: emission.id, motivo: cancelMotivo.trim() });
     setConfirmCancelOpen(false);
     setCancelMotivo('');
     if (!res.ok) {
@@ -128,6 +150,7 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
       return;
     }
     toast.success(res.message ?? t.detail.toasts.cancelSuccess);
+    onChanged?.();
     onOpenChange(false);
   };
 
@@ -337,13 +360,37 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-1">
+            {/* Qual nota está sendo cancelada — some a dúvida de "cancelei a certa?". */}
+            <p className="text-xs font-semibold text-foreground">
+              {t.detail.confirmCancel.noteLine
+                .replace('{numero}', emission.numero_nfse ?? '—')
+                .replace(
+                  '{cliente}',
+                  customers.find((c) => c.id === emission.customer_id)?.name ?? '—',
+                )
+                .replace(
+                  '{valor}',
+                  formatMoney(Number(emission.valor_servico ?? 0), currency, locale),
+                )}
+            </p>
             <Label className="text-xs">{t.detail.confirmCancel.motivoLabel}</Label>
             <Textarea
               value={cancelMotivo}
               onChange={(e) => setCancelMotivo(e.target.value)}
               placeholder={t.detail.confirmCancel.motivoPlaceholder}
-              rows={2}
+              rows={3}
             />
+            <p
+              className={
+                motivoValido
+                  ? 'text-xs text-muted-foreground'
+                  : 'text-xs font-semibold text-destructive'
+              }
+            >
+              {t.detail.confirmCancel.motivoHelp
+                .replace('{min}', String(MOTIVO_MIN))
+                .replace('{max}', '255')}
+            </p>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isCancelling}>
@@ -354,7 +401,11 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
                 e.preventDefault();
                 handleConfirmCancel();
               }}
-              disabled={isCancelling}
+              // O motivo é EXIGÊNCIA do layout nacional (15 a 255 caracteres) e
+              // vai gravado na prefeitura. Sem esta trava, motivo vazio caía num
+              // texto padrão nosso — ou seja, a justificativa registrada não era
+              // a do usuário.
+              disabled={isCancelling || !motivoValido}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isCancelling ? (

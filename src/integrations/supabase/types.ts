@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -792,6 +817,11 @@ export type Database = {
       }
       company_fiscal_settings: {
         Row: {
+          certificado_algoritmo: string | null
+          certificado_dek_envelopada: string | null
+          certificado_nonce: string | null
+          certificado_ref: string | null
+          certificado_senha_cifrada: string | null
           certificate_expires_at: string | null
           codigo_nbs_default: string | null
           codigo_servico_default: string | null
@@ -807,6 +837,7 @@ export type Database = {
           item_lc116: string | null
           municipio_ibge: string | null
           pode_emitir: boolean
+          provedor: string
           reg_ap_trib_sn: string
           regime_tributario: string | null
           serie_dps: string | null
@@ -814,6 +845,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          certificado_algoritmo?: string | null
+          certificado_dek_envelopada?: string | null
+          certificado_nonce?: string | null
+          certificado_ref?: string | null
+          certificado_senha_cifrada?: string | null
           certificate_expires_at?: string | null
           codigo_nbs_default?: string | null
           codigo_servico_default?: string | null
@@ -829,6 +865,7 @@ export type Database = {
           item_lc116?: string | null
           municipio_ibge?: string | null
           pode_emitir?: boolean
+          provedor?: string
           reg_ap_trib_sn?: string
           regime_tributario?: string | null
           serie_dps?: string | null
@@ -836,6 +873,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          certificado_algoritmo?: string | null
+          certificado_dek_envelopada?: string | null
+          certificado_nonce?: string | null
+          certificado_ref?: string | null
+          certificado_senha_cifrada?: string | null
           certificate_expires_at?: string | null
           codigo_nbs_default?: string | null
           codigo_servico_default?: string | null
@@ -851,6 +893,7 @@ export type Database = {
           item_lc116?: string | null
           municipio_ibge?: string | null
           pode_emitir?: boolean
+          provedor?: string
           reg_ap_trib_sn?: string
           regime_tributario?: string | null
           serie_dps?: string | null
@@ -1032,6 +1075,7 @@ export type Database = {
           logo_url: string | null
           name: string
           neighborhood: string | null
+          os_stock_consumption_enabled: boolean
           phone: string | null
           proposal_customization: Json | null
           report_header_bg_color: string | null
@@ -1076,6 +1120,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
           report_header_bg_color?: string | null
@@ -1120,6 +1165,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
           report_header_bg_color?: string | null
@@ -4011,6 +4057,41 @@ export type Database = {
           },
         ]
       }
+      fiscal_certificate_audit: {
+        Row: {
+          company_id: string
+          contexto: string | null
+          created_at: string
+          id: string
+          operacao: string
+          origem: string | null
+        }
+        Insert: {
+          company_id: string
+          contexto?: string | null
+          created_at?: string
+          id?: string
+          operacao: string
+          origem?: string | null
+        }
+        Update: {
+          company_id?: string
+          contexto?: string | null
+          created_at?: string
+          id?: string
+          operacao?: string
+          origem?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_certificate_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_questions: {
         Row: {
           allow_multiple_photos: boolean
@@ -5081,12 +5162,82 @@ export type Database = {
           },
         ]
       }
+      nfse_codigos_nbs: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          descricao_busca: string | null
+          fonte: string
+          updated_at: string
+          verificado: boolean
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          descricao_busca?: string | null
+          fonte?: string
+          updated_at?: string
+          verificado?: boolean
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          descricao_busca?: string | null
+          fonte?: string
+          updated_at?: string
+          verificado?: boolean
+        }
+        Relationships: []
+      }
+      nfse_codigos_tributacao: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          descricao_busca: string | null
+          fonte: string
+          item_lc116: string | null
+          updated_at: string
+          verificado: boolean
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          descricao_busca?: string | null
+          fonte?: string
+          item_lc116?: string | null
+          updated_at?: string
+          verificado?: boolean
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          descricao_busca?: string | null
+          fonte?: string
+          item_lc116?: string | null
+          updated_at?: string
+          verificado?: boolean
+        }
+        Relationships: []
+      }
       nfse_emissions: {
         Row: {
           aliquota_issqn: number | null
           chave_acesso: string | null
           codigo_nbs: string | null
           codigo_servico: string | null
+          codigo_tributacao_municipal: string | null
           company_id: string
           created_at: string | null
           customer_id: string | null
@@ -5106,6 +5257,7 @@ export type Database = {
           percentual_trib_sn: number | null
           protocolo: string | null
           regime_apuracao: string | null
+          service_type_id: string | null
           status: string
           tp_ret_issqn: string | null
           trib_issqn: string | null
@@ -5115,6 +5267,8 @@ export type Database = {
           valor_iss: number | null
           valor_pis: number | null
           valor_servico: number | null
+          xml_autorizado: string | null
+          xml_cancelamento: string | null
           xml_url: string | null
         }
         Insert: {
@@ -5122,6 +5276,7 @@ export type Database = {
           chave_acesso?: string | null
           codigo_nbs?: string | null
           codigo_servico?: string | null
+          codigo_tributacao_municipal?: string | null
           company_id: string
           created_at?: string | null
           customer_id?: string | null
@@ -5141,6 +5296,7 @@ export type Database = {
           percentual_trib_sn?: number | null
           protocolo?: string | null
           regime_apuracao?: string | null
+          service_type_id?: string | null
           status?: string
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
@@ -5150,6 +5306,8 @@ export type Database = {
           valor_iss?: number | null
           valor_pis?: number | null
           valor_servico?: number | null
+          xml_autorizado?: string | null
+          xml_cancelamento?: string | null
           xml_url?: string | null
         }
         Update: {
@@ -5157,6 +5315,7 @@ export type Database = {
           chave_acesso?: string | null
           codigo_nbs?: string | null
           codigo_servico?: string | null
+          codigo_tributacao_municipal?: string | null
           company_id?: string
           created_at?: string | null
           customer_id?: string | null
@@ -5176,6 +5335,7 @@ export type Database = {
           percentual_trib_sn?: number | null
           protocolo?: string | null
           regime_apuracao?: string | null
+          service_type_id?: string | null
           status?: string
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
@@ -5185,6 +5345,8 @@ export type Database = {
           valor_iss?: number | null
           valor_pis?: number | null
           valor_servico?: number | null
+          xml_autorizado?: string | null
+          xml_cancelamento?: string | null
           xml_url?: string | null
         }
         Relationships: [
@@ -5214,6 +5376,13 @@ export type Database = {
             columns: ["intermediario_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_emissions_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
         ]
@@ -7162,6 +7331,80 @@ export type Database = {
           },
         ]
       }
+      service_order_materials: {
+        Row: {
+          committed_quantity: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_id: string
+          notes: string | null
+          quantity: number
+          service_order_id: string
+          stock_id: string
+          unit_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          committed_quantity?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_id: string
+          notes?: string | null
+          quantity: number
+          service_order_id: string
+          stock_id: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          committed_quantity?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_id?: string
+          notes?: string | null
+          quantity?: number
+          service_order_id?: string
+          stock_id?: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_materials_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_materials_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "service_order_materials_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_materials_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_orders: {
         Row: {
           check_in_location: Json | null
@@ -7570,6 +7813,7 @@ export type Database = {
           category_id: string | null
           codigo_nbs: string | null
           codigo_servico: string | null
+          codigo_tributacao_municipal: string | null
           color: string
           company_id: string
           created_at: string
@@ -7588,6 +7832,7 @@ export type Database = {
           category_id?: string | null
           codigo_nbs?: string | null
           codigo_servico?: string | null
+          codigo_tributacao_municipal?: string | null
           color?: string
           company_id: string
           created_at?: string
@@ -7606,6 +7851,7 @@ export type Database = {
           category_id?: string | null
           codigo_nbs?: string | null
           codigo_servico?: string | null
+          codigo_tributacao_municipal?: string | null
           color?: string
           company_id?: string
           created_at?: string
@@ -9409,6 +9655,10 @@ export type Database = {
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
       check_email_available: { Args: { _email: string }; Returns: boolean }
+      commit_os_material_consumption: {
+        Args: { p_lines: Json; p_service_order_id: string }
+        Returns: Json
+      }
       company_has_module: {
         Args: { p_company_id: string; p_module_code: string }
         Returns: boolean
@@ -9463,6 +9713,7 @@ export type Database = {
         Args: { p_count_id: string; p_notes?: string }
         Returns: Json
       }
+      fiscal_texto_busca: { Args: { p_texto: string }; Returns: string }
       fisqal_next_dps_number: {
         Args: { p_company_id: string }
         Returns: number
@@ -9783,6 +10034,10 @@ export type Database = {
         Args: { p_company_id: string; p_date: string; p_employee_id: string }
         Returns: undefined
       }
+      record_certificate_custody_consent: {
+        Args: { p_version?: string }
+        Returns: undefined
+      }
       record_quote_view: {
         Args: { _fingerprint?: string; _token: string; _user_agent?: string }
         Returns: number
@@ -10075,12 +10330,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10104,11 +10359,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10129,11 +10384,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10154,11 +10409,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10171,11 +10426,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10185,6 +10440,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

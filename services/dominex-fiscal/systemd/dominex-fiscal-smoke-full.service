@@ -1,0 +1,19 @@
+# Teste de fumaça COMPLETO: emite 1 NFS-e em HOMOLOGAÇÃO.
+# É este que pega mudança de layout DO LADO DO GOVERNO (armadilha 6 do plano:
+# a nfelib gerava nPedRegEvento que o SefinNacional_1.6.0 já tinha removido).
+[Unit]
+Description=dominex-fiscal — emissao de fumaca diaria em HOMOLOGACAO
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/deploy/dominex-fiscal/smoke-test.sh --full
+TimeoutStartSec=300
+
+NoNewPrivileges=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dominex-fiscal /var/log/dominex-fiscal
+PrivateTmp=false

@@ -1,0 +1,49 @@
+# =============================================================================
+# Dependências do motor fiscal (dominex-fiscal)
+# =============================================================================
+# ⚠️ ESTE ARQUIVO NÃO É O QUE VAI PRA PRODUÇÃO.
+#
+# Ele lista as dependências SEM pin, só pra resolver a primeira vez. Antes de
+# promover pra produção, gere o LOCK e passe a buildar com ele:
+#
+#   docker compose build
+#   docker compose run --rm --no-deps --entrypoint "" dominex-fiscal \
+#       /opt/venv/bin/pip freeze > requirements.lock.txt
+#   # commite o requirements.lock.txt e builde com:
+#   docker compose build --build-arg REQ_FILE=requirements.lock.txt
+#
+# Por quê: o plano registra (risco R2, armadilha 6) que a nfelib estava UMA VERSÃO
+# DE ESQUEMA ATRÁS do servidor do governo já no primeiro dia. Subir versão de
+# biblioteca fiscal é EVENTO PLANEJADO, com smoke test em homologação antes — nunca
+# um efeito colateral de um rebuild às 3h da manhã.
+# =============================================================================
+
+# --- API HTTP ---
+fastapi
+uvicorn[standard]
+
+# --- Motor fiscal (o que o spike provou em produção) ---
+nfelib          # MIT — monta a DPS e o pedido de evento (bindings xsdata)
+signxml         # assina XMLDSig (armadilha 4: sem prefixo de namespace)
+xsdata          # serialização dos bindings da nfelib
+lxml            # árvore XML / canonicalização
+
+# --- Transporte e cripto ---
+requests        # mTLS: cert=(pem, key)  → exige CAMINHO de arquivo (daí o tmpfs)
+cryptography    # PKCS#12 (.pfx) em memória + AES-256-GCM da custódia (KEK/DEK)
+
+# --- DANFSe local (fallback quando o ADN do governo está 503) ---
+# ⚠️ ISOLADAS atrás de app/danfse/local.py — é o ÚNICO arquivo que importa.
+# Licença AMBÍGUA (metadado diz LGPL-3.0, classificador diz AGPL-3.0), em revisão
+# jurídica. Se o veto vier: some com estas 3 linhas + o local.py e nada mais quebra.
+BrazilFiscalReport   # DANFSe v2.0 oficial a partir do XML da NFS-e
+qrcode               # QR Code do DANFSe
+pillow               # backend de imagem do qrcode
+
+# -----------------------------------------------------------------------------
+# Versões que passaram no autoteste de assinatura em 2026-09-03 (referência para
+# quando algo quebrar — dá pra comparar com o que o /readyz?deep=1 reporta):
+#   nfelib 2.5.2 · signxml 5.1.0 · xsdata 25.7 · lxml 6.1.3
+#   cryptography 50.0.1 · requests 2.32.5 · fastapi 0.115.6
+# NÃO são um pin: o pin de verdade é o requirements.lock.txt gerado na VPS.
+# -----------------------------------------------------------------------------

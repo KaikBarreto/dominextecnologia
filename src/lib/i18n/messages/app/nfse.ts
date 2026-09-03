@@ -57,6 +57,9 @@ export const nfse = {
     list: {
       notePrefix: 'Nota nº',
       empty: 'Nenhuma nota encontrada com esses filtros.',
+      loading: 'Carregando notas fiscais...',
+      pdfLoading: 'Gerando o PDF da nota...',
+      pdfError: 'Não foi possível gerar o PDF agora. A nota continua válida, tente de novo em instantes.',
       customerFallback: 'Cliente',
     },
     // ── Colunas da tabela de listagem ────────────────────────────────────────
@@ -169,11 +172,14 @@ export const nfse = {
       viewerTitlePdf: 'PDF da nota',
       viewerTitleXml: 'XML da nota',
       back: 'Voltar',
+      viewerDownload: 'Baixar arquivo',
       viewPdf: 'Ver PDF',
       viewXml: 'Ver XML',
+      documentsTitle: 'Documentos da nota',
       cancelNote: 'Cancelar nota',
       refreshStatus: 'Atualizar status',
       fields: {
+        customer: 'Tomador',
         serviceValue: 'Valor do serviço',
         iss: 'ISS',
         issuedAt: 'Emitida em',
@@ -191,9 +197,14 @@ export const nfse = {
       confirmCancel: {
         title: 'Cancelar esta nota fiscal?',
         description:
-          'O cancelamento é registrado junto à prefeitura e não pode ser desfeito.',
-        motivoLabel: 'Motivo (opcional)',
-        motivoPlaceholder: 'Ex: Serviço não realizado / valor incorreto...',
+          'Esta nota já foi enviada e registrada na prefeitura. O cancelamento também é registrado lá e não tem volta: para cobrar de novo, será preciso emitir uma nota nova.',
+        noteLine: 'Nota nº {numero}, {cliente}, {valor}.',
+        motivoLabel: 'Motivo do cancelamento',
+        motivoHelp:
+          'Obrigatório por exigência legal. Escreva entre {min} e {max} caracteres, esse texto vai junto do pedido à prefeitura.',
+        motivoPlaceholder: 'Ex: Serviço não realizado, cobrança em duplicidade, valor incorreto.',
+        motivoCounter: '{count}/{max} caracteres',
+        motivoTooShort: 'Faltam {missing} caracteres para o mínimo exigido.',
         confirmBtn: 'Cancelar nota',
         backBtn: 'Voltar',
       },
@@ -202,6 +213,11 @@ export const nfse = {
         refreshSuccess: 'Status atualizado.',
         cancelError: 'Não foi possível cancelar a nota.',
         cancelSuccess: 'Cancelamento solicitado.',
+        pdfLoading: 'Preparando o PDF da nota…',
+        pdfError: 'Não foi possível obter o PDF desta nota.',
+        xmlLoading: 'Preparando o XML da nota…',
+        xmlError: 'Não foi possível obter o XML desta nota.',
+        xmlUnavailable: 'O arquivo XML desta nota ainda não está disponível.',
       },
     },
     // ── Modal: Bloqueio de cota ──────────────────────────────────────────────
@@ -234,6 +250,11 @@ export const nfse = {
         empresa: 'Empresa',
         certificado: 'Certificado A1',
         impostos: 'Tributação',
+        servicos: 'Serviços',
+      },
+      servicos: {
+        hint:
+          'Cadastre aqui os serviços que você fatura, com os códigos fiscais de cada um. É a mesma lista usada nas ordens de serviço e na agenda: preenchendo os códigos uma vez, toda nota nova já sai preenchida.',
       },
       steps: {
         hintEmpresa:
@@ -298,12 +319,53 @@ export const nfse = {
         showPassword: 'Mostrar senha',
         hidePassword: 'Ocultar senha',
         uploadBtn: 'Enviar certificado',
+        consent: {
+          title: 'Autorização para guardar o certificado',
+          checkbox:
+            'Autorizo o Dominex a guardar meu certificado digital de forma criptografada e a usá-lo somente para assinar as notas fiscais que a minha empresa mandar emitir.',
+          hint:
+            'Todo uso do certificado fica registrado e pode ser consultado aqui mesmo, nesta tela. Você pode remover o certificado quando quiser.',
+          termsLink: 'Ler a Seção 12 dos Termos de Uso',
+        },
+        audit: {
+          title: 'Registro de uso do certificado',
+          subtitle:
+            'Cada envio, uso ou remoção do certificado fica registrado aqui, do mais recente para o mais antigo.',
+          empty: 'Nenhum uso registrado ainda.',
+          emptyHint:
+            'Assim que o certificado for enviado ou usado em uma nota, o registro aparece aqui.',
+          loadErrorTitle: 'Registro indisponível',
+          loadError:
+            'Não foi possível carregar o registro de uso agora. Tente novamente em instantes.',
+          retryBtn: 'Tentar novamente',
+          loadMoreBtn: 'Ver mais',
+          operations: {
+            upload: 'Certificado enviado',
+            emitir: 'Certificado usado para emitir',
+            consultar: 'Certificado usado para consultar a nota',
+            cancelar: 'Certificado usado para cancelar a nota',
+            danfse: 'Certificado usado para gerar o PDF da nota',
+            revogacao: 'Certificado removido',
+            outra: 'Certificado utilizado',
+          },
+          contexts: {
+            upload: 'Envio do certificado',
+            emitir: 'Emissão de nota',
+            consultar: 'Consulta de nota',
+            cancelar: 'Cancelamento de nota',
+            danfse: 'PDF da nota',
+            nota: 'Nota {chave}',
+          },
+        },
         toasts: {
           noFile: 'Selecione o arquivo do certificado.',
           noPassword: 'Informe a senha do certificado.',
           invalidFile: 'O certificado deve ser um arquivo .pfx ou .p12.',
           uploadSuccess: 'Certificado enviado com sucesso.',
           uploadError: 'Falha ao enviar o certificado.',
+          consentRequired: 'Marque a autorização de guarda do certificado para continuar.',
+          consentError:
+            'Não foi possível registrar sua autorização. O certificado não foi enviado, tente novamente.',
           saveError: 'Não foi possível salvar os dados da empresa.',
           saveSuccess: 'Dados da empresa salvos.',
           registerWarning:
@@ -419,6 +481,36 @@ export const nfse = {
       },
       // ---- Etapa 2 — Serviço ----
       servico: {
+        // Seletor de serviço salvo (atalho que preenche os códigos fiscais).
+        servicoPicker: {
+          label: 'Serviço',
+          placeholder: 'Escolha um serviço cadastrado',
+          loading: 'Carregando serviços...',
+          searchPlaceholder: 'Buscar serviço por nome ou código...',
+          emptyMessage: 'Nenhum serviço encontrado.',
+          emptyCatalog: 'Você ainda não tem serviços cadastrados. Cadastre o primeiro e os códigos fiscais dele ficam salvos pras próximas notas.',
+          hint: 'Escolha um serviço e preenchemos os códigos fiscais, a descrição e a alíquota de ISS pra você. Prefere digitar? É só preencher os campos abaixo.',
+          appliedHint: 'Preenchemos os campos com os dados deste serviço. Pode ajustar o que precisar antes de emitir.',
+          createLabel: 'Cadastrar "{name}"',
+          createAlways: 'Cadastrar novo serviço',
+          groupReady: 'Prontos para emitir',
+          groupIncomplete: 'Sem códigos fiscais',
+          codePrefix: 'Cód.',
+          gapFill: {
+            title: 'Salvar estes dados em "{name}"?',
+            description: 'Este serviço ainda não tem estes dados no cadastro. Salvando, a próxima nota já vem preenchida.',
+            fields: {
+              codigoServico: 'Código de tributação',
+              codigoTributacaoMunicipal: 'Código municipal',
+              codigoNbs: 'Código NBS',
+              issAliquota: 'Alíquota de ISS',
+            },
+            save: 'Salvar no cadastro',
+            dismiss: 'Agora não',
+            success: 'Cadastro de "{name}" atualizado.',
+            error: 'Não foi possível atualizar o cadastro do serviço. Tente novamente.',
+          },
+        },
         municipio: {
           label: 'Município de incidência (IBGE)',
           placeholder: 'Ex.: 3550308 (São Paulo)',
@@ -426,6 +518,8 @@ export const nfse = {
         },
         codigos: {
           sectionTitle: 'Classificação fiscal',
+          sectionHint:
+            'Preenchidos pelo serviço escolhido acima. Ajuste aqui se precisar, ou busque um código manualmente.',
           codigoServico: {
             label: 'Código de tributação (cTribNac)',
             optional: '(opcional)',
@@ -438,6 +532,13 @@ export const nfse = {
             placeholder: 'Buscar por código ou descrição...',
             hint: 'Nomenclatura Brasileira de Serviços. Digite ao menos 2 caracteres para buscar.',
             required: 'Escolha o código NBS do serviço. A nota não pode ser emitida sem ele.',
+          },
+          codigoTributacaoMunicipal: {
+            label: 'Código de tributação municipal (cTribMun)',
+            optional: '(opcional)',
+            placeholder: 'Ex.: 001',
+            hint: 'Complemento de 3 dígitos definido pela prefeitura, que se junta ao código nacional (ex.: 14.01.01 + 001). Em branco, usamos o código cadastrado no tipo de serviço. Sem ele a prefeitura pode recusar a nota.',
+            invalid: 'O código de tributação municipal deve ter 3 dígitos.',
           },
         },
         tribIssqn: {
@@ -534,6 +635,7 @@ export const nfse = {
           municipioIncidencia: 'Município de incidência',
           codigoServico: 'Cód. tributação',
           codigoNbs: 'Código NBS',
+          codigoTributacaoMunicipal: 'Cód. tributação municipal',
           discriminacao: 'Discriminação',
           valorServico: 'Valor do serviço',
           aliquotaIss: 'Alíquota ISS',
@@ -596,6 +698,9 @@ export const nfse = {
     list: {
       notePrefix: 'Invoice #',
       empty: 'No invoices found for these filters.',
+      loading: 'Loading invoices...',
+      pdfLoading: 'Generating the invoice PDF...',
+      pdfError: 'Could not generate the PDF right now. The invoice is still valid, please try again shortly.',
       customerFallback: 'Customer',
     },
     columns: {
@@ -701,11 +806,14 @@ export const nfse = {
       viewerTitlePdf: 'Invoice PDF',
       viewerTitleXml: 'Invoice XML',
       back: 'Back',
+      viewerDownload: 'Download file',
       viewPdf: 'View PDF',
       viewXml: 'View XML',
+      documentsTitle: 'Invoice documents',
       cancelNote: 'Cancel invoice',
       refreshStatus: 'Refresh status',
       fields: {
+        customer: 'Customer',
         serviceValue: 'Service amount',
         iss: 'SST',
         issuedAt: 'Issued at',
@@ -723,9 +831,14 @@ export const nfse = {
       confirmCancel: {
         title: 'Cancel this service invoice?',
         description:
-          'Cancellation is registered with the tax authority and cannot be undone.',
-        motivoLabel: 'Reason (optional)',
-        motivoPlaceholder: 'E.g.: Service not rendered / incorrect amount...',
+          'This invoice was already filed with the tax authority. The cancellation is filed there too and cannot be undone: to bill again you will have to issue a new invoice.',
+        noteLine: 'Invoice #{numero}, {cliente}, {valor}.',
+        motivoLabel: 'Cancellation reason',
+        motivoHelp:
+          'Required by law. Write between {min} and {max} characters, this text is sent to the tax authority with the request.',
+        motivoPlaceholder: 'E.g.: Service not rendered, duplicate billing, incorrect amount.',
+        motivoCounter: '{count}/{max} characters',
+        motivoTooShort: '{missing} more characters needed to reach the minimum.',
         confirmBtn: 'Cancel invoice',
         backBtn: 'Go back',
       },
@@ -734,6 +847,11 @@ export const nfse = {
         refreshSuccess: 'Status updated.',
         cancelError: 'Could not cancel the invoice.',
         cancelSuccess: 'Cancellation requested.',
+        pdfLoading: 'Preparing the invoice PDF…',
+        pdfError: 'Could not get the PDF for this invoice.',
+        xmlLoading: 'Preparing the invoice XML…',
+        xmlError: 'Could not get the XML for this invoice.',
+        xmlUnavailable: 'The XML file for this invoice is not available yet.',
       },
     },
     quotaBlock: {
@@ -764,6 +882,11 @@ export const nfse = {
         empresa: 'Company',
         certificado: 'Digital Certificate',
         impostos: 'Taxation',
+        servicos: 'Services',
+      },
+      servicos: {
+        hint:
+          'Set up the services you bill, each with its tax codes. This is the same list used in work orders and the schedule: fill the codes once and every new invoice comes prefilled.',
       },
       steps: {
         hintEmpresa:
@@ -828,12 +951,53 @@ export const nfse = {
         showPassword: 'Show password',
         hidePassword: 'Hide password',
         uploadBtn: 'Upload certificate',
+        consent: {
+          title: 'Authorization to store your certificate',
+          checkbox:
+            'I authorize Dominex to store my digital certificate encrypted and to use it only to sign the service invoices my company asks to issue.',
+          hint:
+            'Every use of the certificate is logged and can be reviewed right here on this screen. You can remove the certificate whenever you want.',
+          termsLink: 'Read Section 12 of the Terms of Use',
+        },
+        audit: {
+          title: 'Certificate usage log',
+          subtitle:
+            'Every upload, use or removal of the certificate is logged here, newest first.',
+          empty: 'No usage logged yet.',
+          emptyHint:
+            'As soon as the certificate is uploaded or used on an invoice, it shows up here.',
+          loadErrorTitle: 'Log unavailable',
+          loadError:
+            'We could not load the usage log right now. Please try again in a moment.',
+          retryBtn: 'Try again',
+          loadMoreBtn: 'Show more',
+          operations: {
+            upload: 'Certificate uploaded',
+            emitir: 'Certificate used to issue an invoice',
+            consultar: 'Certificate used to check an invoice',
+            cancelar: 'Certificate used to cancel an invoice',
+            danfse: 'Certificate used to generate the invoice PDF',
+            revogacao: 'Certificate removed',
+            outra: 'Certificate used',
+          },
+          contexts: {
+            upload: 'Certificate upload',
+            emitir: 'Invoice issuance',
+            consultar: 'Invoice lookup',
+            cancelar: 'Invoice cancellation',
+            danfse: 'Invoice PDF',
+            nota: 'Invoice {chave}',
+          },
+        },
         toasts: {
           noFile: 'Please select the certificate file.',
           noPassword: 'Please enter the certificate password.',
           invalidFile: 'The certificate must be a .pfx or .p12 file.',
           uploadSuccess: 'Certificate uploaded successfully.',
           uploadError: 'Failed to upload the certificate.',
+          consentRequired: 'Tick the storage authorization to continue.',
+          consentError:
+            'We could not record your authorization. The certificate was not uploaded, please try again.',
           saveError: 'Could not save company details.',
           saveSuccess: 'Company details saved.',
           registerWarning:
@@ -947,6 +1111,36 @@ export const nfse = {
         },
       },
       servico: {
+        // Seletor de serviço salvo (atalho que preenche os códigos fiscais).
+        servicoPicker: {
+          label: 'Service',
+          placeholder: 'Pick a saved service',
+          loading: 'Loading services...',
+          searchPlaceholder: 'Search service by name or code...',
+          emptyMessage: 'No service found.',
+          emptyCatalog: 'You have no services saved yet. Add the first one and its tax codes stay ready for the next invoices.',
+          hint: 'Pick a service and we fill in the tax codes, the description and the SST rate for you. Prefer typing? Just fill in the fields below.',
+          appliedHint: 'We filled the fields with this service data. Adjust anything you need before issuing.',
+          createLabel: 'Add "{name}"',
+          createAlways: 'Add new service',
+          groupReady: 'Ready to issue',
+          groupIncomplete: 'Without tax codes',
+          codePrefix: 'Code',
+          gapFill: {
+            title: 'Save this data to "{name}"?',
+            description: 'This service does not have this data saved yet. Save it and the next invoice already comes filled in.',
+            fields: {
+              codigoServico: 'Tax code',
+              codigoTributacaoMunicipal: 'Municipal code',
+              codigoNbs: 'NBS code',
+              issAliquota: 'SST rate',
+            },
+            save: 'Save to service',
+            dismiss: 'Not now',
+            success: '"{name}" updated.',
+            error: 'We could not update the service. Please try again.',
+          },
+        },
         municipio: {
           label: 'Incidence municipality (IBGE code)',
           placeholder: 'E.g.: 3550308 (São Paulo)',
@@ -954,6 +1148,8 @@ export const nfse = {
         },
         codigos: {
           sectionTitle: 'Tax classification',
+          sectionHint:
+            'Filled in from the service picked above. Adjust here if needed, or search a code manually.',
           codigoServico: {
             label: 'Service tax code (cTribNac)',
             optional: '(optional)',
@@ -966,6 +1162,13 @@ export const nfse = {
             placeholder: 'Search by code or description...',
             hint: 'Brazilian Services Nomenclature. Type at least 2 characters to search.',
             required: 'Pick the NBS code. The invoice cannot be issued without it.',
+          },
+          codigoTributacaoMunicipal: {
+            label: 'Municipal tax code (cTribMun)',
+            optional: '(optional)',
+            placeholder: 'E.g.: 001',
+            hint: '3-digit complement defined by the city hall, appended to the national code (e.g.: 14.01.01 + 001). If left blank, we use the code saved on the service type. Without it the city hall may reject the invoice.',
+            invalid: 'The municipal tax code must have 3 digits.',
           },
         },
         tribIssqn: {
@@ -1060,6 +1263,7 @@ export const nfse = {
           municipioIncidencia: 'Incidence municipality',
           codigoServico: 'Tax code',
           codigoNbs: 'NBS code',
+          codigoTributacaoMunicipal: 'Municipal tax code',
           discriminacao: 'Description',
           valorServico: 'Service amount',
           aliquotaIss: 'SST rate',
@@ -1122,6 +1326,9 @@ export const nfse = {
     list: {
       notePrefix: 'Factura nº',
       empty: 'No se encontraron facturas con estos filtros.',
+      loading: 'Cargando facturas...',
+      pdfLoading: 'Generando el PDF de la factura...',
+      pdfError: 'No se pudo generar el PDF ahora. La factura sigue válida, inténtalo de nuevo en instantes.',
       customerFallback: 'Cliente',
     },
     columns: {
@@ -1228,11 +1435,14 @@ export const nfse = {
       viewerTitlePdf: 'PDF de la factura',
       viewerTitleXml: 'XML de la factura',
       back: 'Volver',
+      viewerDownload: 'Descargar archivo',
       viewPdf: 'Ver PDF',
       viewXml: 'Ver XML',
+      documentsTitle: 'Documentos de la factura',
       cancelNote: 'Cancelar factura',
       refreshStatus: 'Actualizar estado',
       fields: {
+        customer: 'Cliente',
         serviceValue: 'Valor del servicio',
         iss: 'ISS',
         issuedAt: 'Emitida el',
@@ -1250,9 +1460,14 @@ export const nfse = {
       confirmCancel: {
         title: '¿Cancelar esta factura de servicio?',
         description:
-          'La cancelación se registra ante la autoridad fiscal y no se puede deshacer.',
-        motivoLabel: 'Motivo (opcional)',
-        motivoPlaceholder: 'Ej.: Servicio no realizado / importe incorrecto...',
+          'Esta factura ya fue enviada y registrada ante la autoridad fiscal. La cancelación también queda registrada allí y no se puede deshacer: para volver a cobrar habrá que emitir una factura nueva.',
+        noteLine: 'Factura nº {numero}, {cliente}, {valor}.',
+        motivoLabel: 'Motivo de la cancelación',
+        motivoHelp:
+          'Obligatorio por exigencia legal. Escribe entre {min} y {max} caracteres, ese texto se envía junto con la solicitud a la autoridad fiscal.',
+        motivoPlaceholder: 'Ej.: Servicio no realizado, cobro duplicado, importe incorrecto.',
+        motivoCounter: '{count}/{max} caracteres',
+        motivoTooShort: 'Faltan {missing} caracteres para el mínimo exigido.',
         confirmBtn: 'Cancelar factura',
         backBtn: 'Volver',
       },
@@ -1261,6 +1476,11 @@ export const nfse = {
         refreshSuccess: 'Estado actualizado.',
         cancelError: 'No se pudo cancelar la factura.',
         cancelSuccess: 'Cancelación solicitada.',
+        pdfLoading: 'Preparando el PDF de la factura…',
+        pdfError: 'No se pudo obtener el PDF de esta factura.',
+        xmlLoading: 'Preparando el XML de la factura…',
+        xmlError: 'No se pudo obtener el XML de esta factura.',
+        xmlUnavailable: 'El archivo XML de esta factura aún no está disponible.',
       },
     },
     quotaBlock: {
@@ -1291,6 +1511,11 @@ export const nfse = {
         empresa: 'Empresa',
         certificado: 'Certificado Digital',
         impostos: 'Tributación',
+        servicos: 'Servicios',
+      },
+      servicos: {
+        hint:
+          'Registra aquí los servicios que facturas, con los códigos fiscales de cada uno. Es la misma lista usada en las órdenes de servicio y en la agenda: al completar los códigos una vez, cada factura nueva ya sale precargada.',
       },
       steps: {
         hintEmpresa:
@@ -1356,12 +1581,53 @@ export const nfse = {
         showPassword: 'Mostrar contraseña',
         hidePassword: 'Ocultar contraseña',
         uploadBtn: 'Enviar certificado',
+        consent: {
+          title: 'Autorización para guardar el certificado',
+          checkbox:
+            'Autorizo a Dominex a guardar mi certificado digital de forma cifrada y a usarlo solo para firmar las facturas de servicio que mi empresa mande emitir.',
+          hint:
+            'Cada uso del certificado queda registrado y puedes consultarlo aquí mismo, en esta pantalla. Puedes eliminar el certificado cuando quieras.',
+          termsLink: 'Leer la Sección 12 de los Términos de Uso',
+        },
+        audit: {
+          title: 'Registro de uso del certificado',
+          subtitle:
+            'Cada envío, uso o eliminación del certificado queda registrado aquí, del más reciente al más antiguo.',
+          empty: 'Aún no hay usos registrados.',
+          emptyHint:
+            'En cuanto el certificado se envíe o se use en una factura, aparecerá aquí.',
+          loadErrorTitle: 'Registro no disponible',
+          loadError:
+            'No fue posible cargar el registro de uso ahora. Inténtalo de nuevo en unos instantes.',
+          retryBtn: 'Intentar de nuevo',
+          loadMoreBtn: 'Ver más',
+          operations: {
+            upload: 'Certificado enviado',
+            emitir: 'Certificado usado para emitir',
+            consultar: 'Certificado usado para consultar la factura',
+            cancelar: 'Certificado usado para cancelar la factura',
+            danfse: 'Certificado usado para generar el PDF de la factura',
+            revogacao: 'Certificado eliminado',
+            outra: 'Certificado utilizado',
+          },
+          contexts: {
+            upload: 'Envío del certificado',
+            emitir: 'Emisión de factura',
+            consultar: 'Consulta de factura',
+            cancelar: 'Cancelación de factura',
+            danfse: 'PDF de la factura',
+            nota: 'Factura {chave}',
+          },
+        },
         toasts: {
           noFile: 'Selecciona el archivo del certificado.',
           noPassword: 'Ingresa la contraseña del certificado.',
           invalidFile: 'El certificado debe ser un archivo .pfx o .p12.',
           uploadSuccess: 'Certificado enviado con éxito.',
           uploadError: 'Error al enviar el certificado.',
+          consentRequired: 'Marca la autorización de guarda del certificado para continuar.',
+          consentError:
+            'No fue posible registrar tu autorización. El certificado no se envió, inténtalo de nuevo.',
           saveError: 'No se pudieron guardar los datos de la empresa.',
           saveSuccess: 'Datos de la empresa guardados.',
           registerWarning:
@@ -1475,6 +1741,36 @@ export const nfse = {
         },
       },
       servico: {
+        // Seletor de serviço salvo (atalho que preenche os códigos fiscais).
+        servicoPicker: {
+          label: 'Servicio',
+          placeholder: 'Elige un servicio guardado',
+          loading: 'Cargando servicios...',
+          searchPlaceholder: 'Buscar servicio por nombre o código...',
+          emptyMessage: 'No se encontró ningún servicio.',
+          emptyCatalog: 'Aún no tienes servicios guardados. Registra el primero y sus códigos fiscales quedan listos para las próximas facturas.',
+          hint: 'Elige un servicio y completamos los códigos fiscales, la descripción y la alícuota de ISS por ti. ¿Prefieres escribir? Solo completa los campos de abajo.',
+          appliedHint: 'Completamos los campos con los datos de este servicio. Puedes ajustar lo que necesites antes de emitir.',
+          createLabel: 'Registrar "{name}"',
+          createAlways: 'Registrar nuevo servicio',
+          groupReady: 'Listos para emitir',
+          groupIncomplete: 'Sin códigos fiscales',
+          codePrefix: 'Cód.',
+          gapFill: {
+            title: '¿Guardar estos datos en "{name}"?',
+            description: 'Este servicio todavía no tiene estos datos guardados. Al guardarlos, la próxima factura ya viene completa.',
+            fields: {
+              codigoServico: 'Código de tributación',
+              codigoTributacaoMunicipal: 'Código municipal',
+              codigoNbs: 'Código NBS',
+              issAliquota: 'Alícuota de ISS',
+            },
+            save: 'Guardar en el servicio',
+            dismiss: 'Ahora no',
+            success: 'Servicio "{name}" actualizado.',
+            error: 'No pudimos actualizar el servicio. Inténtalo de nuevo.',
+          },
+        },
         municipio: {
           label: 'Municipio de incidencia (código IBGE)',
           placeholder: 'Ej.: 3550308 (São Paulo)',
@@ -1482,6 +1778,8 @@ export const nfse = {
         },
         codigos: {
           sectionTitle: 'Clasificación fiscal',
+          sectionHint:
+            'Completados por el servicio elegido arriba. Ajústalos aquí si lo necesitas, o busca un código manualmente.',
           codigoServico: {
             label: 'Código de tributación (cTribNac)',
             optional: '(opcional)',
@@ -1494,6 +1792,13 @@ export const nfse = {
             placeholder: 'Buscar por código o descripción...',
             hint: 'Nomenclatura Brasileña de Servicios. Escribe al menos 2 caracteres para buscar.',
             required: 'Elige el código NBS del servicio. La factura no puede emitirse sin él.',
+          },
+          codigoTributacaoMunicipal: {
+            label: 'Código de tributación municipal (cTribMun)',
+            optional: '(opcional)',
+            placeholder: 'Ej.: 001',
+            hint: 'Complemento de 3 dígitos definido por el municipio, que se suma al código nacional (ej.: 14.01.01 + 001). En blanco, usamos el código guardado en el tipo de servicio. Sin él el municipio puede rechazar la factura.',
+            invalid: 'El código de tributación municipal debe tener 3 dígitos.',
           },
         },
         tribIssqn: {
@@ -1588,6 +1893,7 @@ export const nfse = {
           municipioIncidencia: 'Municipio de incidencia',
           codigoServico: 'Código tributación',
           codigoNbs: 'Código NBS',
+          codigoTributacaoMunicipal: 'Cód. tributación municipal',
           discriminacao: 'Descripción',
           valorServico: 'Valor del servicio',
           aliquotaIss: 'Tasa ISS',
@@ -1650,6 +1956,9 @@ export const nfse = {
     list: {
       notePrefix: 'Facture n°',
       empty: 'Aucune facture trouvée avec ces filtres.',
+      loading: 'Chargement des factures...',
+      pdfLoading: 'Génération du PDF de la facture...',
+      pdfError: "Impossible de générer le PDF pour le moment. La facture reste valide, réessayez dans un instant.",
       customerFallback: 'Client',
     },
     columns: {
@@ -1756,11 +2065,14 @@ export const nfse = {
       viewerTitlePdf: 'PDF de la facture',
       viewerTitleXml: 'XML de la facture',
       back: 'Retour',
+      viewerDownload: 'Télécharger le fichier',
       viewPdf: 'Voir le PDF',
       viewXml: 'Voir le XML',
+      documentsTitle: 'Documents de la facture',
       cancelNote: 'Annuler la facture',
       refreshStatus: 'Actualiser le statut',
       fields: {
+        customer: 'Client',
         serviceValue: 'Montant du service',
         iss: 'Taxe de service',
         issuedAt: 'Émise le',
@@ -1778,9 +2090,14 @@ export const nfse = {
       confirmCancel: {
         title: 'Annuler cette facture de service ?',
         description:
-          "L'annulation est enregistrée auprès de l'administration fiscale et ne peut pas être annulée.",
-        motivoLabel: 'Motif (facultatif)',
-        motivoPlaceholder: 'Ex. : Service non rendu / montant incorrect...',
+          "Cette facture a déjà été transmise et enregistrée auprès de l'administration fiscale. L'annulation y est également enregistrée et elle est définitive : pour facturer à nouveau, il faudra émettre une nouvelle facture.",
+        noteLine: 'Facture n° {numero}, {cliente}, {valor}.',
+        motivoLabel: "Motif de l'annulation",
+        motivoHelp:
+          "Obligatoire par exigence légale. Écrivez entre {min} et {max} caractères, ce texte est transmis à l'administration fiscale avec la demande.",
+        motivoPlaceholder: 'Ex. : Service non rendu, facturation en double, montant incorrect.',
+        motivoCounter: '{count}/{max} caractères',
+        motivoTooShort: 'Il manque {missing} caractères pour atteindre le minimum exigé.',
         confirmBtn: 'Annuler la facture',
         backBtn: 'Retour',
       },
@@ -1789,6 +2106,11 @@ export const nfse = {
         refreshSuccess: 'Statut mis à jour.',
         cancelError: "Impossible d'annuler la facture.",
         cancelSuccess: 'Annulation demandée.',
+        pdfLoading: 'Préparation du PDF de la facture…',
+        pdfError: 'Impossible de récupérer le PDF de cette facture.',
+        xmlLoading: 'Préparation du XML de la facture…',
+        xmlError: 'Impossible de récupérer le XML de cette facture.',
+        xmlUnavailable: "Le fichier XML de cette facture n'est pas encore disponible.",
       },
     },
     quotaBlock: {
@@ -1819,6 +2141,11 @@ export const nfse = {
         empresa: 'Entreprise',
         certificado: 'Certificat numérique',
         impostos: 'Fiscalité',
+        servicos: 'Services',
+      },
+      servicos: {
+        hint:
+          "Enregistrez ici les services que vous facturez, avec les codes fiscaux de chacun. C'est la même liste utilisée dans les ordres de service et l'agenda : en remplissant les codes une seule fois, chaque nouvelle facture est déjà préremplie.",
       },
       steps: {
         hintEmpresa:
@@ -1884,12 +2211,54 @@ export const nfse = {
         showPassword: 'Afficher le mot de passe',
         hidePassword: 'Masquer le mot de passe',
         uploadBtn: 'Envoyer le certificat',
+        consent: {
+          title: 'Autorisation de conservation du certificat',
+          checkbox:
+            "J'autorise Dominex à conserver mon certificat numérique de façon chiffrée et à l'utiliser uniquement pour signer les factures de service que mon entreprise demande d'émettre.",
+          hint:
+            'Chaque utilisation du certificat est enregistrée et consultable ici même, sur cet écran. Vous pouvez retirer le certificat quand vous le souhaitez.',
+          termsLink: "Lire la Section 12 des Conditions d'utilisation",
+        },
+        audit: {
+          title: "Journal d'utilisation du certificat",
+          subtitle:
+            'Chaque envoi, utilisation ou retrait du certificat est enregistré ici, du plus récent au plus ancien.',
+          empty: 'Aucune utilisation enregistrée pour le moment.',
+          emptyHint:
+            "Dès que le certificat sera envoyé ou utilisé sur une facture, cela apparaîtra ici.",
+          loadErrorTitle: 'Journal indisponible',
+          loadError:
+            "Impossible de charger le journal d'utilisation pour le moment. Réessayez dans un instant.",
+          retryBtn: 'Réessayer',
+          loadMoreBtn: 'Voir plus',
+          operations: {
+            upload: 'Certificat envoyé',
+            emitir: 'Certificat utilisé pour émettre',
+            consultar: 'Certificat utilisé pour consulter la facture',
+            cancelar: 'Certificat utilisé pour annuler la facture',
+            danfse: 'Certificat utilisé pour générer le PDF de la facture',
+            revogacao: 'Certificat retiré',
+            outra: 'Certificat utilisé',
+          },
+          contexts: {
+            upload: 'Envoi du certificat',
+            emitir: 'Émission de facture',
+            consultar: 'Consultation de facture',
+            cancelar: 'Annulation de facture',
+            danfse: 'PDF de la facture',
+            nota: 'Facture {chave}',
+          },
+        },
         toasts: {
           noFile: 'Veuillez sélectionner le fichier du certificat.',
           noPassword: 'Veuillez saisir le mot de passe du certificat.',
           invalidFile: 'Le certificat doit être un fichier .pfx ou .p12.',
           uploadSuccess: 'Certificat envoyé avec succès.',
           uploadError: "Échec de l'envoi du certificat.",
+          consentRequired:
+            "Cochez l'autorisation de conservation du certificat pour continuer.",
+          consentError:
+            "Impossible d'enregistrer votre autorisation. Le certificat n'a pas été envoyé, réessayez.",
           saveError: "Impossible d'enregistrer les données de l'entreprise.",
           saveSuccess: "Données de l'entreprise enregistrées.",
           registerWarning:
@@ -2003,6 +2372,36 @@ export const nfse = {
         },
       },
       servico: {
+        // Seletor de serviço salvo (atalho que preenche os códigos fiscais).
+        servicoPicker: {
+          label: 'Service',
+          placeholder: 'Choisissez un service enregistré',
+          loading: 'Chargement des services...',
+          searchPlaceholder: 'Rechercher un service par nom ou code...',
+          emptyMessage: 'Aucun service trouvé.',
+          emptyCatalog: "Vous n'avez encore aucun service enregistré. Enregistrez le premier et ses codes fiscaux resteront prêts pour les prochaines factures.",
+          hint: 'Choisissez un service et nous remplissons les codes fiscaux, la description et le taux d\'ISS pour vous. Vous préférez saisir ? Remplissez simplement les champs ci-dessous.',
+          appliedHint: 'Nous avons rempli les champs avec les données de ce service. Ajustez ce que vous voulez avant d\'émettre.',
+          createLabel: 'Enregistrer "{name}"',
+          createAlways: 'Enregistrer un nouveau service',
+          groupReady: 'Prêts à émettre',
+          groupIncomplete: 'Sans codes fiscaux',
+          codePrefix: 'Code',
+          gapFill: {
+            title: 'Enregistrer ces données dans « {name} » ?',
+            description: "Ce service n'a pas encore ces données enregistrées. En les enregistrant, la prochaine facture sera déjà remplie.",
+            fields: {
+              codigoServico: 'Code de taxation',
+              codigoTributacaoMunicipal: 'Code municipal',
+              codigoNbs: 'Code NBS',
+              issAliquota: "Taux d'ISS",
+            },
+            save: 'Enregistrer dans le service',
+            dismiss: 'Pas maintenant',
+            success: 'Service « {name} » mis à jour.',
+            error: "Nous n'avons pas pu mettre à jour le service. Réessayez.",
+          },
+        },
         municipio: {
           label: 'Commune d\'incidence (code IBGE)',
           placeholder: 'Ex. : 3550308 (São Paulo)',
@@ -2010,6 +2409,8 @@ export const nfse = {
         },
         codigos: {
           sectionTitle: 'Classification fiscale',
+          sectionHint:
+            'Remplis à partir du service choisi ci-dessus. Ajustez-les ici si besoin, ou recherchez un code manuellement.',
           codigoServico: {
             label: 'Code de taxation du service (cTribNac)',
             optional: '(facultatif)',
@@ -2022,6 +2423,13 @@ export const nfse = {
             placeholder: 'Rechercher par code ou description...',
             hint: 'Nomenclature brésilienne des services. Saisissez au moins 2 caractères.',
             required: "Choisissez le code NBS du service. La facture ne peut pas être émise sans lui.",
+          },
+          codigoTributacaoMunicipal: {
+            label: 'Code de taxation municipal (cTribMun)',
+            optional: '(facultatif)',
+            placeholder: 'Ex. : 001',
+            hint: "Complément à 3 chiffres défini par la mairie, ajouté au code national (ex. : 14.01.01 + 001). Laissé vide, nous utilisons le code enregistré sur le type de service. Sans lui, la mairie peut refuser la facture.",
+            invalid: 'Le code de taxation municipal doit comporter 3 chiffres.',
           },
         },
         tribIssqn: {
@@ -2116,6 +2524,7 @@ export const nfse = {
           municipioIncidencia: 'Commune d\'incidence',
           codigoServico: 'Code taxation',
           codigoNbs: 'Code NBS',
+          codigoTributacaoMunicipal: 'Code taxation municipal',
           discriminacao: 'Description',
           valorServico: 'Montant du service',
           aliquotaIss: 'Taux de taxe',

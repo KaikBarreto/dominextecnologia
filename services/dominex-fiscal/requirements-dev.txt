@@ -1,0 +1,3 @@
+# Só para rodar os testes locais/CI. NÃO entra na imagem de produção.
+-r requirements.txt
+pytest==8.3.4

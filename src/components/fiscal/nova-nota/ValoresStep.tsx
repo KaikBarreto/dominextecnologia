@@ -13,12 +13,12 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import type { NfseValoresState, TpRetIssqn, NfseFisqalTaxResult } from './types';
+import type { NfseValoresState, TpRetIssqn, NfseTaxResult } from './types';
 
 interface ValoresStepProps {
   valores: NfseValoresState;
   onChange: (patch: Partial<NfseValoresState>) => void;
-  taxes: NfseFisqalTaxResult;
+  taxes: NfseTaxResult;
   errors: string[];
   /** Empresa optante do Simples Nacional (vem da configuração fiscal). */
   isSimples?: boolean;

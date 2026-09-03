@@ -2,19 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
-import { invokeFisqal, type FisqalEdgeResult } from '@/utils/fisqalEdge';
+import { invokeNfse, type NfseEdgeResult } from '@/utils/nfseEdge';
 import { isNfseTerminal } from '@/components/fiscal/nfseStatus';
 import type { Tables } from '@/integrations/supabase/types';
 
 /**
- * Fronteira do Supabase para o módulo Notas Fiscais (NFS-e via Fisqal),
+ * Fronteira do Supabase para o módulo Notas Fiscais (NFS-e),
  * fluxo STANDALONE — emissão por cliente, sem Ordem de Serviço.
  *
  * - Leitura: `nfse_emissions` (lista da empresa) e `nfse_events` (histórico).
  *   Ambas têm RLS por company_id; o filtro client é só UX.
- * - Mutations: via edges Fisqal (`fisqal-emit-nfse`, `fisqal-nfse-status`,
- *   `fisqal-cancel-nfse`) normalizadas pelo helper `invokeFisqal`, que já trata
- *   o 503 `fisqal_unconfigured` ("Integração fiscal ainda não ativada").
+ * - Mutations: via edges de NFS-e (`nfse-emit`, `nfse-status`, `nfse-cancel`)
+ *   normalizadas pelo helper `invokeNfse`, que já trata o 503 de integração
+ *   não ativada ("Emissão de notas ainda não ativada").
  *
  * Tipos vêm do schema gerado (`Tables<'nfse_emissions'>` / `'nfse_events'`).
  */
@@ -49,8 +49,9 @@ export interface EmitNfseInput {
   idempotencyKey?: string;
 }
 
+// Ids internos do provedor ficam de fora: nenhuma tela os usa.
 const EMISSION_COLS =
-  'id, company_id, customer_id, financial_transaction_id, status, fisqal_dps_id, fisqal_fiscal_request_id, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, created_at, updated_at';
+  'id, company_id, customer_id, financial_transaction_id, status, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, created_at, updated_at';
 
 export function useNfse() {
   const { companyId } = useUserCompany();
@@ -75,8 +76,8 @@ export function useNfse() {
 
   /** Emite uma NFS-e standalone (por cliente). Retorna o resultado normalizado. */
   const emitMutation = useMutation({
-    mutationFn: async (input: EmitNfseInput): Promise<FisqalEdgeResult> => {
-      return invokeFisqal('fisqal-emit-nfse', {
+    mutationFn: async (input: EmitNfseInput): Promise<NfseEdgeResult> => {
+      return invokeNfse('nfse-emit', {
         customerId: input.customerId,
         servico: {
           descricao: input.descricao,
@@ -91,18 +92,21 @@ export function useNfse() {
         ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
       });
     },
-    onSuccess: () => invalidateList(),
+    // `onSettled` (e não `onSuccess`): quando a prefeitura recusa, o servidor
+    // grava a tentativa como "rejeitada" com o motivo. Sem recarregar a lista no
+    // erro, o usuário levaria só o toast e a nota pareceria ter sumido.
+    onSettled: () => invalidateList(),
   });
 
-  /** Consulta/atualiza o status de uma emissão na Fisqal. */
+  /** Consulta/atualiza o status de uma emissão no provedor. */
   const statusMutation = useMutation({
-    mutationFn: async (emissionId: string): Promise<FisqalEdgeResult> => {
-      return invokeFisqal('fisqal-nfse-status', { emissionId });
+    mutationFn: async (emissionId: string): Promise<NfseEdgeResult> => {
+      return invokeNfse('nfse-status', { emissionId });
     },
     onSuccess: () => invalidateList(),
   });
 
-  /** Cancela uma NFS-e autorizada (edge `fisqal-cancel-nfse`). */
+  /** Cancela uma NFS-e autorizada (edge `nfse-cancel`). */
   const cancelMutation = useMutation({
     mutationFn: async ({
       emissionId,
@@ -110,8 +114,8 @@ export function useNfse() {
     }: {
       emissionId: string;
       motivo?: string;
-    }): Promise<FisqalEdgeResult> => {
-      return invokeFisqal('fisqal-cancel-nfse', {
+    }): Promise<NfseEdgeResult> => {
+      return invokeNfse('nfse-cancel', {
         emissionId,
         ...(motivo ? { motivo } : {}),
       });
@@ -150,9 +154,9 @@ export interface NfseStatusPolling {
 }
 
 /**
- * Polling AUTOMÁTICO do status de uma emissão (sem webhook — a Fisqal é por
+ * Polling AUTOMÁTICO do status de uma emissão (sem webhook — o estado vem por
  * consulta). Enquanto a emissão estiver em estado NÃO-terminal e `enabled`,
- * consulta `fisqal-nfse-status` a cada ~4,5s, atualizando a lista do `useNfse`
+ * consulta `nfse-status` a cada ~4,5s, atualizando a lista do `useNfse`
  * a cada sucesso, até:
  *   - o status virar terminal (autorizada/rejeitada/falhou/cancelada) → para;
  *   - estourar ~2,5 min (POLL_MAX_DURATION_MS) → para e sinaliza `timedOut`;
@@ -213,10 +217,11 @@ export function useNfseStatusPolling(
 
       inFlightRef.current = true;
       try {
-        const res = await invokeFisqal('fisqal-nfse-status', { emissionId });
+        const res = await invokeNfse('nfse-status', { emissionId });
 
-        // 503 (integração ainda não ativada): não adianta insistir — para.
-        if (res.unconfigured) {
+        // 503 (integração não ativada) ou 501 (caminho de emissão indisponível):
+        // não adianta insistir — para.
+        if (res.unconfigured || res.providerUnsupported) {
           stop();
           return;
         }
@@ -308,10 +313,10 @@ export function useNfseListPolling(pendingIds: string[]): void {
       inFlightRef.current = true;
       try {
         const results = await Promise.all(
-          ids.map((id) => invokeFisqal('fisqal-nfse-status', { emissionId: id })),
+          ids.map((id) => invokeNfse('nfse-status', { emissionId: id })),
         );
-        // 503 em qualquer consulta = integração não ativada: não insiste.
-        if (results.some((r) => r.unconfigured)) {
+        // 503/501 em qualquer consulta = integração indisponível: não insiste.
+        if (results.some((r) => r.unconfigured || r.providerUnsupported)) {
           clear();
           return;
         }

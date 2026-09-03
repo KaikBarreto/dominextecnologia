@@ -4,8 +4,8 @@ import { useUserCompany } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 /**
- * Fronteira do Supabase para a configuração fiscal (NFS-e via Fisqal) da própria
- * empresa. own-row em `company_fiscal_settings` (RLS por company_id) — padrão
+ * Fronteira do Supabase para a configuração fiscal (NFS-e) da própria empresa.
+ * own-row em `company_fiscal_settings` (RLS por company_id) — padrão
  * maybeSingle + upsert otimista, igual a useUserPreferences/useCompanySettings.
  *
  * Campos EDITÁVEIS pelo tenant: regime_tributario, inscricao_municipal,
@@ -13,8 +13,13 @@ import { getErrorMessage } from '@/utils/errorMessages';
  * municipio_ibge, fiscal_ambiente (homologacao|producao), reg_ap_trib_sn.
  *
  * Campos READ-ONLY vindos do backend (preenchidos pelas edges de onboarding):
- * fisqal_company_id, fisqal_certificate_id, certificate_expires_at, pode_emitir.
- * Nunca gravamos esses pelo client — só as edges Fisqal os escrevem.
+ * provider_company_id, provider_certificate_id, certificate_expires_at,
+ * pode_emitir. Nunca gravamos esses pelo client — só as edges os escrevem.
+ *
+ * ⚠️ As duas primeiras são reexpostas com nome NEUTRO: no banco as colunas ainda
+ * se chamam com o nome do provedor histórico. Este hook é a ÚNICA fronteira que
+ * conhece esses nomes; o resto do app fala só `provider_*`. Quando a migration
+ * renomear as colunas, muda só aqui.
  */
 
 export type FiscalAmbiente = 'homologacao' | 'producao';
@@ -42,9 +47,9 @@ export function normalizeRegApTribSN(value: unknown): RegApTribSN {
  * Qualquer tela que pergunte "já dá pra emitir?" tem que usar isto.
  */
 export function isFiscalReadyToEmit(
-  s: Pick<FiscalSettings, 'pode_emitir' | 'fisqal_company_id' | 'fisqal_certificate_id'>,
+  s: Pick<FiscalSettings, 'pode_emitir' | 'provider_company_id' | 'provider_certificate_id'>,
 ): boolean {
-  return !!s.pode_emitir && !!s.fisqal_company_id && !!s.fisqal_certificate_id;
+  return !!s.pode_emitir && !!s.provider_company_id && !!s.provider_certificate_id;
 }
 
 export interface FiscalSettings {
@@ -60,8 +65,10 @@ export interface FiscalSettings {
   fiscal_ambiente: FiscalAmbiente;
   reg_ap_trib_sn: RegApTribSN;
   // Read-only (backend)
-  fisqal_company_id: string | null;
-  fisqal_certificate_id: string | null;
+  /** Id da empresa no provedor de emissão. Preenchido pela edge de registro. */
+  provider_company_id: string | null;
+  /** Id do certificado A1 no provedor. Preenchido pela edge de upload. */
+  provider_certificate_id: string | null;
   certificate_expires_at: string | null;
   pode_emitir: boolean;
 }
@@ -92,14 +99,19 @@ const EMPTY: FiscalSettings = {
   municipio_ibge: null,
   fiscal_ambiente: 'homologacao',
   reg_ap_trib_sn: '1',
-  fisqal_company_id: null,
-  fisqal_certificate_id: null,
+  provider_company_id: null,
+  provider_certificate_id: null,
   certificate_expires_at: null,
   pode_emitir: false,
 };
 
+// Colunas do provedor no banco. Nomes legados: só este arquivo os conhece —
+// a UI enxerga `provider_company_id` / `provider_certificate_id`.
+const COL_PROVIDER_COMPANY_ID = 'fisqal_company_id';
+const COL_PROVIDER_CERTIFICATE_ID = 'fisqal_certificate_id';
+
 const SELECT_COLS =
-  'regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, codigo_nbs_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, reg_ap_trib_sn, fisqal_company_id, fisqal_certificate_id, certificate_expires_at, pode_emitir';
+  `regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, codigo_nbs_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, reg_ap_trib_sn, ${COL_PROVIDER_COMPANY_ID}, ${COL_PROVIDER_CERTIFICATE_ID}, certificate_expires_at, pode_emitir`;
 
 export function useFiscalSettings() {
   const { companyId } = useUserCompany();
@@ -117,9 +129,13 @@ export function useFiscalSettings() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return EMPTY;
+      const row = data as Record<string, unknown>;
       return {
         ...EMPTY,
         ...data,
+        // Reexposição com nome neutro (ver nota no topo do arquivo).
+        provider_company_id: (row[COL_PROVIDER_COMPANY_ID] as string | null) ?? null,
+        provider_certificate_id: (row[COL_PROVIDER_CERTIFICATE_ID] as string | null) ?? null,
         // `fiscal_ambiente` no banco é text livre — normaliza pro union.
         fiscal_ambiente: data.fiscal_ambiente === 'producao' ? 'producao' : 'homologacao',
         // `reg_ap_trib_sn` tem CHECK ('1'|'2'|'3') no banco, mas normalizamos aqui

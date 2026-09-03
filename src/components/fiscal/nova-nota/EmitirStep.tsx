@@ -2,7 +2,7 @@ import { ShieldAlert, AlertTriangle, Building2, User, MapPin, FileText, DollarSi
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate } from '@/lib/format';
-import type { NfseCustomer, NfseServicoState, NfseValoresState, NfseFisqalTaxResult } from './types';
+import type { NfseCustomer, NfseServicoState, NfseValoresState, NfseTaxResult } from './types';
 
 interface EmitirStepProps {
   loading: boolean;
@@ -18,8 +18,8 @@ interface EmitirStepProps {
   dataCompetencia: string;
   servico: NfseServicoState;
   valores: NfseValoresState;
-  taxes: NfseFisqalTaxResult;
-  /** Bloqueios de habilitação (certificado Fisqal). Vazio = ok. */
+  taxes: NfseTaxResult;
+  /** Bloqueios de habilitação (registro + certificado). Vazio = ok. */
   habilitacaoErrors?: string[];
   /** Avisos não-bloqueantes (ex: sem inscrição municipal). */
   habilitacaoWarnings?: string[];
@@ -139,6 +139,12 @@ export function EmitirStep({
             <SummaryLine label={s.emitir.fields.municipioIncidencia} value={servico.municipioIncidenciaNome || servico.municipioIncidenciaIbge || null} />
             {servico.codigoServico && (
               <SummaryLine label={s.emitir.fields.codigoServico} value={servico.codigoServico} />
+            )}
+            {servico.codigoTributacaoMunicipal && (
+              <SummaryLine
+                label={s.emitir.fields.codigoTributacaoMunicipal}
+                value={servico.codigoTributacaoMunicipal}
+              />
             )}
             {servico.codigoNbs && (
               <SummaryLine label={s.emitir.fields.codigoNbs} value={servico.codigoNbs} />

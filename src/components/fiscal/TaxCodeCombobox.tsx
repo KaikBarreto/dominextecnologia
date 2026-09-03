@@ -19,11 +19,11 @@ import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Autocomplete (busca-enquanto-digita) de códigos fiscais oficiais via edge
- * `fisqal-tax-codes`. Suporta dois tipos:
+ * `nfse-tax-codes`. Suporta dois tipos:
  *  - `servico` (cTribNac, ~337 itens): busca tudo 1x e filtra no client (cache).
  *  - `nbs` (lista grande): busca server-side por termo, exige ≥2 caracteres.
  *
- * Edge: supabase.functions.invoke('fisqal-tax-codes', { body: { type, q } })
+ * Edge: supabase.functions.invoke('nfse-tax-codes', { body: { type, q } })
  *   → { items: [{ codigo, descricao, itemLc116? }], total }
  *
  * Resiliente a 503/erro: a busca falha em silêncio (mensagem PT-BR no rodapé) e
@@ -57,7 +57,7 @@ const DEBOUNCE_MS = 300;
  * Máscara display-only do código de serviço (cTribNac): agrupa os 6 dígitos em
  * pares — `071002` → `07.10.02`. Só formata quando são exatamente 6 dígitos;
  * caso contrário (digitação manual, NBS) devolve o valor cru. NUNCA usar o
- * resultado pra gravar/enviar: a Fisqal espera os 6 dígitos sem pontos.
+ * resultado pra gravar/enviar: a emissão espera os 6 dígitos sem pontos.
  */
 function maskServiceCode(codigo: string): string {
   if (/^\d{6}$/.test(codigo)) {
@@ -76,7 +76,7 @@ async function fetchTaxCodesOnce(
   q: string,
 ): Promise<{ items: TaxCodeItem[]; ok: boolean }> {
   try {
-    const { data, error } = await supabase.functions.invoke('fisqal-tax-codes', {
+    const { data, error } = await supabase.functions.invoke('nfse-tax-codes', {
       body: { type, q },
     });
     if (error) return { items: [], ok: false };

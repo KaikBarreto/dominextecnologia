@@ -42,6 +42,48 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.22.2',
+    date: '3 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nota fiscal de serviço agora sai direto, sem intermediário',
+        description: 'A emissão passou a falar diretamente com o sistema oficial da nota fiscal de serviço, no padrão nacional. A nota é autorizada na hora, em vez de ficar numa fila esperando resposta, e o cancelamento também é imediato. Isso deixa a emissão mais rápida, mais estável e nos permite atender cidades que antes ficavam de fora.',
+        category: 'recurso',
+      },
+      {
+        title: 'PDF da nota fiscal disponível para baixar',
+        description: 'Toda nota autorizada agora tem o documento em PDF para baixar e enviar ao seu cliente, direto do menu da nota na lista. Vale também para nota já cancelada, porque ela continua fazendo parte da sua escrituração.',
+        category: 'recurso',
+      },
+      {
+        title: 'Certificado digital guardado com segurança',
+        description: 'Ao enviar seu certificado digital A1, ele passa a ser guardado criptografado e só é aberto no momento exato de assinar uma nota sua. Você autoriza essa guarda no ato do envio, e a validade do certificado passa a aparecer na tela, com aviso quando estiver perto de vencer. Todo acesso ao certificado fica registrado.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Códigos fiscais direto no cadastro do serviço',
+        description: 'Os códigos de tributação que a prefeitura exige agora ficam no cadastro do seu tipo de serviço, numa aba de dados fiscais. Ao emitir uma nota, basta escolher o serviço e os códigos vêm preenchidos — não precisa procurar código a cada nota.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cancelamento de nota mais claro e mais seguro',
+        description: 'A confirmação de cancelamento passou a mostrar qual nota você está cancelando (número, cliente e valor) e avisa que o cancelamento é registrado na prefeitura e não tem volta. O motivo é obrigatório por exigência legal, e a tela agora informa o tamanho mínimo em vez de recusar sem explicar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cancelou a nota e a tela continuava mostrando autorizada',
+        description: 'Depois de cancelar uma nota, a lista não se atualizava e a nota seguia aparecendo como autorizada, dando a impressão de que o cancelamento havia falhado. Agora a lista se atualiza sozinha assim que o cancelamento é concluído.',
+        category: 'correcao',
+      },
+      {
+        title: 'Não dava para emitir de novo depois de cancelar',
+        description: 'Ao cancelar uma nota e precisar emitir outra para o mesmo cliente, no mesmo valor e no mesmo mês, o sistema respondia que a nota já havia sido emitida e bloqueava. Agora a nova nota é emitida normalmente, e a nota cancelada continua guardada com o número dela, como manda a escrituração.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.22.1',
     date: '3 de setembro de 2026',
     type: 'patch',
