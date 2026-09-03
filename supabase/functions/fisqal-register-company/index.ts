@@ -1,5 +1,5 @@
 // =============================================================================
-// fisqal-register-company — registra a empresa do tenant na Fisqal (POST /v1/companies).
+// fisqal-register-company — registra/atualiza a empresa do tenant na Fisqal.
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 // Fase 1 (onboarding fiscal). NÃO emite nota (Fase 2).
@@ -7,9 +7,12 @@
 // Fluxo:
 //   - Lê dados de `companies` (identidade + endereço) e `company_fiscal_settings`
 //     (inscrições, IBGE, ambiente).
-//   - Idempotente: se já existe fisqal_company_id, retorna sem recriar.
 //   - Valida dados obrigatórios → 422 PT-BR claro indicando o campo faltante.
-//   - POST /v1/companies (§9) → salva fisqal_company_id em company_fiscal_settings.
+//   - 1ª vez: POST /v1/companies (§9) → salva fisqal_company_id.
+//   - Já registrada: PATCH /v1/companies/{id} (UpdateCompanyDto) com o MESMO
+//     payload → propaga correção de Inscrição Municipal, endereço e troca de
+//     ambiente (homologacao ↔ producao). Sem isso, o 1º registro virava beco sem
+//     saída: qualquer correção posterior nunca chegava na Fisqal.
 // =============================================================================
 
 import {
@@ -68,17 +71,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- Idempotência: já registrada → devolve o id existente sem recriar.
-    if (fiscal?.fisqal_company_id) {
-      return jsonResponse(
-        {
-          fisqal_company_id: fiscal.fisqal_company_id,
-          already_registered: true,
-          message: "Empresa já registrada na emissão fiscal.",
-        },
-        200,
-      );
-    }
+    // ---- Já registrada? Define se o caminho é criar (POST) ou atualizar (PATCH).
+    // Em ambos os casos montamos e validamos o MESMO payload logo abaixo.
+    const existingFisqalId = clean(fiscal?.fisqal_company_id);
+    const isUpdate = existingFisqalId.length > 0;
 
     // ---- Razão social: companies não tem coluna razao_social; usamos `name`.
     const razaoSocial = clean(company.name);
@@ -124,7 +120,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- Monta o payload do §9 (CreateCompanyDto).
+    // ---- Monta o payload do §9 (CreateCompanyDto / UpdateCompanyDto — mesma forma).
     const payload = {
       razao_social: razaoSocial,
       nome_fantasia: razaoSocial,
@@ -143,17 +139,27 @@ Deno.serve(async (req) => {
       fiscal_ambiente: fiscalAmbiente,
     };
 
-    // ---- POST /v1/companies (§9).
-    const created = await fisqal.post<{ id?: string }>("/v1/companies", payload);
-    const fisqalCompanyId = created?.id;
-    if (!fisqalCompanyId) {
-      return jsonResponse(
-        {
-          error: "fisqal_no_id",
-          message: "A emissão fiscal respondeu sem identificador da empresa. Tente novamente.",
-        },
-        502,
+    // ---- POST /v1/companies (1ª vez) OU PATCH /v1/companies/{id} (já registrada).
+    // Erro da Fisqal em qualquer um dos dois cai no catch como `fisqal_error`
+    // (mensagem PT-BR da própria Fisqal) — nunca falha em silêncio.
+    let fisqalCompanyId = existingFisqalId;
+    if (isUpdate) {
+      await fisqal.patch<{ id?: string }>(
+        `/v1/companies/${existingFisqalId}`,
+        payload,
       );
+    } else {
+      const created = await fisqal.post<{ id?: string }>("/v1/companies", payload);
+      fisqalCompanyId = clean(created?.id);
+      if (!fisqalCompanyId) {
+        return jsonResponse(
+          {
+            error: "fisqal_no_id",
+            message: "A emissão fiscal respondeu sem identificador da empresa. Tente novamente.",
+          },
+          502,
+        );
+      }
     }
 
     // ---- Persiste o fisqal_company_id (upsert: linha pode não existir ainda).
@@ -179,8 +185,9 @@ Deno.serve(async (req) => {
       return jsonResponse(
         {
           error: "persist_failed",
-          message:
-            "A empresa foi registrada na emissão fiscal, mas houve falha ao salvar localmente. Contate o suporte.",
+          message: isUpdate
+            ? "Os dados foram atualizados na emissão fiscal, mas houve falha ao salvar localmente. Contate o suporte."
+            : "A empresa foi registrada na emissão fiscal, mas houve falha ao salvar localmente. Contate o suporte.",
           fisqal_company_id: fisqalCompanyId,
         },
         500,
@@ -190,8 +197,11 @@ Deno.serve(async (req) => {
     return jsonResponse(
       {
         fisqal_company_id: fisqalCompanyId,
-        already_registered: false,
-        message: "Empresa registrada na emissão fiscal com sucesso.",
+        already_registered: isUpdate,
+        updated: isUpdate,
+        message: isUpdate
+          ? "Dados da empresa atualizados na emissão fiscal."
+          : "Empresa registrada na emissão fiscal com sucesso.",
       },
       200,
     );

@@ -62,20 +62,30 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { NfseStatusBadge, NFSE_STATUS_FILTER_OPTIONS } from '@/components/fiscal/nfseStatus';
 import { NovaNotaModal } from '@/components/fiscal/NovaNotaModal';
 import { NfseDetailModal, type NfseDetailAction } from '@/components/fiscal/NfseDetailModal';
-import type { NfseInitialDraft } from '@/components/fiscal/nova-nota/types';
+import type { NfseInitialDraft, TribIssqn, TpRetIssqn } from '@/components/fiscal/nova-nota/types';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const PAGE_SIZE_KEY = 'nfse-list-page-size';
 const ALL_PAGE_SIZE = 100_000;
 
-/** Status filter options: os existentes + rascunho. */
-const STATUS_FILTER_OPTIONS_EXTENDED = [
-  ...NFSE_STATUS_FILTER_OPTIONS,
-  { value: 'rascunho' } as const,
-];
+/** Status filter options — a lista canônica já inclui rascunho. */
+const STATUS_FILTER_OPTIONS_EXTENDED = [...NFSE_STATUS_FILTER_OPTIONS];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Estreita o texto do banco pro enum da situação do ISSQN (default '1'). */
+function toTribIssqn(value: string | null | undefined): TribIssqn {
+  return value === '2' || value === '3' || value === '4' ? value : '1';
+}
+
+/**
+ * Estreita o texto do banco pro enum de retenção do ISS.
+ * Default '1' = NÃO retido (tabela do layout nacional).
+ */
+function toTpRetIssqn(value: string | null | undefined): TpRetIssqn {
+  return value === '2' || value === '3' ? value : '1';
+}
 
 function formatBRL(value: number | null | undefined) {
   if (value == null) return '—';
@@ -178,28 +188,31 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
   useEffect(() => {
     if (!draftToOpen || loadingDraft) return;
     if (!draftEmission) return;
-    // Converte a linha completa no shape NfseInitialDraft.
+    // Converte a linha completa no shape NfseInitialDraft. Sem `as any`: as
+    // colunas abaixo existem no schema — o cast só mascarava nome errado.
     const draft: NfseInitialDraft = {
       id: draftEmission.id,
       customerId: draftEmission.customer_id ?? null,
-      dataCompetencia: (draftEmission as any).data_competencia ?? null,
-      regimeApuracao: null,
+      intermediarioCustomerId: draftEmission.intermediario_customer_id ?? null,
+      dataCompetencia: draftEmission.data_competencia ?? null,
+      regimeApuracao: draftEmission.regime_apuracao ?? null,
       servico: {
-        codigoServico: (draftEmission as any).codigo_servico ?? '',
-        codigoNbs: (draftEmission as any).codigo_nbs ?? '',
-        municipioIncidenciaIbge: (draftEmission as any).municipio_incidencia_ibge ?? '',
-        municipioIncidenciaNome: (draftEmission as any).municipio_incidencia_nome ?? '',
-        tribIssqn: (draftEmission as any).trib_issqn ?? '1',
+        codigoServico: draftEmission.codigo_servico ?? '',
+        codigoNbs: draftEmission.codigo_nbs ?? '',
+        municipioIncidenciaIbge: draftEmission.municipio_incidencia_ibge ?? '',
+        // O nome do município não é persistido (não existe coluna): a etapa
+        // Serviço trabalha só com o código IBGE e o resumo cai nele.
+        tribIssqn: toTribIssqn(draftEmission.trib_issqn),
         discriminacao: draftEmission.descricao_servico ?? '',
       },
       valores: {
         valorServico: draftEmission.valor_servico ?? 0,
-        aliquotaIssqn: (draftEmission as any).aliquota_issqn ?? 0,
-        tpRetIssqn: (draftEmission as any).tp_ret_issqn ?? '2',
-        valorPis: (draftEmission as any).valor_pis ?? 0,
-        valorCofins: (draftEmission as any).valor_cofins ?? 0,
-        valorCsll: (draftEmission as any).valor_csll ?? 0,
-        percentualTribSn: (draftEmission as any).perc_trib_sn ?? 0,
+        aliquotaIssqn: draftEmission.aliquota_issqn ?? 0,
+        tpRetIssqn: toTpRetIssqn(draftEmission.tp_ret_issqn),
+        valorPis: draftEmission.valor_pis ?? 0,
+        valorCofins: draftEmission.valor_cofins ?? 0,
+        valorCsll: draftEmission.valor_csll ?? 0,
+        percentualTribSn: draftEmission.percentual_trib_sn ?? 0,
       },
     };
     setDraftInitial(draft);
@@ -353,14 +366,19 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     const isAuthorized = row.status === 'autorizada';
     const isPending = row.status === 'pendente' || row.status === 'processando';
     const isCancelled = row.status === 'cancelada';
+    // Cancelamento pedido e ainda em andamento: a nota segue mudando de estado,
+    // então precisa continuar consultável até virar "Cancelada".
+    const isCancelPending = row.status === 'cancelamento_pendente';
 
     const canViewDetail = !isDraft;
     const canContinueDraft = isDraft;
-    // Emitir/Reenviar depende de a empresa estar habilitada (pode_emitir).
+    // Emitir/Reenviar depende de a empresa estar apta (município liberado +
+    // registro + certificado — ver isFiscalReadyToEmit).
     const canEmitRow = (isDraft || isRejected) && canEmit;
-    const canCheckStatus = isPending;
-    const canDownloadPdf = isAuthorized && !!row.pdf_url;
-    const canDownloadXml = (isAuthorized || isCancelled) && !!row.xml_url;
+    const canCheckStatus = isPending || isCancelPending;
+    // O documento existe e vale enquanto o cancelamento não é efetivado.
+    const canDownloadPdf = (isAuthorized || isCancelPending) && !!row.pdf_url;
+    const canDownloadXml = (isAuthorized || isCancelPending || isCancelled) && !!row.xml_url;
     const canHistory = !isDraft;
     const canCancelRow = canEmit && (isAuthorized || isPending);
     // Excluir o próprio rascunho NÃO exige habilitação de emissão.

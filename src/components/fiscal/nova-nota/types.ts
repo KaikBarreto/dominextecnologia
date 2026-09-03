@@ -36,10 +36,10 @@ export type NfseCustomer = Pick<
 export type TribIssqn = '1' | '2' | '3' | '4';
 
 /**
- * Tipo de retenção do ISS.
- * '1' = ISS retido pelo tomador
- * '2' = ISS devido pelo prestador no local da prestação
- * '3' = ISS devido pelo prestador no município de estabelecimento
+ * Tipo de retenção do ISSQN (tabela do layout nacional da NFS-e).
+ * '1' = NÃO retido (caso mais comum — o prestador recolhe o ISS)
+ * '2' = retido pelo tomador
+ * '3' = retido pelo intermediário
  */
 export type TpRetIssqn = '1' | '2' | '3';
 

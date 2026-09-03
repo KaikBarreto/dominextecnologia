@@ -108,7 +108,7 @@ interface FisqalFetchOptions {
 }
 
 async function request<T = any>(
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   opts: FisqalFetchOptions = {},
 ): Promise<T> {
@@ -162,6 +162,9 @@ export const fisqal = {
     request<T>("POST", path, { body, headers }),
   put: <T = any>(path: string, body: unknown, headers?: Record<string, string>) =>
     request<T>("PUT", path, { body, headers }),
+  /** Atualização parcial (ex: PATCH /v1/companies/{id} — UpdateCompanyDto). */
+  patch: <T = any>(path: string, body: unknown, headers?: Record<string, string>) =>
+    request<T>("PATCH", path, { body, headers }),
   delete: <T = any>(path: string, headers?: Record<string, string>) =>
     request<T>("DELETE", path, { headers }),
 };

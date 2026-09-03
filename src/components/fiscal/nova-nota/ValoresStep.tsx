@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -19,6 +20,8 @@ interface ValoresStepProps {
   onChange: (patch: Partial<NfseValoresState>) => void;
   taxes: NfseFisqalTaxResult;
   errors: string[];
+  /** Empresa optante do Simples Nacional (vem da configuração fiscal). */
+  isSimples?: boolean;
 }
 
 /** Formata número como string PT-BR com vírgula (ex.: "1234,50"). */
@@ -34,7 +37,7 @@ function fromDisplayBR(s: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-export function ValoresStep({ valores, onChange, taxes, errors }: ValoresStepProps) {
+export function ValoresStep({ valores, onChange, taxes, errors, isSimples = false }: ValoresStepProps) {
   const { locale, currency } = useAppLocaleContext();
   const s = MESSAGES[locale].app.nfse.stepper;
 
@@ -67,7 +70,13 @@ export function ValoresStep({ valores, onChange, taxes, errors }: ValoresStepPro
   );
 
   const valorError = errors.find((e) => e.includes('valor') || e.includes('value'));
-  const isSimples = valores.percentualTribSn > 0 || !!percSnText;
+  /** Erro do percentual do Simples (comparação exata: vale em qualquer idioma). */
+  const percSnError = errors.find((e) => e === s.valores.percTribSn.required);
+  /**
+   * Rejeição E0625: empresa do Simples sem retenção de ISS não pode informar
+   * alíquota. Aviso, não bloqueio — quem decide é o contador.
+   */
+  const avisoAliquotaE0625 = isSimples && valores.tpRetIssqn === '1';
 
   const tpRetOptions: { value: TpRetIssqn; label: string }[] = [
     { value: '1', label: s.valores.tpRetIssqn.op1 },
@@ -130,6 +139,12 @@ export function ValoresStep({ valores, onChange, taxes, errors }: ValoresStepPro
               }}
               placeholder="0,00"
             />
+            {avisoAliquotaE0625 && (
+              <p className="flex items-start gap-1.5 text-[11px] text-warning">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                <span>{s.valores.iss.aliquota.avisoSimplesSemRetencao}</span>
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -220,9 +235,13 @@ export function ValoresStep({ valores, onChange, taxes, errors }: ValoresStepPro
       <div className="space-y-1.5">
         <Label htmlFor="nfse-perc-sn">
           {s.valores.percTribSn.label}{' '}
-          <span className="text-muted-foreground font-normal text-xs">
-            {s.valores.percTribSn.optional}
-          </span>
+          {isSimples ? (
+            <span className="text-destructive">*</span>
+          ) : (
+            <span className="text-muted-foreground font-normal text-xs">
+              {s.valores.percTribSn.optional}
+            </span>
+          )}
         </Label>
         <NumericInput
           id="nfse-perc-sn"
@@ -236,8 +255,9 @@ export function ValoresStep({ valores, onChange, taxes, errors }: ValoresStepPro
           placeholder="0,00"
           className="h-9"
         />
+        {percSnError && <p className="text-sm text-destructive">{percSnError}</p>}
         <p className="text-[11px] text-muted-foreground">
-          {s.valores.percTribSn.hint}
+          {isSimples ? s.valores.percTribSn.hintSimples : s.valores.percTribSn.hint}
         </p>
       </div>
 
@@ -253,9 +273,10 @@ export function ValoresStep({ valores, onChange, taxes, errors }: ValoresStepPro
           <PreviaLinha
             label={s.valores.previa.iss.replace(
               '{tipo}',
+              // '1' = não retido → ISS devido pelo prestador.
               valores.tpRetIssqn === '1'
-                ? s.valores.previa.issRetido
-                : s.valores.previa.issDue,
+                ? s.valores.previa.issDue
+                : s.valores.previa.issRetido,
             )}
             value={taxes.issValor}
             currency={currency}

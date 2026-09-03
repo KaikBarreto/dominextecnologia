@@ -50,8 +50,9 @@ export function EmitirStep({
     ? formatDate(dataCompetencia, locale as any, timezone)
     : '—';
 
+  // tpRetIssqn '1' = NÃO retido (ISS devido pelo prestador); '2'/'3' = retido.
   const issRetidoLabel =
-    valores.tpRetIssqn === '1' ? s.emitir.issRetido : s.emitir.issDue;
+    valores.tpRetIssqn === '1' ? s.emitir.issDue : s.emitir.issRetido;
 
   return (
     <div className="space-y-4">

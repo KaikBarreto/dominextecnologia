@@ -22,30 +22,17 @@ import {
   FisqalApiError,
   FisqalConfigError,
 } from "../_shared/fisqal-client.ts";
+import { mapNfseCancelStatus, NFSE_STATUS } from "../_shared/nfse-status.ts";
 
 function clean(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-// Estados que já representam nota autorizada (aceita pt/en por robustez).
+// Estados que já representam nota autorizada (aceita pt/en por robustez —
+// linhas antigas podiam ter o status cru em inglês).
 const AUTHORIZED = new Set(["authorized", "autorizada"]);
 // Estados que já representam cancelamento concluído (idempotência).
-const CANCELLED = new Set(["cancelled", "cancelada"]);
-
-/** Normaliza o status devolvido pela Fisqal para o vocabulário local. */
-function mapCancelStatus(raw: string, fallback: string): string {
-  const s = clean(raw).toLowerCase();
-  if (!s) return fallback;
-  if (CANCELLED.has(s)) return "cancelada";
-  // Fila assíncrona da Fisqal: cancelamento aceito mas ainda processando.
-  if (
-    s === "pending" || s === "processing" || s === "sent" ||
-    s === "cancelamento_pendente"
-  ) {
-    return "cancelamento_pendente";
-  }
-  return s;
-}
+const CANCELLED = new Set(["cancelled", "canceled", "cancelada"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -118,7 +105,7 @@ Deno.serve(async (req) => {
     // ---- Idempotência: já cancelada → devolve o estado atual sem chamar a Fisqal.
     if (CANCELLED.has(currentStatus)) {
       return jsonResponse(
-        { emission, status: "cancelada", already_cancelled: true },
+        { emission, status: NFSE_STATUS.CANCELADA, already_cancelled: true },
         200,
       );
     }
@@ -154,7 +141,10 @@ Deno.serve(async (req) => {
       cancelBody,
     );
 
-    const newStatus = mapCancelStatus(clean(result?.status), "cancelamento_pendente");
+    // Vocabulário canônico PT-BR (ver _shared/nfse-status.ts). A fila de
+    // cancelamento da Fisqal é assíncrona: pending/processing/sent aqui querem
+    // dizer "cancelamento pendente", não "pendente".
+    const newStatus = mapNfseCancelStatus(result?.status);
 
     const { data: updated, error: updErr } = await supabase
       .from("nfse_emissions")

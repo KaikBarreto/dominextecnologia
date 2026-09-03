@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.21.29";
+export const APP_VERSION = "1.22.0";
 
-export const VERSION_NOTES = "Corrigimos a criação de usuários: cadastros que antes falhavam pela metade agora são concluídos corretamente, e quando algo dá errado a tela mostra uma mensagem clara explicando o motivo.";
+export const VERSION_NOTES = "Revisamos o módulo de Notas Fiscais de ponta a ponta. Corrigimos o campo de retenção do ISS, que estava com as opções trocadas e fazia toda nota declarar um imposto retido que não existia, completamos as informações do Simples Nacional exigidas pela prefeitura e deixamos o acompanhamento da nota em português na tela.";

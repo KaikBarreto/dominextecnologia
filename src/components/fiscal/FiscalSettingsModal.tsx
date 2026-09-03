@@ -34,8 +34,10 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   useFiscalSettings,
+  normalizeRegApTribSN,
   type FiscalAmbiente,
   type FiscalSettingsEditable,
+  type RegApTribSN,
 } from '@/hooks/useFiscalSettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { invokeFisqal } from '@/utils/fisqalEdge';
@@ -76,6 +78,8 @@ interface FiscalForm {
   iss_aliquota: string;
   municipio_ibge: string;
   fiscal_ambiente: FiscalAmbiente;
+  /** Apuração de tributos no Simples Nacional ('1'|'2'|'3') — só quando optante. */
+  reg_ap_trib_sn: RegApTribSN;
   // Identidade/endereço da empresa — salvos em company_settings (espelhados
   // pra `companies` por trigger server-side; a edge de registro lê de lá).
   razao_social: string;
@@ -100,6 +104,7 @@ const EMPTY_FORM: FiscalForm = {
   municipio_ibge: '',
   // Default Produção: o cliente final emite nota de verdade. Homologação é opt-in.
   fiscal_ambiente: 'producao',
+  reg_ap_trib_sn: '1',
   razao_social: '',
   cnpj: '',
   cep: '',
@@ -120,7 +125,7 @@ function daysUntil(iso: string | null): number | null {
 }
 
 export function FiscalSettingsModal({ open, onOpenChange, initialSection }: FiscalSettingsModalProps) {
-  const { settings, isLoading, save, isSaving, invalidate } = useFiscalSettings();
+  const { settings, readyToEmit, isLoading, save, isSaving, invalidate } = useFiscalSettings();
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
 
@@ -135,6 +140,13 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     { value: 'lucro_presumido', label: t.settings.impostos.regimes.lucroPresumido },
     { value: 'lucro_real', label: t.settings.impostos.regimes.lucroReal },
     { value: 'mei', label: t.settings.impostos.regimes.mei },
+  ];
+
+  /** Opções de apuração de tributos no Simples Nacional (layout nacional). */
+  const REG_AP_TRIB_SN_OPTIONS: { value: RegApTribSN; label: string }[] = [
+    { value: '1', label: t.settings.impostos.regApTribSnOptions.opt1 },
+    { value: '2', label: t.settings.impostos.regApTribSnOptions.opt2 },
+    { value: '3', label: t.settings.impostos.regApTribSnOptions.opt3 },
   ];
   const {
     settings: companySettings,
@@ -151,12 +163,25 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   // Erro persistente de registro na Fisqal (visível até a empresa ser registrada).
   const [registerError, setRegisterError] = useState<{ kind: 'data' | 'platform'; message: string } | null>(null);
 
+  // Resultado da checagem de cobertura do município. `kind: 'not_covered'` = o
+  // município respondeu que ainda não emite; `kind: 'error'` = não conseguimos
+  // consultar agora. Nunca derruba o salvamento — é sempre informativo.
+  const [coverageError, setCoverageError] = useState<{ kind: 'not_covered' | 'error'; message: string } | null>(null);
+  const [checkingCoverage, setCheckingCoverage] = useState(false);
+
   // Limpa o erro de registro quando a empresa já está registrada.
   useEffect(() => {
     if (settings.fisqal_company_id) {
       setRegisterError(null);
     }
   }, [settings.fisqal_company_id]);
+
+  // Cobertura confirmada → limpa o aviso.
+  useEffect(() => {
+    if (settings.pode_emitir) {
+      setCoverageError(null);
+    }
+  }, [settings.pode_emitir]);
 
   // Certificado
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,6 +213,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         // Empresa já registrada → respeita o ambiente salvo. Setup novo (sem
         // companyId Fisqal) → assume Produção (default do time).
         fiscal_ambiente: settings.fisqal_company_id ? settings.fiscal_ambiente : 'producao',
+        reg_ap_trib_sn: normalizeRegApTribSN(settings.reg_ap_trib_sn),
       }));
     }
   }, [isLoading, settings]);
@@ -263,6 +289,59 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     });
   }, [open, isLoading, isLoadingCompany, backfillIbge]);
 
+  /** Optante do Simples Nacional — condiciona o campo de apuração de tributos. */
+  const isSimples = form.regime_tributario === 'simples_nacional';
+
+  /**
+   * Verifica se o município do endereço fiscal já emite NFS-e no padrão nacional.
+   * É essa checagem que libera o selo "Apto a emitir" — sem ela a empresa nunca
+   * consegue emitir. Roda automaticamente ao salvar os dados da empresa e também
+   * sob demanda pelo botão da seção Empresa.
+   *
+   * Nunca lança: qualquer falha vira mensagem informativa na tela.
+   */
+  const runCoverageCheck = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      const ibge = form.municipio_ibge.trim();
+      if (!ibge) {
+        // Sem município não há o que consultar. A dica fixa abaixo do botão já
+        // explica o que falta — não duplicamos a mensagem num card.
+        return;
+      }
+      setCheckingCoverage(true);
+      try {
+        const res = await invokeFisqal<{ pode_emitir?: boolean }>('fisqal-check-coverage', { ibge });
+        if (!res.ok) {
+          // Mensagem crua só quando é acionável pelo usuário (dado faltando ou
+          // inválido) ou quando a emissão ainda não foi ativada. Falha técnica
+          // vira texto genérico — nada de detalhe de integração na tela.
+          const actionable =
+            res.unconfigured || res.errorCode === 'missing_ibge' || res.errorCode === 'invalid_ibge';
+          const message =
+            (actionable ? res.message : null) ?? t.settings.empresa.coverageCheckError;
+          setCoverageError({ kind: 'error', message });
+          if (!silent) toast.warning(message);
+          return;
+        }
+        if (res.data?.pode_emitir === true) {
+          setCoverageError(null);
+          if (!silent) toast.success(t.settings.empresa.coverageOkToast);
+        } else {
+          setCoverageError({ kind: 'not_covered', message: t.settings.empresa.coverageNotCovered });
+          if (!silent) toast.warning(t.settings.empresa.coverageNotCovered);
+        }
+      } catch {
+        setCoverageError({ kind: 'error', message: t.settings.empresa.coverageCheckError });
+        if (!silent) toast.warning(t.settings.empresa.coverageCheckError);
+      } finally {
+        setCheckingCoverage(false);
+        // Reflete `pode_emitir` recém-gravado pela verificação.
+        invalidate();
+      }
+    },
+    [form.municipio_ibge, t, invalidate],
+  );
+
   // Salva tributação / ambiente (company_fiscal_settings via useFiscalSettings).
   // Códigos por-nota (ISS, serviço, NBS, LC 116) saíram daqui — passaram a ser
   // definidos no cadastro do serviço e na emissão (outra frente).
@@ -273,6 +352,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       inscricao_estadual: form.inscricao_estadual.trim() || null,
       municipio_ibge: form.municipio_ibge.trim() || null,
       fiscal_ambiente: form.fiscal_ambiente,
+      // Fora do Simples o campo não se aplica — grava o valor neutro.
+      reg_ap_trib_sn: isSimples ? form.reg_ap_trib_sn : '1',
     };
     try {
       await save(payload);
@@ -295,6 +376,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       inscricao_estadual: form.inscricao_estadual.trim() || null,
       municipio_ibge: form.municipio_ibge.trim() || null,
       fiscal_ambiente: form.fiscal_ambiente,
+      reg_ap_trib_sn: isSimples ? form.reg_ap_trib_sn : '1',
     };
     try {
       await Promise.all([
@@ -322,6 +404,10 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         if (res.ok) {
           // Registro ok: toast de sucesso completo.
           toast.success(t.settings.certificado.toasts.saveSuccess);
+          // Em seguida confirma a cobertura do município — é essa checagem que
+          // libera o selo "Apto a emitir". Modo silencioso: o resultado aparece
+          // no bloco de status da seção Empresa, sem empilhar toasts.
+          await runCoverageCheck({ silent: true });
         } else {
           // Registro falhou: determina a causa e exibe alerta persistente.
           const kind = res.errorCode === 'missing_fields' ? 'data' : 'platform';
@@ -433,11 +519,19 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         </div>
       ) : (
         <div className="space-y-4 py-1">
-          {/* Selo "apto a emitir" — largura total, acima do rail */}
+          {/* Selo de prontidão — largura total, acima do rail.
+              Verde SÓ quando município liberado + empresa registrada +
+              certificado enviado. `pode_emitir` sozinho diz apenas que o
+              município é coberto, e virava um selo que contradizia o card de
+              status logo abaixo. */}
           <div className="flex flex-wrap items-center gap-2">
-            {settings.pode_emitir && (
+            {readyToEmit ? (
               <Badge className="bg-success text-success-foreground gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" /> {t.settings.readyBadge}
+              </Badge>
+            ) : (
+              <Badge className="bg-warning text-warning-foreground gap-1">
+                <AlertCircle className="h-3.5 w-3.5" /> {t.settings.incompleteBadge}
               </Badge>
             )}
           </div>
@@ -524,6 +618,22 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     value={form.cnpj}
                     onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))}
                   />
+                </div>
+                {/* Inscrição Municipal: mesmo estado do campo da seção
+                    Tributação. Fica aqui também porque o registro da empresa
+                    (feito no botão desta seção) é recusado sem ela — sem o
+                    espelho o usuário só descobria pelo erro. */}
+                <div className="space-y-2">
+                  <Label>{t.settings.impostos.inscricaoMunicipal}</Label>
+                  <Input
+                    value={form.inscricao_municipal}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, inscricao_municipal: e.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t.settings.empresa.inscricaoMunicipalHint}
+                  </p>
                 </div>
               </div>
 
@@ -658,7 +768,56 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                       : t.settings.empresa.statusCertPending}
                   </span>
                 </div>
+                {/* Cobertura do município — é o que libera o selo "Apto a emitir". */}
+                <div className="flex items-center gap-2 text-xs">
+                  {settings.pode_emitir ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+                  )}
+                  <span className="text-muted-foreground">
+                    {settings.pode_emitir
+                      ? t.settings.empresa.statusCoverageOk
+                      : t.settings.empresa.statusCoveragePending}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => runCoverageCheck()}
+                  disabled={checkingCoverage || !form.municipio_ibge.trim()}
+                  className="w-full sm:w-auto sm:self-start"
+                >
+                  {checkingCoverage ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <MapPin className="h-4 w-4 mr-2" />
+                  )}
+                  {t.settings.empresa.checkCoverageBtn}
+                </Button>
+                {!form.municipio_ibge.trim() && (
+                  <p className="text-xs text-muted-foreground">
+                    {t.settings.empresa.coverageNeedsCity}
+                  </p>
+                )}
               </div>
+
+              {/* Resultado da checagem de cobertura — card branco (padrão de
+                  estado do sistema), some assim que a empresa fica apta. */}
+              {coverageError && !settings.pode_emitir && (
+                <Alert className="bg-card border-border [&>svg]:text-destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-xs space-y-0.5">
+                    <p className="font-bold text-destructive">
+                      {coverageError.kind === 'not_covered'
+                        ? t.settings.empresa.coverageNotCoveredTitle
+                        : t.settings.empresa.coverageFailedTitle}
+                    </p>
+                    <p>{coverageError.message}</p>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {/* Alerta persistente de falha de registro — visível até a empresa
                   ser registrada com sucesso. Distingue causa (dado vs plataforma). */}
@@ -719,6 +878,33 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Apuração de tributos no Simples Nacional — obrigatório no
+                    layout nacional da NFS-e quando a empresa é optante. */}
+                {isSimples && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t.settings.impostos.regApTribSn}</Label>
+                    <Select
+                      value={form.reg_ap_trib_sn}
+                      onValueChange={(v) =>
+                        setForm((p) => ({ ...p, reg_ap_trib_sn: normalizeRegApTribSN(v) }))
+                      }
+                    >
+                      <SelectTrigger className="h-auto min-h-10 py-2 text-left [&>span]:line-clamp-none [&>span]:whitespace-normal">
+                        <SelectValue placeholder={t.settings.impostos.regApTribSnPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REG_AP_TRIB_SN_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t.settings.impostos.regApTribSnHint}
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>{t.settings.impostos.inscricaoMunicipal}</Label>
                   <Input

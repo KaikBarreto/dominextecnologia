@@ -807,6 +807,7 @@ export type Database = {
           item_lc116: string | null
           municipio_ibge: string | null
           pode_emitir: boolean
+          reg_ap_trib_sn: string
           regime_tributario: string | null
           serie_dps: string | null
           ultimo_numero_dps: number
@@ -828,6 +829,7 @@ export type Database = {
           item_lc116?: string | null
           municipio_ibge?: string | null
           pode_emitir?: boolean
+          reg_ap_trib_sn?: string
           regime_tributario?: string | null
           serie_dps?: string | null
           ultimo_numero_dps?: number
@@ -849,6 +851,7 @@ export type Database = {
           item_lc116?: string | null
           municipio_ibge?: string | null
           pode_emitir?: boolean
+          reg_ap_trib_sn?: string
           regime_tributario?: string | null
           serie_dps?: string | null
           ultimo_numero_dps?: number

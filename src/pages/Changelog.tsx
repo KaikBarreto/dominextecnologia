@@ -42,6 +42,48 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.22.0',
+    date: '3 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Módulo de Notas Fiscais revisado por inteiro',
+        description: 'Passamos por todo o caminho de emissão, do cadastro fiscal da empresa até o cancelamento da nota, e corrigimos o que impedia a emissão de funcionar. As melhorias abaixo fazem parte dessa revisão, e é sobre essa base que as próximas evoluções do fiscal vão chegar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Retenção de ISS na nota fiscal saía trocada',
+        description: 'O campo que indica quem recolhe o ISS estava com as opções invertidas e já vinha marcado como retido. Na prática, toda nota emitida declarava um imposto retido pelo cliente que não existia, e o valor líquido aparecia errado na tela. Agora as opções estão corretas e a nota nasce como não retida, que é o caso da grande maioria dos serviços.',
+        category: 'correcao',
+      },
+      {
+        title: 'Notas do Simples Nacional recusadas pela prefeitura',
+        description: 'Faltavam na nota informações do Simples Nacional que a prefeitura exige, e por isso ela podia ser recusada. Agora esses dados vão junto automaticamente, e nas Configurações Fiscais você escolhe como sua empresa recolhe os tributos no Simples.',
+        category: 'correcao',
+      },
+      {
+        title: 'Situação da nota fiscal em português',
+        description: 'O acompanhamento da nota aparecia com termos em inglês e sem cor, e por causa disso os botões de baixar o PDF e de cancelar não apareciam. Agora a situação é exibida em português, com destaque visual, e as ações ficam disponíveis quando a nota é autorizada.',
+        category: 'correcao',
+      },
+      {
+        title: 'Liberação da emissão travada mesmo com tudo configurado',
+        description: 'A confirmação de que a sua cidade já emite nota no padrão nacional não estava sendo feita, o que deixava a emissão bloqueada mesmo depois de preencher tudo. Agora essa verificação acontece ao salvar os dados da empresa, e há um botão para conferir de novo quando quiser.',
+        category: 'correcao',
+      },
+      {
+        title: 'Configurações Fiscais mais claras',
+        description: 'O selo de "apto a emitir" ficava verde antes da hora, mesmo faltando registrar a empresa ou enviar o certificado. Agora ele só acende quando está tudo pronto, a Inscrição Municipal aparece junto do CNPJ onde ela é pedida, e o formulário avisa o que falta antes de você tentar emitir.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Rascunho de nota perdia valores ao reabrir',
+        description: 'Ao continuar o preenchimento de uma nota salva como rascunho, alguns valores voltavam zerados. Agora o rascunho é reaberto exatamente como você deixou.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.21.29',
     date: '2 de setembro de 2026',
     type: 'patch',

@@ -46,12 +46,13 @@ export default function NotasFiscais() {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
   const { emissions, isLoading, refetch: refetchEmissions } = useNfse();
-  const { settings, isLoading: settingsLoading } = useFiscalSettings();
+  const { settings, readyToEmit, isLoading: settingsLoading } = useFiscalSettings();
 
-  // "Config fiscal incompleta": `pode_emitir` é o sinal autoritativo do backend
-  // (vira true só depois do onboarding Fisqal — empresa + certificado prontos).
-  // Enquanto false, a empresa não consegue emitir, então guiamos pra config.
-  const fiscalConfigured = settings.pode_emitir;
+  // "Config fiscal completa" = município liberado + empresa registrada +
+  // certificado enviado (critério único em useFiscalSettings). `pode_emitir`
+  // sozinho só diz que o município é coberto e liberava o botão Emitir antes
+  // do certificado existir, o que dava erro na hora de emitir.
+  const fiscalConfigured = readyToEmit;
   // Mostrar as abas/listagem assim que HÁ atividade fiscal (empresa já registrada
   // OU qualquer nota/rascunho), mesmo antes de `pode_emitir` — senão um rascunho
   // salvo fica invisível até o onboarding concluir. A ação de EMITIR continua

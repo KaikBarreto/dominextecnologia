@@ -61,6 +61,13 @@ const STATUS_META: Record<string, StatusMeta> = {
     badgeClass: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-transparent',
     iconClass: 'text-red-500',
   },
+  // Cancelamento pedido e ainda em processamento na prefeitura — estado
+  // transitório (âmbar, como `pendente`) que vira `cancelada` no fim.
+  cancelamento_pendente: {
+    icon: Loader2,
+    badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-transparent',
+    iconClass: 'text-amber-500',
+  },
 };
 
 const FALLBACK: StatusMeta = {
@@ -73,6 +80,9 @@ const FALLBACK: StatusMeta = {
  * Status TERMINAIS: a nota chegou a um desfecho e NÃO deve mais ser pollada.
  * Inclui as duas grafias (PT-BR canônica do banco + variantes EN da Fisqal),
  * pra o polling parar mesmo que o status venha cru da integração.
+ *
+ * ATENÇÃO: `cancelamento_pendente` NÃO entra aqui — é transitório e o polling
+ * precisa continuar até o status virar `cancelada`.
  */
 const TERMINAL_STATUSES = new Set<string>([
   'autorizada',
@@ -106,6 +116,7 @@ export const NFSE_STATUS_FILTER_OPTIONS = [
   { value: 'processando' },
   { value: 'autorizada' },
   { value: 'rejeitada' },
+  { value: 'cancelamento_pendente' },
   { value: 'cancelada' },
   { value: 'falhou' },
 ] as const;
@@ -119,7 +130,12 @@ export function NfseStatusBadge({ status, className }: { status: NfseStatus; cla
   const label = tStatus[status as keyof typeof tStatus] ?? tStatus.unknown ?? status;
   return (
     <Badge className={cn('gap-1 font-medium', meta.badgeClass, className)}>
-      <Icon className={cn('h-3 w-3', status === 'processando' && 'animate-spin')} />
+      <Icon
+        className={cn(
+          'h-3 w-3',
+          (status === 'processando' || status === 'cancelamento_pendente') && 'animate-spin',
+        )}
+      />
       {label}
     </Badge>
   );

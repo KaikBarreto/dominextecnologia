@@ -6,7 +6,7 @@
 // Caminho de polling do MVP (webhook é best-effort).
 // Body: { emissionId } (id local de nfse_emissions).
 //   - GET /v1/nfse/{fisqal_dps_id} + /v1/nfse/{id}/status → atualiza status.
-//   - Quando authorized: pega URLs assinadas de PDF e XML, salva
+//   - Quando autorizada (authorized na Fisqal): pega URLs assinadas de PDF e XML, salva
 //     numero_nfse/chave_acesso/protocolo/emitida_em.
 //   - Insere nfse_events.
 // =============================================================================
@@ -21,6 +21,7 @@ import {
   FisqalApiError,
   FisqalConfigError,
 } from "../_shared/fisqal-client.ts";
+import { mapNfseStatus, NFSE_STATUS } from "../_shared/nfse-status.ts";
 
 function clean(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
@@ -95,12 +96,15 @@ Deno.serve(async (req) => {
       timeline = null;
     }
 
-    const newStatus = clean(doc?.status) || emission.status;
+    // Status SEMPRE no vocabulário canônico PT-BR (a Fisqal responde em inglês).
+    // Desconhecido/vazio → mantém o status atual (não rebaixa a nota). Ver
+    // _shared/nfse-status.ts.
+    const newStatus = mapNfseStatus(doc?.status, clean(emission.status) || NFSE_STATUS.PENDENTE);
 
     const update: Record<string, unknown> = { status: newStatus };
 
     // ---- Quando autorizada: busca URLs assinadas de PDF/XML e dados fiscais.
-    if (newStatus === "authorized") {
+    if (newStatus === NFSE_STATUS.AUTORIZADA) {
       try {
         const pdf = await fisqal.get<Record<string, any>>(`/v1/nfse/${dpsId}/pdf`);
         const pdfUrl = clean(pdf?.url) || clean(pdf?.pdfUrl) || clean(pdf?.signedUrl);
@@ -122,7 +126,7 @@ Deno.serve(async (req) => {
         new Date().toISOString();
     }
 
-    if (newStatus === "rejected" || newStatus === "failed") {
+    if (newStatus === NFSE_STATUS.REJEITADA || newStatus === NFSE_STATUS.FALHOU) {
       update.error_message = clean(doc?.message) || clean(doc?.motivo) ||
         "A nota foi rejeitada pela prefeitura/SEFIN.";
     }

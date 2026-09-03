@@ -30,6 +30,7 @@ import {
   FisqalConfigError,
   idempotencyHeader,
 } from "../_shared/fisqal-client.ts";
+import { mapNfseStatus, NFSE_STATUS } from "../_shared/nfse-status.ts";
 
 function clean(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
@@ -88,7 +89,14 @@ interface EmitBody {
   // Ausente → comportamento standalone original (INSERT novo). Ver bloco emitFromDraft.
   emissionId?: string;
   customerId?: string;
-  servico?: { descricao?: string; codigoServico?: string; codigoNbs?: string };
+  servico?: {
+    descricao?: string;
+    codigoServico?: string;
+    codigoNbs?: string;
+    // Município de incidência do ISSQN (IBGE, 7 dígitos). Ausente → rascunho →
+    // município do emissor (fallback histórico).
+    municipioIncidenciaIbge?: string;
+  };
   // aliquotaIss: override da alíquota de ISS por nota (em %, ex.: 5 = 5%).
   // Mora em `valores` por ser um parâmetro de cálculo do valor da nota.
   //
@@ -98,6 +106,8 @@ interface EmitBody {
   valores?: {
     valorServico?: number | string;
     aliquotaIss?: number | string;
+    // Alias do front (NovaNotaModal manda o nome real da Fisqal). Mesma precedência.
+    aliquotaIssqn?: number | string;
     // tribIssqn: situação do ISSQN — enum '1'..'4' (1=operação normal tributada,
     // 2=exportação, 3=imunidade, 4=não incidência). Sobrescreve o default '1'.
     tribIssqn?: string;
@@ -107,9 +117,15 @@ interface EmitBody {
     valorCofins?: number | string;
     valorCsll?: number | string;
     percentualTotalTributosSimplesNacional?: number | string;
+    // Alias do front pro mesmo campo acima. Mesma precedência.
+    percentualTribSn?: number | string;
   };
   dataCompetencia?: string;
   idempotencyKey?: string;
+  // Overrides fiscais por nota (enums do CreateNfseDpsDto). Quando ausentes,
+  // derivamos de company_fiscal_settings (regime_tributario / reg_ap_trib_sn).
+  opSimpNac?: string;
+  regApTribSN?: string;
 }
 
 /**
@@ -130,6 +146,43 @@ function parseAliquota(v: unknown): number | null {
   if (v == null || v === "") return null;
   const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
   return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/**
+ * Primeiro valor "presente" de uma lista (ignora null/undefined/string vazia).
+ * Usado pra aceitar ALIASES de campo do body (contrato do front x contrato da
+ * Fisqal) sem dar precedência artificial a um valor vazio.
+ */
+function firstNonEmpty(...vals: unknown[]): unknown {
+  for (const v of vals) {
+    if (v !== null && v !== undefined && v !== "") return v;
+  }
+  return null;
+}
+
+/** Valida código IBGE de município (7 dígitos). Retorna "" se inválido. */
+function cleanIbge(v: unknown): string {
+  const s = clean(v);
+  return /^\d{7}$/.test(s) ? s : "";
+}
+
+/**
+ * Deriva `opSimpNac` (CreateNfseDpsDto) do regime tributário do prestador.
+ *   '1' = não optante · '2' = optante MEI · '3' = optante Simples (ME/EPP).
+ * Regime ausente/desconhecido → null (NÃO enviamos o campo; não se chuta regime).
+ */
+function opSimpNacFromRegime(regime: unknown): string | null {
+  switch (clean(regime).toLowerCase()) {
+    case "simples_nacional":
+      return "3";
+    case "mei":
+      return "2";
+    case "lucro_presumido":
+    case "lucro_real":
+      return "1";
+    default:
+      return null;
+  }
 }
 
 /** Zero-pad à esquerda até `len` (corta à direita se exceder). */
@@ -301,7 +354,7 @@ Deno.serve(async (req) => {
         supabase
           .from("company_fiscal_settings")
           .select(
-            "fisqal_company_id, codigo_servico_default, item_lc116, iss_aliquota, serie_dps, ultimo_numero_dps, municipio_ibge, pode_emitir, fiscal_ambiente, inscricao_municipal, codigo_nbs_default",
+            "fisqal_company_id, codigo_servico_default, item_lc116, iss_aliquota, serie_dps, ultimo_numero_dps, municipio_ibge, pode_emitir, fiscal_ambiente, inscricao_municipal, codigo_nbs_default, regime_tributario, reg_ap_trib_sn",
           )
           .eq("company_id", companyId)
           .maybeSingle(),
@@ -403,7 +456,12 @@ Deno.serve(async (req) => {
 
     // ---- Alíquota de ISS (%): body (valores.aliquotaIss) → rascunho (aliquota_issqn)
     // → default da empresa (company_fiscal_settings.iss_aliquota).
-    const issAliquota = parseAliquota(body?.valores?.aliquotaIss) ??
+    // B5: `aliquotaIss` é o nome canônico do NOSSO contrato de edge (e o que o
+    // front manda). `aliquotaIssqn` (nome do campo na Fisqal) é aceito como alias
+    // tolerante, com a mesma precedência, pra não quebrar chamador antigo.
+    const issAliquota = parseAliquota(
+      firstNonEmpty(body?.valores?.aliquotaIss, body?.valores?.aliquotaIssqn),
+    ) ??
       parseAliquota(draft?.aliquota_issqn) ??
       parseAliquota(fiscal.iss_aliquota) ?? 0;
     const valorIss = issAliquota > 0
@@ -448,6 +506,52 @@ Deno.serve(async (req) => {
       padLeft(serieDps, 5) +
       padLeft(numeroDps, 15);
 
+    // ---- Simples Nacional (opSimpNac / regApTribSN).
+    // opSimpNac: '1' não optante · '2' optante MEI · '3' optante Simples (ME/EPP).
+    // Derivado de company_fiscal_settings.regime_tributario; o body pode sobrescrever.
+    // Regime desconhecido/ausente → NÃO enviamos o campo (não se chuta regime fiscal).
+    const opSimpNacOverride = clean(body?.opSimpNac);
+    const opSimpNac = /^[1-3]$/.test(opSimpNacOverride)
+      ? opSimpNacOverride
+      : opSimpNacFromRegime(fiscal.regime_tributario);
+
+    // regApTribSN: obrigatório quando opSimpNac='3' (OpenAPI CreateNfseDpsDto).
+    // '1' federais e municipal pelo SN · '2' federais pelo SN e ISSQN por fora ·
+    // '3' ambos por fora do SN. Body → company_fiscal_settings.reg_ap_trib_sn → '1'.
+    let regApTribSN: string | null = null;
+    if (opSimpNac === "3") {
+      const regOverride = clean(body?.regApTribSN);
+      const regDefault = clean(fiscal.reg_ap_trib_sn);
+      regApTribSN = /^[1-3]$/.test(regOverride)
+        ? regOverride
+        : (/^[1-3]$/.test(regDefault) ? regDefault : "1");
+    }
+
+    // ---- Tipo de retenção do ISSQN (tpRetIssqn): '1' NÃO retido · '2' retido pelo
+    // tomador · '3' retido pelo intermediário. body → rascunho.
+    // `tpRetIssqnInformado` = "" quando ninguém informou (aí NÃO enviamos o campo e
+    // o layout nacional trata como não retido). `tpRetIssqnEfetivo` é o valor que
+    // vale na prática — usado só para decidir a supressão da alíquota (abaixo).
+    const tpRetIssqnInformado = (() => {
+      const t = clean(body?.valores?.tpRetIssqn) || clean(draft?.tp_ret_issqn);
+      return /^[1-3]$/.test(t) ? t : "";
+    })();
+    const tpRetIssqnEfetivo = tpRetIssqnInformado || "1";
+
+    // ---- E0625 — "Não é permitido informar alíquota quando não há indicação de
+    // retenção do ISSQN". O OpenAPI da Fisqal é explícito: `aliquotaIssqn` é
+    // "dispensada (e omitida no XML) para ME/EPP no SN sem retenção
+    // (opSimpNac=3, regApTribSN=1, tpRetIssqn=1)".
+    //
+    // ⚠️ NÃO GENERALIZAR. A supressão vale SÓ para essa TRIPLA exata. Empresa fora
+    // do Simples (ou no SN com regApTribSN 2/3, ou com ISS retido) precisa informar
+    // a alíquota — suprimir nesses casos quebraria a nota. Este bloco existe porque
+    // a alíquota também vem do default da empresa (company_fiscal_settings.
+    // iss_aliquota), então "campo em branco na tela" NÃO impede o envio.
+    const suprimeAliquotaIssqn = opSimpNac === "3" &&
+      regApTribSN === "1" &&
+      tpRetIssqnEfetivo === "1";
+
     // ---- Monta o bloco `valores` (NfseValoresDto §8.1) com os NOMES REAIS da Fisqal.
     // `valorServico` é obrigatório. Quando há alíquota de ISS resolvida (> 0),
     // enviamos `aliquotaIssqn` (nome correto — o campo antigo `aliquota` era ignorado
@@ -455,7 +559,8 @@ Deno.serve(async (req) => {
     // Os demais campos entram só quando o body os traz e são válidos.
     const valoresPayload: Record<string, unknown> = { valorServico };
     if (issAliquota > 0) {
-      valoresPayload.aliquotaIssqn = issAliquota;
+      // A supressão da E0625 leva SÓ a alíquota; `tribIssqn` continua sendo enviado.
+      if (!suprimeAliquotaIssqn) valoresPayload.aliquotaIssqn = issAliquota;
       valoresPayload.tribIssqn = "1"; // default: operação normal tributada
     }
     // Situação do ISSQN: body → rascunho (trib_issqn). Enum válido ('1'..'4').
@@ -463,11 +568,9 @@ Deno.serve(async (req) => {
       const t = clean(body?.valores?.tribIssqn) || clean(draft?.trib_issqn);
       if (/^[1-4]$/.test(t)) valoresPayload.tribIssqn = t;
     }
-    // Tipo de retenção do ISSQN (ISS retido): body → rascunho (tp_ret_issqn). ('1'..'3').
-    {
-      const t = clean(body?.valores?.tpRetIssqn) || clean(draft?.tp_ret_issqn);
-      if (/^[1-3]$/.test(t)) valoresPayload.tpRetIssqn = t;
-    }
+    // Só enviamos tpRetIssqn quando ele foi realmente informado (comportamento
+    // preservado: ausência = omitido, e o padrão nacional entende "não retido").
+    if (tpRetIssqnInformado) valoresPayload.tpRetIssqn = tpRetIssqnInformado;
     // Tributos federais (só quando presentes e > 0). body → rascunho.
     {
       const pis = parseNonNegative(body?.valores?.valorPis ?? draft?.valor_pis);
@@ -481,14 +584,29 @@ Deno.serve(async (req) => {
     }
     // Percentual total de tributos (Simples Nacional): body → rascunho (percentual_trib_sn).
     {
+      // B5: front manda `percentualTribSn`; contrato antigo era o nome longo.
       const pct = parseNonNegative(
-        body?.valores?.percentualTotalTributosSimplesNacional ??
+        firstNonEmpty(
+          body?.valores?.percentualTotalTributosSimplesNacional,
+          body?.valores?.percentualTribSn,
           draft?.percentual_trib_sn,
+        ),
       );
       if (pct != null) {
         valoresPayload.percentualTotalTributosSimplesNacional = pct;
       }
     }
+
+    // ISS registrado na NOSSA linha: quando a alíquota é suprimida (E0625), a nota
+    // não carrega ISS destacado — a empresa recolhe pelo DAS. Gravar valor aqui
+    // viraria número fantasma no relatório.
+    const valorIssRegistrado = suprimeAliquotaIssqn ? null : valorIss;
+
+    // ---- B6: município de incidência do ISSQN.
+    // body → rascunho (municipio_incidencia_ibge) → município do emissor (fallback).
+    const municipioIncidencia = cleanIbge(body?.servico?.municipioIncidenciaIbge) ||
+      cleanIbge(draft?.municipio_incidencia_ibge) ||
+      codigoMunicipioEmissor;
 
     // ---- Monta o CreateNfseDpsDto (§8.1).
     const payload: Record<string, unknown> = {
@@ -500,6 +618,9 @@ Deno.serve(async (req) => {
       tipoInscricaoPrestador, // "2" = CNPJ
       inscricaoFederalPrestador: cnpjPrestador, // CNPJ do prestador, só dígitos
       dataCompetencia, // YYYY-MM-DD
+      // Simples Nacional (só entram quando resolvidos — ver bloco acima).
+      ...(opSimpNac ? { opSimpNac } : {}),
+      ...(regApTribSN ? { regApTribSN } : {}),
       tomador: {
         tipoInscricao: tomadorTipoInscricao,
         inscricaoFederal: tomadorDocumento,
@@ -509,7 +630,7 @@ Deno.serve(async (req) => {
       servico: {
         codigoServico,
         codigoNbs,
-        municipioIncidencia: codigoMunicipioEmissor,
+        municipioIncidencia,
         discriminacao,
       },
       valores: valoresPayload,
@@ -524,7 +645,9 @@ Deno.serve(async (req) => {
 
     const fisqalDpsId = clean(created?.dpsId) || null;
     const fisqalRequestId = clean(created?.fiscalRequestId) || null;
-    const status = clean(created?.status) || "pending";
+    // Status SEMPRE no vocabulário canônico PT-BR (a Fisqal devolve em inglês e a
+    // UI/RPC de listagem só entendem PT-BR). Ver _shared/nfse-status.ts.
+    const status = mapNfseStatus(created?.status, NFSE_STATUS.PENDENTE);
 
     // ---- Grava a emissão (company_id carimbado — RLS exige).
     // Emitindo de rascunho (emissionId) → UPDATE da MESMA linha: a nota "vira" emitida
@@ -543,7 +666,7 @@ Deno.serve(async (req) => {
           fisqal_fiscal_request_id: fisqalRequestId,
           idempotency_key: idempotencyKey,
           valor_servico: valorServico,
-          valor_iss: valorIss,
+          valor_iss: valorIssRegistrado,
           descricao_servico: discriminacao,
           emitida_em: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -569,7 +692,7 @@ Deno.serve(async (req) => {
           fisqal_fiscal_request_id: fisqalRequestId,
           idempotency_key: idempotencyKey,
           valor_servico: valorServico,
-          valor_iss: valorIss,
+          valor_iss: valorIssRegistrado,
           descricao_servico: discriminacao,
         })
         .select("*")

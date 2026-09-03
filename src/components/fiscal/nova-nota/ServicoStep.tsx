@@ -35,6 +35,8 @@ const TRIB_ISSQN_OPTIONS: { value: TribIssqn; label: string; Icon: typeof Receip
 export function ServicoStep({
   servico,
   onServicoChange,
+  defaultCodigoServico,
+  defaultCodigoNbs,
   errors,
 }: ServicoStepProps) {
   const { locale } = useAppLocaleContext();
@@ -44,6 +46,13 @@ export function ServicoStep({
     (e) => e.includes('discriminação') || e.includes('discriminacao') || e.includes('descrição') || e.includes('descricao'),
   );
   const municipioError = errors.find((e) => e.includes('município') || e.includes('municipio'));
+  // Código de tributação e NBS só são obrigatórios quando a empresa NÃO tem um
+  // padrão salvo (nesse caso a emissão usa o padrão). Comparação exata da
+  // mensagem: funciona em qualquer idioma.
+  const codigoServicoRequired = !defaultCodigoServico;
+  const codigoNbsRequired = !defaultCodigoNbs;
+  const codigoServicoError = errors.find((e) => e === s.servico.codigos.codigoServico.required);
+  const codigoNbsError = errors.find((e) => e === s.servico.codigos.codigoNbs.required);
 
   return (
     <div className="space-y-5">
@@ -79,9 +88,13 @@ export function ServicoStep({
         <div className="space-y-1.5">
           <Label htmlFor="nfse-cod-servico">
             {s.servico.codigos.codigoServico.label}{' '}
-            <span className="text-muted-foreground font-normal text-xs">
-              {s.servico.codigos.codigoServico.optional}
-            </span>
+            {codigoServicoRequired ? (
+              <span className="text-destructive">*</span>
+            ) : (
+              <span className="text-muted-foreground font-normal text-xs">
+                {s.servico.codigos.codigoServico.optional}
+              </span>
+            )}
           </Label>
           <TaxCodeCombobox
             type="servico"
@@ -89,14 +102,21 @@ export function ServicoStep({
             onSelect={(codigo) => onServicoChange({ codigoServico: codigo })}
             placeholder={s.servico.codigos.codigoServico.placeholder}
           />
+          {codigoServicoError && (
+            <p className="text-sm text-destructive">{codigoServicoError}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="nfse-cod-nbs">
             {s.servico.codigos.codigoNbs.label}{' '}
-            <span className="text-muted-foreground font-normal text-xs">
-              {s.servico.codigos.codigoNbs.optional}
-            </span>
+            {codigoNbsRequired ? (
+              <span className="text-destructive">*</span>
+            ) : (
+              <span className="text-muted-foreground font-normal text-xs">
+                {s.servico.codigos.codigoNbs.optional}
+              </span>
+            )}
           </Label>
           <TaxCodeCombobox
             type="nbs"
@@ -104,6 +124,7 @@ export function ServicoStep({
             onSelect={(codigo) => onServicoChange({ codigoNbs: codigo })}
             placeholder={s.servico.codigos.codigoNbs.placeholder}
           />
+          {codigoNbsError && <p className="text-sm text-destructive">{codigoNbsError}</p>}
           <p className="text-[11px] text-muted-foreground">
             {s.servico.codigos.codigoNbs.hint}
           </p>

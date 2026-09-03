@@ -83,7 +83,9 @@ const emptyServico = (): NfseServicoState => ({
 const emptyValores = (): NfseValoresState => ({
   valorServico: 0,
   aliquotaIssqn: 0,
-  tpRetIssqn: '2',
+  // '1' = ISS NÃO retido — é o caso da esmagadora maioria das notas. Declarar
+  // retenção por default faria toda nota sair dizendo que o cliente reteve ISS.
+  tpRetIssqn: '1',
   valorPis: 0,
   valorCofins: 0,
   valorCsll: 0,
@@ -231,24 +233,42 @@ export function NovaNotaModal({
   const servicoErrors = useMemo(() => {
     const e: string[] = [];
     if (!servico.discriminacao.trim()) e.push(s.servico.discriminacao.required);
+    // A emissão recusa a nota sem código de tributação / NBS. Só não exigimos
+    // aqui quando a empresa tem padrão salvo, porque a emissão cai nele.
+    if (!servico.codigoServico.trim() && !settings.codigo_servico_default) {
+      e.push(s.servico.codigos.codigoServico.required);
+    }
+    if (!servico.codigoNbs.trim() && !settings.codigo_nbs_default) {
+      e.push(s.servico.codigos.codigoNbs.required);
+    }
     return e;
-  }, [servico, s]);
+  }, [servico, s, settings.codigo_servico_default, settings.codigo_nbs_default]);
 
   const valoresErrors = useMemo(() => {
     const e: string[] = [];
     if (!(valores.valorServico > 0)) e.push(s.valores.valorServico.required);
+    // Optante do Simples: o percentual total de tributos é obrigatório na nota
+    // (a prefeitura rejeita sem ele). O número é do contador — não estimamos.
+    if (isSimples && !(valores.percentualTribSn > 0)) {
+      e.push(s.valores.percTribSn.required);
+    }
     return e;
-  }, [valores, s]);
+  }, [valores, s, isSimples]);
 
+  // Bloqueio de emissão: aponta a peça que está faltando, na ordem do
+  // onboarding (registro da empresa → município liberado → certificado A1).
+  // `pode_emitir` sozinho só diz que o município é coberto.
   const habilitacaoErrors = useMemo(() => {
     const e: string[] = [];
-    if (!settings.pode_emitir) e.push(s.emitir.habilitacaoError);
+    if (!settings.fisqal_company_id) e.push(s.emitir.habilitacaoErrorRegistro);
+    else if (!settings.pode_emitir) e.push(s.emitir.habilitacaoErrorMunicipio);
+    else if (!settings.fisqal_certificate_id) e.push(s.emitir.habilitacaoError);
     return e;
-  }, [settings.pode_emitir, s]);
+  }, [settings.fisqal_company_id, settings.pode_emitir, settings.fisqal_certificate_id, s]);
 
   const habilitacaoWarnings = useMemo(() => {
     const w: string[] = [];
-    if (settings.pode_emitir && !settings.inscricao_municipal) {
+    if (settings.fisqal_company_id && !settings.inscricao_municipal) {
       w.push('Inscrição Municipal não configurada. A maioria dos municípios exige. Confira nas Configurações Fiscais.');
     }
     return w;
@@ -422,15 +442,20 @@ export function NovaNotaModal({
               ...(servico.codigoNbs ? { codigoNbs: servico.codigoNbs } : {}),
               ...(servico.municipioIncidenciaIbge ? { municipioIncidenciaIbge: servico.municipioIncidenciaIbge } : {}),
             },
+            // Nomes CANÔNICOS esperados pela emissão: `aliquotaIss` e
+            // `percentualTotalTributosSimplesNacional`. Mandar outro nome fazia
+            // a alíquota de ISS cair calada no padrão da empresa.
             valores: {
               valorServico: valores.valorServico,
-              ...(valores.aliquotaIssqn ? { aliquotaIssqn: valores.aliquotaIssqn } : {}),
+              ...(valores.aliquotaIssqn ? { aliquotaIss: valores.aliquotaIssqn } : {}),
               tribIssqn: servico.tribIssqn,
               tpRetIssqn: valores.tpRetIssqn,
               ...(valores.valorPis ? { valorPis: valores.valorPis } : {}),
               ...(valores.valorCofins ? { valorCofins: valores.valorCofins } : {}),
               ...(valores.valorCsll ? { valorCsll: valores.valorCsll } : {}),
-              ...(valores.percentualTribSn ? { percentualTribSn: valores.percentualTribSn } : {}),
+              ...(valores.percentualTribSn
+                ? { percentualTotalTributosSimplesNacional: valores.percentualTribSn }
+                : {}),
             },
           };
 
@@ -613,6 +638,7 @@ export function NovaNotaModal({
           onChange={patchValores}
           taxes={taxes}
           errors={valoresErrors}
+          isSimples={isSimples}
         />
       )}
 

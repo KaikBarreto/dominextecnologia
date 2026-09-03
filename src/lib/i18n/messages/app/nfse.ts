@@ -77,6 +77,7 @@ export const nfse = {
       cancelada: 'Cancelada',
       falhou: 'Falhou',
       rascunho: 'Rascunho',
+      cancelamento_pendente: 'Cancelamento em andamento',
       unknown: 'Desconhecido',
     },
     // ── Visão Geral ─────────────────────────────────────────────────────────
@@ -228,6 +229,7 @@ export const nfse = {
     settings: {
       title: 'Configurações fiscais',
       readyBadge: 'Apto a emitir',
+      incompleteBadge: 'Configuração incompleta',
       sections: {
         empresa: 'Empresa',
         certificado: 'Certificado A1',
@@ -264,6 +266,19 @@ export const nfse = {
         statusCertSent: 'Certificado: enviado',
         statusCertPending: 'Certificado: pendente',
         nextBtn: 'Próximo: enviar certificado',
+        inscricaoMunicipalHint:
+          'Exigida pela prefeitura para registrar a empresa e emitir notas. É o mesmo campo da aba Tributação.',
+        checkCoverageBtn: 'Verificar cobertura do município',
+        statusCoverageOk: 'Município: liberado para emitir notas',
+        statusCoveragePending: 'Município: liberação ainda não confirmada',
+        coverageNeedsCity: 'Informe o CEP ou a cidade da empresa para verificar a liberação do município.',
+        coverageOkToast: 'Município liberado para emissão de NFS-e.',
+        coverageNotCoveredTitle: 'Município ainda sem emissão de NFS-e',
+        coverageNotCovered:
+          'O município ainda não está habilitado para emissão de NFS-e no padrão nacional. Assim que a prefeitura liberar, é só verificar de novo por aqui.',
+        coverageFailedTitle: 'Não foi possível confirmar a liberação do município',
+        coverageCheckError:
+          'Não conseguimos verificar a liberação do município agora. Tente novamente em alguns minutos.',
       },
       certificado: {
         notRegisteredWarning:
@@ -309,6 +324,15 @@ export const nfse = {
           lucroReal: 'Lucro Real',
           mei: 'MEI',
         },
+        regApTribSn: 'Apuração de tributos no Simples Nacional',
+        regApTribSnPlaceholder: 'Selecione',
+        regApTribSnOptions: {
+          opt1: 'Tributos federais e municipal (ISS) recolhidos pelo Simples Nacional',
+          opt2: 'Tributos federais pelo Simples Nacional e ISS recolhido por fora',
+          opt3: 'Tributos federais e municipal recolhidos por fora do Simples Nacional',
+        },
+        regApTribSnHint:
+          'Na dúvida, escolha a primeira opção, é o caso da grande maioria das empresas do Simples.',
         inscricaoMunicipal: 'Inscrição Municipal',
         inscricaoEstadual: 'Inscrição Estadual',
         saveBtn: 'Salvar tributação',
@@ -406,12 +430,14 @@ export const nfse = {
             label: 'Código de tributação (cTribNac)',
             optional: '(opcional)',
             placeholder: 'Buscar por código ou descrição...',
+            required: 'Escolha o código de tributação do serviço. A nota não pode ser emitida sem ele.',
           },
           codigoNbs: {
             label: 'Código NBS',
             optional: '(opcional)',
             placeholder: 'Buscar por código ou descrição...',
             hint: 'Nomenclatura Brasileira de Serviços. Digite ao menos 2 caracteres para buscar.',
+            required: 'Escolha o código NBS do serviço. A nota não pode ser emitida sem ele.',
           },
         },
         tribIssqn: {
@@ -438,13 +464,15 @@ export const nfse = {
           aliquota: {
             label: 'Alíquota ISS %',
             optional: '(opcional)',
+            avisoSimplesSemRetencao:
+              'Empresa do Simples Nacional sem retenção de ISS: deixe a alíquota em branco. Informar alíquota nesse caso faz a prefeitura recusar a nota.',
           },
         },
         tpRetIssqn: {
-          label: 'Tipo de retenção do ISS',
-          op1: 'Retido pelo tomador',
-          op2: 'Devido no local da prestação',
-          op3: 'Devido no município do prestador',
+          label: 'Retenção do ISS',
+          op1: 'Não retido',
+          op2: 'Retido pelo tomador',
+          op3: 'Retido pelo intermediário',
         },
         retencoes: {
           sectionTitle: 'Retenções federais',
@@ -457,6 +485,10 @@ export const nfse = {
           label: 'Percentual de tributos do Simples Nacional (%)',
           optional: '(opcional)',
           hint: 'Percentual total de tributos para empresas no Simples Nacional.',
+          hintSimples:
+            'Carga tributária aproximada do Simples Nacional, o percentual da faixa/anexo da sua empresa. Peça ao seu contador, não estimamos esse número.',
+          required:
+            'Informe o percentual de tributos do Simples Nacional. Ele é obrigatório na nota para empresas optantes do Simples.',
         },
         previa: {
           title: 'Prévia do cálculo (ISS {aliq}%)',
@@ -475,6 +507,10 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Emissão bloqueada',
         habilitacaoWarningTitle: 'Atenção',
         habilitacaoError: 'Configure o certificado digital nas Configurações Fiscais.',
+        habilitacaoErrorRegistro:
+          'Conclua o cadastro da empresa nas Configurações Fiscais para liberar a emissão.',
+        habilitacaoErrorMunicipio:
+          'O município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais.',
         loadingMessage: 'Processando emissão...',
         issRetido: 'retido',
         issDue: 'devido',
@@ -578,6 +614,7 @@ export const nfse = {
       cancelada: 'Cancelled',
       falhou: 'Failed',
       rascunho: 'Draft',
+      cancelamento_pendente: 'Cancellation in progress',
       unknown: 'Unknown',
     },
     overview: {
@@ -722,6 +759,7 @@ export const nfse = {
     settings: {
       title: 'Tax settings',
       readyBadge: 'Ready to issue',
+      incompleteBadge: 'Setup incomplete',
       sections: {
         empresa: 'Company',
         certificado: 'Digital Certificate',
@@ -758,6 +796,19 @@ export const nfse = {
         statusCertSent: 'Certificate: uploaded',
         statusCertPending: 'Certificate: pending',
         nextBtn: 'Next: upload certificate',
+        inscricaoMunicipalHint:
+          'Required by the city hall to register the company and issue invoices. It is the same field as on the Taxation tab.',
+        checkCoverageBtn: 'Check municipality availability',
+        statusCoverageOk: 'Municipality: cleared to issue invoices',
+        statusCoveragePending: 'Municipality: clearance not confirmed yet',
+        coverageNeedsCity: 'Fill in the company ZIP code or city to check the municipality clearance.',
+        coverageOkToast: 'Municipality cleared for invoice issuance.',
+        coverageNotCoveredTitle: 'Municipality not issuing invoices yet',
+        coverageNotCovered:
+          'This municipality is not enabled for invoice issuance on the national standard yet. As soon as the city hall enables it, just check again here.',
+        coverageFailedTitle: 'Could not confirm the municipality clearance',
+        coverageCheckError:
+          'We could not check the municipality clearance right now. Please try again in a few minutes.',
       },
       certificado: {
         notRegisteredWarning:
@@ -803,6 +854,15 @@ export const nfse = {
           lucroReal: 'Actual Profit',
           mei: 'MEI (Microentrepreneur)',
         },
+        regApTribSn: 'Tax assessment under Simples Nacional',
+        regApTribSnPlaceholder: 'Select',
+        regApTribSnOptions: {
+          opt1: 'Federal and municipal taxes (ISS) collected through Simples Nacional',
+          opt2: 'Federal taxes through Simples Nacional and ISS collected separately',
+          opt3: 'Federal and municipal taxes collected outside Simples Nacional',
+        },
+        regApTribSnHint:
+          'If unsure, pick the first option, it applies to the vast majority of Simples Nacional companies.',
         inscricaoMunicipal: 'Municipal Registration',
         inscricaoEstadual: 'State Registration',
         saveBtn: 'Save taxation',
@@ -898,12 +958,14 @@ export const nfse = {
             label: 'Service tax code (cTribNac)',
             optional: '(optional)',
             placeholder: 'Search by code or description...',
+            required: 'Pick the service tax code. The invoice cannot be issued without it.',
           },
           codigoNbs: {
             label: 'NBS code',
             optional: '(optional)',
             placeholder: 'Search by code or description...',
             hint: 'Brazilian Services Nomenclature. Type at least 2 characters to search.',
+            required: 'Pick the NBS code. The invoice cannot be issued without it.',
           },
         },
         tribIssqn: {
@@ -929,13 +991,15 @@ export const nfse = {
           aliquota: {
             label: 'SST rate %',
             optional: '(optional)',
+            avisoSimplesSemRetencao:
+              'Simples Nacional company without SST withholding: leave the rate blank. Filling in a rate in this case makes the city hall reject the invoice.',
           },
         },
         tpRetIssqn: {
-          label: 'SST withholding type',
-          op1: 'Withheld by recipient',
-          op2: 'Due at service location',
-          op3: 'Due at provider municipality',
+          label: 'SST withholding',
+          op1: 'Not withheld',
+          op2: 'Withheld by the recipient',
+          op3: 'Withheld by the intermediary',
         },
         retencoes: {
           sectionTitle: 'Federal withholdings',
@@ -948,6 +1012,10 @@ export const nfse = {
           label: 'Simples Nacional total tax rate (%)',
           optional: '(optional)',
           hint: 'Total tax percentage for Simples Nacional companies.',
+          hintSimples:
+            'Approximate Simples Nacional tax burden, the percentage of your company bracket. Ask your accountant, we do not estimate this number.',
+          required:
+            'Enter the Simples Nacional total tax rate. It is mandatory on the invoice for Simples Nacional companies.',
         },
         previa: {
           title: 'Calculation preview (SST {aliq}%)',
@@ -965,6 +1033,10 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Issuance blocked',
         habilitacaoWarningTitle: 'Attention',
         habilitacaoError: 'Set up your digital certificate in Tax Settings.',
+        habilitacaoErrorRegistro:
+          'Finish the company setup in Tax Settings to unlock invoice issuance.',
+        habilitacaoErrorMunicipio:
+          'This municipality is not cleared for invoice issuance yet. Check it in Tax Settings.',
         loadingMessage: 'Processing issuance...',
         issRetido: 'withheld',
         issDue: 'due',
@@ -1068,6 +1140,7 @@ export const nfse = {
       cancelada: 'Cancelada',
       falhou: 'Fallida',
       rascunho: 'Borrador',
+      cancelamento_pendente: 'Cancelación en curso',
       unknown: 'Desconocido',
     },
     overview: {
@@ -1213,6 +1286,7 @@ export const nfse = {
     settings: {
       title: 'Configuración fiscal',
       readyBadge: 'Listo para emitir',
+      incompleteBadge: 'Configuración incompleta',
       sections: {
         empresa: 'Empresa',
         certificado: 'Certificado Digital',
@@ -1249,6 +1323,19 @@ export const nfse = {
         statusCertSent: 'Certificado: enviado',
         statusCertPending: 'Certificado: pendiente',
         nextBtn: 'Siguiente: enviar certificado',
+        inscricaoMunicipalHint:
+          'Exigido por el ayuntamiento para registrar la empresa y emitir facturas. Es el mismo campo de la pestaña Tributación.',
+        checkCoverageBtn: 'Verificar disponibilidad del municipio',
+        statusCoverageOk: 'Municipio: habilitado para emitir facturas',
+        statusCoveragePending: 'Municipio: habilitación aún no confirmada',
+        coverageNeedsCity: 'Informa el código postal o la ciudad de la empresa para verificar la habilitación del municipio.',
+        coverageOkToast: 'Municipio habilitado para la emisión de facturas.',
+        coverageNotCoveredTitle: 'El municipio aún no emite facturas',
+        coverageNotCovered:
+          'El municipio todavía no está habilitado para la emisión de facturas en el estándar nacional. En cuanto el ayuntamiento lo habilite, basta con verificar de nuevo aquí.',
+        coverageFailedTitle: 'No fue posible confirmar la habilitación del municipio',
+        coverageCheckError:
+          'No pudimos verificar la habilitación del municipio ahora. Inténtalo de nuevo en unos minutos.',
       },
       certificado: {
         notRegisteredWarning:
@@ -1295,6 +1382,15 @@ export const nfse = {
           lucroReal: 'Renta Real',
           mei: 'MEI (Microempresario)',
         },
+        regApTribSn: 'Determinación de tributos en el Simples Nacional',
+        regApTribSnPlaceholder: 'Selecciona',
+        regApTribSnOptions: {
+          opt1: 'Tributos federales y municipal (ISS) recaudados por el Simples Nacional',
+          opt2: 'Tributos federales por el Simples Nacional e ISS recaudado por fuera',
+          opt3: 'Tributos federales y municipal recaudados fuera del Simples Nacional',
+        },
+        regApTribSnHint:
+          'En caso de duda, elige la primera opción, es el caso de la gran mayoría de las empresas del Simples.',
         inscricaoMunicipal: 'Registro Municipal',
         inscricaoEstadual: 'Registro Estatal',
         saveBtn: 'Guardar tributación',
@@ -1390,12 +1486,14 @@ export const nfse = {
             label: 'Código de tributación (cTribNac)',
             optional: '(opcional)',
             placeholder: 'Buscar por código o descripción...',
+            required: 'Elige el código de tributación del servicio. La factura no puede emitirse sin él.',
           },
           codigoNbs: {
             label: 'Código NBS',
             optional: '(opcional)',
             placeholder: 'Buscar por código o descripción...',
             hint: 'Nomenclatura Brasileña de Servicios. Escribe al menos 2 caracteres para buscar.',
+            required: 'Elige el código NBS del servicio. La factura no puede emitirse sin él.',
           },
         },
         tribIssqn: {
@@ -1421,13 +1519,15 @@ export const nfse = {
           aliquota: {
             label: 'Tasa ISS %',
             optional: '(opcional)',
+            avisoSimplesSemRetencao:
+              'Empresa del Simples Nacional sin retención de ISS: deja la tasa en blanco. Informar una tasa en ese caso hace que el ayuntamiento rechace la factura.',
           },
         },
         tpRetIssqn: {
-          label: 'Tipo de retención del ISS',
-          op1: 'Retenido por el receptor',
-          op2: 'Debido en el lugar de prestación',
-          op3: 'Debido en el municipio del prestador',
+          label: 'Retención del ISS',
+          op1: 'No retenido',
+          op2: 'Retenido por el receptor',
+          op3: 'Retenido por el intermediario',
         },
         retencoes: {
           sectionTitle: 'Retenciones federales',
@@ -1440,6 +1540,10 @@ export const nfse = {
           label: 'Porcentaje de tributos del Simples Nacional (%)',
           optional: '(opcional)',
           hint: 'Porcentaje total de tributos para empresas en el Simples Nacional.',
+          hintSimples:
+            'Carga tributaria aproximada del Simples Nacional, el porcentaje del tramo de tu empresa. Consúltalo con tu contador, no estimamos ese número.',
+          required:
+            'Informa el porcentaje de tributos del Simples Nacional. Es obligatorio en la factura para empresas del Simples Nacional.',
         },
         previa: {
           title: 'Vista previa del cálculo (ISS {aliq}%)',
@@ -1457,6 +1561,10 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Emisión bloqueada',
         habilitacaoWarningTitle: 'Atención',
         habilitacaoError: 'Configura el certificado digital en Configuración fiscal.',
+        habilitacaoErrorRegistro:
+          'Completa el registro de la empresa en Configuración fiscal para habilitar la emisión.',
+        habilitacaoErrorMunicipio:
+          'El municipio todavía no está habilitado para emitir facturas. Verifícalo en Configuración fiscal.',
         loadingMessage: 'Procesando emisión...',
         issRetido: 'retenido',
         issDue: 'debido',
@@ -1560,6 +1668,7 @@ export const nfse = {
       cancelada: 'Annulée',
       falhou: 'Échouée',
       rascunho: 'Brouillon',
+      cancelamento_pendente: 'Annulation en cours',
       unknown: 'Inconnu',
     },
     overview: {
@@ -1705,6 +1814,7 @@ export const nfse = {
     settings: {
       title: 'Paramètres fiscaux',
       readyBadge: 'Prêt à émettre',
+      incompleteBadge: 'Configuration incomplète',
       sections: {
         empresa: 'Entreprise',
         certificado: 'Certificat numérique',
@@ -1741,6 +1851,19 @@ export const nfse = {
         statusCertSent: 'Certificat : envoyé',
         statusCertPending: 'Certificat : en attente',
         nextBtn: 'Suivant : envoyer le certificat',
+        inscricaoMunicipalHint:
+          "Exigée par la mairie pour enregistrer l'entreprise et émettre des factures. C'est le même champ que dans l'onglet Fiscalité.",
+        checkCoverageBtn: 'Vérifier la disponibilité de la commune',
+        statusCoverageOk: 'Commune : autorisée à émettre des factures',
+        statusCoveragePending: 'Commune : autorisation pas encore confirmée',
+        coverageNeedsCity: "Renseignez le code postal ou la ville de l'entreprise pour vérifier l'autorisation de la commune.",
+        coverageOkToast: 'Commune autorisée pour l’émission de factures.',
+        coverageNotCoveredTitle: "La commune n'émet pas encore de factures",
+        coverageNotCovered:
+          "Cette commune n'est pas encore autorisée à émettre des factures dans le standard national. Dès que la mairie l'activera, il suffira de vérifier à nouveau ici.",
+        coverageFailedTitle: "Impossible de confirmer l'autorisation de la commune",
+        coverageCheckError:
+          "Nous n'avons pas pu vérifier l'autorisation de la commune pour le moment. Réessayez dans quelques minutes.",
       },
       certificado: {
         notRegisteredWarning:
@@ -1787,6 +1910,15 @@ export const nfse = {
           lucroReal: 'Bénéfice réel',
           mei: 'MEI (Micro-entrepreneur)',
         },
+        regApTribSn: 'Détermination des impôts dans le Simples Nacional',
+        regApTribSnPlaceholder: 'Sélectionnez',
+        regApTribSnOptions: {
+          opt1: 'Impôts fédéraux et municipal (ISS) collectés par le Simples Nacional',
+          opt2: 'Impôts fédéraux par le Simples Nacional et ISS collecté séparément',
+          opt3: 'Impôts fédéraux et municipal collectés hors du Simples Nacional',
+        },
+        regApTribSnHint:
+          "En cas de doute, choisissez la première option, c'est le cas de la grande majorité des entreprises du Simples.",
         inscricaoMunicipal: 'Inscription municipale',
         inscricaoEstadual: 'Inscription départementale',
         saveBtn: 'Enregistrer la fiscalité',
@@ -1882,12 +2014,14 @@ export const nfse = {
             label: 'Code de taxation du service (cTribNac)',
             optional: '(facultatif)',
             placeholder: 'Rechercher par code ou description...',
+            required: "Choisissez le code de taxation du service. La facture ne peut pas être émise sans lui.",
           },
           codigoNbs: {
             label: 'Code NBS',
             optional: '(facultatif)',
             placeholder: 'Rechercher par code ou description...',
             hint: 'Nomenclature brésilienne des services. Saisissez au moins 2 caractères.',
+            required: "Choisissez le code NBS du service. La facture ne peut pas être émise sans lui.",
           },
         },
         tribIssqn: {
@@ -1913,13 +2047,15 @@ export const nfse = {
           aliquota: {
             label: 'Taux de taxe %',
             optional: '(facultatif)',
+            avisoSimplesSemRetencao:
+              "Entreprise du Simples Nacional sans retenue de taxe de service : laissez le taux vide. Renseigner un taux dans ce cas entraîne le refus de la facture par la mairie.",
           },
         },
         tpRetIssqn: {
-          label: 'Type de retenue de la taxe de service',
-          op1: 'Retenue par le bénéficiaire',
-          op2: 'Due au lieu de prestation',
-          op3: 'Due dans la commune du prestataire',
+          label: 'Retenue de la taxe de service',
+          op1: 'Non retenue',
+          op2: 'Retenue par le bénéficiaire',
+          op3: "Retenue par l'intermédiaire",
         },
         retencoes: {
           sectionTitle: 'Retenues fédérales',
@@ -1932,6 +2068,10 @@ export const nfse = {
           label: 'Pourcentage de taxes Simples Nacional (%)',
           optional: '(facultatif)',
           hint: 'Pourcentage total de taxes pour les entreprises Simples Nacional.',
+          hintSimples:
+            "Charge fiscale approximative du Simples Nacional, le pourcentage de la tranche de votre entreprise. Demandez à votre comptable, nous n'estimons pas ce chiffre.",
+          required:
+            "Renseignez le pourcentage de taxes du Simples Nacional. Il est obligatoire sur la facture pour les entreprises du Simples Nacional.",
         },
         previa: {
           title: 'Aperçu du calcul (taxe {aliq}%)',
@@ -1949,6 +2089,10 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Émission bloquée',
         habilitacaoWarningTitle: 'Attention',
         habilitacaoError: 'Configurez votre certificat numérique dans les Paramètres fiscaux.',
+        habilitacaoErrorRegistro:
+          "Terminez l'enregistrement de l'entreprise dans les Paramètres fiscaux pour débloquer l'émission.",
+        habilitacaoErrorMunicipio:
+          "La commune n'est pas encore autorisée à émettre des factures. Vérifiez dans les Paramètres fiscaux.",
         loadingMessage: 'Traitement de l\'émission...',
         issRetido: 'retenue',
         issDue: 'due',

@@ -21,6 +21,7 @@
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { mapNfseStatus, NFSE_STATUS } from "../_shared/nfse-status.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,20 +66,36 @@ async function hmacSha256(secret: string, message: string): Promise<Uint8Array> 
   return new Uint8Array(sig);
 }
 
-/** Mapeia o `event` da Fisqal (§11) para o status local do documento. */
-function statusForEvent(event: string, dataStatus: string | undefined): string {
-  if (dataStatus) return dataStatus;
+/**
+ * Mapeia o evento da Fisqal (§11) para o status local do documento, SEMPRE no
+ * vocabulário canônico PT-BR (ver _shared/nfse-status.ts) — a UI/RPC de listagem
+ * não entendem o status cru em inglês.
+ *
+ * Precedência: `data.status` (quando reconhecido) → nome do evento → `fallback`
+ * (status atual da emissão). O fallback evita que um evento desconhecido
+ * (ex.: `nfse.pdf_ready`) rebaixe uma nota já autorizada para "processando".
+ */
+function statusForEvent(
+  event: string,
+  dataStatus: string | undefined,
+  fallback: string,
+): string {
+  const fromData = mapNfseStatus(dataStatus, "");
+  if (fromData) return fromData;
   switch (event) {
     case "nfse.authorized":
-      return "authorized";
+      return NFSE_STATUS.AUTORIZADA;
     case "nfse.rejected":
-      return "rejected";
+      return NFSE_STATUS.REJEITADA;
+    case "nfse.failed":
+      return NFSE_STATUS.FALHOU;
     case "nfse.cancelled":
-      return "cancelled";
+    case "nfse.canceled":
+      return NFSE_STATUS.CANCELADA;
     case "nfse.processing":
-      return "processing";
+      return NFSE_STATUS.PROCESSANDO;
     default:
-      return "processing";
+      return fallback || NFSE_STATUS.PROCESSANDO;
   }
 }
 
@@ -166,7 +183,11 @@ Deno.serve(async (req) => {
   }
 
   const companyId = emission.company_id;
-  const newStatus = statusForEvent(event, String(data?.status ?? "") || undefined);
+  const newStatus = statusForEvent(
+    event,
+    String(data?.status ?? "") || undefined,
+    String(emission.status ?? "").trim(),
+  );
 
   // ---- 5. Idempotência por (nfse_emission_id, event_type).
   const { data: dup } = await supabase
@@ -181,14 +202,14 @@ Deno.serve(async (req) => {
 
   // ---- 6. Atualiza a emissão.
   const update: Record<string, unknown> = { status: newStatus };
-  if (newStatus === "authorized") {
+  if (newStatus === NFSE_STATUS.AUTORIZADA) {
     const chave = String(data?.chave_acesso ?? "").trim();
     const protocolo = String(data?.protocolo ?? "").trim();
     if (chave) update.chave_acesso = chave;
     if (protocolo) update.protocolo = protocolo;
     update.emitida_em = String(data?.emitida_em ?? "").trim() || new Date().toISOString();
   }
-  if (newStatus === "rejected" || newStatus === "failed") {
+  if (newStatus === NFSE_STATUS.REJEITADA || newStatus === NFSE_STATUS.FALHOU) {
     update.error_message = String(data?.message ?? data?.motivo ?? "").trim() ||
       "A nota foi rejeitada pela prefeitura/SEFIN.";
   }

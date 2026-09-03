@@ -22,7 +22,9 @@ const round2 = (v: number): number => Math.round(v * 100) / 100;
  * Regras:
  * - Base = valorServico (sem deduções — a Fisqal não aceita).
  * - ISS = base × aliquotaIssqn/100.
- * - ISS é "retido" quando tpRetIssqn === '1' (retido pelo tomador).
+ * - tpRetIssqn segue a tabela do layout nacional da NFS-e:
+ *     '1' = NÃO retido · '2' = retido pelo tomador · '3' = retido pelo intermediário.
+ *   Ou seja, o ISS é "retido" em qualquer valor DIFERENTE de '1'.
  * - Retenções federais = soma dos valores absolutos (PIS+COFINS+CSLL).
  * - Líquido = valorServico − totalRetencoesFederais − (ISS se retido).
  */
@@ -40,7 +42,8 @@ export function calculateNfseFisqalTaxes(
 
   const baseCalculo = Math.max(0, valorServico);
   const issValor = round2(baseCalculo * (aliquotaIssqn / 100));
-  const issRetido = tpRetIssqn === '1';
+  // '1' = não retido; '2' e '3' = retido (pelo tomador / pelo intermediário).
+  const issRetido = tpRetIssqn !== '1';
 
   const totalRetencoesFederais = round2((valorPis ?? 0) + (valorCofins ?? 0) + (valorCsll ?? 0));
 
@@ -56,7 +59,10 @@ export function calculateNfseFisqalTaxes(
   };
 }
 
-/** Utilitário: tpRetIssqn '1' significa ISS retido pelo tomador. */
+/**
+ * Utilitário: no layout nacional, tpRetIssqn '1' é "não retido"; '2' (tomador) e
+ * '3' (intermediário) significam ISS retido na fonte.
+ */
 export function isIssRetido(tpRetIssqn: TpRetIssqn): boolean {
-  return tpRetIssqn === '1';
+  return tpRetIssqn !== '1';
 }

@@ -31,7 +31,10 @@ export function NfseVisaoGeral({ emissions, customerName, onOpenDetail }: NfseVi
     let totalEmitido = 0; // só notas autorizadas contam no valor faturado
     for (const e of emissions) {
       switch (e.status) {
+        // Cancelamento pedido mas ainda não efetivado: a nota continua válida e
+        // com efeito fiscal, então conta junto das autorizadas.
         case 'autorizada':
+        case 'cancelamento_pendente':
           autorizadas += 1;
           totalEmitido += e.valor_servico ?? 0;
           break;
