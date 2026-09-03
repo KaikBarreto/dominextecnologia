@@ -11,6 +11,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { buildCustomerAddress, geocodeAddress } from '@/utils/geolocation';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { addBaseLayer, isDarkTheme, type MapBaseLayer } from '@/lib/mapTiles';
 import 'leaflet/dist/leaflet.css';
 
 interface TechInField {
@@ -25,8 +26,6 @@ const DEFAULT_CENTER: [number, number] = [-22.9, -43.2];
 const DEFAULT_ZOOM = 4;
 const ACTIVE_ZOOM = 12;
 const CITY_ZOOM = 13;
-const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 const escapeHtml = (value: string) =>
   value
@@ -36,16 +35,17 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-const getTileUrl = () =>
-  document.documentElement.classList.contains('dark') ? TILE_DARK : TILE_LIGHT;
-
 export function DashboardLiveMap({ technicians, isLoading }: { technicians: TechInField[]; isLoading: boolean }) {
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.dashboard.liveMap;
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<any>(null);
-  const tileLayerRef = useRef<any>(null);
+  const baseLayerRef = useRef<MapBaseLayer | null>(null);
+  // Abortado só no UNMOUNT (não no cleanup do efeito de init, que re-roda a cada
+  // mudança de técnicos/loading — abortar ali cancelaria o fundo do mapa que
+  // ainda está carregando e a tela ficaria sem base pra sempre).
+  const mountAbortRef = useRef<AbortController | null>(null);
   const markerRefs = useRef<any[]>([]);
 
   // Quando 0 técnicos em campo, focar no endereço da empresa (zoom de cidade)
@@ -85,7 +85,7 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
       return marker;
     });
 
-    tileLayerRef.current?.setUrl(getTileUrl());
+    baseLayerRef.current?.setTheme(isDarkTheme());
 
     if (technicians.length === 0) {
       if (companyCoords) {
@@ -140,11 +140,16 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
         zoomControl: false,
       }).setView(initialCenter, initialZoom);
 
-      tileLayerRef.current = L.tileLayer(getTileUrl(), {
-        attribution: '&copy; <a href="https://carto.com">CARTO</a>',
-      }).addTo(map);
-
       leafletMapRef.current = map;
+
+      if (!mountAbortRef.current) mountAbortRef.current = new AbortController();
+      const baseLayer = await addBaseLayer(map, { signal: mountAbortRef.current.signal });
+      if (mountAbortRef.current.signal.aborted) {
+        baseLayer.remove();
+        return;
+      }
+      baseLayerRef.current = baseLayer;
+
       await syncMapData(L);
     };
 
@@ -162,7 +167,7 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      tileLayerRef.current?.setUrl(getTileUrl());
+      baseLayerRef.current?.setTheme(isDarkTheme());
     });
 
     observer.observe(document.documentElement, {
@@ -175,9 +180,11 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
 
   useEffect(() => {
     return () => {
+      mountAbortRef.current?.abort();
       markerRefs.current.forEach((marker) => marker.remove());
       markerRefs.current = [];
-      tileLayerRef.current = null;
+      baseLayerRef.current?.remove();
+      baseLayerRef.current = null;
 
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();

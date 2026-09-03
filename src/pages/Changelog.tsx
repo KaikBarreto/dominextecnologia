@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.22.1',
+    date: '3 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso atravessado por cima dos mapas',
+        description: 'O serviço que fornecia as imagens de fundo dos mapas passou a imprimir um aviso em inglês sobre cada pedaço do mapa. Como as imagens continuavam chegando normalmente, nada acusava erro, o mapa simplesmente aparecia sujo no painel, na tela de rastreamento e no link de acompanhamento que o cliente recebe. Trocamos o fornecedor das imagens e os mapas voltaram a aparecer limpos, no tema claro e no escuro.',
+        category: 'correcao',
+      },
+      {
+        title: 'Mapas mais estáveis no celular do técnico',
+        description: 'Sair da tela do mapa enquanto ela ainda estava carregando, algo comum em conexão lenta no campo, deixava resíduo na memória do aparelho. Depois de algumas idas e vindas o mapa podia parar de aparecer, sem nenhum aviso. Corrigimos, e agora o mapa é liberado corretamente ao sair da tela.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.22.0',
     date: '3 de setembro de 2026',
     type: 'minor',

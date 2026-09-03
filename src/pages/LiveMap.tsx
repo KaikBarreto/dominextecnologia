@@ -14,6 +14,7 @@ import { useLiveTechnicianLocations, type LiveTechMarker, type LiveTrackingPoint
 import type { OSRMRoute } from '@/utils/geolocation';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { addBaseLayer, isDarkTheme, type MapBaseLayer } from '@/lib/mapTiles';
 import 'leaflet/dist/leaflet.css';
 
 type TechMarker = LiveTechMarker;
@@ -31,16 +32,6 @@ const eventColors: Record<string, string> = {
   tracking: '#6366f1',
   check_out: '#ef4444',
 };
-
-
-const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
-const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
-const TILE_LABELS_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png';
-const TILE_LABELS_DARK = 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png';
-
-// O app não usa ThemeProvider do next-themes — o dark mode é controlado na mão
-// via classe `dark` no <html>. Lemos o tema direto do DOM (igual ao DashboardLiveMap).
-const isDarkMode = () => document.documentElement.classList.contains('dark');
 
 interface LiveMapLabels {
   eventLabels: Record<string, { emoji: string; label: string }>;
@@ -123,8 +114,7 @@ export default function LiveMap() {
   const routeLinesRef = useRef<Map<string, any>>(new Map());
   const destMarkersRef = useRef<Map<string, any>>(new Map());
   const baseMarkerRef = useRef<any>(null);
-  const tileLayerRef = useRef<any>(null);
-  const labelsLayerRef = useRef<any>(null);
+  const baseLayerRef = useRef<MapBaseLayer | null>(null);
   // Posições GPS ao vivo vêm do hook compartilhado (carga inicial + canal realtime).
   const { technicians, trails, refetch: fetchLatestLocations } = useLiveTechnicianLocations();
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
@@ -195,29 +185,12 @@ export default function LiveMap() {
     fetchRoutesForTechs(technicians);
   }, [technicians, fetchRoutesForTechs]);
 
-  // Troca dark/light dos tiles: observa a classe `dark` no <html> (o app
-  // controla o tema na mão, sem next-themes) e refaz as duas camadas de tile.
+  // Troca dark/light do mapa: observa a classe `dark` no <html> (o app controla
+  // o tema na mão, sem next-themes). Em tiles vetoriais os rótulos fazem parte do
+  // style, então é uma camada só — o handle troca o style sem recriar nada.
   useEffect(() => {
     const applyTheme = () => {
-      const map = leafletMapRef.current;
-      if (!map) return;
-
-      const L = (window as any).L;
-      if (!L) return;
-
-      if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
-      if (labelsLayerRef.current) map.removeLayer(labelsLayerRef.current);
-
-      const dark = isDarkMode();
-
-      tileLayerRef.current = L.tileLayer(dark ? TILE_DARK : TILE_LIGHT, {
-        attribution: '© CartoDB © OSM',
-      }).addTo(map);
-
-      labelsLayerRef.current = L.tileLayer(dark ? TILE_LABELS_DARK : TILE_LABELS_LIGHT, {
-        attribution: '',
-        pane: 'overlayPane',
-      }).addTo(map);
+      baseLayerRef.current?.setTheme(isDarkTheme());
     };
 
     const observer = new MutationObserver(applyTheme);
@@ -244,32 +217,28 @@ export default function LiveMap() {
     });
   }, [companySettings]);
 
-  // Inicializa o mapa uma vez no mount. O tema vem do DOM (isDarkMode), então
+  // Inicializa o mapa uma vez no mount. O tema vem do DOM (isDarkTheme), então
   // não há mais dependência do next-themes pra destravar a criação do L.map.
   useEffect(() => {
     if (leafletMapRef.current || !mapRef.current) return;
 
     let cancelled = false;
+    const controller = new AbortController();
 
     const initMap = async () => {
       const L = await import('leaflet');
-      (window as any).L = L;
 
       if (cancelled || !mapRef.current || leafletMapRef.current) return;
 
-      const isDark = isDarkMode();
       const map = L.map(mapRef.current).setView([-15.7801, -47.9292], 4);
-
-      tileLayerRef.current = L.tileLayer(isDark ? TILE_DARK : TILE_LIGHT, {
-        attribution: '© CartoDB © OSM',
-      }).addTo(map);
-
-      labelsLayerRef.current = L.tileLayer(isDark ? TILE_LABELS_DARK : TILE_LABELS_LIGHT, {
-        attribution: '',
-        pane: 'overlayPane',
-      }).addTo(map);
-
       leafletMapRef.current = map;
+
+      const baseLayer = await addBaseLayer(map, { signal: controller.signal });
+      if (cancelled) {
+        baseLayer.remove();
+        return;
+      }
+      baseLayerRef.current = baseLayer;
       // força recálculo após a animação de entrada / layout assentar (fix mapa vazio no mobile)
       requestAnimationFrame(() => requestAnimationFrame(() => map.invalidateSize()));
       setTimeout(() => map.invalidateSize(), 300);
@@ -280,6 +249,7 @@ export default function LiveMap() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -304,6 +274,9 @@ export default function LiveMap() {
   // Cleanup do mapa no unmount (separado do init pra não recriar ao trocar tema)
   useEffect(() => {
     return () => {
+      baseLayerRef.current?.remove();
+      baseLayerRef.current = null;
+
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;

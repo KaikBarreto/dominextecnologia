@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import type { OSRMRoute } from '@/utils/geolocation';
+import { addBaseLayer, type MapBaseLayer } from '@/lib/mapTiles';
 import 'leaflet/dist/leaflet.css';
 
 interface CustomerLike {
@@ -47,6 +48,7 @@ export function RouteToCustomerMap({ origin, customerCoords, customer, destAddre
   const destMarkerRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
   const LRef = useRef<any>(null);
+  const baseLayerRef = useRef<MapBaseLayer | null>(null);
   const mapInitialized = useRef(false);
 
   const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | null>(customerCoords);
@@ -119,6 +121,10 @@ export function RouteToCustomerMap({ origin, customerCoords, customer, destAddre
   useEffect(() => {
     if (mapInitialized.current || !mapRef.current) return;
 
+    // Cancela a montagem do fundo se a tela sair antes do chunk do mapa chegar
+    // (3G do técnico em campo): sem isso, sobra contexto WebGL órfão.
+    const controller = new AbortController();
+
     const initMap = async () => {
       const L = await import('leaflet');
       if (!mapRef.current || mapInitialized.current) return;
@@ -132,11 +138,18 @@ export function RouteToCustomerMap({ origin, customerCoords, customer, destAddre
         : [-15.78, -47.93];
       const zoom = origin || destCoords ? 14 : 4;
 
-      const map = L.map(mapRef.current, { attributionControl: false }).setView(center as [number, number], zoom);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© CartoDB © OSM',
-      }).addTo(map);
+      // attributionControl ligado: a licença dos dados do mapa exige o crédito.
+      const map = L.map(mapRef.current).setView(center as [number, number], zoom);
       leafletMapRef.current = map;
+      addBaseLayer(map, { signal: controller.signal })
+        .then((layer) => {
+          if (controller.signal.aborted) {
+            layer.remove();
+            return;
+          }
+          baseLayerRef.current = layer;
+        })
+        .catch(() => { /* mapa segue com os marcadores, sem fundo */ });
 
       fitBounds();
       invalidate();
@@ -145,6 +158,10 @@ export function RouteToCustomerMap({ origin, customerCoords, customer, destAddre
     initMap();
 
     return () => {
+      controller.abort();
+      baseLayerRef.current?.remove();
+      baseLayerRef.current = null;
+
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;

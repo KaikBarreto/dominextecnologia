@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import type { OSRMRoute } from '@/utils/geolocation';
+import { addBaseLayer, type MapBaseLayer } from '@/lib/mapTiles';
 import 'leaflet/dist/leaflet.css';
 
 interface PublicTrackingMapProps {
@@ -17,6 +18,7 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
   const routeLayerRef = useRef<any>(null);
   const destMarkerRef = useRef<any>(null);
   const LRef = useRef<any>(null);
+  const baseLayerRef = useRef<MapBaseLayer | null>(null);
   const [latestLoc, setLatestLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeInfo, setRouteInfo] = useState<OSRMRoute | null>(null);
@@ -104,6 +106,10 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
   useEffect(() => {
     if (mapInitialized.current || !mapRef.current) return;
 
+    // Cancela a montagem do fundo se a tela sair antes do chunk do mapa chegar
+    // (3G do técnico em campo): sem isso, sobra contexto WebGL órfão.
+    const controller = new AbortController();
+
     const initMap = async () => {
       const L = await import('leaflet');
       if (!mapRef.current || mapInitialized.current) return;
@@ -118,10 +124,16 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
       const zoom = latestLoc || customerCoords ? 14 : 4;
 
       const map = L.map(mapRef.current).setView(center as [number, number], zoom);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© CartoDB © OSM',
-      }).addTo(map);
       leafletMapRef.current = map;
+      addBaseLayer(map, { signal: controller.signal })
+        .then((layer) => {
+          if (controller.signal.aborted) {
+            layer.remove();
+            return;
+          }
+          baseLayerRef.current = layer;
+        })
+        .catch(() => { /* mapa segue com os marcadores, sem fundo */ });
 
       // Add technician marker
       if (latestLoc) {
@@ -160,6 +172,10 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
     initMap();
 
     return () => {
+      controller.abort();
+      baseLayerRef.current?.remove();
+      baseLayerRef.current = null;
+
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
