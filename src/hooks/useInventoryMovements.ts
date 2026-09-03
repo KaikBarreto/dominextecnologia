@@ -10,7 +10,8 @@ export type MovementType =
   | 'saida'
   | 'ajuste'
   | 'transferencia'
-  | 'estorno';
+  | 'estorno'
+  | 'consumo';
 
 export interface MovementCreator {
   full_name: string | null;

@@ -26,6 +26,8 @@ import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionV
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { formatMoney, formatDate, formatDateTime } from '@/lib/format';
+import { formatOSNumberDigits } from '@/lib/osNumber';
+import { OsMaterialsSection } from './OsMaterialsSection';
 
 interface OSPhoto {
   id: string;
@@ -349,6 +351,10 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           </CardContent>
         </Card>
       )}
+
+      {/* Consumo de estoque (v1.22.0) — bloco somente leitura pra gestão. Some
+          sozinho quando não há material lançado nesta OS. */}
+      <OsMaterialsSection serviceOrderId={serviceOrder.id} />
 
       {(() => {
         // FATIA B3.2 — consistência com o app do técnico. Em OS de CONTRATO,
@@ -709,7 +715,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const title = serviceOrder ? (
     <span className="flex items-center gap-3">
       <Eye className="h-5 w-5" />
-      {tv.osPrefix}{String(serviceOrder.order_number).padStart(6, '0')}
+      {tv.osPrefix}{formatOSNumberDigits(serviceOrder.order_number)}
       <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border ml-auto`}>
         {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
       </Badge>

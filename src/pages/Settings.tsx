@@ -478,6 +478,22 @@ export default function Settings() {
     toast({ title: t.usability.preferenceSaved });
   };
 
+  // os_stock_consumption_enabled é decisão da EMPRESA (company_settings no
+  // servidor), não preferência de aparelho como os outros itens desta seção
+  // (que vivem em localStorage). Se seguisse o padrão dos vizinhos, o gestor
+  // ligaria no computador dele e o celular do técnico nunca veria a opção.
+  // O optimistic update do useCompanySettings já reflete o clique na hora; se
+  // o servidor recusar (RLS), o onError do hook reverte o cache sozinho — o
+  // Switch (controlado por settings?.os_stock_consumption_enabled, não por
+  // estado local) volta pro valor real do banco e mostra o toast de erro.
+  // Não duplicar tratamento de erro aqui.
+  const handleToggleStockConsumption = (checked: boolean) => {
+    updateSettings.mutate(
+      { os_stock_consumption_enabled: checked },
+      { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
+    );
+  };
+
   const usabilitySections = [
     {
       title: t.usability.sections.os.title,
@@ -488,6 +504,7 @@ export default function Settings() {
         { key: 'showOSValues', title: t.usability.sections.os.showOSValues.title, description: t.usability.sections.os.showOSValues.description },
         { key: 'requireSignature', title: t.usability.sections.os.requireSignature.title, description: t.usability.sections.os.requireSignature.description },
         { key: 'saveOSPhotosToDevice', title: t.usability.sections.os.saveOSPhotosToDevice.title, description: t.usability.sections.os.saveOSPhotosToDevice.description },
+        { key: 'osStockConsumptionEnabled', title: t.usability.sections.os.osStockConsumptionEnabled.title, description: t.usability.sections.os.osStockConsumptionEnabled.description },
       ],
     },
     {
@@ -1179,10 +1196,28 @@ export default function Settings() {
                             <Label className="text-sm font-medium">{item.title}</Label>
                             <p className="text-xs text-muted-foreground">{item.description}</p>
                           </div>
-                          <Switch
-                            checked={usabilitySettings[item.key]}
-                            onCheckedChange={(checked) => updateUsability(item.key, checked)}
-                          />
+                          {item.key === 'osStockConsumptionEnabled' ? (
+                            isLoading ? (
+                              // Valor vem do servidor (não do localStorage como os
+                              // vizinhos) — enquanto a query carrega, não sabemos o
+                              // valor real. Mostrar um spinner no lugar do Switch
+                              // evita "pular" de um estado adivinhado (ex.: desligado)
+                              // pro valor real assim que a query resolve; o usuário
+                              // nunca vê o toggle mentir sobre o estado.
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            ) : (
+                              <Switch
+                                checked={!!settings?.os_stock_consumption_enabled}
+                                disabled={!canSave || updateSettings.isPending}
+                                onCheckedChange={handleToggleStockConsumption}
+                              />
+                            )
+                          ) : (
+                            <Switch
+                              checked={usabilitySettings[item.key]}
+                              onCheckedChange={(checked) => updateUsability(item.key, checked)}
+                            />
+                          )}
                         </div>
                         {iIdx < section.items.length - 1 && <Separator className="opacity-50" />}
                       </div>

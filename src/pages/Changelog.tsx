@@ -42,6 +42,43 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.22.0',
+    date: '3 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Consumo de estoque direto na ordem de serviço',
+        description: 'O técnico agora anota, durante o atendimento, os materiais que usou: escolhe de qual estoque saiu, o material e a quantidade. Nada baixa na hora, fica só anotado. Ao finalizar a OS aparece um resumo com tudo que foi usado, com as quantidades editáveis para corrigir o que estiver errado, e é só confirmar para dar baixa de uma vez. O recurso vem desligado e pode ser ativado em Configurações, na aba Usabilidade.',
+        category: 'recurso',
+      },
+      {
+        title: 'Histórico de materiais mostra o que saiu em cada OS',
+        description: 'As baixas feitas pelo técnico aparecem no histórico de materiais como Consumo, com o número da ordem de serviço que gerou a saída. Se a OS for reaberta e a quantidade corrigida para menos, a diferença volta para o estoque como Estorno, sem lançar nada em dobro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Custo dos materiais usados na ordem de serviço',
+        description: 'Ao abrir uma OS pela lista ou pela agenda, você vê os materiais consumidos com o custo de cada um e o total. O valor fica congelado no momento da baixa, então reajustar o preço do material depois não muda o custo daquele atendimento. O cliente não vê nada disso.',
+        category: 'recurso',
+      },
+      {
+        title: 'Estoque nunca impede fechar a ordem de serviço',
+        description: 'Se a quantidade informada for maior que o saldo disponível, o sistema avisa mas deixa continuar. E se por algum motivo a baixa não puder ser feita na hora, a OS é finalizada mesmo assim e o consumo fica guardado para ser confirmado depois.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Número da OS mais curto',
+        description: 'Os zeros à esquerda saíram do número da ordem de serviço, que agora aparece como OS #123 em vez de OS #000123, em todas as telas, no portal do cliente e nos relatórios. Buscar pelo formato antigo continua funcionando.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Excluir material avisa quando ele está em uso',
+        description: 'Ao tentar excluir um material que já foi lançado em alguma ordem de serviço, o sistema explica em quantas OS ele aparece e pede para remover o lançamento antes, preservando o histórico de custo desses atendimentos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.21.29',
     date: '2 de setembro de 2026',
     type: 'patch',

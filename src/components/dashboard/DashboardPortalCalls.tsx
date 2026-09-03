@@ -9,6 +9,7 @@ import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatOSNumber } from '@/lib/osNumber';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR, enUS, es, fr } from 'date-fns/locale';
 import type { ServiceOrder, OsStatus } from '@/types/database';
@@ -139,7 +140,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                       title={
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="font-mono text-[11px] text-muted-foreground shrink-0">
-                            #{String(os.order_number).padStart(6, '0')}
+                            {formatOSNumber(os.order_number)}
                           </span>
                           <span className="truncate">{getCustomerName(os)}</span>
                         </div>
@@ -187,7 +188,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-sm font-semibold text-foreground">
-                          #{String(os.order_number).padStart(6, '0')}
+                          {formatOSNumber(os.order_number)}
                         </span>
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass}`}

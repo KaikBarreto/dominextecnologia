@@ -1029,6 +1029,7 @@ export type Database = {
           logo_url: string | null
           name: string
           neighborhood: string | null
+          os_stock_consumption_enabled: boolean
           phone: string | null
           proposal_customization: Json | null
           report_header_bg_color: string | null
@@ -1073,6 +1074,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
           report_header_bg_color?: string | null
@@ -1117,6 +1119,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
           report_header_bg_color?: string | null
@@ -7159,6 +7162,80 @@ export type Database = {
           },
         ]
       }
+      service_order_materials: {
+        Row: {
+          committed_quantity: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_id: string
+          notes: string | null
+          quantity: number
+          service_order_id: string
+          stock_id: string
+          unit_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          committed_quantity?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_id: string
+          notes?: string | null
+          quantity: number
+          service_order_id: string
+          stock_id: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          committed_quantity?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_id?: string
+          notes?: string | null
+          quantity?: number
+          service_order_id?: string
+          stock_id?: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_materials_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_materials_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "service_order_materials_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_materials_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_orders: {
         Row: {
           check_in_location: Json | null
@@ -9406,6 +9483,10 @@ export type Database = {
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
       check_email_available: { Args: { _email: string }; Returns: boolean }
+      commit_os_material_consumption: {
+        Args: { p_lines: Json; p_service_order_id: string }
+        Returns: Json
+      }
       company_has_module: {
         Args: { p_company_id: string; p_module_code: string }
         Returns: boolean

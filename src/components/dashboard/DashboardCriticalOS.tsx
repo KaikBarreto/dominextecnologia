@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatOSNumber } from '@/lib/osNumber';
 
 export interface CriticalOS {
   id: string;
@@ -58,7 +59,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                     }
                     title={
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[11px] text-muted-foreground">#{String(os.orderNumber).padStart(6, '0')}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">{formatOSNumber(os.orderNumber)}</span>
                         <span className="truncate">{os.customerName}</span>
                       </div>
                     }
@@ -89,7 +90,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-sm font-semibold text-foreground">
-                        #{String(os.orderNumber).padStart(6, '0')}
+                        {formatOSNumber(os.orderNumber)}
                       </span>
                       <span className="text-xs text-muted-foreground">{os.osType}</span>
                     </div>

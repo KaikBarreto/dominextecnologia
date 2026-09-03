@@ -51,6 +51,7 @@ import { useToast } from '@/hooks/use-toast';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatOSNumber } from '@/lib/osNumber';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
@@ -836,7 +837,7 @@ export default function EquipmentDetail() {
                       {ordersPagination.paginatedItems.map((os) => (
                         <TableRow key={os.id}>
                           <TableCell>
-                            <span className="font-mono font-medium">#{String(os.order_number).padStart(6, '0')}</span>
+                            <span className="font-mono font-medium">{formatOSNumber(os.order_number)}</span>
                             {os.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{os.description}</p>}
                           </TableCell>
                           <TableCell>

@@ -55,6 +55,7 @@ import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { StepTransition } from '@/components/ui/step-transition';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { OsMaterialsSection } from '@/components/service-orders/OsMaterialsSection';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -1270,6 +1271,13 @@ export function ServiceOrderFormDialog({
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem><FormLabel>{t.labelNotes}</FormLabel><FormControl><Textarea placeholder={t.placeholderNotes} {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+
+                {/* Consumo de estoque (v1.22.0) — bloco somente leitura pra gestão,
+                    que abre a OS pela AGENDA. Tem que ficar neste bloco (o de dentro
+                    do `if (serviceOrder)`, modo edição); o bloco de baixo é o de
+                    CRIAÇÃO e lá `isEditing` nunca é true, então não renderiza nada.
+                    Some sozinho quando não há material lançado. */}
+                {serviceOrder?.id && <OsMaterialsSection serviceOrderId={serviceOrder.id} />}
 
                 {/* Pesquisa de Satisfação (NPS) ao finalizar */}
                 <div className="rounded-lg border p-3 flex items-center justify-between gap-3">

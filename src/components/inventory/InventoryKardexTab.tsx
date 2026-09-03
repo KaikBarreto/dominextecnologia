@@ -5,6 +5,7 @@ import {
   SlidersHorizontal,
   ArrowRightLeft,
   RotateCcw,
+  Wrench,
   History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ import {
 import { useInventory } from '@/hooks/useInventory';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatOSNumber } from '@/lib/osNumber';
 
 // --------------------------------------------------------------------------
 // Config visual por tipo de movimento. Badge SATURADA com texto branco
@@ -46,12 +48,13 @@ const TYPE_CONFIG: Record<
 > = {
   entrada: { badgeClass: 'bg-emerald-600 hover:bg-emerald-600 text-white border-transparent', icon: ArrowUpCircle },
   saida: { badgeClass: 'bg-blue-600 hover:bg-blue-600 text-white border-transparent', icon: ArrowDownCircle },
+  consumo: { badgeClass: 'bg-orange-600 hover:bg-orange-600 text-white border-transparent', icon: Wrench },
   ajuste: { badgeClass: 'bg-purple-600 hover:bg-purple-600 text-white border-transparent', icon: SlidersHorizontal },
   transferencia: { badgeClass: 'bg-amber-600 hover:bg-amber-600 text-white border-transparent', icon: ArrowRightLeft },
   estorno: { badgeClass: 'bg-red-600 hover:bg-red-600 text-white border-transparent', icon: RotateCcw },
 };
 
-const TYPE_ORDER: MovementType[] = ['entrada', 'saida', 'ajuste', 'transferencia', 'estorno'];
+const TYPE_ORDER: MovementType[] = ['entrada', 'saida', 'consumo', 'ajuste', 'transferencia', 'estorno'];
 
 function getTypeConfig(type: string) {
   return (
@@ -97,7 +100,7 @@ function originLabel(
 ): string {
   if (m.service_order_id) {
     return m.orderNumber != null
-      ? `${tOrigin.os} #${String(m.orderNumber).padStart(6, '0')}`
+      ? `${tOrigin.os} ${formatOSNumber(m.orderNumber)}`
       : tOrigin.os;
   }
   if (m.supplier_id) {

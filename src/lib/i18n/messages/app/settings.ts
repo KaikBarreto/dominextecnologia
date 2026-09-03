@@ -194,6 +194,10 @@ export const settings = {
             title: 'Salvar fotos no dispositivo',
             description: 'Mostra um botão para salvar a foto no seu aparelho. No iPhone abre a opção "Salvar Imagem"; no Android baixa direto.',
           },
+          osStockConsumptionEnabled: {
+            title: 'Consumo de estoque na OS',
+            description: 'Permite que o técnico registre os materiais usados durante a ordem de serviço e dê baixa no estoque ao finalizar',
+          },
         },
         interface: {
           title: 'Interface',
@@ -1314,6 +1318,10 @@ export const settings = {
             title: 'Save photos to device',
             description: 'Shows a button to save the photo to your device. On iPhone it opens "Save Image"; on Android it downloads directly.',
           },
+          osStockConsumptionEnabled: {
+            title: 'Stock consumption on work orders',
+            description: 'Lets the technician log the materials used during the work order and deduct them from stock when finishing it',
+          },
         },
         interface: {
           title: 'Interface',
@@ -2380,6 +2388,10 @@ export const settings = {
             title: 'Guardar fotos en el dispositivo',
             description: 'Muestra un botón para guardar la foto en tu dispositivo. En iPhone abre "Guardar imagen"; en Android descarga directamente.',
           },
+          osStockConsumptionEnabled: {
+            title: 'Consumo de stock en la OT',
+            description: 'Permite que el técnico registre los materiales usados durante la orden de trabajo y los descuente del stock al finalizarla',
+          },
         },
         interface: {
           title: 'Interfaz',
@@ -3445,6 +3457,10 @@ export const settings = {
           saveOSPhotosToDevice: {
             title: "Enregistrer les photos sur l'appareil",
             description: "Affiche un bouton pour enregistrer la photo sur votre appareil. Sur iPhone, ouvre \"Enregistrer l'image\"; sur Android, télécharge directement.",
+          },
+          osStockConsumptionEnabled: {
+            title: 'Consommation de stock sur le bon de travail',
+            description: "Permet au technicien d'enregistrer les matériaux utilisés pendant le bon de travail et de les déduire du stock à la clôture",
           },
         },
         interface: {

@@ -901,6 +901,91 @@ export const os = {
       },
     },
 
+    // ── Consumo de estoque dentro da OS (v1.22.0) ────────────────────────
+    // Copy de dono de empresa de refrigeração: "consumir", "material",
+    // "local de estoque". Nada de kardex/movimentação/nome de tabela.
+    stockConsumption: {
+      // Ação no menu de mais-ações do app do técnico
+      menuItem: 'Consumir do estoque',
+
+      // Dialog de lançamento
+      dialogTitle: 'Consumir do estoque',
+      dialogSubtitle: 'Anote o que você usou. O estoque só baixa quando a OS for finalizada.',
+      fieldStock: 'De onde saiu',
+      fieldMaterial: 'Material',
+      fieldQuantity: 'Quantidade',
+      fieldNotes: 'Observação (opcional)',
+      notesPlaceholder: 'Ex.: troca do capacitor da unidade externa',
+      quantityPlaceholder: 'Ex.: 2,5',
+      btnAdd: 'Adicionar',
+      btnSaveEdit: 'Salvar alteração',
+      btnCancelEdit: 'Cancelar edição',
+      btnClose: 'Fechar',
+      btnSaving: 'Salvando...',
+
+      // Saldo do estoque escolhido
+      availableHere: 'Tem {qty} {unit} neste estoque',
+      noStockHere: 'Sem saldo neste estoque',
+      overBalanceWarning: 'Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo.',
+
+      // Lista do que já foi lançado nesta OS
+      listTitle: 'Já registrado nesta OS',
+      listEmpty: 'Nada registrado ainda. Escolha o material e a quantidade acima.',
+      pendingBadge: 'Aguardando envio',
+      committedBadge: 'Já baixado',
+      btnEditLine: 'Editar',
+      btnRemoveLine: 'Remover',
+      removeAria: 'Remover {material}',
+
+      // Toasts do lançamento
+      toastAdded: 'Material anotado',
+      toastUpdated: 'Material atualizado',
+      toastRemoved: 'Material removido',
+      toastQueued: 'Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar.',
+      toastSynced: 'Consumo pendente enviado ({n}).',
+      errNoStock: 'Escolha de qual estoque o material saiu.',
+      errNoMaterial: 'Escolha o material.',
+      errNoQuantity: 'Informe uma quantidade maior que zero.',
+      errSave: 'Não foi possível anotar o material',
+      errRemove: 'Não foi possível remover o material',
+
+      // Seletor de material
+      selectPlaceholder: 'Escolha o material',
+      selectSearch: 'Buscar por nome ou código...',
+      selectEmpty: 'Nenhum material encontrado.',
+      selectGroupHere: 'Neste estoque',
+      selectGroupOthers: 'Outros materiais',
+      selectNoStockTitle: 'Escolha o estoque primeiro',
+      selectNoStockHint: 'O saldo de cada material depende do estoque escolhido.',
+      selectNoCatalogTitle: 'Nenhum material no estoque',
+      selectNoCatalogHint: 'Peça ao escritório para cadastrar os materiais no Estoque. Assim que entrarem, eles aparecem aqui.',
+      selectAvailable: '{qty} {unit} disponíveis',
+      selectNoBalance: 'sem saldo aqui',
+
+      // Resumo do consumo (passo da finalização)
+      summaryTitle: 'Resumo do consumo',
+      summaryIntro: 'Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar.',
+      summaryEmptyAll: 'Você tirou todos os materiais da lista. Nada será baixado do estoque.',
+      summaryResulting: 'Fica com {qty} {unit}',
+      summaryNegative: 'Fica negativo em {qty} {unit}',
+      summaryPendingHint: 'Este item ainda não subiu para o sistema. Vamos tentar enviar junto com a finalização.',
+      summaryBtnBack: 'Voltar',
+      summaryBtnConfirm: 'Confirmar e finalizar',
+      summaryBtnConfirming: 'Finalizando...',
+
+      // Resultado da confirmação
+      toastCommitted: 'Materiais baixados do estoque',
+      toastCommittedNegative: 'Materiais baixados. Alguns ficaram com saldo negativo, vale conferir no Estoque.',
+      toastCommitFailed: 'Não deu para baixar os materiais do estoque',
+      toastCommitFailedDesc: 'A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois.',
+
+      // Seção de leitura (gestão da OS)
+      sectionTitle: 'Materiais utilizados',
+      sectionTotal: 'Custo total',
+      sectionPending: 'Ainda não baixado do estoque',
+      sectionUnit: 'un',
+    },
+
     // ── Mapa ao Vivo / Rastreamento ──────────────────────────────────────
     liveMap: {
       pageTitle: 'Mapa e Rastreamento',
@@ -2337,6 +2422,80 @@ export const os = {
         errPmoc: 'Manual editing is unavailable for PMOC work orders.',
         errGeneric: 'Could not save the changes. Please try again.',
       },
+    },
+
+    // ── Stock consumption inside the work order (v1.22.0) ────────────────
+    stockConsumption: {
+      menuItem: 'Use from stock',
+
+      dialogTitle: 'Use from stock',
+      dialogSubtitle: 'Write down what you used. Stock is only deducted when the work order is completed.',
+      fieldStock: 'Taken from',
+      fieldMaterial: 'Material',
+      fieldQuantity: 'Quantity',
+      fieldNotes: 'Note (optional)',
+      notesPlaceholder: 'E.g.: replaced the outdoor unit capacitor',
+      quantityPlaceholder: 'E.g.: 2.5',
+      btnAdd: 'Add',
+      btnSaveEdit: 'Save change',
+      btnCancelEdit: 'Cancel editing',
+      btnClose: 'Close',
+      btnSaving: 'Saving...',
+
+      availableHere: '{qty} {unit} in this stock',
+      noStockHere: 'No balance in this stock',
+      overBalanceWarning: 'You are taking more than this stock has. You can continue, the balance will go negative.',
+
+      listTitle: 'Already added to this work order',
+      listEmpty: 'Nothing added yet. Pick the material and the quantity above.',
+      pendingBadge: 'Waiting to be sent',
+      committedBadge: 'Already deducted',
+      btnEditLine: 'Edit',
+      btnRemoveLine: 'Remove',
+      removeAria: 'Remove {material}',
+
+      toastAdded: 'Material added',
+      toastUpdated: 'Material updated',
+      toastRemoved: 'Material removed',
+      toastQueued: 'No connection. It was saved on this device and will be sent when the internet is back.',
+      toastSynced: 'Pending usage sent ({n}).',
+      errNoStock: 'Choose which stock the material came from.',
+      errNoMaterial: 'Choose the material.',
+      errNoQuantity: 'Enter a quantity greater than zero.',
+      errSave: 'Could not add the material',
+      errRemove: 'Could not remove the material',
+
+      selectPlaceholder: 'Choose the material',
+      selectSearch: 'Search by name or code...',
+      selectEmpty: 'No material found.',
+      selectGroupHere: 'In this stock',
+      selectGroupOthers: 'Other materials',
+      selectNoStockTitle: 'Choose the stock first',
+      selectNoStockHint: 'Each material balance depends on the chosen stock.',
+      selectNoCatalogTitle: 'No material in stock',
+      selectNoCatalogHint: 'Ask the office to register the materials in Inventory. Once they are there, they show up here.',
+      selectAvailable: '{qty} {unit} available',
+      selectNoBalance: 'no balance here',
+
+      summaryTitle: 'Usage summary',
+      summaryIntro: 'Check what came out of stock in this work order. You can fix the quantity before confirming.',
+      summaryEmptyAll: 'You removed every material from the list. Nothing will be deducted from stock.',
+      summaryResulting: 'Will be {qty} {unit}',
+      summaryNegative: 'Will be {qty} {unit} negative',
+      summaryPendingHint: 'This item has not reached the system yet. We will try to send it together with the completion.',
+      summaryBtnBack: 'Back',
+      summaryBtnConfirm: 'Confirm and complete',
+      summaryBtnConfirming: 'Completing...',
+
+      toastCommitted: 'Materials deducted from stock',
+      toastCommittedNegative: 'Materials deducted. Some balances went negative, worth checking in Inventory.',
+      toastCommitFailed: 'Could not deduct the materials from stock',
+      toastCommitFailedDesc: 'The work order was completed anyway. The usage is still saved here and can be confirmed later.',
+
+      sectionTitle: 'Materials used',
+      sectionTotal: 'Total cost',
+      sectionPending: 'Not deducted from stock yet',
+      sectionUnit: 'un',
     },
 
     // ── Live Map / Tracking ───────────────────────────────────────────────
@@ -3776,6 +3935,80 @@ export const os = {
       },
     },
 
+    // ── Consumo de stock dentro de la OS (v1.22.0) ───────────────────────
+    stockConsumption: {
+      menuItem: 'Consumir del stock',
+
+      dialogTitle: 'Consumir del stock',
+      dialogSubtitle: 'Anota lo que usaste. El stock solo se descuenta cuando la OS se finaliza.',
+      fieldStock: 'De dónde salió',
+      fieldMaterial: 'Material',
+      fieldQuantity: 'Cantidad',
+      fieldNotes: 'Observación (opcional)',
+      notesPlaceholder: 'Ej.: cambio del capacitor de la unidad exterior',
+      quantityPlaceholder: 'Ej.: 2,5',
+      btnAdd: 'Agregar',
+      btnSaveEdit: 'Guardar cambio',
+      btnCancelEdit: 'Cancelar edición',
+      btnClose: 'Cerrar',
+      btnSaving: 'Guardando...',
+
+      availableHere: 'Hay {qty} {unit} en este stock',
+      noStockHere: 'Sin saldo en este stock',
+      overBalanceWarning: 'Estás sacando más de lo que hay en este stock. Podés continuar, el saldo va a quedar negativo.',
+
+      listTitle: 'Ya registrado en esta OS',
+      listEmpty: 'Todavía no hay nada. Elegí el material y la cantidad arriba.',
+      pendingBadge: 'Pendiente de envío',
+      committedBadge: 'Ya descontado',
+      btnEditLine: 'Editar',
+      btnRemoveLine: 'Quitar',
+      removeAria: 'Quitar {material}',
+
+      toastAdded: 'Material anotado',
+      toastUpdated: 'Material actualizado',
+      toastRemoved: 'Material quitado',
+      toastQueued: 'Sin conexión. El consumo se guardó en el equipo y se enviará cuando vuelva internet.',
+      toastSynced: 'Consumo pendiente enviado ({n}).',
+      errNoStock: 'Elegí de qué stock salió el material.',
+      errNoMaterial: 'Elegí el material.',
+      errNoQuantity: 'Ingresá una cantidad mayor que cero.',
+      errSave: 'No se pudo anotar el material',
+      errRemove: 'No se pudo quitar el material',
+
+      selectPlaceholder: 'Elegí el material',
+      selectSearch: 'Buscar por nombre o código...',
+      selectEmpty: 'No se encontró ningún material.',
+      selectGroupHere: 'En este stock',
+      selectGroupOthers: 'Otros materiales',
+      selectNoStockTitle: 'Elegí primero el stock',
+      selectNoStockHint: 'El saldo de cada material depende del stock elegido.',
+      selectNoCatalogTitle: 'Ningún material en el stock',
+      selectNoCatalogHint: 'Pedí a la oficina que cargue los materiales en Stock. Cuando entren, aparecen acá.',
+      selectAvailable: '{qty} {unit} disponibles',
+      selectNoBalance: 'sin saldo acá',
+
+      summaryTitle: 'Resumen del consumo',
+      summaryIntro: 'Revisá lo que salió del stock en esta OS. Podés corregir la cantidad antes de confirmar.',
+      summaryEmptyAll: 'Quitaste todos los materiales de la lista. No se va a descontar nada del stock.',
+      summaryResulting: 'Queda con {qty} {unit}',
+      summaryNegative: 'Queda negativo en {qty} {unit}',
+      summaryPendingHint: 'Este ítem todavía no llegó al sistema. Vamos a intentar enviarlo junto con la finalización.',
+      summaryBtnBack: 'Volver',
+      summaryBtnConfirm: 'Confirmar y finalizar',
+      summaryBtnConfirming: 'Finalizando...',
+
+      toastCommitted: 'Materiales descontados del stock',
+      toastCommittedNegative: 'Materiales descontados. Algunos quedaron con saldo negativo, conviene revisar en Stock.',
+      toastCommitFailed: 'No se pudo descontar los materiales del stock',
+      toastCommitFailedDesc: 'La OS se finalizó igual. El consumo sigue anotado acá y se puede confirmar después.',
+
+      sectionTitle: 'Materiales utilizados',
+      sectionTotal: 'Costo total',
+      sectionPending: 'Todavía no descontado del stock',
+      sectionUnit: 'un',
+    },
+
     // ── Mapa en vivo / Rastreo ────────────────────────────────────────────
     liveMap: {
       pageTitle: 'Mapa y rastreo',
@@ -5211,6 +5444,80 @@ export const os = {
         errPmoc: 'Édition manuelle indisponible pour une OS de type PMOC.',
         errGeneric: 'Impossible d`enregistrer les modifications. Réessayez.',
       },
+    },
+
+    // ── Consommation de stock dans l'OS (v1.22.0) ────────────────────────
+    stockConsumption: {
+      menuItem: 'Consommer du stock',
+
+      dialogTitle: 'Consommer du stock',
+      dialogSubtitle: 'Notez ce que vous avez utilisé. Le stock est débité seulement à la clôture de l\'OS.',
+      fieldStock: 'Pris où',
+      fieldMaterial: 'Matériel',
+      fieldQuantity: 'Quantité',
+      fieldNotes: 'Remarque (facultatif)',
+      notesPlaceholder: 'Ex. : remplacement du condensateur de l\'unité extérieure',
+      quantityPlaceholder: 'Ex. : 2,5',
+      btnAdd: 'Ajouter',
+      btnSaveEdit: 'Enregistrer la modification',
+      btnCancelEdit: 'Annuler la modification',
+      btnClose: 'Fermer',
+      btnSaving: 'Enregistrement...',
+
+      availableHere: 'Il y a {qty} {unit} dans ce stock',
+      noStockHere: 'Aucun solde dans ce stock',
+      overBalanceWarning: 'Vous prenez plus que ce que ce stock contient. Vous pouvez continuer, le solde deviendra négatif.',
+
+      listTitle: 'Déjà enregistré sur cette OS',
+      listEmpty: 'Rien pour le moment. Choisissez le matériel et la quantité ci-dessus.',
+      pendingBadge: 'En attente d\'envoi',
+      committedBadge: 'Déjà débité',
+      btnEditLine: 'Modifier',
+      btnRemoveLine: 'Retirer',
+      removeAria: 'Retirer {material}',
+
+      toastAdded: 'Matériel enregistré',
+      toastUpdated: 'Matériel mis à jour',
+      toastRemoved: 'Matériel retiré',
+      toastQueued: 'Pas de connexion. La consommation a été gardée sur l\'appareil et sera envoyée dès le retour d\'internet.',
+      toastSynced: 'Consommation en attente envoyée ({n}).',
+      errNoStock: 'Choisissez de quel stock le matériel est sorti.',
+      errNoMaterial: 'Choisissez le matériel.',
+      errNoQuantity: 'Indiquez une quantité supérieure à zéro.',
+      errSave: 'Impossible d\'enregistrer le matériel',
+      errRemove: 'Impossible de retirer le matériel',
+
+      selectPlaceholder: 'Choisissez le matériel',
+      selectSearch: 'Rechercher par nom ou code...',
+      selectEmpty: 'Aucun matériel trouvé.',
+      selectGroupHere: 'Dans ce stock',
+      selectGroupOthers: 'Autres matériels',
+      selectNoStockTitle: 'Choisissez d\'abord le stock',
+      selectNoStockHint: 'Le solde de chaque matériel dépend du stock choisi.',
+      selectNoCatalogTitle: 'Aucun matériel en stock',
+      selectNoCatalogHint: 'Demandez au bureau d\'enregistrer les matériels dans le Stock. Dès qu\'ils y sont, ils apparaissent ici.',
+      selectAvailable: '{qty} {unit} disponibles',
+      selectNoBalance: 'aucun solde ici',
+
+      summaryTitle: 'Résumé de la consommation',
+      summaryIntro: 'Vérifiez ce qui est sorti du stock sur cette OS. Vous pouvez corriger la quantité avant de confirmer.',
+      summaryEmptyAll: 'Vous avez retiré tous les matériels de la liste. Rien ne sera débité du stock.',
+      summaryResulting: 'Il restera {qty} {unit}',
+      summaryNegative: 'Solde négatif de {qty} {unit}',
+      summaryPendingHint: 'Cet élément n\'est pas encore arrivé au système. Nous allons essayer de l\'envoyer avec la clôture.',
+      summaryBtnBack: 'Retour',
+      summaryBtnConfirm: 'Confirmer et clôturer',
+      summaryBtnConfirming: 'Clôture...',
+
+      toastCommitted: 'Matériels débités du stock',
+      toastCommittedNegative: 'Matériels débités. Certains soldes sont négatifs, à vérifier dans le Stock.',
+      toastCommitFailed: 'Impossible de débiter les matériels du stock',
+      toastCommitFailedDesc: 'L\'OS a été clôturée quand même. La consommation reste enregistrée ici et peut être confirmée plus tard.',
+
+      sectionTitle: 'Matériels utilisés',
+      sectionTotal: 'Coût total',
+      sectionPending: 'Pas encore débité du stock',
+      sectionUnit: 'un',
     },
 
     // ── Carte en direct / Suivi ───────────────────────────────────────────

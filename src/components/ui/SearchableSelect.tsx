@@ -21,6 +21,12 @@ export interface SearchableSelectOption {
   label: string;
   sublabel?: string;
   icon?: React.ReactNode;
+  /**
+   * Termos EXTRA que a busca do cmdk também considera (além do label).
+   * Ex.: SKU/código do material, pra o técnico achar digitando "4410".
+   * Opcional — quem não passa continua filtrando só pelo label.
+   */
+  keywords?: string[];
 }
 
 export interface SearchableSelectGroup {
@@ -152,16 +158,20 @@ export function SearchableSelect({
     <CommandItem
       key={option.value}
       value={option.label}
+      keywords={option.keywords}
       onSelect={() => {
         onValueChange(option.value);
         setOpen(false);
       }}
     >
       <Check className={cn('mr-2 h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')} />
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         {option.icon}
-        <div className="min-w-0">
-          <span className="truncate">{option.label}</span>
+        <div className="min-w-0 flex-1">
+          {/* `block` é obrigatório: `truncate` em <span> inline não aplica a
+              reticência (elemento inline ignora overflow) e o nome longo saía
+              cortado no meio da palavra. O sublabel abaixo já era block. */}
+          <span className="block truncate">{option.label}</span>
           {option.sublabel && (
             <span className="block text-xs text-muted-foreground truncate">{option.sublabel}</span>
           )}
@@ -192,9 +202,13 @@ export function SearchableSelect({
           disabled={disabled}
           className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground', className)}
         >
-          <span className="flex items-center gap-2 truncate">
+          {/* `truncate` no CONTÊINER flex não corta: o texto vira um item
+              anônimo e o overflow não se aplica. O rótulo precisa do próprio
+              span truncável (item flex é blockificado) + min-w-0 no pai,
+              senão nome longo de material some cortado no meio da palavra. */}
+          <span className="flex items-center gap-2 min-w-0 flex-1">
             {selected?.icon}
-            {selected ? selected.label : placeholder}
+            <span className="truncate">{selected ? selected.label : placeholder}</span>
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
