@@ -31,6 +31,7 @@ import {
 } from "../fiscal-auth.ts";
 import {
   cleanCTribMun,
+  COL_CREATED_BY,
   COL_CTRIBMUN,
   COL_SERVICE_TYPE,
   isUnknownColumnError,
@@ -177,7 +178,7 @@ function mapBodyToColumns(body: DraftBody): Record<string, unknown> {
  * deploy: edge nova + migration ainda não aplicada). Perder um campo opcional é
  * muito melhor que perder o rascunho inteiro.
  */
-const COLUNAS_OPCIONAIS = [COL_CTRIBMUN, COL_SERVICE_TYPE];
+const COLUNAS_OPCIONAIS = [COL_CTRIBMUN, COL_SERVICE_TYPE, COL_CREATED_BY];
 
 type DbResult<T> = { data: T | null; error: { code?: string; message?: string } | null };
 
@@ -219,7 +220,7 @@ export async function handleNfseSaveDraft(req: Request): Promise<Response> {
   try {
     const auth = await authorizeFiscalManager(req);
     if (!auth.ok) return auth.response;
-    const { companyId, supabase } = auth;
+    const { companyId, supabase, userId } = auth;
 
     let body: DraftBody;
     try {
@@ -279,11 +280,15 @@ export async function handleNfseSaveDraft(req: Request): Promise<Response> {
     }
 
     // ---- INSERT de novo rascunho (company_id carimbado, status='rascunho').
+    // `created_by` é carimbado SÓ no INSERT (o UPDATE acima jamais reescreve o
+    // autor original). A edge roda com service_role, então auth.uid() não vem
+    // de graça — usamos o userId que o gate de auth já resolveu do JWT.
     const insertPayload = {
       ...cols,
       company_id: companyId,
       status: "rascunho",
       idempotency_key: null,
+      [COL_CREATED_BY]: userId,
     };
     const runInsert = (payload: Record<string, unknown>) =>
       supabase.from("nfse_emissions").insert(payload).select("*").single();

@@ -55,6 +55,7 @@ import { NFSE_STATUS } from "../nfse-status.ts";
 import {
   clean,
   cleanCTribMun,
+  COL_CREATED_BY,
   COL_CTRIBMUN,
   isUnknownColumnError,
   logId,
@@ -65,6 +66,43 @@ import {
 } from "./common.ts";
 
 const TAG = "[nfse-emit]";
+
+/**
+ * Colunas OPCIONAIS que podem não existir ainda em outro ambiente (janela de
+ * deploy: edge nova + migration ainda não aplicada).
+ *
+ * Perder um campo opcional é infinitamente melhor que perder o REGISTRO de uma
+ * nota que já pode ter sido enviada ao provedor. O `created_by` (autoria) entra
+ * aqui pelo mesmo motivo do cTribMun.
+ */
+const COLUNAS_TOLERANTES = [COL_CTRIBMUN, COL_CREATED_BY];
+
+/**
+ * Roda a gravação e, se o banco reclamar de uma coluna OPCIONAL inexistente,
+ * remove aquela coluna do payload e tenta de novo (uma vez por coluna).
+ */
+async function rodarTolerandoColunaAusente(
+  run: (
+    payload: Record<string, unknown>,
+  ) => PromiseLike<
+    { data: Record<string, any> | null; error: { code?: string; message: string } | null }
+  >,
+  payload: Record<string, unknown>,
+): Promise<{ row: Record<string, any> | null; err: { message: string } | null }> {
+  const pendentes = [...COLUNAS_TOLERANTES];
+  let atual = payload;
+  let { data, error } = await run(atual);
+
+  while (error && pendentes.length > 0) {
+    const idx = pendentes.findIndex((coluna) => isUnknownColumnError(error, coluna));
+    if (idx === -1) break;
+    const [coluna] = pendentes.splice(idx, 1);
+    atual = withoutColumn(atual, coluna);
+    ({ data, error } = await run(atual));
+  }
+
+  return { row: data ?? null, err: error };
+}
 
 /**
  * Status de TENTATIVA que não bloqueiam uma nova emissão com a mesma chave de
@@ -315,7 +353,7 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
   try {
     const auth = await authorizeFiscalManager(req);
     if (!auth.ok) return auth.response;
-    const { companyId, supabase } = auth;
+    const { companyId, supabase, userId } = auth;
 
     let body: EmitBody;
     try {
@@ -750,6 +788,19 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
     // Sem alvo → INSERT.
     const alvoId = emissionId || tentativaAnterior;
 
+    // ---- Autoria da nota (`created_by`).
+    // A edge roda com service_role: auth.uid() NÃO vem de graça, então o valor
+    // é carimbado com o userId que o gate de auth já resolveu do JWT.
+    // Regra: o autor ORIGINAL nunca é reescrito. Se a linha-alvo já tem autor
+    // (rascunho salvo por alguém, ou tentativa anterior), mantemos; se está
+    // NULL (nota antiga / rascunho pré-migration), preenchemos agora.
+    const autorDoAlvo = clean(
+      (emissionId ? draft?.[COL_CREATED_BY] : existing?.[COL_CREATED_BY]) ?? "",
+    );
+    const autoriaSeVazia: Record<string, unknown> = autorDoAlvo
+      ? {}
+      : { [COL_CREATED_BY]: userId };
+
     const camposComuns: Record<string, unknown> = {
       customer_id: customer.id,
       idempotency_key: idempotencyKey,
@@ -778,6 +829,7 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       if (alvoId) {
         const payload: Record<string, unknown> = {
           ...camposComuns,
+          ...autoriaSeVazia,
           ...extra,
           updated_at: new Date().toISOString(),
         };
@@ -793,11 +845,7 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
             .select("*")
             .maybeSingle();
         };
-        let { data, error } = await runUpdate(payload);
-        if (error && isUnknownColumnError(error, COL_CTRIBMUN)) {
-          ({ data, error } = await runUpdate(withoutColumn(payload, COL_CTRIBMUN)));
-        }
-        return { row: data ?? null, err: error };
+        return await rodarTolerandoColunaAusente(runUpdate, payload);
       }
 
       // STANDALONE: sem service_order_id, sem financial_transaction_id de OS.
@@ -805,15 +853,12 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
         company_id: companyId,
         financial_transaction_id: null,
         ...camposComuns,
+        [COL_CREATED_BY]: userId,
         ...extra,
       };
       const runInsert = (p: Record<string, unknown>) =>
         supabase.from("nfse_emissions").insert(p).select("*").single();
-      let { data, error } = await runInsert(payload);
-      if (error && isUnknownColumnError(error, COL_CTRIBMUN)) {
-        ({ data, error } = await runInsert(withoutColumn(payload, COL_CTRIBMUN)));
-      }
-      return { row: data ?? null, err: error };
+      return await rodarTolerandoColunaAusente(runInsert, payload);
     };
 
     /**

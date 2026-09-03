@@ -47,6 +47,21 @@ export const changelog: ChangelogEntry[] = [
     type: 'patch',
     changes: [
       {
+        title: 'Tela de Notas Fiscais renovada',
+        description: 'A tela ganhou cartões coloridos com a contagem de notas autorizadas, em processamento, recusadas e canceladas, e um resumo "Como funciona?" para quem está começando. Agora dá para ordenar a lista por qualquer coluna, filtrar por situação e por período, e abrir a linha da nota para ver os detalhes completos sem sair da tela — cliente, CNPJ, descrição do serviço, chave e valores.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Quem emitiu cada nota',
+        description: 'A lista agora mostra a foto de quem emitiu cada nota fiscal. Vale para as notas emitidas de agora em diante.',
+        category: 'recurso',
+      },
+      {
+        title: 'Botão de emitir sempre à mão',
+        description: 'O botão de emitir nota deixou de ficar só no topo da tela, onde sumia assim que você descia na lista. Agora ele acompanha a rolagem, no canto inferior, tanto no computador quanto no celular.',
+        category: 'melhoria',
+      },
+      {
         title: 'Nota fiscal de serviço agora sai direto, sem intermediário',
         description: 'A emissão passou a falar diretamente com o sistema oficial da nota fiscal de serviço, no padrão nacional. A nota é autorizada na hora, em vez de ficar numa fila esperando resposta, e o cancelamento também é imediato. Isso deixa a emissão mais rápida, mais estável e nos permite atender cidades que antes ficavam de fora.',
         category: 'recurso',

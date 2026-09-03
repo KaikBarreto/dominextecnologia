@@ -24,48 +24,58 @@ interface StatusMeta {
 }
 
 /** Mapa de status da NFS-e — somente metadados visuais (ícone + cores).
- *  Labels são sempre resolvidos via MESSAGES[locale].app.nfse.status. */
+ *  Labels são sempre resolvidos via MESSAGES[locale].app.nfse.status.
+ *
+ *  Badge é SATURADO por regra da casa: fundo na cor + texto e ícone brancos.
+ *  O tom pastel de antes (bg-*-100/text-*-700) sumia no tema escuro e tinha
+ *  cara de UI genérica. `iconClass` é a versão colorida do ícone, usada só na
+ *  LEGENDA (onde o ícone aparece sobre a superfície da tela, sem fundo). */
 const STATUS_META: Record<string, StatusMeta> = {
   rascunho: {
     icon: FileEdit,
-    badgeClass: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border-transparent',
-    iconClass: 'text-gray-500',
+    badgeClass: 'bg-slate-500 text-white hover:bg-slate-500 border-transparent',
+    iconClass: 'text-slate-500',
   },
   pendente: {
     icon: Clock,
-    badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-transparent',
+    badgeClass: 'bg-amber-500 text-white hover:bg-amber-500 border-transparent',
     iconClass: 'text-amber-500',
   },
   processando: {
     icon: Loader2,
-    badgeClass: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-transparent',
+    badgeClass: 'bg-indigo-500 text-white hover:bg-indigo-500 border-transparent',
     iconClass: 'text-indigo-500',
   },
   autorizada: {
     icon: CheckCircle2,
-    badgeClass: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300 border-transparent',
-    iconClass: 'text-green-500',
+    badgeClass: 'bg-emerald-500 text-white hover:bg-emerald-500 border-transparent',
+    iconClass: 'text-emerald-500',
   },
   rejeitada: {
     icon: XCircle,
-    badgeClass: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-transparent',
+    badgeClass: 'bg-red-500 text-white hover:bg-red-500 border-transparent',
     iconClass: 'text-red-500',
   },
   cancelada: {
     icon: Ban,
-    badgeClass: 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-transparent',
+    // Cancelada não é erro nem sucesso: cinza-escuro, o mesmo tratamento dado
+    // ao card de canceladas.
+    // No tema escuro o cinza-900 encostava no fundo da linha e o selo sumia;
+    // sobe pro cinza-600 pra continuar legível sem virar outra cor.
+    badgeClass:
+      'bg-gray-800 text-white hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-600 border-transparent',
     iconClass: 'text-gray-500',
   },
   falhou: {
     icon: AlertTriangle,
-    badgeClass: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-transparent',
+    badgeClass: 'bg-red-600 text-white hover:bg-red-600 border-transparent',
     iconClass: 'text-red-500',
   },
   // Cancelamento pedido e ainda em processamento na prefeitura — estado
   // transitório (âmbar, como `pendente`) que vira `cancelada` no fim.
   cancelamento_pendente: {
     icon: Loader2,
-    badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-transparent',
+    badgeClass: 'bg-amber-500 text-white hover:bg-amber-500 border-transparent',
     iconClass: 'text-amber-500',
   },
 };

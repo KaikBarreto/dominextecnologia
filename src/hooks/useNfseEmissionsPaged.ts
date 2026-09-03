@@ -23,6 +23,34 @@ export interface NfseEmissionRow {
   protocolo: string | null;
   error_message: string | null;
   total_count: number;
+
+  // ---- Detalhe expandido da nota (migration 20260903210000).
+  descricao_servico: string | null;
+  codigo_servico: string | null;
+  codigo_tributacao_municipal: string | null;
+  codigo_nbs: string | null;
+  aliquota_issqn: number | null;
+  /** Tributação do ISSQN: '1' operação tributável, '2'..'4' demais casos. */
+  trib_issqn: string | null;
+  /** Retenção do ISSQN: '1' = NÃO retido, '2' = retido pelo tomador. */
+  tp_ret_issqn: string | null;
+  /** % total de tributos do Simples Nacional. */
+  percentual_trib_sn: number | null;
+  valor_pis: number | null;
+  valor_cofins: number | null;
+  valor_csll: number | null;
+  municipio_incidencia_ibge: string | null;
+  service_type_id: string | null;
+  /** CPF/CNPJ do tomador (`customers.document`). */
+  customer_document: string | null;
+
+  // ---- Autoria (`nfse_emissions.created_by`).
+  // NULL em notas anteriores a 2026-09-03: não havia de onde inferir o autor.
+  // A RPC usa LEFT JOIN, então a linha VEM na lista mesmo sem autor — a UI tem
+  // que aguentar os três campos nulos.
+  created_by: string | null;
+  created_by_name: string | null;
+  created_by_avatar_url: string | null;
 }
 
 export interface FetchEmissionsPagedParams {

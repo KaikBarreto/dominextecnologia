@@ -5240,6 +5240,7 @@ export type Database = {
           codigo_tributacao_municipal: string | null
           company_id: string
           created_at: string | null
+          created_by: string | null
           customer_id: string | null
           data_competencia: string | null
           descricao_servico: string | null
@@ -5279,6 +5280,7 @@ export type Database = {
           codigo_tributacao_municipal?: string | null
           company_id: string
           created_at?: string | null
+          created_by?: string | null
           customer_id?: string | null
           data_competencia?: string | null
           descricao_servico?: string | null
@@ -5318,6 +5320,7 @@ export type Database = {
           codigo_tributacao_municipal?: string | null
           company_id?: string
           created_at?: string | null
+          created_by?: string | null
           customer_id?: string | null
           data_competencia?: string | null
           descricao_servico?: string | null
@@ -9775,20 +9778,37 @@ export type Database = {
           p_statuses?: string[]
         }
         Returns: {
+          aliquota_issqn: number
           chave_acesso: string
+          codigo_nbs: string
+          codigo_servico: string
+          codigo_tributacao_municipal: string
           created_at: string
+          created_by: string
+          created_by_avatar_url: string
+          created_by_name: string
+          customer_document: string
           customer_id: string
           customer_name: string
           data_competencia: string
+          descricao_servico: string
           emitida_em: string
           error_message: string
           id: string
+          municipio_incidencia_ibge: string
           numero_nfse: string
           pdf_url: string
+          percentual_trib_sn: number
           protocolo: string
+          service_type_id: string
           status: string
           total_count: number
+          tp_ret_issqn: string
+          trib_issqn: string
+          valor_cofins: number
+          valor_csll: number
           valor_iss: number
+          valor_pis: number
           valor_servico: number
           xml_url: string
         }[]

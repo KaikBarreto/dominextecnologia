@@ -1,64 +1,45 @@
-import { useMemo } from 'react';
-import { CheckCircle2, Loader2, XCircle, Ban, FileText } from 'lucide-react';
-import { formatMoney, formatDate as formatDateLib } from '@/lib/format';
+import { FileText, Loader2 } from 'lucide-react';
+import { formatMoney, formatDate } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { NfseStatusBadge } from './nfseStatus';
-import type { NfseEmission } from '@/hooks/useNfse';
+import { nfseDisplayDate, type NfseListRow } from './nfseRow';
 
 interface NfseVisaoGeralProps {
-  emissions: NfseEmission[];
-  customerName: (id: string | null) => string;
-  /** Abre o detalhe de uma emissão (reusa o modal da aba NFS-e). */
-  onOpenDetail: (e: NfseEmission) => void;
+  /** Últimas notas do período (a página já chega ordenada e recortada). */
+  rows: NfseListRow[];
+  loading?: boolean;
+  /** Abre o detalhe de uma nota (mesmo modal da aba NFS-e). */
+  onOpenDetail: (row: NfseListRow) => void;
 }
 
 /**
- * Visão Geral da aba Notas Fiscais — AGREGA (não repete a listagem).
- * Mostra contadores honestos por status, total emitido (autorizadas) e as
- * últimas 5 emissões como atalho. Todos os números saem do mesmo dataset do
- * `useNfse`, sem inflar.
+ * Visão Geral da tela de Notas Fiscais.
+ *
+ * Os contadores e o total emitido saíram daqui: agora vivem ACIMA do menu de
+ * abas (NfseStatsCards), visíveis nas duas abas. O que sobra é o atalho das
+ * últimas emissões — não é a listagem completa, é o "o que aconteceu por
+ * último".
  */
-export function NfseVisaoGeral({ emissions, customerName, onOpenDetail }: NfseVisaoGeralProps) {
+export function NfseVisaoGeral({ rows, loading = false, onOpenDetail }: NfseVisaoGeralProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
-  const stats = useMemo(() => {
-    let autorizadas = 0;
-    let processando = 0;
-    let rejeitadas = 0;
-    let canceladas = 0;
-    let totalEmitido = 0; // só notas autorizadas contam no valor faturado
-    for (const e of emissions) {
-      switch (e.status) {
-        // Cancelamento pedido mas ainda não efetivado: a nota continua válida e
-        // com efeito fiscal, então conta junto das autorizadas.
-        case 'autorizada':
-        case 'cancelamento_pendente':
-          autorizadas += 1;
-          totalEmitido += e.valor_servico ?? 0;
-          break;
-        case 'processando':
-        case 'pendente':
-          processando += 1;
-          break;
-        case 'rejeitada':
-        case 'falhou':
-          rejeitadas += 1;
-          break;
-        case 'cancelada':
-          canceladas += 1;
-          break;
-        default:
-          break;
-      }
-    }
-    return { autorizadas, processando, rejeitadas, canceladas, totalEmitido };
-  }, [emissions]);
 
-  const recent = useMemo(() => emissions.slice(0, 5), [emissions]);
+  if (loading) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-3 py-16"
+        role="status"
+        aria-live="polite"
+      >
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">{t.list.loading}</p>
+      </div>
+    );
+  }
 
-  if (emissions.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="text-center py-16 text-muted-foreground">
         <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
@@ -68,99 +49,43 @@ export function NfseVisaoGeral({ emissions, customerName, onOpenDetail }: NfseVi
   }
 
   return (
-    <div className="space-y-5">
-      {/* Card-herói: total emitido (autorizadas) — moeda em card próprio,
-          NÃO no StatCarousel (que formata como inteiro). */}
-      <div className="rounded-xl border bg-card p-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-          {t.overview.totalIssued}
-        </p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums">
-          {formatMoney(stats.totalEmitido, currency, locale)}
-        </p>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {t.overview.totalIssuedSub.replace('{count}', String(stats.autorizadas))}
-        </p>
-      </div>
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{t.overview.recentTitle}</p>
+      <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
+        {rows.map((row) => {
+          // Título: número da nota quando já existe; senão a descrição do
+          // serviço; senão o status por extenso. NUNCA o nome do cliente — ele
+          // já é o começo do subtítulo, e repetir virava
+          // "FULANO LTDA / FULANO LTDA · 02/09 · R$ 2,00".
+          const statusLabel =
+            (t.status as Record<string, string>)[row.status] ?? t.status.unknown;
+          const title = row.numero_nfse
+            ? `${t.list.notePrefix} ${row.numero_nfse}`
+            : row.descricao_servico || statusLabel;
 
-      {/* Contadores por status */}
-      <div className="grid grid-cols-2 gap-3">
-        <CountCard
-          icon={CheckCircle2}
-          iconClass="text-green-500"
-          label={t.overview.countAuthorized}
-          value={stats.autorizadas}
-        />
-        <CountCard
-          icon={Loader2}
-          iconClass="text-indigo-500"
-          label={t.overview.countProcessing}
-          value={stats.processando}
-        />
-        <CountCard
-          icon={XCircle}
-          iconClass="text-red-500"
-          label={t.overview.countRejected}
-          value={stats.rejeitadas}
-        />
-        <CountCard
-          icon={Ban}
-          iconClass="text-gray-500"
-          label={t.overview.countCancelled}
-          value={stats.canceladas}
-        />
-      </div>
+          // Data exibida = COMPETÊNCIA, igual à coluna "Data" da listagem.
+          const dateStr = nfseDisplayDate(row);
 
-      {/* Últimas emissões (atalho — não é a listagem completa) */}
-      <div className="space-y-2">
-        <p className="text-sm font-medium">{t.overview.recentTitle}</p>
-        <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
-          {recent.map((e) => (
+          return (
             <MobileListItem
-              key={e.id}
-              onClick={() => onOpenDetail(e)}
+              key={row.id}
+              onClick={() => onOpenDetail(row)}
               leading={<FileText className="h-5 w-5 text-muted-foreground" />}
-              title={
-                e.numero_nfse
-                  ? `${t.list.notePrefix} ${e.numero_nfse}`
-                  : customerName(e.customer_id)
-              }
+              title={<span className="line-clamp-1">{title}</span>}
               subtitle={
-                <span>
-                  {customerName(e.customer_id)} ·{' '}
-                  {e.created_at ? formatDateLib(e.created_at, locale, timezone) : '—'}
-                  {e.valor_servico != null
-                    ? ` · ${formatMoney(e.valor_servico, currency, locale)}`
+                <span className="line-clamp-1">
+                  {row.customer_name || t.list.customerFallback}
+                  {dateStr ? ` · ${formatDate(dateStr, locale, timezone)}` : ''}
+                  {row.valor_servico != null
+                    ? ` · ${formatMoney(row.valor_servico, currency, locale)}`
                     : ''}
                 </span>
               }
-              trailing={<NfseStatusBadge status={e.status} />}
+              trailing={<NfseStatusBadge status={row.status} />}
             />
-          ))}
-        </div>
+          );
+        })}
       </div>
-    </div>
-  );
-}
-
-function CountCard({
-  icon: Icon,
-  iconClass,
-  label,
-  value,
-}: {
-  icon: typeof CheckCircle2;
-  iconClass: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-xl border bg-card p-3.5">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className={`h-4 w-4 ${iconClass}`} />
-        <span className="text-xs">{label}</span>
-      </div>
-      <p className="mt-1.5 text-2xl font-semibold tabular-nums">{value}</p>
     </div>
   );
 }

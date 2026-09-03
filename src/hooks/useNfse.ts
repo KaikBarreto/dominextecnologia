@@ -50,8 +50,12 @@ export interface EmitNfseInput {
 }
 
 // Ids internos do provedor ficam de fora: nenhuma tela os usa.
+// `data_competencia` é OBRIGATÓRIA aqui: o recorte por período dos contadores
+// lê `data_competencia || created_at`. Sem a coluna no select, o fallback
+// disparava sempre e o período era medido pela data de CRIAÇÃO da nota, não
+// pela competência. Os totais estavam certos; o recorte é que não.
 const EMISSION_COLS =
-  'id, company_id, customer_id, financial_transaction_id, status, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, created_at, updated_at';
+  'id, company_id, customer_id, financial_transaction_id, status, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, data_competencia, created_at, updated_at';
 
 export function useNfse() {
   const { companyId } = useUserCompany();

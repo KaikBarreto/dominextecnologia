@@ -1,9 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Fragment, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileText,
-  Plus,
   Search,
   Loader2,
   Eye,
@@ -18,6 +15,7 @@ import {
   SlidersHorizontal,
   MoreVertical,
   MoreHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,11 +24,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { HoverDropdownMenu } from '@/components/ui/hover-dropdown-menu';
 import {
   Table,
   TableBody,
@@ -39,6 +40,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
 import {
   Sheet,
   SheetContent,
@@ -51,17 +54,21 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { EmptyState } from '@/components/mobile/EmptyState';
 
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useNfseEmissionsPaged, type NfseEmissionRow } from '@/hooks/useNfseEmissionsPaged';
+import { useTableSort } from '@/hooks/useTableSort';
+import { useNfseEmissionsPaged } from '@/hooks/useNfseEmissionsPaged';
 import { useNfseEmission } from '@/hooks/useNfseEmission';
-import { useNfse, type NfseEmission } from '@/hooks/useNfse';
+import { useNfse } from '@/hooks/useNfse';
 import { invokeNfse } from '@/utils/nfseEdge';
-import { formatMoney, formatDate as formatDateLib } from '@/lib/format';
+import { cpfCnpjMask } from '@/utils/masks';
+import { formatMoney, formatDate, formatNumber } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { cn } from '@/lib/utils';
 
 import { NfseStatusBadge, NFSE_STATUS_FILTER_OPTIONS } from '@/components/fiscal/nfseStatus';
 import { NovaNotaModal } from '@/components/fiscal/NovaNotaModal';
 import { NfseDetailModal, type NfseDetailAction } from '@/components/fiscal/NfseDetailModal';
+import { nfseDisplayDate, nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
 import type { NfseInitialDraft, TribIssqn, TpRetIssqn } from '@/components/fiscal/nova-nota/types';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -71,6 +78,18 @@ const ALL_PAGE_SIZE = 100_000;
 
 /** Status filter options — a lista canônica já inclui rascunho. */
 const STATUS_FILTER_OPTIONS_EXTENDED = [...NFSE_STATUS_FILTER_OPTIONS];
+
+/**
+ * Chaves de ordenação que a RPC sabe ordenar no SERVIDOR (whitelist do
+ * `get_nfse_emissions_paged`). Para as outras — competência e tomador — a RPC
+ * cai no `created_at` e quem reordena é o `useTableSort`, sobre a página que
+ * veio. Ordenar as duas listas pela MESMA chave é idempotente: quando o banco
+ * ampliar a whitelist, o passo do cliente vira no-op sozinho.
+ */
+const SERVER_SORT_KEYS = new Set(['numero_nfse', 'valor_servico', 'status', 'created_at']);
+
+/** Linha + a data derivada usada na ordenação da coluna "Data". */
+type NfseSortableRow = NfseListRow & { sort_date: string | null };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -87,42 +106,30 @@ function toTpRetIssqn(value: string | null | undefined): TpRetIssqn {
   return value === '2' || value === '3' ? value : '1';
 }
 
-function formatBRL(value: number | null | undefined) {
-  if (value == null) return '—';
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function formatDt(isoStr: string | null | undefined) {
-  if (!isoStr) return '—';
-  try {
-    return format(new Date(isoStr), 'dd/MM/yyyy', { locale: ptBR });
-  } catch {
-    return '—';
-  }
-}
-
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 interface NfseListTabProps {
   canEmit: boolean;
-  onNewNote: () => void;
+  /** Recorte de período escolhido no header (data-pura YYYY-MM-DD ou null). */
+  dateStart?: string | null;
+  dateEnd?: string | null;
 }
 
 /**
  * Aba de listagem de NFS-e.
- * - Desktop: tabela (Número / Data / Tomador / Valor / Status / Ações).
+ * - Desktop: tabela ordenável com linha expansível (detalhe completo da nota).
  * - Mobile: cards com menu ⋮.
  * - Filtros server-side via RPC `get_nfse_emissions_paged`.
  * - Suporte a rascunho: Continuar preenchendo / Emitir / Excluir.
  */
-export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
+export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
   const tList = t.list;
+  const tDetails = t.details;
 
   const { rows, totalCount, loading, fetch, refetch } = useNfseEmissionsPaged();
-  const { cancel: cancelNfse } = useNfse();
 
   // ─── Filtros ─────────────────────────────────────────────────────────────
 
@@ -139,28 +146,61 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     return Number.isFinite(n) && n > 0 ? n : 10;
   });
 
+  // ─── Ordenação ────────────────────────────────────────────────────────────
+
+  /**
+   * `sort_date` é a data EXIBIDA (competência, com queda pro `created_at`)
+   * reduzida a YYYY-MM-DD. Ordenar pela coluna crua `data_competencia` não
+   * funcionava: ela é nula na maioria das notas, então a coluna Data mostrava
+   * uma data e a ordenação usava outra (ou nenhuma).
+   */
+  const sortableRows = useMemo<NfseSortableRow[]>(
+    () => rows.map((r) => ({ ...r, sort_date: nfseDisplayDate(r)?.slice(0, 10) ?? null })),
+    [rows],
+  );
+  const { sortedItems, sortConfig, handleSort } = useTableSort<NfseSortableRow>(
+    sortableRows,
+    'created_at',
+    'desc',
+  );
+  const sortKey = sortConfig.key && sortConfig.direction ? sortConfig.key : 'created_at';
+  const sortDir = sortConfig.direction ?? 'desc';
+  const visibleRows = sortedItems;
+
   // Debounce de busca ~350 ms.
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
   }, [search]);
 
   // Reset p/ página 1 quando filtros mudam.
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, itemsPerPage]);
+  }, [debouncedSearch, statusFilter, itemsPerPage, dateStart, dateEnd]);
 
   // Fetch server-side.
   useEffect(() => {
     fetch({
       statuses: statusFilter.length ? statusFilter : undefined,
       search: debouncedSearch || undefined,
-      sortKey: 'created_at',
-      sortDir: 'desc',
+      dateStart: dateStart ?? null,
+      dateEnd: dateEnd ?? null,
+      sortKey: SERVER_SORT_KEYS.has(sortKey) ? sortKey : 'created_at',
+      sortDir,
       page: currentPage,
       pageSize: itemsPerPage === 'all' ? ALL_PAGE_SIZE : itemsPerPage,
     });
-  }, [fetch, debouncedSearch, statusFilter, currentPage, itemsPerPage]);
+  }, [
+    fetch,
+    debouncedSearch,
+    statusFilter,
+    currentPage,
+    itemsPerPage,
+    dateStart,
+    dateEnd,
+    sortKey,
+    sortDir,
+  ]);
 
   // ─── Paginação ────────────────────────────────────────────────────────────
 
@@ -176,6 +216,18 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
       localStorage.setItem(PAGE_SIZE_KEY, value === 'all' ? 'all' : String(value));
     }
   }, []);
+
+  // ─── Linha expansível ─────────────────────────────────────────────────────
+
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleExpand = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // ─── Rascunho: "Continuar preenchendo" ────────────────────────────────────
 
@@ -227,68 +279,49 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     setNovaOpen(true);
   }, [draftToOpen, draftEmission, loadingDraft]);
 
-  const handleContinueDraft = (row: NfseEmissionRow) => {
+  const handleContinueDraft = (row: NfseListRow) => {
     setDraftToOpen(row.id);
   };
 
   // ─── Ação: Emitir rascunho ────────────────────────────────────────────────
 
-  const handleEmitDraft = async (row: NfseEmissionRow) => {
+  const handleEmitDraft = async (row: NfseListRow) => {
     if (!canEmit) {
-      toast.error('Você não tem permissão para emitir notas fiscais.');
+      toast.error(tList.toastNoEmitPermission);
       return;
     }
-    const tid = toast.loading('Enviando NFS-e...');
+    const tid = toast.loading(tList.toastEmitting);
     try {
       const result = await invokeNfse('nfse-emit', { emissionId: row.id });
       toast.dismiss(tid);
       if (!result.ok) {
-        toast.error(result.message ?? 'Erro ao emitir a nota.');
+        toast.error(result.message ?? tList.toastEmitError);
         return;
       }
-      toast.success('NFS-e enviada para emissão.');
+      toast.success(tList.toastEmitSuccess);
       refetch();
     } catch {
       toast.dismiss(tid);
-      toast.error('Erro ao emitir a nota fiscal.');
+      toast.error(tList.toastEmitError);
     }
   };
 
   // ─── Ação: Excluir rascunho ───────────────────────────────────────────────
 
-  const handleDeleteDraft = async (row: NfseEmissionRow) => {
-    const tid = toast.loading('Excluindo rascunho...');
+  const handleDeleteDraft = async (row: NfseListRow) => {
+    const tid = toast.loading(tList.toastDeletingDraft);
     try {
       const result = await invokeNfse('nfse-delete-draft', { id: row.id });
       toast.dismiss(tid);
       if (!result.ok) {
-        toast.error(result.message ?? 'Erro ao excluir o rascunho.');
+        toast.error(result.message ?? tList.toastDeleteDraftError);
         return;
       }
-      toast.success('Rascunho excluído.');
+      toast.success(tList.toastDeleteDraftSuccess);
       refetch();
     } catch {
       toast.dismiss(tid);
-      toast.error('Erro ao excluir o rascunho.');
-    }
-  };
-
-  // ─── Ação: Cancelar NFS-e emitida ────────────────────────────────────────
-
-  const handleCancel = async (row: NfseEmissionRow) => {
-    if (!canEmit) {
-      toast.error('Você não tem permissão para cancelar notas fiscais.');
-      return;
-    }
-    const tid = toast.loading('Cancelando NFS-e...');
-    try {
-      await cancelNfse({ emissionId: row.id });
-      toast.dismiss(tid);
-      toast.success('Cancelamento solicitado.');
-      refetch();
-    } catch {
-      toast.dismiss(tid);
-      toast.error('Não foi possível cancelar a nota.');
+      toast.error(tList.toastDeleteDraftError);
     }
   };
 
@@ -296,16 +329,16 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
 
   const { refreshStatus } = useNfse();
 
-  const handleRefreshStatus = async (row: NfseEmissionRow) => {
-    const tid = toast.loading('Consultando status...');
+  const handleRefreshStatus = async (row: NfseListRow) => {
+    const tid = toast.loading(tList.toastCheckingStatus);
     try {
       await refreshStatus(row.id);
       toast.dismiss(tid);
-      toast.success('Status atualizado.');
+      toast.success(tList.toastStatusUpdated);
       refetch();
     } catch {
       toast.dismiss(tid);
-      toast.error('Não foi possível atualizar o status.');
+      toast.error(tList.toastStatusError);
     }
   };
 
@@ -314,14 +347,13 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
   /**
    * Baixa o DANFSE (PDF) da nota.
    *
-   * Antes isto exigia `row.pdf_url` e abria em ABA NOVA — duas coisas erradas:
-   * o motor próprio não guarda o PDF numa URL (o documento é gerado sob demanda
-   * pela rota `nfse-danfse`), então a ação nunca aparecia; e abrir documento em
-   * aba nova é anti-padrão da casa. Agora pedimos o PDF e entregamos o ARQUIVO,
-   * que é o que o usuário quer fazer com uma nota fiscal: mandar pro cliente.
+   * O motor próprio não guarda o PDF numa URL (o documento é gerado sob demanda
+   * pela rota `nfse-danfse`), então pedimos o PDF e entregamos o ARQUIVO — que é
+   * o que o usuário quer fazer com uma nota fiscal: mandar pro cliente. Abrir
+   * documento em aba nova é anti-padrão da casa.
    */
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
-  const handleDownloadPdf = async (row: NfseEmissionRow) => {
+  const handleDownloadPdf = async (row: NfseListRow) => {
     setPdfLoadingId(row.id);
     const tid = toast.loading(tList.pdfLoading);
     try {
@@ -362,54 +394,38 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
 
   // ─── Ação: Download XML ───────────────────────────────────────────────────
 
-  const [xmlLoadingId, setXmlLoadingId] = useState<string | null>(null);
-  const handleDownloadXml = async (row: NfseEmissionRow) => {
-    if (!row.xml_url) { toast.error('XML não disponível.'); return; }
-    window.open(row.xml_url, '_blank', 'noopener');
+  const handleDownloadXml = (row: NfseListRow) => {
+    if (!row.xml_url) {
+      toast.error(tList.xmlUnavailable);
+      return;
+    }
+    // Documento fiscal se BAIXA, não se abre em aba nova.
+    const a = document.createElement('a');
+    a.href = row.xml_url;
+    a.download = `NFSe-${row.numero_nfse ?? row.id.slice(0, 8)}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   // ─── Detalhe (NfseDetailModal) ─────────────────────────────────────────────
 
-  /**
-   * Converte NfseEmissionRow para NfseEmission (tipo do NfseDetailModal).
-   * Campos não presentes na RPC ficam como null.
-   */
-  const rowToEmission = useCallback((row: NfseEmissionRow): NfseEmission => {
-    return {
-      id: row.id,
-      company_id: '',
-      customer_id: row.customer_id ?? null,
-      financial_transaction_id: null,
-      status: row.status,
-      numero_nfse: row.numero_nfse ?? '',
-      chave_acesso: row.chave_acesso ?? null,
-      protocolo: row.protocolo ?? null,
-      pdf_url: row.pdf_url ?? null,
-      xml_url: row.xml_url ?? null,
-      valor_servico: row.valor_servico ?? null,
-      valor_iss: row.valor_iss ?? null,
-      descricao_servico: null,
-      idempotency_key: null,
-      error_message: row.error_message ?? null,
-      emitida_em: row.emitida_em ?? null,
-      created_at: row.created_at,
-      updated_at: row.created_at,
-    } as unknown as NfseEmission;
-  }, []);
-
-  const [detailEmission, setDetailEmission] = useState<NfseEmission | null>(null);
+  const [detailEmission, setDetailEmission] = useState<ReturnType<typeof nfseRowToEmission> | null>(
+    null,
+  );
   const [detailAction, setDetailAction] = useState<NfseDetailAction | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const openDetail = (row: NfseEmissionRow, action: NfseDetailAction | null = null) => {
-    setDetailEmission(rowToEmission(row));
+  const openDetail = (row: NfseListRow, action: NfseDetailAction | null = null) => {
+    setDetailEmission(nfseRowToEmission(row));
     setDetailAction(action);
     setDetailOpen(true);
   };
 
   // ─── Menu de ações por linha ──────────────────────────────────────────────
 
-  const rowActionsMenu = (row: NfseEmissionRow, triggerNode: React.ReactNode) => {
+  /** Itens do menu — compartilhados pelo menu de hover (desktop) e de clique (mobile). */
+  const rowActionItems = (row: NfseListRow) => {
     const isDraft = row.status === 'rascunho';
     const isRejected = row.status === 'rejeitada' || row.status === 'falhou';
     const isAuthorized = row.status === 'autorizada';
@@ -437,113 +453,108 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     const canDeleteDraft = isDraft;
 
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          {triggerNode}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
-          {canViewDetail && (
-            <DropdownMenuItem
-              onClick={() => openDetail(row)}
-              className="gap-2 focus:bg-primary focus:text-primary-foreground"
-            >
-              <Eye className="h-4 w-4" />
-              {t.actions.viewDetail}
-            </DropdownMenuItem>
-          )}
-          {canContinueDraft && (
-            <DropdownMenuItem
-              onClick={() => handleContinueDraft(row)}
-              className="gap-2 focus:bg-primary focus:text-primary-foreground"
-              disabled={loadingDraft && draftToOpen === row.id}
-            >
-              {loadingDraft && draftToOpen === row.id
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Pencil className="h-4 w-4" />}
-              {t.actions.continueDraft}
-            </DropdownMenuItem>
-          )}
-          {canEmitRow && (
-            <DropdownMenuItem
-              onClick={() => handleEmitDraft(row)}
-              className="gap-2 focus:bg-primary focus:text-primary-foreground"
-            >
-              <Send className="h-4 w-4" />
-              {isRejected ? t.actions.reemit : t.actions.emitDraft}
-            </DropdownMenuItem>
-          )}
-          {canCheckStatus && (
-            <DropdownMenuItem
-              onClick={() => handleRefreshStatus(row)}
-              className="gap-2 focus:bg-primary focus:text-primary-foreground"
-            >
-              <RefreshCw className="h-4 w-4" />
-              {t.actions.refreshStatus}
-            </DropdownMenuItem>
-          )}
-          {canDownloadPdf && (
-            <DropdownMenuItem
-              onClick={() => handleDownloadPdf(row)}
-              className="gap-2 focus:bg-primary focus:text-primary-foreground"
-            >
-              <FileDown className="h-4 w-4" />
-              {t.actions.downloadPdf}
-            </DropdownMenuItem>
-          )}
-          {canDownloadXml && (
-            <DropdownMenuItem
-              onClick={() => handleDownloadXml(row)}
-              disabled={xmlLoadingId === row.id}
-              className="gap-2 focus:bg-primary focus:text-primary-foreground"
-            >
-              <FileCode className="h-4 w-4" />
-              {t.actions.downloadXml}
-            </DropdownMenuItem>
-          )}
-          {canHistory && (
-            <DropdownMenuItem
-              onClick={() => openDetail(row)}
-              className="gap-2 focus:bg-primary focus:text-primary-foreground"
-            >
-              <History className="h-4 w-4" />
-              {t.actions.history}
-            </DropdownMenuItem>
-          )}
+      <>
+        {canViewDetail && (
+          <DropdownMenuItem
+            onClick={() => openDetail(row)}
+            className="gap-2 focus:bg-primary focus:text-primary-foreground"
+          >
+            <Eye className="h-4 w-4" />
+            {t.actions.viewDetail}
+          </DropdownMenuItem>
+        )}
+        {canContinueDraft && (
+          <DropdownMenuItem
+            onClick={() => handleContinueDraft(row)}
+            className="gap-2 focus:bg-primary focus:text-primary-foreground"
+            disabled={loadingDraft && draftToOpen === row.id}
+          >
+            {loadingDraft && draftToOpen === row.id
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Pencil className="h-4 w-4" />}
+            {t.actions.continueDraft}
+          </DropdownMenuItem>
+        )}
+        {canEmitRow && (
+          <DropdownMenuItem
+            onClick={() => handleEmitDraft(row)}
+            className="gap-2 focus:bg-primary focus:text-primary-foreground"
+          >
+            <Send className="h-4 w-4" />
+            {isRejected ? t.actions.reemit : t.actions.emitDraft}
+          </DropdownMenuItem>
+        )}
+        {canCheckStatus && (
+          <DropdownMenuItem
+            onClick={() => handleRefreshStatus(row)}
+            className="gap-2 focus:bg-primary focus:text-primary-foreground"
+          >
+            <RefreshCw className="h-4 w-4" />
+            {t.actions.refreshStatus}
+          </DropdownMenuItem>
+        )}
+        {canDownloadPdf && (
+          <DropdownMenuItem
+            onClick={() => handleDownloadPdf(row)}
+            disabled={pdfLoadingId === row.id}
+            className="gap-2 focus:bg-primary focus:text-primary-foreground"
+          >
+            {pdfLoadingId === row.id
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <FileDown className="h-4 w-4" />}
+            {t.actions.downloadPdf}
+          </DropdownMenuItem>
+        )}
+        {canDownloadXml && (
+          <DropdownMenuItem
+            onClick={() => handleDownloadXml(row)}
+            className="gap-2 focus:bg-primary focus:text-primary-foreground"
+          >
+            <FileCode className="h-4 w-4" />
+            {t.actions.downloadXml}
+          </DropdownMenuItem>
+        )}
+        {canHistory && (
+          <DropdownMenuItem
+            onClick={() => openDetail(row)}
+            className="gap-2 focus:bg-primary focus:text-primary-foreground"
+          >
+            <History className="h-4 w-4" />
+            {t.actions.history}
+          </DropdownMenuItem>
+        )}
 
-          {/* Ações destrutivas */}
-          {canCancelRow && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                // NUNCA cancelar direto daqui. Cancelamento de NFS-e é
-                // irreversível, tem efeito na prefeitura e exige motivo de 15 a
-                // 255 caracteres por exigência do layout nacional. Abrimos o
-                // detalhe em modo cancelamento, que já tem a confirmação e o
-                // campo de motivo — antes isto chamava a edge na hora, sem
-                // perguntar nada, e o motivo registrado era um texto genérico
-                // nosso em vez da justificativa do usuário.
-                onClick={() => openDetail(row, 'cancel')}
-                className="gap-2 text-destructive focus:bg-destructive focus:text-white hover:bg-destructive hover:text-white"
-              >
-                <Ban className="h-4 w-4" />
-                {t.actions.cancel}
-              </DropdownMenuItem>
-            </>
-          )}
-          {canDeleteDraft && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleDeleteDraft(row)}
-                className="gap-2 text-destructive focus:bg-destructive focus:text-white hover:bg-destructive hover:text-white"
-              >
-                <Trash2 className="h-4 w-4" />
-                {t.actions.deleteDraft}
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        {/* Ações destrutivas */}
+        {canCancelRow && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              // NUNCA cancelar direto daqui. Cancelamento de NFS-e é
+              // irreversível, tem efeito na prefeitura e exige motivo de 15 a
+              // 255 caracteres por exigência do layout nacional. Abrimos o
+              // detalhe em modo cancelamento, que já tem a confirmação e o
+              // campo de motivo.
+              onClick={() => openDetail(row, 'cancel')}
+              className="gap-2 text-destructive focus:bg-destructive focus:text-white hover:bg-destructive hover:text-white"
+            >
+              <Ban className="h-4 w-4" />
+              {t.actions.cancel}
+            </DropdownMenuItem>
+          </>
+        )}
+        {canDeleteDraft && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => handleDeleteDraft(row)}
+              className="gap-2 text-destructive focus:bg-destructive focus:text-white hover:bg-destructive hover:text-white"
+            >
+              <Trash2 className="h-4 w-4" />
+              {t.actions.deleteDraft}
+            </DropdownMenuItem>
+          </>
+        )}
+      </>
     );
   };
 
@@ -553,6 +564,56 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     value: o.value,
     label: (t.status as Record<string, string>)[o.value] ?? o.value,
   }));
+
+  const toggleStatus = (value: string) => {
+    setStatusFilter((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+    );
+  };
+
+  /** Dropdown "Status ⌄" em linha própria — o caminho curto do filtro mais usado. */
+  const statusInlineFilter = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 h-9">
+          {t.filters.status}
+          {statusFilter.length > 0 && (
+            <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-primary text-primary-foreground border-transparent hover:bg-primary">
+              {statusFilter.length}
+            </Badge>
+          )}
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          {statusFilter.length === 0 ? t.filters.allLabel : t.filters.status}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {statusFilterOptions.map((o) => (
+          <DropdownMenuCheckboxItem
+            key={o.value}
+            checked={statusFilter.includes(o.value)}
+            onCheckedChange={() => toggleStatus(o.value)}
+            onSelect={(e) => e.preventDefault()}
+          >
+            {o.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+        {statusFilter.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setStatusFilter([])}
+              className="gap-2 focus:bg-primary focus:text-primary-foreground"
+            >
+              {t.actions.clear}
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   const filterButton = (
     <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
@@ -597,30 +658,203 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
     </Sheet>
   );
 
+  // ─── Formatação de célula ─────────────────────────────────────────────────
+
+  const fmtDate = (value: string | null | undefined) =>
+    value ? formatDate(value, locale, timezone) : null;
+
+  /**
+   * "set/2026" — mês da nota, no lugar da série (NFS-e nacional não tem série).
+   *
+   * Sai da MESMA data exibida na coluna Data (competência, com queda pro
+   * `created_at`): usar só a competência crua deixava a coluna serrilhada, com
+   * o mês aparecendo em uma linha e sumindo na seguinte.
+   */
+  const fmtCompetenceShort = (value: string | null | undefined) => {
+    if (!value) return null;
+    const month = formatDate(value, locale, timezone, {
+      day: undefined,
+      year: undefined,
+      month: 'short',
+    }).replace(/\.$/, '');
+    const year = formatDate(value, locale, timezone, {
+      day: undefined,
+      month: undefined,
+      year: 'numeric',
+    });
+    return `${month}/${year}`;
+  };
+
+  const fmtMoney = (value: number | null | undefined) =>
+    value == null ? null : formatMoney(value, currency, locale);
+
+  const fmtPercent = (value: number | null | undefined) =>
+    value == null || value === 0
+      ? null
+      : `${formatNumber(value, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+
+  /** Quem recolhe o ISS, em português de gente (tabela do layout nacional). */
+  const issWithholdingLabel = (value: string | null | undefined) => {
+    const ret = t.stepper.valores.tpRetIssqn;
+    switch (toTpRetIssqn(value)) {
+      case '2':
+        return ret.op2;
+      case '3':
+        return ret.op3;
+      default:
+        return ret.op1;
+    }
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const isEmpty = !loading && rows.length === 0;
 
+  /**
+   * Par "rótulo: valor" curto, dentro da grade de 2 colunas do detalhe.
+   * Campo vazio não é renderizado (nada de linha com "—" pra tudo).
+   */
+  const DetailField = ({ label, value }: { label: string; value: React.ReactNode }) => {
+    if (value == null || value === '') return null;
+    return (
+      <>
+        <span className="text-muted-foreground">{label}:</span>
+        <span className="font-medium break-words">{value}</span>
+      </>
+    );
+  };
+
+  /**
+   * Campo LONGO (descrição, chave de acesso, protocolo) — fica FORA da grade,
+   * com o rótulo em cima e o valor embaixo. Dentro da grade de 4 colunas, um
+   * valor comprido empurrava o rótulo seguinte pra outra linha e o bloco virava
+   * um quebra-cabeça.
+   */
+  const DetailLongField = ({
+    label,
+    value,
+    mono,
+  }: {
+    label: string;
+    value: React.ReactNode;
+    mono?: boolean;
+  }) => {
+    if (value == null || value === '') return null;
+    return (
+      <div className="mt-2 text-sm">
+        <span className="text-muted-foreground">{label}:</span>{' '}
+        <span className={cn('font-medium', mono && 'font-mono text-xs break-all')}>{value}</span>
+      </div>
+    );
+  };
+
+  const renderExpandedRow = (row: NfseListRow) => {
+    const hasFederalTaxes =
+      (row.valor_pis ?? 0) > 0 || (row.valor_cofins ?? 0) > 0 || (row.valor_csll ?? 0) > 0;
+
+    return (
+      <TableRow className="hover:bg-transparent">
+        <TableCell colSpan={9} className="p-0">
+          <div className="px-6 py-4 bg-background border-t">
+            <div className="space-y-4">
+              {/* Bloco 1 — TOMADOR */}
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-2">
+                  {tDetails.blockCustomer}
+                </div>
+                <div className="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto_1fr] gap-x-6 gap-y-1.5 text-sm">
+                  <DetailField label={tDetails.name} value={row.customer_name} />
+                  <DetailField
+                    label={tDetails.document}
+                    value={row.customer_document ? cpfCnpjMask(row.customer_document) : null}
+                  />
+                </div>
+              </div>
+
+              {/* Bloco 2 — IDENTIFICAÇÃO */}
+              <div className="border-t border-border/40 pt-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-2">
+                  {tDetails.blockIdentification}
+                </div>
+                <div className="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto_1fr] gap-x-6 gap-y-1.5 text-sm">
+                  <DetailField label={tDetails.competence} value={fmtDate(row.data_competencia)} />
+                  <DetailField label={tDetails.serviceCode} value={row.codigo_servico} />
+                  <DetailField
+                    label={tDetails.municipalCode}
+                    value={row.codigo_tributacao_municipal}
+                  />
+                  <DetailField label={tDetails.nbs} value={row.codigo_nbs} />
+                  <DetailField label={tDetails.issuedBy} value={row.created_by_name} />
+                </div>
+                <DetailLongField label={tDetails.description} value={row.descricao_servico} />
+                <DetailLongField label={tDetails.accessKey} value={row.chave_acesso} mono />
+                <DetailLongField label={tDetails.protocol} value={row.protocolo} mono />
+              </div>
+
+              {/* Bloco 3 — VALORES */}
+              <div className="border-t border-border/40 pt-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-2">
+                  {tDetails.blockValues}
+                </div>
+                <div className="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto_1fr] gap-x-6 gap-y-1.5 text-sm">
+                  <DetailField label={tDetails.serviceValue} value={fmtMoney(row.valor_servico)} />
+                  <DetailField label={tDetails.issRate} value={fmtPercent(row.aliquota_issqn)} />
+                  <DetailField label={tDetails.iss} value={fmtMoney(row.valor_iss)} />
+                  <DetailField
+                    label={tDetails.issWithholding}
+                    value={issWithholdingLabel(row.tp_ret_issqn)}
+                  />
+                  {hasFederalTaxes && (
+                    <>
+                      <DetailField label={tDetails.pis} value={fmtMoney(row.valor_pis)} />
+                      <DetailField label={tDetails.cofins} value={fmtMoney(row.valor_cofins)} />
+                      <DetailField label={tDetails.csll} value={fmtMoney(row.valor_csll)} />
+                    </>
+                  )}
+                  <DetailField
+                    label={tDetails.simplesPercent}
+                    value={fmtPercent(row.percentual_trib_sn)}
+                  />
+                </div>
+              </div>
+
+              {/* Bloco 4 — OCORRÊNCIA (só quando a prefeitura recusou) */}
+              {row.error_message && (
+                <div className="border-t border-border/40 pt-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-2">
+                    {tDetails.blockIssue}
+                  </div>
+                  <p className="text-sm text-destructive">{row.error_message}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  };
+
   return (
     <div className="space-y-4 min-w-0 w-full">
       {/* Barra de busca + filtros + botão Nova Nota */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t.search.placeholder}
-            className="pl-9"
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t.search.placeholder}
+              className="pl-9"
+            />
+          </div>
+          {/* "Nova Nota" saiu daqui: a ação principal virou FAB no nível da
+              página, e dois botões idênticos na mesma tela só dividiam a
+              atenção. O gate de emissão continua valendo dentro do modal. */}
+          {filterButton}
         </div>
-        {filterButton}
-        {canEmit && (
-          <Button onClick={onNewNote} className="gap-2 shrink-0">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{t.actions.newNote}</span>
-          </Button>
-        )}
+        {/* Filtro mais usado em linha própria — sem precisar abrir o painel. */}
+        <div className="flex flex-wrap items-center gap-2">{statusInlineFilter}</div>
       </div>
 
       {/* Lista */}
@@ -645,7 +879,7 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
       ) : isMobile ? (
         /* ─── Mobile: cards ─── */
         <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
-          {rows.map((row) => (
+          {visibleRows.map((row) => (
             <div
               key={row.id}
               className="flex items-center gap-3 px-4 py-3.5"
@@ -659,16 +893,22 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
                   {row.customer_name || tList.customerFallback}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
-                  {row.numero_nfse
-                    ? <span className="font-medium">{tList.notePrefix} {row.numero_nfse}</span>
-                    : <span className="italic">{t.status.rascunho}</span>}
-                  {row.created_at && (
+                  {/* Sem número não quer dizer rascunho: nota REJEITADA também
+                      fica sem numeração. Aqui só mostramos o número quando ele
+                      existe — a situação da nota está no selo logo abaixo. */}
+                  {row.numero_nfse && (
                     <>
+                      <span className="font-medium">{tList.notePrefix} {row.numero_nfse}</span>
                       <span className="text-muted-foreground/50">·</span>
-                      <span>{formatDt(row.created_at)}</span>
                     </>
                   )}
+                  {nfseDisplayDate(row) && <span>{fmtDate(nfseDisplayDate(row))}</span>}
                 </div>
+                {row.descricao_servico && (
+                  <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                    {row.descricao_servico}
+                  </p>
+                )}
                 <div className="mt-1">
                   <NfseStatusBadge status={row.status} />
                 </div>
@@ -676,70 +916,167 @@ export function NfseListTab({ canEmit, onNewNote }: NfseListTabProps) {
               <div className="flex items-center gap-0.5 shrink-0">
                 {row.valor_servico != null && (
                   <p className="font-bold text-sm whitespace-nowrap text-primary">
-                    {formatBRL(row.valor_servico)}
+                    {fmtMoney(row.valor_servico)}
                   </p>
                 )}
-                {rowActionsMenu(
-                  row,
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 -mr-2 text-muted-foreground shrink-0"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 -mr-2 text-muted-foreground shrink-0"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-52"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>,
-                )}
+                    {rowActionItems(row)}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           ))}
         </div>
       ) : (
         /* ─── Desktop: tabela ─── */
-        <div className="rounded-lg border overflow-hidden">
-          <Table>
+        // Rolagem horizontal em vez de `overflow-hidden`: com 9 colunas, cortar
+        // a coluna de Ações some com o menu da linha em telas menores.
+        <div className="rounded-lg border overflow-x-auto">
+          <Table className="table-fixed [&_th]:px-2 [&_td]:px-2">
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="w-[100px] text-center">{t.columns.number}</TableHead>
-                <TableHead className="w-[120px]">{t.columns.date}</TableHead>
-                <TableHead>{t.columns.customer}</TableHead>
-                <TableHead className="text-right w-[140px] whitespace-nowrap">{t.columns.value}</TableHead>
-                <TableHead className="text-center">{t.columns.status}</TableHead>
-                <TableHead className="text-center w-[80px]">{t.columns.actions}</TableHead>
+                <TableHead className="w-9" />
+                <TableHead className="w-10">
+                  <span className="sr-only">{t.columns.author}</span>
+                </TableHead>
+                <SortableTableHead
+                  sortKey="numero_nfse"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  className="w-[92px] text-center"
+                >
+                  {t.columns.number}
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="sort_date"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  className="w-[100px] whitespace-nowrap"
+                >
+                  {t.columns.date}
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="customer_name"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  className="w-[180px]"
+                >
+                  {t.columns.customer}
+                </SortableTableHead>
+                <TableHead className="text-xs uppercase tracking-wider">
+                  {t.columns.service}
+                </TableHead>
+                <SortableTableHead
+                  sortKey="valor_servico"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  className="w-[104px] whitespace-nowrap text-right"
+                >
+                  {t.columns.value}
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="status"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  className="w-[128px] text-center"
+                >
+                  {t.columns.status}
+                </SortableTableHead>
+                <TableHead className="w-[56px] text-center text-xs uppercase tracking-wider">
+                  {t.columns.actions}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="hover:bg-muted/30 cursor-pointer"
-                  onClick={() => row.status !== 'rascunho' && openDetail(row)}
-                >
-                  <TableCell className="font-medium text-center">
-                    {row.numero_nfse ? `#${row.numero_nfse}` : '—'}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {formatDt(row.created_at)}
-                  </TableCell>
-                  <TableCell className="break-words max-w-[200px] truncate">
-                    {row.customer_name || '—'}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold whitespace-nowrap">
-                    {formatBRL(row.valor_servico)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <NfseStatusBadge status={row.status} />
-                  </TableCell>
-                  <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                    {rowActionsMenu(
-                      row,
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>,
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {visibleRows.map((row) => {
+                const isExpanded = expandedRows.has(row.id);
+                return (
+                  <Fragment key={row.id}>
+                    <TableRow
+                      className={cn(
+                        'cursor-pointer hover:bg-muted/30',
+                        isExpanded && 'bg-muted/80 dark:bg-muted/40',
+                      )}
+                      onClick={() => toggleExpand(row.id)}
+                    >
+                      <TableCell className="w-9">
+                        <ChevronDown
+                          className={cn(
+                            'h-4 w-4 text-muted-foreground transition-transform',
+                            isExpanded && 'rotate-180',
+                          )}
+                        />
+                      </TableCell>
+                      <TableCell className="w-10">
+                        {/* Autoria só existe a partir de 2026-09-03: nota antiga
+                            fica com a célula VAZIA — boneco genérico só polui. */}
+                        {row.created_by_name && (
+                          <UserAvatarTooltip
+                            name={row.created_by_name}
+                            avatarUrl={row.created_by_avatar_url}
+                            roleLabel={t.details.issuedBy}
+                            size={26}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium text-center">
+                        {row.numero_nfse ? `#${row.numero_nfse}` : '—'}
+                        {/* NFS-e nacional não tem série: no lugar dela, o mês da nota. */}
+                        {fmtCompetenceShort(nfseDisplayDate(row)) && (
+                          <div className="text-xs text-muted-foreground font-normal">
+                            {fmtCompetenceShort(nfseDisplayDate(row))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {fmtDate(nfseDisplayDate(row)) ?? '—'}
+                      </TableCell>
+                      <TableCell className="w-[180px]">
+                        <span className="block truncate">{row.customer_name || '—'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="block truncate text-muted-foreground">
+                          {row.descricao_servico || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold whitespace-nowrap">
+                        {fmtMoney(row.valor_servico) ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <NfseStatusBadge status={row.status} />
+                      </TableCell>
+                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        <HoverDropdownMenu
+                          align="end"
+                          contentClassName="w-52"
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          }
+                        >
+                          {rowActionItems(row)}
+                        </HoverDropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && renderExpandedRow(row)}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

@@ -159,7 +159,11 @@ export function SettingsSidebarLayout({
                             : "text-muted-foreground hover:font-medium hover:[background-color:var(--tab-accent-hover-bg)] hover:[color:var(--tab-accent)]"
                           : isActive
                           ? "bg-primary text-primary-foreground shadow-sm font-medium"
-                          : "text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:font-medium"
+                          // Hover é um DEGRAU ABAIXO do ativo (fundo translúcido +
+                          // texto na cor), nunca o mesmo preenchimento cheio: com
+                          // hover idêntico ao ativo, passar o mouse dá a impressão
+                          // de duas abas selecionadas ao mesmo tempo.
+                          : "text-muted-foreground hover:bg-primary/15 hover:text-primary hover:font-medium"
                       )}
                       onClick={() => onTabChange(tab.value)}
                       role="button"
@@ -188,7 +192,7 @@ export function SettingsSidebarLayout({
                                 ? isActive ? "" : "text-muted-foreground/80 group-hover/tab:[color:var(--tab-accent-fg)] group-hover/tab:opacity-85"
                                 : accented
                                 ? isActive ? "opacity-80" : "text-muted-foreground/80"
-                                : isActive ? "text-primary-foreground/80" : "text-muted-foreground/80 group-hover/tab:text-primary-foreground/80"
+                                : isActive ? "text-primary-foreground/80" : "text-muted-foreground/80 group-hover/tab:text-primary/80"
                             )}
                           >
                             {tab.sublabel}

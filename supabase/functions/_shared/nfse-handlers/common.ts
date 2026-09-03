@@ -151,3 +151,16 @@ export const COL_CTRIBMUN = "codigo_tributacao_municipal";
  * efetivamente usados continuam congelados nas colunas próprias da nota.
  */
 export const COL_SERVICE_TYPE = "service_type_id";
+
+/**
+ * Nome da coluna de AUTORIA em `nfse_emissions` (migration 20260903210000).
+ * Guarda o `auth.users.id` de quem criou o rascunho / emitiu a nota, para a
+ * lista poder mostrar o avatar do responsável.
+ *
+ * A edge roda com service_role, então `auth.uid()` NÃO vem de graça: o valor
+ * tem que ser carimbado explicitamente com o userId que o gate de auth já
+ * resolveu (`authorizeFiscalManager` → `userId`).
+ *
+ * Só é carimbada no INSERT — um UPDATE nunca reescreve o autor original.
+ */
+export const COL_CREATED_BY = "created_by";
