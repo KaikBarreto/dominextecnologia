@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -3877,6 +3852,7 @@ export type Database = {
           account_id: string | null
           amount: number
           amount_received: number
+          bill_id: string | null
           billing_reminder_resolved_at: string | null
           billing_reminder_resolved_by: string | null
           cancelled_at: string | null
@@ -3914,6 +3890,7 @@ export type Database = {
           account_id?: string | null
           amount: number
           amount_received?: number
+          bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
           cancelled_at?: string | null
@@ -3951,6 +3928,7 @@ export type Database = {
           account_id?: string | null
           amount?: number
           amount_received?: number
+          bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
           cancelled_at?: string | null
@@ -3990,6 +3968,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "credit_card_bills"
             referencedColumns: ["id"]
           },
           {
@@ -10025,6 +10010,16 @@ export type Database = {
         }
         Returns: string
       }
+      pay_credit_card_bill: {
+        Args: {
+          p_amount: number
+          p_bill_id: string
+          p_notes?: string
+          p_payment_account_id: string
+          p_payment_date: string
+        }
+        Returns: Json
+      }
       pay_payroll_transaction: {
         Args: {
           p_account_id: string
@@ -10181,6 +10176,10 @@ export type Database = {
       }
       respond_quote_public: {
         Args: { _status: string; _token: string }
+        Returns: Json
+      }
+      revert_credit_card_bill_payment: {
+        Args: { p_transaction_id: string }
         Returns: Json
       }
       seed_company_catalog: {
@@ -10460,9 +10459,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

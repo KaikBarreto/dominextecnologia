@@ -23,6 +23,10 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { getErrorMessage } from '@/utils/errorMessages';
+// Estorno de pagamento de fatura é feito por RPC, que devolve mensagem já em PT-BR
+// no SQLSTATE P0001. `getRpcErrorMessage` entrega essa mensagem limpa (o
+// `getErrorMessage` genérico deixa o ` | P0001` colado no fim).
+import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { RelatedTransactionsDialog } from './RelatedTransactionsDialog';
 import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRelatedTransactions';
@@ -190,7 +194,7 @@ export function TransactionListPanel({
       toast({ title: deleteAllRelated ? fin.transactionList.toastDeletedPlural : fin.transactionList.toastDeleted });
       setPendingDelete(null);
     } catch (e: any) {
-      toast({ variant: 'destructive', title: fin.transactionList.toastDeleteError, description: getErrorMessage(e) });
+      toast({ variant: 'destructive', title: fin.transactionList.toastDeleteError, description: getRpcErrorMessage(e) });
     } finally {
       setIsDeleting(false);
     }

@@ -203,13 +203,24 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                     {DUE_DAYS.map(d => <SelectItem key={d} value={String(d)}>{t.dayLabel.replace('{d}', String(d))}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                {dueDay <= closingDay && (
-                  <p className="text-[11px] text-muted-foreground leading-tight">
-                    {t.dueDayNextMonth}
-                  </p>
-                )}
               </div>
             </div>
+
+            {/* Frase explicativa da regra de fechamento/vencimento — muda sozinha
+                conforme os dias escolhidos. Mesma regra de computeBillDates()
+                (useCreditCardBills.ts): due_day > closing_day → mesmo mês;
+                due_day <= closing_day → mês seguinte. Some se algum dia faltar. */}
+            {!!closingDay && !!dueDay && (
+              <p className="text-[11px] text-muted-foreground leading-relaxed bg-muted/50 rounded-md p-2">
+                {t.billingRulePrefix}{' '}
+                <strong className="text-foreground">{t.dayLabel.replace('{d}', String(closingDay))}</strong>{' '}
+                {t.billingRuleVence}{' '}
+                <strong className="text-foreground">{t.dayLabel.replace('{d}', String(dueDay))}</strong>{' '}
+                {dueDay > closingDay ? t.billingRuleSameMonthSuffix : t.billingRuleNextMonthSuffix}{' '}
+                {t.billingRuleClosingNote}
+              </p>
+            )}
+
             <div className="space-y-1.5">
               <Label>{t.creditLimitLabel} <span className="text-muted-foreground font-normal">{t.creditLimitOptional}</span></Label>
               <Input

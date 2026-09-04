@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { computeBillDate } from '@/hooks/useCreditCardBills';
+import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
 import {
   useTransactionAttachments,
   useUploadTransactionAttachment,
@@ -125,6 +126,10 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
         <p className="text-sm font-medium">{tf.creditCardSection.title}</p>
       </div>
 
+      {/* Previsão da fatura — SEMPRE visível (à vista mostra 1 linha com o
+          valor cheio; parcelado mostra 1 linha por parcela). Regra do
+          fechamento já embutida no computeBillDate/computeBillDates: o
+          próprio dia do fechamento cai na fatura seguinte. */}
       {installmentBreakdown ? (
         <div className="space-y-1">
           <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
@@ -138,23 +143,27 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
                   {tf.creditCardSection.installmentRow
                     .replace('{num}', String(num))
                     .replace('{total}', String(installmentCount))
-                    .replace('{month}', label)}
+                    .replace('{month}', label)
+                    .replace('{amount}', fmt(amount))}
                 </span>
-                <span className="font-medium">{fmt(amount)}</span>
               </div>
             ))}
           </div>
         </div>
       ) : (
         billLabel && (
-          <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
-            <Info className="h-3 w-3" />
-            {tf.creditCardSection.billInMonthPrefix}{' '}
-            <strong>{tf.creditCardSection.billInMonthStrong.replace('{month}', billLabel)}</strong>{' '}
-            {tf.creditCardSection.billInMonthSuffix.replace('{card}', cardName)}
+          <p className="text-sm font-medium text-violet-700 dark:text-violet-300 capitalize">
+            {tf.creditCardSection.singleBillRow
+              .replace('{month}', billLabel)
+              .replace('{amount}', fmt(totalAmount))}
           </p>
         )
       )}
+
+      <p className="text-[11px] text-violet-600/80 dark:text-violet-400/80 flex items-start gap-1">
+        <Info className="h-3 w-3 shrink-0 mt-0.5" />
+        {tf.creditCardSection.notOnCashFlowNote}
+      </p>
 
       {!installmentBreakdown && (
         <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
@@ -432,7 +441,12 @@ export function TransactionFormDialog({
     return fromDb.length > 0 ? fromDb : null;
   };
 
-  const lastPaymentMethod = localStorage.getItem('fin_last_payment_method') || '';
+  // Leitura tolerante: valor salvo (localStorage ou transação em edição) pode ter
+  // sido gravado por outra tela com a grafia legada (ex.: 'debito', 'credito_avista').
+  // normalizePaymentMethod resolve pro código canônico ofertado no Select; sem isso
+  // o Select ficava em branco pra uma transação editada que veio de outra tela.
+  const lastPaymentMethodRaw = localStorage.getItem('fin_last_payment_method') || '';
+  const lastPaymentMethod = normalizePaymentMethod(lastPaymentMethodRaw) ?? lastPaymentMethodRaw;
   const lastAccountId = localStorage.getItem('fin_last_account_id') || '';
 
   const defaults: TransactionFormData = useMemo(() => ({
@@ -443,7 +457,9 @@ export function TransactionFormDialog({
     transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
     is_paid: transaction?.is_paid ?? true,
     notes: (transaction as any)?.notes ?? '',
-    payment_method: (transaction as any)?.payment_method ?? lastPaymentMethod,
+    payment_method: (transaction as any)?.payment_method
+      ? (normalizePaymentMethod((transaction as any).payment_method) ?? (transaction as any).payment_method)
+      : lastPaymentMethod,
     installment_count: (transaction as any)?.installment_total ?? 1,
     account_id: (transaction as any)?.account_id ?? lastAccountId,
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -810,6 +826,7 @@ export function TransactionFormDialog({
                   <SelectItem value="cartao_debito">{tf.paymentMethods.cartao_debito}</SelectItem>
                   <SelectItem value="transferencia">{tf.paymentMethods.transferencia}</SelectItem>
                   <SelectItem value="boleto">{tf.paymentMethods.boleto}</SelectItem>
+                  <SelectItem value="cheque">{tf.paymentMethods.cheque}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

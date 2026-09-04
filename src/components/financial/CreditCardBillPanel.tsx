@@ -10,15 +10,16 @@ import {
 } from '@/components/ui/collapsible';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  CreditCard, ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowLeft,
+  CreditCard, ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowLeft, Lock,
 } from 'lucide-react';
 import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -29,16 +30,24 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 
-function formatMonth(dateStr: string) {
-  return format(parseISO(dateStr + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
+function parseLocalDate(dateStr: string): Date {
+  return parseISO(dateStr + 'T12:00:00');
 }
 
-const BILL_STATUS_COLORS: Record<string, { color: string; icon: React.ElementType }> = {
-  open: { color: 'text-blue-600', icon: Clock },
-  closed: { color: 'text-orange-600', icon: AlertCircle },
-  partial: { color: 'text-yellow-600', icon: AlertCircle },
-  paid: { color: 'text-green-600', icon: CheckCircle2 },
-};
+function formatMonth(dateStr: string) {
+  return format(parseLocalDate(dateStr), 'MMMM yyyy', { locale: ptBR });
+}
+
+// Mesma regra do `CreditCardInvoiceRow` (única fonte da verdade da trava de
+// UI): fechada (e liberada pra pagamento) quando hoje >= closing_date — o
+// próprio dia do fechamento já libera, pois nenhuma compra nova entra mais
+// nessa fatura a partir daí. A trava definitiva fica na RPC no servidor —
+// esta só evita que o usuário chegue a clicar.
+function canPayBill(bill: Pick<CreditCardBillWithTransactions, 'closing_date'>): boolean {
+  const today = startOfDay(new Date());
+  const closingDate = parseLocalDate(bill.closing_date);
+  return !isBefore(today, closingDate);
+}
 
 interface CreditCardBillPanelProps {
   account: FinancialAccount;
@@ -60,11 +69,14 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const cc = MESSAGES[locale].app.finance.creditCard;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
-  const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-    open: { label: cc.statusOpen, color: 'text-blue-600', icon: Clock },
-    closed: { label: cc.statusClosed, color: 'text-orange-600', icon: AlertCircle },
-    partial: { label: cc.statusPartial, color: 'text-yellow-600', icon: AlertCircle },
-    paid: { label: cc.statusPaid, color: 'text-green-600', icon: CheckCircle2 },
+  // Etiqueta SATURADA (fundo na cor + texto/ícone branco) — nunca outline
+  // dessaturado. Ordem de urgência (não pagas primeiro, por vencimento; pagas
+  // pro fim) já vem pronta do hook `useCreditCardBills` (`enriched.sort`).
+  const BILL_STATUS_CONFIG: Record<string, { label: string; badgeClass: string; icon: React.ElementType }> = {
+    open: { label: cc.statusOpen, badgeClass: 'bg-blue-600', icon: Clock },
+    closed: { label: cc.statusClosed, badgeClass: 'bg-orange-600', icon: AlertCircle },
+    partial: { label: cc.statusPartial, badgeClass: 'bg-amber-600', icon: AlertCircle },
+    paid: { label: cc.statusPaid, badgeClass: 'bg-success', icon: CheckCircle2 },
   };
 
   const { bills, isLoading, payBill } = useCreditCardBills(account.id);
@@ -174,7 +186,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   );
 
   // Filtro por status — só faz sentido mostrar quando há ≥2 status entre as faturas.
-  // Usa o status EXIBIDO (open vencido conta como "closed").
+  // Usa o status EXIBIDO (open cujo fechamento já foi alcançado conta como "closed").
   const distinctStatuses = new Set(bills.map(b => effectiveBillStatus(b)));
   const showFilter = distinctStatuses.size > 1;
 
@@ -197,14 +209,27 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const renderBillMobile = (bill: CreditCardBillWithTransactions) => {
     const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(bill)] ?? BILL_STATUS_CONFIG.open;
     const StatusIcon = statusCfg.icon;
+    const canPay = canPayBill(bill);
+    const txnCount = bill.transactions?.length ?? 0;
     const itemActions: ItemAction[] = [];
     if (bill.status !== 'paid') {
-      itemActions.push({
-        key: 'pay',
-        label: 'Pagar fatura',
-        icon: <CheckCircle2 className="h-4 w-4" />,
-        onClick: () => openPayModal(bill),
-      });
+      itemActions.push(
+        canPay
+          ? {
+              key: 'pay',
+              label: cc.payBillButton,
+              icon: <CheckCircle2 className="h-4 w-4" />,
+              onClick: () => openPayModal(bill),
+            }
+          : {
+              // Travado, mas EXPLICA — nunca some nem deixa clicar pra dar erro depois.
+              key: 'pay',
+              label: cc.payLockedHint.replace('{date}', format(parseLocalDate(bill.closing_date), 'dd/MM/yyyy')),
+              icon: <Lock className="h-4 w-4" />,
+              disabled: true,
+              onClick: () => {},
+            }
+      );
     }
     return (
       <MobileListItem
@@ -212,18 +237,24 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
         onClick={() => setDetailBill(bill)}
         actions={itemActions.length > 0 ? itemActions : undefined}
         leading={
-          <div className={cn('rounded-full p-2.5 shrink-0 bg-muted', statusCfg.color)}>
+          <div className={cn('rounded-full p-2.5 shrink-0 text-white', statusCfg.badgeClass)}>
             <Receipt className="h-4 w-4" />
           </div>
         }
         title={<span className="capitalize">{formatMonth(bill.reference_month)}</span>}
         subtitle={
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', statusCfg.color)}>
+          <div className="flex flex-col gap-1">
+            <Badge className={cn('w-fit text-[10px] px-1.5 py-0 gap-1 text-white', statusCfg.badgeClass)}>
               <StatusIcon className="h-2.5 w-2.5" />
               {statusCfg.label}
             </Badge>
-            <span>{cc.due} {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
+            <span>
+              {cc.billSummaryLine
+                .replace('{due}', format(parseLocalDate(bill.due_date), 'dd/MM/yyyy'))
+                .replace('{closing}', format(parseLocalDate(bill.closing_date), 'dd/MM/yyyy'))
+                .replace('{count}', String(txnCount))
+                .replace('{noun}', txnCount === 1 ? cc.entryNounSingular : cc.entryNounPlural)}
+            </span>
           </div>
         }
         trailing={
@@ -307,6 +338,8 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
             const StatusIcon = statusCfg.icon;
             const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
             const isExpanded = expandedBill === bill.id;
+            const canPay = canPayBill(bill);
+            const txnCount = bill.transactions?.length ?? 0;
 
             return (
               <Card key={bill.id} className="overflow-hidden">
@@ -322,13 +355,17 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                           <div className="text-left">
                             <p className="font-medium capitalize text-sm">{formatMonth(bill.reference_month)}</p>
                             <p className="text-xs text-muted-foreground">
-                              {cc.closes} {format(parseISO(bill.closing_date + 'T12:00:00'), 'dd/MM')} · {cc.due} {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                              {cc.billSummaryLine
+                                .replace('{due}', format(parseLocalDate(bill.due_date), 'dd/MM/yyyy'))
+                                .replace('{closing}', format(parseLocalDate(bill.closing_date), 'dd/MM/yyyy'))
+                                .replace('{count}', String(txnCount))
+                                .replace('{noun}', txnCount === 1 ? cc.entryNounSingular : cc.entryNounPlural)}
                             </p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <p className="font-bold text-sm">{fmt(bill.total_amount ?? 0)}</p>
-                          <Badge variant="outline" className={cn('text-[10px] gap-1', statusCfg.color)}>
+                          <Badge className={cn('text-[10px] gap-1 text-white', statusCfg.badgeClass)}>
                             <StatusIcon className="h-3 w-3" />
                             {statusCfg.label}
                           </Badge>
@@ -337,15 +374,39 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
                       {bill.status !== 'paid' && (
                         <div className="mt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs h-7 gap-1"
-                            onClick={(e) => { e.stopPropagation(); openPayModal(bill); }}
-                          >
-                            <CheckCircle2 className="h-3 w-3" />
-                            {cc.payBillButton}
-                          </Button>
+                          {canPay ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 gap-1"
+                              onClick={(e) => { e.stopPropagation(); openPayModal(bill); }}
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              {cc.payBillButton}
+                            </Button>
+                          ) : (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {/* Wrapper span necessário: o Button fica disabled. */}
+                                  <span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-xs h-7 gap-1 opacity-60"
+                                      disabled
+                                    >
+                                      <Lock className="h-3 w-3" />
+                                      {cc.payBillButton}
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[260px] text-xs">
+                                  {cc.payLockedHint.replace('{date}', format(parseLocalDate(bill.closing_date), 'dd/MM/yyyy'))}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       )}
 
@@ -408,12 +469,12 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
             <div className="space-y-4">
               <div className="border rounded-lg p-3 bg-muted/30 text-sm space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant="outline" className={cn('text-[10px] gap-1', statusCfg.color)}>
+                  <Badge className={cn('text-[10px] gap-1 text-white', statusCfg.badgeClass)}>
                     <StatusIcon className="h-3 w-3" />
                     {statusCfg.label}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {cc.closes} {format(parseISO(detailBill.closing_date + 'T12:00:00'), 'dd/MM')} · {cc.due} {format(parseISO(detailBill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                    {cc.closes} {format(parseLocalDate(detailBill.closing_date), 'dd/MM')} · {cc.due} {format(parseLocalDate(detailBill.due_date), 'dd/MM/yyyy')}
                   </span>
                 </div>
                 <div className="flex justify-between pt-1">
@@ -470,17 +531,26 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
               </div>
 
               {detailBill.status !== 'paid' && (
-                <Button
-                  className="w-full gap-2"
-                  onClick={() => {
-                    const b = detailBill;
-                    setDetailBill(null);
-                    openPayModal(b);
-                  }}
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {cc.payBillButtonShort}
-                </Button>
+                canPayBill(detailBill) ? (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => {
+                      const b = detailBill;
+                      setDetailBill(null);
+                      openPayModal(b);
+                    }}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {cc.payBillButtonShort}
+                  </Button>
+                ) : (
+                  <div className="rounded-lg border border-muted bg-muted/30 p-3 flex items-start gap-2 text-xs text-muted-foreground">
+                    <Lock className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>
+                      {cc.payLockedHint.replace('{date}', format(parseLocalDate(detailBill.closing_date), 'dd/MM/yyyy'))}
+                    </span>
+                  </div>
+                )
               )}
             </div>
           );

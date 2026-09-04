@@ -104,12 +104,18 @@ export function ReceivePaymentModal({
     [activeAccounts],
   );
 
+  // Vocabulário canônico (src/lib/finance-payment-methods.ts) — antes deste form
+  // oferecia 'debito' e dois códigos separados pra crédito ('credito_avista' /
+  // 'credito_parcelado'), divergentes do que as outras 3 telas gravam. Nenhum
+  // consumidor (relatório, recibo) distinguia os dois depois de gravado, então
+  // ambos colapsam em 'cartao_credito' (achado 4b — vocabulário de forma de
+  // pagamento divergente). Registros antigos com a grafia legada continuam
+  // exibindo certo via normalizePaymentMethod + transactionDetail.paymentMethods.
   const paymentMethods = [
     { value: 'dinheiro', label: t.paymentMethods.dinheiro },
     { value: 'pix', label: t.paymentMethods.pix },
-    { value: 'debito', label: t.paymentMethods.debito },
-    { value: 'credito_avista', label: t.paymentMethods.credito_avista },
-    { value: 'credito_parcelado', label: t.paymentMethods.credito_parcelado },
+    { value: 'cartao_debito', label: t.paymentMethods.cartao_debito },
+    { value: 'cartao_credito', label: t.paymentMethods.cartao_credito },
     { value: 'boleto', label: t.paymentMethods.boleto },
     { value: 'transferencia', label: t.paymentMethods.transferencia },
     { value: 'cheque', label: t.paymentMethods.cheque },

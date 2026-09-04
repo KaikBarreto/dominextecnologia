@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.22.3',
+    date: '4 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O limite do cartão volta quando você paga a fatura',
+        description: 'Ao pagar a fatura do cartão, o valor pago não estava sendo abatido do cartão. O limite disponível só diminuía e nunca voltava, então depois de alguns meses um cartão aparecia estourado mesmo estando tudo pago. Agora o pagamento abate a fatura e libera o limite na hora. Os cartões que você já tinha pago foram acertados automaticamente, sem precisar refazer nada.',
+        category: 'correcao',
+      },
+      {
+        title: 'Transferência entre contas não conta mais como faturamento',
+        description: 'Quando você transferia dinheiro de uma conta sua para outra, o valor era somado ao seu faturamento no painel, no resumo do financeiro e no gráfico de fluxo de caixa, inflando o número. Transferir dinheiro entre as suas próprias contas não é receita, e agora fica de fora dessas contas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Tela do cartão de crédito renovada',
+        description: 'O cartão agora abre com um painel na cor do banco, mostrando o valor da fatura em aberto em destaque, uma barra de quanto do limite você já usou e, numa linha só, o limite total, o valor disponível e os dias de fechamento e vencimento. A lista de faturas ganhou etiquetas coloridas por situação, com as que ainda não foram pagas aparecendo primeiro.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O sistema mostra em qual fatura a compra vai cair',
+        description: 'Ao lançar uma despesa no cartão, o formulário já informa para qual fatura ela vai antes de você confirmar. No parcelado, mostra linha por linha. O cadastro do cartão também passou a explicar, com os dias que você escolheu, quando a fatura fecha e quando ela vence.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botão de pagar fatura agora explica quando está travado',
+        description: 'Antes do fechamento a fatura ainda está recebendo compras e não pode ser paga. Numa das telas o botão aparecia liberado e o pagamento falhava só depois do clique. Agora o botão fica travado com um cadeado e informa a data em que o pagamento é liberado, nas duas telas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.22.2',
     date: '3 de setembro de 2026',
     type: 'patch',

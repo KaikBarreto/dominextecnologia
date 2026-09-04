@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface TransactionCreator {
@@ -107,10 +108,12 @@ export function useFinancial() {
   const summaryQuery = useQuery({
     queryKey: ['financial-summary'],
     queryFn: async () => {
-      const data = await fetchAllPaginated<{ transaction_type: string; amount: number; is_paid: boolean }>(
+      const data = await fetchAllPaginated<{ transaction_type: string; amount: number; is_paid: boolean; transfer_pair_id: string | null }>(
         () => supabase
           .from('financial_transactions')
-          .select('transaction_type, amount, is_paid')
+          // `transfer_pair_id` é obrigatório no select: sem ele o filtro de
+          // movimento interno abaixo vira no-op silencioso.
+          .select('transaction_type, amount, is_paid, transfer_pair_id')
       );
       
       const summary = {
@@ -122,6 +125,12 @@ export function useFinancial() {
       };
 
       data?.forEach((t) => {
+        // Movimento interno (transferência entre contas e pagamento de fatura de
+        // cartão) não é receita nem despesa: é balanço, não resultado. As duas
+        // pernas do par carregam o mesmo `transfer_pair_id`; somá-las inflaria
+        // Entradas e Saídas com dinheiro que só trocou de bolso. Mesmo critério
+        // ESTRUTURAL usado no DRE — nunca por nome de categoria (texto livre).
+        if (t.transfer_pair_id) return;
         if (t.transaction_type === 'entrada') {
           if (t.is_paid) {
             summary.totalEntradas += Number(t.amount);
@@ -334,11 +343,34 @@ export function useFinancial() {
       // Fetch the transaction before deleting so we can react to its category/amount
       const { data: txn } = await supabase
         .from('financial_transactions')
-        .select('category, amount, account_id, credit_card_bill_date')
+        .select('category, amount, account_id, credit_card_bill_date, transfer_pair_id')
         .eq('id', id)
         .maybeSingle();
 
-      // If this is a credit card bill payment, revert the corresponding bill
+      // ── Pagamento de fatura FEITO PELA RPC (tem `transfer_pair_id`) ─────────
+      // O pagamento é um par de lançamentos: a saída na conta que pagou e a
+      // entrada no cartão (a perna que devolve o limite). Excluir só um lado
+      // deixaria o outro órfão e o limite errado. A RPC de estorno recebe
+      // QUALQUER uma das duas pernas, apaga as duas e recalcula
+      // amount_paid/status/paid_at da fatura numa transação só.
+      // `return` aqui é obrigatório: a RPC já apagou as linhas, o delete manual
+      // abaixo não pode rodar em cima.
+      if (txn?.category === 'Pagamento de Fatura' && txn.transfer_pair_id) {
+        const { error: revertErr } = await supabase.rpc('revert_credit_card_bill_payment' as any, {
+          p_transaction_id: id,
+        });
+        if (revertErr) throw revertErr;
+        return;
+      }
+
+      // ── Compatibilidade: pagamentos ANTIGOS, de antes da RPC ───────────────
+      // Existem em produção lançamentos de 'Pagamento de Fatura' sem
+      // `transfer_pair_id` (uma perna só, sem a entrada no cartão). O backfill
+      // do banco marca esses casos, mas não dá pra contar que já rodou —
+      // enquanto houver linha sem par, o caminho legado abaixo continua sendo
+      // o único jeito de estornar. É frágil de propósito (adivinha a fatura por
+      // período quando não acha por payment_transaction_id); pode sumir quando
+      // o backfill estiver confirmado em todos os tenants.
       if (txn?.category === 'Pagamento de Fatura' && txn.account_id) {
         // Find bill that references this payment transaction
         const { data: bill } = await supabase
@@ -404,7 +436,9 @@ export function useFinancial() {
       toast({ title: 'Transação excluída com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir transação', description: getErrorMessage(error) });
+      // getRpcErrorMessage: quando o estorno vem da RPC, a mensagem do servidor
+      // já é PT-BR informativa — repassar pura, sem o sufixo do código SQL.
+      toast({ variant: 'destructive', title: 'Erro ao excluir transação', description: getRpcErrorMessage(error) });
     },
   });
 

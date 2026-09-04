@@ -48,7 +48,11 @@ export function useDashboardStats() {
       const allFinancial = await fetchAllPaginated(
         () => supabase
           .from('financial_transactions')
-          .select('transaction_type, amount, transaction_date, is_paid')
+          // `transfer_pair_id` vem junto porque o Dashboard precisa EXCLUIR
+          // movimento interno (transferência entre contas / pagamento de fatura
+          // de cartão) do faturamento e do fluxo de caixa. Sem a coluna aqui, o
+          // filtro na tela vira no-op silencioso.
+          .select('transaction_type, amount, transaction_date, is_paid, transfer_pair_id')
           .eq('is_paid', true)
           .order('transaction_date')
       );

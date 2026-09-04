@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import type { CreditCardBill } from '@/types/database';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { format, addDays, setDate, addMonths, startOfMonth, getDaysInMonth } from 'date-fns';
@@ -27,6 +30,22 @@ export interface PayBillInput {
   paymentDate: string;
   amountToPay: number;
   notes?: string;
+}
+
+/**
+ * Retorno da RPC `pay_credit_card_bill` (contrato fechado com o banco).
+ * O servidor decide `paid` x `partial` e devolve as DUAS pernas criadas:
+ * a saída na conta que pagou e a entrada no cartão (a que devolve o limite).
+ */
+export interface PayBillResult {
+  bill_id: string;
+  status: 'paid' | 'partial';
+  amount_paid: number;
+  bill_total: number;
+  paid_at: string | null;
+  transfer_pair_id: string;
+  payment_transaction_id: string;
+  card_leg_transaction_id: string;
 }
 
 /**
@@ -110,21 +129,49 @@ function todayInSaoPaulo(): string {
  * Aqui derivamos o status visível: `open` + fechamento já passado → `closed`.
  * `partial`/`paid` são do agregado e não mudam (o que importa é se foi paga).
  *
- * Comparação em America/Sao_Paulo: a fatura está FECHADA quando hoje > a data de
- * fechamento (o ciclo corrente, cujo fechamento ainda é hoje ou no futuro, segue
- * `open`/em acumulação).
+ * Comparação em America/Sao_Paulo: a fatura está FECHADA quando hoje já alcançou
+ * a data de fechamento (INCLUSIVE o próprio dia). Só segue `open`/em acumulação
+ * o ciclo cujo fechamento ainda está no futuro.
+ *
+ * Por que o próprio dia já conta como fechado: `computeBillDate` (acima) manda a
+ * compra feita NO dia do fechamento pra fatura SEGUINTE. Com `closing_day = 20`,
+ * a fatura de referência 2026-09-01 acumula de 20/08 a 19/09 — no dia 20/09 ela
+ * está completa, nenhuma compra nova cai nela. Mesma régua nas três superfícies:
+ * a RPC do banco, este status exibido e a trava do botão de pagar.
  */
 export function effectiveBillStatus(bill: Pick<CreditCardBill, 'status' | 'closing_date'>): string {
   if (bill.status !== 'open') return bill.status;
   if (!bill.closing_date) return bill.status;
   // closing_date e "hoje" são ambos YYYY-MM-DD no fuso do Brasil → compara lexical.
-  return todayInSaoPaulo() > bill.closing_date ? 'closed' : 'open';
+  return todayInSaoPaulo() >= bill.closing_date ? 'closed' : 'open';
+}
+
+/**
+ * Mensagem de erro de RPC de REGRA DE NEGÓCIO (as de fatura de cartão).
+ *
+ * Essas funções levantam `RAISE EXCEPTION` com texto já em PT-BR e informativo
+ * ("Esta fatura ainda não fechou. O pagamento é liberado a partir de
+ * 20/09/2026."). O `getErrorMessage` genérico concatena
+ * `message | details | hint | code`, o que faria o usuário ler
+ * "...a partir de 20/09/2026. | P0001". Quando o erro é exatamente a exceção
+ * levantada pela função (SQLSTATE P0001 = raise_exception), mostramos a
+ * mensagem do servidor pura. Qualquer outro erro (rede, RLS, constraint) segue
+ * pelo tratamento genérico de sempre.
+ */
+export function getRpcErrorMessage(error: unknown): string {
+  const e = error as { code?: unknown; message?: unknown } | null;
+  if (e && typeof e === 'object' && e.code === 'P0001' && typeof e.message === 'string' && e.message.trim()) {
+    return e.message.trim();
+  }
+  return getErrorMessage(error);
 }
 
 export function useCreditCardBills(accountId?: string) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { locale, currency } = useAppLocaleContext();
+  const tCard = MESSAGES[locale].app.finance.creditCard;
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
@@ -222,56 +269,45 @@ export function useCreditCardBills(accountId?: string) {
     mutationFn: async ({ bill, paymentAccountId, paymentDate, amountToPay, notes }: PayBillInput) => {
       if (!user?.id) throw new Error('Usuário não autenticado');
 
-      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
-      const company_id = await getCurrentUserCompanyId();
-
-      const billTotal = Number(bill.total_amount ?? 0);
-      const previouslyPaid = Number(bill.amount_paid ?? 0);
-      const remaining = billTotal - previouslyPaid;
-      const isFullPayment = amountToPay >= remaining - 0.01;
-
-      // Create payment transaction (saida from bank/caixa account)
-      const { data: paymentTxn, error: txnErr } = await supabase
-        .from('financial_transactions')
-        .insert({
-          transaction_type: 'saida',
-          description: `Pagamento de fatura — ${bill.reference_month}`,
-          amount: amountToPay,
-          transaction_date: paymentDate,
-          paid_date: paymentDate,
-          is_paid: true,
-          account_id: paymentAccountId,
-          category: 'Pagamento de Fatura',
-          notes: notes || null,
-          created_by: user.id,
-          company_id,
-        })
-        .select()
-        .single();
-      if (txnErr) throw txnErr;
-
-      const newAmountPaid = previouslyPaid + amountToPay;
-      const newStatus = isFullPayment ? 'paid' : 'partial';
-
-      const { error: billErr } = await supabase
-        .from('credit_card_bills')
-        .update({
-          status: newStatus,
-          amount_paid: newAmountPaid,
-          payment_transaction_id: isFullPayment ? paymentTxn.id : bill.payment_transaction_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', bill.id);
-      if (billErr) throw billErr;
-
-      return paymentTxn;
+      // Pagar fatura é operação de DUAS pernas e precisa ser atômica:
+      //   1) `saida` na conta/caixa que paga (dinheiro saindo de verdade);
+      //   2) `entrada` na conta do CARTÃO — é ESTA que devolve o limite
+      //      disponível (`cardBillTotals` soma saídas e subtrai entradas).
+      // Antes eram dois `await` soltos contra o PostgREST (insert do lançamento
+      // + update da fatura). Se o segundo falhasse (rede, aba fechada, RLS), o
+      // dinheiro já tinha saído do banco e a fatura continuava em aberto — o
+      // usuário pagava de novo e saía em dobro. A RPC faz `SELECT ... FOR UPDATE`
+      // na fatura e grava as duas pernas + o status numa transação só.
+      //
+      // O client não calcula mais nada: `company_id` sai da própria fatura e o
+      // servidor decide `paid` x `partial` (e valida fatura fechada / valor
+      // maior que o restante, devolvendo mensagem já em PT-BR).
+      const { data, error } = await supabase.rpc('pay_credit_card_bill' as any, {
+        p_bill_id: bill.id,
+        p_payment_account_id: paymentAccountId,
+        p_payment_date: paymentDate,
+        p_amount: amountToPay,
+        p_notes: notes || null,
+      });
+      if (error) throw error;
+      return data as unknown as PayBillResult;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateAll();
-      toast({ title: 'Pagamento registrado!', description: 'Fatura atualizada com sucesso.' });
+      const isFull = result?.status === 'paid';
+      const remaining = Math.max(0, Number(result?.bill_total ?? 0) - Number(result?.amount_paid ?? 0));
+      toast({
+        title: isFull ? tCard.payToastPaidTitle : tCard.payToastPartialTitle,
+        description: isFull
+          ? tCard.payToastPaidDescription
+          : tCard.payToastPartialDescription.replace('{amount}', formatMoney(remaining, currency, locale)),
+      });
     },
     onError: (e: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao pagar fatura', description: getErrorMessage(e) });
+      // A RPC levanta EXCEPTION com mensagem já em PT-BR e informativa
+      // ("Esta fatura ainda não fechou. O pagamento é liberado a partir de ...").
+      // Repassar o texto do servidor, sem trocar por genérico.
+      toast({ variant: 'destructive', title: tCard.payToastErrorTitle, description: getRpcErrorMessage(e) });
     },
   });
 

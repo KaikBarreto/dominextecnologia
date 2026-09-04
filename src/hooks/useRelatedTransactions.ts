@@ -82,6 +82,45 @@ export async function findRelatedTransactions(transactionId: string): Promise<{
 }
 
 /**
+ * Pagamento de fatura de cartão é um PAR de lançamentos: a saída na conta que
+ * pagou e a entrada no cartão (a perna que devolve o limite). Excluir só um lado
+ * deixa o outro órfão, a fatura presa em `paid` e o limite liberado indevidamente.
+ *
+ * A tela de Movimentações tem DOIS caminhos de exclusão e os dois têm que
+ * respeitar o par:
+ *   1. exclusão de UMA linha (menu de contexto) → `deleteTransactionCascade` (aqui);
+ *   2. exclusão em LOTE dos selecionados → `useFinancial.deleteTransaction`.
+ * O caminho (2) já tratava o par; o (1) apagava cru e corrompia o estado — foi o
+ * bug provado em produção (a perna de `entrada` no cartão sobrevivia órfã).
+ *
+ * A RPC recebe QUALQUER uma das duas pernas, apaga as duas e recalcula
+ * amount_paid/status/paid_at da fatura numa transação só.
+ *
+ * Retorna `true` quando estornou (o caller precisa PARAR — o delete manual não
+ * pode rodar em cima do que a RPC já apagou).
+ * Retorna `false` quando não é pagamento de fatura, ou é pagamento ANTIGO sem
+ * `transfer_pair_id` (uma perna só, de antes da RPC): esses seguem pelo caminho
+ * cru de hoje, a RPC recusa esse formato.
+ */
+async function revertCreditCardBillPaymentIfNeeded(transactionId: string): Promise<boolean> {
+  const { data: txn } = await supabase
+    .from('financial_transactions')
+    .select('category, transfer_pair_id')
+    .eq('id', transactionId)
+    .maybeSingle();
+
+  if (txn?.category !== 'Pagamento de Fatura' || !txn.transfer_pair_id) return false;
+
+  const { error } = await supabase.rpc('revert_credit_card_bill_payment', {
+    p_transaction_id: transactionId,
+  });
+  // Erro da RPC já vem em PT-BR (SQLSTATE P0001). Só propaga — quem monta o toast
+  // é o TransactionListPanel, via getRpcErrorMessage.
+  if (error) throw error;
+  return true;
+}
+
+/**
  * Cascade delete: deletes the root + all children + clears quote link.
  * If onlyThis = true, deletes only the given id (and children if it IS the root).
  */
@@ -89,6 +128,11 @@ export async function deleteTransactionCascade(
   transactionId: string,
   deleteAllRelated: boolean,
 ): Promise<void> {
+  // Guard no TOPO, antes de qualquer delete: cobre os DOIS ramos abaixo
+  // (deleteAllRelated false e true). Pagamento de fatura não tem parcelas nem
+  // filhos, então o par é sempre o escopo inteiro da exclusão.
+  if (await revertCreditCardBillPaymentIfNeeded(transactionId)) return;
+
   if (!deleteAllRelated) {
     // Just delete this one. Children get parent set to null automatically.
     const { error } = await supabase.from('financial_transactions').delete().eq('id', transactionId);

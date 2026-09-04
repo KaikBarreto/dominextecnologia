@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -300,7 +300,11 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     );
 
     // Bills elegíveis (com conteúdo + dentro do período) — independente do filtro de status.
-    const billUniverse = subTab === 'pagar'
+    // Com filtro de categoria ativo, a fatura NÃO entra: ela junta despesas de várias
+    // categorias, não cabe em "uma" categoria — por isso também some da lista (ver
+    // bloco "Faturas de Cartão" abaixo). Sem isso os totais do topo continuavam
+    // somando a fatura escondida e o dono achava que ela tinha sido paga.
+    const billUniverse = subTab === 'pagar' && categoryFilter.length === 0
       ? allBills.filter((b) => {
           if (!cardAccountMap[b.account_id]) return false;
           const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
@@ -363,7 +367,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       prox7: prox7Txn + prox7Bill,
       pago: pagoTxn + pagoBill,
     };
-  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange]);
+  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange, categoryFilter]);
 
   // Lista de categorias presentes nas transações atuais (baseFiltered, antes do
   // filtro de categoria) pra popular o <Select> de filtro. Ordena alfabeticamente.
@@ -652,36 +656,46 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       )}
 
       {/* Bloco "Faturas de Cartão" — só aparece em subTab='pagar' quando há faturas
-          elegíveis e sem filtro de categoria ativo (faturas agregam múltiplas categorias).
-          Cada linha é destacada (border colorido + ícone cartão + badge
+          elegíveis. Cada linha é destacada (border colorido + ícone cartão + badge
           de quantidade de despesas). Click abre detalhe, "Pagar Fatura" abre modal
-          (bloqueado até o fechamento). v1.9.15. */}
-      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && categoryFilter.length === 0 && !searchActive && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
-              {fin.accounts.cardInvoices.sectionTitle}
-            </h3>
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              {cardInvoices.length} {cardInvoices.length === 1 ? fin.accounts.cardInvoices.invoice : fin.accounts.cardInvoices.invoices}
-            </Badge>
+          (bloqueado até o fechamento). v1.9.15.
+          Com filtro de categoria ativo, a fatura não cabe (junta várias categorias):
+          em vez de sumir em silêncio (e os totais do topo continuarem contando ela),
+          uma linha explica o motivo. `summary` já exclui o valor da fatura dos totais
+          nesse caso (ver useMemo acima). */}
+      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && !searchActive && (
+        categoryFilter.length === 0 ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
+                {fin.accounts.cardInvoices.sectionTitle}
+              </h3>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                {cardInvoices.length} {cardInvoices.length === 1 ? fin.accounts.cardInvoices.invoice : fin.accounts.cardInvoices.invoices}
+              </Badge>
+            </div>
+            <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
+              {cardInvoices.map((bill) => {
+                const account = cardAccountMap[bill.account_id];
+                if (!account) return null;
+                return (
+                  <CreditCardInvoiceRow
+                    key={bill.id}
+                    invoice={bill}
+                    account={account}
+                    cashBankAccounts={cashBankAccounts}
+                    isMobile={isMobile}
+                  />
+                );
+              })}
+            </div>
           </div>
-          <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
-            {cardInvoices.map((bill) => {
-              const account = cardAccountMap[bill.account_id];
-              if (!account) return null;
-              return (
-                <CreditCardInvoiceRow
-                  key={bill.id}
-                  invoice={bill}
-                  account={account}
-                  cashBankAccounts={cashBankAccounts}
-                  isMobile={isMobile}
-                />
-              );
-            })}
+        ) : (
+          <div className="flex items-start gap-2 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/40 p-3 text-xs text-muted-foreground">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{fin.accounts.cardInvoices.hiddenByCategoryFilter}</span>
           </div>
-        </div>
+        )
       )}
 
       {/* Content */}
@@ -1058,7 +1072,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 <SelectContent>
                   <SelectItem value="dinheiro">{fin.accounts.payExpenseModal.paymentMethods.cash}</SelectItem>
                   <SelectItem value="pix">{fin.accounts.payExpenseModal.paymentMethods.pix}</SelectItem>
-                  <SelectItem value="debito">{fin.accounts.payExpenseModal.paymentMethods.debit}</SelectItem>
+                  <SelectItem value="cartao_debito">{fin.accounts.payExpenseModal.paymentMethods.debit}</SelectItem>
+                  <SelectItem value="cartao_credito">{fin.accounts.payExpenseModal.paymentMethods.credit}</SelectItem>
                   <SelectItem value="boleto">{fin.accounts.payExpenseModal.paymentMethods.boleto}</SelectItem>
                   <SelectItem value="transferencia">{fin.accounts.payExpenseModal.paymentMethods.transfer}</SelectItem>
                   <SelectItem value="cheque">{fin.accounts.payExpenseModal.paymentMethods.check}</SelectItem>

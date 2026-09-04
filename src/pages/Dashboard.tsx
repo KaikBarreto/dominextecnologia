@@ -97,13 +97,21 @@ export default function Dashboard() {
       }
     });
 
+    // Faturamento NÃO inclui movimento interno (transferência entre contas e
+    // pagamento de fatura de cartão): é dinheiro trocando de bolso dentro da
+    // própria empresa — balanço, não resultado. As duas pernas do par carregam
+    // o mesmo `transfer_pair_id`; sem esse corte, transferir R$ 10.000 de um
+    // banco pro outro inflava o faturamento em R$ 10.000. Critério estrutural
+    // (mesmo do DRE), nunca por nome de categoria (texto livre quebra calado).
+    const isInternalTransfer = (t: any) => !!t.transfer_pair_id;
+
     const filteredFin = stats?.allFinancial ? filterByRange(stats.allFinancial, 'transaction_date', start, end) : [];
     let faturamento = 0;
-    filteredFin.forEach((t: any) => { if (t.transaction_type === 'entrada') faturamento += Number(t.amount); });
+    filteredFin.forEach((t: any) => { if (t.transaction_type === 'entrada' && !isInternalTransfer(t)) faturamento += Number(t.amount); });
 
     const prevFin = stats?.allFinancial ? filterByRange(stats.allFinancial, 'transaction_date', prevRange.start, prevRange.end) : [];
     let prevFaturamento = 0;
-    prevFin.forEach((t: any) => { if (t.transaction_type === 'entrada') prevFaturamento += Number(t.amount); });
+    prevFin.forEach((t: any) => { if (t.transaction_type === 'entrada' && !isInternalTransfer(t)) prevFaturamento += Number(t.amount); });
 
     const prevOsAbertas = prevFilteredOS.filter((os: any) => ['pendente', 'agendada', 'em_andamento', 'a_caminho'].includes(os.status)).length;
 
@@ -148,6 +156,10 @@ export default function Dashboard() {
 
     let totalEntradas = 0, totalSaidas = 0;
     filterByRange(stats.allFinancial, 'transaction_date', start, effEnd).forEach((t: any) => {
+      // Mesmo corte do faturamento: transferência entre contas / pagamento de
+      // fatura entram e saem da própria empresa. Contá-las dobrava as duas
+      // linhas do gráfico (entrada numa conta + saída na outra, mesmo valor).
+      if (t.transfer_pair_id) return;
       const key = keyOf(new Date(t.transaction_date));
       const cur = buckets.get(key);
       if (!cur) return;

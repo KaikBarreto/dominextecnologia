@@ -138,6 +138,12 @@ export default function Finance() {
   const summary = useMemo(() => {
     const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
     summaryTransactions.forEach((t) => {
+      // Movimento interno (transferência entre contas e pagamento de fatura de
+      // cartão) fica fora do resumo: é balanço, não resultado. O par de
+      // lançamentos compartilha `transfer_pair_id` — sem esse corte, transferir
+      // R$ 10.000 de um banco pro outro apareceria como R$ 10.000 de entrada.
+      // Critério estrutural (mesmo do DRE), nunca por nome de categoria.
+      if (t.transfer_pair_id) return;
       if (t.transaction_type === 'entrada') {
         if (t.is_paid) {
           s.totalEntradas += Number(t.amount);

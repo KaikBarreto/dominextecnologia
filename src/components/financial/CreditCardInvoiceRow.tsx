@@ -79,8 +79,9 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const alreadyPaid = Number(invoice.amount_paid ?? 0);
   const remaining = billTotal - alreadyPaid;
   const txnCount = invoice.transactions?.length ?? 0;
-  // Status EXIBIDO: fatura `open` com fechamento já passado vira "Fechada"
-  // (o banco não transiciona sozinho). `paid`/`partial` seguem do agregado.
+  // Status EXIBIDO: fatura `open` cujo fechamento já foi alcançado (hoje >=
+  // closing_date, inclusive o próprio dia) vira "Fechada" — o banco não
+  // transiciona sozinho. `paid`/`partial` seguem do agregado.
   const displayStatus = effectiveBillStatus(invoice);
   const statusCfg = BILL_STATUS_CONFIG[displayStatus] ?? BILL_STATUS_CONFIG.open;
   const StatusIcon = statusCfg.icon;
@@ -139,7 +140,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             {/* Wrapper span é necessário porque o Button está disabled. */}
             <span>{buttonNode}</span>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[220px] text-xs">
+          <TooltipContent side="top" className="max-w-[260px] text-xs">
             {cc.payLockedHint.replace('{date}', format(closingDate, 'dd/MM/yyyy'))}
           </TooltipContent>
         </Tooltip>

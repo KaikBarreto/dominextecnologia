@@ -13,30 +13,44 @@ interface BankLogoProps {
   name?: string | null;
   size?: number;
   className?: string;
+  /**
+   * Selo branco arredondado atrás do logo — usar quando o `BankLogo` for
+   * renderizado sobre um fundo colorido saturado (ex: card-herói do cartão).
+   * A arte oficial de alguns bancos vem com o fundo da marca já embutido no
+   * PNG (o roxo do Nubank, por exemplo); sem a pastilha, ela vira um
+   * retângulo de cor destoante em cima do fundo colorido do card.
+   * Default `false` preserva EXATAMENTE a aparência atual — opt-in.
+   */
+  plated?: boolean;
 }
 
-export function BankLogo({ code, name, size = 24, className }: BankLogoProps) {
+export function BankLogo({ code, name, size = 24, className, plated = false }: BankLogoProps) {
   const [error, setError] = useState(false);
   const url = !error ? getBankLogo(code, name) : null;
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt={name || ''}
-        width={size}
-        height={size}
-        onError={() => setError(true)}
-        className={cn('rounded object-contain bg-white', className)}
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  return (
+  const content = url ? (
+    <img
+      src={url}
+      alt={name || ''}
+      width={size}
+      height={size}
+      onError={() => setError(true)}
+      className={cn('rounded object-contain bg-white', className)}
+      style={{ width: size, height: size }}
+    />
+  ) : (
     <div
       className={cn('rounded bg-muted flex items-center justify-center text-muted-foreground', className)}
       style={{ width: size, height: size }}
     >
       <Landmark className="h-3.5 w-3.5" />
+    </div>
+  );
+
+  if (!plated) return content;
+
+  return (
+    <div className="rounded-lg p-1 shrink-0 bg-white border border-white/20">
+      {content}
     </div>
   );
 }

@@ -139,6 +139,10 @@ export function FinanceMovimentacoes({
 
   const cashBankAccounts = useMemo(() => accounts.filter(a => a.type !== 'cartao'), [accounts]);
   const cardAccounts = useMemo(() => accounts.filter(a => a.type === 'cartao'), [accounts]);
+  // Cabeçalhos "CONTAS"/"CARTÕES" (e seus footers "+") só existem quando há
+  // pelo menos um cartão — quem não usa cartão vê a lista de contas plana,
+  // sem seção nenhuma (item 6 do handoff de UI).
+  const hasCards = cardAccounts.length > 0;
 
   // Saldo em contas = soma dos saldos de todas as contas/caixa (cartão fica de
   // fora, não tem "saldo de conta"). Alimenta o card consolidado da Visão Geral.
@@ -282,7 +286,7 @@ export function FinanceMovimentacoes({
         value: a.id,
         label: a.name,
         icon: getTypeIcon(a.type),
-        group: fin.movements.sidebar.groupAccounts,
+        group: hasCards ? fin.movements.sidebar.groupAccounts : undefined,
         sublabel: fmt(balance),
         // No mobile a pill mostra só o saldo (cabe ao lado do nome).
         mobileSublabel: fmt(balance),
@@ -375,9 +379,7 @@ export function FinanceMovimentacoes({
       >
         <div className="flex items-center gap-3 min-w-0">
           {hasInst ? (
-            <div className="rounded-lg p-1 shrink-0 bg-white border border-white/20">
-              <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
-            </div>
+            <BankLogo plated code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
           ) : (
             <div className="rounded-full p-2.5 shrink-0 bg-white/20">
               <Icon className="h-5 w-5" />
@@ -407,11 +409,14 @@ export function FinanceMovimentacoes({
     );
   };
 
-  // Botões globais do topo da tela. No mobile vira um único "+" com menu
-  // (Nova Conta / Novo Cartão) pra não poluir o topo; no desktop o topo fica
-  // limpo — criar conta/cartão vive no footer de cada grupo do sidebar.
+  // Botões globais do topo da tela. No mobile é sempre o "+" com menu (Nova
+  // Conta / Novo Cartão) pra não poluir o topo. No desktop, quando já existe
+  // cartão, o topo fica limpo — criar conta/cartão vive no footer de cada
+  // grupo do sidebar. SEM cartão ainda, os cabeçalhos "CONTAS"/"CARTÕES" (e
+  // seus footers "+") ficam escondidos — regra do item 6 —, então o "+" do
+  // topo vira a ÚNICA porta de entrada pra criar o primeiro cartão no desktop.
   // Categorias foi movida para a aba própria na tela de Relatório.
-  const globalActions = isMobile ? (
+  const globalActions = (isMobile || !hasCards) ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button size="sm" className="gap-1.5 shrink-0" aria-label={fin.movements.header.addButton}>
@@ -442,8 +447,9 @@ export function FinanceMovimentacoes({
   );
 
   // Footer POR GRUPO: "+ Nova Conta" ao fim das Contas Bancárias e "+ Novo Cartão"
-  // ao fim dos Cartões (desktop). Só renderiza os grupos que existem nas abas.
-  const groupFooters = !isMobile ? {
+  // ao fim dos Cartões (desktop). Só existe quando há cartão — sem cartão,
+  // não há seções (item 6) e a criação vive no "+" do topo.
+  const groupFooters = !isMobile && hasCards ? {
     [fin.movements.sidebar.groupAccounts]: addButton(fin.movements.sidebar.newAccount, () => openNewAccount('banco')),
     [fin.movements.sidebar.groupCards]: addButton(fin.movements.sidebar.newCard, () => openNewAccount('cartao')),
   } : undefined;
@@ -471,9 +477,9 @@ export function FinanceMovimentacoes({
         activeTab={activeTab}
         onTabChange={setActiveTab}
         groupFooters={groupFooters}
-        // Garante que os grupos (e seus footers "+ Nova Conta"/"+ Novo Cartão")
-        // sempre apareçam no sidebar, inclusive pra tenant sem nenhuma conta/cartão.
-        placeholderGroups={!isMobile ? [fin.movements.sidebar.groupAccounts, fin.movements.sidebar.groupCards] : undefined}
+        // Sem `placeholderGroups`: os cabeçalhos "CONTAS"/"CARTÕES" (e seus
+        // footers "+") só aparecem quando o próprio grupo já tem alguma aba —
+        // ou seja, só depois que o tenant tem pelo menos um cartão (item 6).
       >
         {activeTab === ALL_TAB ? (
           <div className="space-y-4">
@@ -791,59 +797,108 @@ export function FinanceMovimentacoes({
     </div>
   );
 
-  // Header do cartão selecionado — card-herói. Cartão NÃO tem "saldo de conta"
-  // (tem fatura), então não vale a regra de saldo: usa a cor do cartão como
-  // fundo se houver (texto contrastante via idealForeground), senão degradê
-  // escuro neutro. Mostra o valor da FATURA em destaque + disponível.
+  // Header do cartão selecionado — card-herói largo NA COR DO CARTÃO.
+  // Resolve as 3 perguntas do dono sem clique nenhum: quanto devo (valor
+  // gigante da fatura aberta), quanto posso (barra de limite + disponível) e
+  // quando vence (fecha/vence embaixo). Cartão NÃO tem "saldo de conta" (tem
+  // fatura), então não vale a regra de saldo do renderAccountHeader: usa
+  // sempre a cor do cartão como fundo (texto contrastante via
+  // idealForeground), com degradê escuro neutro só quando não há cor.
   function renderCardHeader(a: FinancialAccount) {
     const hasInst = !!(a.institution_name || a.bank_name);
     const billTotal = cardBillTotals[a.id] ?? 0;
-    const availableLimit = a.credit_limit ? a.credit_limit - billTotal : null;
+    const hasLimit = !!a.credit_limit;
+    const availableLimit = hasLimit ? a.credit_limit! - billTotal : null;
+    // Limite estourado: barra trava em 100% (nunca passa do fim do card) e o
+    // disponível vira um selo vermelho — legível em cima de QUALQUER cor de
+    // cartão, ao contrário de só colorir o texto.
+    const overLimit = hasLimit && availableLimit! < 0;
+    const usedPct = hasLimit ? Math.min(100, Math.max(0, (billTotal / a.credit_limit!) * 100)) : 0;
 
     const useCardColor = !!a.color;
     const fg = useCardColor ? idealForeground(a.color) : '#ffffff';
 
+    const closesDueLine = a.closing_day
+      ? (a.due_day
+          ? fin.movements.hero.closesDueLine
+              .replace('{closing}', String(a.closing_day))
+              .replace('{due}', String(a.due_day))
+          : fin.movements.hero.closesAfterLine
+              .replace('{closing}', String(a.closing_day))
+              .replace('{days}', String(a.payment_due_days ?? 10)))
+      : null;
+
     return (
       <div
         className={cn(
-          'rounded-2xl p-5 sm:p-6 flex items-start justify-between gap-3',
+          'rounded-2xl p-5 sm:p-6 space-y-4',
           useCardColor ? 'shadow-lg' : 'bg-gradient-to-r from-gray-900 to-gray-700 shadow-lg',
         )}
         style={{ backgroundColor: useCardColor ? a.color : undefined, color: fg }}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          {hasInst ? (
-            <div className="rounded-lg p-1 shrink-0 bg-white border border-white/20">
-              <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
-            </div>
-          ) : (
-            <div className="rounded-full p-2.5 shrink-0 bg-white/20">
-              <CreditCard className="h-5 w-5" />
-            </div>
-          )}
-          <div className="min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {hasInst ? (
+              <BankLogo plated code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
+            ) : (
+              <div className="rounded-full p-2.5 shrink-0 bg-white/20">
+                <CreditCard className="h-5 w-5" />
+              </div>
+            )}
             <p className="font-medium text-sm truncate opacity-90">{a.name}</p>
-            <p className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
-              {fmt(billTotal)}
-            </p>
-            <p className="text-xs opacity-80 mt-0.5">
-              {fin.movements.hero.openInvoice}
-              {availableLimit !== null && <> · {fin.movements.hero.available} {fmt(availableLimit)}</>}
-            </p>
           </div>
+
+          {/* Desktop: ações no menu de 3 pontinhos do sidebar — card limpo.
+              Mobile concentra tudo no "Ações". */}
+          {isMobile && (
+            <Button
+              size="sm"
+              className="gap-2 shrink-0 bg-white/20 text-current border-0 hover:bg-white/30"
+              onClick={() => setMobileActionsAccount(a)}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {fin.movements.hero.actionsButton}
+            </Button>
+          )}
         </div>
 
-        {/* Desktop: ações no menu de 3 pontinhos do sidebar — card limpo.
-            Mobile concentra tudo no "Ações". */}
-        {isMobile && (
-          <Button
-            size="sm"
-            className="gap-2 shrink-0 bg-white/20 text-current border-0 hover:bg-white/30"
-            onClick={() => setMobileActionsAccount(a)}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            {fin.movements.hero.actionsButton}
-          </Button>
+        {/* O valor que o dono quer ver primeiro: a fatura em aberto, gigante. */}
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider opacity-80">
+            {fin.movements.hero.openInvoice}
+          </p>
+          <p className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight mt-0.5">
+            {fmt(billTotal)}
+          </p>
+        </div>
+
+        {/* Barra de limite + linha "Limite total · Disponível". Some por
+            inteiro sem limite cadastrado — nada de "R$ 0,00" nem barra vazia. */}
+        {hasLimit && (
+          <div className="space-y-1.5">
+            <div className="h-2 w-full rounded-full bg-white/25 overflow-hidden">
+              <div
+                className={cn('h-full rounded-full transition-all', overLimit ? 'bg-red-400' : 'bg-white')}
+                style={{ width: `${usedPct}%` }}
+              />
+            </div>
+            <p className="text-xs sm:text-sm opacity-90 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <span>{fin.movements.hero.creditLimitLabel}: {fmt(a.credit_limit!)}</span>
+              <span aria-hidden="true">·</span>
+              {overLimit ? (
+                <span className="inline-flex items-center rounded-md bg-red-600 px-1.5 py-0.5 text-[11px] sm:text-xs font-semibold text-white">
+                  {fin.movements.hero.availableFull}: {fmt(availableLimit!)}
+                </span>
+              ) : (
+                <span>{fin.movements.hero.availableFull}: {fmt(availableLimit!)}</span>
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* Quando vence — menor, embaixo de tudo. */}
+        {closesDueLine && (
+          <p className="text-xs opacity-70">{closesDueLine}</p>
         )}
       </div>
     );

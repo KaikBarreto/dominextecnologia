@@ -71,9 +71,19 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     return Landmark;
   };
 
+  // Movimento INTERNO (transferência entre contas e pagamento de fatura de
+  // cartão) fica fora dos gráficos: é balanço, não resultado — o dinheiro só
+  // troca de bolso dentro da própria empresa. O par de lançamentos compartilha
+  // `transfer_pair_id`; é esse o critério (estrutural, igual ao do DRE), nunca
+  // o nome da categoria, que é texto livre e quebra calado com um typo.
+  const resultTransactions = transactions.filter((t) => !t.transfer_pair_id);
+
   // Category breakdown for chart — mobile: top 5; desktop: top 8.
+  // Sem o corte, "Transferência entre contas" entraria somando as DUAS pernas
+  // (2x o valor transferido) e poderia liderar o top 8, empurrando categoria
+  // de verdade pra fora do gráfico.
   const categoryMap = new Map<string, number>();
-  transactions.forEach((t) => {
+  resultTransactions.forEach((t) => {
     const cat = t.category || 'Sem categoria';
     categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(t.amount));
   });
@@ -84,8 +94,10 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     .slice(0, chartTopN);
 
   // Cash flow bar chart data (monthly) — mobile: últimos 3; desktop: tudo.
+  // Mesmo corte de movimento interno: uma transferência lançaria entrada numa
+  // conta e saída na outra, inflando as DUAS barras do mesmo mês.
   const cashFlowMap = new Map<string, { month: string; entradas: number; saidas: number }>();
-  transactions.forEach((t) => {
+  resultTransactions.forEach((t) => {
     const d = t.transaction_date;
     const key = d.substring(0, 7); // "2026-03"
     if (!cashFlowMap.has(key)) {
