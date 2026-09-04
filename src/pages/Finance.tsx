@@ -337,6 +337,8 @@ export default function Finance() {
         {screen === 'relatorio' && (
           <FinanceRelatorio
             transactions={filteredTransactions}
+            allTransactions={transactions}
+            dateRange={range}
             summary={summary}
             activeTab={relatorioTab}
             onTabChange={setRelatorioTab}

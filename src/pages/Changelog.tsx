@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.22.4',
+    date: '4 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Escolha como quer ler o seu resultado: Caixa ou Competência',
+        description: 'A DRE ganhou um seletor com duas visões. No Regime de Caixa, cada valor entra no mês em que o dinheiro realmente entrou ou saiu da conta, e só aparece o que já foi pago ou recebido. No Regime de Competência, cada valor entra no mês em que o gasto ou a venda aconteceu, mesmo que ainda não tenha sido pago. A primeira responde "quanto sobrou no bolso este mês", a segunda responde "quanto este mês realmente custou". O documento exportado informa qual das duas foi usada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Compras no cartão agora entram no seu resultado',
+        description: 'Uma compra feita no cartão de crédito não estava sendo contada no seu resultado, nem no mês da compra nem quando você pagava a fatura. O custo simplesmente não aparecia, e o lucro na tela ficava melhor do que a realidade. Agora, ao pagar a fatura por inteiro, as compras daquela fatura passam a contar no resultado. As faturas que você já tinha pago foram acertadas automaticamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'O resultado de um mês fechado não muda mais depois',
+        description: 'A DRE misturava duas regras: mostrava apenas o que já tinha sido pago, mas colocava o valor na data da compra. Na prática, um gasto de janeiro pago em março só aparecia em março, e aí o resultado de janeiro mudava para trás. Agora cada regime é coerente consigo mesmo e um mês fechado permanece fechado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.22.3',
     date: '4 de setembro de 2026',
     type: 'patch',

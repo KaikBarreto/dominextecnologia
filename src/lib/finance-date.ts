@@ -23,6 +23,22 @@ type TxnLike = {
 };
 
 /**
+ * ⚠️ A DRE (`src/components/financial/FinanceDRE.tsx`) NÃO usa este módulo, e
+ * isso é de propósito — não é duplicação esquecida.
+ *
+ * `getEffectiveTransactionDate` começa jogando toda transação de cartão no mês
+ * da FATURA (`credit_card_bill_date`), antes de qualquer ramo de escopo. Essa é
+ * a data certa pra Movimentações/Contas a Pagar (é o mês em que o cliente
+ * precisa ter o dinheiro), mas é uma TERCEIRA data do ponto de vista da DRE:
+ * não é a da compra (regime de Competência) nem a do pagamento (regime de
+ * Caixa).
+ *
+ * Cartão que fecha dia 20: compra em 25/08 → fatura de setembro → paga em
+ * 15/09. Aqui dá "setembro"; a DRE em Competência precisa de "agosto". Por isso
+ * a DRE tem o próprio corte de período (`isInDreRange`), regido pelo regime
+ * ativo. Se um dia alguém quiser "unificar", precisa antes resolver o regime
+ * aqui dentro — senão a DRE volta a mostrar compra de cartão no mês errado.
+ *
  * Escopo do filtro temporal:
  * - 'pagar': telas de Contas a Pagar/Receber. Fallback é `due_date` (vencimento).
  * - 'caixa': telas de fluxo (Movimentações, Visão Geral, DRE). Fallback é `transaction_date`.

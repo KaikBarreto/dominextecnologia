@@ -9,12 +9,20 @@ import { FinanceCobrancas } from './FinanceCobrancas';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import type { FinancialTransaction } from '@/types/database';
+import type { DateRange } from '@/components/ui/DateRangeFilter';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface FinanceRelatorioProps {
   /** Transações filtradas pelo período selecionado no parent. */
   transactions: (FinancialTransaction & { customer?: any })[];
+  /**
+   * Lista CRUA (sem corte de período) + o range, exclusivos da DRE: ela aplica
+   * o corte com a própria data efetiva, que muda conforme o regime
+   * Caixa/Competência. Ver `FinanceDRE.isInDreRange`.
+   */
+  allTransactions: (FinancialTransaction & { customer?: any })[];
+  dateRange: DateRange;
   summary: {
     totalEntradas: number;
     totalSaidas: number;
@@ -39,6 +47,8 @@ interface FinanceRelatorioProps {
  */
 export function FinanceRelatorio({
   transactions,
+  allTransactions,
+  dateRange,
   summary,
   activeTab,
   onTabChange,
@@ -93,7 +103,7 @@ export function FinanceRelatorio({
   return (
     <SettingsSidebarLayout tabs={tabs} activeTab={safeTab} onTabChange={onTabChange}>
       {safeTab === 'dre' ? (
-        <FinanceDRE transactions={transactions} />
+        <FinanceDRE transactions={allTransactions} range={dateRange} />
       ) : safeTab === 'categorias' ? (
         <FinanceCategorias />
       ) : safeTab === 'cobrancas' ? (

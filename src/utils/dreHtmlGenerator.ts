@@ -41,6 +41,13 @@ interface DreReportData {
   opexCategories: ExpenseCategory[];
   resultadoLiquido: number;
   margem: number;
+  /**
+   * Regime usado pra montar os números ('caixa' = data do pagamento,
+   * 'competencia' = data do fato gerador). Carimbado no cabeçalho do
+   * documento: sem isso o cliente manda o PDF pro contador e ninguém sabe qual
+   * régua gerou aqueles valores. Padrão: 'caixa'.
+   */
+  regime?: 'caixa' | 'competencia';
   /** Locale do usuário que está gerando o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
 }
@@ -48,6 +55,8 @@ interface DreReportData {
 export const generateDreHtml = (data: DreReportData) => {
   const locale = data.locale ?? 'pt-br';
   const t = MESSAGES[locale].app.finance.dreGenerator;
+  const regime = data.regime ?? 'caixa';
+  const regimeLabel = regime === 'caixa' ? t.regimeCash : t.regimeAccrual;
 
   const generatedDate = new Date().toLocaleString(
     locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR',
@@ -134,6 +143,7 @@ export const generateDreHtml = (data: DreReportData) => {
     <div class="title-section">
       <h1 class="title">${escapeHtml(t.title)}</h1>
       <p class="subtitle">${escapeHtml(t.period)}: ${data.period} | ${escapeHtml(t.generatedAt)}: ${generatedDate}</p>
+      <p class="subtitle">${escapeHtml(t.regime)}: <strong>${escapeHtml(regimeLabel)}</strong>. ${escapeHtml(regime === 'caixa' ? t.regimeCashHint : t.regimeAccrualHint)}</p>
     </div>
 
     <div class="dre-container">
