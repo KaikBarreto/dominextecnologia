@@ -32,6 +32,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { isTransactionInDateRange } from '@/lib/finance-date';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
@@ -104,6 +105,13 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const { deleteTransaction } = useFinancial();
+  const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
+  // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
+  // contendo a permissão (ou o curinga '*'). O fallback legado do
+  // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
+  // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
+  const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const { accounts: allAccounts } = useFinancialAccounts();
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
   // Opções do SearchableSelect — só contas não-cartão e ativas.
@@ -757,13 +765,13 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                   variant: 'edit' as const,
                   onClick: () => handleEdit(t),
                 },
-                {
+                ...(canDeleteFinance ? [{
                   key: 'delete',
                   label: fin.accounts.actions.delete,
                   icon: <Trash2 className="h-4 w-4" />,
                   variant: 'destructive' as const,
                   onClick: () => setDeletingId(t.id),
-                },
+                }] : []),
               ];
               const statusColor =
                 status === 'paga' ? 'bg-success'
@@ -931,6 +939,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                               icon: Trash2,
                               variant: 'delete',
                               onClick: () => setDeletingId(t.id),
+                              hidden: !canDeleteFinance,
                             },
                           ] satisfies RowAction[]}
                         />

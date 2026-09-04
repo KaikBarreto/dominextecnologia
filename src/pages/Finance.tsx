@@ -113,9 +113,14 @@ export default function Finance() {
     [transactions, range]
   );
 
-  // Movimentações = só o que JÁ FOI REALIZADO (is_paid). Pendentes/parcelas futuras
-  // (e despesas de cartão, que entram is_paid=false por design) vivem em "Contas a
-  // Pagar/Receber", não aqui. Sem isso, parcelas futuras poluíam a tela e o export.
+  // Movimentações = só o que JÁ FOI REALIZADO (is_paid). Pendentes/parcelas
+  // futuras vivem em "Contas a Pagar/Receber", não aqui. Sem isso, parcelas
+  // futuras poluíam a tela e o export.
+  // ATENÇÃO: desde que pagar a fatura por inteiro passou a quitar as compras do
+  // cartão (is_paid = true), `is_paid` sozinho não exclui mais essas compras. O
+  // corte delas na lista geral, e o switch "Incluir compras no cartão", vive
+  // em `FinanceMovimentacoes`, que é quem sabe qual painel está na tela (Visão
+  // Geral × extrato de conta × faturas do cartão).
   const movimentacoesTransactions = useMemo(
     () => filteredTransactions.filter((t) => t.is_paid),
     [filteredTransactions]

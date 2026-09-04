@@ -42,6 +42,48 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.22.5',
+    date: '4 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de permissões redesenhada',
+        description: 'Cada tela do sistema virou um grupo que você abre para ver as ações dela dentro, em vez de uma lista solta com tudo misturado. Toda permissão agora explica em uma linha o que libera na prática, e existe uma busca que encontra por tela ou por ação, mesmo sem acento. Os perfis viraram botões: você aplica um e, se mexer em qualquer coisa depois, o sistema avisa que virou personalizado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Nova permissão para excluir lançamento financeiro',
+        description: 'Excluir uma conta a pagar, uma conta a receber ou uma movimentação não tinha permissão própria, então qualquer usuário com acesso ao sistema conseguia apagar, mesmo sem poder abrir a tela de Financeiro. Agora isso é uma permissão que você concede a quem quiser, e ela vale também na exclusão em lote, nas parcelas de contrato e nos avisos financeiros da agenda.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Histórico financeiro protegido ao excluir contrato',
+        description: 'Ao excluir um contrato, os recebimentos que já tinham entrado eram apagados junto, mudando o saldo e o resultado de meses já fechados. Agora as parcelas futuras continuam sendo removidas, como antes, mas o dinheiro que já entrou permanece no caixa como lançamento avulso.',
+        category: 'correcao',
+      },
+      {
+        title: 'Categorias do sistema não podem mais ser excluídas',
+        description: 'Categorias que o próprio sistema cria e usa nos relatórios podiam ser apagadas por engano, o que quebrava a classificação do resultado sem nenhum aviso. Agora elas ficam protegidas.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Aviso ao pagar a fatura só em parte',
+        description: 'Ao pagar parte da fatura do cartão, o sistema agora explica que aquelas compras só entram no resultado, no Regime de Caixa, quando a fatura for quitada por inteiro, e que no Regime de Competência elas já aparecem no mês da compra.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Movimentações voltou a mostrar só o que passou pelo banco',
+        description: 'Compras feitas no cartão passaram a aparecer misturadas com as movimentações da conta, o que dava a impressão de gasto repetido, já que o pagamento da fatura também aparece ali. A lista voltou a mostrar apenas o que entrou ou saiu de verdade das contas, e quem quiser ver tudo junto pode ligar a opção "Incluir compras no cartão".',
+        category: 'correcao',
+      },
+      {
+        title: 'Fatura fechada agora consta como fechada nos relatórios',
+        description: 'A situação "Fechada" da fatura existia apenas na tela e não era registrada, então relatórios e consultas não conseguiam distinguir uma fatura fechada de uma ainda aberta. Agora ela é registrada e atualizada automaticamente todo dia.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.22.4',
     date: '4 de setembro de 2026',
     type: 'patch',

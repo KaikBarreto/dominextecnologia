@@ -256,6 +256,11 @@ export const finance = {
         addMenuNewAccount: 'Nova Conta',
         addMenuNewCard: 'Novo Cartão',
       },
+      cardPurchases: {
+        toggleLabel: 'Incluir compras no cartão',
+        toggleHint:
+          'Por padrão a lista traz só movimento de conta e caixa. O que saiu do caixa foi o pagamento da fatura, não cada compra.',
+      },
       hero: {
         totalBalance: 'Saldo total em contas',
         cardInvoices: 'Faturas de cartão',
@@ -790,7 +795,9 @@ export const finance = {
       payDate: 'Data do pagamento *',
       payAmount: 'Valor a pagar',
       payFullHint: 'Fatura será completamente quitada',
-      payPartialHint: 'Pagamento parcial — ficará {amount} em aberto',
+      payPartialHint: 'Pagamento parcial, ficará {amount} em aberto',
+      payPartialRegimeHint:
+        'As compras desta fatura só entram no seu resultado, no Regime de Caixa, quando a fatura for quitada por inteiro. No Regime de Competência elas já aparecem no mês da compra.',
       payNotes: 'Observações',
       payNotesPlaceholder: 'Opcional',
       cancelLabel: 'Cancelar',
@@ -1180,6 +1187,11 @@ export const finance = {
         newCard: 'New Card',
         addMenuNewAccount: 'New Account',
         addMenuNewCard: 'New Card',
+      },
+      cardPurchases: {
+        toggleLabel: 'Include credit card purchases',
+        toggleHint:
+          'By default the list shows only bank and cash movements. What left your cash was the bill payment, not each purchase.',
       },
       hero: {
         totalBalance: 'Total balance in accounts',
@@ -1699,6 +1711,8 @@ export const finance = {
       payAmount: 'Amount to pay',
       payFullHint: 'Bill will be fully settled',
       payPartialHint: 'Partial payment — {amount} will remain outstanding',
+      payPartialRegimeHint:
+        'Purchases on this bill only reach your income statement, under Cash Basis, once the bill is paid in full. Under Accrual Basis they already show up in the month of the purchase.',
       payNotes: 'Notes',
       payNotesPlaceholder: 'Optional',
       cancelLabel: 'Cancel',
@@ -2080,6 +2094,11 @@ export const finance = {
         newCard: 'Nueva Tarjeta',
         addMenuNewAccount: 'Nueva Cuenta',
         addMenuNewCard: 'Nueva Tarjeta',
+      },
+      cardPurchases: {
+        toggleLabel: 'Incluir compras con tarjeta',
+        toggleHint:
+          'Por defecto la lista muestra solo movimientos de cuenta y caja. Lo que salió de la caja fue el pago de la factura, no cada compra.',
       },
       hero: {
         totalBalance: 'Saldo total en cuentas',
@@ -2599,6 +2618,8 @@ export const finance = {
       payAmount: 'Importe a pagar',
       payFullHint: 'El extracto quedará completamente saldado',
       payPartialHint: 'Pago parcial — quedará {amount} pendiente',
+      payPartialRegimeHint:
+        'Las compras de esta factura solo entran en tu resultado, en el Criterio de Caja, cuando la factura se paga por completo. En el Criterio de Devengo ya aparecen en el mes de la compra.',
       payNotes: 'Observaciones',
       payNotesPlaceholder: 'Opcional',
       cancelLabel: 'Cancelar',
@@ -2980,6 +3001,11 @@ export const finance = {
         newCard: 'Nouvelle Carte',
         addMenuNewAccount: 'Nouveau Compte',
         addMenuNewCard: 'Nouvelle Carte',
+      },
+      cardPurchases: {
+        toggleLabel: 'Inclure les achats par carte',
+        toggleHint:
+          "Par défaut, la liste n'affiche que les mouvements de compte et de caisse. Ce qui est sorti de la caisse, c'est le paiement du relevé, pas chaque achat.",
       },
       hero: {
         totalBalance: 'Solde total en comptes',
@@ -3499,6 +3525,8 @@ export const finance = {
       payAmount: 'Montant à payer',
       payFullHint: 'Le relevé sera intégralement soldé',
       payPartialHint: 'Paiement partiel — {amount} restera en attente',
+      payPartialRegimeHint:
+        "Les achats de ce relevé n'entrent dans votre résultat, en comptabilité de caisse, que lorsque le relevé est intégralement soldé. En comptabilité d'engagement, ils apparaissent déjà le mois de l'achat.",
       payNotes: 'Observations',
       payNotesPlaceholder: 'Facultatif',
       cancelLabel: 'Annuler',

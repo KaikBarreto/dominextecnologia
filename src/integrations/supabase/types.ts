@@ -9634,6 +9634,7 @@ export type Database = {
         Returns: boolean
       }
       can_bootstrap_admin: { Args: never; Returns: boolean }
+      can_delete_finance: { Args: { _user_id: string }; Returns: boolean }
       can_edit_os: { Args: { _user_id: string }; Returns: boolean }
       can_manage_billing_reminder: {
         Args: { p_transaction_id: string; p_user_id: string }
@@ -9643,6 +9644,7 @@ export type Database = {
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
       check_email_available: { Args: { _email: string }; Returns: boolean }
+      close_due_credit_card_bills: { Args: never; Returns: number }
       commit_os_material_consumption: {
         Args: { p_lines: Json; p_service_order_id: string }
         Returns: Json

@@ -207,7 +207,15 @@ export default function ContractDetail() {
   const [showBillingDialog, setShowBillingDialog] = useState(false);
   const [billingCancelTarget, setBillingCancelTarget] = useState<TenantSubscription | null>(null);
 
-  const { hasRole } = useAuth();
+  const { hasRole, hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  // Excluir parcela/recebível é DELETE em financial_transactions → mesma
+  // permissão da tela de Financeiro (`fn:delete_finance`).
+  // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
+  // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
+  // contendo a permissão (ou o curinga '*'). O fallback legado do
+  // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
+  // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
+  const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const isPmoc = (contract as any)?.is_pmoc === true;
   const canRegenerateToken =
     hasRole('admin' as any) || hasRole('gestor' as any) || hasRole('super_admin' as any);
@@ -1458,9 +1466,11 @@ export default function ContractDetail() {
                             <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-warning active:scale-90 transition-transform rounded-xl" title={td.financial.tooltipEdit} onClick={() => handleOpenEditRec(t)}>
                               <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-destructive active:scale-90 transition-transform rounded-xl" title={td.financial.tooltipDelete} onClick={() => setDeletingRecId(t.id)}>
-                              <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                            </Button>
+                            {canDeleteFinance && (
+                              <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-destructive active:scale-90 transition-transform rounded-xl" title={td.financial.tooltipDelete} onClick={() => setDeletingRecId(t.id)}>
+                                <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>

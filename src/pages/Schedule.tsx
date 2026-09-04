@@ -64,6 +64,14 @@ export default function Schedule() {
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
+  // Aviso financeiro na agenda apaga LANÇAMENTO (financial_transactions), não OS
+  // — logo, `fn:delete_finance`, não `fn:delete_os`.
+  // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
+  // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
+  // contendo a permissão (ou o curinga '*'). O fallback legado do
+  // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
+  // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
+  const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -822,9 +830,9 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onClearSelection={handleClearSummary}
               onEdit={(summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
-              onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
+              onDelete={((summaryOrder as any)._isFinancialEvent ? !canDeleteFinance : !canDeleteOS) ? undefined : handleDeleteFromSummary}
               onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
-              onDeleteFinancialGroup={(summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
+              onDeleteFinancialGroup={(summaryOrder as any)._isFinancialEvent && canDeleteFinance ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? () => handleResolveBillingReminder(summaryOrder) : handleFinalizeFromSummary}
               onReopen={(summaryOrder as any)._isFinancialEvent ? () => handleReopenBillingReminder(summaryOrder) : (!canReopenOS ? undefined : handleReopenFromSummary)}
               onPause={(summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
@@ -959,9 +967,9 @@ export default function Schedule() {
             onOrderSelect={handleOrderSelect}
             onClearSelection={handleClearSummary}
             onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
-            onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
+            onDelete={((summaryOrder && (summaryOrder as any)._isFinancialEvent) ? !canDeleteFinance : !canDeleteOS) ? undefined : handleDeleteFromSummary}
             onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
-            onDeleteFinancialGroup={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
+            onDeleteFinancialGroup={summaryOrder && (summaryOrder as any)._isFinancialEvent && canDeleteFinance ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleResolveBillingReminder(summaryOrder) : handleFinalizeFromSummary}
             onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleReopenBillingReminder(summaryOrder) : (!canReopenOS ? undefined : handleReopenFromSummary)}
             onPause={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}

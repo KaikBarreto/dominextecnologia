@@ -561,6 +561,24 @@ export const settings = {
         hintScreens: 'Selecione quais telas este usuário pode acessar',
         sectionFunctions: 'Funções',
         hintFunctions: 'Selecione quais ações este usuário pode realizar',
+        sectionPermissions: 'Permissões',
+        hintPermissions: 'Escolha um perfil rápido ou ligue tela por tela. As ações de cada tela ficam dentro dela.',
+      },
+
+      // ── Editor de permissões (compartilhado usuário/cargo) ────────────────────
+      permissionsEditor: {
+        quickProfiles: 'Perfis rápidos',
+        fullAccess: 'Acesso Total',
+        fullAccessHint: 'Libera todas as telas e ações, inclusive as que forem criadas no futuro',
+        custom: 'Personalizado',
+        searchPlaceholder: 'Buscar tela ou ação...',
+        clearSearch: 'Limpar busca',
+        actionsTitle: 'Ações desta tela',
+        screenOffHint: 'A tela está desligada, mas estas ações continuam valendo por conta própria.',
+        emptySearch: 'Nenhuma tela ou ação encontrada para "{query}".',
+        generalGroup: 'Geral',
+        ariaScreenSwitch: 'Acesso à tela {screen}',
+        ariaScreenActions: 'Ver ações de {screen}',
       },
 
       // ── Dialog de cargos/presets ──────────────────────────────────────────────
@@ -1670,6 +1688,24 @@ export const settings = {
         hintScreens: 'Select which screens this user can access',
         sectionFunctions: 'Functions',
         hintFunctions: 'Select which actions this user can perform',
+        sectionPermissions: 'Permissions',
+        hintPermissions: 'Pick a quick profile or turn screens on one by one. Each screen holds its own actions inside.',
+      },
+
+      // ── Permissions editor (shared by user/role dialogs) ──────────────────────
+      permissionsEditor: {
+        quickProfiles: 'Quick profiles',
+        fullAccess: 'Full Access',
+        fullAccessHint: 'Unlocks every screen and action, including future ones',
+        custom: 'Custom',
+        searchPlaceholder: 'Search screen or action...',
+        clearSearch: 'Clear search',
+        actionsTitle: 'Actions for this screen',
+        screenOffHint: 'The screen is off, but these actions still apply on their own.',
+        emptySearch: 'No screen or action found for "{query}".',
+        generalGroup: 'General',
+        ariaScreenSwitch: 'Access to the {screen} screen',
+        ariaScreenActions: 'View actions for {screen}',
       },
 
       presets: {
@@ -2736,6 +2772,24 @@ export const settings = {
         hintScreens: 'Selecciona a qué pantallas puede acceder este usuario',
         sectionFunctions: 'Funciones',
         hintFunctions: 'Selecciona qué acciones puede realizar este usuario',
+        sectionPermissions: 'Permisos',
+        hintPermissions: 'Elige un perfil rápido o activa pantalla por pantalla. Las acciones de cada pantalla están dentro de ella.',
+      },
+
+      // ── Editor de permisos (compartido usuario/cargo) ─────────────────────────
+      permissionsEditor: {
+        quickProfiles: 'Perfiles rápidos',
+        fullAccess: 'Acceso Total',
+        fullAccessHint: 'Habilita todas las pantallas y acciones, incluso las futuras',
+        custom: 'Personalizado',
+        searchPlaceholder: 'Buscar pantalla o acción...',
+        clearSearch: 'Limpiar búsqueda',
+        actionsTitle: 'Acciones de esta pantalla',
+        screenOffHint: 'La pantalla está desactivada, pero estas acciones siguen valiendo por sí solas.',
+        emptySearch: 'No se encontró ninguna pantalla o acción para "{query}".',
+        generalGroup: 'General',
+        ariaScreenSwitch: 'Acceso a la pantalla {screen}',
+        ariaScreenActions: 'Ver acciones de {screen}',
       },
 
       presets: {
@@ -3802,6 +3856,24 @@ export const settings = {
         hintScreens: "Sélectionnez les écrans auxquels cet utilisateur peut accéder",
         sectionFunctions: 'Fonctions',
         hintFunctions: "Sélectionnez les actions que cet utilisateur peut effectuer",
+        sectionPermissions: 'Permissions',
+        hintPermissions: "Choisissez un profil rapide ou activez les écrans un par un. Les actions de chaque écran sont à l'intérieur.",
+      },
+
+      // ── Éditeur de permissions (partagé utilisateur/rôle) ─────────────────────
+      permissionsEditor: {
+        quickProfiles: 'Profils rapides',
+        fullAccess: 'Accès total',
+        fullAccessHint: 'Débloque tous les écrans et actions, y compris ceux à venir',
+        custom: 'Personnalisé',
+        searchPlaceholder: 'Rechercher un écran ou une action...',
+        clearSearch: 'Effacer la recherche',
+        actionsTitle: 'Actions de cet écran',
+        screenOffHint: "L'écran est désactivé, mais ces actions restent valables d'elles-mêmes.",
+        emptySearch: 'Aucun écran ou action trouvé pour "{query}".',
+        generalGroup: 'Général',
+        ariaScreenSwitch: "Accès à l'écran {screen}",
+        ariaScreenActions: 'Voir les actions de {screen}',
       },
 
       presets: {

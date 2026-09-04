@@ -641,6 +641,10 @@ export default function Users() {
                 const permCount = perm?.permissions?.length || 0;
                 const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
                 // Curinga '*' (Acesso Total dinâmico) OU snapshot legado com todas as chaves.
+                // FRÁGIL: derivar "tem tudo" de CONTAGEM quebra sozinho a cada permissão
+                // nova no catálogo (o total sobe, o snapshot do usuário não). Critério
+                // confiável = curinga '*' ou comparação por CONTEÚDO (allKeys.every).
+                // Mantido só como fallback pra snapshot legado. Ver v1.22.x / fn:delete_finance.
                 const isAllPerms = (perm?.permissions?.includes('*') ?? false) || permCount >= getAllPermissionKeys().length;
 
                 return (

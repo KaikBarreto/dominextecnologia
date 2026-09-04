@@ -2,13 +2,12 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { phoneMask } from '@/utils/masks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
-import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2, Mail } from 'lucide-react';
+import { Loader2, ShieldCheck, Camera, X, Wrench, Building2, Link2, Mail } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,14 +17,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useEmployees } from '@/hooks/useEmployees';
 import {
-  SCREEN_PERMISSIONS,
-  FUNCTION_PERMISSIONS,
-  SCREEN_CATEGORIES,
-  getScreensByCategory,
-  getFunctionsByCategory,
   getAllPermissionKeys,
   type PermissionPreset,
 } from '@/hooks/usePermissions';
+import { PermissionsEditor } from '@/components/users/PermissionsEditor';
 import { type AppRole } from '@/hooks/useUsers';
 import { processImageFile } from '@/utils/imageConvert';
 
@@ -69,7 +64,6 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { employees } = useEmployees();
-  const [accessProfile, setAccessProfile] = useState<string>('custom');
   const [showPwd, setShowPwd] = useState(false);
   const [form, setForm] = useState<UserFormData>({
     full_name: '',
@@ -107,45 +101,34 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
         employee_id: editingUser.employee_id || null,
       });
       setPhotoPreview(editingUser.avatar_url || null);
-      setAccessProfile(isAll ? 'all' : presetMatch ? presetMatch : 'custom');
     } else {
       setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null, photo: null, removePhoto: false, employee_id: null });
       setPhotoPreview(null);
-      setAccessProfile('custom');
     }
   }, [editingUser, open]);
 
-  const handlePresetChange = (presetId: string) => {
-    setAccessProfile(presetId);
-    if (presetId === 'custom') {
-      setForm(f => ({ ...f, preset_id: null }));
-      return;
-    }
-    if (presetId === 'all') {
-      // Exibe tudo marcado (UX). No SAVE, vira o curinga '*' (dinâmico) — ver handleSubmit.
-      setForm(f => ({ ...f, preset_id: null, permissions: getAllPermissionKeys() }));
-      return;
-    }
-    const preset = presets.find(p => p.id === presetId);
-    if (preset) {
-      setForm(f => ({ ...f, preset_id: preset.id, permissions: [...preset.permissions] }));
-    }
-  };
+  const allKeys = useMemo(() => getAllPermissionKeys(), []);
 
-  const togglePermission = (key: string) => {
-    setAccessProfile('custom');
-    setForm(f => {
-      // Ao sair do "Acesso Total" para personalizar, expande o curinga '*' nas chaves
-      // reais pra que o usuário possa desmarcar permissões individualmente.
-      const base = f.permissions.includes('*') ? getAllPermissionKeys() : f.permissions;
-      return {
-        ...f,
-        preset_id: null,
-        permissions: base.includes(key)
-          ? base.filter(p => p !== key)
-          : [...base, key],
-      };
-    });
+  // ── Perfil ativo é DERIVADO da seleção, nunca guardado em estado ──────────
+  // É isso que faz o chip apagar sozinho quando o admin desliga uma permissão e
+  // acender de novo quando ele religa. Estado paralelo aqui (useEffect ligando
+  // seleção → chip) causa re-render/remonte do modal a cada clique.
+  const isFullAccess = useMemo(() => {
+    const set = new Set(form.permissions.includes('*') ? allKeys : form.permissions);
+    return allKeys.length > 0 && allKeys.every(k => set.has(k));
+  }, [form.permissions, allKeys]);
+
+  const derivedPresetId = useMemo(() => {
+    if (isFullAccess) return null;
+    const set = new Set(form.permissions);
+    const match = presets.find(
+      p => p.permissions.length === form.permissions.length && p.permissions.every(k => set.has(k)),
+    );
+    return match?.id ?? null;
+  }, [presets, form.permissions, isFullAccess]);
+
+  const handlePermissionsChange = (permissions: string[]) => {
+    setForm(f => ({ ...f, permissions }));
   };
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,9 +151,14 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     setLoading(true);
     try {
       // "Acesso Total" grava o curinga '*' (dinâmico): libera toda permissão, inclusive
-      // as criadas no futuro. As checkboxes ficam todas marcadas só pra exibição.
-      const payload: UserFormData =
-        accessProfile === 'all' ? { ...form, permissions: ['*'] } : form;
+      // as criadas no futuro. Os switches ficam todos ligados só pra exibição.
+      // O cargo (`preset_id`) é o derivado — se a seleção deixou de bater com o
+      // cargo, o vínculo cai junto (e volta sozinho se o admin religar tudo).
+      const payload: UserFormData = {
+        ...form,
+        permissions: isFullAccess ? ['*'] : form.permissions,
+        preset_id: derivedPresetId,
+      };
       await onSubmit(payload);
       onOpenChange(false);
     } finally {
@@ -180,8 +168,6 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
 
   const getInitials = (name: string) =>
     name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
-
-  const screenCategories = Object.keys(SCREEN_CATEGORIES);
 
   return (
     <ResponsiveModal
@@ -350,95 +336,19 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
 
           <Separator />
 
-          {/* Preset Selection */}
-          <div>
-            <Label className="text-[13px] font-normal uppercase tracking-wider">{tf.labelProfile}</Label>
-            <Select value={accessProfile} onValueChange={handlePresetChange}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder={tf.placeholderProfile} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="custom">{tf.profileCustom}</SelectItem>
-                <SelectItem value="all">{tf.profileAll}</SelectItem>
-                {presets.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}{p.description ? ` - ${p.description}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Telas Section */}
-          <div className="space-y-4">
+          {/* Permissões: perfis rápidos + telas com as ações de cada uma dentro */}
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Monitor className="h-5 w-5 text-primary" />
-              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tf.sectionScreens}</h3>
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tf.sectionPermissions}</h3>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {tf.hintScreens}
-            </p>
-            <div className="grid grid-cols-1 gap-4">
-              {screenCategories.map(catKey => {
-                const category = SCREEN_CATEGORIES[catKey];
-                const screens = getScreensByCategory(catKey);
-                if (screens.length === 0) return null;
-                const CategoryIcon = category.icon;
-
-                return (
-                  <div key={catKey} className="border rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                      <CategoryIcon className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">{category.label}</span>
-                    </div>
-                    <div className="space-y-2">
-                      {screens.map(screen => (
-                        <div key={screen.key} className="flex items-start space-x-2">
-                          <Checkbox
-                            id={screen.key}
-                            checked={form.permissions.includes(screen.key)}
-                            onCheckedChange={() => togglePermission(screen.key)}
-                            className="mt-0.5"
-                          />
-                          <label htmlFor={screen.key} className="text-sm leading-tight cursor-pointer">
-                            {screen.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Funções Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-primary" />
-              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tf.sectionFunctions}</h3>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {tf.hintFunctions}
-            </p>
-            <div className="border rounded-lg p-4 space-y-3">
-              {FUNCTION_PERMISSIONS.map(action => (
-                <div key={action.key} className="flex items-start space-x-2 p-2 rounded hover:bg-muted/50 transition-colors">
-                  <Checkbox
-                    id={action.key}
-                    checked={form.permissions.includes(action.key)}
-                    onCheckedChange={() => togglePermission(action.key)}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1">
-                    <label htmlFor={action.key} className="text-sm font-medium cursor-pointer block">
-                      {action.label}
-                    </label>
-                    <p className="text-xs text-muted-foreground">{action.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-xs text-muted-foreground">{tf.hintPermissions}</p>
+            <PermissionsEditor
+              value={form.permissions}
+              onChange={handlePermissionsChange}
+              presets={presets}
+              allowFullAccess
+            />
           </div>
       </div>
     </ResponsiveModal>

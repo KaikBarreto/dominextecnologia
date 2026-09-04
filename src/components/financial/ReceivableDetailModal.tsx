@@ -11,6 +11,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction } from '@/types/database';
 import { useReceivablePayments } from '@/hooks/useReceivablePayments';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
@@ -37,6 +38,16 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
 
   const { payments, isLoading, reverse } = useReceivablePayments(transaction?.id);
   const [reversingId, setReversingId] = useState<string | null>(null);
+  // Estornar recebimento parcial APAGA lançamentos (a linha do recebimento e as
+  // filhas de tarifa). Logo, exige `fn:delete_finance` — igual à exclusão de
+  // lançamento.
+  const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
+  // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
+  // contendo a permissão (ou o curinga '*'). O fallback legado do
+  // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
+  // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
+  const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
 
   if (!transaction) return null;
 
@@ -120,16 +131,18 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive h-8 w-8 shrink-0"
-                      onClick={() => setReversingId(p.id)}
-                      title={rd.reverseAriaLabel}
-                      disabled={reverse.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canDeleteFinance && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive h-8 w-8 shrink-0"
+                        onClick={() => setReversingId(p.id)}
+                        title={rd.reverseAriaLabel}
+                        disabled={reverse.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

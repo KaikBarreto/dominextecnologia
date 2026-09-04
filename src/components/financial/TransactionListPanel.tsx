@@ -32,6 +32,7 @@ import { RelatedTransactionsDialog } from './RelatedTransactionsDialog';
 import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRelatedTransactions';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -93,6 +94,13 @@ export function TransactionListPanel({
   initialAccountFilter, onClearAccountFilter, hideAccountColumn,
   balanceAfterById,
 }: TransactionListPanelProps) {
+  const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
+  // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
+  // contendo a permissão (ou o curinga '*'). O fallback legado do
+  // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
+  // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
+  const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -247,7 +255,7 @@ export function TransactionListPanel({
   };
 
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
-  const someSelected = selectedIds.size > 0;
+  const someSelected = canDeleteFinance && selectedIds.size > 0;
   const showTypeColumn = type === 'all';
 
   const renderInstallmentBadge = (t: any) => {
@@ -480,13 +488,13 @@ export function TransactionListPanel({
                   variant: 'edit' as const,
                   onClick: () => onEdit(t),
                 },
-                {
+                ...(canDeleteFinance ? [{
                   key: 'delete',
                   label: fin.transactionList.rowActions.delete,
                   icon: <Trash2 className="h-4 w-4" />,
                   variant: 'destructive' as const,
                   onClick: () => requestDelete(t.id),
-                },
+                }] : []),
               ];
               return (
                 <MobileListItem
@@ -558,7 +566,7 @@ export function TransactionListPanel({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {type !== 'all' && (
+                    {type !== 'all' && canDeleteFinance && (
                       <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[40px]">
                         <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
                       </SortableTableHead>
@@ -581,7 +589,7 @@ export function TransactionListPanel({
                 <TableBody>
                   {pagination.paginatedItems.map((t) => (
                     <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
-                      {type !== 'all' && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
+                      {type !== 'all' && canDeleteFinance && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
                       <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
                       <TableCell className="text-center"><div className="flex justify-center">{renderCreatorAvatar(t)}</div></TableCell>
                       {showTypeColumn && (
@@ -642,7 +650,7 @@ export function TransactionListPanel({
                         <RowActionsMenu
                           actions={[
                             { label: fin.transactionList.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(t) },
-                            { label: fin.transactionList.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id) },
+                            { label: fin.transactionList.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id), hidden: !canDeleteFinance },
                           ] satisfies RowAction[]}
                         />
                       </TableCell>

@@ -1,22 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Loader2, Monitor, Settings2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import {
-  SCREEN_CATEGORIES,
-  FUNCTION_PERMISSIONS,
-  getScreensByCategory,
-  type PermissionPreset,
-} from '@/hooks/usePermissions';
+import { type PermissionPreset } from '@/hooks/usePermissions';
+import { PermissionsEditor } from '@/components/users/PermissionsEditor';
 
 interface PermissionPresetDialogProps {
   open: boolean;
@@ -44,11 +38,8 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
     }
   }, [editing, isCreating]);
 
-  const togglePermission = (key: string) => {
-    setForm(f => ({
-      ...f,
-      permissions: f.permissions.includes(key) ? f.permissions.filter(p => p !== key) : [...f.permissions, key],
-    }));
+  const handlePermissionsChange = (permissions: string[]) => {
+    setForm(f => ({ ...f, permissions }));
   };
 
   const handleSave = async () => {
@@ -79,8 +70,6 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
   };
 
   const showForm = isCreating || editing;
-
-  const screenCategories = Object.keys(SCREEN_CATEGORIES);
 
   const footer = showForm ? (
     <div className="flex justify-end gap-3">
@@ -144,71 +133,13 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
 
             <Separator />
 
-            {/* Telas Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Monitor className="h-5 w-5 text-primary" />
-                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tp.sectionScreens}</Label>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                {screenCategories.map(catKey => {
-                  const category = SCREEN_CATEGORIES[catKey];
-                  const screens = getScreensByCategory(catKey);
-                  if (screens.length === 0) return null;
-                  const CategoryIcon = category.icon;
-
-                  return (
-                    <div key={catKey} className="border rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                        <CategoryIcon className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">{category.label}</span>
-                      </div>
-                      <div className="space-y-2">
-                        {screens.map(screen => (
-                          <div key={screen.key} className="flex items-start space-x-2">
-                            <Checkbox
-                              checked={form.permissions.includes(screen.key)}
-                              onCheckedChange={() => togglePermission(screen.key)}
-                              className="mt-0.5"
-                            />
-                            <label className="text-sm leading-tight cursor-pointer" onClick={() => togglePermission(screen.key)}>
-                              {screen.label}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Funções Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-primary" />
-                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tp.sectionFunctions}</Label>
-              </div>
-              <div className="border rounded-lg p-4 space-y-3">
-                {FUNCTION_PERMISSIONS.map(action => (
-                  <div key={action.key} className="flex items-start space-x-2 p-2 rounded hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      checked={form.permissions.includes(action.key)}
-                      onCheckedChange={() => togglePermission(action.key)}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <label className="text-sm font-medium cursor-pointer block" onClick={() => togglePermission(action.key)}>
-                        {action.label}
-                      </label>
-                      <p className="text-xs text-muted-foreground">{action.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Permissões do cargo: telas com as ações de cada uma dentro.
+                Sem chips de cargo aqui (você está EDITANDO um cargo, não escolhendo
+                um) e sem "Acesso Total" — preserva exatamente o que a tela já fazia. */}
+            <PermissionsEditor
+              value={form.permissions}
+              onChange={handlePermissionsChange}
+            />
 
           </div>
         )}

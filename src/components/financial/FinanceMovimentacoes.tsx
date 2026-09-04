@@ -10,6 +10,8 @@ import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancia
 import { useRecalculateBills } from '@/hooks/useRecalculateBills';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -112,6 +114,23 @@ export function FinanceMovimentacoes({
   const recalculateBills = useRecalculateBills();
 
   const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
+
+  // Compra no cartão NÃO é movimento de caixa: o caixa só mexeu quando a fatura
+  // foi paga. Desde que pagar a fatura por inteiro passou a quitar as compras
+  // (is_paid = true), elas entrariam nesta lista e o gasto pareceria dobrado
+  // (a compra + o pagamento da fatura). Critério ESTRUTURAL: `credit_card_bill_date`
+  // preenchido = perna do cartão. Nunca por tipo de conta (olhar `accounts`)
+  // nem por `category`, que é texto livre.
+  // O switch abaixo (desligado por padrão) reabre a lista completa pra quem
+  // quer ver todas as despesas num lugar só. Vale SÓ pra Visão Geral: o extrato
+  // de uma conta bancária e o painel de faturas do cartão não passam por aqui.
+  const [includeCardPurchases, setIncludeCardPurchases] = useState(false);
+  const overviewTransactions = useMemo(
+    () => (includeCardPurchases
+      ? transactions
+      : transactions.filter((t) => !t.credit_card_bill_date)),
+    [transactions, includeCardPurchases],
+  );
 
   // Consome o deep-link `?account=ID` uma vez: seleciona a aba da conta e
   // limpa o param na URL (senão o sidebar fica "preso" naquela conta).
@@ -608,10 +627,33 @@ export function FinanceMovimentacoes({
                 </div>
               );
             })()}
+            {/* Só faz sentido pra quem tem cartão cadastrado. Card BRANCO
+                (bg-card/border-border), sem tingimento dessaturado. */}
+            {hasCards && (
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                <div className="min-w-0 space-y-0.5">
+                  <Label
+                    htmlFor="include-card-purchases"
+                    className="text-sm font-bold cursor-pointer"
+                  >
+                    {fin.movements.cardPurchases.toggleLabel}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {fin.movements.cardPurchases.toggleHint}
+                  </p>
+                </div>
+                <Switch
+                  id="include-card-purchases"
+                  className="shrink-0 mt-0.5"
+                  checked={includeCardPurchases}
+                  onCheckedChange={setIncludeCardPurchases}
+                />
+              </div>
+            )}
             <TransactionListPanel
               title={fin.movements.header.titleMobile}
               type="all"
-              transactions={transactions}
+              transactions={overviewTransactions}
               isLoading={isLoading}
               onNew={onNew}
               onEdit={onEdit}
