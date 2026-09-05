@@ -1,0 +1,2220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="googlebot" content="noindex">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Trilha de Tutoriais — Domiflix | Dominex</title>
+  <meta name="description" content="Grade completa dos 18 tutoriais em vídeo do Domiflix: capítulos com marcação de tempo, tabela-resumo da trilha e os 36 prompts de capa. Documento interno de produção da Dominex.">
+  <meta name="theme-color" content="#141414">
+  <link rel="icon" href="/favicon.ico">
+
+  <style>
+    /* ============================================================
+       Fontes — Lufga local (sem CDN, sem Google Fonts)
+       ============================================================ */
+    @font-face { font-family: 'Lufga'; src: url('/fonts/Lufga-Regular.otf') format('opentype');  font-weight: 400; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Lufga'; src: url('/fonts/Lufga-Medium.otf') format('opentype');   font-weight: 500; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Lufga'; src: url('/fonts/Lufga-SemiBold.otf') format('opentype'); font-weight: 600; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Lufga'; src: url('/fonts/Lufga-Bold.otf') format('opentype');     font-weight: 700; font-style: normal; font-display: swap; }
+
+    /* ============================================================
+       Tokens
+       ============================================================ */
+    :root {
+      --bg: #141414;
+      --surf: #1a1a1a;
+      --surf-2: #202020;
+      --line: rgba(255,255,255,.08);
+      --line-forte: rgba(255,255,255,.16);
+      --fg: #f5f5f5;
+      --fg-2: rgba(255,255,255,.80);
+      --fg-3: rgba(255,255,255,.58);
+      --acc: #00C597;
+      --acc-2: #00E0AC;
+      --acc-soft: rgba(0,197,151,.12);
+      --header-h: 62px;
+      --r: 14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    /* ============================================================
+       Base
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Lufga', Montserrat, system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: clamp(16px, 0.6vw + 14.5px, 17.5px);
+      line-height: 1.7;
+      font-weight: 450;
+      -webkit-font-smoothing: auto;
+      text-rendering: optimizeLegibility;
+    }
+    /* nada de overflow-x:hidden no body — o conteúdo é que não pode estourar */
+    img { max-width: 100%; display: block; }
+    a { color: var(--acc-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    :focus-visible { outline: 2px solid var(--acc-2); outline-offset: 3px; border-radius: 6px; }
+    h1, h2, h3 { line-height: 1.2; margin: 0; font-weight: 700; text-wrap: balance; }
+    p { margin: 0 0 1em; }
+    p:last-child { margin-bottom: 0; }
+    strong { font-weight: 600; color: #fff; }
+    em { font-style: italic; color: var(--fg-2); }
+    code {
+      font-family: var(--mono); font-size: .86em;
+      background: rgba(255,255,255,.06); border: 1px solid var(--line);
+      padding: .1em .38em; border-radius: 6px; overflow-wrap: anywhere;
+    }
+    /* âncora não pode ficar embaixo do header fixo */
+    [id] { scroll-margin-top: calc(var(--header-h) + 18px); }
+
+    .shell { width: 100%; max-width: 1280px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 36px); }
+
+    /* ============================================================
+       Header fixo
+       ============================================================ */
+    .topo {
+      position: sticky; top: 0; z-index: 60;
+      height: var(--header-h);
+      background: rgba(20,20,20,.78);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      backdrop-filter: blur(14px) saturate(140%);
+      border-bottom: 1px solid var(--line);
+    }
+    .topo-in { height: 100%; display: flex; align-items: center; gap: 14px; }
+    .topo-marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .topo-marca img { height: 26px; width: auto; }
+    .topo-nome {
+      font-size: 13px; font-weight: 500; color: var(--fg-2);
+      padding-left: 12px; border-left: 1px solid var(--line-forte);
+      white-space: nowrap;
+    }
+    .topo-nav { margin-left: auto; display: none; gap: 4px; }
+    .topo-nav a {
+      color: var(--fg-2); font-size: 13.5px; font-weight: 500;
+      padding: 8px 11px; border-radius: 9px; text-decoration: none;
+    }
+    .topo-nav a:hover { color: var(--fg); background: rgba(255,255,255,.06); text-decoration: none; }
+    @media (min-width: 900px) { .topo-nav { display: flex; } .topo-marca img { height: 28px; } }
+    @media (max-width: 480px) { .topo-nome { display: none; } }
+
+    /* ============================================================
+       Hero
+       ============================================================ */
+    .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+    .hero::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(90% 120% at 12% -20%, rgba(0,197,151,.16), transparent 58%),
+        radial-gradient(70% 100% at 92% 0%, rgba(255,255,255,.05), transparent 60%),
+        linear-gradient(180deg, #181818 0%, #141414 100%);
+    }
+    .hero-in { position: relative; padding-block: clamp(44px, 9vw, 88px) clamp(32px, 6vw, 56px); }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--acc); color: #04231c;
+      font-size: 11.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      padding: 6px 12px; border-radius: 999px; margin: 0 0 20px;
+    }
+    .hero h1 { font-size: clamp(30px, 6.2vw, 58px); letter-spacing: -.02em; margin-bottom: 16px; }
+    .hero h1 .verde { color: var(--acc-2); }
+    .hero-sub { color: var(--fg-2); font-size: clamp(15px, 1.6vw, 19px); max-width: 62ch; }
+    .metricas { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; padding: 0; margin: 28px 0 0; }
+    .metricas li {
+      background: var(--surf-2); border: 1px solid var(--line);
+      border-radius: 999px; padding: 8px 15px; font-size: 13.5px; color: var(--fg-2);
+      display: flex; align-items: baseline; gap: 7px;
+    }
+    .metricas b { color: var(--fg); font-weight: 600; font-size: 14.5px; }
+    .hero-intro { margin-top: 30px; display: grid; gap: 12px; max-width: 70ch; }
+    .hero-intro p { color: var(--fg-2); margin: 0; }
+
+    /* ============================================================
+       Layout com índice lateral
+       ============================================================ */
+    .corpo { padding-block: clamp(28px, 5vw, 52px) 40px; }
+    .cols { display: block; }
+    .toc-desktop { display: none; }
+    @media (min-width: 1024px) {
+      .cols { display: grid; grid-template-columns: 262px minmax(0, 1fr); gap: clamp(28px, 3vw, 48px); align-items: start; }
+      .toc-desktop {
+        display: block; position: sticky; top: calc(var(--header-h) + 20px);
+        max-height: calc(100vh - var(--header-h) - 40px); overflow-y: auto;
+        padding-right: 6px; min-width: 0;
+      }
+    }
+    .conteudo { min-width: 0; }
+
+    .toc-titulo {
+      font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--fg-3); margin: 0 0 8px; padding-left: 10px;
+    }
+    .toc-lista { list-style: none; margin: 0 0 24px; padding: 0; }
+    .toc-link {
+      display: flex; align-items: center; gap: 10px; min-height: 34px;
+      padding: 6px 10px; border-radius: 9px; color: var(--fg-2);
+      font-size: 14.5px; line-height: 1.35; text-decoration: none;
+      border-left: 2px solid transparent; transition: background .16s ease, color .16s ease;
+    }
+    .toc-link:hover { background: rgba(255,255,255,.05); color: var(--fg); text-decoration: none; }
+    .toc-link[aria-current="true"] { background: var(--acc-soft); color: var(--fg); border-left-color: var(--acc); }
+    .toc-link[aria-current="true"] .toc-cod { color: var(--acc-2); }
+    .toc-cod {
+      font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--fg-3);
+      min-width: 26px; flex: none;
+    }
+    .toc-cod--ext { color: var(--acc); }
+    .toc-txt { min-width: 0; overflow-wrap: anywhere; }
+
+    /* ============================================================
+       Índice mobile (botão flutuante + gaveta)
+       ============================================================ */
+    .fab {
+      position: fixed; right: 16px; bottom: 16px; z-index: 70;
+      min-height: 48px; padding: 0 18px; border-radius: 999px;
+      background: var(--acc); color: #04231c; border: none;
+      font-family: inherit; font-size: 14px; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5); cursor: pointer;
+    }
+    @media (min-width: 1024px) { .fab { display: none; } }
+    .gaveta[hidden] { display: none; }
+    .gaveta { position: fixed; inset: 0; z-index: 80; }
+    .gaveta-fundo { position: absolute; inset: 0; background: rgba(0,0,0,.66); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+    .gaveta-painel {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: min(90vw, 340px); background: var(--surf);
+      border-left: 1px solid var(--line);
+      display: flex; flex-direction: column;
+    }
+    .gaveta-topo {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--line); flex: none;
+    }
+    .gaveta-topo strong { font-size: 15px; }
+    .gaveta-fechar {
+      min-width: 44px; min-height: 44px; border-radius: 10px;
+      background: rgba(255,255,255,.06); border: 1px solid var(--line);
+      color: var(--fg); font-size: 20px; line-height: 1; cursor: pointer;
+    }
+    .gaveta-lista { overflow-y: auto; padding: 14px 12px 28px; -webkit-overflow-scrolling: touch; }
+    .gaveta-lista .toc-link { min-height: 44px; font-size: 15.5px; }
+
+    /* ============================================================
+       Seções
+       ============================================================ */
+    .secao { margin-bottom: clamp(40px, 6vw, 76px); }
+    .secao-head { margin-bottom: 22px; }
+    .secao-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--acc); color: #04231c;
+      font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      padding: 5px 11px; border-radius: 999px; margin: 0 0 12px;
+    }
+    .secao-titulo { font-size: clamp(22px, 3.4vw, 34px); letter-spacing: -.015em; }
+    .secao-sub { color: var(--fg-2); margin-top: 10px; max-width: 70ch; }
+    .sub-titulo { font-size: clamp(17px, 2vw, 21px); margin: 34px 0 14px; }
+    .bloco-titulo {
+      font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--fg-3); margin: 26px 0 12px;
+    }
+
+    .card {
+      background: var(--surf); border: 1px solid var(--line);
+      border-radius: var(--r); padding: clamp(16px, 3vw, 26px);
+    }
+    .lista { margin: 0; padding-left: 1.15em; color: var(--fg-2); max-width: 70ch; }
+    .card > p { max-width: 70ch; }
+    .lista li { margin-bottom: .55em; }
+    .lista li:last-child { margin-bottom: 0; }
+    .lista li::marker { color: var(--acc); }
+
+    /* ============================================================
+       Corrente da sequência
+       ============================================================ */
+    .corrente { list-style: none; margin: 0; padding: 0; position: relative; }
+    .corrente-item { position: relative; display: flex; align-items: center; gap: 12px; padding-bottom: 10px; }
+    .corrente-item::before {
+      content: ""; position: absolute; left: 13px; top: 28px; bottom: -2px;
+      width: 2px; background: linear-gradient(180deg, rgba(0,197,151,.55), rgba(0,197,151,.12));
+    }
+    .corrente-item:last-child { padding-bottom: 0; }
+    .corrente-item:last-child::before { display: none; }
+    .corrente-passo {
+      flex: none; width: 28px; height: 28px; border-radius: 50%;
+      background: var(--acc-soft); border: 1px solid rgba(0,197,151,.35);
+      color: var(--acc-2); font-size: 11.5px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .corrente-chip {
+      display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;
+      min-height: 44px; padding: 8px 14px;
+      background: var(--surf-2); border: 1px solid var(--line);
+      border-radius: 10px; color: var(--fg); text-decoration: none;
+      transition: border-color .16s ease, background .16s ease;
+    }
+    .corrente-chip:hover { border-color: rgba(0,197,151,.45); background: #242424; text-decoration: none; }
+    .corrente-cod {
+      font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+      color: var(--acc-2); flex: none; min-width: 28px;
+    }
+    .corrente-nome { font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+    .callout {
+      margin-top: 24px; background: var(--acc-soft);
+      border: 1px solid rgba(0,197,151,.28); border-left: 3px solid var(--acc);
+      border-radius: 12px; padding: 16px 18px; color: var(--fg-2); max-width: 70ch;
+    }
+
+    /* ============================================================
+       Tutorial
+       ============================================================ */
+    .tutorial {
+      background: var(--surf); border: 1px solid var(--line);
+      border-radius: var(--r); padding: clamp(18px, 3.2vw, 32px);
+      margin-bottom: clamp(18px, 2.6vw, 28px);
+      transition: border-color .18s ease;
+    }
+    .tutorial:hover { border-color: var(--line-forte); }
+    .tutorial-head { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 18px; }
+    .tutorial-eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 10px; }
+    .tutorial-cod {
+      background: var(--acc); color: #04231c;
+      font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .04em;
+      padding: 4px 10px; border-radius: 7px;
+    }
+    .tutorial-insp { font-size: 12.5px; color: var(--fg-3); }
+    .tutorial-titulo { font-size: clamp(20px, 3vw, 28px); letter-spacing: -.015em; }
+    .meta { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 16px 0 0; }
+    .meta-item {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surf-2); border: 1px solid var(--line);
+      border-radius: 999px; padding: 5px 12px; font-size: 12.5px; color: var(--fg-2);
+      overflow-wrap: anywhere;
+    }
+    .meta-item--modulo { background: var(--acc); border-color: var(--acc); color: #04231c; font-weight: 600; }
+    .meta-item--modulo strong { color: #04231c; }
+    .meta-item--modulo em { color: #04231c; }
+    .sinopse {
+      color: var(--fg); font-size: clamp(16px, 1.5vw, 18px); line-height: 1.68;
+      border-left: 2px solid rgba(0,197,151,.4); padding-left: 14px;
+      max-width: 70ch;
+    }
+
+    .caps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    .cap {
+      display: flex; gap: 12px; align-items: baseline;
+      padding: 11px 13px; border-radius: 9px;
+      background: rgba(255,255,255,.02); border: 1px solid transparent;
+      transition: background .16s ease, border-color .16s ease;
+    }
+    .cap:hover { background: rgba(255,255,255,.05); border-color: var(--line); }
+    .cap-ts {
+      flex: none; font-family: var(--mono); font-size: 12px; font-weight: 700;
+      color: var(--acc-2); background: var(--acc-soft);
+      border: 1px solid rgba(0,197,151,.24);
+      padding: 3px 8px; border-radius: 6px; letter-spacing: .02em;
+    }
+    .cap-txt { min-width: 0; font-size: 16px; line-height: 1.55; color: var(--fg); overflow-wrap: anywhere; }
+    .cap-txt strong { color: #fff; }
+
+    .falas { display: grid; gap: 10px; margin-top: 22px; }
+    @media (min-width: 860px) { .falas { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .fala {
+      background: var(--surf-2); border: 1px solid var(--line);
+      border-radius: 11px; padding: 13px 15px; min-width: 0;
+    }
+    .fala-rot {
+      display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--fg-3); margin-bottom: 6px;
+    }
+    .fala p { font-size: 15px; line-height: 1.6; color: var(--fg-2); margin: 0; overflow-wrap: anywhere; }
+
+    /* ============================================================
+       Tabelas (viram cards no mobile)
+       ============================================================ */
+    .tabela-wrap { margin: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    thead th {
+      text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .09em;
+      text-transform: uppercase; color: var(--fg-3);
+      padding: 10px 12px; border-bottom: 1px solid var(--line-forte); white-space: nowrap;
+    }
+    tbody td { padding: 11px 12px; border-bottom: 1px solid var(--line); color: var(--fg-2); vertical-align: top; overflow-wrap: anywhere; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,.03); }
+    tbody td strong { color: var(--fg); }
+    @media (max-width: 767px) {
+      table, thead, tbody, tr, th, td { display: block; width: 100%; }
+      /* cabeçalho vira rótulo do card (data-label), mas segue no DOM pra leitor de tela */
+      thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      thead th { padding: 0; border: none; }
+      tbody tr {
+        background: var(--surf-2); border: 1px solid var(--line);
+        border-radius: 11px; padding: 12px 14px; margin-bottom: 10px;
+      }
+      tbody tr:last-child { margin-bottom: 0; }
+      tbody td { border: none; padding: 5px 0; }
+      tbody td:empty { display: none; }
+      tbody td::before {
+        content: attr(data-label);
+        display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .09em;
+        text-transform: uppercase; color: var(--fg-3); margin-bottom: 2px;
+      }
+      tbody tr:hover td { background: transparent; }
+      /* resumo: código do tutorial vira chip e o nome vira título do card */
+      .tabela-resumo td:nth-child(1)::before,
+      .tabela-resumo td:nth-child(2)::before { display: none; }
+      .tabela-resumo td:nth-child(1) {
+        font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+        color: var(--acc-2); letter-spacing: .04em; padding-bottom: 2px;
+      }
+      .tabela-resumo td:nth-child(2) { font-size: 15.5px; color: var(--fg); padding-top: 0; }
+    }
+
+    /* ============================================================
+       Prompts de capa
+       ============================================================ */
+    .capa {
+      background: var(--surf); border: 1px solid var(--line);
+      border-radius: var(--r); padding: clamp(16px, 3vw, 26px);
+      margin-bottom: clamp(14px, 2.4vw, 22px);
+    }
+    .capa-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; margin-bottom: 10px; }
+    .capa-titulo { font-size: clamp(17px, 2.2vw, 21px); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+    .capa-cod {
+      font-family: var(--mono); font-size: 12px; font-weight: 700;
+      background: var(--acc-soft); color: var(--acc-2);
+      border: 1px solid rgba(0,197,151,.28); padding: 3px 8px; border-radius: 6px;
+    }
+    .capa-tema { font-size: 13px; color: var(--fg-3); margin: 0; }
+    .capa-ideia { font-size: 15px; color: var(--fg-2); margin-bottom: 16px; max-width: 70ch; }
+    .prompts { display: grid; gap: 12px; }
+    @media (min-width: 1180px) { .prompts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .prompt-block { background: var(--surf-2); border: 1px solid var(--line); border-radius: 11px; overflow: hidden; min-width: 0; }
+    .prompt-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 9px 10px 9px 13px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.02);
+    }
+    .prompt-label {
+      display: inline-flex; align-items: center; gap: 9px; min-width: 0;
+      font-size: 12.5px; font-weight: 500; color: var(--fg-2); overflow-wrap: anywhere;
+    }
+    .prompt-fmt {
+      flex: none; font-family: var(--mono); font-size: 11px; font-weight: 700;
+      padding: 3px 7px; border-radius: 5px;
+    }
+    .prompt-fmt--banner { background: var(--acc); color: #04231c; }
+    .prompt-fmt--thumbnail { background: rgba(255,255,255,.12); color: var(--fg); }
+    .btn-copiar {
+      flex: none; min-height: 44px; min-width: 92px; padding: 0 16px;
+      border-radius: 9px; cursor: pointer;
+      background: rgba(255,255,255,.06); border: 1px solid var(--line-forte);
+      color: var(--fg); font-family: inherit; font-size: 13px; font-weight: 600;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    .btn-copiar:hover { background: rgba(0,197,151,.16); border-color: rgba(0,197,151,.5); color: var(--acc-2); }
+    .btn-copiar.copiado { background: var(--acc); border-color: var(--acc); color: #04231c; }
+    .prompt {
+      margin: 0; padding: 14px;
+      font-family: var(--mono); font-size: 13px; line-height: 1.62;
+      color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: auto;
+      background: transparent;
+    }
+
+    /* ============================================================
+       Rodapé
+       ============================================================ */
+    .rodape { border-top: 1px solid var(--line); background: #101010; padding-block: 34px 44px; }
+    .rodape-in { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; }
+    .rodape img { height: 20px; width: auto; opacity: .8; }
+    .rodape p { font-size: 12.5px; color: var(--fg-3); margin: 0; }
+    .rodape .sep { color: var(--line-forte); }
+
+    /* ============================================================
+       Movimento reduzido
+       ============================================================ */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= Header fixo ================= -->
+  <header class="topo">
+    <div class="shell topo-in">
+      <div class="topo-marca">
+        <img src="/logo-horizontal-verde.png" alt="Dominex" width="140" height="28">
+        <span class="topo-nome">Trilha Domiflix</span>
+      </div>
+      <nav class="topo-nav" aria-label="Seções principais">
+        <a href="#sequencia">Sequência</a>
+        <a href="#tutoriais">Tutoriais</a>
+        <a href="#resumo">Resumo</a>
+        <a href="#arte">Arte</a>
+        <a href="#capas">Prompts</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="inicio">
+
+    <!-- ================= Hero ================= -->
+    <section class="hero">
+      <div class="shell hero-in">
+        <p class="eyebrow"><span aria-hidden="true">🎬</span> Documento interno de produção</p>
+        <h1>Trilha de Tutoriais <span class="verde">— Domiflix</span></h1>
+        <p class="hero-sub">A grade completa de tutoriais em vídeo do Domiflix: uma aula longa por área do sistema, com capítulos marcados por tempo. Do zero ao sistema rodando de verdade, na ordem certa.</p>
+        <ul class="metricas" role="list">
+          <li><b>18</b> tutoriais</li>
+          <li><b>~9h35</b> de conteúdo</li>
+          <li><b>36</b> prompts de capa</li>
+          <li>versão <b>1.22.5</b></li>
+          <li>atualizado em <b>05/09/2026</b></li>
+        </ul>
+        <div class="hero-intro">
+          <p>Catálogo de <strong>tutoriais</strong> (uma aula longa e completa por área do sistema) para gravação e publicação no Domiflix, montado sobre a versão <code>1.22.5</code> do sistema.</p>
+          <p><strong>Formato</strong>: <strong>1 tutorial por área</strong>, com capítulos marcados por tempo. O aluno assiste a área inteira de uma vez e usa os capítulos pra voltar num ponto específico.</p>
+          <p><strong>Ordem da trilha</strong>: seguindo do T0 ao T17, o cliente sai do zero e chega ao sistema rodando de verdade — cada tutorial só usa o que já foi ensinado antes.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= Corpo com índice ================= -->
+    <div class="shell corpo">
+      <div class="cols">
+
+        <!-- Índice lateral (desktop) -->
+        <nav class="toc-desktop" id="toc-desktop" aria-label="Índice da trilha">
+          <p class="toc-titulo" id="tocd-t1">Os 18 tutoriais</p>
+          <ul class="toc-lista" role="list" aria-labelledby="tocd-t1">
+            <li><a class="toc-link" href="#t0"><span class="toc-cod">T0</span><span class="toc-txt">Bem-vindo à Dominex</span></a></li>
+            <li><a class="toc-link" href="#t1"><span class="toc-cod">T1</span><span class="toc-txt">Configurações e identidade da empresa</span></a></li>
+            <li><a class="toc-link" href="#t2"><span class="toc-cod">T2</span><span class="toc-txt">Usuários, cargos e permissões</span></a></li>
+            <li><a class="toc-link" href="#t3"><span class="toc-cod">T3</span><span class="toc-txt">Clientes e Equipamentos</span></a></li>
+            <li><a class="toc-link" href="#t4"><span class="toc-cod">T4</span><span class="toc-txt">Serviços, tarefas e checklists</span></a></li>
+            <li><a class="toc-link" href="#t5"><span class="toc-cod">T5</span><span class="toc-txt">Ordens de Serviço: a visão do gestor</span></a></li>
+            <li><a class="toc-link" href="#t6"><span class="toc-cod">T6</span><span class="toc-txt">Agenda, Equipes e Mapa ao Vivo</span></a></li>
+            <li><a class="toc-link" href="#t7"><span class="toc-cod">T7</span><span class="toc-txt">O técnico em campo + Área do Técnico™</span></a></li>
+            <li><a class="toc-link" href="#t8"><span class="toc-cod">T8</span><span class="toc-txt">Estoque, compras e inventário</span></a></li>
+            <li><a class="toc-link" href="#t9"><span class="toc-cod">T9</span><span class="toc-txt">Orçamentos, Precificação e Proposta</span></a></li>
+            <li><a class="toc-link" href="#t10"><span class="toc-cod">T10</span><span class="toc-txt">CRM: funil, leads e captação</span></a></li>
+            <li><a class="toc-link" href="#t11"><span class="toc-cod">T11</span><span class="toc-txt">Contratos e PMOC</span></a></li>
+            <li><a class="toc-link" href="#t12"><span class="toc-cod">T12</span><span class="toc-txt">Portal do Cliente, NPS e reputação</span></a></li>
+            <li><a class="toc-link" href="#t13"><span class="toc-cod">T13</span><span class="toc-txt">Financeiro</span></a></li>
+            <li><a class="toc-link" href="#t14"><span class="toc-cod">T14</span><span class="toc-txt">Notas Fiscais (NFS-e)</span></a></li>
+            <li><a class="toc-link" href="#t15"><span class="toc-cod">T15</span><span class="toc-txt">Funcionários, Ponto e Folha</span></a></li>
+            <li><a class="toc-link" href="#t16"><span class="toc-cod">T16</span><span class="toc-txt">Sua assinatura, plano e módulos</span></a></li>
+            <li><a class="toc-link" href="#t17"><span class="toc-cod">T17</span><span class="toc-txt">Dashboard, rotina e truques</span></a></li>
+          </ul>
+          <p class="toc-titulo" id="tocd-t2">Seções de apoio</p>
+          <ul class="toc-lista" role="list" aria-labelledby="tocd-t2">
+            <li><a class="toc-link" href="#convencoes"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Como a trilha é montada</span></a></li>
+            <li><a class="toc-link" href="#sequencia"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Sequência da trilha</span></a></li>
+            <li><a class="toc-link" href="#resumo"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Resumo da trilha</span></a></li>
+            <li><a class="toc-link" href="#arte"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Padrão de arte</span></a></li>
+            <li><a class="toc-link" href="#capas"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Prompts de capa</span></a></li>
+          </ul>
+        </nav>
+
+        <div class="conteudo">
+
+          <!-- ============ Como a trilha é montada ============ -->
+          <section class="secao" id="convencoes" data-secao>
+            <div class="secao-head">
+              <p class="secao-tag">Formato</p>
+              <h2 class="secao-titulo">Como a trilha é montada</h2>
+            </div>
+            <div class="card">
+              <ul class="lista"><li><strong>Tutorial padrão</strong>: 20 a 50 minutos, cobrindo <strong>uma área inteira</strong> do sistema (não uma tela, não um botão).</li><li><strong>Capítulos</strong>: todo tutorial tem blocos numerados com marcação de tempo, escritos na descrição do episódio no Domiflix. É isso que substitui os episódios curtos.</li><li><strong>Estrutura fixa</strong>: Abertura (30s) → Pré-requisito (15s) → Capítulos → Recap (1min) → Próximo (15s).</li><li><strong>Modelagem no Domiflix</strong>: cada tutorial é um <strong>título do tipo <code>series</code></strong> com <strong>1 temporada (&quot;Tutorial completo&quot;)</strong> e <strong>1 episódio</strong>. Isso deixa a porta aberta pra, no futuro, criar uma 2ª temporada de &quot;Aulas rápidas&quot; recortando o mesmo conteúdo sem refazer capa nem catálogo.</li></ul>
+            </div>
+          </section>
+
+          <!-- ============ Sequência ============ -->
+          <section class="secao" id="sequencia" data-secao>
+            <div class="secao-head">
+              <p class="secao-tag">Ordem de consumo</p>
+              <h2 class="secao-titulo">Sequência da trilha</h2>
+              <p class="secao-sub">Do T0 ao T17 o cliente sai do zero e chega ao sistema rodando de verdade. Cada tutorial só usa o que já foi ensinado antes.</p>
+            </div>
+            <div class="card">
+              <ol class="corrente" role="list">
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">1</span>
+            <a class="corrente-chip" href="#t0">
+              <span class="corrente-cod">T0</span>
+              <span class="corrente-nome">Bem-vindo à Dominex</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">2</span>
+            <a class="corrente-chip" href="#t1">
+              <span class="corrente-cod">T1</span>
+              <span class="corrente-nome">Configurações e identidade da empresa</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">3</span>
+            <a class="corrente-chip" href="#t2">
+              <span class="corrente-cod">T2</span>
+              <span class="corrente-nome">Usuários, cargos e permissões</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">4</span>
+            <a class="corrente-chip" href="#t3">
+              <span class="corrente-cod">T3</span>
+              <span class="corrente-nome">Clientes e Equipamentos</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">5</span>
+            <a class="corrente-chip" href="#t4">
+              <span class="corrente-cod">T4</span>
+              <span class="corrente-nome">Serviços, tarefas e checklists</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">6</span>
+            <a class="corrente-chip" href="#t5">
+              <span class="corrente-cod">T5</span>
+              <span class="corrente-nome">Ordens de Serviço: a visão do gestor</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">7</span>
+            <a class="corrente-chip" href="#t6">
+              <span class="corrente-cod">T6</span>
+              <span class="corrente-nome">Agenda, Equipes e Mapa ao Vivo</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">8</span>
+            <a class="corrente-chip" href="#t7">
+              <span class="corrente-cod">T7</span>
+              <span class="corrente-nome">O técnico em campo + Área do Técnico™</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">9</span>
+            <a class="corrente-chip" href="#t8">
+              <span class="corrente-cod">T8</span>
+              <span class="corrente-nome">Estoque, compras e inventário</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">10</span>
+            <a class="corrente-chip" href="#t9">
+              <span class="corrente-cod">T9</span>
+              <span class="corrente-nome">Orçamentos, Precificação e Proposta</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">11</span>
+            <a class="corrente-chip" href="#t10">
+              <span class="corrente-cod">T10</span>
+              <span class="corrente-nome">CRM: funil, leads e captação</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">12</span>
+            <a class="corrente-chip" href="#t11">
+              <span class="corrente-cod">T11</span>
+              <span class="corrente-nome">Contratos e PMOC</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">13</span>
+            <a class="corrente-chip" href="#t12">
+              <span class="corrente-cod">T12</span>
+              <span class="corrente-nome">Portal do Cliente, NPS e reputação</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">14</span>
+            <a class="corrente-chip" href="#t13">
+              <span class="corrente-cod">T13</span>
+              <span class="corrente-nome">Financeiro</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">15</span>
+            <a class="corrente-chip" href="#t14">
+              <span class="corrente-cod">T14</span>
+              <span class="corrente-nome">Notas Fiscais (NFS-e)</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">16</span>
+            <a class="corrente-chip" href="#t15">
+              <span class="corrente-cod">T15</span>
+              <span class="corrente-nome">Funcionários, Ponto e Folha</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">17</span>
+            <a class="corrente-chip" href="#t16">
+              <span class="corrente-cod">T16</span>
+              <span class="corrente-nome">Sua assinatura, plano e módulos</span>
+            </a>
+          </li>
+          <li class="corrente-item">
+            <span class="corrente-passo" aria-hidden="true">18</span>
+            <a class="corrente-chip" href="#t17">
+              <span class="corrente-cod">T17</span>
+              <span class="corrente-nome">Dashboard, rotina e truques</span>
+            </a>
+          </li>
+              </ol>
+            </div>
+            <div class="callout"><strong>Por que essa ordem</strong>: não dá pra abrir OS sem cliente, equipamento e tipo de serviço. Não dá pra montar orçamento sem catálogo de serviços. Contrato/PMOC depende de cliente + equipamento + checklist. Financeiro só faz sentido depois que existem OS e orçamentos gerando dinheiro. NFS-e depende de configuração fiscal e de ter o que faturar. O cliente pode pular o que não usa, mas vendo na ordem nada citado fica em aberto.</div>
+            <div class="callout"><strong>Corte prático pra quem tem pressa</strong>: T0 → T1 → T3 → T4 → T5 → T7. Com esses seis a empresa já está atendendo cliente e fechando OS.</div>
+            <div class="callout">---</div>
+          </section>
+
+          <!-- ============ Os 18 tutoriais ============ -->
+          <section class="secao" id="tutoriais">
+            <div class="secao-head">
+              <p class="secao-tag">A grade</p>
+              <h2 class="secao-titulo">Os 18 tutoriais</h2>
+              <p class="secao-sub">Cada tutorial é um título do tipo <em>series</em> no Domiflix, com uma temporada ("Tutorial completo") e um episódio. Os capítulos abaixo vão na descrição do episódio.</p>
+            </div>
+        <section class="tutorial" id="t0" data-tutorial="T0" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T0</span><span class="tutorial-insp">Inspiração visual: <em>Interestelar</em></span></p>
+            <h2 class="tutorial-titulo">Bem-vindo à Dominex</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~20min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: nenhum</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 7 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">A visão de cima. O aluno entende como a Dominex é organizada por dentro, aprende o vocabulário do sistema (OS, contrato, PMOC, módulo, cargo) e descobre onde fica cada coisa antes de mergulhar em qualquer tela.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">O que a Dominex resolve — do chamado do cliente até o dinheiro na conta</span></li>
+              <li class="cap"><span class="cap-ts">02:00</span><span class="cap-txt">Tour pelo menu: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM, Financeiro</span></li>
+              <li class="cap"><span class="cap-ts">06:00</span><span class="cap-txt">Sidebar × Barra superior × menu do celular — a mesma coisa em 3 lugares</span></li>
+              <li class="cap"><span class="cap-ts">08:00</span><span class="cap-txt">Vocabulário: Ordem de Serviço, Tarefa, Contrato, PMOC, Checklist, Cargo, Módulo</span></li>
+              <li class="cap"><span class="cap-ts">11:00</span><span class="cap-txt">O que é módulo contratado e por que uma tela pode não aparecer pra você</span></li>
+              <li class="cap"><span class="cap-ts">14:00</span><span class="cap-txt">Os 3 públicos do sistema: gestor no escritório, técnico no celular, cliente no link público</span></li>
+              <li class="cap"><span class="cap-ts">17:00</span><span class="cap-txt">Onde pedir ajuda e como usar o Domiflix (minha lista, continuar assistindo, perfil)</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai entender como a Dominex funciona por dentro e descobrir onde fica cada coisa.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Você conheceu o sistema em alto nível, aprendeu o vocabulário e já sabe por onde começar.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: deixar a empresa configurada.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t1" data-tutorial="T1" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T1</span><span class="tutorial-insp">Inspiração visual: <em>Homem de Ferro</em></span></p>
+            <h2 class="tutorial-titulo">Configurações e identidade da empresa</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T0</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 9 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Deixar o sistema com a cara da empresa e pronto pra uso real: logo, dados cadastrais, endereço, idioma/moeda/fuso, preferências de uso, tema e integrações.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Aba <strong>Empresa</strong>: logo, dados cadastrais, contato e endereço (CEP preenche sozinho)</span></li>
+              <li class="cap"><span class="cap-ts">05:00</span><span class="cap-txt">O switch &quot;mostrar em documentos&quot; campo a campo — o que sai no PDF e no relatório</span></li>
+              <li class="cap"><span class="cap-ts">08:00</span><span class="cap-txt">🔒 <strong>White Label</strong>: logo full + ícone, cor primária, estilo do QR Code e cabeçalho do relatório com preview ao vivo</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt">Aba <strong>Regional</strong>: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC</span></li>
+              <li class="cap"><span class="cap-ts">16:00</span><span class="cap-txt">Aba <strong>Usabilidade</strong>: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda</span></li>
+              <li class="cap"><span class="cap-ts">21:00</span><span class="cap-txt">Card <strong>Origens</strong> — o catálogo compartilhado entre Clientes e CRM</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt">Aba <strong>Atalhos</strong> e aba <strong>Aparência</strong> (sidebar × barra superior, tema claro/escuro)</span></li>
+              <li class="cap"><span class="cap-ts">26:00</span><span class="cap-txt">Aba <strong>Integrações</strong>: Recebimentos (Asaas) e o estado atual do WhatsApp</span></li>
+              <li class="cap"><span class="cap-ts">28:00</span><span class="cap-txt">Documentos legais e a <strong>Zona de Perigo</strong> (Zerar Sistema) — o que ela apaga</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai deixar a Dominex com a cara da sua empresa.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Empresa cadastrada, documentos com sua marca, preferências ajustadas e integrações no lugar.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: quem entra no sistema e o que cada um pode fazer.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t2" data-tutorial="T2" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T2</span><span class="tutorial-insp">Inspiração visual: <em>Missão Impossível</em></span></p>
+            <h2 class="tutorial-titulo">Usuários, cargos e permissões</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~25min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T1</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 8 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Onde fica: Configurações → <strong>Usuários e Permissões</strong></span></li>
+              <li class="cap"><span class="cap-ts">02:00</span><span class="cap-txt">Criar usuário: dados, foto, papel, senha e vínculo com o funcionário do RH</span></li>
+              <li class="cap"><span class="cap-ts">06:00</span><span class="cap-txt">O <strong>editor de permissões</strong> novo: busca, tela por tela, ações dentro de cada tela</span></li>
+              <li class="cap"><span class="cap-ts">11:00</span><span class="cap-txt">Chip <strong>Acesso Total</strong> e por que ele não quebra quando a gente lança tela nova</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt">Aba <strong>Cargos</strong>: criar preset, duplicar, aplicar num usuário e o que acontece ao desmarcar uma permissão</span></li>
+              <li class="cap"><span class="cap-ts">17:00</span><span class="cap-txt">Caso real: técnico que só usa o link de campo — ligar a ação-filha sem ligar a tela-mãe</span></li>
+              <li class="cap"><span class="cap-ts">20:00</span><span class="cap-txt">Ativar × desativar × excluir usuário, e a vaga do plano</span></li>
+              <li class="cap"><span class="cap-ts">22:00</span><span class="cap-txt">Limite de usuários do plano e como contratar mais</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai colocar sua equipe no sistema dando pra cada um exatamente o acesso certo.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Usuários criados, cargos montados e ninguém enxergando o que não deve.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: seus clientes e os equipamentos deles.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t3" data-tutorial="T3" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T3</span><span class="tutorial-insp">Inspiração visual: <em>Sherlock</em></span></p>
+            <h2 class="tutorial-titulo">Clientes e Equipamentos</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T2</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 10 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">A base de tudo. Cliente e equipamento são o alicerce de OS, orçamento, contrato e PMOC.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>Clientes</strong>: grade × lista, busca por nome/documento/razão social</span></li>
+              <li class="cap"><span class="cap-ts">03:00</span><span class="cap-txt">Cadastro — aba <strong>Contato</strong> (foto, tipo PF/PJ, telefones, e-mail, origem)</span></li>
+              <li class="cap"><span class="cap-ts">07:00</span><span class="cap-txt">Cadastro — aba <strong>Fiscal</strong>: buscar por CNPJ e o endereço se preencher sozinho</span></li>
+              <li class="cap"><span class="cap-ts">11:00</span><span class="cap-txt"><strong>Origens de cliente</strong>: montar o catálogo de &quot;de onde veio esse cliente&quot;</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt"><strong>Formulários de captação</strong>: gerar o link público de cadastro pra colocar na bio</span></li>
+              <li class="cap"><span class="cap-ts">16:00</span><span class="cap-txt">Detalhe do cliente: Geral, Equipamentos, Histórico, Tarefas, Contratos, Financeiro</span></li>
+              <li class="cap"><span class="cap-ts">21:00</span><span class="cap-txt">Contatos e &quot;Responsável no Local&quot; — WhatsApp direto de dentro do sistema</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt">Tela <strong>Equipamentos</strong>: cadastro, categorias e criar o cliente na hora, só com o nome</span></li>
+              <li class="cap"><span class="cap-ts">27:00</span><span class="cap-txt"><strong>Campos customizados</strong> de equipamento: criar, ordenar, marcar obrigatório e visível</span></li>
+              <li class="cap"><span class="cap-ts">30:00</span><span class="cap-txt">Detalhe do equipamento: <strong>QR Code</strong>, etiqueta configurável, anexos e histórico de OS</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai montar a base de clientes e equipamentos que sustenta o resto do sistema.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Clientes cadastrados com dado fiscal certo, equipamentos etiquetados com QR e prontos pra receber OS.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: o catálogo de serviços e os checklists.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t4" data-tutorial="T4" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T4</span><span class="tutorial-insp">Inspiração visual: <em>Ratatouille</em></span></p>
+            <h2 class="tutorial-titulo">Serviços, tarefas e checklists</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T3</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 11 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">O <em>mise en place</em> do sistema. Aqui você monta o cardápio de serviços da empresa e os formulários que o técnico vai preencher em campo.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Onde fica: menu <strong>Serviços</strong> (<code>/servicos</code>) e as 3 abas</span></li>
+              <li class="cap"><span class="cap-ts">01:30</span><span class="cap-txt">Aba <strong>Tipos de Serviço</strong>: nome, cor, categoria, prefixo de numeração da OS</span></li>
+              <li class="cap"><span class="cap-ts">05:00</span><span class="cap-txt">O switch &quot;exige equipamento&quot; e o efeito dele lá na criação da OS</span></li>
+              <li class="cap"><span class="cap-ts">07:00</span><span class="cap-txt">Campos fiscais do serviço (código de serviço, NBS, cTribMun, alíquota ISS, item LC116) — por que preencher agora poupa dor no T14</span></li>
+              <li class="cap"><span class="cap-ts">11:00</span><span class="cap-txt"><strong>Preço padrão</strong> do serviço e como ele auto-preenche o orçamento</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt">Aba <strong>Tipos de Tarefa</strong> — as categorias da &quot;Nova Tarefa&quot; da Agenda</span></li>
+              <li class="cap"><span class="cap-ts">15:00</span><span class="cap-txt">Aba <strong>Checklists</strong>: criar template do zero × importar do <strong>catálogo de modelos prontos</strong></span></li>
+              <li class="cap"><span class="cap-ts">19:00</span><span class="cap-txt">Editor de checklist: sim/não, conformidade, texto, número, medição PMOC, seleção, foto, assinatura</span></li>
+              <li class="cap"><span class="cap-ts">24:00</span><span class="cap-txt">Combinar tipos na mesma pergunta (ex.: sim/não <strong>+</strong> foto) e exigir câmera</span></li>
+              <li class="cap"><span class="cap-ts">26:00</span><span class="cap-txt">🔒 Pergunta de <strong>vídeo</strong> (módulo pago, com limite de perguntas)</span></li>
+              <li class="cap"><span class="cap-ts">28:00</span><span class="cap-txt">Vincular checklist a tipos de serviço e desativar sem perder histórico</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai montar o catálogo de serviços e os checklists que o técnico preenche em campo.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Tipos de serviço com preço e dado fiscal, e checklists prontos pra virar relatório.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: a Ordem de Serviço, o coração da operação.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t5" data-tutorial="T5" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T5</span><span class="tutorial-insp">Inspiração visual: <em>Mad Max: Estrada da Fúria</em></span></p>
+            <h2 class="tutorial-titulo">Ordens de Serviço: a visão do gestor</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~45min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T4</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 13 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">O coração da operação. Abrir, distribuir, acompanhar e fechar OS — tudo do lado de dentro do escritório.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>Ordens de Serviço</strong>: kanban × lista e os 4 indicadores do topo</span></li>
+              <li class="cap"><span class="cap-ts">04:00</span><span class="cap-txt">Criar OS — <strong>Etapa 1</strong>: cliente cadastrado × cliente avulso, e o tipo de serviço</span></li>
+              <li class="cap"><span class="cap-ts">09:00</span><span class="cap-txt">Criar OS — <strong>Etapa 2</strong>: equipamentos e checklists (e quando essa etapa nem aparece)</span></li>
+              <li class="cap"><span class="cap-ts">14:00</span><span class="cap-txt">Criar OS — <strong>Etapa 3</strong>: técnico e/ou equipe, data, duração, descrição</span></li>
+              <li class="cap"><span class="cap-ts">19:00</span><span class="cap-txt"><strong>Recorrência</strong> da OS (diária, semanal, quinzenal, mensal, anual, personalizada)</span></li>
+              <li class="cap"><span class="cap-ts">22:00</span><span class="cap-txt">Endereço de serviço diferente do endereço do cliente</span></li>
+              <li class="cap"><span class="cap-ts">24:00</span><span class="cap-txt">O toggle &quot;gerar Pesquisa de Satisfação ao finalizar&quot;</span></li>
+              <li class="cap"><span class="cap-ts">26:00</span><span class="cap-txt">Mover status arrastando, e o &quot;+&quot; no topo da coluna que já nasce com aquele status</span></li>
+              <li class="cap"><span class="cap-ts">29:00</span><span class="cap-txt"><strong>Configurar Status</strong>: criar status próprio, cor e ordem</span></li>
+              <li class="cap"><span class="cap-ts">32:00</span><span class="cap-txt">Filtros, busca e por que a busca ignora o filtro de período</span></li>
+              <li class="cap"><span class="cap-ts">35:00</span><span class="cap-txt">Abrir a OS no app do técnico sendo gestor, e <strong>compartilhar o link</strong> com o cliente</span></li>
+              <li class="cap"><span class="cap-ts">38:00</span><span class="cap-txt">Aba <strong>Relatório</strong>: leitura do dashboard de OS</span></li>
+              <li class="cap"><span class="cap-ts">41:00</span><span class="cap-txt">Aba <strong>NPS</strong>: promotores, neutros, detratores e o comentário aberto do detrator</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai abrir, distribuir e acompanhar Ordem de Serviço do início ao fim.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;OS criada, técnico avisado, status controlado e cliente com link pra acompanhar.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: agenda, equipes e mapa ao vivo.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t6" data-tutorial="T6" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T6</span><span class="tutorial-insp">Inspiração visual: <em>Top Gun: Maverick</em></span></p>
+            <h2 class="tutorial-titulo">Agenda, Equipes e Mapa ao Vivo</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T5</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 10 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Onde a operação vira rota. Quem vai, quando vai, e onde está agora.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>Agenda</strong>: visão Dia, Semana e Mês (e por que o celular abre em Dia)</span></li>
+              <li class="cap"><span class="cap-ts">03:00</span><span class="cap-txt">Criar pelo &quot;+&quot;: <strong>Nova OS</strong> × <strong>Nova Tarefa</strong> — a diferença que mais confunde</span></li>
+              <li class="cap"><span class="cap-ts">07:00</span><span class="cap-txt">Reagendar arrastando no desktop e com toque-e-segure no celular</span></li>
+              <li class="cap"><span class="cap-ts">10:00</span><span class="cap-txt">Legenda de cores por tipo de serviço e a estrela de feriado</span></li>
+              <li class="cap"><span class="cap-ts">12:00</span><span class="cap-txt"><strong>Ordens Pausadas</strong>: o diálogo de retomada rápida</span></li>
+              <li class="cap"><span class="cap-ts">14:00</span><span class="cap-txt">A OS retomada aparecendo em duas datas (badge &quot;Retomada&quot;)</span></li>
+              <li class="cap"><span class="cap-ts">16:00</span><span class="cap-txt"><strong>Equipes</strong>: onde ficam de verdade (Funcionários → aba Equipes), criar time com cor, ícone, foto e membros</span></li>
+              <li class="cap"><span class="cap-ts">20:00</span><span class="cap-txt">Escalar equipe inteira numa OS em vez de técnico individual</span></li>
+              <li class="cap"><span class="cap-ts">22:00</span><span class="cap-txt"><strong>Mapa e Rastreamento</strong> — aba Mapa: as cores dos marcadores e o que cada uma significa</span></li>
+              <li class="cap"><span class="cap-ts">26:00</span><span class="cap-txt">Aba <strong>Histórico</strong>: eventos de localização por técnico e por data</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai organizar a semana da equipe e acompanhar o time no mapa em tempo real.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Agenda montada, equipes formadas e visibilidade de onde cada técnico está.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: o lado do técnico, no celular, em campo.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t7" data-tutorial="T7" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T7</span><span class="tutorial-insp">Inspiração visual: <em>Perdido em Marte</em></span></p>
+            <h2 class="tutorial-titulo">O técnico em campo + Área do Técnico™</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~40min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T6</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 12 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">O tutorial que o técnico assiste. Tudo o que acontece no celular, do &quot;estou a caminho&quot; até a assinatura do cliente — mais a caixa de ferramentas de cálculo.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Abrindo a OS no celular: o link, o endereço amigável e o que o técnico vê primeiro</span></li>
+              <li class="cap"><span class="cap-ts">03:00</span><span class="cap-txt"><strong>A Caminho</strong> → mapa em tela cheia com botão pra Waze e Google Maps</span></li>
+              <li class="cap"><span class="cap-ts">06:00</span><span class="cap-txt"><strong>Check-in</strong>: a OS vira &quot;Em Andamento&quot; e a localização é registrada</span></li>
+              <li class="cap"><span class="cap-ts">09:00</span><span class="cap-txt">Preenchendo checklist por equipamento: sim/não, conformidade, medição, seleção, número</span></li>
+              <li class="cap"><span class="cap-ts">15:00</span><span class="cap-txt"><strong>Fotos</strong>: Tirar Foto × Galeria, e quando só a câmera é permitida</span></li>
+              <li class="cap"><span class="cap-ts">18:00</span><span class="cap-txt">🔒 Resposta em <strong>vídeo</strong></span></li>
+              <li class="cap"><span class="cap-ts">20:00</span><span class="cap-txt"><strong>Pausar</strong> e retomar a OS depois — e como isso aparece na agenda do gestor</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt"><strong>Assinatura</strong> do técnico e do cliente</span></li>
+              <li class="cap"><span class="cap-ts">26:00</span><span class="cap-txt"><strong>Finalizar</strong> (e o &quot;finalizar parcialmente&quot; em contrato PMOC)</span></li>
+              <li class="cap"><span class="cap-ts">29:00</span><span class="cap-txt"><strong>Área do Técnico™</strong>: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)</span></li>
+              <li class="cap"><span class="cap-ts">35:00</span><span class="cap-txt">Usar a calculadora <strong>de dentro da OS</strong>, sem sair da tela</span></li>
+              <li class="cap"><span class="cap-ts">37:00</span><span class="cap-txt">As ferramentas com cadeado: o que é do seu segmento e o que é de outro</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai executar uma OS do começo ao fim pelo celular, como se estivesse na casa do cliente.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Você saiu a caminho, fez check-in, preencheu o checklist com foto, colheu assinatura e finalizou.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: estoque, compras e inventário.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t8" data-tutorial="T8" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T8</span><span class="tutorial-insp">Inspiração visual: <em>Duna</em></span></p>
+            <h2 class="tutorial-titulo">Estoque, compras e inventário</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T7</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 10 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Controlar o que entra, o que sai e o que sumiu. Vale pra quem tem depósito e pra quem carrega peça na van.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>Estoque</strong>: as 5 abas e pra que serve cada uma</span></li>
+              <li class="cap"><span class="cap-ts">02:00</span><span class="cap-txt">Cadastrar material: categoria/grupo, unidade, <strong>estoque mínimo</strong> e custo</span></li>
+              <li class="cap"><span class="cap-ts">06:00</span><span class="cap-txt"><strong>Depósitos/locais</strong>: criar, definir o que existe em cada um e transferir entre eles</span></li>
+              <li class="cap"><span class="cap-ts">11:00</span><span class="cap-txt">Restrição de acesso por depósito — quem vê o quê</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt">Aba <strong>Histórico (Kardex)</strong>: lendo a movimentação item a item</span></li>
+              <li class="cap"><span class="cap-ts">16:00</span><span class="cap-txt">Aba <strong>Compras</strong>: abrir compra, cadastrar fornecedor</span></li>
+              <li class="cap"><span class="cap-ts">19:00</span><span class="cap-txt"><strong>Cotação</strong> com vários fornecedores e escolha da vencedora</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt"><strong>Importar XML da NF-e</strong> e a compra montada sozinha</span></li>
+              <li class="cap"><span class="cap-ts">26:00</span><span class="cap-txt">Aba <strong>Inventários</strong>: contagem física passo a passo e o ajuste gerado no fechamento</span></li>
+              <li class="cap"><span class="cap-ts">31:00</span><span class="cap-txt">Aba <strong>Posição</strong>: saldo do estoque numa data passada</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai colocar seu estoque sob controle, do cadastro do material até a contagem física.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Materiais cadastrados, depósitos organizados, compra cotada e inventário fechado.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: orçamento, precificação e proposta.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t9" data-tutorial="T9" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T9</span><span class="tutorial-insp">Inspiração visual: <em>Mad Men</em></span></p>
+            <h2 class="tutorial-titulo">Orçamentos, Precificação e Proposta</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~45min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T8</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 14 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Onde o serviço vira preço e o preço vira documento bonito na mão do cliente.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>Orçamentos</strong>: os indicadores (em aberto, taxa de conversão, ticket médio)</span></li>
+              <li class="cap"><span class="cap-ts">03:00</span><span class="cap-txt">Wizard — <strong>Etapa 1 Destinatário</strong>: cliente cadastrado × prospect avulso</span></li>
+              <li class="cap"><span class="cap-ts">07:00</span><span class="cap-txt"><strong>Etapa 2 Serviços</strong>: puxando do catálogo e o preço padrão entrando sozinho</span></li>
+              <li class="cap"><span class="cap-ts">11:00</span><span class="cap-txt"><strong>Etapa 3 Materiais</strong>: itens de estoque no orçamento</span></li>
+              <li class="cap"><span class="cap-ts">14:00</span><span class="cap-txt"><strong>Etapa 4 Desconto</strong>: valor fixo × percentual, e o custo de brindes</span></li>
+              <li class="cap"><span class="cap-ts">17:00</span><span class="cap-txt"><strong>Etapa 5 Revisão</strong>: escolher template, validade, observações e termos</span></li>
+              <li class="cap"><span class="cap-ts">20:00</span><span class="cap-txt">🔒 Aba <strong>Custos do Serviço</strong>: mão de obra e materiais por tipo de serviço</span></li>
+              <li class="cap"><span class="cap-ts">24:00</span><span class="cap-txt">🔒 Aba <strong>Custos Globais</strong>: veículos, ferramentas, brindes, EPI</span></li>
+              <li class="cap"><span class="cap-ts">27:00</span><span class="cap-txt">🔒 Aba <strong>Precificação (BDI)</strong>: impostos, administração, lucro, custo por km, desconto à vista e no cartão</span></li>
+              <li class="cap"><span class="cap-ts">32:00</span><span class="cap-txt"><strong>Configurar Proposta</strong>: os 4 templates (Clean, Aurora, Prisma, Vanguarda), cores, logo e seções</span></li>
+              <li class="cap"><span class="cap-ts">36:00</span><span class="cap-txt">Copiar o link público, mandar no WhatsApp e baixar o PDF</span></li>
+              <li class="cap"><span class="cap-ts">39:00</span><span class="cap-txt">A visão do cliente em <code>/proposta/:token</code> — aprovar ou rejeitar</span></li>
+              <li class="cap"><span class="cap-ts">41:00</span><span class="cap-txt">Contador de visualizações: quantas vezes o cliente abriu e quando</span></li>
+              <li class="cap"><span class="cap-ts">43:00</span><span class="cap-txt"><strong>Aprovar</strong> e o que isso lança no financeiro de uma vez só; <strong>Converter em OS</strong></span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai montar um orçamento com preço certo e mandar uma proposta que fecha.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Orçamento montado com BDI, proposta enviada, cliente aprovou e virou OS.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: o funil de vendas.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t10" data-tutorial="T10" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T10</span><span class="tutorial-insp">Inspiração visual: <em>Suits</em></span></p>
+            <h2 class="tutorial-titulo">CRM: funil, leads e captação</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T9</li>
+              <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo CRM</strong></li>
+              <li class="meta-item"><span aria-hidden="true">▤</span> 9 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Parar de perder oportunidade em conversa de WhatsApp. Todo lead num funil visível, com dono e próximo passo.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>CRM</strong>: kanban × lista, e o empty-state &quot;criar estágios padrão&quot;</span></li>
+              <li class="cap"><span class="cap-ts">03:00</span><span class="cap-txt">Montar o <strong>funil</strong>: criar, renomear, reordenar e colorir estágios</span></li>
+              <li class="cap"><span class="cap-ts">07:00</span><span class="cap-txt">Marcar estágio como &quot;ganho&quot; e como &quot;perdido&quot; — e o que muda</span></li>
+              <li class="cap"><span class="cap-ts">09:00</span><span class="cap-txt">Criar oportunidade: título, cliente (ou criar na hora), vendedor, origem, valor, probabilidade, previsão</span></li>
+              <li class="cap"><span class="cap-ts">14:00</span><span class="cap-txt">Arrastar entre estágios e o <strong>motivo da perda</strong> obrigatório</span></li>
+              <li class="cap"><span class="cap-ts">17:00</span><span class="cap-txt">Detalhe do lead: ligar, WhatsApp, e-mail e registrar <strong>interação</strong> com próxima ação</span></li>
+              <li class="cap"><span class="cap-ts">21:00</span><span class="cap-txt">Filtros: origem, vendedor, faixa de valor, busca</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt"><strong>Webhooks de captação</strong>: criar, vincular a uma origem, copiar a URL e testar</span></li>
+              <li class="cap"><span class="cap-ts">27:00</span><span class="cap-txt">Rotina sugerida: revisão diária do funil em 5 minutos</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai montar seu funil de vendas e parar de perder oportunidade.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Funil montado, leads entrando, interações registradas e nada mais se perdendo.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: contratos e PMOC.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t11" data-tutorial="T11" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T11</span><span class="tutorial-insp">Inspiração visual: <em>Peaky Blinders</em></span></p>
+            <h2 class="tutorial-titulo">Contratos e PMOC</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~45min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T10</li>
+              <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Gestão de Contratos e PMOC</strong></li>
+              <li class="meta-item"><span aria-hidden="true">▤</span> 13 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Receita recorrente e conformidade legal no mesmo lugar. É o tutorial mais denso da trilha.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Onde fica o PMOC hoje: <strong>não tem menu próprio</strong>, é um tipo de contrato</span></li>
+              <li class="cap"><span class="cap-ts">02:00</span><span class="cap-txt">Tela <strong>Contratos</strong>: indicadores, filtros de status, saúde e tipo</span></li>
+              <li class="cap"><span class="cap-ts">05:00</span><span class="cap-txt">Wizard do contrato <strong>comum</strong> (5 etapas) × wizard <strong>PMOC</strong> (6 etapas)</span></li>
+              <li class="cap"><span class="cap-ts">09:00</span><span class="cap-txt">Etapa <strong>Unidade</strong> (só PMOC): ambientes e equipamentos por ambiente</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt">Etapa <strong>Frequência</strong>: mensal, bimestral, trimestral, semestral, anual, ou por dias</span></li>
+              <li class="cap"><span class="cap-ts">17:00</span><span class="cap-txt">Etapa <strong>Equipe</strong> e a revisão final — e as OS geradas de uma vez pro horizonte inteiro</span></li>
+              <li class="cap"><span class="cap-ts">21:00</span><span class="cap-txt">Detalhe do contrato: as abas de contrato comum × as abas extras de PMOC</span></li>
+              <li class="cap"><span class="cap-ts">24:00</span><span class="cap-txt">Aba <strong>Cronograma</strong> (PMOC): verde/laranja/vermelho e o PDF anual</span></li>
+              <li class="cap"><span class="cap-ts">27:00</span><span class="cap-txt">Aba <strong>Documentos</strong>: TRT, Certificado, Dossiê e Planilha — gerar, assinar e baixar</span></li>
+              <li class="cap"><span class="cap-ts">32:00</span><span class="cap-txt"><strong>Responsáveis Técnicos</strong>: cadastro, CFT/CREA, assinatura e carimbo (Configurações de Contrato)</span></li>
+              <li class="cap"><span class="cap-ts">36:00</span><span class="cap-txt">Aba <strong>Financeiro</strong> do contrato: cobrança única ou parcelada, marcar paga, aplicar em massa</span></li>
+              <li class="cap"><span class="cap-ts">40:00</span><span class="cap-txt"><strong>Portal do Contrato/PMOC</strong>: link e QR Code pro cliente</span></li>
+              <li class="cap"><span class="cap-ts">42:00</span><span class="cap-txt"><strong>Renovar</strong> (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai montar contrato recorrente e deixar o PMOC em conformidade com a lei.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Contrato criado, visitas programadas, documentos assinados e cliente com portal próprio.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: o portal do cliente e a sua reputação.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t12" data-tutorial="T12" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T12</span><span class="tutorial-insp">Inspiração visual: <em>Black Mirror</em></span></p>
+            <h2 class="tutorial-titulo">Portal do Cliente, NPS e reputação</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~25min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T11</li>
+              <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Portal do Cliente</strong> (para o portal)</li>
+              <li class="meta-item"><span aria-hidden="true">▤</span> 9 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Transformar serviço bem feito em prova social. O cliente acompanha, avalia e, se gostou, avalia no Google.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">O Portal do Cliente <strong>já nasce criado</strong> pra todo cliente — só falta torná-lo público</span></li>
+              <li class="cap"><span class="cap-ts">03:00</span><span class="cap-txt">Copiar o link, ligar o switch &quot;Portal público&quot; e testar como o cliente vê</span></li>
+              <li class="cap"><span class="cap-ts">06:00</span><span class="cap-txt">O que o cliente enxerga: OS, equipamentos, contratos e cobranças</span></li>
+              <li class="cap"><span class="cap-ts">10:00</span><span class="cap-txt">Cliente abrindo <strong>chamado</strong> pelo portal — e onde isso cai pra você (aba Chamados)</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt">O <strong>QR Code do equipamento</strong> levando direto pro portal filtrado naquele aparelho</span></li>
+              <li class="cap"><span class="cap-ts">15:00</span><span class="cap-txt">A <strong>avaliação (NPS)</strong> que aparece pro cliente ao fim da OS: nota, estrelas por critério, comentário</span></li>
+              <li class="cap"><span class="cap-ts">18:00</span><span class="cap-txt">Configurar os <strong>critérios de estrela</strong> (nome, cor, ordem)</span></li>
+              <li class="cap"><span class="cap-ts">20:00</span><span class="cap-txt">Nota mínima + <strong>convite pra avaliar no Google</strong>: colando o link do Google Maps</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt">Lendo o painel de NPS e o que fazer com um detrator</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai abrir o sistema pro seu cliente e transformar serviço bom em avaliação boa.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Portal ligado, cliente acompanhando, avaliação chegando e review no Google acontecendo.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: o financeiro.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t13" data-tutorial="T13" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T13</span><span class="tutorial-insp">Inspiração visual: <em>Ozark</em></span></p>
+            <h2 class="tutorial-titulo">Financeiro</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~50min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T12</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 14 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">O tutorial mais longo, e o que mais evita prejuízo. Dinheiro entrando, saindo, no cartão e no resultado.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Os 3 endereços do menu Financeiro e o que cada um responde</span></li>
+              <li class="cap"><span class="cap-ts">02:00</span><span class="cap-txt"><strong>Movimentações</strong>: criar a primeira conta bancária/caixa</span></li>
+              <li class="cap"><span class="cap-ts">06:00</span><span class="cap-txt">Lançar receita e despesa, marcar como pago, editar e excluir</span></li>
+              <li class="cap"><span class="cap-ts">10:00</span><span class="cap-txt">Extrato com &quot;saldo após&quot; e o ajuste manual de saldo</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt"><strong>Transferência entre contas</strong> — e por que ela nunca é receita nem despesa</span></li>
+              <li class="cap"><span class="cap-ts">16:00</span><span class="cap-txt">Cadastrar <strong>cartão de crédito</strong>: fechamento, vencimento e limite</span></li>
+              <li class="cap"><span class="cap-ts">19:00</span><span class="cap-txt">Compra <strong>parcelada</strong> no cartão: a prévia parcela a parcela e o mês de cada fatura</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt"><strong>Pagar a fatura</strong>: integral × parcial, e o limite voltando</span></li>
+              <li class="cap"><span class="cap-ts">27:00</span><span class="cap-txt"><strong>Visão Geral</strong>: cards de saldo, gráfico de fluxo de caixa e pizza por categoria</span></li>
+              <li class="cap"><span class="cap-ts">31:00</span><span class="cap-txt"><strong>Categorias</strong>: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe</span></li>
+              <li class="cap"><span class="cap-ts">35:00</span><span class="cap-txt">🔒 <strong>Contas a Pagar/Receber</strong>: lançar com <strong>recorrência</strong>, dar baixa, recebimento parcial</span></li>
+              <li class="cap"><span class="cap-ts">41:00</span><span class="cap-txt">🔒 <strong>DRE</strong>: o botão <strong>Caixa × Competência</strong> e o que muda no número</span></li>
+              <li class="cap"><span class="cap-ts">45:00</span><span class="cap-txt">O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura</span></li>
+              <li class="cap"><span class="cap-ts">48:00</span><span class="cap-txt">Exportar CSV e gerar o PDF da DRE</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai colocar o dinheiro da empresa dentro do sistema e enxergar o resultado de verdade.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Contas cadastradas, cartão sob controle, contas a pagar organizadas e DRE lida do jeito certo.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: nota fiscal de serviço.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t14" data-tutorial="T14" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T14</span><span class="tutorial-insp">Inspiração visual: <em>Better Call Saul</em></span></p>
+            <h2 class="tutorial-titulo">Notas Fiscais (NFS-e)</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T13</li>
+              <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Emissão de Notas Fiscais</strong></li>
+              <li class="meta-item"><span aria-hidden="true">▤</span> 10 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Do certificado digital até a nota autorizada com a prefeitura. Passo delicado, feito devagar.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">O que é NFS-e e por que a configuração vem antes de tudo</span></li>
+              <li class="cap"><span class="cap-ts">02:00</span><span class="cap-txt">Abrindo <strong>Configurações</strong> (é um modal, não outra tela) — passo <strong>Empresa</strong></span></li>
+              <li class="cap"><span class="cap-ts">05:00</span><span class="cap-txt">Passo <strong>Certificado</strong>: subindo o A1 (.pfx), senha e o consentimento</span></li>
+              <li class="cap"><span class="cap-ts">09:00</span><span class="cap-txt">Passo <strong>Impostos</strong>: regime tributário, inscrição municipal, município (IBGE) e alíquota do ISS</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt">Passo <strong>Serviços</strong>: código de serviço padrão e NBS</span></li>
+              <li class="cap"><span class="cap-ts">15:00</span><span class="cap-txt">A <strong>cota mensal</strong> de emissão e onde ela aparece</span></li>
+              <li class="cap"><span class="cap-ts">17:00</span><span class="cap-txt">Emitir nota — stepper de 4 passos: Pessoas → Serviço → Valores → Emitir</span></li>
+              <li class="cap"><span class="cap-ts">22:00</span><span class="cap-txt">O caso do <strong>Simples Nacional</strong>: o percentual que precisa ser preenchido</span></li>
+              <li class="cap"><span class="cap-ts">24:00</span><span class="cap-txt">Nota autorizada: número, protocolo, chave de acesso; baixar <strong>PDF (DANFSe)</strong> e <strong>XML</strong></span></li>
+              <li class="cap"><span class="cap-ts">27:00</span><span class="cap-txt"><strong>Cancelar</strong> nota com motivo, e reemitir depois (número novo)</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai configurar a parte fiscal e emitir sua primeira nota de serviço.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Certificado no lugar, impostos configurados, nota emitida e PDF na mão do cliente.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: sua equipe, o ponto e a folha.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t15" data-tutorial="T15" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T15</span><span class="tutorial-insp">Inspiração visual: <em>The Office</em></span></p>
+            <h2 class="tutorial-titulo">Funcionários, Ponto e Folha</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T14</li>
+              <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Funcionários / RH</strong></li>
+              <li class="meta-item"><span aria-hidden="true">▤</span> 11 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Time cadastrado, ponto batendo e folha caindo no financeiro sem planilha paralela.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>Funcionários</strong> e suas 5 abas</span></li>
+              <li class="cap"><span class="cap-ts">02:00</span><span class="cap-txt">Cadastro: dados, foto, chave PIX, admissão</span></li>
+              <li class="cap"><span class="cap-ts">06:00</span><span class="cap-txt">Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)</span></li>
+              <li class="cap"><span class="cap-ts">10:00</span><span class="cap-txt">Configuração de pagamento: frequência e dia do mês</span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt"><strong>Vincular acesso ao sistema</strong>: criando o login do funcionário</span></li>
+              <li class="cap"><span class="cap-ts">16:00</span><span class="cap-txt"><strong>Vale, falta e bônus</strong> — o que vira despesa na hora e o que só entra na folha</span></li>
+              <li class="cap"><span class="cap-ts">20:00</span><span class="cap-txt"><strong>Pagar funcionário</strong>: modo informal × CLT (com holerite) e o desconto do vale</span></li>
+              <li class="cap"><span class="cap-ts">24:00</span><span class="cap-txt"><strong>Ponto</strong>: gerar o link público do funcionário e bater ponto pelo celular</span></li>
+              <li class="cap"><span class="cap-ts">28:00</span><span class="cap-txt">Aba <strong>Ponto</strong> do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)</span></li>
+              <li class="cap"><span class="cap-ts">31:00</span><span class="cap-txt">A <strong>folha</strong> aparecendo sozinha em Contas a Pagar e sendo quitada de lá</span></li>
+              <li class="cap"><span class="cap-ts">33:00</span><span class="cap-txt">Abas <strong>Comportamental (DISC)</strong> e <strong>Organograma</strong></span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai cadastrar sua equipe, ligar o ponto e fechar a folha dentro do sistema.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Funcionários cadastrados, ponto batendo com foto e localização, folha caindo no financeiro.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No próximo tutorial: seu plano e sua assinatura.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t16" data-tutorial="T16" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T16</span><span class="tutorial-insp">Inspiração visual: <em>A Rede Social</em></span></p>
+            <h2 class="tutorial-titulo">Sua assinatura, plano e módulos</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~20min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T15</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 7 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Entender o que você paga, o que está incluído e como ligar um módulo novo.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt">Tela <strong>Assinatura</strong>: status, plano atual, vencimento e valor</span></li>
+              <li class="cap"><span class="cap-ts">03:00</span><span class="cap-txt">Card <strong>Uso da Conta</strong>: usuários usados × contratados</span></li>
+              <li class="cap"><span class="cap-ts">05:00</span><span class="cap-txt"><strong>Gerenciar Meu Plano</strong> — aba Planos Prontos</span></li>
+              <li class="cap"><span class="cap-ts">08:00</span><span class="cap-txt"><strong>Gerenciar Meu Plano</strong> — aba Personalizado: montar módulo a módulo + usuários extras</span></li>
+              <li class="cap"><span class="cap-ts">12:00</span><span class="cap-txt">O catálogo de módulos explicado em uma frase cada</span></li>
+              <li class="cap"><span class="cap-ts">15:00</span><span class="cap-txt"><strong>Pagar Agora</strong> → checkout: Pix, Boleto e Cartão</span></li>
+              <li class="cap"><span class="cap-ts">18:00</span><span class="cap-txt">Mensal × Anual (o desconto que só vale à vista) e o histórico de pagamentos</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste tutorial você vai entender exatamente o que paga e como ligar um recurso novo.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Plano entendido, módulos sob controle e pagamento resolvido.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;No último tutorial: a rotina que faz tudo isso girar.&quot;</p></div>
+          </div>
+        </section>
+        <section class="tutorial" id="t17" data-tutorial="T17" data-secao>
+          <header class="tutorial-head">
+            <p class="tutorial-eyebrow"><span class="tutorial-cod">T17</span><span class="tutorial-insp">Inspiração visual: <em>Moneyball</em></span></p>
+            <h2 class="tutorial-titulo">Dashboard, rotina e truques</h2>
+            <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">⏱</span> ~25min</li>
+              <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T16</li>
+              
+              <li class="meta-item"><span aria-hidden="true">▤</span> 9 capítulos</li>
+            </ul>
+          </header>
+          <p class="sinopse">Fechar a trilha lendo os números e montando a rotina que mantém o sistema vivo.</p>
+          <h3 class="bloco-titulo">Capítulos</h3>
+          <ol class="caps" role="list">
+              <li class="cap"><span class="cap-ts">00:00</span><span class="cap-txt"><strong>Dashboard</strong>: os KPIs (OS abertas, pendentes, técnicos em campo, taxa de conclusão, faturamento, clientes ativos)</span></li>
+              <li class="cap"><span class="cap-ts">05:00</span><span class="cap-txt">Mapa ao vivo, fluxo de caixa e evolução de OS na tela inicial</span></li>
+              <li class="cap"><span class="cap-ts">09:00</span><span class="cap-txt"><strong>Top Técnicos</strong>, resumo por status, OS por tipo e <strong>OS críticas</strong></span></li>
+              <li class="cap"><span class="cap-ts">13:00</span><span class="cap-txt"><strong>Chamados do Portal</strong> e o alerta de chamado novo</span></li>
+              <li class="cap"><span class="cap-ts">15:00</span><span class="cap-txt">Atalhos de teclado e busca rápida</span></li>
+              <li class="cap"><span class="cap-ts">17:00</span><span class="cap-txt"><strong>Rotina diária</strong> (5 min): OS críticas, chamados novos, agenda de amanhã</span></li>
+              <li class="cap"><span class="cap-ts">19:00</span><span class="cap-txt"><strong>Rotina semanal</strong> (20 min): funil do CRM, orçamentos em aberto, estoque mínimo</span></li>
+              <li class="cap"><span class="cap-ts">21:00</span><span class="cap-txt"><strong>Rotina mensal</strong> (1h): DRE, contas a receber vencidas, contratos a vencer, NPS</span></li>
+              <li class="cap"><span class="cap-ts">23:00</span><span class="cap-txt">Onde ver as novidades do sistema (Changelog) e como pedir ajuda</span></li>
+          </ol>
+          <div class="falas">
+            <div class="fala"><span class="fala-rot">Abertura</span><p>&quot;Neste último tutorial você vai aprender a ler seus números e montar a rotina que mantém tudo girando.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Recap</span><p>&quot;Você sabe ler o dashboard e tem uma rotina diária, semanal e mensal pra não deixar nada cair.&quot;</p></div>
+            <div class="fala"><span class="fala-rot">Próximo</span><p>&quot;Fim da trilha. Volte em qualquer tutorial pelo capítulo que precisar.&quot;</p></div>
+          </div>
+        </section>
+          </section>
+
+          <!-- ============ Resumo ============ -->
+          <section class="secao" id="resumo" data-secao>
+            <div class="secao-head">
+              <p class="secao-tag">Panorama</p>
+              <h2 class="secao-titulo">Resumo da trilha</h2>
+            </div>
+            <div class="card">
+              <div class="tabela-wrap">
+        <table class="tabela-resumo">
+          <thead><tr><th scope="col">#</th><th scope="col">Tutorial</th><th scope="col">Módulo pago</th><th scope="col">Duração</th></tr></thead>
+          <tbody>
+          <tr><td data-label="#">T0</td><td data-label="Tutorial">Bem-vindo à Dominex</td><td data-label="Módulo pago">—</td><td data-label="Duração">20min</td></tr>
+          <tr><td data-label="#">T1</td><td data-label="Tutorial">Configurações e identidade da empresa</td><td data-label="Módulo pago">White Label (parcial)</td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T2</td><td data-label="Tutorial">Usuários, cargos e permissões</td><td data-label="Módulo pago">—</td><td data-label="Duração">25min</td></tr>
+          <tr><td data-label="#">T3</td><td data-label="Tutorial">Clientes e Equipamentos</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T4</td><td data-label="Tutorial">Serviços, tarefas e checklists</td><td data-label="Módulo pago">Vídeo em checklist (parcial)</td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T5</td><td data-label="Tutorial">Ordens de Serviço (gestor)</td><td data-label="Módulo pago">—</td><td data-label="Duração">45min</td></tr>
+          <tr><td data-label="#">T6</td><td data-label="Tutorial">Agenda, Equipes e Mapa ao Vivo</td><td data-label="Módulo pago">RH (Equipes)</td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T7</td><td data-label="Tutorial">O técnico em campo + Área do Técnico™</td><td data-label="Módulo pago">—</td><td data-label="Duração">40min</td></tr>
+          <tr><td data-label="#">T8</td><td data-label="Tutorial">Estoque, compras e inventário</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T9</td><td data-label="Tutorial">Orçamentos, Precificação e Proposta</td><td data-label="Módulo pago">Precificação Avançada (parcial)</td><td data-label="Duração">45min</td></tr>
+          <tr><td data-label="#">T10</td><td data-label="Tutorial">CRM: funil, leads e captação</td><td data-label="Módulo pago"><strong>CRM</strong></td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T11</td><td data-label="Tutorial">Contratos e PMOC</td><td data-label="Módulo pago"><strong>Contratos e PMOC</strong></td><td data-label="Duração">45min</td></tr>
+          <tr><td data-label="#">T12</td><td data-label="Tutorial">Portal do Cliente, NPS e reputação</td><td data-label="Módulo pago"><strong>Portal do Cliente</strong></td><td data-label="Duração">25min</td></tr>
+          <tr><td data-label="#">T13</td><td data-label="Tutorial">Financeiro</td><td data-label="Módulo pago">Financeiro Avançado (parcial)</td><td data-label="Duração">50min</td></tr>
+          <tr><td data-label="#">T14</td><td data-label="Tutorial">Notas Fiscais (NFS-e)</td><td data-label="Módulo pago"><strong>Emissão de Notas Fiscais</strong></td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T15</td><td data-label="Tutorial">Funcionários, Ponto e Folha</td><td data-label="Módulo pago"><strong>Funcionários / RH</strong></td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T16</td><td data-label="Tutorial">Sua assinatura, plano e módulos</td><td data-label="Módulo pago">—</td><td data-label="Duração">20min</td></tr>
+          <tr><td data-label="#">T17</td><td data-label="Tutorial">Dashboard, rotina e truques</td><td data-label="Módulo pago">—</td><td data-label="Duração">25min</td></tr>
+          <tr><td data-label="#"></td><td data-label="Tutorial"><strong>TOTAL</strong></td><td data-label="Módulo pago"></td><td data-label="Duração"><strong>~9h35min</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+            </div>
+            <div class="card" style="margin-top:16px">
+              <p><strong>18 tutoriais.</strong> Gravando 1 tutorial por dia (com preparo, gravação e revisão), são <strong>~18 dias úteis</strong> pra cobrir a trilha inteira.</p>
+        <p><strong>Ordem sugerida de gravação</strong> (não é a ordem de exibição — é a de menor risco): T3 → T4 → T5 → T7 → T0 → T1 → T2 → T6 → T8 → T9 → T12 → T13 → T10 → T11 → T15 → T14 → T16 → T17. Comece pelo miolo operacional, que é o que já está estável, e deixe T14 (fiscal) e T11 (PMOC) por último, porque dependem de dado real de cliente.</p>
+        <p>---</p>
+            </div>
+          </section>
+
+          <!-- ============ Padrão de arte ============ -->
+          <section class="secao" id="arte" data-secao>
+            <div class="secao-head">
+              <p class="secao-tag">Direção visual</p>
+              <h2 class="secao-titulo">Padrão de arte das capas</h2>
+            </div>
+
+            <h3 class="sub-titulo">Formatos usados no Domiflix</h3>
+            <div class="card">
+              <div class="tabela-wrap">
+        <table class="tabela-formatos">
+          <thead><tr><th scope="col">Peça</th><th scope="col">Onde aparece</th><th scope="col">Proporção</th><th scope="col">Tamanho</th></tr></thead>
+          <tbody>
+          <tr><td data-label="Peça"><strong>Banner</strong></td><td data-label="Onde aparece">hero da home, fundo do card em destaque, busca</td><td data-label="Proporção">16:9 horizontal</td><td data-label="Tamanho"><strong>1280 × 720 px</strong></td></tr>
+          <tr><td data-label="Peça"><strong>Thumbnail</strong></td><td data-label="Onde aparece">pôster vertical nos carrosséis, Minha Lista</td><td data-label="Proporção">2:3 vertical</td><td data-label="Tamanho"><strong>400 × 600 px</strong></td></tr>
+          <tr><td data-label="Peça">Miniatura de episódio</td><td data-label="Onde aparece">lista de episódios dentro do título</td><td data-label="Proporção">16:9 horizontal</td><td data-label="Tamanho">640 × 360 px</td></tr>
+          <tr><td data-label="Peça">Logo do título <em>(opcional)</em></td><td data-label="Onde aparece">sobrepõe o texto na hero e na tela de pausa</td><td data-label="Proporção">PNG transparente</td><td data-label="Tamanho">livre, largura ~800px</td></tr>
+          </tbody>
+        </table>
+      </div>
+            </div>
+            <div class="callout">Gere <strong>sempre as duas primeiras</strong> (banner + thumbnail) pra cada tutorial. A miniatura de episódio pode ser um recorte do banner. A logo é opcional — só faça se quiser o nome estilizado por cima da hero.</div>
+
+            <h3 class="sub-titulo">Direção de arte (vale pra todas as 18 capas)</h3>
+            <div class="card">
+              <p>Pra as 18 capas parecerem uma coleção só:</p>
+              <ul class="lista"><li><strong>Paleta</strong>: preto profundo <code>#141414</code> como base, <strong>verde Dominex <code>#00C597</code></strong> como cor de luz/acento principal, e um toque frio de azul-aço nas sombras. Vermelho só como faísca pontual, nunca dominante.</li><li><strong>Universo visual</strong>: manutenção técnica e campo — ar-condicionado, casa de máquinas, telhado de galpão, van de serviço, prancheta digital, ferramenta, EPI, prédio comercial brasileiro. Nada de escritório genérico americano.</li><li><strong>Estilo</strong>: pôster cinematográfico realista, luz volumétrica, contraste alto, granulado sutil de filme, profundidade de campo.</li><li><strong>Sem texto na imagem.</strong> O nome do tutorial é escrito pela plataforma por cima. Pedir texto pro gerador quase sempre volta com letra torta.</li><li><strong>Sem rosto reconhecível</strong> e sem logo de marca real (evita problema de direito de imagem).</li><li><strong>Composição</strong>: no banner 16:9, deixe o <strong>terço esquerdo mais limpo</strong> (é onde o título e os botões aparecem na hero). No thumbnail 2:3, o assunto vai <strong>centralizado, com respiro em cima</strong>.</li></ul>
+            </div>
+
+            <h3 class="sub-titulo">Prompt base</h3>
+            <div class="card">
+              <p>Pôster cinematográfico realista, sem nenhum texto ou letra na imagem, sem rostos reconhecíveis, sem logotipos de marcas reais. Paleta: preto profundo #141414, luz de acento verde-esmeralda #00C597, sombras em azul-aço. Iluminação volumétrica dramática, alto contraste, granulado sutil de filme, profundidade de campo. Universo: manutenção técnica e serviço de campo no Brasil.</p>
+        <p>---</p>
+              <div class="prompt-block" style="margin-top:14px">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">BASE</span>Prompt base (cole antes de qualquer prompt específico)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-base" aria-label="Copiar o prompt base">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-base" class="prompt">Pôster cinematográfico realista, sem nenhum texto ou letra na imagem, sem rostos
+reconhecíveis, sem logotipos de marcas reais. Paleta: preto profundo #141414,
+luz de acento verde-esmeralda #00C597, sombras em azul-aço. Iluminação
+volumétrica dramática, alto contraste, granulado sutil de filme, profundidade
+de campo. Universo: manutenção técnica e serviço de campo no Brasil.</pre>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ Prompts de capa ============ -->
+          <section class="secao" id="capas" data-secao>
+            <div class="secao-head">
+              <p class="secao-tag">36 prompts</p>
+              <h2 class="secao-titulo">Prompts de capa, tutorial por tutorial</h2>
+              <p class="secao-sub">Cada tutorial tem <strong>tema</strong> (a referência estética) + <strong>prompt do banner (1280×720)</strong> + <strong>prompt do thumbnail (400×600)</strong>. Cole direto no ChatGPT/DALL·E. Se o gerador não aceitar o tamanho exato, peça a proporção (16:9 / 2:3) e redimensione depois.</p>
+            </div>
+          <article class="capa" id="capa-t0" data-capa="T0">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T0</span> Bem-vindo à Dominex</h3>
+              <p class="capa-tema">Tema: <em>Interestelar</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> a visão de cima, o mapa inteiro antes da viagem.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t0-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T0">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t0-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Plano amplo visto
+de cima de uma cidade brasileira à noite, prédios comerciais com centenas de
+condensadores de ar-condicionado nos telhados, linhas de luz verde-esmeralda
+#00C597 conectando os prédios como uma constelação. Um técnico minúsculo de
+costas, silhueta, no telhado do terço direito, olhando para a cidade. Terço
+esquerdo limpo e escuro para sobreposição de título. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado sutil de
+filme, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t0-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T0">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t0-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Técnico de costas em silhueta no
+centro, de pé na borda de um telhado, olhando uma cidade noturna que se abre
+abaixo dele, com uma constelação de linhas verde-esmeralda #00C597 ligando os
+prédios. Respiro escuro na parte de cima. Base preto profundo #141414, sombras
+azul-aço, luz volumétrica, granulado de filme, alto contraste, sem rostos, sem
+logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t1" data-capa="T1">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T1</span> Configurações e identidade</h3>
+              <p class="capa-tema">Tema: <em>Homem de Ferro</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> a oficina onde a ferramenta é calibrada antes de sair pro mundo.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t1-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T1">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t1-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Bancada de oficina
+técnica escura vista de lado, com painéis holográficos flutuantes em verde-
+esmeralda #00C597 mostrando formas geométricas de configuração, sliders e um
+retângulo de identidade visual sendo montado. Ferramentas de precisão sobre a
+bancada, faíscas suaves. Terço esquerdo limpo e escuro. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
+sem texto legível nos painéis, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t1-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T1">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t1-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Composição centralizada de uma bancada
+de oficina de alta precisão vista de frente, painéis holográficos verde-
+esmeralda #00C597 subindo em camadas, ferramentas alinhadas, faíscas suaves,
+respiro escuro no topo. Base preto profundo #141414, sombras azul-aço, luz
+volumétrica, granulado de filme, sem texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t2" data-capa="T2">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T2</span> Usuários, cargos e permissões</h3>
+              <p class="capa-tema">Tema: <em>Missão Impossível</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> chaves, cofres e acesso concedido a quem deve.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t2-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T2">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t2-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Corredor escuro de
+segurança com uma parede de portas de acesso, algumas destrancadas emitindo luz
+verde-esmeralda #00C597 e outras fechadas em vermelho tênue. Feixes de laser
+finos cruzando o ar. Silhueta de uma pessoa entrando por uma das portas
+iluminadas no terço direito. Terço esquerdo limpo e escuro. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
+sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t2-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T2">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t2-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Uma grade vertical de portas de
+segurança empilhadas, poucas abertas com luz verde-esmeralda #00C597 vazando,
+o restante fechado no escuro, feixes de laser finos atravessando o quadro,
+silhueta pequena no centro-baixo. Respiro escuro no topo. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, granulado de filme, sem rostos,
+sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t3" data-capa="T3">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T3</span> Clientes e Equipamentos</h3>
+              <p class="capa-tema">Tema: <em>Sherlock</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o dossiê. Cada cliente e cada máquina com sua ficha e sua digital.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t3-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T3">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t3-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Mesa escura de
+investigação vista de cima em ângulo, com fichas e fotografias de equipamentos
+de ar-condicionado espalhadas, ligadas por fios de luz verde-esmeralda #00C597,
+uma lupa e uma etiqueta com padrão de QR code abstrato em destaque. Terço
+esquerdo mais vazio e escuro. Base preto profundo #141414, sombras azul-aço,
+luz volumétrica lateral, alto contraste, granulado de filme, sem texto legível
+nas fichas, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t3-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T3">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t3-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Mural vertical de investigação: fichas
+de equipamentos e condensadores de ar-condicionado presos por alfinetes e
+ligados por fios de luz verde-esmeralda #00C597, uma etiqueta com padrão de QR
+code abstrato em primeiro plano no centro, respiro escuro no topo. Base preto
+profundo #141414, sombras azul-aço, granulado de filme, alto contraste, sem
+texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t4" data-capa="T4">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T4</span> Serviços, tarefas e checklists</h3>
+              <p class="capa-tema">Tema: <em>Ratatouille</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o <em>mise en place</em> — tudo preparado e alinhado antes do serviço começar.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t4-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T4">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t4-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Bancada escura
+vista de cima com ferramentas de refrigeração, luvas e peças perfeitamente
+alinhadas em fileiras, como um mise en place de cozinha profissional, cada
+item com um leve halo verde-esmeralda #00C597, e uma prancheta digital vazia
+ao lado com caixas de marcação luminosas. Terço esquerdo mais limpo. Base preto
+profundo #141414, sombras azul-aço, luz volumétrica de cima, alto contraste,
+granulado de filme, sem texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t4-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T4">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t4-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Composição vertical simétrica de
+ferramentas técnicas e peças de refrigeração alinhadas em fileiras perfeitas
+sobre fundo escuro, halo verde-esmeralda #00C597 em cada item, uma prancheta
+digital com caixas de marcação luminosas no centro-baixo, respiro escuro no
+topo. Base preto profundo #141414, sombras azul-aço, granulado de filme, sem
+texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t5" data-capa="T5">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T5</span> Ordens de Serviço</h3>
+              <p class="capa-tema">Tema: <em>Mad Max: Estrada da Fúria</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o despacho. A frota saindo, tudo em movimento, tudo sob controle.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t5-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T5">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t5-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Pátio industrial
+ao amanhecer, poeira no ar, uma fileira de vans de serviço técnico saindo em
+formação, faróis cortando a névoa, trilhas de luz verde-esmeralda #00C597
+marcando as rotas no chão. Câmera baixa e dramática. Terço esquerdo mais vazio
+e escuro. Base preto profundo #141414, sombras azul-aço, luz volumétrica, alto
+contraste, granulado de filme, sem placas legíveis, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t5-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T5">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t5-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Van de serviço técnico vista de frente
+em contra-luz, poeira e névoa ao redor, faróis acesos, trilhas de luz verde-
+esmeralda #00C597 subindo pelo chão em direção à câmera, respiro escuro no
+topo. Base preto profundo #141414, sombras azul-aço, luz volumétrica, alto
+contraste, granulado de filme, sem placas legíveis, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t6" data-capa="T6">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T6</span> Agenda, Equipes e Mapa ao Vivo</h3>
+              <p class="capa-tema">Tema: <em>Top Gun: Maverick</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> a sala de comando. Esquadrão em formação, cada um no seu ponto.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t6-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T6">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t6-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Sala de comando
+escura com uma mesa-mapa horizontal iluminada, mostrando um mapa urbano
+abstrato com pontos e rotas em verde-esmeralda #00C597 se movendo, e uma grade
+de calendário luminosa flutuando ao fundo. Silhuetas de duas pessoas em pé
+observando, no terço direito. Terço esquerdo limpo. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
+sem texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t6-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T6">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t6-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Vista de cima de uma mesa-mapa
+luminosa com mapa urbano abstrato, rotas e pontos pulsando em verde-esmeralda
+#00C597, uma grade de calendário luminosa sobreposta em perspectiva, silhueta
+de mãos apontando na borda inferior, respiro escuro no topo. Base preto
+profundo #141414, sombras azul-aço, granulado de filme, alto contraste, sem
+texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t7" data-capa="T7">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T7</span> O técnico em campo</h3>
+              <p class="capa-tema">Tema: <em>Perdido em Marte</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> sozinho no local, resolvendo com o que tem na mão.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t7-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T7">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t7-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Técnico solitário
+de uniforme e EPI, visto de costas, agachado sobre uma unidade condensadora no
+telhado de um galpão ao entardecer, céu alaranjado desbotado ao fundo,
+segurando um celular cuja tela ilumina o rosto em verde-esmeralda #00C597.
+Ferramentas espalhadas ao redor. Terço esquerdo limpo e escuro. Base preto
+profundo #141414, sombras azul-aço, luz volumétrica, alto contraste, granulado
+de filme, sem rosto visível, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t7-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T7">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t7-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Enquadramento vertical de um técnico
+de EPI visto de costas, ajoelhado ao lado de uma unidade condensadora num
+telhado industrial, segurando um celular que emite luz verde-esmeralda #00C597
+sobre ele, céu escuro e vasto ocupando o topo do quadro. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
+sem rosto visível, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t8" data-capa="T8">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T8</span> Estoque, compras e inventário</h3>
+              <p class="capa-tema">Tema: <em>Duna</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o recurso escasso, contado e guardado.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t8-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T8">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t8-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Corredor imenso e
+escuro de um almoxarifado, prateleiras altíssimas em perspectiva sumindo ao
+fundo, feixes de luz verde-esmeralda #00C597 varrendo as caixas como um
+escaneamento, poeira suspensa no ar. Escala monumental, câmera baixa. Terço
+esquerdo mais vazio. Base preto profundo #141414, sombras azul-aço, luz
+volumétrica, alto contraste, granulado de filme, sem etiquetas legíveis, sem
+rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t8-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T8">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t8-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Prateleiras de almoxarifado
+altíssimas em perspectiva vertical, subindo até o topo do quadro e sumindo no
+escuro, um único feixe de luz verde-esmeralda #00C597 varrendo as caixas,
+poeira suspensa. Escala monumental. Base preto profundo #141414, sombras
+azul-aço, luz volumétrica, alto contraste, granulado de filme, sem etiquetas
+legíveis, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t9" data-capa="T9">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T9</span> Orçamentos, Precificação e Proposta</h3>
+              <p class="capa-tema">Tema: <em>Mad Men</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> a apresentação. O documento que convence.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t9-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T9">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t9-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Mesa de reunião
+escura e elegante, um documento de proposta impresso no centro sob um facho de
+luz quente, e acima dele páginas flutuando em camadas com molduras luminosas
+verde-esmeralda #00C597, além de uma curva de preço subindo em luz. Estética
+sofisticada, anos 60 modernizada. Terço esquerdo limpo. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
+sem texto legível no documento, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t9-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T9">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t9-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Pilha vertical de páginas de proposta
+flutuando em camadas com bordas luminosas verde-esmeralda #00C597 sobre uma
+mesa escura elegante, facho de luz quente vindo de cima, curva de preço em luz
+ao fundo, respiro escuro no topo. Base preto profundo #141414, sombras
+azul-aço, granulado de filme, alto contraste, sem texto legível, sem rostos,
+sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t10" data-capa="T10">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T10</span> CRM: funil, leads e captação</h3>
+              <p class="capa-tema">Tema: <em>Suits</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o funil. Muita gente entra em cima, poucos fecham embaixo.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t10-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T10">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t10-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Estrutura de vidro
+em forma de funil deitada em perspectiva num ambiente escuro, com partículas de
+luz verde-esmeralda #00C597 entrando em grande quantidade por cima e saindo em
+poucos pontos brilhantes na base, refletindo no chão polido. Silhueta de uma
+pessoa de terno observando no terço direito. Terço esquerdo limpo. Base preto
+profundo #141414, sombras azul-aço, luz volumétrica, alto contraste, granulado
+de filme, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t10-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T10">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t10-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Funil de vidro visto de frente
+ocupando o eixo vertical do quadro, partículas de luz verde-esmeralda #00C597
+entrando densas pelo topo e saindo em poucos pontos brilhantes na base,
+reflexo no chão polido escuro, respiro no topo. Base preto profundo #141414,
+sombras azul-aço, luz volumétrica, granulado de filme, alto contraste, sem
+rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t11" data-capa="T11">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T11</span> Contratos e PMOC</h3>
+              <p class="capa-tema">Tema: <em>Peaky Blinders</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o acordo de longo prazo, selado e cumprido mês a mês.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t11-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T11">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t11-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Mesa de madeira
+escura com um documento formal lacrado por um selo de cera brilhando em verde-
+esmeralda #00C597, ao fundo uma grade de calendário anual em luz com doze
+marcas acesas em sequência, fumaça baixa e névoa no ar, luz lateral dura.
+Atmosfera austera e industrial britânica. Terço esquerdo limpo. Base preto
+profundo #141414, sombras azul-aço, alto contraste, granulado de filme, sem
+texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t11-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T11">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t11-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Documento formal vertical com selo de
+cera brilhando em verde-esmeralda #00C597 no centro, atrás dele uma coluna de
+doze marcas de calendário acesas em sequência subindo pelo quadro, névoa baixa,
+luz lateral dura, respiro escuro no topo. Base preto profundo #141414, sombras
+azul-aço, alto contraste, granulado de filme, sem texto legível, sem rostos,
+sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t12" data-capa="T12">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T12</span> Portal do Cliente, NPS e reputação</h3>
+              <p class="capa-tema">Tema: <em>Black Mirror</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> a tela do outro lado. O cliente olhando de volta pra você.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t12-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T12">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t12-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Um celular
+flutuando no escuro, visto de lado, com a tela emitindo luz verde-esmeralda
+#00C597 que projeta no ar formas abstratas de estrelas de avaliação e um
+gráfico ascendente. Reflexos limpos, superfície preta espelhada embaixo,
+estética minimalista e fria. Terço esquerdo vazio e escuro. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado sutil,
+sem texto legível na tela, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t12-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T12">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t12-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Celular na vertical flutuando no
+escuro no centro do quadro, tela emitindo luz verde-esmeralda #00C597 que
+projeta estrelas de avaliação abstratas subindo pelo ar, superfície preta
+espelhada abaixo, estética minimalista e fria, respiro escuro no topo. Base
+preto profundo #141414, sombras azul-aço, luz volumétrica, granulado sutil, sem
+texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t13" data-capa="T13">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T13</span> Financeiro</h3>
+              <p class="capa-tema">Tema: <em>Ozark</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o fluxo do dinheiro, correndo por baixo de tudo.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t13-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T13">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t13-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Rio escuro visto
+de cima à noite, mas a água é feita de linhas de luz verde-esmeralda #00C597
+correndo e se dividindo em afluentes, atravessando uma paisagem industrial
+silhuetada. Névoa fria sobre a água, atmosfera tensa. Terço esquerdo mais
+escuro e vazio. Base preto profundo #141414, sombras azul-aço, luz volumétrica,
+alto contraste, granulado de filme, sem texto, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t13-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T13">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t13-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Rio vertical de luz verde-esmeralda
+#00C597 descendo pelo centro do quadro e se ramificando em afluentes, margens
+industriais escuras silhuetadas dos dois lados, névoa fria, atmosfera tensa,
+respiro escuro no topo. Base preto profundo #141414, sombras azul-aço, luz
+volumétrica, alto contraste, granulado de filme, sem texto, sem rostos, sem
+logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t14" data-capa="T14">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T14</span> Notas Fiscais (NFS-e)</h3>
+              <p class="capa-tema">Tema: <em>Better Call Saul</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o carimbo oficial. Burocracia levada a sério.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t14-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T14">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t14-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Mesa de cartório
+escura vista de lado, um documento oficial sob um facho de luz duro, um carimbo
+metálico prestes a descer, e ao redor pequenos elementos abstratos de
+certificado digital e chave criptográfica brilhando em verde-esmeralda #00C597.
+Estética retrô-burocrática, persianas projetando listras de luz. Terço esquerdo
+limpo. Base preto profundo #141414, sombras azul-aço, alto contraste, granulado
+de filme, sem texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t14-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T14">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t14-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Carimbo metálico em close descendo
+sobre um documento oficial no centro do quadro, listras de luz de persiana
+cortando a cena na diagonal, elementos abstratos de chave criptográfica
+brilhando em verde-esmeralda #00C597 ao redor, respiro escuro no topo. Base
+preto profundo #141414, sombras azul-aço, alto contraste, granulado de filme,
+sem texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t15" data-capa="T15">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T15</span> Funcionários, Ponto e Folha</h3>
+              <p class="capa-tema">Tema: <em>The Office</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> o time. Gente, horário e salário — o lado humano do sistema.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t15-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T15">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t15-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Vestiário de
+empresa de serviço técnico ao amanhecer, fileira de armários metálicos com
+uniformes pendurados, capacetes e EPIs alinhados, um relógio de ponto na parede
+emitindo luz verde-esmeralda #00C597, luz suave entrando por uma janela alta.
+Atmosfera calorosa e cotidiana, sem ninguém em cena. Terço esquerdo mais vazio.
+Base preto profundo #141414, sombras azul-aço, luz volumétrica, granulado de
+filme, sem texto legível, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t15-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T15">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t15-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Composição vertical de um armário de
+vestiário aberto com uniforme técnico pendurado, capacete e EPI, e acima dele
+um relógio de ponto na parede emitindo luz verde-esmeralda #00C597, luz suave
+lateral, respiro escuro no topo, sem ninguém em cena. Base preto profundo
+#141414, sombras azul-aço, luz volumétrica, granulado de filme, sem texto
+legível, sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t16" data-capa="T16">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T16</span> Assinatura, plano e módulos</h3>
+              <p class="capa-tema">Tema: <em>A Rede Social</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> montar o próprio plano, peça por peça.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t16-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T16">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t16-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Conjunto de blocos
+modulares de vidro escuro flutuando e se encaixando no ar, alguns já acesos por
+dentro em verde-esmeralda #00C597 e outros apagados e translúcidos, formando
+uma estrutura maior. Fundo escuro infinito, reflexos limpos. Estética tech
+minimalista. Terço esquerdo vazio. Base preto profundo #141414, sombras
+azul-aço, luz volumétrica, alto contraste, granulado sutil, sem texto, sem
+rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t16-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T16">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t16-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Torre vertical de blocos modulares de
+vidro escuro se encaixando uns nos outros, alguns acesos por dentro em verde-
+esmeralda #00C597 e outros apagados, fundo escuro infinito, reflexos limpos,
+estética tech minimalista, respiro escuro no topo. Base preto profundo #141414,
+sombras azul-aço, luz volumétrica, alto contraste, granulado sutil, sem texto,
+sem rostos, sem logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          <article class="capa" id="capa-t17" data-capa="T17">
+            <header class="capa-head">
+              <h3 class="capa-titulo"><span class="capa-cod">T17</span> Dashboard, rotina e truques</h3>
+              <p class="capa-tema">Tema: <em>Moneyball</em></p>
+            </header>
+            <p class="capa-ideia"><strong>Ideia:</strong> parar de achar e começar a medir.</p>
+            <div class="prompts">
+              <div class="prompt-block" data-prompt-format="banner">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--banner">16:9</span>Banner 16:9 (1280×720)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t17-banner" aria-label="Copiar prompt do Banner 16:9 (1280×720) de T17">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t17-banner" class="prompt">Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Sala escura com
+uma parede inteira de painéis de dados abstratos — gráficos de barra, linhas
+ascendentes e mostradores circulares — todos brilhando em verde-esmeralda
+#00C597, e uma cadeira vazia de costas em primeiro plano no terço direito.
+Silêncio, foco, atmosfera analítica. Terço esquerdo mais escuro e limpo. Base
+preto profundo #141414, sombras azul-aço, luz volumétrica, alto contraste,
+granulado de filme, sem números legíveis, sem rostos, sem logotipos.</pre>
+              </div>
+              <div class="prompt-block" data-prompt-format="thumbnail">
+                <div class="prompt-bar">
+                  <span class="prompt-label"><span class="prompt-fmt prompt-fmt--thumbnail">2:3</span>Thumbnail 2:3 (400×600)</span>
+                  <button type="button" class="btn-copiar" data-copy="prompt-t17-thumbnail" aria-label="Copiar prompt do Thumbnail 2:3 (400×600) de T17">
+                    <span class="btn-copiar-txt">Copiar</span>
+                  </button>
+                </div>
+                <pre id="prompt-t17-thumbnail" class="prompt">Pôster vertical 2:3, 400x600, sem texto. Parede vertical de painéis de dados
+abstratos empilhados — barras, linhas ascendentes e mostradores circulares —
+brilhando em verde-esmeralda #00C597, com o encosto de uma cadeira vazia
+silhuetado na base do quadro, respiro escuro no topo. Atmosfera analítica e
+silenciosa. Base preto profundo #141414, sombras azul-aço, luz volumétrica,
+alto contraste, granulado de filme, sem números legíveis, sem rostos, sem
+logotipos.</pre>
+              </div>
+            </div>
+          </article>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= Rodapé ================= -->
+  <footer class="rodape">
+    <div class="shell rodape-in">
+      <img src="/logo-horizontal-verde.png" alt="Dominex" width="100" height="20">
+      <p>Documento interno de produção <span class="sep">·</span> Dominex</p>
+      <p>Versão do sistema 1.22.5 <span class="sep">·</span> Atualizado em 05/09/2026</p>
+    </div>
+  </footer>
+
+  <!-- ================= Índice mobile ================= -->
+  <button type="button" class="fab" id="fab-indice" aria-haspopup="dialog" aria-expanded="false" aria-controls="gaveta">
+    <span aria-hidden="true">☰</span> Índice
+  </button>
+
+  <div class="gaveta" id="gaveta" hidden role="dialog" aria-modal="true" aria-label="Índice da trilha">
+    <div class="gaveta-fundo" data-fechar></div>
+    <div class="gaveta-painel">
+      <div class="gaveta-topo">
+        <strong>Índice</strong>
+        <button type="button" class="gaveta-fechar" data-fechar aria-label="Fechar índice">×</button>
+      </div>
+      <nav class="gaveta-lista" aria-label="Índice da trilha (celular)">
+        <p class="toc-titulo" id="tocm-t1">Os 18 tutoriais</p>
+          <ul class="toc-lista" role="list" aria-labelledby="tocm-t1">
+            <li><a class="toc-link" href="#t0"><span class="toc-cod">T0</span><span class="toc-txt">Bem-vindo à Dominex</span></a></li>
+            <li><a class="toc-link" href="#t1"><span class="toc-cod">T1</span><span class="toc-txt">Configurações e identidade da empresa</span></a></li>
+            <li><a class="toc-link" href="#t2"><span class="toc-cod">T2</span><span class="toc-txt">Usuários, cargos e permissões</span></a></li>
+            <li><a class="toc-link" href="#t3"><span class="toc-cod">T3</span><span class="toc-txt">Clientes e Equipamentos</span></a></li>
+            <li><a class="toc-link" href="#t4"><span class="toc-cod">T4</span><span class="toc-txt">Serviços, tarefas e checklists</span></a></li>
+            <li><a class="toc-link" href="#t5"><span class="toc-cod">T5</span><span class="toc-txt">Ordens de Serviço: a visão do gestor</span></a></li>
+            <li><a class="toc-link" href="#t6"><span class="toc-cod">T6</span><span class="toc-txt">Agenda, Equipes e Mapa ao Vivo</span></a></li>
+            <li><a class="toc-link" href="#t7"><span class="toc-cod">T7</span><span class="toc-txt">O técnico em campo + Área do Técnico™</span></a></li>
+            <li><a class="toc-link" href="#t8"><span class="toc-cod">T8</span><span class="toc-txt">Estoque, compras e inventário</span></a></li>
+            <li><a class="toc-link" href="#t9"><span class="toc-cod">T9</span><span class="toc-txt">Orçamentos, Precificação e Proposta</span></a></li>
+            <li><a class="toc-link" href="#t10"><span class="toc-cod">T10</span><span class="toc-txt">CRM: funil, leads e captação</span></a></li>
+            <li><a class="toc-link" href="#t11"><span class="toc-cod">T11</span><span class="toc-txt">Contratos e PMOC</span></a></li>
+            <li><a class="toc-link" href="#t12"><span class="toc-cod">T12</span><span class="toc-txt">Portal do Cliente, NPS e reputação</span></a></li>
+            <li><a class="toc-link" href="#t13"><span class="toc-cod">T13</span><span class="toc-txt">Financeiro</span></a></li>
+            <li><a class="toc-link" href="#t14"><span class="toc-cod">T14</span><span class="toc-txt">Notas Fiscais (NFS-e)</span></a></li>
+            <li><a class="toc-link" href="#t15"><span class="toc-cod">T15</span><span class="toc-txt">Funcionários, Ponto e Folha</span></a></li>
+            <li><a class="toc-link" href="#t16"><span class="toc-cod">T16</span><span class="toc-txt">Sua assinatura, plano e módulos</span></a></li>
+            <li><a class="toc-link" href="#t17"><span class="toc-cod">T17</span><span class="toc-txt">Dashboard, rotina e truques</span></a></li>
+          </ul>
+          <p class="toc-titulo" id="tocm-t2">Seções de apoio</p>
+          <ul class="toc-lista" role="list" aria-labelledby="tocm-t2">
+            <li><a class="toc-link" href="#convencoes"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Como a trilha é montada</span></a></li>
+            <li><a class="toc-link" href="#sequencia"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Sequência da trilha</span></a></li>
+            <li><a class="toc-link" href="#resumo"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Resumo da trilha</span></a></li>
+            <li><a class="toc-link" href="#arte"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Padrão de arte</span></a></li>
+            <li><a class="toc-link" href="#capas"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Prompts de capa</span></a></li>
+          </ul>
+      </nav>
+    </div>
+  </div>
+
+  <script>
+  /* ============================================================
+     JS pequeno e defensivo — nada quebra se um elemento faltar
+     ============================================================ */
+  (function () {
+    'use strict';
+
+    /* ---------- Copiar prompt ---------- */
+    document.addEventListener('click', function (ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest('[data-copy]') : null;
+      if (!btn) return;
+      var alvo = document.getElementById(btn.getAttribute('data-copy'));
+      if (!alvo) return;
+      var texto = alvo.textContent || '';
+
+      function feedback() {
+        var rot = btn.querySelector('.btn-copiar-txt');
+        if (!rot) return;
+        if (btn.dataset.timer) window.clearTimeout(Number(btn.dataset.timer));
+        var original = btn.dataset.original || rot.textContent;
+        btn.dataset.original = original;
+        rot.textContent = 'Copiado!';
+        btn.classList.add('copiado');
+        btn.dataset.timer = String(window.setTimeout(function () {
+          rot.textContent = original;
+          btn.classList.remove('copiado');
+        }, 2000));
+      }
+
+      /* fallback antigo pra quem não tem a API (ou quando ela recusa) */
+      function copiarAntigo() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = texto;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.top = '0';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand && document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) feedback();
+        } catch (e) { /* silêncio */ }
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(feedback, copiarAntigo);
+        return;
+      }
+      copiarAntigo();
+    });
+
+    /* ---------- Gaveta do índice (mobile) ---------- */
+    var fab = document.getElementById('fab-indice');
+    var gaveta = document.getElementById('gaveta');
+    function abrir() {
+      if (!gaveta) return;
+      gaveta.hidden = false;
+      if (fab) fab.setAttribute('aria-expanded', 'true');
+      document.documentElement.style.overflow = 'hidden';
+      var primeiro = gaveta.querySelector('.gaveta-fechar');
+      if (primeiro) primeiro.focus();
+    }
+    function fechar() {
+      if (!gaveta || gaveta.hidden) return;
+      gaveta.hidden = true;
+      if (fab) { fab.setAttribute('aria-expanded', 'false'); fab.focus(); }
+      document.documentElement.style.overflow = '';
+    }
+    if (fab) fab.addEventListener('click', abrir);
+    if (gaveta) {
+      gaveta.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t) return;
+        if (t.closest('[data-fechar]') || t.closest('.toc-link')) fechar();
+      });
+    }
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') fechar();
+    });
+
+    /* ---------- Scrollspy do índice ---------- */
+    var secoes = Array.prototype.slice.call(document.querySelectorAll('[data-secao]'));
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-link'));
+    if (secoes.length && links.length && 'IntersectionObserver' in window) {
+      var visiveis = new Map();
+
+      function marcar(hash) {
+        links.forEach(function (l) {
+          if (l.getAttribute('href') === hash) l.setAttribute('aria-current', 'true');
+          else l.removeAttribute('aria-current');
+        });
+        /* mantém o item ativo visível no índice do desktop */
+        var ativo = document.querySelector('#toc-desktop .toc-link[aria-current="true"]');
+        var caixa = document.getElementById('toc-desktop');
+        if (ativo && caixa && caixa.scrollHeight > caixa.clientHeight) {
+          var a = ativo.getBoundingClientRect(), c = caixa.getBoundingClientRect();
+          if (a.top < c.top + 8) caixa.scrollTop -= (c.top + 8 - a.top);
+          else if (a.bottom > c.bottom - 8) caixa.scrollTop += (a.bottom - c.bottom + 8);
+        }
+      }
+
+      var io = new IntersectionObserver(function (entradas) {
+        entradas.forEach(function (e) {
+          if (e.isIntersecting) visiveis.set(e.target.id, e.boundingClientRect.top);
+          else visiveis.delete(e.target.id);
+        });
+        if (!visiveis.size) return;
+        /* a seção mais alta na tela ganha o destaque */
+        var melhor = null, melhorTop = Infinity;
+        secoes.forEach(function (s) {
+          if (!visiveis.has(s.id)) return;
+          var top = s.getBoundingClientRect().top;
+          if (top < melhorTop) { melhorTop = top; melhor = s.id; }
+        });
+        if (melhor) marcar('#' + melhor);
+      }, { rootMargin: '-72px 0px -60% 0px', threshold: 0 });
+
+      secoes.forEach(function (s) { if (s.id) io.observe(s); });
+    }
+  })();
+  </script>
+</body>
+</html>
