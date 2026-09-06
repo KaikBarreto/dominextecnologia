@@ -6,7 +6,7 @@
 > cada tela faz, o passo a passo, as regras que o sistema aplica, os problemas mais comuns com
 > causa e solução, e as perguntas frequentes.
 
-Atualizado em 06 de setembro de 2026 · versão do sistema v1.22.5 · 18 seções.
+Atualizado em 06 de setembro de 2026 · versão do sistema v1.23.1 · 18 seções.
 
 ## Conteúdo em texto puro
 

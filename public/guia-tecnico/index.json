@@ -2,12 +2,12 @@
  "documento": "Guia Técnico — Dominex",
  "descricao": "Manual completo da Dominex, sistema de gestão para empresas de serviço técnico em campo (refrigeração e climatização, elétrica, energia solar, CFTV, dedetização, elevadores e assistência técnica). Uma seção por área do sistema, na ordem da Trilha Domiflix. Cada chunk é auto-contido e pode ser recuperado isoladamente.",
  "gerado_em": "2026-09-06",
- "total_chunks": 641,
- "total_palavras": 131703,
+ "total_chunks": 644,
+ "total_palavras": 134370,
  "chunks_por_tipo": {
   "visao_geral": 18,
-  "capitulo": 186,
-  "problema": 219,
+  "capitulo": 188,
+  "problema": 220,
   "faq": 200,
   "glossario": 18
  },
@@ -107,7 +107,7 @@
    "titulo": "Ordens de Serviço: a visão do gestor",
    "fase": "03",
    "fase_titulo": "A operação rodando",
-   "chunks": 35,
+   "chunks": 37,
    "capitulos": [
     "Tela Ordens de Serviço: kanban × lista e os 4 indicadores do topo",
     "Criar OS — Etapa 1: cliente cadastrado × cliente avulso, e o tipo de serviço",
@@ -148,7 +148,7 @@
    "titulo": "O técnico em campo + Área do Técnico™",
    "fase": "03",
    "fase_titulo": "A operação rodando",
-   "chunks": 33,
+   "chunks": 34,
    "capitulos": [
     "Abrindo a OS no celular: o link, o endereço amigável e o que o técnico vê primeiro",
     "A Caminho → mapa em tela cheia com botão pra Waze e Google Maps",

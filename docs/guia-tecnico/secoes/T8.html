@@ -26,6 +26,8 @@
     </tbody>
   </table>
 
+  <p>No celular, para caber na faixa de abas, três desses nomes aparecem encurtados: <span class="ui">Histórico de Materiais (Kardex)</span> vira só <span class="ui">Histórico</span>, <span class="ui">Compras de Material</span> vira <span class="ui">Compras</span> e <span class="ui">Posição de Estoque</span> vira <span class="ui">Posição</span>. <span class="ui">Estoque Atual</span> e <span class="ui">Inventários</span> continuam com o nome completo mesmo no celular. É a mesma tela e as mesmas colunas, só o rótulo da aba que muda de tamanho.</p>
+
   <figure>
     <img src="img/t8-estoque.png" alt="Tela Estoque da Dominex na aba Estoque Atual, com os indicadores de total de itens, valor investido, projeção de venda e estoque baixo, mais a tabela de materiais">
     <figcaption>Estoque: aba Estoque Atual, com os indicadores e a lista de materiais.</figcaption>
@@ -133,7 +135,7 @@
 
   <p>Validações, com o título "Confira os dados": "Selecione o local de origem.", "Selecione o local de destino.", "Origem e destino não podem ser o mesmo local de estoque.", "Informe uma quantidade maior que zero." e "Saldo insuficiente no local de origem."</p>
 
-  <p>Toda transferência aparece no Kardex como movimento do tipo <span class="ui">Transferência</span>, com origem e destino.</p>
+  <p>Toda transferência aparece no Kardex como movimento do tipo <span class="ui">Transferência</span>, com origem e destino: a coluna <span class="ui">Local</span> mostra o par completo no formato "origem → destino" (por exemplo, <span class="ui">Galpão → Van 01</span>).</p>
 
   <h2>4. Restrição de acesso por depósito — quem vê o quê</h2>
 
@@ -159,10 +161,10 @@
 
   <h2>5. Aba Histórico (Kardex): lendo a movimentação item a item</h2>
 
-  <p>A aba <span class="ui">Histórico de Materiais (Kardex)</span> mostra o título <span class="ui">Histórico de Movimentações</span>. É o extrato do estoque: cada linha é um movimento, com o saldo antes e o saldo depois.</p>
+  <p>A aba <span class="ui">Histórico de Materiais (Kardex)</span> mostra o título <span class="ui">Histórico de Movimentações</span>. É o extrato do estoque: cada linha é um movimento, com o saldo antes e o saldo depois. No celular, essa aba aparece na faixa de abas com o nome curto <span class="ui">Histórico</span>.</p>
 
   <h3>Colunas</h3>
-  <p><span class="ui">Usuário</span>, <span class="ui">Data e Hora</span>, <span class="ui">Tipo</span>, <span class="ui">Origem</span>, <span class="ui">Material</span>, <span class="ui">Estoque inicial</span>, <span class="ui">Movimento</span> e <span class="ui">Estoque final</span>.</p>
+  <p><span class="ui">Usuário</span>, <span class="ui">Data e Hora</span>, <span class="ui">Tipo</span>, <span class="ui">Origem</span>, <span class="ui">Material</span>, <span class="ui">Local</span>, <span class="ui">Estoque inicial</span>, <span class="ui">Movimento</span> e <span class="ui">Estoque final</span>.</p>
 
   <h3>Tipos de movimento</h3>
   <table class="dados">
@@ -170,22 +172,28 @@
     <tbody>
       <tr><td><span class="ui">Entrada</span></td><td>Cadastro inicial com quantidade, entrada manual, entrada de compra e importação de XML da NF-e.</td></tr>
       <tr><td><span class="ui">Saída</span></td><td>Saída manual e consumo de materiais de um orçamento convertido em OS.</td></tr>
+      <tr><td><span class="ui">Consumo</span></td><td>Material anotado pelo técnico dentro de uma Ordem de Serviço, quando a empresa liga o recurso opcional <span class="ui">Consumo de estoque na OS</span> (Configurações → Usabilidade → Ordens de Serviço). A baixa é confirmada no resumo que aparece ao finalizar a OS, não na conclusão em si.</td></tr>
       <tr><td><span class="ui">Ajuste</span></td><td>Mudança de quantidade na edição do material e ajuste gerado no fechamento de um inventário.</td></tr>
       <tr><td><span class="ui">Transferência</span></td><td>Movimentação entre dois locais de estoque.</td></tr>
-      <tr><td><span class="ui">Estorno</span></td><td>Reversão de um movimento anterior.</td></tr>
+      <tr><td><span class="ui">Estorno</span></td><td>Reversão de um movimento anterior, inclusive quando a quantidade de um material já baixado numa OS é reduzida ao reabrir e corrigir aquela OS.</td></tr>
     </tbody>
   </table>
+
+  <p>O custo unitário de um material consumido numa OS <b>fica congelado</b> no momento da primeira baixa daquela linha. Se a OS for reaberta depois e a quantidade for corrigida, o estorno usa o mesmo custo do consumo original, para a devolução valorizar exatamente igual ao que saiu.</p>
 
   <h3>A coluna Origem</h3>
   <p>É o que amarra o movimento ao seu motivo. Ela mostra <span class="ui">OS</span> com o número da ordem quando o consumo veio de uma OS, ou <span class="ui">Fornecedor: [nome]</span> quando o movimento veio de uma compra. Movimento feito por processo automático aparece como <span class="ui">Sistema</span>. Material apagado depois aparece como <span class="ui">Material removido</span>.</p>
 
+  <h3>A coluna Local</h3>
+  <p>Mostra o local de estoque onde o movimento aconteceu, como <span class="ui">Galpão</span> ou <span class="ui">Van 01</span>. Num movimento do tipo <span class="ui">Transferência</span>, ela mostra o par completo no formato "origem → destino" (por exemplo, <span class="ui">Galpão → Van 01</span>), montado a partir das duas pernas daquela transferência. Quando o sistema não consegue identificar um dos dois lados, aparece só o nome que se conhece; sem nenhum dos dois, aparece <span class="ui">—</span>.</p>
+
   <figure>
     <img src="img/t8-kardex.png" alt="Aba Histórico de Materiais (Kardex) da conta de exemplo, sem nenhum movimento no período: ícone de relógio com seta, o texto Nenhuma movimentação encontrada e Tente outro período ou filtro, e o botão Filtros no canto superior direito">
-    <figcaption>Kardex sem movimentação no filtro atual. Com lançamentos, a tabela ganha as colunas Usuário, Data e Hora, Tipo, Origem, Material, Estoque inicial, Movimento e Estoque final.</figcaption>
+    <figcaption>Kardex sem movimentação no filtro atual. Com lançamentos, a tabela ganha as colunas Usuário, Data e Hora, Tipo, Origem, Material, Local, Estoque inicial, Movimento e Estoque final.</figcaption>
   </figure>
 
   <h3>Filtros</h3>
-  <p><span class="ui">Período</span>, <span class="ui">Material</span> (com <span class="ui">Todos os materiais</span>) e <span class="ui">Tipo de movimento</span> (com <span class="ui">Todos os tipos</span>). Sem movimento: "Sem movimentações" e "As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."</p>
+  <p><span class="ui">Período</span>, <span class="ui">Material</span> (com <span class="ui">Todos os materiais</span>), <span class="ui">Tipo de movimento</span> (com <span class="ui">Todos os tipos</span>) e <span class="ui">Local</span> (com <span class="ui">Todos os locais</span>), dentro do botão <span class="ui">Filtros</span>. Sem movimento: "Sem movimentações" e "As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."</p>
 
   <div class="dica">
     O Kardex é a ferramenta para responder "cadê os 20 filtros que compramos mês passado". Filtre pelo material, ordene por data e leia a coluna de saldo: em algum ponto o número muda sem um movimento correspondente, e ali está a resposta.
@@ -351,8 +359,8 @@
     <tbody>
       <tr>
         <td>"Concluí a OS e o estoque não baixou"</td>
-        <td>Comportamento correto do sistema</td>
-        <td>Concluir OS <b>não</b> dá baixa em estoque, e não existe campo de material na tela de execução do técnico. A baixa acontece: na <b>conversão de um orçamento em OS</b> (os materiais do orçamento saem do estoque, e o movimento aparece no Kardex com origem OS), na <b>saída manual</b> e no <b>ajuste do inventário</b>.</td>
+        <td>Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço)</td>
+        <td>Com o recurso <b>desligado</b> (padrão da empresa), concluir OS realmente não dá baixa em estoque: a baixa acontece na <b>conversão de um orçamento em OS</b> (os materiais do orçamento saem do estoque, movimento tipo <span class="ui">Saída</span> com origem OS no Kardex), na <b>saída manual</b> e no <b>ajuste do inventário</b>. Com o recurso <b>ligado</b>, o técnico anota o material usado direto na OS pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa (movimento tipo <span class="ui">Consumo</span> no Kardex) é confirmada no resumo editável que aparece ao finalizar. Sem material anotado naquela OS, nada muda, com o recurso ligado ou não.</td>
       </tr>
       <tr>
         <td>"O sistema não avisou que o material acabou"</td>
@@ -397,7 +405,7 @@
       <tr>
         <td>"Sumiu material e ninguém sabe explicar"</td>
         <td>Falta olhar o Kardex</td>
-        <td>Abra <span class="ui">Histórico de Materiais (Kardex)</span>, filtre pelo material e leia as colunas de saldo inicial e final. A coluna <span class="ui">Origem</span> mostra se a saída veio de OS ou de fornecedor, e a coluna <span class="ui">Usuário</span> mostra quem lançou.</td>
+        <td>Abra <span class="ui">Histórico de Materiais (Kardex)</span> (no celular, a aba <span class="ui">Histórico</span>), filtre pelo material e leia as colunas de saldo inicial e final. A coluna <span class="ui">Origem</span> mostra se a saída veio de OS ou de fornecedor, a coluna <span class="ui">Local</span> mostra de qual depósito saiu (em transferência, o par origem → destino), e a coluna <span class="ui">Usuário</span> mostra quem lançou.</td>
       </tr>
       <tr>
         <td>"Excluí um material sem querer"</td>
@@ -410,7 +418,7 @@
   <h2 class="suporte">Perguntas frequentes</h2>
   <dl class="qa">
     <dt>Concluir uma OS dá baixa nos materiais usados?</dt>
-    <dd>Não. Concluir OS não altera saldo de estoque, e a tela do técnico nem tem campo de material. A baixa acontece na conversão de orçamento em OS, na saída manual e no ajuste do inventário.</dd>
+    <dd>Por padrão não: a baixa acontece na conversão de orçamento em OS, na saída manual e no ajuste do inventário. Existe um recurso opcional, desligado por padrão (Configurações → Usabilidade → Ordens de Serviço → <span class="ui">Consumo de estoque na OS</span>), que liga o consumo de material dentro da própria OS: o técnico anota o que usou durante o atendimento e a baixa é confirmada num resumo editável ao finalizar. O movimento aparece no Kardex com o tipo <span class="ui">Consumo</span>, o número da OS na coluna Origem e o local de onde saiu na coluna Local.</dd>
 
     <dt>Qual a diferença entre Categoria e Grupo?</dt>
     <dd>Categoria é uma lista fixa igual para todos (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque, e serve para organizar do seu jeito.</dd>
@@ -419,7 +427,7 @@
     <dd>Não. Quem tem um só trabalha no local principal e nem vê as pílulas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.</dd>
 
     <dt>Dá para o técnico dar baixa de material pelo celular?</dt>
-    <dd>Não pela tela de execução da OS, que não tem campo de material. A baixa é feita na tela de Estoque, por quem tem a permissão de gerenciar estoque e acesso ao local.</dd>
+    <dd>Pela tela de Estoque, só quem tem a permissão de gerenciar estoque e acesso ao local. Dentro da própria Ordem de Serviço, sim, quando a empresa liga o recurso <span class="ui">Consumo de estoque na OS</span> em Configurações → Usabilidade: o técnico anota o material usado durante o atendimento pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa é confirmada no resumo editável que aparece ao finalizar a OS. Com o recurso desligado, a tela de execução não mostra esse passo.</dd>
 
     <dt>Aceitar a cotação já compra o material?</dt>
     <dd>Não. Aceitar registra a decisão de qual fornecedor venceu. Quando a mercadoria chega, use <span class="ui">Registrar entrada no estoque</span> na cotação aceita, e aí sim o saldo sobe.</dd>

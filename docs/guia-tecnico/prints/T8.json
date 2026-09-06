@@ -45,7 +45,7 @@
     {
       "id": "t8-kardex",
       "url": "/estoque",
-      "legenda": "Aba Histórico de Materiais (Kardex), com as colunas Usuário, Data e Hora, Tipo, Origem, Material, Estoque inicial, Movimento e Estoque final.",
+      "legenda": "Aba Histórico de Materiais (Kardex), com as colunas Usuário, Data e Hora, Tipo, Origem, Material, Local, Estoque inicial, Movimento e Estoque final.",
       "passos": [
         {
           "esperar": 3000

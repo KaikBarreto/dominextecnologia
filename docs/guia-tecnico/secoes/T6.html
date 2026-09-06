@@ -41,6 +41,15 @@
     <li>A lupa abre a busca <span class="ui">Buscar OS / Tarefa</span>, que procura por número da OS, cliente, descrição e técnico. Ao escolher um resultado, o calendário navega até a data daquele compromisso e abre o resumo dele.</li>
   </ul>
 
+  <h3>O resumo do compromisso</h3>
+  <p>Clicando num cartão da Agenda (ou num resultado da busca, ou em <span class="ui">Ver detalhes</span> na janela <span class="ui">OS Pausadas</span>), abre o resumo daquele compromisso: no computador, um painel à direita da tela; no celular, um painel abaixo do calendário. Para uma OS, o resumo traz o cliente, o endereço, o equipamento (quando houver), os responsáveis, a descrição e a linha do tempo com os horários de início, pausa, retomada e conclusão.</p>
+
+  <p>Quando a OS já teve material lançado nela, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o <span class="ui">Custo total</span> ao final. Um material ainda não baixado do estoque aparece com o aviso <span class="ui">Ainda não baixado do estoque</span>. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.</p>
+
+  <div class="regra">
+    O bloco <span class="ui">Materiais utilizados</span> só aparece quando existe material lançado naquela OS. Sem lançamento nenhum, o bloco simplesmente não aparece. Ele também não existe no resumo de uma <b>Tarefa</b>, porque Tarefa é compromisso interno e não tem consumo de estoque.
+  </div>
+
   <h3>Filtros</h3>
   <p>O botão <span class="ui">Filtros</span> traz <span class="ui">Técnico</span>, <span class="ui">Cliente</span> e <span class="ui">Status</span>, todos com seleção múltipla. Sem nada marcado, mostra tudo.</p>
 

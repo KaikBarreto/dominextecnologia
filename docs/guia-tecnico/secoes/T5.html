@@ -73,7 +73,7 @@
   </table>
 
   <div class="aviso">
-    "Cliente avulso" <b>não</b> quer dizer OS sem cliente. Ao salvar, o sistema cria a ficha do cliente com os dados que você digitou e vincula a OS a ela. Ou seja: aquele cliente passa a existir na sua base, com o nome que você escreveu. Se ele já existia com outro nome, você acabou de criar um duplicado. Na dúvida, use <span class="ui">Cliente cadastrado</span> e busque primeiro.
+    "Cliente avulso" <b>não</b> quer dizer OS sem cliente. Ao salvar, o sistema cria a ficha do cliente com os dados que você digitou e vincula a OS a ela. Ou seja: aquele cliente passa a existir na sua base, com o nome que você escreveu. Se ele já existia com outro nome, você acabou de criar um duplicado. Na dúvida, use <span class="ui">Cliente cadastrado</span> e busque primeiro. E como o cliente ainda não existe de fato na hora de montar a OS, a etapa <span class="ui">Equipamentos e Checklists</span> não tem como listar equipamento nenhum dele: veja o aviso na etapa 2.
   </div>
 
   <p>Ainda na etapa 1 fica o campo <span class="ui">Tipo de Serviço</span>, também com busca, mostrando a bolinha de cor de cada serviço e a categoria como subtítulo. A primeira opção da lista é <span class="ui">Nenhum</span>, que é válida. Ao lado, um botão de mais (+) para criar um tipo de serviço na hora.</p>
@@ -81,7 +81,7 @@
   <h3>Regras que o sistema aplica</h3>
   <ul>
     <li>O botão <span class="ui">Próximo</span> só libera quando há cliente escolhido (ou, no modo avulso, um nome preenchido).</li>
-    <li>Trocar o cliente limpa a seleção de equipamento, porque o equipamento pertence ao cliente.</li>
+    <li>Trocar o cliente, ou alternar entre <span class="ui">Cliente cadastrado</span> e <span class="ui">Cliente avulso</span>, limpa a seleção de equipamentos e os checklists já escolhidos por equipamento na etapa 2, porque tudo isso pertencia ao cliente anterior. Se isso acontecer no meio do preenchimento, é só marcar de novo.</li>
     <li>Trocar o tipo de serviço muda a lista de checklists disponíveis na etapa 2 e pode fazer o bloco de equipamentos aparecer ou sumir.</li>
     <li>Ao criar o cliente ou o tipo de serviço pelo botão de mais (+), o item recém-criado já vem selecionado.</li>
   </ul>
@@ -105,7 +105,9 @@
 
   <h3>Bloco Equipamentos</h3>
 
-  <p>Aparece quando o tipo de serviço escolhido está marcado como <b>vinculado a equipamento</b> (o padrão de todo serviço novo) ou quando nenhum tipo de serviço foi escolhido. Ele lista os equipamentos daquele cliente com caixinha de seleção, foto, marca, modelo, local e identificador.</p>
+  <p>Aparece quando o tipo de serviço escolhido está marcado como <b>vinculado a equipamento</b> (o padrão de todo serviço novo) ou quando nenhum tipo de serviço foi escolhido. Com um cliente cadastrado já escolhido, ele lista os equipamentos daquele cliente com caixinha de seleção, foto, marca, modelo, local e identificador.</p>
+
+  <p>Sem cliente escolhido, a lista vem <b>vazia</b>, e o texto do aviso muda conforme o modo da etapa 1: no modo <span class="ui">Cliente avulso</span>, "Salve a OS para depois cadastrar equipamentos deste cliente."; no modo <span class="ui">Cliente cadastrado</span> ainda sem ninguém escolhido, "Selecione um cliente primeiro para ver equipamentos.". Isso vale mesmo que a empresa já tenha equipamentos cadastrados de outros clientes: eles não aparecem aqui, só os do cliente da própria OS.</p>
 
   <ul>
     <li>Com mais de um equipamento, aparecem os botões <span class="ui">Selecionar todos</span> e <span class="ui">Desmarcar todos</span>.</li>
@@ -246,7 +248,7 @@
 
   <p>Passando o mouse sobre um cartão, aparecem dois botões no canto superior direito: o lápis, que abre a edição (laranja no hover), e a lixeira, que abre a exclusão (vermelha no hover). Cada botão só aparece para quem tem a permissão correspondente. No canto inferior direito do cartão aparece o avatar de quem criou a OS, com o nome no tooltip.</p>
 
-  <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Reabrir</span>, <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída.</p>
+  <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Reabrir</span>, <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o <span class="ui">Custo total</span> ao final (item ainda não baixado do estoque mostra o aviso <span class="ui">Ainda não baixado do estoque</span>).</p>
 
   <h3>O "+" no cabeçalho da coluna</h3>
 
@@ -256,7 +258,68 @@
     O botão de mais (+) <b>não aparece</b> nas colunas de <b>Concluída</b> e <b>Cancelada</b>. Criar uma OS já nascendo concluída seria uma armadilha: nunca teria check-in, checklist nem assinatura, e apareceria nos indicadores como serviço entregue. Se você precisa registrar um serviço já feito, crie normalmente e finalize em seguida.
   </div>
 
-  <h2>9. Configurar Status: criar status próprio, cor e ordem</h2>
+  <h2>9. Consumo de material dentro da OS (recurso opcional, ligado em Configurações)</h2>
+
+  <p>Existe um recurso opcional que liga o consumo de material dentro da própria Ordem de Serviço: o técnico anota o que usou durante o atendimento, e a baixa no estoque é confirmada num resumo editável na hora de finalizar. Este capítulo cobre o fluxo de ponta a ponta.</p>
+
+  <div class="regra">
+    O recurso vem <b>desligado por padrão</b>. Para ligar, vá em <span class="ui">Configurações</span> → aba <span class="ui">Usabilidade</span> → seção <span class="ui">Ordens de Serviço</span> → chave <span class="ui">Consumo de estoque na OS</span>, com a explicação "Permite que o técnico registre os materiais usados durante a ordem de serviço e dê baixa no estoque ao finalizar". Com a chave desligada, a OS funciona exatamente como antes: nenhum passo novo aparece para o técnico, e concluir a OS não mexe em estoque.
+  </div>
+
+  <h3>Dois tempos: anotar e confirmar</h3>
+
+  <p>O consumo acontece em dois momentos separados:</p>
+
+  <ol>
+    <li><b>Durante o atendimento</b>: com a OS aberta na tela de execução do técnico, o menu de mais ações ganha o item <span class="ui">Consumir do estoque</span>. Ele abre a janela de mesmo nome, com o aviso "Anote o que você usou. O estoque só baixa quando a OS for finalizada." Nesse momento, anotar um material <b>não</b> mexe em saldo nenhum.</li>
+    <li><b>Ao finalizar a OS</b>: se algum material foi anotado, em vez do "Finalizar OS?" de sempre aparece o resumo <span class="ui">Resumo do consumo</span>, com a explicação "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." É só nesse passo que o estoque baixa de verdade.</li>
+  </ol>
+
+  <h3>Anotando o material (janela "Consumir do estoque")</h3>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">De onde saiu</span></td>
+        <td>Sim (só aparece quando há mais de um local)</td>
+        <td>Com um único local de estoque na empresa, ele é usado sozinho, sem pergunta. Com mais de um, o campo pré-seleciona o último local usado por aquele técnico naquele aparelho, ou o local principal.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Material</span></td>
+        <td>Sim</td>
+        <td>Busca por nome ou código, já filtrada pelo local escolhido. Ao selecionar, aparece "Tem X Y neste estoque" (X = quantidade, Y = unidade) ou, sem saldo, "Sem saldo neste estoque".</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Quantidade</span></td>
+        <td>Sim</td>
+        <td>Maior que zero. Se passar do saldo disponível naquele local, aparece o aviso "Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo." <b>e o técnico consegue continuar mesmo assim</b> — o aviso não bloqueia.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Observação</span></td>
+        <td>Não</td>
+        <td>Texto livre, por exemplo "troca do capacitor da unidade externa".</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Cada item anotado entra na lista <span class="ui">Já registrado nesta OS</span>, com material, quantidade, unidade e local. Enquanto ainda não foi baixado, dá para <b>editar</b> ou <b>remover</b> o item livremente, com os ícones de lápis e lixeira. Um item já baixado (depois de uma finalização anterior) ganha o selo <span class="ui">Já baixado</span> e não pode mais ser editado ou removido por ali.</p>
+
+  <div class="aviso">
+    Se o aparelho estiver sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar." O item fica com o selo <span class="ui">Aguardando envio</span> até subir, o que acontece sozinho assim que a conexão volta, ou ao reabrir a janela de consumo, ou ao abrir o resumo de finalização.
+  </div>
+
+  <h3>O resumo na finalização</h3>
+
+  <p>Se a OS tiver pelo menos um material anotado, finalizar abre o <span class="ui">Resumo do consumo</span> em vez do confirm de sempre. Cada linha mostra o material, o local, um campo de quantidade editável e o resultado projetado: "Fica com X Y" em cinza, ou "Fica negativo em X Y" em vermelho quando a baixa levaria o saldo abaixo de zero. Dá para remover um item do resumo antes de confirmar: se ele ainda não tinha sido baixado, simplesmente não entra na baixa; se já tinha sido baixado numa finalização anterior, remover estorna a quantidade de volta para o estoque. Sem nenhum material sobrando na lista, a mensagem é "Você tirou todos os materiais da lista. Nada será baixado do estoque." O botão final é <span class="ui">Confirmar e finalizar</span>.</p>
+
+  <div class="regra">
+    <b>Estoque nunca impede finalizar a OS.</b> Confirmando o resumo, o sistema tenta dar baixa nos materiais e, dê certo ou não, a OS é finalizada em seguida. Se a baixa tiver sucesso, a confirmação é "Materiais baixados do estoque" (ou "Materiais baixados. Alguns ficaram com saldo negativo, vale conferir no Estoque." quando algum item passou do saldo). Se a baixa falhar por qualquer motivo (por exemplo, queda de conexão bem na hora de confirmar), aparece "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois." Nesse caso o material fica registrado na OS, sem o selo <span class="ui">Já baixado</span>, pronto para ser reconfirmado depois pela mesma janela.
+  </div>
+
+  <p>Sem nenhum material anotado naquela OS, o fluxo de finalizar é exatamente o de sempre: o resumo de consumo simplesmente não aparece, com o recurso ligado ou não.</p>
+
+  <h2>10. Configurar Status: criar status próprio, cor e ordem</h2>
 
   <p>O botão <span class="ui">Configurações</span> no topo da tela (no celular, dentro do painel de filtros, em <span class="ui">Gerenciar status de OS</span>) abre a janela <span class="ui">Configurações de OS</span>. É ali que vive a lista de status da sua empresa.</p>
 
@@ -291,7 +354,7 @@
     <b>Nesta janela não existe configuração de campos obrigatórios por status, nem prazo de atendimento (SLA), nem prefixo geral da numeração.</b> A janela <span class="ui">Configurações de OS</span> hoje faz uma coisa só: gerenciar os status (criar, renomear, recolorir, reordenar e excluir). O prefixo de numeração de cada OS vem do <b>tipo de serviço</b>, na tela de Serviços.
   </div>
 
-  <h2>10. Filtros, busca e por que a busca ignora o filtro de período</h2>
+  <h2>11. Filtros, busca e por que a busca ignora o filtro de período</h2>
 
   <p>A tela tem três controles de recorte, e a ordem em que eles conversam é a principal fonte de dúvida do suporte:</p>
 
@@ -314,7 +377,7 @@
 
   <p>A busca procura por: nome do cliente, código completo da OS (por exemplo MP-2026-000123), só o número, nome do tipo de serviço, título da tarefa e nome do equipamento. Ela tolera acento e diferença de maiúscula.</p>
 
-  <h2>11. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente</h2>
+  <h2>12. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente</h2>
 
   <p>Existe um único endereço de OS que serve para três públicos diferentes, e o que muda é <b>quem está olhando</b>:</p>
 
@@ -348,7 +411,7 @@
 
   <p>Quando a OS pertence a um contrato PMOC, a janela de edição mostra uma faixa de identificação no topo e, no campo de descrição, um aviso amarelo: "Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade, escreva pensando em quem está do outro lado (cliente, fiscal sanitário)." <b>Isso não é erro.</b> É um lembrete de que aquele texto é público.</p>
 
-  <h2>12. Aba Relatório: leitura do dashboard de OS</h2>
+  <h2>13. Aba Relatório: leitura do dashboard de OS</h2>
 
   <p>A aba <span class="ui">Relatório</span> transforma as OS em números. Ela respeita o mesmo recorte de período da tela.</p>
 
@@ -382,7 +445,7 @@
 
   <p>Onde não houver dado no período, o gráfico mostra "Sem dados". Isso quase sempre significa período muito estreito, não falta de informação.</p>
 
-  <h2>13. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator</h2>
+  <h2>14. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator</h2>
 
   <p>A aba <span class="ui">NPS e Satisfação</span> reúne o que os clientes responderam nas pesquisas geradas ao finalizar OS.</p>
 
@@ -449,9 +512,14 @@
         <td>Explique com clareza: <b>não existe uma chave de "exigir assinatura" na tela de criar ou editar OS</b>. A exigência de assinatura do técnico é ligada automaticamente nas OS geradas por <b>contrato</b>. Para OS avulsa, a assinatura é colhida quando o checklist tem uma pergunta do tipo <span class="ui">Assinatura</span>.</td>
       </tr>
       <tr>
+        <td>"Criei a OS como Cliente avulso e não apareceu nenhum equipamento pra marcar"</td>
+        <td>Comportamento esperado</td>
+        <td>No modo <span class="ui">Cliente avulso</span> o cliente ainda não existe de fato enquanto você preenche a OS, então não há como listar equipamento dele. A tela avisa "Salve a OS para depois cadastrar equipamentos deste cliente." Cadastre os equipamentos depois, direto no cadastro do cliente recém-criado.</td>
+      </tr>
+      <tr>
         <td>"Concluí a OS e o estoque não baixou"</td>
-        <td>Comportamento correto do sistema</td>
-        <td>Concluir OS <b>não</b> mexe em saldo de estoque. A baixa acontece na conversão de um orçamento em OS (os materiais do orçamento saem do estoque) e nos ajustes e inventários da tela de Estoque.</td>
+        <td>Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço)</td>
+        <td>Com o recurso <b>desligado</b> (padrão), concluir OS realmente não mexe em saldo de estoque: a baixa acontece na conversão de um orçamento em OS, na saída manual e nos ajustes e inventários da tela de Estoque. Com o recurso <b>ligado</b>, a baixa acontece na hora de finalizar, mas só se o técnico anotou material naquela OS pelo <span class="ui">Consumir do estoque</span> do menu de mais ações: confira se ele anotou algo e se confirmou o <span class="ui">Resumo do consumo</span> que aparece antes de fechar a OS.</td>
       </tr>
       <tr>
         <td>"A coluna do kanban sumiu"</td>
@@ -492,7 +560,7 @@
     <dd>Não existe uma chave de "exigir assinatura" na criação da OS. A exigência de assinatura do <b>técnico</b> é ligada sozinha nas OS geradas por contrato. Para pedir a assinatura do cliente numa OS avulsa, coloque uma pergunta do tipo <span class="ui">Assinatura</span> no checklist e marque como campo obrigatório: aí o técnico não fecha a OS sem colher.</dd>
 
     <dt>Concluir a OS dá baixa nos materiais usados?</dt>
-    <dd>Não. Concluir OS não mexe em estoque. A baixa acontece quando um orçamento com materiais é convertido em OS, e nos lançamentos manuais e inventários da tela de Estoque.</dd>
+    <dd>Por padrão não: concluir OS não mexe em estoque, e a baixa acontece quando um orçamento com materiais é convertido em OS, ou por lançamento manual e inventário na tela de Estoque. Existe um recurso opcional, desligado por padrão, chamado <span class="ui">Consumo de estoque na OS</span> (liga em Configurações → Usabilidade → Ordens de Serviço): com ele ligado, o técnico anota o material usado durante o atendimento pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa é confirmada num resumo editável na hora de finalizar a OS. Mesmo com o recurso ligado, uma OS sem nenhum material anotado finaliza sem mexer em estoque, e o estoque nunca impede a OS de ser finalizada.</dd>
 
     <dt>Posso colocar um técnico e uma equipe na mesma OS?</dt>
     <dd>Pode. O campo <span class="ui">Responsáveis</span> aceita técnicos individuais e equipes ao mesmo tempo, no mesmo seletor.</dd>

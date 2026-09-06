@@ -248,7 +248,41 @@
 
   <p>Se o técnico tentar finalizar sem assinar, as mensagens são "Assinatura do técnico obrigatória" ou "Assinatura do cliente obrigatória".</p>
 
-  <h2>9. Finalizar (e o "finalizar parcialmente" em contrato PMOC)</h2>
+  <h2>9. Consumir material durante o atendimento (recurso opcional)</h2>
+
+  <p>Algumas empresas ligam um recurso opcional (desligado por padrão, em Configurações → Usabilidade → Ordens de Serviço → <span class="ui">Consumo de estoque na OS</span>) que deixa o técnico anotar, durante o próprio atendimento, o material que usou. Sem esse recurso ligado, a tela de execução não mostra passo nenhum de material, e este capítulo não se aplica.</p>
+
+  <p>Com o recurso ligado, o menu de mais ações (o botão de três traços no rodapé) ganha o item <span class="ui">Consumir do estoque</span>. Ele abre a janela de mesmo nome, com o aviso "Anote o que você usou. O estoque só baixa quando a OS for finalizada." — ou seja, anotar aqui <b>não mexe em saldo nenhum</b> ainda.</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">De onde saiu</span></td>
+        <td>Sim (só aparece com mais de um local)</td>
+        <td>Com um único local de estoque na empresa, ele é usado sozinho. Com mais de um, o campo já vem com o último local usado por aquele técnico naquele aparelho, ou o local principal.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Material</span></td>
+        <td>Sim</td>
+        <td>Busca por nome ou código, filtrada pelo local escolhido. Mostra "Tem X Y neste estoque" (X = quantidade, Y = unidade) ou "Sem saldo neste estoque".</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Quantidade</span></td>
+        <td>Sim</td>
+        <td>Maior que zero. Passando do saldo disponível, aparece "Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo." e o técnico <b>consegue continuar</b> mesmo assim.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Observação</span></td>
+        <td>Não</td>
+        <td>Texto livre.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Cada item entra na lista <span class="ui">Já registrado nesta OS</span> e pode ser editado ou removido enquanto não foi baixado do estoque. Sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar.", com o selo <span class="ui">Aguardando envio</span> até subir sozinho.</p>
+
+  <h2>10. Finalizar (e o "finalizar parcialmente" em contrato PMOC)</h2>
 
   <p>No rodapé, o botão verde <span class="ui">Finalizar OS</span> encerra o atendimento. Antes de aceitar, o sistema confere uma sequência de coisas.</p>
 
@@ -273,8 +307,8 @@
     <li>Mostra "OS finalizada com sucesso!" e a tela vira o relatório do serviço.</li>
   </ul>
 
-  <div class="perigo">
-    <b>Finalizar não dá baixa em material nenhum.</b> Não existe, na tela de execução, campo de material usado nem botão de consumo de estoque. Concluir a OS não altera saldo de estoque. A baixa acontece na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque.
+  <div class="regra">
+    <b>Estoque nunca impede a OS de ser finalizada.</b> Sem o recurso "Consumo de estoque na OS" ligado, ou com ele ligado mas sem nenhum material anotado nesta OS, finalizar não mexe em estoque nenhum: a baixa continua acontecendo só na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque. Com o recurso ligado <b>e</b> material anotado, ao tocar em <span class="ui">Finalizar OS</span> (depois de passar pela sequência de verificação acima) aparece, no lugar da confirmação de sempre, o <span class="ui">Resumo do consumo</span>: "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." Cada linha traz a quantidade (editável) e o saldo projetado, em cinza ("Fica com X") ou em vermelho quando ficaria negativo ("Fica negativo em X"). Dá para remover um item ali mesmo antes de confirmar: se ainda não tinha sido baixado, ele simplesmente não entra na baixa. O botão <span class="ui">Confirmar e finalizar</span> tenta dar a baixa e, dê certo ou não, finaliza a OS de qualquer forma: se a baixa falhar (por exemplo, a conexão cair na hora), o aviso é "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois."
   </div>
 
   <h3>Finalizar Parcial</h3>
@@ -298,7 +332,7 @@
     <b>Finalizar Parcial está disponível em qualquer OS</b> com check-in feito, não apenas nas de contrato PMOC. Ele é a saída honesta para o serviço que ficou pela metade: o registro fica, o gestor vê na fila de pausadas e o cliente não recebe pesquisa de satisfação de um serviço que não terminou.
   </div>
 
-  <h2>10. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)</h2>
+  <h2>11. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)</h2>
 
   <div class="regra">
     <b>Área do Técnico™ não é a tela de executar OS.</b> São duas coisas diferentes com nomes parecidos. A execução da OS é o link da ordem de serviço. A Área do Técnico™ é uma caixa de ferramentas de cálculo e consulta, que existe independentemente de haver OS aberta.
@@ -343,7 +377,7 @@
     <b>As ferramentas mudam conforme o segmento da empresa.</b> Empresa de elevadores não vê as calculadoras de refrigeração. Se o segmento da sua empresa ainda não tem ferramenta nenhuma no catálogo, o item <span class="ui">Área do Técnico™</span> não aparece no menu e o endereço redireciona para o início. O segmento é definido pela Dominex, não é editável pelo cliente.
   </div>
 
-  <h2>11. Usar a calculadora de dentro da OS, sem sair da tela</h2>
+  <h2>12. Usar a calculadora de dentro da OS, sem sair da tela</h2>
 
   <p>Durante a execução da OS, aparece um <b>botão flutuante</b> no canto inferior esquerdo, com o ícone da Área do Técnico™. Tocando nele, as ferramentas abrem <b>em cima da OS</b>, em tela cheia.</p>
 
@@ -359,7 +393,7 @@
   </div>
   <!-- INCERTO: o atalho flutuante dentro da OS é liberado por uma comparação direta com o segmento 'refrigeracao', enquanto a tela própria usa o registro de ferramentas por segmento. Resultado: TI/assistência e estética automotiva têm ferramentas na tela mas não têm o atalho dentro da OS. Reportado ao Tech Lead como possível inconsistência. -->
 
-  <h2>12. As ferramentas com cadeado: o que é do seu segmento e o que é de outro</h2>
+  <h2>13. As ferramentas com cadeado: o que é do seu segmento e o que é de outro</h2>
 
   <p>No topo da Área do Técnico™ existe um seletor de nicho. Ele permite espiar o conjunto de ferramentas de <b>outros segmentos</b>, e é aí que aparecem os cadeados.</p>
 
@@ -420,8 +454,8 @@
       </tr>
       <tr>
         <td>"Onde eu marco as peças que usei na OS?"</td>
-        <td>Esse campo não existe na execução</td>
-        <td>Não existe registro de material dentro da tela de execução, e concluir a OS não mexe em estoque. O consumo é lançado pelo orçamento convertido em OS, ou manualmente na tela de Estoque.</td>
+        <td>Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço)</td>
+        <td>Com o recurso desligado, esse campo não existe mesmo na tela de execução: nesse caso o consumo é lançado pelo orçamento convertido em OS, ou manualmente na tela de Estoque. Com o recurso ligado, o menu de mais ações ganha o item <span class="ui">Consumir do estoque</span>, onde o técnico anota material e quantidade durante o atendimento; a baixa é confirmada no resumo que aparece ao finalizar a OS.</td>
       </tr>
       <tr>
         <td>"Onde está o botão de exigir assinatura?"</td>
