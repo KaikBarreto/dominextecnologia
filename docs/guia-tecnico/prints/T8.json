@@ -57,7 +57,12 @@
           "esperar": 2500
         }
       ],
-      "recorte": "main"
+      "recorte": "main",
+      "viewport": {
+        "largura": 1920,
+        "altura": 1000
+      },
+      "observacao": "Viewport 1920 (acima do padrão 1440): na 1.23.1 o Kardex ganhou a coluna Local e, com o menu lateral aberto, a tabela passa a ser mais larga que a área principal — no recorte 'main' a 1440 a coluna Local sai cortada pela metade, justamente a que o texto documenta."
     },
     {
       "id": "t8-compras",
