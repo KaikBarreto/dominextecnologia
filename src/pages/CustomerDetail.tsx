@@ -63,6 +63,7 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { formatBRL } from '@/utils/currency';
 import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
+import { formatOSNumber } from '@/lib/osNumber';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas';
 
@@ -953,7 +954,7 @@ export default function CustomerDetail() {
                   <TableBody>
                     {ordersPagination.paginatedItems.map((os) => (
                       <TableRow key={os.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors min-h-[44px]')}>
-                         <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(6, '0')}</span></TableCell>
+                         <TableCell><span className="font-mono font-medium">{formatOSNumber(os.order_number)}</span></TableCell>
                         <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {os.scheduled_date ? format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
@@ -1098,7 +1099,7 @@ export default function CustomerDetail() {
                   <TableBody>
                     {ticketsPagination.paginatedItems.map((os) => (
                       <TableRow key={os.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
-                        <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(6, '0')}</span></TableCell>
+                        <TableCell><span className="font-mono font-medium">{formatOSNumber(os.order_number)}</span></TableCell>
                         <TableCell><p className="text-sm truncate max-w-[200px] leading-relaxed">{os.description || '-'}</p></TableCell>
                         <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
                         <TableCell className="hidden sm:table-cell">

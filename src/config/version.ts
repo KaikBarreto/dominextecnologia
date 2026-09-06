@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.22.5";
+export const APP_VERSION = "1.23.0";
 
-export const VERSION_NOTES = "A tela de permissões foi redesenhada: cada tela agora abre e mostra as ações dela dentro, com busca e explicação do que cada permissão libera. Criamos também a permissão de excluir lançamento financeiro, que antes não existia e deixava qualquer usuário apagar contas. E o pagamento parcial de fatura agora avisa o que acontece com aquelas compras no seu resultado.";
+export const VERSION_NOTES = "Agora o técnico pode anotar na ordem de serviço os materiais que usou e, ao finalizar, conferir um resumo e confirmar a baixa no estoque de uma vez. O número da OS também ficou mais curto e fácil de ler.";

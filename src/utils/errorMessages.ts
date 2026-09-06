@@ -133,6 +133,13 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'Este item de estoque não pode ser excluído porque possui movimentações registradas.',
   },
   {
+    // Regra específica ANTES da genérica de `_inventory_id_fkey`: a contagem de
+    // inventário bloqueia a exclusão por uma FK própria, e a mensagem genérica
+    // mandava o usuário procurar em orçamento/serviço, onde ele não ia achar nada.
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('inventory_count_items_inventory_id_fkey'),
+    text: 'Este item de estoque não pode ser excluído porque está incluído em uma contagem de inventário. Finalize ou exclua a contagem antes.',
+  },
+  {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('_inventory_id_fkey'),
     text: 'Este item de estoque não pode ser excluído porque está vinculado a materiais de serviço ou itens de orçamento.',
   },

@@ -18,6 +18,52 @@ export interface InlineMovementParams {
   notes?: string;
 }
 
+/**
+ * Monta a mensagem PT-BR quando o material está lançado em OS (consumo de
+ * estoque, `service_order_materials`). Essa tabela referencia `inventory(id)`
+ * com `ON DELETE RESTRICT` de propósito (preserva o custo histórico da OS já
+ * finalizada) — aqui só traduzimos o bloqueio pro usuário, sem mudar a regra.
+ */
+function buildOsMaterialBlockedMessage(distinctOrders: number): string {
+  return distinctOrders === 1
+    ? 'Este material está lançado em 1 ordem de serviço e não pode ser excluído. Remova o lançamento na OS antes de excluir.'
+    : `Este material está lançado em ${distinctOrders} ordens de serviço e não pode ser excluído. Remova os lançamentos nas OS antes de excluir.`;
+}
+
+/**
+ * Conta em quantas OS distintas o material aparece em `service_order_materials`
+ * (RLS já isola por empresa).
+ *
+ * FALHA FECHADA de propósito: se a consulta der erro, LANÇA em vez de devolver 0.
+ * Devolver 0 deixaria a exclusão seguir, e o `deleteItem` apaga TODAS as
+ * `inventory_movements` do material ANTES de tentar apagar o `inventory` — então
+ * a rede de segurança do 23503 só dispararia depois do histórico já ter sido
+ * destruído. O usuário veria "não pode excluir" com o kardex do material perdido.
+ * Bloquear numa falha transitória (usuário tenta de novo) é muito mais barato.
+ */
+async function countOsMaterialUsage(inventoryId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('service_order_materials')
+    .select('service_order_id')
+    .eq('inventory_id', inventoryId);
+
+  if (error) {
+    throw new Error('Não foi possível verificar se este material está lançado em alguma ordem de serviço. Tente de novo em instantes.');
+  }
+  if (!data) return 0;
+  const distinctOrders = new Set(data.map((row) => row.service_order_id).filter(Boolean));
+  return distinctOrders.size;
+}
+
+/** Verdadeiro quando `error` é a violação 23503 de uma FK específica pra `inventory`. */
+function isInventoryFkViolation(error: unknown, constraintName: string): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string; details?: string; hint?: string };
+  if (e.code !== '23503') return false;
+  const raw = [e.message, e.details, e.hint].filter(Boolean).join(' ').toLowerCase();
+  return raw.includes(constraintName.toLowerCase());
+}
+
 export function useInventory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -327,6 +373,15 @@ export function useInventory() {
 
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
+      // Pré-checagem: material lançado em OS não pode ser excluído (FK RESTRICT
+      // service_order_materials_inventory_id_fkey — preserva o custo histórico
+      // da OS). Barra aqui, com mensagem PT-BR acionável, em vez de deixar o
+      // banco estourar o 23503 cru.
+      const osUsageCount = await countOsMaterialUsage(id);
+      if (osUsageCount > 0) {
+        throw new Error(buildOsMaterialBlockedMessage(osUsageCount));
+      }
+
       // First remove references in service_materials
       await supabase
         .from('service_materials')
@@ -349,8 +404,20 @@ export function useInventory() {
         .from('inventory')
         .delete()
         .eq('id', id);
-      
-      if (error) throw error;
+
+      if (error) {
+        // Rede de segurança: corrida entre a pré-checagem e o delete (técnico
+        // lançou o material numa OS nesse intervalo). Só assume a mensagem de
+        // "está numa OS" quando a FK violada é REALMENTE essa — outras FKs
+        // RESTRICT pra inventory (ex.: inventory_count_items, contagem física
+        // de estoque) caem no mapeamento genérico de getErrorMessage, sem
+        // mentir sobre a causa.
+        if (isInventoryFkViolation(error, 'service_order_materials_inventory_id_fkey')) {
+          const recount = await countOsMaterialUsage(id);
+          throw new Error(buildOsMaterialBlockedMessage(recount || 1));
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });

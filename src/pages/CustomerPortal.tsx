@@ -54,6 +54,7 @@ import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
+import { formatOSNumber } from '@/lib/osNumber';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces e constantes
@@ -460,11 +461,17 @@ function CustomerPortalContent({
   // ── Datasets filtrados pela busca (dataset completo, paginação recalcula sobre o filtrado) ──
   const filteredServiceOrders = useMemo(() => {
     if (!osSearch.trim()) return serviceOrders;
+    // A exibição não leva mais zero à esquerda ("#123", não "#000123"), mas
+    // quem digitar/colar o formato antigo (ex.: de um e-mail ou documento
+    // impresso de antes do sweep que tirou o padding) não pode deixar de
+    // achar a OS — em vez de re-preencher o número com zero, tira o zero à
+    // esquerda do termo digitado (mantendo um eventual "#" na frente).
+    const osSearchNoLeadingZeros = osSearch.replace(/(^#?)0+(?=\d)/, '$1');
     return serviceOrders.filter((os) => {
-      const num = `#${String(os.order_number).padStart(6, '0')}`;
+      const num = formatOSNumber(os.order_number);
       const statusLabel = OS_STATUS_LABEL[os.status] || os.status;
       return (
-        fuzzyIncludes(num, osSearch) ||
+        fuzzyIncludes(num, osSearchNoLeadingZeros) ||
         fuzzyIncludes(os.description, osSearch) ||
         fuzzyIncludes(statusLabel, osSearch)
       );
@@ -727,7 +734,7 @@ function CustomerPortalContent({
                     {/* Bloco de informacoes — largura total */}
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-mono text-sm font-bold">
-                        #{String(os.order_number).padStart(6, '0')}
+                        {formatOSNumber(os.order_number)}
                       </span>
                       <Badge className={cn('text-xs', style.badgeClass)}>
                         {label}
@@ -951,7 +958,7 @@ function CustomerPortalContent({
                 return (
                   <div key={os.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                     <div className="min-w-0 flex-1">
-                      <span className="font-mono font-bold">#{String(os.order_number).padStart(6, '0')}</span>
+                      <span className="font-mono font-bold">{formatOSNumber(os.order_number)}</span>
                       {os.description && (
                         <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{os.description}</p>
                       )}

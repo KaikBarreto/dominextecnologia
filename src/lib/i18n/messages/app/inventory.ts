@@ -136,6 +136,7 @@ export const inventory = {
         saida: 'Saída',
         ajuste: 'Ajuste',
         transferencia: 'Transferência',
+        consumo: 'Consumo',
         estorno: 'Estorno',
       },
       empty: {
@@ -954,6 +955,7 @@ export const inventory = {
         saida: 'Stock out',
         ajuste: 'Adjustment',
         transferencia: 'Transfer',
+        consumo: 'Consumption',
         estorno: 'Reversal',
       },
       empty: {
@@ -1772,6 +1774,7 @@ export const inventory = {
         saida: 'Salida',
         ajuste: 'Ajuste',
         transferencia: 'Transferencia',
+        consumo: 'Consumo',
         estorno: 'Reversión',
       },
       empty: {
@@ -2590,6 +2593,7 @@ export const inventory = {
         saida: 'Sortie',
         ajuste: 'Ajustement',
         transferencia: 'Transfert',
+        consumo: 'Consommation',
         estorno: 'Annulation',
       },
       empty: {

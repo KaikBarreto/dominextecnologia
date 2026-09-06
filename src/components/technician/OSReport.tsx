@@ -33,6 +33,7 @@ import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDateTime } from '@/lib/format';
+import { formatOSNumberDigits } from '@/lib/osNumber';
 
 interface OSPhoto {
   id: string;
@@ -824,7 +825,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
     try {
       const { generateReportPDF } = await import('@/utils/pdfPageRenderer');
-      const orderNum = String(serviceOrder.order_number).padStart(6, '0');
+      const orderNum = formatOSNumberDigits(serviceOrder.order_number);
       const companyName = company?.name ? ` | ${company.name}` : '';
       await generateReportPDF(reportRef.current, `OS-${orderNum}${companyName}.pdf`);
     } catch (err) {
@@ -999,7 +1000,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               icon_url: isWhiteLabel ? (company as any).white_label_icon_url : undefined,
               logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
             } : null}
-            orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
+            orderNumber={formatOSNumberDigits(serviceOrder.order_number)}
             osType={getOsTypeLabel(
               { ...serviceOrder, contract: isPmoc ? { is_pmoc: true } : (serviceOrder as any).contract },
               MESSAGES[locale].app.os.typeFallback,

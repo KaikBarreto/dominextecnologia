@@ -69,6 +69,7 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { getIsPmocFromOrder } from '@/hooks/useIsPmocOrder';
+import { formatOSNumberDigits } from '@/lib/osNumber';
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -143,7 +144,7 @@ export default function ServiceOrders() {
   const getOsCode = (os: ServiceOrder) => {
     const prefix = (os as any).service_type?.number_prefix || 'OS';
     const year = os.scheduled_date ? new Date(os.scheduled_date).getFullYear() : new Date(os.created_at).getFullYear();
-    return `${prefix}-${year}-${String(os.order_number).padStart(6, '0')}`;
+    return `${prefix}-${year}-${formatOSNumberDigits(os.order_number)}`;
   };
 
   // Busca universal: com texto digitado, procuramos em TODAS as OS carregadas,
@@ -153,14 +154,27 @@ export default function ServiceOrders() {
 
   const filteredOrders = useMemo(() => {
     if (hasSearch) {
+      // A exibição não leva mais zero à esquerda ("OS #123", não "OS
+      // #000123"), mas quem digitar o formato antigo ("000123" — copiado de
+      // um e-mail, documento ou OS impressa de antes do sweep que tirou o
+      // padding) não pode deixar de achar a OS. Em vez de re-preencher o
+      // número da OS com zero pra comparar, tira o zero à esquerda do termo
+      // digitado: "000123" vira "123" e casa igual contra o número cru.
+      // O zero é tirado em qualquer fronteira não-numérica (não só no começo)
+      // pra cobrir também o código composto antigo: "OS-2026-000123" vira
+      // "OS-2026-123" e casa com getOsCode. O termo cru continua valendo pros
+      // campos de texto, senão um cliente "Loja 007" deixaria de ser achado.
+      const searchTermNoLeadingZeros = searchTerm.replace(/(^|\D)0+(?=\d)/g, '$1');
+
       // Filtros pausados: base é o universo completo de OS, só a busca restringe.
       return serviceOrders.filter((os) => {
         const osCode = getOsCode(os);
-        const orderNum = String(os.order_number).padStart(6, '0');
+        const orderNum = formatOSNumberDigits(os.order_number);
         return (
           fuzzyIncludes(os.customer?.name, searchTerm) ||
           fuzzyIncludes(osCode, searchTerm) ||
-          fuzzyIncludes(orderNum, searchTerm) ||
+          fuzzyIncludes(osCode, searchTermNoLeadingZeros) ||
+          fuzzyIncludes(orderNum, searchTermNoLeadingZeros) ||
           fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
           fuzzyIncludes((os as any).task_title, searchTerm) ||
           fuzzyIncludes((os as any).equipment?.name, searchTerm)

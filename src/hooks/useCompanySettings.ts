@@ -66,6 +66,12 @@ export interface CompanySettings {
   // Perfil Comportamental (DISC): funcionário vê o próprio resultado ao terminar
   // o teste. Off = só tela de "obrigado", resultado fica com o RH. Default true.
   disc_show_result_to_employee?: boolean | null;
+  // Consumo de estoque na OS: liga a pergunta de materiais consumidos ao
+  // técnico e a baixa de estoque ao finalizar a OS. Opcional por empresa
+  // (nem todo tenant quer isso) — decisão de tenant, não preferência de
+  // aparelho, por isso mora aqui e não em localStorage. Default false no
+  // banco. Ver Settings.tsx (aba Usabilidade → Ordens de Serviço).
+  os_stock_consumption_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }

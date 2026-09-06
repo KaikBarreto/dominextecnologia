@@ -31,6 +31,7 @@ import {
   LogOut,
   ChevronDown,
   Pencil,
+  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,6 +104,10 @@ import { getSegment } from '@/utils/companySegments';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { useSubscriptionBlock } from '@/hooks/useSubscriptionBlock';
+import { formatOSNumber } from '@/lib/osNumber';
+import { OsConsumeStockDialog } from '@/components/service-orders/OsConsumeStockDialog';
+import { OsConsumptionSummaryDialog } from '@/components/service-orders/OsConsumptionSummaryDialog';
+import { useOsMaterials, useOsStockConsumptionEnabled, type CommitLineInput } from '@/hooks/useOsMaterials';
 
 interface OSPhoto {
   id: string;
@@ -414,6 +419,9 @@ function TechnicianOSInner() {
   const { locale: appLocale } = useAppLocaleContext();
   const tFlow = MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.technicianFlow
     ?? MESSAGES['pt-br'].app.os.technicianFlow;
+  // Copy do consumo de estoque dentro da OS (v1.22.0) — mesmo padrão do tFlow.
+  const tStock = MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.stockConsumption
+    ?? MESSAGES['pt-br'].app.os.stockConsumption;
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any; contract?: any }) | null>(null);
   // UUID REAL da OS — fonte ÚNICA e estável pra TODA escrita/consulta keyed por
@@ -595,6 +603,19 @@ function TechnicianOSInner() {
     getFormResponse: getChecklistFormResponse,
     saveFormResponse: saveChecklistFormResponse,
   } = useOsActivityChecklist(isAuthenticated === true ? resolvedOsId ?? undefined : undefined);
+
+  // Consumo de estoque dentro da OS (v1.22.0). Fronteira do Supabase é o hook —
+  // aqui só lemos o toggle da empresa e as linhas já lançadas (rascunho +
+  // pendentes) pra decidir se o resumo de finalização precisa aparecer. Some
+  // no modo público/cliente (anon): o técnico é quem lança, não o cliente final.
+  const stockConsumptionEnabled = useOsStockConsumptionEnabled();
+  const { lines: osMaterialLines, commitConsumption } = useOsMaterials(
+    isAuthenticated === true ? resolvedOsId ?? undefined : undefined,
+  );
+  const [consumeStockOpen, setConsumeStockOpen] = useState(false);
+  const [consumptionSummaryOpen, setConsumptionSummaryOpen] = useState(false);
+  const [confirmingConsumption, setConfirmingConsumption] = useState(false);
+
   type PmocConformity = 'conforme' | 'parcial' | 'nao_conforme';
   const [conformityStatus, setConformityStatus] = useState<PmocConformity | ''>('');
   const [conformityNotes, setConformityNotes] = useState<string>('');
@@ -692,6 +713,18 @@ function TechnicianOSInner() {
   // botão nem aparece offline (a edição de escopo exige internet no v1).
   const canEditarOsCampo = isAdminOrGestor() || hasPermission('fn:editar_os_campo');
   const showEditScopeAction = canEditarOsCampo && !isPmocOrder;
+
+  // "Consumir do estoque" no menu de mais-ações (v1.22.0).
+  // Gate SÓ do toggle da empresa, de propósito. Não usar canEditarOsCampo aqui:
+  // `fn:editar_os_campo` é permissão opt-in de "editar equipamentos e checklists"
+  // que técnico de campo comum NÃO tem por padrão — gatear nela esconderia a ação
+  // justamente de quem lança material. Quem restringe de verdade é o servidor: a
+  // RLS de service_order_materials só aceita o técnico/criador da OS, e a ACL de
+  // local (can_access_stock) limita de onde ele pode tirar. O estado da OS também
+  // já está coberto: os dois menus ⋮ só renderizam com isCheckedIn.
+  // Ao contrário do "editar escopo", NÃO exige estar online — o hook guarda o
+  // lançamento no aparelho quando a rede cai e reenvia depois.
+  const showConsumeStockAction = stockConsumptionEnabled;
 
   // Escopo atual da OS no shape que o drawer hidrata (equip×template + nomes).
   const editScopeSeedItems = useMemo<EditOsScopeSeedItem[]>(
@@ -1629,6 +1662,47 @@ function TechnicianOSInner() {
     }
   };
 
+  // Ponto ÚNICO de decisão pré-finalização (v1.22.0). Os DOIS caminhos que
+  // finalizam a OS (handleFinishOS→confirm modal, e o atalho do checklist em
+  // branco→handleMarkRestAndFinish) passam por aqui ANTES de decidir o próximo
+  // passo. Com consumo pra confirmar, o resumo editável SUBSTITUI o próximo
+  // passo de cada caminho (ele mesmo finaliza via handleConfirmConsumptionAndFinish).
+  // Sem consumo (toggle desligado OU nenhuma linha lançada), `fallback` roda o
+  // comportamento de sempre — exatamente igual ao de antes desta feature.
+  const finishWithConsumptionGate = (fallback: () => void | Promise<void>) => {
+    if (stockConsumptionEnabled && osMaterialLines.length > 0) {
+      setConsumptionSummaryOpen(true);
+      return;
+    }
+    return fallback();
+  };
+
+  // onConfirm do resumo de consumo: baixa o estoque e SEMPRE finaliza a OS em
+  // seguida, dê certo ou não a baixa. Regra-lei da feature: consumo de estoque
+  // NUNCA pode travar o fechamento da OS em campo. O try/catch cobre a chamada
+  // inteira (commitConsumption + toast) e o `finally` garante proceedFinishOS
+  // mesmo se algo além do esperado explodir no meio do caminho.
+  const handleConfirmConsumptionAndFinish = async (lines: CommitLineInput[]) => {
+    setConfirmingConsumption(true);
+    try {
+      const result = await commitConsumption(lines);
+      if (result.warnings.length > 0) {
+        toast({ title: tStock.toastCommittedNegative });
+      } else {
+        toast({ title: tStock.toastCommitted });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: tStock.toastCommitFailed,
+        description: tStock.toastCommitFailedDesc,
+      });
+    } finally {
+      setConfirmingConsumption(false);
+      await proceedFinishOS();
+    }
+  };
+
   const handleFinishOS = async () => {
     if (!allFormsValid) {
       // Item 7: se TODAS as obrigatórias pendentes forem auto-preenchíveis
@@ -1712,9 +1786,10 @@ function TechnicianOSInner() {
       }
     }
 
-    // Tudo OK e sem pendência de checklist → abre o confirm "Finalizar OS?" antes
-    // de concluir de verdade (evita miss-click). proceedFinishOS roda só no OK.
-    setFinishConfirmOpen(true);
+    // Tudo OK e sem pendência de checklist → decide entre o resumo de consumo
+    // (se houver material lançado) e o confirm "Finalizar OS?" de sempre (evita
+    // miss-click). proceedFinishOS roda só no OK de um dos dois.
+    finishWithConsumptionGate(() => setFinishConfirmOpen(true));
   };
 
   // Confirmação do modal "Finalizar OS?" (caminho tudo-OK). handleMarkRestAndFinish
@@ -1850,7 +1925,11 @@ function TechnicianOSInner() {
       await refetchChecklist();
       setChecklistGapOpen(false);
       setPendingChecklistCount(0);
-      await proceedFinishOS();
+      // O técnico já confirmou explicitamente neste modal — não empilha o
+      // confirm "Finalizar OS?" de novo. Mesmo ponto de decisão do consumo,
+      // porém: se houver material lançado, ainda passa pelo resumo antes de
+      // concluir de verdade.
+      await finishWithConsumptionGate(() => proceedFinishOS());
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -2303,7 +2382,7 @@ function TechnicianOSInner() {
                 </span>
               )}
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
-                OS <span className="opacity-95">#{String(serviceOrder.order_number).padStart(6, '0')}</span>
+                OS <span className="opacity-95">{formatOSNumber(serviceOrder.order_number)}</span>
               </h1>
               <p className="text-xs sm:text-sm font-medium opacity-85">{tPublic.serviceReport}</p>
             </div>
@@ -2457,7 +2536,7 @@ function TechnicianOSInner() {
                 <span className="text-sm sm:text-base font-semibold opacity-95 truncate">{company?.name || ''}</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
-                OS <span className="opacity-95">#{String(serviceOrder.order_number).padStart(6, '0')}</span>
+                OS <span className="opacity-95">{formatOSNumber(serviceOrder.order_number)}</span>
               </h1>
               <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85 max-w-full min-w-0">
                 <Wrench className="h-3.5 w-3.5 shrink-0" />
@@ -3461,7 +3540,7 @@ function TechnicianOSInner() {
               {company?.name || ''}
             </span>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
-              OS <span className="opacity-95">#{String(serviceOrder.order_number).padStart(6, '0')}</span>
+              OS <span className="opacity-95">{formatOSNumber(serviceOrder.order_number)}</span>
             </h1>
             <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85 max-w-full min-w-0">
               <Wrench className="h-3.5 w-3.5 shrink-0" />
@@ -4188,6 +4267,21 @@ function TechnicianOSInner() {
                       <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.editScope.menuItem}</span>
                     </button>
                   )}
+                  {showConsumeStockAction && (
+                    <button
+                      type="button"
+                      onClick={() => { closeDesktopActions(); setConsumeStockOpen(true); }}
+                      className={cn(
+                        'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                        desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                      )}
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                        <Package className="h-4 w-4" />
+                      </span>
+                      <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tStock.menuItem}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => { closeDesktopActions(); handlePauseOS(); }}
@@ -4289,6 +4383,21 @@ function TechnicianOSInner() {
                 <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">
                   {!isOnline ? tFlow.editScope.offlineHint : tFlow.editScope.menuItem}
                 </span>
+              </button>
+            )}
+            {showConsumeStockAction && (
+              <button
+                type="button"
+                onClick={() => { closeMobileActions(); setConsumeStockOpen(true); }}
+                className={cn(
+                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                  mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                )}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                  <Package className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tStock.menuItem}</span>
               </button>
             )}
             {!isPaused ? (
@@ -4571,6 +4680,28 @@ function TechnicianOSInner() {
           </p>
         </div>
       </ResponsiveModal>
+
+      {/* Consumo de estoque dentro da OS (v1.22.0). Dialog de lançamento (aberto
+          pelo item "Consumir do estoque" do menu ⋮, nos dois rodapés) e resumo
+          editável de finalização (aberto por finishWithConsumptionGate quando há
+          ao menos 1 linha lançada e o toggle da empresa está ligado). Só montam
+          com id resolvido — mesmo padrão do EditOsScopeDrawer acima. */}
+      {resolvedOsId && (
+        <>
+          <OsConsumeStockDialog
+            open={consumeStockOpen}
+            onOpenChange={setConsumeStockOpen}
+            serviceOrderId={resolvedOsId}
+          />
+          <OsConsumptionSummaryDialog
+            open={consumptionSummaryOpen}
+            onOpenChange={setConsumptionSummaryOpen}
+            serviceOrderId={resolvedOsId}
+            onConfirm={handleConfirmConsumptionAndFinish}
+            isConfirming={finishing || confirmingConsumption}
+          />
+        </>
+      )}
 
       {/* FAB EXCLUSIVO da Área do Técnico™ (canto inferior esquerdo, ícone de
           ferramenta — não 3 pontinhos). Função única → toque abre direto. Fica
