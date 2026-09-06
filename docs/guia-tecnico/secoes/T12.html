@@ -1,0 +1,464 @@
+<section class="tutorial" id="t12">
+  <h1><span class="tcode">T12</span> Portal do Cliente, NPS e reputação</h1>
+
+  <p class="lead">Serviço bem feito que ninguém vê não vira reputação. Esta seção mostra como abrir uma janela do sistema para o seu cliente acompanhar sozinho, como coletar a nota dele no fim de cada atendimento e como transformar cliente satisfeito em avaliação no Google.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> o portal é gerado na ficha do cliente (Menu → Clientes → abrir o cliente → menu <b>Ações</b>). A configuração de avaliação fica em Menu → Ordens de Serviço → aba <b>NPS e Satisfação</b> → botão <b>Configurações</b>.</span>
+    <span><b>Rotas:</b> <code>/clientes/:id</code> (para gerar o link), <code>/ordens-servico</code> (aba NPS e Satisfação). O portal público do cliente fica em <code>/portal/:token</code>, fora da área logada.</span>
+    <span><b>Depende de:</b> T3 (Clientes e Equipamentos), T5 (Ordens de Serviço), T11 (Contratos e PMOC)</span>
+    <span><b>Quem enxerga:</b> o Portal do Cliente depende do módulo <b>Portal do Cliente</b>. A aba NPS e Satisfação fica dentro da tela Ordens de Serviço, e só quem tem gestão do sistema consegue <b>alterar</b> as configurações de NPS: os demais veem em modo leitura.</span>
+  </div>
+
+  <h2>1. O Portal do Cliente já nasce criado pra todo cliente — só falta torná-lo público</h2>
+
+  <p>O Portal do Cliente é uma página na internet, com a marca da sua empresa, onde o cliente final acompanha as ordens de serviço dele, vê os equipamentos dele, baixa o que precisa e abre chamado. Ele não é um sistema que o cliente instala nem uma conta que ele cria: é um endereço com um código único.</p>
+
+  <div class="regra">
+    <b>O portal não precisa ser criado.</b> Todo cliente cadastrado ganha um portal automaticamente, no momento em que o cadastro é salvo, com um endereço próprio e único. Você não vai achar botão de "criar portal" em lugar nenhum, porque ele já existe. O que você faz é copiar o link e decidir se ele é público ou restrito.
+  </div>
+
+  <div class="perigo">
+    <b>Não existe login com senha para o cliente final no Portal.</b> O cliente não cria conta, não escolhe senha, não usa e-mail e senha, e não entra com Google nem com Microsoft. O acesso é <b>por link</b>: cada cliente tem um endereço com um código longo e aleatório, e quem tem esse endereço entra. Se alguém perguntar "como faço a senha do meu cliente", a resposta é que não existe senha, o que existe é o link.
+  </div>
+
+  <!-- INCERTO: não encontrei, na ficha do cliente, nenhuma ação de trocar/regenerar o código do portal do CLIENTE (o botão "Regenerar token" existe só no contrato). Confirmar se existe algum caminho de suporte para invalidar um link de portal de cliente que vazou. -->
+  <h3>O que acontece se o link vazar</h3>
+  <p>Quem tem o link, e só quem tem o link, vê aquele portal, sempre em modo somente leitura. O código é longo e aleatório, então não dá para adivinhar nem para chegar no portal de outro cliente trocando um número. Mesmo assim, o link é a chave: quem receber por encaminhamento consegue abrir. Duas saídas quando isso é um problema:</p>
+  <ul>
+    <li><b>Desligar a chave <span class="ui">Portal Público</span></b> daquele cliente. O link continua existindo, mas passa a exigir login de um usuário da sua empresa. Quem abrir sem estar logado vê a tela <span class="ui">Portal privado</span> com "Este portal é restrito e exige que você entre com a conta da empresa." e o botão <span class="ui">Fazer login</span>.</li>
+    <li>Se o portal precisa continuar público mas o link vazou, não há botão de trocar o código do portal do cliente na tela. No caso de <b>contrato</b>, existe o botão <span class="ui">Regenerar token</span>, que troca o endereço do portal daquele contrato e invalida os QR Codes já impressos.</li>
+  </ul>
+
+  <div class="aviso">
+    O portal também depende do módulo <b>Portal do Cliente</b> estar contratado. Sem o módulo, quem abrir o link vê a página <span class="ui">Portal ainda não disponível</span> com "Este portal ainda não está disponível. Em caso de dúvida, fale com a empresa responsável.". E, dentro do sistema, os atalhos de portal somem da ficha do cliente e a aba <span class="ui">Chamados</span> deixa de existir.
+  </div>
+
+  <h2>2. Copiar o link, ligar o switch "Portal público" e testar como o cliente vê</h2>
+
+  <p>Abra <span class="ui">Clientes</span>, clique no cliente e olhe o topo da ficha. Com o módulo Portal ativo, aparecem:</p>
+  <ul>
+    <li>A chave <span class="ui">Portal Público</span>, com a explicação: "Ligado: qualquer pessoa com o link vê o portal (somente leitura). Desligado: o link exige login da sua empresa."</li>
+    <li>No menu <span class="ui">Ações</span>, as opções <span class="ui">Copiar link do portal</span> e <span class="ui">Abrir portal</span>.</li>
+  </ul>
+  <p>Copiando, aparece a confirmação <span class="ui">Link do portal copiado!</span>. Ao mudar a chave, o sistema confirma com <span class="ui">Portal público ativado</span> ou <span class="ui">Portal agora exige login</span>. Se der erro, aparece <span class="ui">Erro ao atualizar portal</span>.</p>
+
+  <div class="regra">
+    <b>A chave <span class="ui">Portal Público</span> já nasce ligada.</b> Portal de cliente novo é público por padrão, o que significa que basta mandar o link. Ela só fica desligada se alguém desligou de propósito.
+  </div>
+
+  <div class="aviso">
+    <b>A pegadinha número um desta área:</b> link certo, mas o portal desligado. O cliente abre e vê <span class="ui">Portal privado</span>, com "Este portal é restrito e exige que você entre com a conta da empresa." e o aviso "Se você já está conectado e ainda vê esta mensagem, sua conta não tem acesso a este portal.". Quem está logado no sistema abrindo o mesmo link vê o portal normalmente e jura que está tudo certo. <b>Sempre teste o link numa janela anônima do navegador, deslogado.</b> É a única forma de ver o que o cliente vê.
+  </div>
+
+  <h3>Como testar do jeito certo</h3>
+  <figure>
+    <img src="img/t12-ficha-cliente-portal.png" alt="Topo da ficha de um cliente, com o avatar, o nome, o selo PJ, a chave Portal Público ligada e o menu Ações aberto mostrando as opções Copiar link do portal, Abrir portal, Editar e Excluir. Abaixo, a navegação por abas do cliente (Geral, Equipamentos, Histórico de OS, Tarefas, Chamados, Contratos, Financeiro, Cobranças).">
+    <figcaption>Topo da ficha do cliente: a chave Portal Público e o menu Ações com Copiar link do portal e Abrir portal.</figcaption>
+  </figure>
+  <ol>
+    <li>Copie o link do portal na ficha do cliente.</li>
+    <li>Abra uma janela anônima (ou outro navegador em que você não esteja logado).</li>
+    <li>Cole o link.</li>
+    <li>Se aparecer a saudação com o nome do cliente e a lista de ordens de serviço, está certo.</li>
+    <li>Se aparecer <span class="ui">Portal privado</span>, volte e ligue a chave <span class="ui">Portal Público</span>.</li>
+    <li>Se aparecer <span class="ui">Portal ainda não disponível</span>, o módulo Portal do Cliente não está ativo na assinatura.</li>
+  </ol>
+
+  <h2>3. O que o cliente enxerga: OS, equipamentos, contratos e cobranças</h2>
+
+  <p>O portal abre com a identidade visual da sua empresa: logo, cor principal e nome no topo. Logo abaixo vem a saudação <span class="ui">Olá,</span> com o nome do cliente. No canto do cabeçalho existe o botão de contato, com as opções <span class="ui">Ligar</span>, <span class="ui">WhatsApp</span> e <span class="ui">E-mail</span>, preenchidas com os dados da sua empresa.</p>
+
+  <p>A navegação tem até quatro seções, e algumas só aparecem quando têm conteúdo:</p>
+  <table class="dados">
+    <thead><tr><th>Seção</th><th>Quando aparece</th><th>O que traz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Ordens de Serviço</span></td><td>Sempre</td><td>Todas as OS daquele cliente, com busca, status, data agendada ou de criação, e as ações de acompanhar, avaliar e ver o relatório.</td></tr>
+      <tr><td><span class="ui">Equipamentos</span></td><td>Sempre</td><td>Os equipamentos do cliente, com busca. Clicar num deles abre a ficha com três subabas.</td></tr>
+      <tr><td><span class="ui">Contratos</span></td><td>Só se o cliente tiver ao menos 1 contrato</td><td>Lista dos contratos, com o selo <span class="ui">PMOC</span> quando for o caso, e a próxima manutenção.</td></tr>
+      <tr><td><span class="ui">Cobranças</span></td><td>Só se houver ao menos 1 cobrança online</td><td>Cobranças com valor, vencimento, situação e o botão <span class="ui">Pagar</span>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ordens de serviço no portal</h3>
+  <!-- PRINT FALTANDO: portal do cliente aberto em janela anônima, na seção Ordens de Serviço, com o cabeçalho da marca, a saudação e a lista de OS. Depende do token público de um cliente da conta demo, que não dá pra descobrir por navegação. Capturar manualmente copiando o link na ficha do cliente. CENSURAR nome do cliente e endereço. -->
+  <p>Cada OS aparece com o número, o status traduzido (<span class="ui">Pendente</span>, <span class="ui">A caminho</span>, <span class="ui">Em andamento</span>, <span class="ui">Concluída</span>, <span class="ui">Cancelada</span>) e a data, com o prefixo <span class="ui">Agendada:</span> ou <span class="ui">Criada:</span>. As ações que podem aparecer:</p>
+  <ul>
+    <li><span class="ui">Acompanhar</span>: aparece quando o técnico está a caminho, e abre o acompanhamento ao vivo.</li>
+    <li><span class="ui">Avaliar atendimento</span>: aparece em OS concluída que ainda não foi avaliada. Já avaliada, vira o texto <span class="ui">Obrigado pela avaliacao!</span>.</li>
+    <li>O relatório da OS, sempre disponível, no modo cliente.</li>
+    <li><span class="ui">Preencher OS</span>: essa <b>não</b> aparece para o cliente final. Só quem está logado como usuário da sua empresa vê esse botão.</li>
+  </ul>
+  <p>Sem nada na lista, aparece <span class="ui">Nenhuma ordem de serviço encontrada</span>. Filtrando pela busca e não achando, aparece <span class="ui">Nenhuma OS encontrada</span>.</p>
+
+  <h3>Equipamentos no portal</h3>
+  <p>Abrindo um equipamento, o portal mostra três subabas:</p>
+  <ul>
+    <li><span class="ui">Visão geral</span>: Categoria, Marca, Modelo, Capacidade, Local, Nº Série, Data de instalação, Garantia até e Identificador, mais os campos extras que a sua empresa configurou, na ordem que você definiu. Campos ocultos na configuração não aparecem aqui.</li>
+    <li><span class="ui">Histórico</span>: as ordens de serviço daquele equipamento, com o atalho <span class="ui">Ver relatório</span>. Sem nada, aparece <span class="ui">Nenhuma OS vinculada</span>.</li>
+    <li><span class="ui">Anexos</span>: os arquivos anexados à ficha do equipamento. Sem nada, aparece <span class="ui">Nenhum anexo disponível</span> com "O técnico não adicionou anexos a este equipamento.". Quando os anexos daquele equipamento estão restritos, aparece <span class="ui">Anexos não disponíveis</span> com "Os anexos deste equipamento estão restritos.".</li>
+  </ul>
+
+  <div class="aviso">
+    Os anexos que você sobe na ficha do equipamento <b>aparecem para o cliente final</b> no portal. Não anexe documento interno (custo, margem, ficha de fornecedor) na ficha do equipamento.
+  </div>
+
+  <h3>Contratos no portal</h3>
+  <div class="aviso">
+    <b>O link de contrato dentro do portal abre OUTRA página.</b> Clicando num contrato na seção <span class="ui">Contratos</span>, o cliente sai do Portal do Cliente e vai para o <b>Portal do Contrato</b> daquela unidade, numa aba nova. São dois portais diferentes, com endereços diferentes: um é do cliente (todas as OS e equipamentos dele), o outro é da unidade contratada (cronograma, ocorrências, documentos e histórico daquele contrato). Isso confunde: se o cliente diz que "clicou no contrato e mudou de site", está funcionando como o esperado.
+  </div>
+
+  <h3>Cobranças no portal</h3>
+  <p>Aparecem com descrição, valor, <span class="ui">Vencimento</span> e a situação (<span class="ui">Pago</span>, <span class="ui">Pendente</span>, <span class="ui">Vencido</span>, <span class="ui">Estornado</span>), mais o botão <span class="ui">Pagar</span>, que leva ao pagamento online. A seção só existe se houver cobrança, o que depende do módulo de Cobranças e da conta de recebimento ativa.</p>
+
+  <h2>4. Cliente abrindo chamado pelo portal — e onde isso cai pra você (aba Chamados)</h2>
+
+  <p>No rodapé fixo do portal existe o botão <span class="ui">Abrir Chamado</span>. Ele abre um formulário curto:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Descreva o problema *</span></td><td>Sim</td><td>Mínimo de 10 caracteres. O texto de apoio é "Descreva o problema que você está enfrentando...".</td></tr>
+      <tr><td><span class="ui">Equipamento (opcional)</span></td><td>Não</td><td>Lista com busca dos equipamentos daquele cliente, mais a opção <span class="ui">Nenhum</span>.</td></tr>
+    </tbody>
+  </table>
+  <p>O botão é <span class="ui">Enviar Chamado</span>. Com menos de 10 caracteres aparece <span class="ui">Descreva o problema com pelo menos 10 caracteres.</span>. Deu certo, aparece <span class="ui">Chamado aberto com sucesso!</span>. Se falhar, aparece <span class="ui">Erro ao abrir chamado</span>.</p>
+
+  <div class="regra">
+    Existe proteção contra abuso: o mesmo cliente não consegue abrir mais de 5 chamados em 10 minutos, e a descrição com menos de 10 caracteres é rejeitada também no servidor, não só na tela. Isso impede que um cliente irritado abra 40 chamados iguais em sequência.
+  </div>
+
+  <h3>Onde o chamado cai para você</h3>
+  <!-- PRINT FALTANDO: formulário "Abrir Chamado" do portal, com o campo Descreva o problema e o seletor de Equipamento. Exige estar dentro do portal público (token). Capturar manualmente junto do print anterior, SEM enviar o chamado. -->
+  <p>O chamado <b>vira uma ordem de serviço de verdade</b>, criada na sua base com estas características: tipo <b>manutenção corretiva</b>, situação <b>pendente</b>, sem técnico atribuído, sem data agendada, com a descrição que o cliente escreveu e com o equipamento que ele escolheu, se escolheu.</p>
+  <p>Ela aparece em dois lugares:</p>
+  <ul>
+    <li>Na lista geral de <span class="ui">Ordens de Serviço</span>, como qualquer OS pendente.</li>
+    <li>Na ficha daquele cliente, na aba <span class="ui">Chamados</span>, que separa só o que veio do portal. A tabela mostra <span class="ui">OS</span>, <span class="ui">Descrição</span>, <span class="ui">Status</span>, <span class="ui">Data</span> e <span class="ui">Ações</span>.</li>
+  </ul>
+  <figure>
+    <img src="img/t12-cliente-aba-chamados.png" alt="Aba Chamados na ficha do cliente, mostrando o título CHAMADOS DO PORTAL e, no estado sem nenhum chamado ainda, o ícone de megafone, a mensagem Nenhum chamado e o texto Nenhum chamado aberto pelo portal do cliente.">
+    <figcaption>Aba Chamados na ficha do cliente, aqui sem nenhum chamado aberto pelo portal ainda.</figcaption>
+  </figure>
+  <p>Sem nada, a aba mostra <span class="ui">Nenhum chamado</span>, com uma de duas explicações: "Gere o link do portal para o cliente abrir chamados" (quando ainda não existe link) ou "Nenhum chamado aberto pelo portal do cliente".</p>
+
+  <div class="aviso">
+    A aba <span class="ui">Chamados</span> na ficha do cliente <b>só existe com o módulo Portal do Cliente ativo</b>. Sem o módulo ela some da ficha, sem aviso.
+  </div>
+
+  <div class="perigo">
+    <b>Não existe chat nem troca de mensagem no portal.</b> O chamado é de mão única: o cliente escreve, e a resposta acontece fora do portal, pelo seu WhatsApp, telefone ou e-mail, ou pelo próprio atendimento. O cliente não recebe resposta escrita dentro do portal, e não há caixa de conversa. O que ele acompanha é o <b>status da OS</b> mudando. Se o cliente reclamar que "mandei mensagem e ninguém respondeu no site", explique que aquilo abre um chamado, não uma conversa.
+  </div>
+
+  <h3>Rotina recomendada</h3>
+  <p>Como o chamado nasce pendente e sem técnico, ele fica parado até alguém agendar. Combine com a equipe uma conferência diária da fila de OS pendentes, ou filtre a lista de Ordens de Serviço por pendentes. Portal aberto sem rotina de resposta piora a percepção do cliente em vez de melhorar.</p>
+
+  <h2>5. O QR Code do equipamento levando direto pro portal filtrado naquele aparelho</h2>
+
+  <p>Cada equipamento cadastrado tem um QR Code próprio, na ficha dele (<span class="ui">Equipamentos</span> → abrir o equipamento → aba <span class="ui">Geral</span>). Esse QR não abre uma página genérica: ele abre <b>o portal daquele cliente já posicionado naquele aparelho</b>. Quem escaneia cai direto na ficha do equipamento, com a visão geral, o histórico de OS e os anexos.</p>
+
+  <p>Na prática: você cola o adesivo com o QR na lateral da máquina. O zelador do prédio aponta a câmera do celular e vê, sem senha e sem instalar nada, quando foi a última manutenção daquele aparelho, o que foi feito e qual é a garantia.</p>
+
+  <div class="aviso">
+    <b>O QR do equipamento depende do portal do cliente.</b> Se o cliente não tiver portal ativo, os botões <span class="ui">Baixar QR (PNG)</span>, <span class="ui">Abrir link</span> e <span class="ui">Copiar link</span> ficam apagados na ficha do equipamento, e aparece a mensagem <span class="ui">Cliente sem portal ativo</span>. O botão <span class="ui">Gerar Etiqueta</span> continua funcionando, só que a etiqueta sai sem o QR.
+  </div>
+
+  <p>Se o portal do cliente estiver com a chave <span class="ui">Portal Público</span> desligada, o QR abre a tela <span class="ui">Portal privado</span> pedindo login. Ou seja, colar QR na máquina e deixar o portal privado não funciona: quem escaneia não consegue ver nada.</p>
+
+  <div class="dica">
+    A etiqueta com o QR é configurável na ficha do equipamento, botão <span class="ui">Gerar Etiqueta</span>: você escolhe o que vai impresso (nome e telefone da empresa, QR, nome do equipamento, identificador, marca, modelo, número de série, localização, nome do cliente) e o tamanho (5x5 cm, 5x8 cm, 6x6 cm ou medida livre). Contrato PMOC tem o seu próprio QR, do portal da unidade, com PDF pronto para imprimir.
+  </div>
+
+  <h2>6. A avaliação (NPS) que aparece pro cliente ao fim da OS: nota, estrelas por critério, comentário</h2>
+
+  <p>NPS é a pergunta de nota de 0 a 10 que mede a satisfação. Na Dominex ela é criada automaticamente quando uma ordem de serviço é <b>concluída</b>, e fica disponível para o cliente responder no relatório público da OS e no portal.</p>
+
+  <h3>O que o cliente vê</h3>
+  <!-- PRINT FALTANDO: janela "Como foi seu atendimento?" com a escala de 0 a 10, as estrelas por critério e o campo de comentário, em branco. Só abre a partir de uma OS concluída no portal ou no relatório público, e enviar seria uma ação proibida. Capturar manualmente numa OS de teste concluída, SEM enviar a avaliação. -->
+  <p>A janela de avaliação tem o título <span class="ui">Como foi seu atendimento?</span> e três blocos:</p>
+  <ol>
+    <li><b>A nota de 0 a 10</b>, acima dela a pergunta que a sua empresa configurou. O padrão é "De 0 a 10, o quanto voce ficou satisfeito com nosso servico?". Sem escolher nota, aparece <span class="ui">Escolha uma nota de 0 a 10</span>.</li>
+    <li><b>As estrelas por critério</b>, de 1 a 5 estrelas em cada critério que você cadastrou (por exemplo Pontualidade, Qualidade, Atendimento). Cada critério é avaliado separadamente.</li>
+    <li><b>O comentário</b>, no campo <span class="ui">Comentario (opcional)</span>, com o apoio "Conte como foi sua experiencia...". Também há espaço para o cliente informar o nome de quem está avaliando.</li>
+  </ol>
+  <p>O botão é <span class="ui">Enviar avaliacao</span>. Enquanto envia, vira <span class="ui">Enviando...</span>. Ao terminar, aparece <span class="ui">Avaliação enviada</span> e o agradecimento <span class="ui">Obrigado pela avaliacao!</span>. Se a OS já tinha sido avaliada, aparece <span class="ui">Esta avaliação já foi enviada. Obrigado!</span>. Se falhar, <span class="ui">Não foi possível enviar</span>.</p>
+
+  <div class="regra">
+    Cada ordem de serviço aceita <b>uma avaliação só</b>. Depois de enviada, ela não pode ser refeita nem editada pelo cliente, e a nota entra no painel na hora. Isso é proposital: avaliação editável não serve como medida.
+  </div>
+
+  <h3>Duas chaves que mudam o comportamento</h3>
+  <ul>
+    <li><span class="ui">Avaliação por estrelas</span>: com o valor <span class="ui">Obrigatória</span>, o cliente precisa tocar nas estrelas de todos os critérios antes de conseguir enviar. Com <span class="ui">Opcional</span>, ele pode dar só a nota de 0 a 10 e enviar.</li>
+    <li><span class="ui">Gerar pesquisa ao finalizar OS (padrão)</span>: define se as OS novas já nascem com a pesquisa habilitada. A explicação na tela é "Padrão aplicado a novas OS. Pode ser ajustado caso a caso na própria OS."</li>
+  </ul>
+
+  <h2>7. Configurar os critérios de estrela (nome, cor, ordem)</h2>
+
+  <p>Caminho: <span class="ui">Ordens de Serviço</span> → aba <span class="ui">NPS e Satisfação</span> → botão <span class="ui">Configurações</span>. Abre a janela <span class="ui">Configurações de NPS</span>, com o subtítulo "Defina o que o cliente vê na pesquisa de satisfação enviada ao concluir uma OS."</p>
+
+  <div class="regra">
+    <b>Só quem tem gestão do sistema consegue alterar.</b> Quem não tem vê a mesma janela em modo leitura, com o rodapé <span class="ui">Somente a gestão pode alterar estas configurações.</span> e sem botão de salvar.
+  </div>
+
+  <h3>O bloco Critérios de avaliação</h3>
+  <figure>
+    <img src="img/t12-configuracoes-nps.png" alt="Janela Configurações de NPS, com o campo Pergunta da escala 0–10 preenchido com De 0 a 10, o quanto satisfeito(a) você ficou com o nosso serviço?, a chave Avaliação por estrelas em Opcional, e a lista Critérios de avaliação com Qualidade, Pontualidade e Profissionalismo, cada um com ícone de estrela, setas de ordem para cima/baixo, chave ligado/desligado e o ícone de lixeira, mais o botão Adicionar no topo da lista.">
+    <figcaption>Janela Configurações de NPS: a pergunta da escala, a chave de estrelas e a lista de critérios com as setas de ordem.</figcaption>
+  </figure>
+  <p>A explicação na tela é "Cada critério é avaliado de 1 a 5 estrelas pelo cliente na pesquisa." Cada critério da lista tem:</p>
+  <ul>
+    <li><b>Nome</b>: editável direto na linha. Você digita e o sistema salva ao sair do campo ou ao apertar Enter, confirmando com <span class="ui">Critério atualizado</span>.</li>
+    <li><b>Ordem</b>: as setas para cima e para baixo trocam o critério de posição. É a ordem em que ele aparece para o cliente.</li>
+    <li><b>Ligado ou desligado</b>: uma chave. Critério desligado deixa de aparecer na pesquisa, mas continua guardado, marcado como <span class="ui">Inativo</span>.</li>
+    <li><b>Excluir</b>: pede confirmação com "Remover o critério "NOME"? Ele deixará de aparecer na pesquisa."</li>
+  </ul>
+  <p>O botão <span class="ui">Adicionar</span> cria um critério novo chamado <span class="ui">Novo critério</span>, no fim da lista, e você renomeia na hora. As confirmações são <span class="ui">Critério adicionado</span> e <span class="ui">Critério removido</span>. Sem nenhum critério, aparece <span class="ui">Nenhum critério cadastrado.</span>.</p>
+
+  <div class="aviso">
+    <b>Critério de avaliação não tem cor configurável.</b> O que dá para definir é <b>nome</b>, <b>ordem</b> e se ele está ativo ou não. Todos aparecem para o cliente com o mesmo ícone de estrela. Se alguém procurar onde escolhe a cor do critério, não existe.
+  </div>
+
+  <h3>A pergunta da escala</h3>
+  <p>O campo <span class="ui">Pergunta da escala 0–10</span> define o texto que o cliente lê acima das notas: "Texto que o cliente vê acima das notas de 0 a 10 no link da pesquisa." Deixando em branco, o sistema usa a pergunta padrão. Salvando, aparece <span class="ui">Configurações de NPS salvas</span>. Se falhar, <span class="ui">Não foi possível salvar</span>.</p>
+
+  <h2>8. Nota mínima + convite pra avaliar no Google: colando o link do Google Maps</h2>
+
+  <div class="aviso">
+    <b>O link de avaliação do Google NÃO fica em Configurações.</b> Muita gente procura em Configurações da empresa e não acha. Ele vive dentro da configuração de NPS: <span class="ui">Ordens de Serviço</span> → aba <span class="ui">NPS e Satisfação</span> → botão <span class="ui">Configurações</span> → seção <span class="ui">Avaliação no Google</span>, lá embaixo na janela.
+  </div>
+
+  <h3>Gerar o link a partir do Google Maps</h3>
+  <figure>
+    <img src="img/t12-nps-avaliacao-google.png" alt="Seção Avaliação no Google dentro das Configurações de NPS, com o campo Link do Google Maps e o link Como pegar o link? ao lado, o botão Gerar link de avaliação, o campo Link de avaliação do Google já preenchido com um endereço g.page/r/.../review, e o bloco Quando convidar o cliente com as opções Mostrar sempre e A partir de uma nota (selecionada).">
+    <figcaption>Seção Avaliação no Google, dentro das Configurações de NPS: gerar o link e escolher quando convidar o cliente.</figcaption>
+  </figure>
+  <p>Você não precisa saber montar o link de avaliação na mão. O primeiro campo é <span class="ui">Link do Google Maps</span>, com a explicação "Cole o link da ficha da sua empresa no Google Maps e clique em "Gerar link de avaliação". Você também pode colar o link de avaliação direto no campo abaixo." O botão ao lado é <span class="ui">Gerar link de avaliação</span>.</p>
+
+  <p>O botão <span class="ui">Como pegar o link?</span> abre um passo a passo em cinco etapas:</p>
+  <figure>
+    <img src="img/t12-como-pegar-link-google.png" alt="Diálogo Como pegar o link da sua empresa no Google Maps, com os cinco passos numerados (abrir o Google Maps, pesquisar e abrir a ficha da empresa, tocar em Compartilhar, copiar o link na aba Enviar um link, e colar no campo Link do Google Maps), a dica final sobre precisar ser a ficha da própria empresa, e o botão Entendi.">
+    <figcaption>Diálogo Como pegar o link da sua empresa no Google Maps, com os cinco passos numerados.</figcaption>
+  </figure>
+  <ol>
+    <li>Abra o Google Maps no navegador (maps.google.com) ou no aplicativo.</li>
+    <li>Pesquise o nome da sua empresa e abra a ficha dela (aquela que mostra as avaliações).</li>
+    <li>Toque ou clique no botão Compartilhar.</li>
+    <li>Na aba "Enviar um link", toque em Copiar link.</li>
+    <li>Volte aqui, cole o link no campo "Link do Google Maps" e clique em "Gerar link de avaliação".</li>
+  </ol>
+  <p>A dica final do passo a passo avisa: "Precisa ser a ficha da SUA empresa no Google. Se não encontrar, pesquise o nome da empresa no Google e clique no nome dela no painel à direita para abrir o Maps."</p>
+
+  <p>Dando certo, aparece <span class="ui">Link de avaliação gerado com sucesso.</span> e o campo <span class="ui">Link de avaliação do Google</span> é preenchido sozinho. Os erros possíveis:</p>
+  <table class="dados">
+    <thead><tr><th>Mensagem que aparece na tela</th><th>O que significa</th></tr></thead>
+    <tbody>
+      <tr><td>"Esse não parece um link do Google Maps. Verifique o endereço e tente de novo."</td><td>O endereço colado não é do Google Maps. Confira se você copiou do lugar certo.</td></tr>
+      <tr><td>"Não consegui identificar a empresa nesse link. Confira o passo a passo abaixo."</td><td>Costuma acontecer quando o link copiado é de uma busca, não da ficha da empresa.</td></tr>
+      <tr><td>"Não foi possível gerar o link de avaliação. Tente novamente."</td><td>Falha momentânea na geração. Tente de novo em alguns instantes.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ligar e desligar o convite</h3>
+  <div class="regra">
+    O campo <span class="ui">Link de avaliação do Google</span> é a chave liga e desliga do recurso: "Cole aqui o link de avaliação do Google da empresa. Deixe em branco para desativar." Campo vazio significa que o convite nunca aparece.
+  </div>
+
+  <h3>A nota mínima</h3>
+  <p>O bloco <span class="ui">Quando convidar o cliente</span> tem duas opções:</p>
+  <ul>
+    <li><span class="ui">Mostrar sempre</span>: o convite aparece para qualquer cliente que avaliar, independente da nota.</li>
+    <li><span class="ui">A partir de uma nota</span>: libera o campo <span class="ui">Nota mínima (0 a 10)</span>. O convite só aparece para quem deu aquela nota ou mais.</li>
+  </ul>
+  <p>É aqui que se decide a estratégia de reputação. Colocando 9 como nota mínima, só promotores são convidados a avaliar no Google. Cliente insatisfeito responde a pesquisa normalmente, e a insatisfação dele chega para você em vez de virar avaliação ruim pública.</p>
+
+  <h3>Como o convite aparece para o cliente</h3>
+  <p>Assim que o cliente envia a avaliação e a régua passa, abre sozinho um convite com o título <span class="ui">Que bom que você gostou!</span> e o texto "Poderia nos avaliar com 5 estrelas no Google? Leva menos de 1 minuto e ajuda muito o nosso trabalho." Os botões são <span class="ui">Avaliar no Google</span> e <span class="ui">Agora não</span>. Quem fechou o convite ainda encontra o botão <span class="ui">Avaliar no Google</span> na tela, para reabrir.</p>
+
+  <h2>9. Lendo o painel de NPS e o que fazer com um detrator</h2>
+
+  <p>A aba <span class="ui">NPS e Satisfação</span>, dentro de <span class="ui">Ordens de Serviço</span>, é o painel. No topo existe o filtro de período (começa no mês atual) e o botão <span class="ui">Configurações</span>. Tudo abaixo respeita o período escolhido, contando pela data em que o cliente respondeu.</p>
+
+  <h3>Os quatro indicadores</h3>
+  <figure>
+    <img src="img/t12-painel-nps.png" alt="Aba NPS e Satisfação da tela Ordens de Serviço, com o filtro de período Este mês e o botão Configurações no topo, os quatro indicadores NPS Score, Média Geral, Respostas e Taxa de Resposta, o gráfico de meia-lua Distribuição NPS com os percentuais de Promotores, Neutros e Detratores, o bloco Média por Categoria (sem avaliação no período) e o bloco Ranking de Técnicos (sem avaliações por técnico no período).">
+    <figcaption>Aba NPS e Satisfação: os quatro indicadores no topo e os gráficos de Distribuição NPS e Média por Categoria.</figcaption>
+  </figure>
+  <table class="dados">
+    <thead><tr><th>Indicador</th><th>Como é calculado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">NPS Score</span></td><td>Percentual de promotores menos percentual de detratores, arredondado. Vai de -100 a 100.</td></tr>
+      <tr><td><span class="ui">Média Geral</span></td><td>Média das estrelas dos critérios respondidos no período.</td></tr>
+      <tr><td><span class="ui">Respostas</span></td><td>Quantas avaliações foram efetivamente respondidas.</td></tr>
+      <tr><td><span class="ui">Taxa de Resposta</span></td><td>Quantas das pesquisas enviadas viraram resposta.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra">
+    <b>A classificação é fixa e é a régua padrão de mercado:</b> <span class="ui">Promotores (9-10)</span>, <span class="ui">Neutros (7-8)</span> e <span class="ui">Detratores (0-6)</span>. Nota 7 e nota 8, apesar de parecerem boas, são neutras e não somam nada no NPS. Um cliente que dá 6 é detrator, mesmo achando que deu uma nota razoável.
+  </div>
+
+  <h3>Os gráficos e o ranking</h3>
+  <ul>
+    <li><span class="ui">Distribuição NPS</span>: quanto de promotor, neutro e detrator no período.</li>
+    <li><span class="ui">Média por Categoria</span>: a média de estrelas de cada critério que você cadastrou. É aqui que aparece se o problema é pontualidade ou se é qualidade.</li>
+    <li><span class="ui">Tendência NPS</span>: a evolução ao longo do tempo.</li>
+    <li><span class="ui">Ranking de Técnicos</span>: NPS médio por técnico, com o número de respostas e a taxa de retorno. Técnico com nota preocupante ganha o selo <span class="ui">Atenção</span>. Sem dados, aparece <span class="ui">Sem avaliações por técnico no período</span>.</li>
+  </ul>
+
+  <h3>Detratores em Aberto</h3>
+  <figure>
+    <img src="img/t12-nps-detratores.png" alt="Blocos Ranking de Técnicos e Detratores em Aberto do painel de NPS, ambos no estado sem dados no período: o primeiro mostra Sem avaliações por técnico no período, o segundo mostra o ícone de alerta e o texto Nenhum detrator em aberto no período. Abaixo, o início do bloco Feed de Feedbacks com o botão Filtros e a mensagem Nenhum feedback no período.">
+    <figcaption>Blocos Ranking de Técnicos e Detratores em Aberto, e o início do Feed de Feedbacks, aqui sem nenhuma avaliação no período.</figcaption>
+  </figure>
+  <p>Existe um bloco próprio chamado <span class="ui">Detratores em Aberto</span>, com o contador ao lado do título, listando as avaliações com nota de 0 a 6 no período: número da OS, nota, comentário, quem avaliou, o cliente e o técnico responsável. Sem nenhum, aparece <span class="ui">Nenhum detrator em aberto no período.</span></p>
+
+  <div class="aviso">
+    Esse bloco é uma <b>lista de leitura</b>, não um fluxo de tratativa. Não existe botão de "marcar como resolvido", nem campo de resposta ao cliente, nem tarefa gerada automaticamente. A ação acontece fora: ligar para o cliente, abrir uma OS de retorno, ou criar uma tarefa manualmente.
+  </div>
+
+  <h3>O que fazer com um detrator, na prática</h3>
+  <ol>
+    <li><b>Ligue no mesmo dia.</b> Detrator que recebe ligação rápida vira neutro ou promotor com frequência alta. Detrator ignorado vira avaliação pública ruim.</li>
+    <li><b>Leia o comentário antes de ligar.</b> O bloco mostra o texto que o cliente escreveu e o número da OS, então dá para chegar sabendo do que se trata.</li>
+    <li><b>Abra uma OS de retorno</b> se houver serviço a refazer, e vincule ao mesmo cliente e equipamento.</li>
+    <li><b>Cruze com o Ranking de Técnicos.</b> Se os detratores estão concentrados num técnico, o problema é de treinamento ou de rotina, não de cliente difícil.</li>
+    <li><b>Olhe a Média por Categoria.</b> Se pontualidade despenca e qualidade se mantém, o problema é de agenda, não de execução.</li>
+  </ol>
+
+  <h3>Feed de Feedbacks</h3>
+  <p>No fim do painel fica o <span class="ui">Feed de Feedbacks</span>, com todas as avaliações do período em ordem, incluindo o comentário escrito pelo cliente. Tem filtros por <span class="ui">Classificação</span> (Todas, Promotores, Neutros, Detratores) e por <span class="ui">Técnico</span>. Sem nada, aparece <span class="ui">Nenhum feedback no período</span>; com filtro que não casa, <span class="ui">Nenhum feedback com esses filtros</span>.</p>
+
+  <div class="dica">
+    Comentário positivo com nome do cliente é matéria-prima de marketing. Peça autorização e use como depoimento. É o mesmo cliente que provavelmente já avaliou no Google, se você configurou o convite com nota mínima.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Mandei o link do portal e meu cliente diz que pede login"</td>
+        <td>A chave <span class="ui">Portal Público</span> está desligada naquele cliente</td>
+        <td>Abra a ficha do cliente e ligue <span class="ui">Portal Público</span>. Depois teste o link numa janela anônima: logado você vê o portal mesmo com a chave desligada, e isso engana.</td>
+      </tr>
+      <tr>
+        <td>"Qual é a senha do portal do meu cliente?"</td>
+        <td>Não existe senha</td>
+        <td>O acesso é só por link. Cada cliente tem um endereço único, copiado na ficha dele em <span class="ui">Ações</span> → <span class="ui">Copiar link do portal</span>. Não há cadastro, senha nem login social para o cliente final.</td>
+      </tr>
+      <tr>
+        <td>"Meu cliente abriu o link e apareceu Portal ainda não disponível"</td>
+        <td>O módulo Portal do Cliente não está ativo</td>
+        <td>É gate de plano. Confira a assinatura em <span class="ui">Assinatura</span>. Sem o módulo, nenhum portal de cliente abre.</td>
+      </tr>
+      <tr>
+        <td>"Sumiu a aba Chamados do cliente"</td>
+        <td>Módulo Portal do Cliente desativado</td>
+        <td>A aba só existe com o módulo ativo, e some sem aviso quando ele sai.</td>
+      </tr>
+      <tr>
+        <td>"O cliente respondeu no portal e ninguém viu"</td>
+        <td>O chamado vira OS pendente sem técnico e sem data</td>
+        <td>Ele está na lista de Ordens de Serviço como pendente, e na aba <span class="ui">Chamados</span> da ficha do cliente. Combine uma conferência diária da fila de pendentes.</td>
+      </tr>
+      <tr>
+        <td>"Meu cliente clicou no contrato e foi para outro site"</td>
+        <td>Comportamento esperado</td>
+        <td>O link de contrato abre o Portal do Contrato daquela unidade, numa aba nova. São dois portais diferentes.</td>
+      </tr>
+      <tr>
+        <td>"Colei o QR na máquina e não abre nada"</td>
+        <td>Cliente sem portal ativo, ou portal com a chave desligada</td>
+        <td>Se os botões de QR estão apagados na ficha do equipamento, a mensagem é <span class="ui">Cliente sem portal ativo</span>. Se abrem mas pedem login, ligue <span class="ui">Portal Público</span> na ficha do cliente.</td>
+      </tr>
+      <tr>
+        <td>"Não aparece a avaliação para o meu cliente"</td>
+        <td>A OS não foi concluída, ou a pesquisa está desligada naquela OS</td>
+        <td>A pesquisa nasce quando a OS é <b>concluída</b>. Confira também o padrão em <span class="ui">Gerar pesquisa ao finalizar OS</span> nas configurações de NPS, que pode ser ajustado caso a caso na própria OS.</td>
+      </tr>
+      <tr>
+        <td>"O cliente quer refazer a avaliação"</td>
+        <td>Uma avaliação por OS</td>
+        <td>Não dá. Ao tentar, aparece <span class="ui">Esta avaliação já foi enviada. Obrigado!</span>. A avaliação é definitiva por ordem de serviço.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu coloco o link do Google? Procurei em Configurações"</td>
+        <td>Está no lugar errado</td>
+        <td>Não fica em Configurações da empresa. Vá em <span class="ui">Ordens de Serviço</span> → aba <span class="ui">NPS e Satisfação</span> → botão <span class="ui">Configurações</span> → seção <span class="ui">Avaliação no Google</span>.</td>
+      </tr>
+      <tr>
+        <td>"Deu erro: Esse não parece um link do Google Maps"</td>
+        <td>O endereço colado não veio da ficha da empresa no Maps</td>
+        <td>Peça para copiar de novo pelo botão Compartilhar da ficha da empresa no Google Maps, aba "Enviar um link", opção Copiar link. Link de busca do Google não serve.</td>
+      </tr>
+      <tr>
+        <td>"Gerei o link e deu erro dizendo que não identificou a empresa"</td>
+        <td>O link copiado é de uma busca, não da ficha da empresa</td>
+        <td>A mensagem é <span class="ui">Não consegui identificar a empresa nesse link.</span> Use o botão <span class="ui">Como pegar o link?</span> e siga os cinco passos: precisa ser o link do botão Compartilhar da ficha da empresa no Maps.</td>
+      </tr>
+      <tr>
+        <td>"O convite do Google não aparece para ninguém"</td>
+        <td>Campo do link vazio, ou nota mínima alta demais</td>
+        <td>Campo <span class="ui">Link de avaliação do Google</span> em branco desliga o recurso. Se estiver preenchido, confira <span class="ui">Quando convidar o cliente</span>: em <span class="ui">A partir de uma nota</span>, só quem deu nota igual ou maior vê o convite.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo mudar os critérios de estrela"</td>
+        <td>Falta permissão de gestão do sistema</td>
+        <td>A janela abre em modo leitura, com o rodapé <span class="ui">Somente a gestão pode alterar estas configurações.</span> Peça a um administrador.</td>
+      </tr>
+      <tr>
+        <td>"Meu NPS deu número negativo, o sistema está errado?"</td>
+        <td>É a fórmula do NPS</td>
+        <td>NPS vai de -100 a 100. Negativo significa que houve mais detratores (0 a 6) do que promotores (9 a 10) no período. Não é erro de cálculo.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu respondo o cliente que reclamou?"</td>
+        <td>Não existe resposta dentro do sistema</td>
+        <td>O bloco <span class="ui">Detratores em Aberto</span> é lista de leitura. A tratativa é por fora: ligue para o cliente e, se houver retrabalho, abra uma OS de retorno.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Meu cliente precisa criar conta para usar o portal?</dt>
+    <dd>Não. Não existe cadastro nem senha para o cliente final. O acesso é pelo link único daquele cliente, copiado na ficha dele.</dd>
+
+    <dt>Preciso criar o portal para cada cliente?</dt>
+    <dd>Não. O portal é criado automaticamente junto com o cadastro do cliente, já público por padrão. Você só copia o link.</dd>
+
+    <dt>O cliente consegue mexer em alguma coisa no portal?</dt>
+    <dd>Só abrir chamado. Todo o resto é somente leitura: ele vê as ordens de serviço, os equipamentos, os contratos e as cobranças, e pode avaliar um atendimento concluído.</dd>
+
+    <dt>Qual a diferença entre o Portal do Cliente e o Portal do Contrato?</dt>
+    <dd>O Portal do Cliente reúne tudo daquele cliente: todas as OS e todos os equipamentos. O Portal do Contrato é de uma unidade contratada: cronograma, ocorrências, documentos e histórico daquele contrato. São endereços diferentes, e o link de contrato dentro do portal abre o segundo numa aba nova.</dd>
+
+    <dt>Dá para conversar com o cliente pelo portal?</dt>
+    <dd>Não. Não existe chat nem mensagem. O chamado é de mão única: o cliente descreve o problema e isso vira uma OS pendente para você. A conversa acontece por WhatsApp, telefone ou e-mail.</dd>
+
+    <dt>O chamado aberto pelo cliente já entra agendado?</dt>
+    <dd>Não. Entra como manutenção corretiva, pendente, sem técnico e sem data. Alguém da equipe precisa agendar.</dd>
+
+    <dt>Quando a pesquisa de satisfação é criada?</dt>
+    <dd>No momento em que a ordem de serviço é concluída. Antes disso não existe pesquisa para o cliente responder.</dd>
+
+    <dt>O cliente é obrigado a dar as estrelas?</dt>
+    <dd>Depende da configuração. Em <span class="ui">Avaliação por estrelas</span>, o valor <span class="ui">Obrigatória</span> exige que ele toque nas estrelas de todos os critérios; <span class="ui">Opcional</span> permite enviar só com a nota de 0 a 10.</dd>
+
+    <dt>Posso escolher a cor de cada critério de avaliação?</dt>
+    <dd>Não. Dá para definir o nome, a ordem e se o critério está ativo. Todos aparecem com o mesmo ícone de estrela para o cliente.</dd>
+
+    <dt>Todo cliente vai ser convidado a avaliar no Google?</dt>
+    <dd>Você decide. Em <span class="ui">Quando convidar o cliente</span>, a opção <span class="ui">Mostrar sempre</span> convida todo mundo; <span class="ui">A partir de uma nota</span> convida só quem deu a nota mínima que você definir. Deixar o campo do link vazio desliga o convite.</dd>
+
+    <dt>De quanto em quanto tempo o painel de NPS atualiza?</dt>
+    <dd>Na hora. A avaliação enviada pelo cliente entra no período em que foi respondida, e o painel usa o filtro de período que você escolher, começando pelo mês atual.</dd>
+
+    <dt>Nota 8 é boa?</dt>
+    <dd>Para o cálculo do NPS, nota 8 é neutra e não conta nem a favor nem contra. Só 9 e 10 são promotores, e de 0 a 6 são detratores.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> portal do cliente, área do cliente, link do cliente, acompanhamento, o cliente ver a OS, abrir chamado, chamado do portal, pesquisa de satisfação, avaliação, nota, estrelinhas, NPS, detrator, promotor, avaliar no Google, review, reputação, QR da máquina
+  </div>
+</section>

@@ -1,0 +1,471 @@
+<section class="tutorial" id="t14">
+  <h1><span class="tcode">T14</span> Notas Fiscais (NFS-e)</h1>
+
+  <p class="lead">A NFS-e é a nota fiscal do serviço que a sua empresa presta: instalação, manutenção, limpeza, contrato de PMOC. Quem recebe é a prefeitura da cidade onde o serviço foi feito, e o imposto dela é o ISS. No Dominex você configura o certificado digital uma vez e passa a emitir, acompanhar, cancelar e baixar o documento sem sair do sistema.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu lateral, <span class="ui">Notas Fiscais</span>. A configuração fiscal é um <b>modal</b> aberto pelo botão <span class="ui">Configurações fiscais</span> dentro dessa mesma tela</span>
+    <span><b>Rotas:</b> <code>/notas-fiscais</code>. O endereço antigo <code>/notas-fiscais/configuracoes</code> redireciona pra <code>/notas-fiscais</code> já abrindo o modal de configuração</span>
+    <span><b>Depende de:</b> T13 (Financeiro)</span>
+    <span><b>Depende do módulo:</b> Emissão de Notas Fiscais</span>
+    <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Notas Fiscais</span> e a empresa tem o módulo contratado. Sem uma das duas coisas, a tela mostra "Você não tem acesso ao módulo de Notas Fiscais. Fale com o administrador da sua empresa."</span>
+  </div>
+
+  <h2>1. O que é NFS-e e por que a configuração vem antes de tudo</h2>
+
+  <p>NFS-e é a Nota Fiscal de Serviço eletrônica. Ela não é a mesma coisa que a nota de venda de mercadoria: a de serviço é municipal e o imposto principal dela é o ISS. Se a sua empresa presta serviço técnico (refrigeração, elétrica, solar, dedetização, elevador, CFTV), a nota que você emite é essa.</p>
+
+  <p>A própria tela traz um bloco <span class="ui">Como funciona?</span>, fechado por padrão, com o resumo em linguagem simples:</p>
+  <ul>
+    <li><b>Quando emitir:</b> assim que o serviço termina e você vai cobrar. Cliente empresa costuma exigir a nota para liberar o pagamento.</li>
+    <li><b>O que a prefeitura exige:</b> cliente com CPF/CNPJ e endereço completos, descrição do serviço e valor. Faltou dado do cliente, a nota volta recusada.</li>
+    <li><b>Quem paga o ISS:</b> no caminho normal quem recolhe é a sua empresa. Em alguns contratos o cliente retém o ISS e desconta do pagamento, e isso vai marcado na nota.</li>
+    <li><b>Errou na nota:</b> nota autorizada não se apaga, se cancela com uma justificativa e emite outra no lugar. Rascunho, esse sim, pode excluir à vontade.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t14-como-funciona.png" alt="Bloco Como funciona? aberto na tela Notas Fiscais, com o texto explicando o que é a NFS-e e os quatro tópicos Quando emitir, O que a prefeitura exige, Quem paga o ISS e Errou na nota, e abaixo uma legenda Situação da nota com os ícones de Rascunho, Processando, Autorizada, Rejeitada e Cancelada">
+    <figcaption>Bloco Como funciona?, com a explicação em linguagem simples e a legenda das situações que uma nota pode ter.</figcaption>
+  </figure>
+
+  <h3>Por que configurar primeiro</h3>
+  <div class="regra">O sistema só libera a emissão quando <b>três</b> coisas estão prontas ao mesmo tempo: o município está habilitado para NFS-e no padrão nacional, a empresa está registrada para emissão, e o certificado digital A1 foi enviado. Faltando qualquer uma, a tela volta pro estado guiado com o card "Configure seus dados fiscais, configure seus dados fiscais para começar a emitir notas" e o botão <span class="ui">Configurações fiscais</span>. Não adianta tentar emitir antes: o passo 4 da emissão bloqueia e explica o que falta.</div>
+
+  <figure>
+    <img src="img/t14-notas-fiscais.png" alt="Tela Notas Fiscais no estado inicial, com o selo verde 0/200 emitidas este mês, o bloco Como funciona fechado, o card Configure seus dados fiscais com botão Configurações fiscais e o botão flutuante Nova Nota no canto inferior direito">
+    <figcaption>Notas Fiscais antes da configuração: estado guiado com o atalho para as Configurações fiscais e o medidor de cota no topo.</figcaption>
+  </figure>
+
+  <h3>A tela depois de configurada</h3>
+  <ul>
+    <li>Quatro indicadores no topo: <span class="ui">Autorizadas</span>, <span class="ui">Processando</span>, <span class="ui">Rejeitadas</span> e <span class="ui">Canceladas</span>. Notas com cancelamento em andamento contam junto das autorizadas, porque ainda têm efeito fiscal.</li>
+    <li>Duas abas: <span class="ui">Visão Geral</span>, com as <span class="ui">Últimas emissões</span> (as 5 mais recentes), e <span class="ui">NFS-e</span>, com a listagem completa, busca e filtro por situação.</li>
+    <li>Um seletor de período no topo, que abre em <span class="ui">Todos os tempos</span> de propósito: quem tem poucas notas no mês não pode achar que a tela está vazia.</li>
+    <li>O botão flutuante <span class="ui">Nova Nota</span>, sempre ao alcance, mesmo com a lista rolada.</li>
+  </ul>
+
+  <h3>As situações que uma nota pode ter</h3>
+  <table class="dados">
+    <thead><tr><th>Situação</th><th>O que significa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Rascunho</span></td><td>Você salvou o preenchimento mas não enviou. Não existe pra prefeitura e pode ser excluído à vontade.</td></tr>
+      <tr><td><span class="ui">Pendente</span> / <span class="ui">Processando</span></td><td>Enviada, aguardando a resposta da prefeitura. O sistema consulta sozinho enquanto a tela está aberta.</td></tr>
+      <tr><td><span class="ui">Autorizada</span></td><td>Aceita. Tem número, protocolo e chave de acesso, e vale como documento fiscal.</td></tr>
+      <tr><td><span class="ui">Rejeitada</span> / <span class="ui">Falhou</span></td><td>A prefeitura recusou ou o envio não completou. Dá pra corrigir e reenviar na mesma linha.</td></tr>
+      <tr><td><span class="ui">Cancelamento em andamento</span></td><td>Você pediu o cancelamento e ele ainda não foi efetivado. A nota continua válida nesse meio-tempo.</td></tr>
+      <tr><td><span class="ui">Cancelada</span></td><td>Cancelamento efetivado. O documento continua existindo (número e chave são preservados por lei), mas não vale mais para cobrança.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. Abrindo Configurações (é um modal, não outra tela) — passo Empresa</h2>
+
+  <div class="regra"><b>A configuração fiscal não é uma página separada.</b> Ela é um modal que abre de dentro de Notas Fiscais, pelo botão <span class="ui">Configurações fiscais</span> no topo (ou pelo botão do estado guiado). O endereço antigo <code>/notas-fiscais/configuracoes</code> continua funcionando, mas só redireciona pra <code>/notas-fiscais</code> abrindo esse mesmo modal. Não procure um item "Configurações fiscais" no menu lateral: ele não existe.</div>
+
+  <p>O modal tem quatro seções numeradas na lateral: <span class="ui">1. Empresa</span>, <span class="ui">2. Certificado A1</span>, <span class="ui">3. Tributação</span> e <span class="ui">4. Serviços</span>. No cabeçalho aparece um selo com a situação atual: <span class="ui">Apto a emitir</span> ou <span class="ui">Configuração incompleta</span>.</p>
+
+  <div class="aviso">A ordem importa e o sistema força ela: primeiro a empresa é registrada, só depois o certificado é aceito. A dica na tela é literal: "Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado." Tentando subir o certificado antes, aparece "Registre a empresa antes de subir o certificado. Volte ao passo 1. Empresa e registre a empresa primeiro."</div>
+
+  <h3>Campos da seção Empresa</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Razão social / Nome</span></td><td>Como consta no CNPJ.</td></tr>
+      <tr><td><span class="ui">CNPJ</span></td><td>Formato 00.000.000/0000-00.</td></tr>
+      <tr><td><span class="ui">Inscrição Municipal</span></td><td>A tela avisa: "Exigida pela prefeitura para registrar a empresa e emitir notas. É o mesmo campo da aba Tributação." Preencher aqui ou lá dá no mesmo.</td></tr>
+      <tr><td><span class="ui">CEP</span></td><td>Chave do endereço. A dica é "Preenche endereço, cidade e o código do município automaticamente."</td></tr>
+      <tr><td><span class="ui">Logradouro</span>, <span class="ui">Número</span>, <span class="ui">Complemento</span>, <span class="ui">Bairro</span>, <span class="ui">Cidade / UF</span></td><td>Endereço fiscal. Cidade e UF também podem ser escolhidas manualmente.</td></tr>
+      <tr><td><span class="ui">Ambiente de emissão de NFS-e</span></td><td>Chave entre <span class="ui">Homologação</span> ("notas de teste, sem valor fiscal") e <span class="ui">Produção</span> ("as notas valem de verdade, têm efeito fiscal").</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso"><b>Não existe um campo "código do município (IBGE)" pra você digitar.</b> Esse código é preenchido sozinho a partir do CEP ou da cidade escolhida, e é ele que o sistema usa para consultar a cobertura e para emitir. Empresa cadastrada há muito tempo, cujo endereço foi salvo antes desse campo existir, pode estar sem o código: nesse caso o sistema tenta preencher sozinho ao abrir a configuração. Se a verificação de município reclamar que falta cidade, apague e digite o CEP de novo para disparar o preenchimento.</div>
+
+  <h3>Verificar a cobertura do município</h3>
+  <p>O botão <span class="ui">Verificar cobertura do município</span> consulta se a prefeitura já emite NFS-e no padrão nacional. O bloco <span class="ui">Status da emissão</span> mostra o resultado em três linhas:</p>
+  <ul>
+    <li><span class="ui">Município: liberado para emitir notas</span> ou <span class="ui">Município: liberação ainda não confirmada</span></li>
+    <li><span class="ui">Empresa: registrada</span> ou <span class="ui">Empresa: não registrada</span></li>
+    <li><span class="ui">Certificado: enviado</span> ou <span class="ui">Certificado: pendente</span></li>
+  </ul>
+  <p>Mensagens possíveis:</p>
+  <ul>
+    <li>Deu certo: "Município liberado para emissão de NFS-e."</li>
+    <li>Não coberto: "Município ainda sem emissão de NFS-e. O município ainda não está habilitado para emissão de NFS-e no padrão nacional. Assim que a prefeitura liberar, é só verificar de novo por aqui."</li>
+    <li>Falta cidade: "Informe o CEP ou a cidade da empresa para verificar a liberação do município."</li>
+    <li>Falha na consulta: "Não conseguimos verificar a liberação do município agora. Tente novamente em alguns minutos."</li>
+  </ul>
+  <div class="aviso"><b>Município sem cobertura bloqueia a emissão mesmo com todo o resto certo.</b> Verifique a cobertura ANTES de comprar certificado ou prometer nota pro cliente. Se o município não estiver apto, o passo final da emissão mostra "Emissão bloqueada, o município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais." Não há o que fazer do lado do sistema: depende da prefeitura aderir ao padrão nacional.</div>
+
+  <figure>
+    <img src="img/t14-config-fiscal-empresa.png" alt="Modal Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município">
+    <figcaption>Configurações fiscais, seção Empresa: dados cadastrais, chave de ambiente e o bloco Status da emissão.</figcaption>
+  </figure>
+
+  <h3>Salvar e registrar</h3>
+  <p>O botão é <span class="ui">Salvar dados da empresa</span>. Se salvar mas o registro para emissão falhar, o sistema é específico sobre a causa:</p>
+  <ul>
+    <li>Erro de dado seu: "Não conseguimos registrar sua empresa na emissão fiscal. Motivo: [motivo]. Corrija os dados acima e salve novamente."</li>
+    <li>Erro do lado da plataforma: "Não foi possível registrar sua empresa na emissão fiscal no momento: [motivo]. Isso não é problema nos seus dados, já estamos verificando. Tente novamente em alguns minutos ou fale com o suporte."</li>
+  </ul>
+  <p>Deu certo, aparece "Dados da empresa salvos." e libera o botão <span class="ui">Próximo: enviar certificado</span>.</p>
+
+  <h2>3. Passo Certificado: subindo o A1 (.pfx), senha e o consentimento</h2>
+
+  <p>O certificado digital A1 é o arquivo que assina as suas notas. Sem ele, o sistema não consegue falar com o governo em nome da sua empresa. É o mesmo certificado que o seu contador usa, e ele vem num arquivo com extensão <code>.pfx</code> ou <code>.p12</code>, protegido por senha.</p>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Com a empresa já registrada, abra a seção <span class="ui">2. Certificado A1</span>.</li>
+    <li>Clique em <span class="ui">Selecionar arquivo (.pfx / .p12)</span> e escolha o certificado.</li>
+    <li>Opcionalmente dê um <span class="ui">Nome do certificado</span>, por exemplo "Certificado da empresa".</li>
+    <li>Digite a <span class="ui">Senha do certificado</span>. A dica é clara: "Use a senha do próprio certificado, não a senha do sistema." Há um botão <span class="ui">Mostrar senha</span> para conferir a digitação.</li>
+    <li>Marque a autorização de guarda: "Autorizo o Dominex a guardar meu certificado digital de forma criptografada e a usá-lo somente para assinar as notas fiscais que a minha empresa mandar emitir." Ao lado há o link <span class="ui">Ler a Seção 12 dos Termos de Uso</span>.</li>
+    <li>Clique em <span class="ui">Enviar certificado</span>. A confirmação é "Certificado enviado com sucesso."</li>
+  </ol>
+
+  <figure>
+    <img src="img/t14-config-fiscal-certificado.png" alt="Modal Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado">
+    <figcaption>Configurações fiscais, seção Certificado A1: envio do arquivo, senha e a autorização de guarda.</figcaption>
+  </figure>
+
+  <h3>Mensagens de erro nesse passo</h3>
+  <ul>
+    <li>"Selecione o arquivo do certificado."</li>
+    <li>"Informe a senha do certificado."</li>
+    <li>"O certificado deve ser um arquivo .pfx ou .p12."</li>
+    <li>"Marque a autorização de guarda do certificado para continuar."</li>
+    <li>"Não foi possível registrar sua autorização. O certificado não foi enviado, tente novamente."</li>
+    <li>"Falha ao enviar o certificado."</li>
+  </ul>
+
+  <h3>Validade e registro de uso</h3>
+  <ul>
+    <li>Depois de enviado, a tela mostra <span class="ui">Certificado válido até DD/MM/AAAA</span>. Perto do fim, complementa "vence em N dia(s)". Vencido, mostra "Certificado vencido em DD/MM/AAAA. Envie um novo." e a emissão para de funcionar até você subir um novo arquivo.</li>
+    <li>Existe um bloco <span class="ui">Registro de uso do certificado</span>: "Cada envio, uso ou remoção do certificado fica registrado aqui, do mais recente para o mais antigo." Os eventos possíveis são <span class="ui">Certificado enviado</span>, <span class="ui">Certificado usado para emitir</span>, <span class="ui">Certificado usado para consultar a nota</span>, <span class="ui">Certificado usado para cancelar a nota</span>, <span class="ui">Certificado usado para gerar o PDF da nota</span> e <span class="ui">Certificado removido</span>.</li>
+    <li>A tela reforça: "Todo uso do certificado fica registrado e pode ser consultado aqui mesmo, nesta tela. Você pode remover o certificado quando quiser."</li>
+  </ul>
+  <div class="dica">Certificado A1 vale um ano. Coloque um lembrete no seu calendário 30 dias antes do vencimento, porque no dia em que ele vence a emissão para sem aviso prévio, e renovar leva alguns dias na certificadora.</div>
+
+  <h2>4. Passo Impostos: regime tributário, inscrição municipal, município (IBGE) e alíquota do ISS</h2>
+
+  <div class="aviso">Na tela, esta seção se chama <span class="ui">3. Tributação</span>, não "Impostos". E ela é mais enxuta do que o nome sugere: o <b>código do município (IBGE)</b> não é digitado aqui, ele vem sozinho do CEP na seção Empresa; e a <b>alíquota do ISS</b> também não fica aqui, ela é definida no cadastro de cada serviço (seção Serviços) ou digitada na hora de emitir a nota.</div>
+
+  <h3>O que existe na seção Tributação</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Opções e significado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Regime tributário</span></td><td><span class="ui">Simples Nacional</span>, <span class="ui">Lucro Presumido</span>, <span class="ui">Lucro Real</span> ou <span class="ui">MEI</span>. É o regime da sua empresa, o mesmo que consta no cartão CNPJ. Na dúvida, pergunte ao contador.</td></tr>
+      <tr><td><span class="ui">Apuração de tributos no Simples Nacional</span></td><td>Só aparece se o regime for Simples Nacional. Três opções: "Tributos federais e municipal (ISS) recolhidos pelo Simples Nacional", "Tributos federais pelo Simples Nacional e ISS recolhido por fora" e "Tributos federais e municipal recolhidos por fora do Simples Nacional". A dica na tela é: "Na dúvida, escolha a primeira opção, é o caso da grande maioria das empresas do Simples."</td></tr>
+      <tr><td><span class="ui">Inscrição Municipal</span></td><td>O número que a prefeitura deu à sua empresa. É o mesmo campo que aparece na seção Empresa.</td></tr>
+      <tr><td><span class="ui">Inscrição Estadual</span></td><td>Preencha se a sua empresa tiver.</td></tr>
+    </tbody>
+  </table>
+  <p>O botão é <span class="ui">Salvar tributação</span>. A confirmação é "Configurações fiscais salvas." e o erro é "Não foi possível salvar as configurações fiscais."</p>
+
+  <figure>
+    <img src="img/t14-config-fiscal-tributacao.png" alt="Modal Configurações fiscais na seção 3. Tributação, com o campo Regime tributário em Simples Nacional, o campo Apuração de tributos no Simples Nacional já preenchido com a primeira opção sugerida, os campos Inscrição Municipal e Inscrição Estadual lado a lado, e o botão Salvar tributação">
+    <figcaption>Configurações fiscais, seção Tributação: regime tributário, apuração no Simples e as inscrições.</figcaption>
+  </figure>
+
+  <h3>Sobre a alíquota do ISS</h3>
+  <p>A alíquota é a porcentagem do valor do serviço que vai pra prefeitura. Ela varia por cidade e por tipo de serviço, normalmente entre 2% e 5%. No Dominex ela chega até a nota por dois caminhos:</p>
+  <ul>
+    <li>Do cadastro do serviço, na seção <span class="ui">4. Serviços</span>: preenchendo lá uma vez, toda nota daquele serviço já sai com a alíquota certa.</li>
+    <li>Digitada direto no passo <span class="ui">Valores</span> da emissão, no campo <span class="ui">Alíquota ISS %</span>, que é opcional.</li>
+  </ul>
+
+  <h2>5. Passo Serviços: código de serviço padrão e NBS</h2>
+
+  <p>A seção <span class="ui">4. Serviços</span> do modal é o seu catálogo de serviços, o <b>mesmo</b> usado nas ordens de serviço e na agenda, aberto direto na aba fiscal do cadastro. A explicação na tela é: "Cadastre aqui os serviços que você fatura, com os códigos fiscais de cada um. É a mesma lista usada nas ordens de serviço e na agenda: preenchendo os códigos uma vez, toda nota nova já sai preenchida."</p>
+
+  <h3>Os códigos fiscais de cada serviço</h3>
+  <table class="dados">
+    <thead><tr><th>Código</th><th>O que é</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Código de tributação (cTribNac)</span></td><td>O código nacional do serviço, no padrão da lista de serviços da lei federal (por exemplo, 14.01 para manutenção de máquinas e aparelhos). Tem busca por código ou por descrição.</td></tr>
+      <tr><td><span class="ui">Código NBS</span></td><td>Nomenclatura Brasileira de Serviços, uma classificação complementar. A busca pede pelo menos 2 caracteres.</td></tr>
+      <tr><td><span class="ui">Código de tributação municipal (cTribMun)</span></td><td>Complemento de <b>3 dígitos</b> definido pela sua prefeitura, que se junta ao código nacional (por exemplo, 14.01.01 + 001). A tela avisa: "Em branco, usamos o código cadastrado no tipo de serviço. Sem ele a prefeitura pode recusar a nota." A validação é "O código de tributação municipal deve ter 3 dígitos."</td></tr>
+      <tr><td><span class="ui">Alíquota de ISS</span></td><td>A porcentagem de ISS daquele serviço na sua cidade.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="dica">Investir 10 minutos preenchendo esses códigos nos seus 5 ou 6 serviços mais faturados economiza o resto do ano: na emissão você escolhe o serviço numa lista e os quatro códigos entram sozinhos. Na hora de escolher, os serviços aparecem separados em dois grupos, <span class="ui">Prontos para emitir</span> e <span class="ui">Sem códigos fiscais</span>, então dá pra ver de bate-pronto o que ainda falta configurar.</div>
+
+  <p>Na emissão, ao ajustar um código que o serviço ainda não tinha, o sistema oferece guardar: "Salvar estes dados em '[nome do serviço]'? Este serviço ainda não tem estes dados no cadastro. Salvando, a próxima nota já vem preenchida." Você escolhe <span class="ui">Salvar no cadastro</span> ou <span class="ui">Agora não</span>.</p>
+
+  <h2>6. A cota mensal de emissão e onde ela aparece</h2>
+
+  <p>A emissão de notas trabalha por níveis, cada um com um limite de notas por mês. O medidor fica logo abaixo do título da tela <span class="ui">Notas Fiscais</span>, num selo colorido.</p>
+
+  <h3>O que o selo mostra</h3>
+  <ul>
+    <li>Com limite: "12 / 200 emitidas este mês".</li>
+    <li>Sem limite: "Notas ilimitadas".</li>
+    <li>Passando o mouse, a explicação muda conforme o consumo: "Consumo tranquilo, você está bem dentro do limite do mês.", "Você já passou de 80% do limite do mês, fique de olho.", "Limite do mês atingido. Novas emissões ficam bloqueadas até virar o mês ou até subir de nível." ou "Seu nível não tem limite mensal de emissão."</li>
+    <li>O tooltip também antecipa o próximo nível: "Próximo nível: [nome], até [N] notas por mês, por R$ X."</li>
+  </ul>
+
+  <h3>Quando a cota estoura</h3>
+  <p>Ao tentar emitir com o limite batido, abre o modal <span class="ui">Limite de notas atingido</span>: "Você emitiu N de M notas fiscais este mês no seu nível atual. Para emitir mais notas ainda este mês, suba de nível." O modal mostra o próximo nível com o limite e o preço, e o botão <span class="ui">Fazer upgrade para [nome]</span>, além de <span class="ui">Agora não</span>.</p>
+  <ul>
+    <li>A tela explica o efeito: "O upgrade libera a cota maior na hora e a nota que você estava emitindo é concluída automaticamente. O novo valor entra na próxima cobrança."</li>
+    <li>Confirmação: "Nível atualizado! Você já pode emitir."</li>
+    <li>No nível mais alto: "Você já está no nível máximo. Se precisa de mais capacidade, fale com o suporte."</li>
+  </ul>
+  <div class="regra">Rascunho não consome cota, e reenviar uma nota que ficou rejeitada também não consome cota nova. O que conta são as emissões que chegaram a ser processadas. A contagem zera na virada do mês.</div>
+
+  <h2>7. Emitir nota — stepper de 4 passos: Pessoas → Serviço → Valores → Emitir</h2>
+
+  <p>O botão <span class="ui">Nova Nota</span> abre o assistente <span class="ui">Nova NFS-e</span>, dividido em quatro abas. No rodapé, sempre visíveis: <span class="ui">Cancelar</span>, <span class="ui">Salvar rascunho</span>, <span class="ui">Voltar</span> e <span class="ui">Avançar</span>. No topo, um resumo com <span class="ui">Total da nota</span>, <span class="ui">Base ISS</span> e um contador de pendências ("3 pendência(s) para emitir" ou "Pronta para emitir"), que ao ser tocado lista o que falta.</p>
+
+  <figure>
+    <img src="img/t14-nova-nota-stepper.png" alt="Assistente Nova NFS-e na etapa Pessoas, com Total da nota R$ 0,00 e Base ISS R$ 0,00 no topo, o selo vermelho '6 pendência(s) para emitir' aberto listando o que falta (concluir cadastro da empresa, selecionar o tomador, código de tributação, código NBS e valor de serviço), as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, o campo Data de competência preenchido e o campo Tomador do serviço vazio com a validação 'Selecione o tomador do serviço'">
+    <figcaption>Assistente Nova NFS-e: o contador de pendências aberto mostra exatamente o que falta preencher para poder emitir.</figcaption>
+  </figure>
+
+  <h3>Etapa 1, Pessoas</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Data de competência</span></td><td>Sim</td><td>O mês a que o serviço se refere. Validações: "Informe a data de competência." e "A competência não pode ser uma data futura."</td></tr>
+      <tr><td><span class="ui">Regime de apuração (Simples Nacional)</span></td><td>Só no Simples</td><td><span class="ui">Competência</span> ou <span class="ui">Caixa</span>. "Regime de apuração do ISS no Simples Nacional."</td></tr>
+      <tr><td><span class="ui">Tomador do serviço</span></td><td>Sim</td><td>É o seu cliente, quem recebe a nota. Validação: "Selecione o tomador do serviço."</td></tr>
+      <tr><td><span class="ui">Intermediário do serviço</span></td><td>Não</td><td>Só para o caso em que existe um intermediário entre você e o tomador.</td></tr>
+    </tbody>
+  </table>
+  <div class="aviso">Cliente sem documento trava a nota: "Este cliente está sem CPF/CNPJ. Complete os dados fiscais antes de emitir." Complete a ficha do cliente (aba Fiscal) e volte. Endereço incompleto do cliente também é motivo comum de recusa pela prefeitura.</div>
+
+  <h3>Etapa 2, Serviço</h3>
+  <ul>
+    <li><span class="ui">Serviço</span>: escolha um serviço já cadastrado e os códigos fiscais, a descrição e a alíquota entram sozinhos. A dica é: "Escolha um serviço e preenchemos os códigos fiscais, a descrição e a alíquota de ISS pra você. Prefere digitar? É só preencher os campos abaixo." Sem catálogo, aparece "Você ainda não tem serviços cadastrados. Cadastre o primeiro e os códigos fiscais dele ficam salvos pras próximas notas."</li>
+    <li><span class="ui">Município de incidência (IBGE)</span>: o código de 7 dígitos do município onde o serviço foi prestado.</li>
+    <li><span class="ui">Código de tributação (cTribNac)</span>: obrigatório na prática. Se faltar, a pendência é "Escolha o código de tributação do serviço. A nota não pode ser emitida sem ele."</li>
+    <li><span class="ui">Código NBS</span>: idem, "Escolha o código NBS do serviço. A nota não pode ser emitida sem ele."</li>
+    <li><span class="ui">Código de tributação municipal (cTribMun)</span>: 3 dígitos, complementa o código nacional.</li>
+    <li><span class="ui">Situação do ISSQN</span>: <span class="ui">Tributada normalmente</span> (o caso comum), <span class="ui">Exportação de serviço</span>, <span class="ui">Imunidade</span> ou <span class="ui">Não incidência</span>.</li>
+    <li><span class="ui">Discriminação do serviço</span>: obrigatório, é o texto que sai impresso na nota. Validação: "A discriminação do serviço é obrigatória."</li>
+  </ul>
+
+  <h3>Etapa 3, Valores</h3>
+  <ul>
+    <li><span class="ui">Valor do serviço</span>: obrigatório. Validação: "Informe um valor de serviço válido (maior que zero)."</li>
+    <li><span class="ui">Alíquota ISS %</span>: opcional.</li>
+    <li><span class="ui">Retenção do ISS</span>: três opções, <span class="ui">Não retido</span>, <span class="ui">Retido pelo tomador</span> e <span class="ui">Retido pelo intermediário</span>.</li>
+    <li><span class="ui">Retenções federais</span>: <span class="ui">PIS retido (R$)</span>, <span class="ui">COFINS retido (R$)</span> e <span class="ui">CSLL retido (R$)</span>, em reais. A tela avisa: "INSS e IRRF não se aplicam neste provedor."</li>
+    <li><span class="ui">Percentual de tributos do Simples Nacional (%)</span>: aparece no Simples, explicado no capítulo seguinte.</li>
+    <li><span class="ui">Prévia do cálculo</span>: mostra valor do serviço, ISS (marcado como devido ou retido), retenções federais e valor líquido.</li>
+  </ul>
+
+  <div class="aviso"><b>A opção padrão de Retenção do ISS é "Não retido", e isso está certo.</b> "Não retido" significa que quem recolhe o ISS é a sua empresa, que é o caso da grande maioria das notas. Escolher "Retido pelo tomador" faz a nota declarar que o seu cliente vai reter e recolher o ISS, descontando do que ele te paga. Só marque isso se o contrato com aquele cliente prevê retenção. Marcar por engano faz a nota sair declarando um imposto retido que não existe.</div>
+
+  <h3>Etapa 4, Revisar e Emitir</h3>
+  <p>Mostra a <span class="ui">Pré-visualização da NFS-e</span> com quatro blocos, <span class="ui">Prestador</span>, <span class="ui">Tomador</span>, <span class="ui">Serviço</span> e <span class="ui">Valores</span>, e o aviso "Número será atribuído após emissão". Se faltar habilitação, o bloco vermelho <span class="ui">Emissão bloqueada</span> diz exatamente o quê:</p>
+  <ul>
+    <li>"Configure o certificado digital nas Configurações Fiscais."</li>
+    <li>"Conclua o cadastro da empresa nas Configurações Fiscais para liberar a emissão."</li>
+    <li>"O município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais."</li>
+  </ul>
+  <p>Estando tudo certo, o botão <span class="ui">Emitir NFS-e</span> envia. Durante o envio aparece "Processando emissão..." e depois "NFS-e enviada para emissão." A nota entra como <span class="ui">Processando</span> e o sistema consulta o status sozinho enquanto a tela está aberta. Havendo pendência, aparece "Corrija as pendências antes de emitir."</p>
+
+  <h3>Rascunho</h3>
+  <ul>
+    <li><span class="ui">Salvar rascunho</span> guarda o preenchimento sem enviar nada. Confirmação: "Rascunho salvo."</li>
+    <li>Na lista, um rascunho tem as ações <span class="ui">Continuar preenchendo</span>, <span class="ui">Emitir NFS-e</span> e <span class="ui">Excluir rascunho</span>. Excluir rascunho não exige a empresa estar apta a emitir.</li>
+    <li>Fechando o assistente com campos preenchidos, o sistema pergunta: "Descartar nota? Você tem dados preenchidos. Ao cancelar, o progresso será perdido."</li>
+  </ul>
+
+  <h2>8. O caso do Simples Nacional: o percentual que precisa ser preenchido</h2>
+
+  <p>Empresa optante pelo Simples Nacional tem duas particularidades na emissão, e as duas derrubam a nota se forem ignoradas.</p>
+
+  <h3>O percentual de tributos</h3>
+  <div class="regra">No Simples Nacional, o campo <span class="ui">Percentual de tributos do Simples Nacional (%)</span> é <b>obrigatório</b>. A mensagem do sistema é: "Informe o percentual de tributos do Simples Nacional. Ele é obrigatório na nota para empresas optantes do Simples." A dica de preenchimento é honesta: "Carga tributária aproximada do Simples Nacional, o percentual da faixa/anexo da sua empresa. Peça ao seu contador, não estimamos esse número." O Dominex não chuta esse valor de propósito: ele depende do anexo e da faixa de faturamento da sua empresa, e um número errado vai impresso na nota.</div>
+
+  <h3>A armadilha da alíquota de ISS em branco</h3>
+  <div class="aviso">Quando a empresa é do Simples Nacional <b>e</b> a retenção de ISS está como <span class="ui">Não retido</span>, a alíquota de ISS deve ficar <b>em branco</b>. O aviso na tela é literal: "Empresa do Simples Nacional sem retenção de ISS: deixe a alíquota em branco. Informar alíquota nesse caso faz a prefeitura recusar a nota." O sistema mostra isso como aviso, não como bloqueio, porque quem decide é o contador. Se a sua nota do Simples voltar recusada com erro de alíquota, esse é o primeiro lugar pra olhar.</div>
+
+  <h3>Regime de apuração</h3>
+  <p>Ainda no Simples, o passo <span class="ui">Pessoas</span> pede o <span class="ui">Regime de apuração</span> do ISS, <span class="ui">Competência</span> ou <span class="ui">Caixa</span>, e a configuração fiscal pede a <span class="ui">Apuração de tributos no Simples Nacional</span>. Os dois vêm do enquadramento da empresa: pergunte ao contador uma vez e deixe salvo.</p>
+
+  <h2>9. Nota autorizada: número, protocolo, chave de acesso; baixar PDF (DANFSe) e XML</h2>
+
+  <p>Quando a prefeitura aceita, a nota vira <span class="ui">Autorizada</span> e ganha três identificadores que antes não existiam:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Pra que serve</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Número</span></td><td>O número sequencial da nota. É o que o cliente cita ("a nota 26").</td></tr>
+      <tr><td><span class="ui">Protocolo</span></td><td>O comprovante do processamento junto ao governo.</td></tr>
+      <tr><td><span class="ui">Chave de acesso</span></td><td>O identificador único do documento, usado para consulta pública e pela contabilidade.</td></tr>
+    </tbody>
+  </table>
+  <p>Abrindo a nota em <span class="ui">Ver detalhe</span>, além desses três, aparecem <span class="ui">Tomador</span>, <span class="ui">Valor do serviço</span>, <span class="ui">ISS</span>, <span class="ui">Emitida em</span>, <span class="ui">Criada em</span>, <span class="ui">Descrição</span>, os códigos fiscais, <span class="ui">Quem recolhe o ISS</span> e as retenções. Há também um <span class="ui">Histórico</span> com os eventos da nota.</p>
+
+  <h3>Baixar o documento</h3>
+  <div class="regra"><b>O PDF da nota (DANFSE) é gerado na hora, sob demanda.</b> O sistema não guarda um arquivo pronto nem um link fixo: quando você clica em <span class="ui">Baixar PDF</span>, ele pede o documento, recebe o arquivo e entrega pra você. Por isso leva alguns segundos e mostra "Gerando o PDF da nota...". Se você procurava um endereço fixo do PDF para colar num e-mail, ele não existe: baixe o arquivo e anexe.</div>
+  <ul>
+    <li><span class="ui">Baixar PDF</span> aparece para nota <b>autorizada</b>, com <b>cancelamento em andamento</b> e <b>cancelada</b>. O documento existiu, tem número e chave, então continua disponível mesmo depois de cancelado.</li>
+    <li><span class="ui">Baixar PDF</span> <b>não</b> aparece em rascunho nem em nota rejeitada, porque nesses casos não existe documento nenhum.</li>
+    <li><span class="ui">Baixar XML</span> segue a mesma regra de situação, mas só aparece quando o arquivo XML já está disponível. Não estando, a mensagem é "O XML desta nota ainda não está disponível."</li>
+    <li>Erro ao gerar: "Não foi possível gerar o PDF agora. A nota continua válida, tente de novo em instantes." O aviso é proposital: falha ao baixar não cancela nem invalida a nota.</li>
+    <li>No detalhe da nota há ainda <span class="ui">Ver PDF</span> e <span class="ui">Ver XML</span>, que abrem o documento dentro do sistema, com o botão <span class="ui">Baixar arquivo</span>.</li>
+  </ul>
+
+  <h3>Acompanhar uma nota que ainda está processando</h3>
+  <ul>
+    <li>Enquanto está em <span class="ui">Pendente</span> ou <span class="ui">Processando</span>, o sistema consulta o status sozinho com a tela aberta.</li>
+    <li>Para forçar, use <span class="ui">Atualizar status</span>. Aparece "Consultando o status na prefeitura..." e depois "Status atualizado." ou "Não foi possível atualizar o status."</li>
+    <li>Nota que voltou <span class="ui">Rejeitada</span> ou <span class="ui">Falhou</span> pode ser corrigida e reenviada pela ação <span class="ui">Reenviar NFS-e</span>, na mesma linha. Ela reaproveita o registro, porque uma tentativa recusada nunca existiu para a administração tributária.</li>
+  </ul>
+
+  <h2>10. Cancelar nota com motivo, e reemitir depois (número novo)</h2>
+
+  <p>Nota autorizada não se apaga. Ela se cancela, e o cancelamento também é registrado na prefeitura.</p>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Abra a nota e escolha <span class="ui">Cancelar nota</span>.</li>
+    <li>Leia a confirmação: "Cancelar esta nota fiscal? Esta nota já foi enviada e registrada na prefeitura. O cancelamento também é registrado lá e não tem volta: para cobrar de novo, será preciso emitir uma nota nova." Abaixo aparece a linha "Nota nº X, [cliente], R$ Y."</li>
+    <li>Escreva o <span class="ui">Motivo do cancelamento</span>. Ele é "Obrigatório por exigência legal. Escreva entre [mínimo] e [máximo] caracteres, esse texto vai junto do pedido à prefeitura." Exemplos que a própria tela sugere: "Serviço não realizado, cobrança em duplicidade, valor incorreto." Faltando texto, o contador avisa "Faltam N caracteres para o mínimo exigido."</li>
+    <li>Confirme em <span class="ui">Cancelar nota</span>. A resposta é "Cancelamento solicitado." e a nota passa por <span class="ui">Cancelamento em andamento</span> até virar <span class="ui">Cancelada</span>. Se falhar: "Não foi possível cancelar a nota."</li>
+  </ol>
+  <p>Cancelar só está disponível para nota <b>autorizada</b> ou ainda em processamento, e para quem tem a empresa apta a emitir. Rascunho não se cancela, se exclui.</p>
+
+  <h3>Reemitir depois de cancelar</h3>
+  <div class="regra"><b>Nota cancelada nunca é reaproveitada.</b> Ao emitir de novo para o mesmo cliente, com o mesmo valor e a mesma competência, o sistema cria um documento <b>novo</b>, com número novo e chave nova, e deixa a nota cancelada intacta. Isso é obrigação: número e chave da nota cancelada fazem parte da escrituração e precisam ser preservados por cinco anos.</div>
+  <p>A diferença entre os dois casos, que é a origem do "não consigo emitir de novo":</p>
+  <table class="dados">
+    <thead><tr><th>Situação da nota anterior</th><th>O que acontece ao emitir de novo</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Rejeitada</span> ou <span class="ui">Falhou</span></td><td>O sistema <b>reaproveita</b> o mesmo registro: você corrige o dado e reenvia na mesma linha. Aquela tentativa nunca existiu para a prefeitura.</td></tr>
+      <tr><td><span class="ui">Cancelada</span> ou <span class="ui">Cancelamento em andamento</span></td><td>O sistema cria um registro <b>novo</b>, e a nota antiga continua na lista, cancelada, com o número dela. Não é duplicidade, são dois documentos diferentes.</td></tr>
+      <tr><td><span class="ui">Autorizada</span></td><td>O sistema <b>não</b> emite de novo. Ele devolve a nota que já existe, com a mensagem "Nota fiscal já emitida para este cliente e valor." É a trava que impede a mesma nota sair duas vezes por um duplo-clique.</td></tr>
+    </tbody>
+  </table>
+  <div class="dica">Se você precisa emitir uma segunda nota legítima para o mesmo cliente, com o mesmo valor e a mesma competência (por exemplo, duas visitas idênticas no mesmo mês), mude a <b>discriminação do serviço</b> para diferenciar e, se possível, ajuste a competência. Se ainda assim o sistema disser que já foi emitida, cancele a anterior antes ou fale com o suporte.</div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Não acho a tela de configuração fiscal no menu"</td>
+        <td>Ela não é uma tela, é um modal</td>
+        <td>A configuração fiscal abre de dentro de Notas Fiscais, pelo botão Configurações fiscais no topo da tela. Não existe item de menu separado.</td>
+      </tr>
+      <tr>
+        <td>"Cancelei uma nota e agora não consigo emitir outra igual"</td>
+        <td>Confusão entre reaproveitar e criar novo documento</td>
+        <td>Nota cancelada nunca é reaproveitada: o sistema emite um documento novo, com número e chave novos, e mantém a cancelada na lista. Se a mensagem foi "Nota fiscal já emitida para este cliente e valor", existe uma nota AUTORIZADA igual, não cancelada. Confira a lista antes.</td>
+      </tr>
+      <tr>
+        <td>"A nota foi autorizada mas não tem link do PDF"</td>
+        <td>O PDF é gerado sob demanda</td>
+        <td>Não existe link fixo. Clique em Baixar PDF na linha da nota: o documento é gerado na hora e baixa como arquivo. Leva alguns segundos e mostra "Gerando o PDF da nota...".</td>
+      </tr>
+      <tr>
+        <td>"Não aparece o botão Baixar PDF"</td>
+        <td>Situação da nota não permite</td>
+        <td>O botão aparece em nota autorizada, com cancelamento em andamento ou cancelada. Em rascunho e em nota rejeitada ele não aparece, porque não existe documento.</td>
+      </tr>
+      <tr>
+        <td>"Está tudo configurado e mesmo assim não emite"</td>
+        <td>Município sem cobertura do padrão nacional</td>
+        <td>Abra Configurações fiscais, seção Empresa, e clique em Verificar cobertura do município. Se voltar "Município ainda sem emissão de NFS-e", não há o que fazer do lado do sistema: depende de a prefeitura aderir ao padrão nacional.</td>
+      </tr>
+      <tr>
+        <td>"A prefeitura recusou a nota e falou de alíquota"</td>
+        <td>Empresa do Simples com alíquota preenchida e ISS não retido</td>
+        <td>No Simples Nacional, com ISS não retido, a alíquota deve ficar em branco. A própria tela avisa: "Informar alíquota nesse caso faz a prefeitura recusar a nota." Apague a alíquota e reenvie a nota rejeitada.</td>
+      </tr>
+      <tr>
+        <td>"A nota saiu dizendo que o cliente reteve o ISS, e ele não reteve"</td>
+        <td>Campo Retenção do ISS marcado errado</td>
+        <td>O padrão é "Não retido", que significa que quem recolhe é a sua empresa. Se alguém marcou "Retido pelo tomador" sem previsão em contrato, a nota precisa ser cancelada e emitida de novo com o campo certo.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo subir o certificado"</td>
+        <td>Empresa ainda não registrada, arquivo errado ou consentimento não marcado</td>
+        <td>A ordem é obrigatória: primeiro salvar e registrar a empresa, depois o certificado. O arquivo precisa ser .pfx ou .p12, a senha é a do certificado (não a do sistema) e a autorização de guarda precisa estar marcada.</td>
+      </tr>
+      <tr>
+        <td>"Emitia normal e do nada parou"</td>
+        <td>Certificado vencido</td>
+        <td>Abra Configurações fiscais, seção Certificado A1. Vencido, aparece "Certificado vencido em DD/MM/AAAA. Envie um novo." Renove com a certificadora e suba o arquivo novo.</td>
+      </tr>
+      <tr>
+        <td>"Não deixa emitir e fala de limite"</td>
+        <td>Cota mensal do nível atingida</td>
+        <td>O selo no topo mostra o consumo do mês. Batido o limite, é possível subir de nível pelo próprio modal, o que libera a cota na hora e conclui a nota que estava sendo emitida. Ou esperar virar o mês.</td>
+      </tr>
+      <tr>
+        <td>"O cliente não recebe a nota, dá erro de dados"</td>
+        <td>Cliente sem CPF/CNPJ ou sem endereço completo</td>
+        <td>A nota exige cliente com documento e endereço. A mensagem é "Este cliente está sem CPF/CNPJ. Complete os dados fiscais antes de emitir." Complete a ficha do cliente na aba Fiscal e emita de novo.</td>
+      </tr>
+      <tr>
+        <td>"A nota está há muito tempo em Processando"</td>
+        <td>Fila da prefeitura</td>
+        <td>Use Atualizar status na linha da nota. O sistema também consulta sozinho enquanto a tela está aberta. Persistindo por horas, acione o suporte com o número e a chave.</td>
+      </tr>
+      <tr>
+        <td>"Preciso mudar o valor de uma nota já emitida"</td>
+        <td>Nota autorizada não se edita</td>
+        <td>Nota autorizada não se altera nem se apaga. Cancele com o motivo (por exemplo, "valor incorreto") e emita uma nova, que vai receber número novo.</td>
+      </tr>
+      <tr>
+        <td>"Emiti em Homologação e a nota não vale"</td>
+        <td>Ambiente errado na configuração</td>
+        <td>Homologação são notas de teste, sem valor fiscal. Abra Configurações fiscais, seção Empresa, e mude o Ambiente de emissão de NFS-e para Produção. Depois emita novamente.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Onde fica a configuração fiscal?</dt>
+    <dd>Dentro da tela Notas Fiscais, no botão Configurações fiscais do topo. É um modal com quatro seções: Empresa, Certificado A1, Tributação e Serviços. Não existe página separada nem item de menu próprio.</dd>
+
+    <dt>Preciso de certificado digital pra emitir?</dt>
+    <dd>Sim, um certificado A1 (arquivo .pfx ou .p12, com senha). É o mesmo que o seu contador usa. Sem certificado enviado, a tela volta pro estado guiado e não emite.</dd>
+
+    <dt>Como sei se a minha cidade emite NFS-e pelo sistema?</dt>
+    <dd>Em Configurações fiscais, seção Empresa, use o botão Verificar cobertura do município. O bloco Status da emissão mostra "Município: liberado para emitir notas" ou "Município: liberação ainda não confirmada". Faça isso antes de contratar o módulo ou prometer nota pro cliente.</dd>
+
+    <dt>Cancelei a nota. Posso emitir outra igual?</dt>
+    <dd>Pode, e ela sai com número novo. A cancelada continua na lista com o número dela, porque número e chave fazem parte da escrituração e não podem ser reaproveitados.</dd>
+
+    <dt>E se a nota foi rejeitada, preciso começar do zero?</dt>
+    <dd>Não. Nota rejeitada ou que falhou pode ser corrigida e reenviada na mesma linha, pela ação Reenviar NFS-e. Ela não consome cota nova.</dd>
+
+    <dt>Onde baixo o PDF da nota?</dt>
+    <dd>Na ação Baixar PDF da linha da nota, ou no detalhe, em Ver PDF. O documento é gerado na hora, o sistema não guarda um link pronto.</dd>
+
+    <dt>Sou do Simples Nacional. O que muda?</dt>
+    <dd>Duas coisas. Você precisa informar o Percentual de tributos do Simples Nacional na emissão (peça ao contador, o sistema não estima). E, com ISS não retido, a alíquota de ISS deve ficar em branco, senão a prefeitura recusa.</dd>
+
+    <dt>O que é "Retenção do ISS"?</dt>
+    <dd>É quem recolhe o imposto. "Não retido" (o padrão) significa que quem recolhe é a sua empresa. "Retido pelo tomador" significa que o seu cliente desconta e recolhe. Só marque retenção se o contrato prevê.</dd>
+
+    <dt>Qual a diferença entre Homologação e Produção?</dt>
+    <dd>Homologação é ambiente de teste: as notas não têm valor fiscal. Produção é para valer. A chave fica na seção Empresa da configuração fiscal.</dd>
+
+    <dt>Quantas notas posso emitir por mês?</dt>
+    <dd>Depende do nível contratado. O selo no topo da tela mostra "N / M emitidas este mês" ou "Notas ilimitadas". Batendo o limite, dá pra subir de nível na hora pelo próprio aviso, e a nota em andamento é concluída.</dd>
+
+    <dt>Rascunho consome cota?</dt>
+    <dd>Não. Rascunho não é enviado à prefeitura e pode ser excluído à vontade.</dd>
+
+    <dt>Preciso preencher os códigos fiscais em toda nota?</dt>
+    <dd>Não, se você cadastrar os códigos nos seus serviços, na seção Serviços da configuração fiscal. Aí basta escolher o serviço na emissão e os códigos, a descrição e a alíquota entram sozinhos.</dd>
+
+    <dt>O que é o código de tributação municipal (cTribMun)?</dt>
+    <dd>É um complemento de 3 dígitos definido pela sua prefeitura, que se junta ao código nacional. Sem ele, algumas prefeituras recusam a nota.</dd>
+
+    <dt>Quem da minha equipe pode emitir nota?</dt>
+    <dd>Quem tem a permissão de tela Notas Fiscais, na empresa que tem o módulo Emissão de Notas Fiscais contratado. Sem uma das duas coisas, a tela mostra a mensagem de acesso negado. Sem a permissão, ao tentar emitir aparece "Você não tem permissão para emitir notas fiscais."</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> nota fiscal, nota de serviço, NFS-e, emitir nota, notinha, DANFSE, PDF da nota, XML, chave de acesso, protocolo, ISS, alíquota, retenção, tomador, prestador, certificado digital, A1, inscrição municipal, Simples Nacional, cancelar nota, carta de correção
+  </div>
+</section>

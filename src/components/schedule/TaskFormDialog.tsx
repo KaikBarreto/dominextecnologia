@@ -93,6 +93,11 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         setRecurrenceType(task.recurrence_type || 'weekly');
         setRecurrenceInterval(task.recurrence_interval || 1);
         setRecurrenceEndDate(task.recurrence_end_date || '');
+        // Os dias marcados não são gravados no banco (service_orders guarda só as
+        // datas já materializadas), então ao editar a série reabrimos marcando o
+        // dia desta ocorrência. Para série semanal clássica isso reproduz
+        // exatamente o que existia; se a série tinha vários dias, o usuário vê
+        // no seletor quais estão marcados antes de salvar e pode remarcar.
         const baseDay = new Date((task.scheduled_date || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00').getDay();
         setRecurrenceWeekdays(hasSeries ? [baseDay] : []);
       } else {
@@ -109,7 +114,11 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         setRecurrenceType('weekly');
         setRecurrenceInterval(1);
         setRecurrenceEndDate('');
-        const dayOfWeek = new Date(defaultDate || new Date()).getDay();
+        // Ancorado ao meio-dia local: `new Date('2026-03-02')` seria lido em UTC
+        // e, no fuso -03, cairia no domingo anterior — marcando o dia errado
+        // agora que a repetição semanal honra os dias marcados.
+        const baseDateStr = defaultDate || format(new Date(), 'yyyy-MM-dd');
+        const dayOfWeek = new Date(`${baseDateStr}T12:00:00`).getDay();
         setRecurrenceWeekdays([dayOfWeek]);
       }
     }
@@ -140,7 +149,12 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
       recurrence_type: recurrenceEnabled ? recurrenceType : undefined,
       recurrence_interval: recurrenceEnabled ? recurrenceInterval : undefined,
       recurrence_end_date: recurrenceEnabled && recurrenceEndDate ? recurrenceEndDate : undefined,
-      recurrence_weekdays: recurrenceEnabled && recurrenceType === 'custom' ? recurrenceWeekdays : undefined,
+      // Semanal também usa os dias marcados (a cada N semanas, em cada dia).
+      // Nenhum dia marcado = 1 por semana no dia da data inicial, como sempre foi.
+      recurrence_weekdays:
+        recurrenceEnabled && (recurrenceType === 'custom' || recurrenceType === 'weekly')
+          ? recurrenceWeekdays
+          : undefined,
     });
     onOpenChange(false);
   };
@@ -276,8 +290,17 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">{t.labelUntil}</Label>
-                  <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
+                  {/* Obrigatório quando a recorrência está ligada: sem data final
+                      não existe série (useTaskSubmit barra com mensagem). */}
+                  <Label className="text-xs">
+                    {t.labelUntil} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="date"
+                    value={recurrenceEndDate}
+                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                    aria-invalid={!recurrenceEndDate}
+                  />
                 </div>
               </div>
 

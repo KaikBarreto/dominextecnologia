@@ -1,0 +1,117 @@
+{
+    "secao": "T6",
+    "prints": [
+        {
+            "id": "t6-tipo-entrada",
+            "url": "/agenda",
+            "legenda": "Janela O que deseja criar?, com os cartões Ordem de Serviço (atendimento técnico com cliente e equipamento) e Tarefa (atividade interna, reunião ou compromisso).",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Nova Tarefa/OS"
+                },
+                {
+                    "esperar": 1500
+                }
+            ],
+            "recorte": "dialog"
+        },
+        {
+            "id": "t6-os-pausadas",
+            "url": "/agenda",
+            "legenda": "Janela OS Pausadas, listando todas as ordens paradas independentemente da data, com o tempo de pausa e os botões Ver detalhes e Retomar agora.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "OS Pausadas"
+                },
+                {
+                    "esperar": 2000
+                }
+            ],
+            "recorte": "dialog"
+        },
+        {
+            "id": "t6-legenda-agenda",
+            "url": "/agenda",
+            "legenda": "Legenda de tipos de serviço da Agenda, com a cor de cada serviço e a entrada de feriado.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Legenda"
+                },
+                {
+                    "esperar": 1500
+                }
+            ],
+            "recorte": "dialog",
+            "viewport": {
+                "largura": 390,
+                "altura": 844
+            }
+        },
+        {
+            "id": "t6-equipes-lista",
+            "url": "/funcionarios",
+            "legenda": "Aba Equipes dentro de Funcionários, com os cartões de cada equipe mostrando ícone colorido, nome, descrição, situação e os avatares dos membros.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Equipes"
+                },
+                {
+                    "esperar": 2500
+                }
+            ],
+            "recorte": "main"
+        },
+        {
+            "id": "t6-nova-equipe",
+            "url": "/funcionarios",
+            "legenda": "Janela Nova Equipe, com Nome, Descrição, o bloco Visual da Equipe (cor, grade de ícones e botão Foto) e a lista de Membros com caixinhas de seleção.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Equipes"
+                },
+                {
+                    "esperar": 2000
+                },
+                {
+                    "clicar": "Nova Equipe"
+                },
+                {
+                    "esperar": 1500
+                }
+            ],
+            "recorte": "dialog"
+        },
+        {
+            "id": "t6-mapa-historico",
+            "url": "/mapa-ao-vivo",
+            "legenda": "Aba Histórico da tela Mapa e Rastreamento, com os filtros de técnico e data, os números do dia e a lista de eventos de localização.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Histórico"
+                },
+                {
+                    "esperar": 2500
+                }
+            ],
+            "recorte": "main"
+        }
+    ]
+}

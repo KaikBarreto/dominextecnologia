@@ -224,6 +224,12 @@ export const os = {
         yearly: 'Anual',
         custom: 'Personalizado',
       },
+      // Aviso/erro da recorrência (nunca criar OS única em silêncio)
+      recurrenceErrorNoEndDate: 'Informe até quando a recorrência vai. Sem essa data não dá pra criar a série.',
+      recurrenceErrorNoWeekday: 'Escolha pelo menos um dia da semana para repetir.',
+      recurrenceErrorUnsupported: 'Esta frequência ainda não é suportada. Escolha outra.',
+      recurrencePreviewCount: 'Serão criadas {n} OS, de {inicio} até {fim}.',
+      recurrencePreviewSingle: 'Com essas opções só uma OS seria criada. Revise a frequência e a data final.',
       // Letras dos dias da semana (Dom..Sáb)
       weekdayLabels: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
 
@@ -311,6 +317,7 @@ export const os = {
       ctaFillOs: 'Preencher OS',
       ctaReport: 'Relatório de Serviço',
       toastLinkCopied: 'Link copiado!',
+      toastLinkCopyError: 'Não foi possível copiar o link',
     },
 
     // ── Gerenciador de status de OS ───────────────────────────────────────
@@ -1749,6 +1756,11 @@ export const os = {
         yearly: 'Yearly',
         custom: 'Custom',
       },
+      recurrenceErrorNoEndDate: 'Set an end date for the recurrence. Without it the series cannot be created.',
+      recurrenceErrorNoWeekday: 'Pick at least one weekday to repeat on.',
+      recurrenceErrorUnsupported: 'This frequency is not supported yet. Pick another one.',
+      recurrencePreviewCount: '{n} work orders will be created, from {inicio} to {fim}.',
+      recurrencePreviewSingle: 'With these options only one work order would be created. Review the frequency and the end date.',
       weekdayLabels: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
       npsLabel: 'Generate satisfaction survey on completion?',
       contractDateDialogTitle: 'Change recurrence date?',
@@ -1809,6 +1821,7 @@ export const os = {
       ctaFillOs: 'Fill work order',
       ctaReport: 'Service report',
       toastLinkCopied: 'Link copied!',
+      toastLinkCopyError: 'Could not copy the link',
     },
 
     statusManager: {
@@ -3192,6 +3205,11 @@ export const os = {
         yearly: 'Anual',
         custom: 'Personalizado',
       },
+      recurrenceErrorNoEndDate: 'Indica hasta cuándo va la recurrencia. Sin esa fecha no se puede crear la serie.',
+      recurrenceErrorNoWeekday: 'Elige al menos un día de la semana para repetir.',
+      recurrenceErrorUnsupported: 'Esta frecuencia aún no es compatible. Elige otra.',
+      recurrencePreviewCount: 'Se crearán {n} órdenes, del {inicio} al {fim}.',
+      recurrencePreviewSingle: 'Con estas opciones solo se crearía una orden. Revisa la frecuencia y la fecha final.',
       weekdayLabels: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
       npsLabel: '¿Generar encuesta de satisfacción al finalizar?',
       contractDateDialogTitle: '¿Cambiar la fecha de la recurrencia?',
@@ -3252,6 +3270,7 @@ export const os = {
       ctaFillOs: 'Completar orden',
       ctaReport: 'Informe de servicio',
       toastLinkCopied: '¡Enlace copiado!',
+      toastLinkCopyError: 'No se pudo copiar el enlace',
     },
 
     statusManager: {
@@ -4635,6 +4654,11 @@ export const os = {
         yearly: 'Annuelle',
         custom: 'Personnalisé',
       },
+      recurrenceErrorNoEndDate: "Indiquez jusqu'à quand la récurrence va. Sans cette date, la série ne peut pas être créée.",
+      recurrenceErrorNoWeekday: 'Choisissez au moins un jour de la semaine.',
+      recurrenceErrorUnsupported: "Cette fréquence n'est pas encore prise en charge. Choisissez-en une autre.",
+      recurrencePreviewCount: '{n} bons seront créés, du {inicio} au {fim}.',
+      recurrencePreviewSingle: "Avec ces options, un seul bon serait créé. Vérifiez la fréquence et la date de fin.",
       weekdayLabels: ['D', 'L', 'M', 'M', 'J', 'V', 'S'],
       npsLabel: 'Générer une enquête de satisfaction à la clôture ?',
       contractDateDialogTitle: 'Modifier la date de récurrence ?',
@@ -4695,6 +4719,7 @@ export const os = {
       ctaFillOs: 'Remplir le bon',
       ctaReport: 'Rapport de service',
       toastLinkCopied: 'Lien copié !',
+      toastLinkCopyError: 'Impossible de copier le lien',
     },
 
     statusManager: {

@@ -1,0 +1,360 @@
+<section class="tutorial" id="t16">
+  <h1><span class="tcode">T16</span> Sua assinatura, plano e módulos</h1>
+
+  <p class="lead">Entender exatamente o que você paga por mês, o que está incluído, como ligar um recurso novo sem falar com ninguém e como pagar quando vence. Esta é a tela que responde "por que minha fatura mudou?" e "por que eu não tenho o CRM?".</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> menu do seu perfil (o cartão com a sua foto, no rodapé do menu lateral) → <span class="ui">Assinatura</span>. No celular: gaveta <span class="ui">Menu</span> → seção <span class="ui">Conta</span> → <span class="ui">Assinatura</span>.</span>
+    <span><b>Rotas:</b> <code>/assinatura</code> e <code>/checkout</code></span>
+    <span><b>Depende de:</b> T15 (funcionários e folha), na ordem da trilha. Na prática você pode abrir esta tela a qualquer momento.</span>
+    <span><b>Quem enxerga:</b> qualquer usuário logado da empresa consegue abrir a tela de Assinatura. O botão <span class="ui">Cancelar assinatura</span> só aparece pra administrador ou gestor.</span>
+    <span><b>Módulo:</b> nenhum. A tela é base.</span>
+  </div>
+
+  <div class="regra">
+    Esta tela trata da assinatura que a <b>sua empresa paga pra usar a Dominex</b>. Ela não tem nada a ver com as cobranças que você emite pros <b>seus</b> clientes, que ficam na integração de Recebimentos e no Financeiro. São dois assuntos diferentes que costumam se confundir no suporte.
+  </div>
+
+  <h2>1. Tela Assinatura: status, plano atual, vencimento e valor</h2>
+
+  <p>O topo da tela mostra <span class="ui">Assinatura</span> e o subtítulo "Gerencie seu plano, módulos e pagamentos". O que aparece embaixo depende de a empresa estar em teste ou já ter assinatura ativa.</p>
+
+  <h3>Empresa em período de teste</h3>
+  <p>Aparece um bloco grande em destaque com o título <span class="ui">Ative sua Assinatura</span> e o texto "Você está no período de teste. Escolha o plano ideal e garanta acesso completo." Se ainda faltam dias, aparece a contagem, por exemplo "7 dias restantes de teste". O botão é <span class="ui">Escolher Plano e Ativar</span>, e ele leva pro checkout.</p>
+
+  <h3>Empresa com assinatura</h3>
+  <p>O bloco da esquerda junta o plano e o pagamento numa coisa só:</p>
+  <ul>
+    <li><b>Nome da empresa</b> e o <b>selo de status</b>: <span class="ui">Ativa</span> em verde, <span class="ui">Vence em breve</span> em laranja quando faltam 7 dias ou menos, e <span class="ui">Vencida</span> em laranja quando já passou.</li>
+    <li>Logo abaixo, a linha <span class="ui">Plano [nome] · N módulos</span>.</li>
+    <li>A mensagem do status: <span class="ui">N dias restantes</span>, <span class="ui">Vence em N dias</span> ou <span class="ui">Vencida há N dias</span>.</li>
+    <li><span class="ui">Vencimento</span> com a data no formato dia/mês/ano.</li>
+    <li><span class="ui">Valor mensal</span> (ou <span class="ui">Valor a pagar</span>, no ciclo anual) em número grande.</li>
+    <li><span class="ui">Formas de pagamento</span> com os três selos: <b>PIX</b>, <b>Boleto</b> e <b>Cartão</b>.</li>
+    <li>O botão <span class="ui">Pagar Agora</span>, largo, no fim do bloco.</li>
+  </ul>
+
+  <h3>Faixas de aviso que podem aparecer</h3>
+  <table class="dados">
+    <thead><tr><th>Faixa</th><th>Quando aparece</th><th>O que diz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Preço promocional ativo</span></td><td>Quando a Dominex concedeu um preço especial por tempo determinado</td><td>"Após o período promocional, o valor voltará para R$ X."</td></tr>
+      <tr><td><span class="ui">Mudança de valor agendada</span></td><td>Quando você mudou de plano e a diferença entra depois</td><td>"Valor atual: R$ X. A partir da próxima cobrança: R$ Y."</td></tr>
+      <tr><td><span class="ui">Renovação automática ativa</span></td><td>Quando existe assinatura no cartão com pagamento confirmado</td><td>"Sua assinatura é renovada automaticamente no cartão cadastrado."</td></tr>
+      <tr><td><span class="ui">Dados pendentes para emissão de notas fiscais</span></td><td>Quando falta CNPJ/CPF, e-mail, nome do responsável ou telefone no cadastro da empresa</td><td>"Preencha nas configurações da empresa: [lista dos campos que faltam]"</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>O valor que aparece aqui é o valor efetivo da sua empresa</b>, já considerando preço promocional ou preço personalizado negociado. Ele pode não bater com a tabela pública do site, e isso é normal. Quem tem plano Personalizado nunca deve comparar com a tabela: o valor é a soma dos módulos e usuários contratados.
+  </div>
+
+  <h3>Quando a assinatura vence</h3>
+  <p>Passado o vencimento, o sistema para de abrir e mostra uma tela cheia:</p>
+  <ul>
+    <li>Quem nunca comprou vê <span class="ui">Seu Teste Encerrou</span>, com a data em que o teste terminou.</li>
+    <li>Quem já tinha plano vê <span class="ui">Assinatura Vencida</span>, com "Seu sistema venceu em [data]" e o texto "Para continuar utilizando o Dominex, renove sua assinatura agora.". O botão principal é <span class="ui">Pagar agora</span> com o valor embaixo. Existe também o botão <span class="ui">Sair</span>.</li>
+    <li>Quando o valor da assinatura ainda não foi definido, no lugar do botão aparece: "O valor da sua assinatura ainda não foi definido. Entre em contato com o suporte para regularizar."</li>
+    <li>Empresa <b>desativada</b> pela Dominex é bloqueada na hora, sem período de tolerância, mesmo que a data de vencimento ainda não tenha chegado.</li>
+  </ul>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>A contagem de dias é feita por data cheia, não por hora. Vencimento hoje significa que hoje ainda está valendo.</li>
+    <li>Quem tem plano pago ganha um dia de tolerância depois do vencimento antes do bloqueio. Quem está em teste é bloqueado assim que a data passa.</li>
+    <li>Empresa marcada como desativada pela Dominex bloqueia imediatamente, sem tolerância, independente da data de vencimento. Nesse caso o caminho é falar com o suporte, não pagar de novo.</li>
+    <li>O bloqueio não apaga nada. Todos os dados continuam guardados e voltam a aparecer assim que o pagamento é confirmado.</li>
+    <li>A tela de Assinatura continua acessível mesmo com a assinatura vencida, porque é por ela que você regulariza.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t16-assinatura.png" alt="Tela Assinatura com o selo verde Ativa, a linha Plano Personalizado com 12 módulos, 847 dias restantes, Vencimento em 30/12/2028, Valor mensal de R$ 650,00 por mês, os três selos de forma de pagamento PIX, Boleto e Cartão e o botão preto Pagar Agora. À direita, o cartão Uso da conta com Usuários 2 de 15 e Notas fiscais este mês 0 de 200. Abaixo, a faixa Dados pendentes para emissão de notas fiscais, o cartão Sua Assinatura com Gerenciar Meu Plano e Cancelar assinatura, e o Histórico de pagamentos vazio.">
+    <figcaption>Tela <span class="ui">Assinatura</span>: status, vencimento, valor e formas de pagamento à esquerda; <span class="ui">Uso da conta</span> à direita; e, mais abaixo, <span class="ui">Gerenciar Meu Plano</span> e o histórico de pagamentos.</figcaption>
+  </figure>
+
+  <h2>2. Card Uso da Conta: usuários usados × contratados</h2>
+
+  <p>À direita do bloco de plano fica o cartão <span class="ui">Uso da conta</span>, com a descrição "Acompanhe o consumo do seu plano". Ele tem duas medidas.</p>
+
+  <h3>Usuários</h3>
+  <ul>
+    <li>Mostra <b>usados / contratados</b> com uma barra de progresso.</li>
+    <li>A barra fica laranja quando você passa de 80% do limite. É o aviso pra planejar antes de travar.</li>
+    <li>A linha de baixo explica a conta: <span class="ui">2 incluídos + 3 adicionais</span> quando você comprou usuários extras, ou <span class="ui">15 usuários no plano atual</span> quando não há extras.</li>
+    <li>Só usuário <b>ativo</b> conta. Desativar um usuário libera a vaga imediatamente.</li>
+  </ul>
+
+  <h3>Notas fiscais este mês</h3>
+  <ul>
+    <li>Só aparece pra quem tem o módulo de emissão de notas fiscais.</li>
+    <li>Mostra <b>emitidas / limite do mês</b>, com a legenda <span class="ui">Limite do Nível N, X notas/mês</span>.</li>
+    <li>Quando o nível é ilimitado, mostra só o total emitido.</li>
+    <li>A cota vira todo mês.</li>
+  </ul>
+
+  <div class="dica">
+    Este cartão é o lugar certo pra checar antes de contratar. Se aparece 14/15 usuários, você já sabe que a próxima contratação de funcionário vai exigir um usuário extra. Antes de comprar, olhe se não tem ex-funcionário ativo ocupando vaga.
+  </div>
+
+  <h2>3. Gerenciar Meu Plano — aba Planos Prontos</h2>
+
+  <p>Mais abaixo na tela fica o cartão <span class="ui">Sua Assinatura</span>, que resume "Plano [nome] • Mensal ou Anual • usados/limite usuários" e mostra o valor mensal num selo. Nele há dois botões: <span class="ui">Gerenciar Meu Plano</span> e, pra administrador ou gestor, <span class="ui">Cancelar assinatura</span>.</p>
+
+  <p><span class="ui">Gerenciar Meu Plano</span> abre uma janela dividida em duas partes: à esquerda o montador, com as abas <span class="ui">Planos Prontos</span> e <span class="ui">Personalizado</span>; à direita o painel <span class="ui">Seu Plano</span>, que recalcula tudo ao vivo enquanto você escolhe.</p>
+
+  <h3>Como funciona a aba Planos Prontos</h3>
+  <ol>
+    <li>No topo, o seletor de ciclo <span class="ui">Mensal</span> ou <span class="ui">Anual</span>, com o selo <b>-20%</b> quando você marca Anual.</li>
+    <li>Abaixo, os planos empilhados do mais barato pro mais caro. Cada cartão mostra o nome, um selo azul com a quantidade de usuários, selos verdes com os módulos inclusos e o preço à direita.</li>
+    <li>O plano que você já tem aparece com o selo <span class="ui">Atual</span> e não pode ser clicado.</li>
+    <li>Clicando em outro plano, ele fica marcado e o painel da direita atualiza na hora.</li>
+    <li>No ciclo anual, o cartão mostra o total do ano e a linha "≈ R$ X/mês" pra comparação.</li>
+  </ol>
+
+  <h3>O aviso de upgrade e de downgrade</h3>
+  <ul>
+    <li><b>Subindo de plano</b>, aparece uma faixa verde: "Upgrade: os recursos são liberados na hora e o novo valor já entra na próxima cobrança."</li>
+    <li><b>Descendo de plano</b>, aparece uma faixa amarela: "Downgrade agendado: você mantém o plano atual até o fim do período já pago. O novo valor de R$ X/mês passa a valer na próxima cobrança."</li>
+    <li>Se o plano escolhido comporta menos usuários do que a empresa tem hoje, o sistema abre uma etapa pedindo pra <b>reduzir os usuários antes</b> de aplicar a mudança. Ele não escolhe quem sai por você.</li>
+  </ul>
+
+  <p>Para confirmar, use o botão do painel da direita: <span class="ui">Aplicar plano</span> no ciclo mensal ou <span class="ui">Pagar e ativar (anual)</span> no ciclo anual. Enquanto processa, ele mostra <span class="ui">Aplicando...</span>.</p>
+
+  <!-- INCERTO: os nomes exibidos dos planos prontos vêm do catálogo cadastrado pela Dominex, então podem ser renomeados sem mudar o código. Confirmar os nomes vigentes antes de citá-los literalmente em material de treinamento. -->
+
+  <h2>4. Gerenciar Meu Plano — aba Personalizado: montar módulo a módulo + usuários extras</h2>
+
+  <p>A aba <span class="ui">Personalizado</span> é o montador: você começa do kit básico e vai somando só o que usa.</p>
+
+  <h3>Como montar</h3>
+  <ol>
+    <li>No topo aparece o <b>módulo básico</b> em verde, com a etiqueta <span class="ui">Sempre incluso</span> e o preço dele. Não dá pra tirar.</li>
+    <li>Abaixo, sob o título <span class="ui">Adicione módulos:</span>, cada módulo tem nome, descrição e preço mensal. Clicar marca ou desmarca, e o cartão fica verde quando está selecionado.</li>
+    <li>Se você marcar o módulo de notas fiscais, aparece a seção <span class="ui">Nível de Notas Fiscais (NFS-e)</span>, com os níveis disponíveis, o limite de notas por mês de cada um e o preço. O nível atual vem marcado com <span class="ui">(atual)</span>, e níveis abaixo do seu ficam desabilitados. O aviso: "O novo nível é liberado imediatamente e o valor entra na próxima cobrança."</li>
+    <li>Em <span class="ui">Usuários adicionais:</span>, os botões de mais e menos aumentam ou diminuem os extras. A linha explica: "2 inclusos + N extras (R$ 50,00/cada)".</li>
+    <li>O painel <span class="ui">Seu Plano</span>, à direita, lista tudo o que você marcou com o preço ao lado e fecha com <span class="ui">Total mensal</span> ou <span class="ui">Total anual</span>.</li>
+    <li>Confirme no botão do painel.</li>
+  </ol>
+
+  <figure>
+    <img src="img/t16-gerenciar-plano-personalizado.png" alt="Janela Gerenciar Meu Plano na aba Personalizado. À esquerda, o seletor de Ciclo (Mensal/Anual), o cartão verde Módulo Básico com Sempre incluso, e sob Adicione módulos a lista com Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais, Financeiro Avançado, Precificação Avançada e Portal do Cliente, todos marcados e em verde, cada um com nome, descrição curta e preço mensal. À direita, o painel Seu Plano listando cada item selecionado com o preço, o seletor de Ciclo repetido e o Total mensal em destaque.">
+    <figcaption>Aba Personalizado: módulos marcados em verde à esquerda, painel Seu Plano com o total recalculado à direita.</figcaption>
+  </figure>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>O plano personalizado começa com <b>2 usuários</b>. Cada usuário a mais custa R$ 50,00 por mês.</li>
+    <li>O valor da sua assinatura no plano personalizado é a soma do que você montou. Não existe um "preço de tabela" do personalizado.</li>
+    <li>Quando você chega pela janela <span class="ui">Módulo não disponível</span> de alguma tela, ou pelo botão <span class="ui">Contratar mais usuários</span>, o montador já abre na aba Personalizado com o módulo marcado ou com o foco na parte de usuários.</li>
+    <li>O painel da direita mostra também a diferença em relação ao que você paga hoje, com um "+R$ X vs plano atual" em laranja ou um valor em verde quando fica mais barato.</li>
+  </ul>
+
+  <div class="regra">
+    O plano <b>Personalizado não aparece pra compra direta</b> na tela de escolha de plano do checkout. Ele nasce aqui dentro, no montador, ou de uma negociação com a Dominex. Se um cliente diz "não acho o plano personalizado pra comprar", é isso: o caminho é Gerenciar Meu Plano.
+  </div>
+
+  <h3>Cancelar a assinatura</h3>
+  <p>O botão <span class="ui">Cancelar assinatura</span>, ao lado de <span class="ui">Gerenciar Meu Plano</span>, abre um fluxo de três etapas. Primeiro ele pergunta o <span class="ui">Motivo do cancelamento</span> (preço muito alto, não estou usando o suficiente, faltam funcionalidades, dificuldade em usar o sistema, encontrei outra solução, estou fechando a empresa, pausa temporária, outro motivo) e um campo de detalhes. Conforme o motivo, aparece uma oferta de ajuda, como treinamento gratuito ou conversa sobre condição especial. Depois vem a confirmação, que lista o que acontece: a renovação automática é cancelada, você continua com acesso até o fim do período já pago, cobranças futuras em aberto são canceladas automaticamente e você pode reativar quando quiser.</p>
+
+  <h2>5. O catálogo de módulos explicado em uma frase cada</h2>
+
+  <p>Módulo é um pedaço do sistema contratado pela empresa inteira. Os preços aparecem sempre atualizados dentro do montador e na janela <span class="ui">Módulo não disponível</span>, por isso não decore valor: olhe na tela.</p>
+
+  <table class="dados">
+    <thead><tr><th>Módulo</th><th>O que ele libera</th></tr></thead>
+    <tbody>
+      <tr><td><b>Módulo Básico</b></td><td>O kit que todo plano tem: Ordens de Serviço, Agenda, Dashboard, Orçamentos, Serviços, Mapa ao Vivo, Clientes, Equipamentos, Estoque e o Financeiro básico.</td></tr>
+      <tr><td><b>Gestão de Contratos e PMOC</b></td><td>Contratos recorrentes, portal do contrato e do PMOC pro cliente, e os documentos (TRT, Certificado, Cronograma e Dossiê).</td></tr>
+      <tr><td><b>Funcionários / RH</b></td><td>Cadastro de funcionários, equipes, ponto eletrônico e as movimentações financeiras dos colaboradores.</td></tr>
+      <tr><td><b>CRM</b></td><td>Funil de vendas com leads, etapas, interações e captação por link.</td></tr>
+      <tr><td><b>Emissão de Notas Fiscais</b></td><td>Emissão de NFS-e direto do sistema, com níveis de cota mensal.</td></tr>
+      <tr><td><b>Financeiro Avançado</b></td><td>DRE (o demonstrativo de resultado) e as telas de Contas a Pagar e a Receber.</td></tr>
+      <tr><td><b>Precificação Avançada</b></td><td>BDI, custos globais de recursos e precificação detalhada de serviços e orçamentos.</td></tr>
+      <tr><td><b>Portal do Cliente</b></td><td>A área em que o seu cliente acompanha as OS e os equipamentos dele por link.</td></tr>
+      <tr><td><b>White Label</b></td><td>Personalização completa da marca: logo, cores e ícone do sistema, inclusive nos documentos que o cliente recebe.</td></tr>
+      <tr><td><b>Usuário extra</b></td><td>Não é uma tela, é uma vaga a mais de usuário ativo no plano, a R$ 50,00 por mês.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Como saber o que você já tem</h3>
+  <ul>
+    <li>Abra <span class="ui">Gerenciar Meu Plano</span> na aba <span class="ui">Personalizado</span>: os módulos já contratados vêm marcados em verde.</li>
+    <li>O cartão <span class="ui">Sua Assinatura</span> mostra o plano e a contagem de módulos.</li>
+    <li>Durante o período de teste, todos os módulos ficam liberados. Ao ativar a assinatura, valem só os do plano escolhido, e é normal o cliente estranhar que "sumiu" alguma coisa. Não sumiu: acabou o teste.</li>
+  </ul>
+
+  <h2>6. Pagar Agora → checkout: Pix, Boleto e Cartão</h2>
+
+  <p>O botão <span class="ui">Pagar Agora</span> leva sempre pra tela de checkout. Não existe pagamento por janelinha dentro da tela de assinatura: o pagamento acontece no checkout, com um passo a passo próprio.</p>
+
+  <h3>Os dois caminhos</h3>
+  <ul>
+    <li><b>Renovação</b>: quem já tem plano e valor definidos vai direto pro pagamento, com o plano atual já selecionado e o nome mostrando "(Renovação)". Não há escolha de plano nessa hora.</li>
+    <li><b>Primeira ativação</b>: quem está em teste passa antes pela escolha do plano. O topo mostra o passo a passo <b>1 Escolha o plano</b> e <b>2 Pagamento</b>.</li>
+  </ul>
+
+  <h3>Escolhendo o plano (primeira ativação)</h3>
+  <ol>
+    <li>O título é <span class="ui">Ative sua Assinatura</span>. Se o teste já acabou, aparece a faixa vermelha "Seu período de teste expirou. Ative agora para continuar usando.". Se falta pouco, a faixa laranja "Seu teste expira em N dias. Escolha o plano ideal para continuar."</li>
+    <li>O seletor <span class="ui">Mensal</span> ou <span class="ui">Anual</span> fica logo abaixo, com o selo <b>-20%</b>. Marcando anual, aparece a observação "Desconto de 20% válido para pagamentos à vista (Pix ou Boleto)".</li>
+    <li>Os planos aparecem lado a lado, um deles com o selo <span class="ui">⭐ Mais Popular</span>. Cada cartão lista os recursos inclusos e a quantidade de usuários.</li>
+    <li>Clique no cartão ou em <span class="ui">Selecionar Plano</span>. O botão passa a mostrar <span class="ui">Selecionado</span>.</li>
+    <li>Clique em <span class="ui">Assinar por R$ X</span> no fim da página. O botão <span class="ui">Voltar ao sistema</span> desiste e volta pro sistema.</li>
+  </ol>
+
+  <h3>Pagando</h3>
+  <ol>
+    <li>Informe o <b>CPF ou CNPJ</b> do pagador. É obrigatório pra gerar a cobrança.</li>
+    <li>Escolha a forma de pagamento entre <b>Pix</b>, <b>Boleto</b> e <b>Cartão de crédito</b>.</li>
+    <li><b>Pix</b>: aparece o QR Code e o código pra copiar. A tela fica conferindo o pagamento sozinha e libera o sistema assim que cai.</li>
+    <li><b>Boleto</b>: aparece o boleto pra imprimir ou copiar a linha digitável. A compensação de boleto leva de um a três dias úteis, então não é o caminho pra quem está com o sistema bloqueado hoje.</li>
+    <li><b>Cartão de crédito</b>: você preenche os dados do cartão e do titular. Se algo estiver errado, a mensagem aparece destacando a parte do formulário com problema (dados do cartão, dados do titular ou endereço).</li>
+    <li>Confirmado o pagamento, aparece a tela de sucesso e o sistema volta pro Dashboard sozinho em alguns segundos.</li>
+  </ol>
+
+  <figure>
+    <img src="img/t16-checkout.png" alt="Tela de checkout dividida em duas colunas. À esquerda, sobre fundo escuro, o logo Dominex, o link Voltar ao sistema, o resumo da assinatura do plano Personalizado a R$ 650,00 por mês, a data do próximo vencimento e a lista O que está incluso com 15 usuários e os módulos contratados. À direita, o bloco Pagamento com o campo CPF ou CNPJ marcado em vermelho com a mensagem CNPJ inválido, e as três formas de pagamento: Cartão de Crédito com a etiqueta Recomendado e a nota Cobrança mensal, PIX com a nota Instantâneo e Boleto com a nota 1-2 dias úteis.">
+    <figcaption>Checkout: resumo do que você está pagando à esquerda e a escolha da forma de pagamento à direita. O campo de CPF ou CNPJ é validado na hora, e cada forma mostra o prazo em que o pagamento cai.</figcaption>
+  </figure>
+
+  <h3>Se o pagamento falhar</h3>
+  <ul>
+    <li>No cartão, a mensagem de erro aparece na própria tela, já destacando a parte do formulário com problema. Os motivos mais comuns são número ou validade digitados errados, CPF do titular diferente do cadastro do cartão e limite insuficiente.</li>
+    <li>Quando o erro é genérico, a mensagem é "Erro ao processar o pagamento. Verifique seus dados e tente novamente.".</li>
+    <li>No Pix e no Boleto, se a cobrança não for gerada, a tela volta pra escolha da forma de pagamento, sem perder o plano selecionado.</li>
+    <li>Você pode trocar de forma de pagamento a qualquer momento antes de pagar, sem recomeçar do zero.</li>
+  </ul>
+
+  <div class="aviso">
+    <b>No cartão, a cobrança é sempre mensal e recorrente.</b> Mesmo com o seletor no Anual, o cartão cobra o valor mensal cheio, todo mês, automaticamente. Não há parcelamento do anual no cartão e não há desconto de 20% no cartão. Se o cliente quer o desconto anual, ele precisa pagar à vista, por Pix ou Boleto.
+  </div>
+
+  <div class="regra">
+    Se a marca personalizada (White Label) estiver ligada, o checkout aparece com o logo da <b>sua</b> empresa e sem a marca Dominex. Isso é proposital.
+  </div>
+
+  <h2>7. Mensal × Anual (o desconto que só vale à vista) e o histórico de pagamentos</h2>
+
+  <h3>Como o desconto anual funciona</h3>
+  <table class="dados">
+    <thead><tr><th>Forma de pagamento</th><th>Ciclo cobrado</th><th>Desconto de 20%</th></tr></thead>
+    <tbody>
+      <tr><td>Pix</td><td>Mensal ou anual à vista, como você escolher</td><td>Sim, no anual</td></tr>
+      <tr><td>Boleto</td><td>Mensal ou anual à vista, como você escolher</td><td>Sim, no anual</td></tr>
+      <tr><td>Cartão de crédito</td><td>Sempre mensal recorrente</td><td>Não</td></tr>
+    </tbody>
+  </table>
+
+  <p>No montador de plano, ao marcar <span class="ui">Anual</span>, o painel mostra a economia em destaque no formato <span class="ui">Você economiza R$ X/ano</span> e o valor equivalente por mês. O aviso completo aparece logo ali: "O desconto de 20% vale só para pagamento à vista (Pix ou Boleto). No cartão, a cobrança é mensal."</p>
+
+  <h3>Histórico de pagamentos</h3>
+  <p>No fim da tela de Assinatura fica o cartão <span class="ui">Histórico de pagamentos</span>, com a descrição "Cobranças e pagamentos da sua assinatura". Sem nenhum registro, mostra "Nenhum pagamento registrado ainda.".</p>
+  <ul>
+    <li><b>Status</b> de cada linha: <span class="ui">Pago</span>, <span class="ui">Pendente</span>, <span class="ui">Vencido</span> ou <span class="ui">Cancelado</span>.</li>
+    <li><b>Tipo</b>: <span class="ui">Venda</span> (a primeira contratação) ou <span class="ui">Renovação</span>.</li>
+    <li><b>Método</b>: <span class="ui">PIX</span>, <span class="ui">Boleto</span>, <span class="ui">Cartão</span> ou simplesmente <span class="ui">Cobrança</span>.</li>
+    <li><span class="ui">Ver cobrança</span> abre a cobrança correspondente, útil pra reimprimir um boleto ou recuperar um Pix ainda em aberto.</li>
+    <li>A lista tem paginação, com o seletor <span class="ui">Por página</span> e a indicação <span class="ui">Página X de Y</span>.</li>
+  </ul>
+
+  <div class="dica">
+    O histórico é o primeiro lugar pra olhar quando o cliente diz "eu paguei e continua bloqueado". Se a linha está como <span class="ui">Pendente</span>, o pagamento não caiu ainda (boleto costuma levar até três dias úteis). Se está <span class="ui">Pago</span> e o sistema segue bloqueado, aí sim é caso de suporte.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Paguei e o sistema continua bloqueado"</td>
+        <td>Pagamento ainda não compensado, normalmente boleto</td>
+        <td>Abra Assinatura › Histórico de pagamentos. Se a linha está Pendente, o pagamento não caiu. Pix libera em minutos; boleto pode levar até três dias úteis.</td>
+      </tr>
+      <tr>
+        <td>"Meu valor está diferente do site"</td>
+        <td>Preço promocional ou plano personalizado</td>
+        <td>O valor da tela é o efetivo da empresa, já com promoção ou preço negociado. No plano Personalizado, o valor é a soma dos módulos e usuários contratados.</td>
+      </tr>
+      <tr>
+        <td>"Marquei Anual no cartão e não veio desconto"</td>
+        <td>Comportamento esperado</td>
+        <td>O desconto de 20% vale só para pagamento à vista, por Pix ou Boleto. No cartão a cobrança é sempre mensal recorrente.</td>
+      </tr>
+      <tr>
+        <td>"Não acho o plano Personalizado pra comprar"</td>
+        <td>Ele não é vendido na escolha de plano</td>
+        <td>O Personalizado é montado em Assinatura › Gerenciar Meu Plano › aba Personalizado. Ele não aparece na tela de escolha de plano do checkout.</td>
+      </tr>
+      <tr>
+        <td>"Contratei um módulo e ele não apareceu"</td>
+        <td>A página ainda estava com dados antigos</td>
+        <td>Recarregue a página. O upgrade libera na hora. Se persistir, confirme na aba Personalizado se o módulo ficou marcado.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo trocar por um plano menor"</td>
+        <td>A empresa tem mais usuários do que o plano novo comporta</td>
+        <td>O sistema pede pra reduzir os usuários antes. Desative os usuários que não usam mais e tente de novo.</td>
+      </tr>
+      <tr>
+        <td>"Sumiram recursos depois que assinei"</td>
+        <td>Fim do período de teste</td>
+        <td>Durante o teste tudo fica liberado. Ao assinar, valem os módulos do plano escolhido. Contrate os que faltam em Gerenciar Meu Plano.</td>
+      </tr>
+      <tr>
+        <td>"Cancelei e perdi o acesso na hora?"</td>
+        <td>Dúvida sobre o efeito do cancelamento</td>
+        <td>Não. Cancelar interrompe a renovação automática e você mantém o acesso até o fim do período já pago. Dá pra reativar depois.</td>
+      </tr>
+      <tr>
+        <td>"Não vejo o botão de cancelar assinatura"</td>
+        <td>Falta de papel</td>
+        <td>Esse botão só aparece pra administrador ou gestor da empresa.</td>
+      </tr>
+      <tr>
+        <td>"Estou no limite de usuários"</td>
+        <td>Vagas do plano esgotadas</td>
+        <td>Desative usuários inativos (libera vaga na hora) ou compre usuários extras a R$ 50,00 por mês em Gerenciar Meu Plano.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Onde eu vejo quanto pago por mês?</dt>
+    <dd>Em Assinatura, no bloco principal, campo Valor mensal. O mesmo valor aparece no selo do cartão Sua Assinatura.</dd>
+
+    <dt>Como contrato um módulo novo?</dt>
+    <dd>Assinatura › Gerenciar Meu Plano › aba Personalizado, marque o módulo e confirme no painel da direita. Os recursos são liberados na hora e o valor entra na próxima cobrança.</dd>
+
+    <dt>Se eu subir de plano hoje, pago proporcional?</dt>
+    <dd>Os recursos são liberados imediatamente e o novo valor entra na próxima cobrança. Não há cobrança avulsa no momento da troca.</dd>
+
+    <dt>Se eu descer de plano, perco os recursos na hora?</dt>
+    <dd>Não. O downgrade é agendado: você mantém o plano atual até o fim do período já pago e o valor novo passa a valer na próxima cobrança.</dd>
+
+    <dt>Quanto custa um usuário a mais?</dt>
+    <dd>R$ 50,00 por mês por usuário adicional.</dd>
+
+    <dt>Quais formas de pagamento existem?</dt>
+    <dd>Pix, Boleto e Cartão de crédito. Pix e Boleto aceitam o ciclo anual com 20% de desconto. Cartão é sempre mensal recorrente.</dd>
+
+    <dt>Como recupero um boleto que perdi?</dt>
+    <dd>Em Assinatura › Histórico de pagamentos, use Ver cobrança na linha correspondente.</dd>
+
+    <dt>Meu cliente vê a marca Dominex no checkout?</dt>
+    <dd>O checkout é da sua assinatura com a Dominex, então o cliente final nem passa por ele. Com o White Label ativo, a tela sai com o logo da sua empresa.</dd>
+
+    <dt>O que acontece se eu não pagar?</dt>
+    <dd>Depois do vencimento o sistema bloqueia e mostra a tela de renovação com o botão Pagar agora. Os dados continuam guardados.</dd>
+
+    <dt>Consigo pagar por dentro da tela de Assinatura, sem sair?</dt>
+    <dd>Não. O pagamento acontece sempre no checkout, aberto pelo botão Pagar Agora. É o mesmo fluxo pra ativação e pra renovação.</dd>
+
+    <dt>Quantas notas fiscais posso emitir por mês?</dt>
+    <dd>Depende do nível contratado. O cartão Uso da conta mostra o consumo do mês e o limite do seu nível.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> assinatura, mensalidade, plano, upgrade, módulo, contratar, cancelar, boleto, pix, cartão, fatura, vencimento, bloqueado, renovar, usuários extras, limite
+  </div>
+</section>

@@ -1,0 +1,50 @@
+{
+  "secao": "T7",
+  "prints": [
+    {
+      "id": "t7-area-tecnico-inicio",
+      "url": "/area-tecnico",
+      "legenda": "Painel inicial da Área do Técnico, com os cartões de cada ferramenta do segmento da empresa e o seletor de nicho no topo.",
+      "passos": [{ "esperar": 3000 }],
+      "recorte": "main"
+    },
+    {
+      "id": "t7-carga-termica",
+      "url": "/area-tecnico/carga-termica",
+      "legenda": "Ferramenta Carga Térmica da Área do Técnico, com os campos de ambiente e o resultado em BTUs, sem dado preenchido.",
+      "passos": [{ "esperar": 3000 }],
+      "recorte": "main"
+    },
+    {
+      "id": "t7-regua-gases",
+      "url": "/area-tecnico/regua-gases",
+      "legenda": "Ferramenta Régua de Gases, mostrando a pressão de saturação dos gases refrigerantes por temperatura.",
+      "passos": [{ "esperar": 3000 }],
+      "recorte": "main"
+    },
+    {
+      "id": "t7-ferramentas-cadeado",
+      "url": "/area-tecnico",
+      "legenda": "Área do Técnico com o seletor de nicho apontando para um segmento não contratado, mostrando as ferramentas com cadeado e a tela de apresentação do conjunto.",
+      "passos": [
+        { "esperar": 3000 },
+        { "clicar": "Refrigeração e Climatização" },
+        { "esperar": 800 },
+        { "clicar": "Instalações Elétricas" },
+        { "esperar": 2500 }
+      ],
+      "recorte": "main",
+      "observacao": "Corrigido em 06/09/2026: o trigger do seletor de nicho NÃO é um [role=combobox] (é um <button> com o Badge do segmento atual, via SegmentToolsSwitcher.tsx) — o passo antigo era opcional e não clicava em nada; o clique seguinte em 'Elétrica' (também opcional) acertava por coincidência o acordeão 'Elétrica e Instalação' do glossário 'Termos Técnicos Explicados' mais abaixo na mesma página, e era isso que ia pro PNG. Fix: clicar primeiro no texto do badge ATUAL ('Refrigeração e Climatização', segmento da empresa demo) para abrir o Popover, depois no nome completo da opção-alvo ('Instalações Elétricas', não 'Elétrica' — o texto curto colide com o título do grupo do glossário). Nenhum dos dois passos é mais opcional: se o texto mudar (segmento da empresa demo ou label do nicho), o passo deve falhar alto, não silenciar outra tela."
+    },
+    {
+      "id": "t7-os-modo-cliente",
+      "url": "/os-tecnico/qrtgamsfzb4e?modo=cliente",
+      "legenda": "Ordem de Serviço aberta em modo cliente (link público, sem login), mostrando o acompanhamento do atendimento em somente leitura.",
+      "passos": [
+        { "esperar": 4000 }
+      ],
+      "recorte": { "seletor": "div.min-h-screen.bg-background" },
+      "observacao": "Corrigido em 06/09/2026: a url antiga ('/ordens-servico') era a tela interna de gestão, não o link público — por isso o PNG batia com t5-ordens-servico.png. O endereço certo é '/os-tecnico/<public_short_code ou uuid>?modo=cliente'; o short_code 'qrtgamsfzb4e' é da OS #001256 concluída da empresa demo (cliente 'Supermercado Bom Preço Ltda', mock confirmado pelo CEO em 06/09/2026 — mesmo nome usado em t11-contratos.png). NÃO precisa de contexto de browser deslogado: TechnicianOS.tsx lê '?modo=cliente' da URL e força `forceReadOnly=true`/cliente supabaseAnon independente de haver sessão no localStorage (ver comentário 'No modo cliente usamos cliente anônimo' no componente) — por isso dá pra capturar com o mesmo contexto autenticado do capturar-modais.mjs sem vazar nada da sessão. Recorte por seletor específico (NÃO 'main' nem 'pagina'/fullPage): 1) o header sticky do relatório (bg-primary, fixo no topo) fica FORA de <main> (é irmão anterior) e SOBREPÕE o topo de <main> quando se tira screenshot só do elemento main — corta o card preto 'Empresa' pela metade; 2) page.screenshot({fullPage:true}) nesta tela específica reproduziu, de forma consistente em múltiplas rodadas isoladas, um bug real do Chromium headless: o DOM já está com o conteúdo final (scrollHeight batendo com o total, 0 elementos .animate-pulse), mas os pixels capturados no fullPage mostram só os 3 placeholders cinza do ESQUELETO de carregamento (Skeleton h-32/h-48/h-48) — comprovado tirando 3 screenshots em sequência na mesma page (viewport normal → conteúdo real; fullPage → esqueleto fantasma; viewport normal de novo → conteúdo real de novo). Bypassado tirando o screenshot do elemento raiz da página (`div.min-h-screen.bg-background`, o wrapper que contém TANTO o header sticky quanto o <main>) em vez de usar fullPage — locator.screenshot() não sofre esse bug e, por o header ser o 1º filho em fluxo normal (não precisa 'scrollar por baixo' de nada), também não tem o artefato de sobreposição do item 1. O card preto 'Empresa' no topo do relatório mostra a logo real da Glacial Cold Brasil (cliente real, ainda não liberado pelo CEO) — por isso tem tarja em REGIOES (censurar-prints.py) só nessa logo; o resto do conteúdo (cliente, fotos, checklist, assinaturas) é mock e fica visível."
+    }
+  ]
+}

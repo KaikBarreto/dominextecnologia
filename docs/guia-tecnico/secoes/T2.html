@@ -1,0 +1,397 @@
+<section class="tutorial" id="t2">
+  <h1><span class="tcode">T2</span> Usuários, cargos e permissões</h1>
+
+  <p class="lead">Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que você decide o que o técnico vê no celular, o que o financeiro pode apagar e o que ninguém deve alcançar. Uma configuração de dez minutos que evita o problema mais caro de qualquer empresa: a pessoa errada mexendo no lugar errado.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → <span class="ui">Configurações</span> → aba <span class="ui">Usuários e Permissões</span></span>
+    <span><b>Rotas:</b> <code>/configuracoes?tab=usuarios</code> (o endereço antigo <code>/usuarios</code> leva pra cá automaticamente)</span>
+    <span><b>Depende de:</b> T1 (empresa configurada)</span>
+    <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Usuários</span>. Criar, editar, desativar e excluir exigem ser administrador, gestor, ou ter a ação <span class="ui">Gerenciar Usuários</span> ligada.</span>
+    <span><b>Módulo:</b> nenhum. A tela é base em todos os planos. O que o plano limita é a <b>quantidade</b> de usuários ativos.</span>
+  </div>
+
+  <h2>1. Onde fica: Configurações → Usuários e Permissões</h2>
+
+  <p>A gestão de gente não tem item próprio no menu principal: ela é uma aba dentro de <span class="ui">Configurações</span>. O caminho é o botão <span class="ui">Configurações</span> no rodapé do menu lateral e depois a aba <span class="ui">Usuários e Permissões</span> na lista da esquerda. No celular, o botão <span class="ui">Configurações</span> fica no rodapé da gaveta <span class="ui">Menu</span>.</p>
+
+  <figure>
+    <img src="img/t2-usuarios.png" alt="Aba Usuários e Permissões dentro de Configurações, com o contador 2/15 usuários e 2 ativos, campo de busca por nome ou telefone e dois usuários listados: um com selo Técnico e botões Editar, Desativar e lixeira, e outro marcado como Você e Acesso Total, com apenas o botão Editar.">
+    <figcaption>Aba <span class="ui">Usuários e Permissões</span>: contador do plano no topo, e a linha do próprio usuário logado (marcada com <span class="ui">Você</span>) mostrando só a ação <span class="ui">Editar</span>.</figcaption>
+  </figure>
+
+  <h3>O que tem na tela</h3>
+  <ul>
+    <li><b>Título e contador</b>: <span class="ui">Usuários e Permissões</span> e, logo abaixo, o resumo no formato <span class="ui">2/15 usuários • 2 ativos</span>. O primeiro número é quanto você já usa, o segundo é o limite do plano.</li>
+    <li><b>Alternador de visualização</b>: dois botõezinhos que trocam entre <span class="ui">Lista</span> e <span class="ui">Cards</span>. A escolha fica guardada no seu navegador.</li>
+    <li><b>Botão <span class="ui">Configurações</span></b>: abre a janela de <b>Cargos</b> (os perfis de acesso reutilizáveis).</li>
+    <li><b>Botão <span class="ui">Criar Usuário</span></b>: abre o formulário de novo usuário. Só aparece pra quem pode gerenciar usuários.</li>
+    <li><b>Busca</b>: o campo <span class="ui">Buscar por nome ou telefone...</span> filtra a lista enquanto você digita.</li>
+  </ul>
+
+  <p>No celular a tela vira duas abas em pílula, <span class="ui">Usuários</span> e <span class="ui">Cargos</span>, com a busca logo abaixo (<span class="ui">Buscar usuários...</span> ou <span class="ui">Buscar cargos...</span>) e um botão redondo flutuante no canto inferior, que cria <span class="ui">Usuário</span> ou <span class="ui">Cargo</span> conforme a aba aberta.</p>
+
+  <h3>Como ler cada linha da lista</h3>
+  <table class="dados">
+    <thead><tr><th>Selo</th><th>Significado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Você</span></td><td>É a sua própria conta. Nessa linha as ações de desativar e excluir não aparecem.</td></tr>
+      <tr><td><span class="ui">Ativo</span></td><td>A conta entra no sistema e ocupa uma vaga do plano.</td></tr>
+      <tr><td><span class="ui">Inativo</span></td><td>A conta está desativada: não entra e não ocupa vaga. A linha fica esmaecida.</td></tr>
+      <tr><td><span class="ui">Acesso Total</span></td><td>Esse usuário tem todas as telas e ações liberadas.</td></tr>
+      <tr><td>Nome de um cargo</td><td>As permissões dele batem exatamente com um cargo salvo.</td></tr>
+      <tr><td><span class="ui">N permissões</span></td><td>Permissões soltas, que não correspondem a nenhum cargo.</td></tr>
+      <tr><td><span class="ui">Técnico</span></td><td>Usuário marcado como técnico, o que faz ele aparecer na lista de técnicos da OS.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. Criar usuário: dados, foto, papel, senha e vínculo com o funcionário do RH</h2>
+
+  <p>Clique em <span class="ui">Criar Usuário</span>. A janela <span class="ui">Criar Usuário</span> abre com o subtítulo "Preencha os dados do novo usuário".</p>
+
+  <figure>
+    <img src="img/t2-novo-usuario.png" alt="Janela Criar Usuário aberta sobre a tela de Configurações, com os campos em branco: Foto do Usuário com o botão Selecionar foto, Nome Completo com asterisco, Senha com asterisco, Email com asterisco, Telefone, Vincular a Funcionário mostrando Nenhum, e o interruptor Tipo de Usuário entre Interno e Técnico. No rodapé, os botões Cancelar e Criar Usuário.">
+    <figcaption>Janela <span class="ui">Criar Usuário</span> com os campos em branco. Os três campos com asterisco são obrigatórios, e o botão <span class="ui">Criar Usuário</span> só habilita quando eles estão preenchidos.</figcaption>
+  </figure>
+
+  <h3>Campo a campo</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que aceita e o que o sistema faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Foto do Usuário</span></td><td>Não</td><td>Botões <span class="ui">Selecionar foto</span> e <span class="ui">Remover</span>. A dica na tela é "Foto opcional do usuário". Se o usuário for vinculado a um funcionário, a foto é copiada pro cadastro do funcionário também.</td></tr>
+      <tr><td><span class="ui">Nome Completo *</span></td><td>Sim</td><td>É o nome que aparece na OS, na agenda e no relatório. Use o nome que o cliente vai ler.</td></tr>
+      <tr><td><span class="ui">Senha *</span></td><td>Sim, só na criação</td><td>Você define a senha inicial. Um indicador de força aparece embaixo enquanto digita. Ao editar um usuário existente esse campo não aparece.</td></tr>
+      <tr><td><span class="ui">Email *</span></td><td>Sim</td><td>É o login da pessoa. Precisa ser único no sistema inteiro. Ao editar, aparece o aviso "Alterar o email mudará o login de acesso do usuário".</td></tr>
+      <tr><td><span class="ui">Telefone</span></td><td>Não</td><td>Formatado automaticamente. Aparece na lista e serve pra busca.</td></tr>
+      <tr><td><span class="ui">Vincular a Funcionário</span></td><td>Não</td><td>Lista os funcionários cadastrados no módulo de RH, com o cargo entre parênteses. A dica é "Vincula este usuário a um funcionário cadastrado". Serve pra ligar o login à ficha de RH (ponto, pagamento, equipe).</td></tr>
+      <tr><td><span class="ui">Tipo de Usuário</span></td><td>Sim, por escolha</td><td>Um interruptor entre <span class="ui">Interno</span> e <span class="ui">Técnico</span>.</td></tr>
+      <tr><td><span class="ui">Permissões</span></td><td>Sim, na prática</td><td>O editor completo, explicado no próximo capítulo.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Interno ou Técnico</h3>
+  <ul>
+    <li><span class="ui">Técnico</span>: "Aparece na listagem de técnicos da OS e pode ser adicionado a equipes."</li>
+    <li><span class="ui">Interno</span>: "Usuário interno do sistema, não aparece como técnico nas OS."</li>
+    <li>É essa escolha que faz a pessoa poder ser atribuída a uma ordem de serviço. Um técnico criado como Interno não vai aparecer na hora de escalar a OS, e esse é o motivo número um de chamado nesta tela.</li>
+  </ul>
+
+  <h3>Conflito de e-mail com o funcionário</h3>
+  <p>Se você vincular um funcionário que já tem um e-mail diferente do que você digitou, aparece um aviso amarelo com a pergunta <span class="ui">Os emails são diferentes. Qual deve prevalecer?</span> e duas opções: <span class="ui">Usuário:</span> (o que você digitou) e <span class="ui">Funcionário:</span> (o que estava no cadastro). O texto explica: "O email escolhido será aplicado em ambos os cadastros". Escolha um e siga.</p>
+
+  <h3>Mensagens que podem aparecer</h3>
+  <ul>
+    <li><span class="ui">Usuário criado com sucesso!</span> e a tela recarrega pra atualizar a lista.</li>
+    <li><span class="ui">Erro ao criar usuário</span> com o detalhe <span class="ui">Este e-mail já está cadastrado no sistema.</span> quando o e-mail já pertence a outra conta, mesmo de outra empresa.</li>
+    <li>Ao editar: <span class="ui">Usuário atualizado!</span></li>
+    <li><span class="ui">Permissões atualizadas!</span> quando só as permissões mudam.</li>
+  </ul>
+
+  <div class="aviso">
+    O botão <span class="ui">Criar Usuário</span> dentro da janela só habilita quando <b>Nome Completo</b>, <b>Email</b> e <b>Senha</b> estão preenchidos. Se o botão está apagado, falta um desses três.
+  </div>
+
+  <div class="regra">
+    Não existe convite por e-mail nem "primeiro acesso" com link. Você cria a conta já com uma senha e passa essa senha pra pessoa. Ela troca depois em <span class="ui">Perfil</span> › <span class="ui">Alterar Senha</span>, digitando a nova senha na hora, sem precisar de e-mail de confirmação.
+  </div>
+
+  <figure>
+    <img src="img/t1-perfil.png" alt="Tela Meu Perfil, com foto do usuário, campos Nome Completo e Telefone editáveis, campos Email e Conta criada em travados em cinza, botão Salvar Alterações e, abaixo, o cartão Senha com o botão Alterar Senha.">
+    <figcaption>Tela <span class="ui">Meu Perfil</span>, onde a pessoa troca a própria senha depois de receber a senha inicial.</figcaption>
+  </figure>
+
+  <h2>3. O editor de permissões novo: busca, tela por tela, ações dentro de cada tela</h2>
+
+  <p>O editor de permissões é a parte de baixo da janela de usuário, sob o título <span class="ui">Permissões</span> e a explicação "Escolha um perfil rápido ou ligue tela por tela. As ações de cada tela ficam dentro dela."</p>
+
+  <h3>Como ele é organizado</h3>
+  <ol>
+    <li><b>Perfis rápidos</b> no topo: os chips <span class="ui">Acesso Total</span> e os seus cargos salvos. Clicar em um deles substitui a seleção inteira.</li>
+    <li><b>Busca</b> logo abaixo: <span class="ui">Buscar tela ou ação...</span>. Digitar filtra telas e ações ao mesmo tempo e abre sozinho o que sobrou. O X limpa a busca. Sem resultado, aparece <span class="ui">Nenhuma tela ou ação encontrada para "..."</span>.</li>
+    <li><b>Lista por categoria</b>: Geral, Serviços, Comercial, Operacional, Financeiro e Administração.</li>
+    <li><b>Uma linha por tela</b>: um interruptor à esquerda, o nome e a explicação da tela, um contador do tipo <span class="ui">2/4</span> mostrando quantas ações daquela tela estão ligadas, e uma seta que abre <span class="ui">Ações desta tela</span>.</li>
+  </ol>
+
+  <p>O interruptor fica fora da área que abre a lista: clicar no nome expande, clicar no interruptor liga e desliga. Um não faz o outro.</p>
+
+  <h3>As telas que você pode ligar ou desligar</h3>
+  <table class="dados">
+    <thead><tr><th>Categoria</th><th>Tela</th><th>O que ela dá acesso</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="2">Geral</td><td><span class="ui">Dashboard</span></td><td>Painel inicial com os indicadores e atalhos do dia a dia.</td></tr>
+      <tr><td><span class="ui">Agenda</span></td><td>Calendário de tarefas e visitas agendadas. Sem esta tela o usuário não enxerga nem a própria agenda.</td></tr>
+      <tr><td rowspan="5">Serviços</td><td><span class="ui">Ordens de Serviço</span></td><td>Lista completa de OS, com abertura, acompanhamento e histórico.</td></tr>
+      <tr><td><span class="ui">Serviços</span></td><td>Catálogo de serviços prestados e seus valores.</td></tr>
+      <tr><td><span class="ui">Checklists</span></td><td>Modelos de checklist usados dentro das ordens de serviço.</td></tr>
+      <tr><td><span class="ui">Contratos</span></td><td>Contratos recorrentes, PMOC e as visitas programadas de cada um.</td></tr>
+      <tr><td><span class="ui">Equipamentos</span></td><td>Cadastro dos equipamentos dos clientes e o histórico de cada um.</td></tr>
+      <tr><td rowspan="3">Comercial</td><td><span class="ui">Clientes</span></td><td>Cadastro de clientes, com contatos, endereços e histórico de atendimento.</td></tr>
+      <tr><td><span class="ui">CRM</span></td><td>Funil comercial com leads, oportunidades e follow-ups. Também exige o módulo contratado.</td></tr>
+      <tr><td><span class="ui">Orçamentos</span></td><td>Orçamentos e propostas enviadas aos clientes.</td></tr>
+      <tr><td rowspan="3">Operacional</td><td><span class="ui">Estoque</span></td><td>Materiais, saldos e movimentações de estoque.</td></tr>
+      <tr><td><span class="ui">Área do Técnico™</span></td><td>Ferramentas de apoio do técnico em campo, como cálculos e tabelas.</td></tr>
+      <tr><td><span class="ui">Mapa e Rastreamento</span></td><td>Mapa ao vivo com a posição das equipes em campo.</td></tr>
+      <tr><td rowspan="2">Financeiro</td><td><span class="ui">Financeiro</span></td><td>Visão geral, movimentações e contas a pagar e receber.</td></tr>
+      <tr><td><span class="ui">Notas Fiscais</span></td><td>Emissão e consulta de notas fiscais de serviço. Também exige o módulo contratado.</td></tr>
+      <tr><td rowspan="3">Administração</td><td><span class="ui">Funcionários</span></td><td>Cadastro de funcionários, folha de pagamento e controle de ponto.</td></tr>
+      <tr><td><span class="ui">Usuários</span></td><td>Lista de usuários do sistema e os perfis de acesso de cada um.</td></tr>
+      <tr><td><span class="ui">Configurações</span></td><td>Dados da empresa, aparência e preferências do sistema.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>As ações que ficam dentro de cada tela</h3>
+  <table class="dados">
+    <thead><tr><th>Tela</th><th>Ações disponíveis</th></tr></thead>
+    <tbody>
+      <tr><td>Ordens de Serviço</td><td><span class="ui">Criar OS</span>, <span class="ui">Editar OS</span>, <span class="ui">Excluir OS</span>, <span class="ui">Reabrir OS</span> (reabrir OS concluída para edição) e <span class="ui">Editar OS em campo</span> (editar equipamentos e checklists dentro de uma OS em andamento).</td></tr>
+      <tr><td>Clientes</td><td><span class="ui">Criar Cliente</span>, <span class="ui">Editar Cliente</span>, <span class="ui">Excluir Cliente</span> e <span class="ui">Ver Financeiro do Cliente</span> (mostra a aba financeira na ficha do cliente).</td></tr>
+      <tr><td>Equipamentos</td><td><span class="ui">Gerenciar Equipamentos</span> (criar, editar e excluir).</td></tr>
+      <tr><td>Estoque</td><td><span class="ui">Gerenciar Estoque</span> (materiais e movimentações).</td></tr>
+      <tr><td>Financeiro</td><td><span class="ui">Gerenciar Financeiro</span> (criar e editar transações), <span class="ui">Excluir Lançamento Financeiro</span> e <span class="ui">Ver Totais Financeiros</span> (saldos, totais e projeções).</td></tr>
+      <tr><td>Agenda</td><td><span class="ui">Ver Contas na Agenda</span> (contas a pagar e receber como avisos) e <span class="ui">Ver Toda a Agenda</span> (ver todas as tarefas, não apenas as próprias).</td></tr>
+      <tr><td>CRM</td><td><span class="ui">Gerenciar CRM</span> (leads e pipeline comercial).</td></tr>
+      <tr><td>Contratos</td><td><span class="ui">Gerenciar Contratos</span> (contratos recorrentes e manutenções).</td></tr>
+      <tr><td>Funcionários</td><td><span class="ui">Gerenciar Funcionários</span> e <span class="ui">Gerenciar Ponto</span> (ver e gerenciar o ponto de todos).</td></tr>
+      <tr><td>Usuários</td><td><span class="ui">Gerenciar Usuários</span> (criar, editar e gerenciar usuários).</td></tr>
+      <tr><td>Configurações</td><td><span class="ui">Gerenciar Configurações</span> (alterar configurações do sistema).</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>A permissão <span class="ui">Excluir Lançamento Financeiro</span> não vem ligada por padrão.</b> Ela foi criada na versão 1.22.5 justamente porque antes não existia: quem tinha o financeiro liberado conseguia apagar conta a pagar, conta a receber e movimentação. Agora excluir é uma ação separada, e você precisa ligar de propósito pra cada pessoa que deve ter esse poder. A recomendação é deixar ligada só pro dono ou pro responsável financeiro.
+  </div>
+
+  <h3><span class="ui">Ver Toda a Agenda</span>, a permissão que mais gera dúvida</h3>
+  <p>Sem essa ação, o usuário abre a Agenda e vê só as tarefas dele. Com ela ligada, vê a agenda inteira da empresa. Para técnico, o normal é deixar desligada: ele enxerga o próprio dia sem se distrair com o resto.</p>
+
+  <h2>4. Chip Acesso Total e por que ele não quebra quando a gente lança tela nova</h2>
+
+  <p>No topo do editor, o primeiro chip é <span class="ui">Acesso Total</span>. A dica que aparece ao passar o mouse é direta: "Libera todas as telas e ações, inclusive as que forem criadas no futuro".</p>
+
+  <h3>Como funciona na prática</h3>
+  <ul>
+    <li>Clicar em <span class="ui">Acesso Total</span> liga todos os interruptores de uma vez.</li>
+    <li>O sistema <b>não</b> guarda uma lista congelada de permissões: ele guarda a marca de "tudo liberado". Por isso, quando a Dominex lança uma tela ou uma ação nova, esse usuário já entra com ela liberada, sem você precisar reabrir o cadastro.</li>
+    <li>Se você desligar um único interruptor, o chip <span class="ui">Acesso Total</span> apaga sozinho e aparece o chip laranja <span class="ui">Personalizado</span>. Religando tudo, o <span class="ui">Acesso Total</span> volta a acender.</li>
+    <li>O chip <span class="ui">Personalizado</span> não é clicável: ele só informa que a sua seleção não bate com nenhum cargo salvo nem com o acesso total.</li>
+  </ul>
+
+  <div class="dica">
+    Esse comportamento é a razão pra usar <span class="ui">Acesso Total</span> no dono e nos sócios em vez de marcar todos os interruptores na mão. Marcando na mão você cria uma fotografia do dia de hoje, e a pessoa vai ficar sem as novidades.
+  </div>
+
+  <div class="regra">
+    Administrador da empresa passa por cima de tudo: quem tem o papel de administrador enxerga o sistema inteiro, independente do que estiver marcado no editor. Se você quer restringir alguém, ele não pode ser administrador.
+  </div>
+
+  <h2>5. Aba Cargos: criar preset, duplicar, aplicar num usuário e o que acontece ao desmarcar uma permissão</h2>
+
+  <p>Cargo é um conjunto de permissões salvo com nome, pra você não montar tudo de novo a cada contratação. No computador, o botão <span class="ui">Configurações</span> no topo da tela abre a janela <span class="ui">Configurações de Cargos</span>, descrita como "Crie e edite perfis de acesso com permissões pré-definidas". No celular, é a aba <span class="ui">Cargos</span>.</p>
+
+  <h3>Criar um cargo</h3>
+  <ol>
+    <li>Clique em <span class="ui">Novo Cargo</span>.</li>
+    <li>Preencha <span class="ui">Nome *</span> (o exemplo sugerido na tela é "Técnico de Campo") e, se quiser, <span class="ui">Descrição</span>.</li>
+    <li>Monte as permissões no mesmo editor de telas e ações.</li>
+    <li>Clique em <span class="ui">Criar Cargo</span>. A confirmação é <span class="ui">Cargo criado com sucesso!</span></li>
+  </ol>
+
+  <h3>Editar, duplicar e excluir</h3>
+  <ul>
+    <li><span class="ui">Editar</span> abre o cargo pra ajuste. Salvando, aparece <span class="ui">Cargo atualizado com sucesso!</span></li>
+    <li><span class="ui">Duplicar</span> cria uma cópia com o mesmo nome mais o sufixo <b>(cópia)</b>, e confirma com <span class="ui">Cargo duplicado!</span>. É o caminho rápido pra criar "Técnico Sênior" a partir de "Técnico de Campo".</li>
+    <li><span class="ui">Excluir</span> pede confirmação com o texto: "O cargo [nome] será removido. Usuários que estavam vinculados a ele mantêm as permissões individuais. Esta ação não pode ser desfeita."</li>
+    <li>Sem nenhum cargo criado, a tela mostra <span class="ui">Nenhum cargo cadastrado</span> e, no celular, a orientação "Toque em Novo Cargo para criar um perfil de acesso".</li>
+  </ul>
+
+  <h3>Aplicar um cargo num usuário</h3>
+  <ol>
+    <li>Abra o usuário em <span class="ui">Editar</span>.</li>
+    <li>No topo do editor de permissões, clique no chip com o nome do cargo.</li>
+    <li>A seleção inteira é <b>substituída</b> pela do cargo. Não soma com o que já estava marcado.</li>
+    <li>Salve. Na lista, o selo do usuário passa a mostrar o nome do cargo em vez de "N permissões".</li>
+  </ol>
+
+  <div class="aviso">
+    <b>O que acontece ao desmarcar uma permissão depois de aplicar um cargo.</b> O chip do cargo apaga na hora e aparece <span class="ui">Personalizado</span>. O usuário fica com a permissão individual, sem vínculo com o cargo. Isso é proposital: você enxerga imediatamente que aquela pessoa não segue mais o padrão. Se religar exatamente o que faltava, o chip do cargo acende sozinho de novo.
+  </div>
+
+  <div class="regra">
+    Cargo é um <b>ponto de partida</b>, não uma regra viva. Alterar um cargo depois <b>não</b> atualiza automaticamente quem já estava usando ele. Se você mudou o cargo "Técnico de Campo" e quer aplicar aos cinco técnicos, precisa reabrir cada um e clicar no chip do cargo de novo.
+  </div>
+
+  <h2>6. Caso real: técnico que só usa o link de campo — ligar a ação-filha sem ligar a tela-mãe</h2>
+
+  <p>Situação comum: você tem um técnico que nunca abre a lista de OS. Ele recebe o link da ordem de serviço pelo WhatsApp, abre no celular, preenche o checklist e finaliza. Você não quer que ele consiga navegar pela lista de todas as OS da empresa, mas precisa que ele consiga preencher a dele.</p>
+
+  <p>O editor de permissões da Dominex permite exatamente isso: <b>a ação continua valendo mesmo com a tela desligada</b>. Ao expandir uma tela que está com o interruptor desligado, o próprio editor avisa em itálico: "A tela está desligada, mas estas ações continuam valendo por conta própria."</p>
+
+  <figure>
+    <img src="img/t2-permissoes-acoes-da-tela.png" alt="Editor de permissões dentro da janela Criar Usuário, com o perfil rápido Personalizado selecionado. A tela Ordens de Serviço aparece desligada (interruptor apagado) e expandida, mostrando o bloco Ações desta tela com o aviso em itálico A tela está desligada, mas estas ações continuam valendo por conta própria, e as ações Criar OS, Editar OS, Excluir OS, Reabrir OS e Editar OS em campo, todas com interruptor desligado.">
+    <figcaption>Tela desligada e expandida: o aviso confirma que as ações continuam valendo por conta própria.</figcaption>
+  </figure>
+
+  <h3>Passo a passo desse cenário</h3>
+  <ol>
+    <li>Abra o técnico em <span class="ui">Editar</span>.</li>
+    <li>Deixe a tela <span class="ui">Ordens de Serviço</span> com o interruptor <b>desligado</b> (ele não vai ter o item no menu).</li>
+    <li>Clique no nome da tela pra abrir <span class="ui">Ações desta tela</span>.</li>
+    <li>Ligue <span class="ui">Editar OS em campo</span>, que libera editar equipamentos e checklists dentro de uma OS em andamento.</li>
+    <li>Se ele precisar concluir e reabrir, ligue também <span class="ui">Editar OS</span>. Deixe <span class="ui">Excluir OS</span> desligada.</li>
+    <li>Ligue a tela <span class="ui">Agenda</span> se ele deve ver o próprio dia, e deixe a ação <span class="ui">Ver Toda a Agenda</span> desligada.</li>
+    <li>Marque o tipo de usuário como <span class="ui">Técnico</span> pra ele aparecer na hora de atribuir a OS.</li>
+    <li>Salve. Esse técnico entra no sistema, vê pouquíssima coisa, e ainda assim trabalha normalmente pelo link.</li>
+  </ol>
+
+  <div class="dica">
+    Esse é o desenho de permissão mais usado por empresa de campo. Some com o financeiro do menu dele, some a lista de clientes, e o técnico segue produtivo. Salve isso como um cargo chamado "Técnico de Campo" e aplique nos próximos.
+  </div>
+
+  <h2>7. Ativar × desativar × excluir usuário, e a vaga do plano</h2>
+
+  <p>São três coisas diferentes e o efeito na conta do plano muda em cada uma.</p>
+
+  <table class="dados">
+    <thead><tr><th>Ação</th><th>O que faz</th><th>Reversível?</th><th>Libera vaga do plano?</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Editar</span></td><td>Muda dados, tipo de usuário e permissões. Botão laranja.</td><td>Sim</td><td>Não muda nada</td></tr>
+      <tr><td><span class="ui">Desativar</span></td><td>A conta para de entrar no sistema e a sessão dela cai. O usuário continua na lista, marcado como <span class="ui">Inativo</span>.</td><td>Sim, pelo botão <span class="ui">Reativar</span></td><td>Sim. A confirmação diz: "O slot foi liberado. Você pode reativá-lo depois."</td></tr>
+      <tr><td><span class="ui">Reativar</span></td><td>Devolve o acesso. Botão verde.</td><td>Sim</td><td>Ocupa uma vaga de novo</td></tr>
+      <tr><td><span class="ui">Excluir</span></td><td>Apaga o login, as permissões e os vínculos. Ícone de lixeira vermelho.</td><td><b>Não</b></td><td>Sim</td></tr>
+    </tbody>
+  </table>
+
+  <h3>O que o sistema não deixa você fazer</h3>
+  <ul>
+    <li><b>Mexer em você mesmo.</b> Na sua linha aparece o selo <span class="ui">Você</span> e só o botão <span class="ui">Editar</span>. Desativar e excluir não aparecem. Se o servidor receber a ordem mesmo assim, ele responde "Você não pode desativar a si mesmo." ou "Você não pode excluir a si mesmo.". Não é bug: é proteção contra você se trancar pra fora.</li>
+    <li><b>Ficar sem administrador.</b> Desativar, excluir ou rebaixar o último administrador ativo é bloqueado com a mensagem <span class="ui">Ação bloqueada</span> e a explicação "A empresa precisa de pelo menos um administrador ativo.". Promova outra pessoa primeiro.</li>
+    <li><b>Mexer em usuário de outra empresa.</b> O servidor recusa com "Forbidden: usuário de outra empresa". Isso nunca deveria acontecer na tela, é uma barreira de segurança.</li>
+    <li><b>Reativar sem vaga livre.</b> O botão <span class="ui">Reativar</span> fica desabilitado e a dica ao passar o mouse é "Sem slot livre, faça upgrade ou desative outro". O servidor também recusa, com "Limite de usuários atingido; faça upgrade ou desative outro.".</li>
+  </ul>
+
+  <h3>Excluir de verdade</h3>
+  <p>Clicar na lixeira abre a confirmação <span class="ui">Excluir usuário permanentemente?</span> com o texto: "Esta ação é irreversível. O usuário [nome] será removido permanentemente do sistema, incluindo login, permissões e vínculos." Os botões são <span class="ui">Cancelar</span> e <span class="ui">Excluir Permanentemente</span>. Dando certo: <span class="ui">Usuário excluído permanentemente!</span></p>
+
+  <div class="perigo">
+    <b>Prefira desativar a excluir.</b> Desativar já libera a vaga do plano, mantém o histórico limpo e permite reativar no dia seguinte se a pessoa voltar. Excluir é definitivo e não tem como desfazer. Excluir só faz sentido pra usuário criado por engano.
+  </div>
+
+  <h2>8. Limite de usuários do plano e como contratar mais</h2>
+
+  <p>Cada plano permite um número de usuários <b>ativos</b>. Usuário desativado não conta. O contador fica logo abaixo do título da tela, no formato <span class="ui">2/15 usuários • 2 ativos</span>.</p>
+
+  <h3>Quando você chega no limite</h3>
+  <ul>
+    <li>Aparece uma faixa amarela no topo da lista com <span class="ui">Limite de usuários atingido (15/15)</span> e a explicação "Para cadastrar novos usuários, adicione usuários extras ao seu plano.", mais o botão <span class="ui">Contratar mais usuários</span>.</li>
+    <li>Clicar em <span class="ui">Criar Usuário</span> nesse estado abre a janela <span class="ui">Limite de usuários atingido</span>, mostrando o contador grande, a frase "Seu plano atual permite até N usuários. Para cadastrar mais, adicione usuários extras ao seu plano (R$ 50,00/mês por usuário)." e os botões <span class="ui">Voltar</span> e <span class="ui">Contratar mais usuários</span>.</li>
+    <li>O botão leva pra tela de <span class="ui">Assinatura</span> já com o montador de plano aberto na aba Personalizado, focado na parte de usuários extras.</li>
+  </ul>
+
+  <h3>As três saídas quando falta vaga</h3>
+  <ol>
+    <li><b>Desativar quem não usa mais.</b> É grátis e imediato. Ex-funcionário desativado libera a vaga na hora.</li>
+    <li><b>Comprar usuários extras.</b> Cada usuário adicional custa R$ 50,00 por mês e entra na próxima cobrança. Os recursos são liberados na hora.</li>
+    <li><b>Trocar de plano.</b> Planos maiores já vêm com mais usuários inclusos. Compare em <span class="ui">Gerenciar Meu Plano</span> antes de comprar extras avulsos.</li>
+  </ol>
+
+  <div class="aviso">
+    Se você reduzir o plano pra um que comporta menos usuários do que a empresa tem hoje, o sistema pede pra você <b>reduzir os usuários antes</b> de aplicar a mudança. Ele não escolhe quem sai por você.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Não consigo desativar meu próprio usuário"</td>
+        <td>Proteção do sistema</td>
+        <td>É proposital. Na sua linha só aparece Editar. Peça pra outro administrador fazer, se for mesmo necessário.</td>
+      </tr>
+      <tr>
+        <td>"O botão Reativar está apagado"</td>
+        <td>Sem vaga livre no plano</td>
+        <td>A empresa bateu o limite de usuários ativos. Desative outro usuário ou contrate usuários extras em Assinatura.</td>
+      </tr>
+      <tr>
+        <td>"Diz que o e-mail já está cadastrado"</td>
+        <td>E-mail em uso em outra conta</td>
+        <td>O e-mail é único no sistema inteiro. Use outro e-mail ou verifique se a pessoa já não tem conta desativada na sua empresa.</td>
+      </tr>
+      <tr>
+        <td>"Meu técnico não aparece pra escolher na OS"</td>
+        <td>Usuário criado como Interno</td>
+        <td>Edite o usuário e mude o Tipo de Usuário para Técnico. Só quem é Técnico aparece na listagem da OS e pode entrar em equipe.</td>
+      </tr>
+      <tr>
+        <td>"Apliquei um cargo e ele virou Personalizado sozinho"</td>
+        <td>Alguma permissão foi desmarcada depois</td>
+        <td>Basta uma permissão diferente pro vínculo com o cargo cair. Clique no chip do cargo de novo pra voltar ao padrão.</td>
+      </tr>
+      <tr>
+        <td>"Mudei o cargo e os usuários antigos continuam iguais"</td>
+        <td>Cargo é ponto de partida, não regra viva</td>
+        <td>Reabra cada usuário e clique no chip do cargo pra aplicar a versão nova.</td>
+      </tr>
+      <tr>
+        <td>"Meu funcionário apagou uma conta a pagar"</td>
+        <td>Permissão de exclusão financeira ligada</td>
+        <td>Vá no usuário, abra a tela Financeiro no editor e desligue a ação Excluir Lançamento Financeiro. Ela é separada e não vem ligada por padrão.</td>
+      </tr>
+      <tr>
+        <td>"Diz Ação bloqueada quando tento excluir um usuário"</td>
+        <td>É o último administrador ativo</td>
+        <td>A empresa precisa de pelo menos um administrador ativo. Promova outra pessoa a administrador primeiro.</td>
+      </tr>
+      <tr>
+        <td>"O técnico está vendo a agenda inteira da empresa"</td>
+        <td>Ação Ver Toda a Agenda ligada</td>
+        <td>Abra o usuário, expanda a tela Agenda e desligue Ver Toda a Agenda. Ele passa a ver só as tarefas dele.</td>
+      </tr>
+      <tr>
+        <td>"Criei um usuário e ele não consegue entrar"</td>
+        <td>Senha errada ou conta desativada</td>
+        <td>Confira se a conta está como Ativo na lista. Se estiver, reenvie a senha; ela pode ser trocada depois em Perfil › Alterar Senha.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Qual a diferença entre desativar e excluir um usuário?</dt>
+    <dd>Desativar tira o acesso, libera a vaga do plano e dá pra desfazer. Excluir apaga o login e os vínculos pra sempre. Na dúvida, desative.</dd>
+
+    <dt>Usuário desativado continua ocupando vaga no plano?</dt>
+    <dd>Não. Só usuário ativo conta. Assim que você desativa, a vaga fica livre.</dd>
+
+    <dt>O que significa o chip Acesso Total?</dt>
+    <dd>Que a pessoa tem todas as telas e ações liberadas, inclusive as que a Dominex criar no futuro. É o perfil de dono e sócio.</dd>
+
+    <dt>Posso liberar uma ação sem liberar a tela dela?</dt>
+    <dd>Pode, e é um recurso proposital. Expanda a tela desligada e ligue só a ação. O próprio editor avisa que as ações continuam valendo por conta própria.</dd>
+
+    <dt>Como faço pra vários técnicos terem a mesma configuração?</dt>
+    <dd>Monte um cargo em Configurações de Cargos e aplique nele o chip do cargo em cada usuário. Use Duplicar pra criar variações.</dd>
+
+    <dt>Quem pode criar usuários?</dt>
+    <dd>Administrador, gestor, ou quem tem a ação Gerenciar Usuários ligada.</dd>
+
+    <dt>O usuário precisa estar vinculado a um funcionário?</dt>
+    <dd>Não é obrigatório. O vínculo serve pra ligar o login à ficha de RH, com ponto, pagamento e equipe. Sem o módulo de Funcionários, o campo fica vazio.</dd>
+
+    <dt>Dá pra mudar o e-mail de login depois?</dt>
+    <dd>Dá, na edição do usuário. A própria tela avisa que alterar o e-mail muda o login de acesso da pessoa.</dd>
+
+    <dt>Quantos usuários meu plano permite?</dt>
+    <dd>Está escrito logo abaixo do título da tela, no formato "usados/limite usuários". O mesmo número aparece no cartão Uso da conta, em Assinatura.</dd>
+
+    <dt>Quanto custa um usuário a mais?</dt>
+    <dd>R$ 50,00 por mês por usuário adicional, somado ao seu plano na próxima cobrança.</dd>
+
+    <dt>Existe importação de usuários em massa?</dt>
+    <dd>Não. Cada usuário é criado pela tela, um a um.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master
+  </div>
+</section>

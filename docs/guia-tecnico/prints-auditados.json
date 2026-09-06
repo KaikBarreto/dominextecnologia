@@ -1,0 +1,577 @@
+{
+  "t0-central-ajuda.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "504695989b43869666270b30cdc3e2c1c80024ee1971c0f588b7a0dc465748cc",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t0-dashboard-completo.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "cc4450dd108024b4dcb48b889e02a41d2012b68598813d0b7b33999e26e3c347",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t0-menu-lateral.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "d40b92ba79556e7f0105b1e47f5fbc8143e897d610b530a0cb90a2d00108b8d6",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t1-atalhos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "3851f4ee49616ef1258b44605ed25f15e98c613ae7c144bdff6d8cff0689193a",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t1-configuracoes.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "bfa325c09b0ca0c9b71383f048f7aede2b651d4fd1a58b134009f9c2352b11e2",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t1-integracoes-whatsapp.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "58b03617739a798bc38d7d4233b6cdd44dc0ea5a4b3ce0eaeead295a0d85116d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t1-perfil.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "0bec48258305310a8ef56986d2c02e11abfd415789d20d8d1a89d2e28774a5e8",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t1-regional.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "3297ca9a65deb402a789fca445f3a3e6f10c6c984ce2064eff86c0bed13c0f28",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t1-usabilidade.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "2d7b8553858714a0d578e5e9f7e229e0cb2e0d05f170a0923a438e2e8956340a",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-crm.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "b6c389f627db7b4f2ce9f2972005c508afd4189cb96235cd7b94e84e8d7876b5",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-gerenciar-estagios.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "06a652c01f7fc55523ab69bb03c8839ab8eef389c235e78a5fa1d4136cf46bd7",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-nova-oportunidade.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "0288e6cdd0e317c13bb43a3aa1a0365d5959bf1e9fe09cdd4e13b72261b4f859",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-webhooks.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "352de5b22078cdc6b1a544e6e216ee8aafeb68d6c2c0d46efc80655b1a9b853f",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-configuracoes-contrato-documentos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "976c5f9cc54b2ebfe1490bb7c9e5762789cdbbc77e6acf526ffa81f1b578eca9",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-configuracoes-contrato.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "db05ebf2ccad8b5f6b48b870aed2c9d77dc848188f7c9cbe1f65004487c0c259",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-contrato-documentos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "e80338a381b229008f05380aadefdb0abf6f79ca8b2c000c174f24eb86787552",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-contrato-nova-receita.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5eb50e2ae9f93ad8168126de12dfaf6a105042d981506475ee39fbb01f72b5e8",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-contrato-visao-geral.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "4fb1637b9147f532cea599c537bf155a0b5a6e24385ab1577e9515b2b961cad2",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-contratos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "f9d23d3169ba390acf7f9a6647af021f2429254a19b637c000f2ecbb10f700bf",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-filtros-contratos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "b9f79d47af287586086a1eab8aca2c5691899a1b7fbd41c0368bd8c44ce88e6d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-novo-contrato-identificacao.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "7c0b751921fdfefed808585752b7d0071cf01e043e82e0304840eef458e8955d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-novo-responsavel-tecnico.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "98f1df79cf8379df8c2fc500bde067879a40c72b2be63fbde7c8ab25e8e6f760",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-portal-do-contrato.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "8951473a1518766b0bc2f089329b5ae08538936426b43fbcec94a6ea16ba6ef4",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-renovar-contrato.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "d2ef5c2a0e14ba950f87b63ac876ebee3ffc1ac4e63e197c3981e7cb479b58cc",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-responsaveis-tecnicos-lista.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "6d0424f54f032e1da80c75b87f717970cf7ad9dc95553af2a505ed326572b4a7",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t11-wizard-pmoc-unidade.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "dbe1e97910e8f9ec418b6ca90ca92de3064355a05a2f73021257be32e28b31d0",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-cliente-aba-chamados.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "d0a2ff0dd27d8b787a2f134540cbda42f9d023bcecaf3c300861a819acc8267e",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-como-pegar-link-google.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "037cbbb53fdfc5d2eedc48e53548683b9c2c4ec1bf48c0e41695b71f4c7d8412",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-configuracoes-nps.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "bf2dc9c07b0122cc76ddc6d95bc1600f572ebafd6a7db7853ba860031b7b7dc9",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-ficha-cliente-portal.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "30c19c38bd4d4a8473e0b7a50e4ce2f31638c8ef13c361ccb0a6d0f73c6718e9",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-nps-avaliacao-google.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "f01d6ebd6b8ba9e8afb6d4d495086e3ab6ca7b41b29a9f3fb7e580afb7099bdb",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-nps-detratores.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "1beda98e9c5950a1ddef8bc8a0b8e6ed9ea9dc8b3ee9bf33025d28cfeee0f746",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-painel-nps.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "b3993b8e850845e581c3c6422b4ea4a78658521edecc638e57b89253383b1378",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-cartao-faturas.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "394730dfb20bcbedab6dd5ded87e909c884bef75a050835453aaf9a73811acf6",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-categorias.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "98fe2dd41661bb489845abfaf702cf4cc31a21a79f8b65286c71150d571f5938",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-cobrar-modal.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "46ef2d99e61399d512af7f4356a8e47fdc0b4b34c21481a10f84616d66d56f81",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-financeiro-contas.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "3c383762761c994af1d14483246738c9c43d44c9f9b8837e39898d14997f392e",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-financeiro-movimentacoes.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "51fd8f15afb4c842f03c1e6aef51e25e380a5fbf323134ef3f91fde6d255cc02",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-financeiro-relatorio.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "f7ab4d7a20b8eb06c29d1d5c26cd20291e83cbd2d667eb86d3f0fe402bb15260",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-nova-transacao-modal.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "2f83572798a97a7525a6114af6bf93f53cba8aa15053c1067b50d94266e5c66e",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-novo-cartao-modal.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "3f5a7ec04779cde91f20b1a2690565f17d836913878b9b9155ed6793815b696b",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-como-funciona.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "d1670caa52abfb5324455e0d0373149a7378348efa94d1882a0665968a7e9320",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-config-fiscal-certificado.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "0c778edf9a236cd45e83f0745ad198608b305a16f0c84b9b3270dcbe17d96a16",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-config-fiscal-empresa.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "f6bbde10a293c355a0ffe2ecd28146502fb70b02e739c48cd5393803a9c36f42",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-config-fiscal-tributacao.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "d6618f5659088c2da5b7dfac49084412d16667df40e9039374cff2c7910177cf",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-notas-fiscais.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "e4d597d270885df92d2efebd767bcbc6481c5dcb55e109d5d5e5075f06dfd556",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-nova-nota-stepper.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "2016b889e6109fc62fb3acea64edec7f7f7c67ffded1fbf7d7680dc6331f4e85",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-funcionarios.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "49a4f0cce0390921153b10517e45776a3a18a2bfc5a211eb597dea0e82d3e792",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-novo-funcionario-dados.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "4c8e69760479a9bb985a87a01834b114733a87de4201061a582434172135950f",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-novo-funcionario-pagamento.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "53a2cba8e38162ab2a8deaa1eaace0a5b393449ea947fe0d2a41aa834b5e8d26",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-organograma.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "dba2eabe16de1d3587e9f82232e6ecfefa7e8e9aa41b9013da9b324719d25885",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-ponto-config.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "3ccc176239922bf55d8c4c74f186357fbcc7cbbfdf892d040b68311abec691ec",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-ponto-hoje.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "f68c07049b267815a2cdd930926761ac5ecaad365d874ad27dc9632b413856d2",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t16-assinatura.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5d8573a1fc97a15aa03cee71d7ccf341e388e2d038a2ae7bb1f7e7f0f918fd71",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t16-checkout.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "31181c3a26c34fbc97e7f921c9da9b42f98403c59f0d70ee5caa68baa7c4dc21",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t16-gerenciar-plano-personalizado.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "176baa9d79358d1c1f1c5bb6131547b1a6d37a5a7944ff10efca350c91a4560d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t17-changelog.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "1cea33d2c22a7ee3f7399d021a7e6ab39f0939fa319e147993560a79ead90566",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t17-dashboard-kpis.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "80b53ef9a5185d1dbbe9802fc608e3a11d12f417f4f67c2d7e9c530206840a04",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t2-novo-usuario.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "b75c706eb9e255ed478b43ae17b998209b407536c37f91691ea4dfcd8b1a064d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t2-permissoes-acoes-da-tela.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "b42e3a2635e9cf8e81e7fbcd589c2111970febceb1cda8aa42472f1117fb608c",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t2-usuarios.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5fa2e18c668fd76a51aa9bb5da418f8f03b857750a5ed04ff5b92ec181f1f753",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-categorias-equipamento.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "9be83a95ac7edefa18247846fa0f9296eb30c6018d18446f7560729029924fbb",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-cliente-detalhe-geral.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "7ad64b9988072ab70addde7da4934036583ce2217e0e46410fd4adda06ac60a9",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-clientes.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "a8826374b3ee8eedae89f36beee1465e2fa4e0d2cb4a9a00a741a93e099c02d0",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-configurar-campos-equipamento.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "ce2237c1b460e40bfe207d50f56ea5b30a7c3e241ff210f29278e1094ec8398f",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-equipamento-etiqueta.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "4a9a997e808797ac7b61760056fae21849938996032c3b4d5b3a591c50e8f591",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-equipamentos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "9694781e4c8343530deb32ae1d9632e1665088fbc28e925050cf66eb75bf1ddb",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-formulario-captacao-campos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "fbe50cd8df1a05564e5c211393f9900e5f37467c8b37fa793f7667702edc1e5d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-formularios-captacao.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "45e78392732562e311c830f8d800eb43053c842c45c9c2d335fbc6a261c5a13c",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-novo-cliente-contato.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "c2c6da6f56fc89a29ea240ef70846c332f4c9779b3bc1e776c2a40939ea4d29c",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-novo-cliente-fiscal.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "dc06589437d2b060f4e7d834230612420176bd2d2b9f0e15b78b429163eb5a8f",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-novo-equipamento.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5291400cc9f783edebd16d4ff13b2d0938806020b539eada2d53b89770d08d18",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t3-origens-cliente.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "a55d9257f3f8309a8c5d29488fb1e47b13c40518d48483ce26541138cea378a9",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-catalogo-checklists.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "47cada34263d4fd3d27d9c800cb0ab54b2f4fba9044e9b297eec2ba2e0dc9daf",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-categorias-servico.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "81ffa9761c1136911a04172c7eaea17e4daf8d1f5ca447e07168cf10264a7dce",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-checklists-lista.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "e93eb6fe07544f0a177a07565169bf1bff9fda8cbe5f66e270bca4f6ccc2d8e8",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-novo-checklist.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "390852761ae840a0b9ded837710d6cc14d4ec39ef803ba65e3b8187d4df8aa6b",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-servicos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "704857693414fca110404f1001881d1fcae023495252c8b631faf8c0dfa22c8f",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-tipo-servico-fiscal.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "cae61305309fbd441f1d34a02b2e33d2e4f785fcbaf1c9ad07ef767cbf182e27",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-tipo-servico-form.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "51a5f3e970f726a3302808f4bd1e0321ffee5ba6ed965c98d53cbb3689460a1d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t4-tipos-tarefa.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "4e21c1776446c5cf996fa54d2a960d4069f8db5515010768298aa6fc6edf5edf",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t5-aba-nps.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "b5f7ec8d3fca670b77d5af60d70e7a13d5d152e51830d8c48ca5c1c15d8f5ac7",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t5-aba-relatorio.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "e35022b0b3f0a563f8e7bdbca16b33c9682d774fe2f1356b8a35bcf896cc45aa",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t5-configurar-status.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "f3b18f3550d42b3b6a5a55af7869a3d5afa5d24ee2d5a5177ad2456ec6c5a4fe",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t5-lista-os.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "c7fdb61c39e09332080201b828c0172398ff7c4c887930317361c0ca96e45d7e",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t5-nova-os-etapa1.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "c8efcac4c967533b6c07ac681de7944152bacc10dbef1adb5ffa205f744c7a37",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t5-ordens-servico.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "03568f17467f595804627528ec0147d24b970b9dccd23093d3cd919a58821f14",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-agenda.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "91070331ed8c65eb1ade435fcc3547a7f83c6950cb09b79593b6b3354bbd5afa",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-equipes-lista.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "ac8b40522694dc8257dc4831129c3c1c44fc0f2707ad1974be883ba080558261",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-legenda-agenda.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5b1ea9fbb124718cf1a19ca4bde58e3d7510b7ca84369c9800c1dc65909d7a87",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-mapa-historico.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "3b0498329926b85d0b797f8e9d54bb0e1e034ee897b4b84e12420a8cb18199b3",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-mapa.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "124077dabeb34b8e6327da7a32245cafb061bf076969e9102221509edcfd795b",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-nova-equipe.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "66313baf6708de1f49d3972b27e725f96159413211d924fc450e515af65b85f0",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-os-pausadas.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "ccd2e7c188431a3fb9ced89160359bf07f539b5653336b296f73c70ee86c4e36",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-tipo-entrada.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "98acaf7af79eab0d370fe6e9b6768bae51e20bc9ddc9c31af46afe03e93f3291",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t7-area-tecnico-inicio.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5ffa9a812a7f3d5094947f34b1414bebfac3fd69641c7b3d8d91ba246a7b3e8a",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t7-area-tecnico.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "329c7e616e693892826f287d30216b1587b620f416c3a16e3513c5bb543c2c87",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t7-carga-termica.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "1d10c1ee078e32c863a767274aaaabb0442f3830c2c435ae1978f6026e6d1b52",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t7-ferramentas-cadeado.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5b36f611892dfa5021c4e41e9170b07410e2bc26e1c5766b027a1fb17966c6d0",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t7-os-modo-cliente.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "ac64ac8ecd16593cd8f401c5274fc218aac95d4df7a9bb6f2bfdd66137306173",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t7-regua-gases.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "15073d3cbf4c96d28c7791672decbf834417d90de74c41987df1bf02d289356e",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-cadastrar-material.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "86a695a3e3a75dc96c42bfd44e72d71acce308e8c08e827f6f648979c71afa07",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-compras.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "91d96d0d1194657db59ab89f2cb59c5769c64039d38f10e8a10274593445d7dd",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-config-locais.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "087fa1f19fc6279b7d3aebab4d7806affbd9e6fce35ffae7efaf223e3a9a9a91",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-estoque.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "812d5b06bbbbdb7c2f303b6b1f4d4f52697d19d6cda7d080e9ffaafd144ebbd7",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-inventario-wizard.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "45604873fa05368afe7f257610c8af028d19122d6580b90212018008bba79f74",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-kardex.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "56f01b27ff68e137cd66ee01d1a20af51fefc3a3c194bbf55d09f75e8b8a7dba",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-nova-requisicao.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "5f73653a5d852d19a89a39a97d5acf3db7cb961afbd46c7ece4e1f556a0bd6e9",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-posicao-estoque.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "08c458b82c96b9d9eff2bd94f421ff11dcda618f549378b69de9997225f8a40c",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t9-aba-custos-globais.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "3a4521cc8b76bf07bc9aca3d4108d1e645a69b2bc71805507a5b5d00423e2cf3",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t9-aba-custos-servico.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "114ee0474f9e4422ea9dbdf0c2070ea407961ba0364addd32f3a5a506b511c71",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t9-aba-precificacao.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "9f7ebf490fca28422ee628525e4dba8e2a4c9f7f6082fd43dffca9c1f61d6530",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t9-configurar-proposta.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "d7a7c0f3a72ca0427208c4e7e5640dd59b490db3be276a4a142f153911b28e7a",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t9-orcamentos.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "f1937a959abaece1b6f94205fd2af13e42f1104c0a16a8ca7bcc745131d99bf9",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t9-wizard-destinatario.png": {
+    "auditado_em": "2026-09-06",
+    "hash": "9e59ff29e490a9af2908d11d3d6d859483b63da433e66be574fd944974b9fd53",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+}

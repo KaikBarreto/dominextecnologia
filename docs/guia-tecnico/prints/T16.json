@@ -1,0 +1,18 @@
+{
+  "secao": "T16",
+  "prints": [
+    {
+      "id": "t16-gerenciar-plano-personalizado",
+      "url": "/assinatura",
+      "legenda": "Janela Gerenciar Meu Plano aberta na aba Personalizado, com a lista de módulos à esquerda e o painel Seu Plano à direita mostrando o total mensal. Nada é aplicado, só a visualização da aba.",
+      "passos": [
+        { "esperar": 3500 },
+        { "clicar": "Gerenciar Meu Plano" },
+        { "esperar": 1500 },
+        { "clicar": "Personalizado" },
+        { "esperar": 1200 }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}

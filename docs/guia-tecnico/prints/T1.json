@@ -1,0 +1,41 @@
+{
+  "secao": "T1",
+  "prints": [
+    {
+      "id": "t1-regional",
+      "url": "/configuracoes?tab=regional",
+      "legenda": "Aba Regional das Configurações: cartões Meu idioma, Padrões da empresa (idioma padrão, moeda e fuso horário) e Perfil Comportamental. Nenhum campo é alterado na captura.",
+      "passos": [
+        { "esperar": 3500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t1-usabilidade",
+      "url": "/configuracoes?tab=usabilidade",
+      "legenda": "Aba Usabilidade das Configurações, com os blocos Ordens de Serviço, Interface, Segurança e Agenda nos valores padrão, e o cartão Origens abaixo. Nenhum interruptor é tocado na captura.",
+      "passos": [
+        { "esperar": 3500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t1-atalhos",
+      "url": "/configuracoes?tab=atalhos",
+      "legenda": "Aba Atalhos das Configurações: interruptor geral no topo e a lista de atalhos de Navegação com a tecla de cada tela.",
+      "passos": [
+        { "esperar": 3000 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t1-integracoes-whatsapp",
+      "url": "/configuracoes?tab=integracoes",
+      "legenda": "Aba Integrações na subaba WhatsApp, mostrando o selo amarelo Em breve na pílula e o cartão fixo Avisos por WhatsApp. Prova visual de que não existe conexão por QR Code hoje.",
+      "passos": [
+        { "esperar": 3500 }
+      ],
+      "recorte": "main"
+    }
+  ]
+}

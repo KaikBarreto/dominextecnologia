@@ -4346,6 +4346,69 @@ export type Database = {
           },
         ]
       }
+      guia_chunks: {
+        Row: {
+          busca: unknown
+          capitulo: string | null
+          chaves: string[]
+          created_at: string
+          fase: string | null
+          fase_titulo: string | null
+          fonte: string | null
+          id: string
+          palavras: number | null
+          prints: string[]
+          rotas: string[]
+          secao: string
+          secao_titulo: string | null
+          sinonimos: string | null
+          texto: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          busca?: unknown
+          capitulo?: string | null
+          chaves?: string[]
+          created_at?: string
+          fase?: string | null
+          fase_titulo?: string | null
+          fonte?: string | null
+          id: string
+          palavras?: number | null
+          prints?: string[]
+          rotas?: string[]
+          secao: string
+          secao_titulo?: string | null
+          sinonimos?: string | null
+          texto: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          busca?: unknown
+          capitulo?: string | null
+          chaves?: string[]
+          created_at?: string
+          fase?: string | null
+          fase_titulo?: string | null
+          fonte?: string | null
+          id?: string
+          palavras?: number | null
+          prints?: string[]
+          rotas?: string[]
+          secao?: string
+          secao_titulo?: string | null
+          sinonimos?: string | null
+          texto?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       holidays: {
         Row: {
           company_id: string | null
@@ -9629,6 +9692,26 @@ export type Database = {
       assign_next_lead_salesperson: { Args: never; Returns: string }
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
+      buscar_guia: {
+        Args: {
+          p_consulta: string
+          p_limite?: number
+          p_secao?: string
+          p_tipos?: string[]
+        }
+        Returns: {
+          capitulo: string
+          id: string
+          prints: string[]
+          rotas: string[]
+          score: number
+          secao: string
+          secao_titulo: string
+          texto: string
+          tipo: string
+          titulo: string
+        }[]
+      }
       can_access_stock: {
         Args: { _stock_id: string; _user_id: string }
         Returns: boolean
@@ -9966,6 +10049,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      immutable_unaccent:
+        | { Args: { p_itens: string[] }; Returns: string }
+        | { Args: { p_texto: string }; Returns: string }
       increment_blog_post_views: {
         Args: { post_slug: string }
         Returns: undefined

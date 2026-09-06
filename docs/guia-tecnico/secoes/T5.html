@@ -1,0 +1,519 @@
+<section class="tutorial" id="t5">
+  <h1><span class="tcode">T5</span> Ordens de Serviço: a visão do gestor</h1>
+
+  <p class="lead">A Ordem de Serviço é o coração da operação: é ela que diz quem atende, quem vai, quando vai, o que precisa ser feito e o que foi feito. Esta seção cobre o lado de dentro do escritório, do momento em que o chamado entra até o relatório na mão do cliente.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → Ordens de Serviço</span>
+    <span><b>Rotas:</b> <code>/ordens-servico</code>. O link de campo e o link do cliente usam <code>/os-tecnico/&lt;endereço da OS&gt;</code></span>
+    <span><b>Depende de:</b> ter cliente cadastrado. Tipo de serviço, equipamento e checklist são opcionais, mas mudam muito o resultado</span>
+    <span><b>Quem enxerga:</b> quem tem a tela <b>Ordens de Serviço</b> liberada. As ações <b>Criar OS</b>, <b>Editar OS</b>, <b>Excluir OS</b> e <b>Reabrir OS</b> são permissões separadas. Admin e gestor têm tudo por padrão</span>
+    <span><b>Módulo:</b> a tela não depende de módulo pago</span>
+  </div>
+
+  <h2>1. Tela Ordens de Serviço: kanban × lista e os 4 indicadores do topo</h2>
+
+  <p>A tela se chama <span class="ui">Ordens de Serviço</span>, com o subtítulo "Gerencie suas ordens de serviço". Ela tem três abas na navegação lateral: <span class="ui">Ordens de Serviço</span>, <span class="ui">Relatório</span> e <span class="ui">NPS e Satisfação</span>.</p>
+
+  <figure>
+    <img src="img/t5-ordens-servico.png" alt="Tela Ordens de Serviço da Dominex em visão kanban, com os quatro indicadores no topo (OS Abertas, Concluídas, Atrasadas, Próximos 7 dias) e as colunas de status com os cartões de cada OS">
+    <figcaption>Tela Ordens de Serviço: indicadores no topo e o kanban por status.</figcaption>
+  </figure>
+
+  <h3>As duas visões</h3>
+
+  <ul>
+    <li><span class="ui">Kanban</span>: uma coluna por status, cartões arrastáveis. É a visão que abre por padrão.</li>
+    <li><span class="ui">Lista</span>: tabela com as colunas <span class="ui">OS</span>, <span class="ui">Criador</span>, <span class="ui">Cliente</span>, <span class="ui">Tipo</span>, <span class="ui">Data</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>, com ordenação por coluna e paginação.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t5-lista-os.png" alt="Tela Ordens de Serviço na visão Lista, com os quatro indicadores no topo e a tabela com as colunas OS, Criador, Cliente, Tipo, Data e Status, mostrando OS agendadas com selo azul LEI 13.589 nas que pertencem a contrato PMOC">
+    <figcaption>Visão Lista: mesma tela, em tabela em vez de kanban. O selo "LEI 13.589" identifica OS geradas por contrato PMOC.</figcaption>
+  </figure>
+
+  <p>A escolha entre kanban e lista fica gravada <b>naquele aparelho</b>. Se você trocar para lista no computador do escritório, ele continua em lista nas próximas visitas, mas o celular pode continuar em kanban. No computador os botões de alternar ficam ao lado do título da lista; no celular, dentro do painel de filtros, em <span class="ui">Visualização</span>.</p>
+
+  <h3>Os 4 indicadores</h3>
+
+  <table class="dados">
+    <thead><tr><th>Indicador</th><th>O que conta</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">OS Abertas</span></td><td>Tudo que não está concluído nem cancelado. Cor de atenção.</td></tr>
+      <tr><td><span class="ui">Concluídas</span></td><td>OS com status concluída. Cor de sucesso.</td></tr>
+      <tr><td><span class="ui">Atrasadas</span></td><td>OS não concluída nem cancelada cuja data agendada já passou. Cor de alerta vermelho.</td></tr>
+      <tr><td><span class="ui">Próximos 7 dias</span></td><td>OS não concluída nem cancelada agendada de hoje até daqui a sete dias.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra">
+    Os quatro indicadores respeitam o <b>filtro de período</b> escolhido no topo da tela, que começa em "este mês". Se o número parece baixo demais, quase sempre é isso: o período está recortando. Mude o período para ver o ano inteiro. Os cartões são apenas leitura, clicar neles não filtra.
+  </div>
+
+  <h2>2. Criar OS — Etapa 1: cliente cadastrado × cliente avulso, e o tipo de serviço</h2>
+
+  <p>O botão <span class="ui">Nova OS</span> (no celular, o botão flutuante "OS") abre a janela <span class="ui">Nova Ordem de Serviço</span>, dividida em três etapas numeradas: <span class="ui">Cliente e Serviço</span>, <span class="ui">Equipamentos e Checklists</span> e <span class="ui">Agendamento e Detalhes</span>.</p>
+
+  <p>A primeira decisão é uma chave centralizada no topo, com dois lados:</p>
+
+  <table class="dados">
+    <thead><tr><th>Modo</th><th>Quando usar</th><th>O que a tela pede</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Cliente cadastrado</span></td>
+        <td>Cliente que já está na sua base</td>
+        <td>Um campo de busca <span class="ui">Cliente *</span> que procura por nome e mostra o documento ou e-mail como apoio. Ao lado, um botão de mais (+) para <span class="ui">Criar cliente</span> na hora, sem sair do formulário.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Cliente avulso</span></td>
+        <td>Chamado de quem ainda não é cliente: emergência, indicação, primeira visita</td>
+        <td>Campos diretos: <span class="ui">Nome *</span>, <span class="ui">Telefone</span>, <span class="ui">CEP</span>, <span class="ui">Endereço</span>, <span class="ui">Bairro</span> e <span class="ui">UF / Cidade</span>. O aviso na tela é: "O cliente será criado automaticamente com os dados abaixo."</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    "Cliente avulso" <b>não</b> quer dizer OS sem cliente. Ao salvar, o sistema cria a ficha do cliente com os dados que você digitou e vincula a OS a ela. Ou seja: aquele cliente passa a existir na sua base, com o nome que você escreveu. Se ele já existia com outro nome, você acabou de criar um duplicado. Na dúvida, use <span class="ui">Cliente cadastrado</span> e busque primeiro.
+  </div>
+
+  <p>Ainda na etapa 1 fica o campo <span class="ui">Tipo de Serviço</span>, também com busca, mostrando a bolinha de cor de cada serviço e a categoria como subtítulo. A primeira opção da lista é <span class="ui">Nenhum</span>, que é válida. Ao lado, um botão de mais (+) para criar um tipo de serviço na hora.</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>O botão <span class="ui">Próximo</span> só libera quando há cliente escolhido (ou, no modo avulso, um nome preenchido).</li>
+    <li>Trocar o cliente limpa a seleção de equipamento, porque o equipamento pertence ao cliente.</li>
+    <li>Trocar o tipo de serviço muda a lista de checklists disponíveis na etapa 2 e pode fazer o bloco de equipamentos aparecer ou sumir.</li>
+    <li>Ao criar o cliente ou o tipo de serviço pelo botão de mais (+), o item recém-criado já vem selecionado.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t5-nova-os-etapa1.png" alt="Janela Nova Ordem de Serviço na Etapa 1 de 3 (Cliente e Serviço), com a chave Cliente cadastrado/Cliente avulso, o campo Cliente com busca vazio, a chave Endereço de serviço (diferente do cliente) desligada e o campo Tipo de Serviço em Nenhum, botão Próximo desativado">
+    <figcaption>Etapa 1 da Nova OS: escolha de cliente, endereço de serviço e tipo de serviço.</figcaption>
+  </figure>
+
+  <h3>O rascunho que o formulário guarda</h3>
+
+  <p>Enquanto a janela de <b>criação</b> está aberta, o sistema guarda o que você digitou naquele aparelho. Se o navegador fechar, a internet cair ou você sair sem querer, ao abrir <span class="ui">Nova OS</span> de novo aparece um aviso perguntando se você quer <b>retomar</b> o rascunho ou <b>descartar</b>. Retomando, os campos voltam preenchidos, inclusive o cliente e o tipo de serviço escolhidos.</p>
+
+  <div class="regra">
+    O rascunho vale só para <b>OS nova</b>. Ao <b>editar</b> uma OS existente, não existe rascunho: se você fechar sem salvar, as mudanças se perdem. O rascunho também é apagado assim que a OS é criada com sucesso.
+  </div>
+
+  <h2>3. Criar OS — Etapa 2: equipamentos e checklists (e quando essa etapa nem aparece)</h2>
+
+  <p>A etapa 2 se chama <span class="ui">Equipamentos e Checklists</span> e tem dois blocos.</p>
+
+  <h3>Bloco Equipamentos</h3>
+
+  <p>Aparece quando o tipo de serviço escolhido está marcado como <b>vinculado a equipamento</b> (o padrão de todo serviço novo) ou quando nenhum tipo de serviço foi escolhido. Ele lista os equipamentos daquele cliente com caixinha de seleção, foto, marca, modelo, local e identificador.</p>
+
+  <ul>
+    <li>Com mais de um equipamento, aparecem os botões <span class="ui">Selecionar todos</span> e <span class="ui">Desmarcar todos</span>.</li>
+    <li>Ao marcar um equipamento, abre embaixo dele um painel de <b>checklists daquele equipamento</b>. Ali você adiciona um ou mais checklists, cada um vira um selo removível.</li>
+    <li>O ícone de olho pré-visualiza o checklist escolhido, para você conferir as perguntas antes de mandar o técnico.</li>
+    <li>Botão de mais (+) ao lado cria um equipamento novo para aquele cliente sem fechar a janela.</li>
+  </ul>
+
+  <div class="regra">
+    <b>A etapa 2 nunca some por completo.</b> Mesmo com um serviço que não exige equipamento, ela continua na sequência, porque ela também guarda os <b>Checklists avulsos</b>. O que some é apenas o bloco de equipamentos. A explicação na tela é: "Checklists a nível de OS, sem equipamento vinculado."
+  </div>
+
+  <!-- PRINT FALTANDO: t5-nova-os-etapa2 — Etapa 2 "Equipamentos e Checklists" com um equipamento marcado e o painel de checklists dele aberto. Exige avançar a etapa com um cliente escolhido; nenhuma ação de salvar. -->
+
+  <h3>Bloco Checklists avulsos</h3>
+
+  <p>Sempre visível. São checklists que valem para a OS inteira, sem estar amarrados a nenhuma máquina. Serve para "roteiro de chegada", "conferência de segurança", "pesquisa de ambiente". Também com pré-visualização pelo ícone de olho.</p>
+
+  <p>A lista de checklists oferecida em qualquer um dos dois blocos já vem filtrada: só aparecem os checklists <b>ativos</b> e que estejam habilitados para o tipo de serviço escolhido (ou habilitados para todos os serviços).</p>
+
+  <h2>4. Criar OS — Etapa 3: técnico e/ou equipe, data, duração, descrição</h2>
+
+  <p>A terceira etapa se chama <span class="ui">Agendamento e Detalhes</span>.</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Responsáveis</span></td>
+        <td>Não</td>
+        <td>Seletor único que aceita <b>técnicos individuais e equipes ao mesmo tempo</b>. As equipes aparecem numa seção própria chamada <span class="ui">Equipes</span>. Tem <span class="ui">Marcar todos</span> e <span class="ui">Desmarcar todos</span>.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Data Agendada</span></td>
+        <td>Não (vem com a data de hoje, ou o dia clicado na agenda)</td>
+        <td>Seletor de data do próprio aparelho.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Horário</span></td>
+        <td>Não (vem com a hora atual, ou o horário clicado na agenda)</td>
+        <td>Seletor de hora.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Duração</span></td>
+        <td>Não (padrão 2 horas)</td>
+        <td>Lista fechada: 15 min, 30 min, 45 min, 1 hora, 1h30, 2 horas, 3 horas, 4 horas, 5 horas, 6 horas e 8 horas. É o tamanho do bloco na agenda.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Descrição do Serviço</span></td>
+        <td>Não</td>
+        <td>O que precisa ser feito. É o texto que o técnico lê primeiro no celular.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Observações</span></td>
+        <td>Não</td>
+        <td>Anotações extras.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="dica">
+    <b>Duração não é obrigação, é planejamento.</b> Ela define o tamanho do compromisso na agenda e ajuda a não empilhar três serviços de 4 horas no mesmo turno. Ela não bloqueia nada quando o técnico demora mais.
+  </div>
+
+  <p>O botão final é <span class="ui">Criar OS</span>. Com recorrência ligada, ele muda para <span class="ui">Criar OS Recorrentes</span>. A confirmação é "Ordem de serviço criada com sucesso!". Se algo der errado, aparece "Erro ao criar OS" com o detalhe do problema.</p>
+
+  <h2>5. Recorrência da OS (diária, semanal, quinzenal, mensal, anual, personalizada)</h2>
+
+  <p>Ainda na etapa 3, há um bloco com a chave <span class="ui">Recorrência</span>. Ligando, aparecem três campos: <span class="ui">Frequência</span>, <span class="ui">A cada</span> e <span class="ui">Até</span>. Para semanal e personalizado, aparece também <span class="ui">Repetir em:</span> com os sete dias da semana em botõezinhos.</p>
+
+  <table class="dados">
+    <thead><tr><th>Frequência</th><th>Como o sistema gera as datas</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Diária</span></td><td>A cada N dias, a partir da data agendada, até a data limite.</td></tr>
+      <tr><td><span class="ui">Semanal</span></td><td>A cada N semanas.</td></tr>
+      <tr><td><span class="ui">Quinzenal</span></td><td>A cada 2 semanas vezes N.</td></tr>
+      <tr><td><span class="ui">Mensal</span></td><td>A cada N meses.</td></tr>
+      <tr><td><span class="ui">Personalizado</span></td><td>Com dias da semana marcados, gera uma OS em cada dia marcado, semana após semana, até a data limite.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>Dois cuidados na recorrência.</b><br>
+    1) O campo <span class="ui">Até</span> é o que faz a série existir. Sem data limite preenchida, o sistema cria <b>apenas uma OS</b>, na data agendada, sem nenhum aviso de que a recorrência foi ignorada. Sempre preencha o "Até".<br>
+    2) A opção <span class="ui">Anual</span> aparece na lista de frequências, mas hoje ela <b>não multiplica a OS</b>: o resultado é uma única OS, na data agendada. O mesmo acontece com <span class="ui">Personalizado</span> quando nenhum dia da semana está marcado. Para repetição anual, o caminho hoje é criar as OS manualmente ou usar um contrato recorrente.
+  </div>
+  <!-- INCERTO: "Anual" na recorrência da OS não gera ocorrências no código atual (o laço de geração trata daily/weekly/biweekly/monthly e interrompe nos demais). Reportado ao Tech Lead como bug; confirmar se o texto acima deve continuar no guia ou se o comportamento vai ser corrigido. -->
+
+  <p>Ao concluir, a mensagem mostra quantas OS foram criadas: "N OS(s) criada(s) com recorrência!". Todas as OS da série ficam ligadas entre si, e é isso que permite editar ou excluir a série inteira depois.</p>
+
+  <h3>Editar e excluir uma OS que faz parte de uma série</h3>
+
+  <ul>
+    <li>Ao <b>editar</b> uma OS de recorrência, aparece a pergunta <span class="ui">Editar recorrência</span>: "Esta OS faz parte de uma recorrência. Deseja aplicar as alterações apenas nesta OS ou em todas da recorrência?", com os botões <span class="ui">Apenas esta</span> e <span class="ui">Todas da recorrência</span>. Escolhendo todas, o sistema aplica nas ocorrências <b>futuras</b> (de hoje em diante) e mostra "N OS(s) da recorrência atualizadas!". Data e horário nunca são propagados em massa, para não bagunçar o calendário.</li>
+    <li>Ao <b>excluir</b>, a pergunta é "Esta OS faz parte de uma recorrência. O que deseja fazer?", com <span class="ui">Excluir apenas esta</span> e <span class="ui">Excluir todas da recorrência</span>. A opção de excluir todas remove somente as ocorrências de hoje em diante: o histórico passado fica.</li>
+  </ul>
+
+  <h3>OS que veio de contrato</h3>
+
+  <p>Se a OS foi gerada por um contrato e você muda a <b>data</b>, aparece <span class="ui">Alterar data da recorrência?</span> com o texto "Esta OS pertence a um contrato recorrente. Deseja ajustar apenas esta data ou todas as ocorrências futuras?". Escolhendo <span class="ui">Esta e futuras</span>, o sistema desloca todas as visitas seguintes daquele contrato pelo mesmo número de dias e avisa "N ocorrência(s) futura(s) ajustada(s)".</p>
+
+  <div class="dica">
+    Esse deslocamento em bloco é o que salva quando o cliente pede para adiar a manutenção mensal em uma semana: você move uma visita e o calendário inteiro do contrato acompanha, mantendo o intervalo.
+  </div>
+
+  <h2>6. Endereço de serviço diferente do endereço do cliente</h2>
+
+  <p>Na etapa 1 existe um bloco com a chave <span class="ui">Endereço de serviço (diferente do cliente)</span>. A explicação na tela é direta: "O atendimento será feito neste endereço (filial, obra, evento). Quando vazio, usa o endereço do cliente."</p>
+
+  <p>Ligando a chave, aparecem os campos <span class="ui">CEP</span>, <span class="ui">Endereço</span>, <span class="ui">Número</span>, <span class="ui">Bairro</span>, <span class="ui">UF / Cidade</span>. O CEP preenche o resto sozinho.</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Ao salvar, o sistema tenta localizar as coordenadas desse endereço para o mapa. Se não conseguir, salva o endereço em texto assim mesmo e o mapa usa o endereço escrito.</li>
+    <li>Esse endereço é <b>a prioridade</b> na navegação do técnico: os botões de Waze e Google Maps no celular dele apontam para o endereço do serviço, não para o do cliente.</li>
+    <li>No celular do técnico, o endereço aparece destacado com a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."</li>
+    <li>Desligar a chave apaga o endereço de serviço da OS e ela volta a usar o do cliente.</li>
+    <li>Ao <b>editar</b> uma OS que já tem endereço de serviço, a chave já vem ligada e os campos preenchidos.</li>
+  </ul>
+
+  <h2>7. O toggle "gerar Pesquisa de Satisfação ao finalizar"</h2>
+
+  <p>No fim da etapa 3 existe um bloco com uma estrela e a pergunta <span class="ui">Gerar Pesquisa de Satisfação ao finalizar?</span>, com uma chave <span class="ui">Não</span> / <span class="ui">Sim</span>.</p>
+
+  <ul>
+    <li>Em <b>OS nova</b>, a chave já vem no padrão da empresa, definido em <span class="ui">Configurações de NPS</span> pela linha "Gerar pesquisa ao finalizar OS (padrão)". A explicação lá é: "Padrão aplicado a novas OS. Pode ser ajustado caso a caso na própria OS."</li>
+    <li>Em <b>OS existente</b>, a chave reflete o que foi escolhido naquela OS. Se nunca foi escolhido nada, ela mostra o padrão da empresa.</li>
+    <li>Quando a OS é finalizada, o cliente recebe, no mesmo link público da OS, o convite para avaliar de 0 a 10 e por estrelas nos critérios que a empresa configurou.</li>
+  </ul>
+
+  <div class="dica">
+    Deixe ligado por padrão e desligue caso a caso quando não fizer sentido pedir nota: garantia, retorno de reclamação, visita interna, serviço para a própria empresa. Pedir avaliação num atendimento de garantia costuma render nota baixa por um problema que não é do técnico.
+  </div>
+
+  <h2>8. Mover status arrastando, e o "+" no topo da coluna que já nasce com aquele status</h2>
+
+  <p>No kanban, cada coluna é um status. Para mudar o status de uma OS, <b>arraste o cartão</b> de uma coluna para outra. A mudança é imediata, sem confirmação, e aparece "OS atualizada com sucesso!".</p>
+
+  <p>Passando o mouse sobre um cartão, aparecem dois botões no canto superior direito: o lápis, que abre a edição (laranja no hover), e a lixeira, que abre a exclusão (vermelha no hover). Cada botão só aparece para quem tem a permissão correspondente. No canto inferior direito do cartão aparece o avatar de quem criou a OS, com o nome no tooltip.</p>
+
+  <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Reabrir</span>, <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída.</p>
+
+  <h3>O "+" no cabeçalho da coluna</h3>
+
+  <p>Cada coluna do kanban tem, ao lado da contagem, um botão de mais (+). Ele abre a janela <span class="ui">Nova Ordem de Serviço</span> já com o status daquela coluna. É o atalho para quem recebe um chamado que já entra "agendado" ou já entra "em andamento", sem ter que criar em pendente e arrastar depois.</p>
+
+  <div class="regra">
+    O botão de mais (+) <b>não aparece</b> nas colunas de <b>Concluída</b> e <b>Cancelada</b>. Criar uma OS já nascendo concluída seria uma armadilha: nunca teria check-in, checklist nem assinatura, e apareceria nos indicadores como serviço entregue. Se você precisa registrar um serviço já feito, crie normalmente e finalize em seguida.
+  </div>
+
+  <h2>9. Configurar Status: criar status próprio, cor e ordem</h2>
+
+  <p>O botão <span class="ui">Configurações</span> no topo da tela (no celular, dentro do painel de filtros, em <span class="ui">Gerenciar status de OS</span>) abre a janela <span class="ui">Configurações de OS</span>. É ali que vive a lista de status da sua empresa.</p>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>No bloco <span class="ui">Novo status</span>, digite o nome no campo <span class="ui">Nome do status</span>.</li>
+    <li>Escolha a cor no quadradinho ao lado.</li>
+    <li>Clique em <span class="ui">Criar</span>. A confirmação é "Status criado!".</li>
+    <li>Para renomear ou trocar a cor, use o menu de três pontos da linha e escolha <span class="ui">Editar</span>. Salvando, aparece "Status atualizado!".</li>
+    <li>Para mudar a ordem das colunas do kanban, <b>arraste</b> a linha do status pela alça à esquerda. A confirmação é "Ordem dos status atualizada!".</li>
+    <li>Para remover, use <span class="ui">Excluir</span> no mesmo menu. O aviso é "Tem certeza? OS com este status podem ser afetadas."</li>
+  </ol>
+
+  <figure>
+    <img src="img/t5-configurar-status.png" alt="Janela Configurações de OS com o bloco Novo status (campo de nome, seletor de cor e botão Criar) e a lista de status Agendada, Pendente, A Caminho, Em Andamento, Concluída, Pausada e Cancelada, cada um com bolinha de cor, chave interna em letra de máquina e alça de arrastar à esquerda">
+    <figcaption>Configurações de OS: os sete status de reserva, com a chave interna à direita de cada nome.</figcaption>
+  </figure>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Cada status tem um <b>nome</b> (o que todo mundo vê) e uma <b>chave</b> interna (mostrada em cinza ao lado, em letra de máquina). A chave é gerada a partir do nome, sem acento e com underline no lugar de espaço.</li>
+    <li>A ordem dos status é a ordem das colunas do kanban e a ordem do filtro de status.</li>
+    <li>Os status vêm por empresa. O que você cria aqui não afeta ninguém mais.</li>
+    <li>Enquanto a empresa não tiver nenhum status próprio, o sistema usa a lista de reserva: Agendada, Pendente, A Caminho, Em Andamento, Pausada, Concluída e Cancelada.</li>
+  </ul>
+
+  <div class="aviso">
+    Excluir um status que já está em uso é o caminho mais rápido para deixar OS "órfãs", que somem das colunas do kanban porque a coluna delas deixou de existir. Antes de excluir, filtre por aquele status, mova as OS para outro e só então apague.
+  </div>
+
+  <div class="perigo">
+    <b>Nesta janela não existe configuração de campos obrigatórios por status, nem prazo de atendimento (SLA), nem prefixo geral da numeração.</b> A janela <span class="ui">Configurações de OS</span> hoje faz uma coisa só: gerenciar os status (criar, renomear, recolorir, reordenar e excluir). O prefixo de numeração de cada OS vem do <b>tipo de serviço</b>, na tela de Serviços.
+  </div>
+
+  <h2>10. Filtros, busca e por que a busca ignora o filtro de período</h2>
+
+  <p>A tela tem três controles de recorte, e a ordem em que eles conversam é a principal fonte de dúvida do suporte:</p>
+
+  <table class="dados">
+    <thead><tr><th>Controle</th><th>Onde fica</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td>Período</td><td>Barra no topo (no celular, dentro de <span class="ui">Filtros</span>)</td><td>Recorta por data agendada. Começa em "este mês".</td></tr>
+      <tr><td><span class="ui">Status</span></td><td>Botão <span class="ui">Filtros</span></td><td>Marca um ou mais status. Nenhum marcado significa todos.</td></tr>
+      <tr><td>Busca</td><td>Campo com lupa</td><td>"Buscar por cliente ou número..." no computador, "Buscar OS..." no celular.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Por que a busca ignora período e status</h3>
+
+  <p>Assim que você digita qualquer coisa na busca, aparece embaixo do campo a frase: <b>"Mostrando resultados de todas as OS (filtros pausados)"</b>. Isso é de propósito.</p>
+
+  <div class="regra">
+    Quando você busca, você está procurando <b>uma OS específica</b>, e quase nunca lembra em que mês ela foi ou em que status ela parou. Se a busca respeitasse o período "este mês", a OS de março do ano passado simplesmente não apareceria, e a impressão seria de que o sistema perdeu o dado. Por isso a busca varre <b>tudo</b>: todas as datas, todos os status. Apagou a busca, os filtros voltam a valer.
+  </div>
+
+  <p>A busca procura por: nome do cliente, código completo da OS (por exemplo MP-2026-000123), só o número, nome do tipo de serviço, título da tarefa e nome do equipamento. Ela tolera acento e diferença de maiúscula.</p>
+
+  <h2>11. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente</h2>
+
+  <p>Existe um único endereço de OS que serve para três públicos diferentes, e o que muda é <b>quem está olhando</b>:</p>
+
+  <table class="dados">
+    <thead><tr><th>Quem abre</th><th>O que vê</th></tr></thead>
+    <tbody>
+      <tr><td>Técnico ou gestor logado, OS em aberto</td><td>A tela de execução: botão de <span class="ui">A Caminho</span>, <span class="ui">Fazer Check-in</span>, os checklists, as fotos, as assinaturas e o botão de finalizar.</td></tr>
+      <tr><td>Técnico ou gestor logado, OS concluída</td><td>O relatório completo do serviço, com botões de baixar PDF, imprimir e copiar link.</td></tr>
+      <tr><td>Cliente, sem login</td><td>O mesmo relatório, em modo somente leitura, mais o acompanhamento em tempo real quando o técnico está a caminho, mais a pesquisa de satisfação quando a OS foi concluída e a pesquisa está habilitada.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Abrir como técnico sendo gestor</h3>
+
+  <p>Na lista e no kanban, o menu de ações de cada OS tem <span class="ui">Abrir como técnico</span>, que abre a tela de execução em outra aba. É como o gestor confere o preenchimento, corrige uma foto ou finaliza uma OS que o técnico esqueceu de fechar.</p>
+
+  <h3>Compartilhar com o cliente</h3>
+
+  <p>Os caminhos que geram o link certo, no formato amigável <code>dominex.app/os-tecnico/nome-do-cliente-servico-CODIGO?modo=cliente</code>, são:</p>
+  <ul>
+    <li>Dentro da própria OS aberta pelo técnico ou gestor: <span class="ui">Copiar link do cliente</span> no menu de ações.</li>
+    <li>No relatório da OS concluída: o botão de copiar link.</li>
+    <li>Na <b>Agenda</b>, no resumo da OS: <span class="ui">Copiar link de acompanhamento do cliente</span>.</li>
+  </ul>
+
+  <p>O link não tem senha e não expira: quem tiver o endereço vê aquela OS. Ele mostra só aquela OS, nunca o resto da sua base.</p>
+
+  <!-- INCERTO: o botão "Link OS" do resumo de OS (dentro da tela Ordens de Serviço) copia um endereço /acompanhamento/<id> que não existe entre as rotas do app e cai na página de "não encontrado". Reportado ao Tech Lead. Enquanto não for corrigido, o guia orienta usar os três caminhos acima. -->
+
+  <h3>Aviso extra em OS de contrato PMOC</h3>
+
+  <p>Quando a OS pertence a um contrato PMOC, a janela de edição mostra uma faixa de identificação no topo e, no campo de descrição, um aviso amarelo: "Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade, escreva pensando em quem está do outro lado (cliente, fiscal sanitário)." <b>Isso não é erro.</b> É um lembrete de que aquele texto é público.</p>
+
+  <h2>12. Aba Relatório: leitura do dashboard de OS</h2>
+
+  <p>A aba <span class="ui">Relatório</span> transforma as OS em números. Ela respeita o mesmo recorte de período da tela.</p>
+
+  <h3>Os quatro indicadores</h3>
+  <ul>
+    <li><span class="ui">Total de OS</span>: quantas OS entraram no período.</li>
+    <li><span class="ui">Taxa de conclusão</span>: percentual de concluídas, com a linha de apoio "N concluídas".</li>
+    <li><span class="ui">Tempo médio</span>: quanto tempo, em média, uma OS levou.</li>
+    <li><span class="ui">Faturamento</span>: soma dos valores das OS do período.</li>
+  </ul>
+
+  <h3>Os gráficos</h3>
+  <ul>
+    <li><span class="ui">OS por Status</span>: rosca com a cor de cada status. Serve para ver gargalo: muita OS parada em "A Caminho" é rota mal planejada, muita em "Pausada" é serviço que não fecha.</li>
+    <li><span class="ui">OS por Tipo de Serviço</span>: barras. Mostra o que a empresa realmente vende, que às vezes não é o que ela acha que vende.</li>
+    <li><span class="ui">Volume de OS ao Longo do Tempo</span>: linha por mês. Revela sazonalidade (verão, período de chuva, fim de ano).</li>
+    <li><span class="ui">Faturamento ao Longo do Tempo</span>: linha por mês, em reais.</li>
+    <li><span class="ui">OS por Dia da Semana</span>: barras. Ajuda a decidir escala e plantão.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t5-aba-relatorio.png" alt="Aba Relatório de Ordens de Serviço com os indicadores Total de OS, Taxa de conclusão, Tempo médio e Faturamento, e os gráficos OS por Status (rosca) e OS por Tipo de Serviço (barras), em uma conta de exemplo com todas as OS ainda agendadas">
+    <figcaption>Aba Relatório: indicadores e gráficos do período escolhido no topo.</figcaption>
+  </figure>
+
+  <h3>Os dois rankings</h3>
+  <ul>
+    <li><span class="ui">Top 10 Clientes</span>: colunas <span class="ui">Cliente</span>, <span class="ui">OS</span> e <span class="ui">Valor Total</span>.</li>
+    <li><span class="ui">Top Técnicos (Concluídas)</span>: colunas <span class="ui">Técnico</span>, <span class="ui">OS</span> e <span class="ui">Tempo Médio</span>.</li>
+  </ul>
+
+  <p>Onde não houver dado no período, o gráfico mostra "Sem dados". Isso quase sempre significa período muito estreito, não falta de informação.</p>
+
+  <h2>13. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator</h2>
+
+  <p>A aba <span class="ui">NPS e Satisfação</span> reúne o que os clientes responderam nas pesquisas geradas ao finalizar OS.</p>
+
+  <h3>Os quatro indicadores</h3>
+  <ul>
+    <li><span class="ui">NPS Score</span>: o índice, calculado como percentual de promotores menos percentual de detratores.</li>
+    <li><span class="ui">Média Geral</span>: média das estrelas dos critérios.</li>
+    <li><span class="ui">Respostas</span>: quantas pesquisas foram respondidas.</li>
+    <li><span class="ui">Taxa de Resposta</span>: quantas responderam sobre quantas foram enviadas, com o rótulo "de retorno".</li>
+  </ul>
+
+  <h3>As três faixas</h3>
+  <table class="dados">
+    <thead><tr><th>Faixa</th><th>Nota</th><th>O que significa na prática</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Promotores</span></td><td>9 a 10</td><td>Cliente satisfeito, que indica você. É de onde vem indicação e avaliação no Google.</td></tr>
+      <tr><td><span class="ui">Neutros</span></td><td>7 a 8</td><td>Cliente atendido, sem encantamento. Não reclama, mas troca de fornecedor por preço.</td></tr>
+      <tr><td><span class="ui">Detratores</span></td><td>0 a 6</td><td>Cliente insatisfeito. É o que exige ação hoje.</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t5-aba-nps.png" alt="Aba NPS e Satisfação com os indicadores NPS Score, Média Geral, Respostas e Taxa de Resposta, o gráfico de Distribuição NPS com percentuais de promotores, neutros e detratores, e os blocos Média por Categoria e Ranking de Técnicos vazios por falta de avaliação no período">
+    <figcaption>Aba NPS e Satisfação: distribuição entre promotores, neutros e detratores do período.</figcaption>
+  </figure>
+
+  <h3>Detratores em aberto</h3>
+
+  <p>Existe um bloco chamado <span class="ui">Detratores em Aberto</span>, com o selo <span class="ui">Atenção</span>. É a fila de clientes que deram nota baixa e ainda não foram tratados. Junto vem o <span class="ui">Feed de Feedbacks</span>, com o comentário aberto que o cliente escreveu, filtrável por classificação e por técnico. Quando não há nada no período, as mensagens são "Nenhum detrator em aberto no período." e "Nenhum feedback no período".</p>
+
+  <p>Há ainda o <span class="ui">Ranking de Técnicos</span>, com a nota média por técnico e o número de respostas.</p>
+
+  <h3>Configurações da pesquisa</h3>
+
+  <p>O botão <span class="ui">Configurações</span> dentro da aba abre <span class="ui">Configurações de NPS</span>, onde você define: o texto da pergunta de 0 a 10, se a avaliação por estrelas é <span class="ui">Opcional</span> ou <span class="ui">Obrigatória</span>, os critérios avaliados por estrelas (você cria, renomeia e reordena), o padrão de gerar pesquisa ao finalizar OS, e o convite para avaliar no Google. Se o usuário não for da gestão, aparece o aviso "Somente a gestão pode alterar estas configurações."</p>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Sumiram minhas OS"</td>
+        <td>Filtro de período em "este mês"</td>
+        <td>O topo da tela recorta por data agendada e começa em "este mês". Mude o período. Se for procurar uma OS específica, use a busca: ela ignora período e status de propósito, e a tela mostra "Mostrando resultados de todas as OS (filtros pausados)".</td>
+      </tr>
+      <tr>
+        <td>"Criei a recorrência anual e só veio uma OS"</td>
+        <td>Frequência <span class="ui">Anual</span>, que hoje não multiplica</td>
+        <td>Confirme com o cliente que a frequência escolhida foi Anual. Hoje ela não gera as ocorrências seguintes. O caminho seguro é montar as visitas por um contrato recorrente ou lançar as OS manualmente. Registre o caso no suporte.</td>
+      </tr>
+      <tr>
+        <td>"Liguei recorrência semanal e veio uma OS só"</td>
+        <td>Campo <span class="ui">Até</span> vazio</td>
+        <td>Sem data limite, a série não é gerada e nenhum aviso aparece. Peça para editar a OS, ligar a recorrência de novo com o "Até" preenchido, ou criar novamente.</td>
+      </tr>
+      <tr>
+        <td>"Perdi tudo que eu tinha digitado na OS"</td>
+        <td>Fechou a janela de edição sem salvar</td>
+        <td>O rascunho automático só existe na criação de OS nova. Na edição, fechar sem salvar descarta. Ao criar, ao reabrir <span class="ui">Nova OS</span> o sistema pergunta se quer retomar o rascunho.</td>
+      </tr>
+      <tr>
+        <td>"Não acho o botão de exigir assinatura na OS"</td>
+        <td>Esse botão não existe na criação de OS</td>
+        <td>Explique com clareza: <b>não existe uma chave de "exigir assinatura" na tela de criar ou editar OS</b>. A exigência de assinatura do técnico é ligada automaticamente nas OS geradas por <b>contrato</b>. Para OS avulsa, a assinatura é colhida quando o checklist tem uma pergunta do tipo <span class="ui">Assinatura</span>.</td>
+      </tr>
+      <tr>
+        <td>"Concluí a OS e o estoque não baixou"</td>
+        <td>Comportamento correto do sistema</td>
+        <td>Concluir OS <b>não</b> mexe em saldo de estoque. A baixa acontece na conversão de um orçamento em OS (os materiais do orçamento saem do estoque) e nos ajustes e inventários da tela de Estoque.</td>
+      </tr>
+      <tr>
+        <td>"A coluna do kanban sumiu"</td>
+        <td>O status foi excluído em Configurações de OS</td>
+        <td>Recrie o status com a mesma chave, ou mova as OS afetadas para um status existente pela lista.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo criar OS, o botão não aparece"</td>
+        <td>Falta a permissão <span class="ui">Criar OS</span></td>
+        <td>Sem essa permissão, o botão <span class="ui">Nova OS</span>, o botão flutuante e o mais (+) das colunas ficam ocultos. Ajuste em Configurações → Usuários e Permissões.</td>
+      </tr>
+      <tr>
+        <td>"Mandei o link para o cliente e deu página não encontrada"</td>
+        <td>Link copiado pelo caminho errado</td>
+        <td>Use o link do <b>relatório da OS</b>, o <span class="ui">Copiar link do cliente</span> de dentro da OS aberta, ou o <span class="ui">Copiar link de acompanhamento do cliente</span> do resumo na Agenda. O endereço certo tem o formato <code>dominex.app/os-tecnico/...?modo=cliente</code>.</td>
+      </tr>
+      <tr>
+        <td>"O cliente não recebeu a pesquisa de satisfação"</td>
+        <td>Pesquisa desligada na OS ou no padrão da empresa</td>
+        <td>A pesquisa não é enviada por e-mail: ela aparece no <b>mesmo link público da OS</b> depois de concluída. Confira a chave <span class="ui">Gerar Pesquisa de Satisfação ao finalizar?</span> na OS e o padrão em Configurações de NPS.</td>
+      </tr>
+      <tr>
+        <td>"Aparece um aviso amarelo estranho ao editar a OS"</td>
+        <td>OS de contrato PMOC</td>
+        <td>Não é erro. É o lembrete de que os primeiros 200 caracteres da descrição podem aparecer no portal público daquela unidade. Escreva pensando em quem vai ler do outro lado.</td>
+      </tr>
+      <tr>
+        <td>"Excluí a OS e sumiram as fotos e o checklist"</td>
+        <td>Comportamento esperado</td>
+        <td>Excluir OS remove junto as respostas de checklist, as fotos, a avaliação do cliente e as movimentações de estoque ligadas àquela OS. Não tem como desfazer. Para tirar da operação sem perder histórico, use o status <b>Cancelada</b> em vez de excluir.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Dá para exigir que o cliente assine antes de finalizar a OS?</dt>
+    <dd>Não existe uma chave de "exigir assinatura" na criação da OS. A exigência de assinatura do <b>técnico</b> é ligada sozinha nas OS geradas por contrato. Para pedir a assinatura do cliente numa OS avulsa, coloque uma pergunta do tipo <span class="ui">Assinatura</span> no checklist e marque como campo obrigatório: aí o técnico não fecha a OS sem colher.</dd>
+
+    <dt>Concluir a OS dá baixa nos materiais usados?</dt>
+    <dd>Não. Concluir OS não mexe em estoque. A baixa acontece quando um orçamento com materiais é convertido em OS, e nos lançamentos manuais e inventários da tela de Estoque.</dd>
+
+    <dt>Posso colocar um técnico e uma equipe na mesma OS?</dt>
+    <dd>Pode. O campo <span class="ui">Responsáveis</span> aceita técnicos individuais e equipes ao mesmo tempo, no mesmo seletor.</dd>
+
+    <dt>Como registro um serviço que já foi feito ontem?</dt>
+    <dd>Crie a OS normalmente com a data de ontem e depois mude o status para concluída, pelo kanban ou pelo resumo da OS. O sistema não deixa criar OS já nascendo concluída pelo mais (+) da coluna, e isso é proposital.</dd>
+
+    <dt>Qual a diferença entre cancelar e excluir uma OS?</dt>
+    <dd>Cancelar é um status: a OS continua existindo, sai dos indicadores de aberto e o histórico fica. Excluir apaga a OS e junto dela as respostas de checklist, as fotos e a avaliação. Para quase todo caso, cancele.</dd>
+
+    <dt>Mudei uma OS de uma série recorrente e ela perguntou se era para aplicar em todas. O que acontece com as antigas?</dt>
+    <dd>Escolhendo "Todas da recorrência", o sistema aplica nas ocorrências de hoje em diante. As datas passadas ficam como estão, e data e horário nunca são propagados em massa.</dd>
+
+    <dt>O link que mando para o cliente tem senha?</dt>
+    <dd>Não. É um endereço único e difícil de adivinhar, sem login e sem prazo de validade. Ele mostra apenas aquela OS. Se você não quer que circule, não mande.</dd>
+
+    <dt>Posso criar status como "Aguardando peça" ou "Aguardando cliente"?</dt>
+    <dd>Pode, e é um dos usos mais úteis da tela. Em <span class="ui">Configurações</span> crie o status, dê uma cor bem distinta e arraste para a posição certa na sequência. Ele vira coluna no kanban e opção no filtro na hora.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa para isso:</b> OS, ordem, chamado, atendimento, serviço, ficha de serviço, abrir chamado, quadro de OS, kanban, painel de serviços, número da OS, relatório de atendimento, link do cliente
+  </div>
+</section>

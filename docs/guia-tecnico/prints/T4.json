@@ -1,0 +1,76 @@
+{
+  "secao": "T4",
+  "prints": [
+    {
+      "id": "t4-tipo-servico-form",
+      "url": "/servicos?tab=types",
+      "legenda": "Janela Novo Tipo de Serviço com os campos Nome, Cor, Categoria, Descrição, Prefixo de Numeração OS, as chaves Vinculado a equipamento e Ativo, e o Preço padrão.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Tipo" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t4-tipo-servico-fiscal",
+      "url": "/servicos?tab=types",
+      "legenda": "Aba Fiscal da janela de tipo de serviço, com código de serviço, código de tributação municipal, item da LC 116, código NBS e alíquota de ISS.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Tipo" },
+        { "esperar": 1200 },
+        { "clicar": "Fiscal", "opcional": true },
+        { "esperar": 1200 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t4-categorias-servico",
+      "url": "/servicos?tab=types",
+      "legenda": "Janela Categorias de Serviço, onde se criam e organizam os agrupamentos dos tipos de serviço.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Categorias" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t4-tipos-tarefa",
+      "url": "/servicos?tab=task-types",
+      "legenda": "Aba Tipos de Tarefas, com a lista de categorias usadas na Nova Tarefa da Agenda.",
+      "passos": [{ "esperar": 2500 }],
+      "recorte": "main"
+    },
+    {
+      "id": "t4-checklists-lista",
+      "url": "/servicos?tab=checklists",
+      "legenda": "Aba Checklists, com a tabela de modelos e as colunas Nome, Perguntas, Serviços e Status.",
+      "passos": [{ "esperar": 2500 }],
+      "recorte": "main"
+    },
+    {
+      "id": "t4-catalogo-checklists",
+      "url": "/servicos?tab=checklists",
+      "legenda": "Catálogo de Checklists aberto, com o aviso de que são modelos sugeridos, a seção de modelos curados e a seção do catálogo PMOC.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Catálogo de Checklists" },
+        { "esperar": 2000 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t4-novo-checklist",
+      "url": "/servicos?tab=checklists",
+      "legenda": "Janela Novo Checklist, com o campo de nome e a chave Todos os serviços em Serviços habilitados.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo checklist" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}

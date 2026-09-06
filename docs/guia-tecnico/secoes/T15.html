@@ -1,0 +1,523 @@
+<section class="tutorial" id="t15">
+  <h1><span class="tcode">T15</span> Funcionários, Ponto e Folha</h1>
+
+  <p class="lead">Aqui vive o time interno da sua empresa: cadastro do funcionário, salário, vale, falta, bônus, ponto eletrônico batido pelo celular e a folha de pagamento caindo sozinha no financeiro. É o módulo que tira a planilha paralela de cima da mesa.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu lateral, <span class="ui">Funcionários</span>. O ponto do gestor, as equipes, o perfil comportamental e o organograma são abas dentro dessa mesma tela</span>
+    <span><b>Rotas:</b> <code>/funcionarios</code>, <code>/funcionarios/perfil/:codigo</code>, <code>/funcionarios/organograma</code>. O ponto do funcionário fica numa página pública, <code>/ponto/:codigo</code>, que abre sem login</span>
+    <span><b>Depende de:</b> T14 (Notas Fiscais)</span>
+    <span><b>Depende do módulo:</b> Funcionários / RH</span>
+    <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Funcionários</span>. A aba de ponto só aparece para administrador, gestor ou quem tem permissão de gerenciar ponto ou funcionários</span>
+  </div>
+
+  <h2>1. Tela Funcionários e suas 5 abas</h2>
+
+  <p>A tela se chama <span class="ui">Funcionários (RH)</span> e o subtítulo é "Gerencie funcionários, vales, pagamentos e extratos". Do lado esquerdo (no celular, num carrossel de pílulas) ficam as abas:</p>
+
+  <table class="dados">
+    <thead><tr><th>Aba</th><th>O que tem dentro</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Funcionários</span></td><td>A lista do time, com busca, ordenação e as ações de cada pessoa.</td></tr>
+      <tr><td><span class="ui">Equipes</span></td><td>Montagem das equipes que aparecem na agenda e nas ordens de serviço.</td></tr>
+      <tr><td><span class="ui">Controle de Ponto</span></td><td>O painel do gestor sobre o ponto: Hoje, Histórico, Relatório e Config.</td></tr>
+      <tr><td><span class="ui">Perfil Comportamental</span></td><td>Os perfis DISC do time.</td></tr>
+      <tr><td><span class="ui">Organograma</span></td><td>O quadro visual da estrutura da empresa.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">A aba <span class="ui">Controle de Ponto</span> só aparece para administrador, gestor ou usuário com permissão de gerenciar ponto ou gerenciar funcionários. Quem não tem essas permissões vê quatro abas, não cinco. Isso não é erro de carregamento.</div>
+
+  <div class="regra"><b>Não existe uma tela separada de ponto para o gestor.</b> O acompanhamento do ponto é uma aba dentro de Funcionários. O único endereço de ponto que existe fora daqui é o link público do funcionário, que é individual e serve só pra ele bater o ponto.</div>
+
+  <div class="regra">O endereço antigo <code>/equipes</code> não é mais uma tela. Ele redireciona pra <span class="ui">Funcionários</span>. As equipes vivem na aba <span class="ui">Equipes</span> daqui.</div>
+
+  <h3>Sem o módulo Funcionários / RH</h3>
+  <p>A tela inteira depende do módulo. Sem ele, ao clicar no menu ou abrir o endereço direto, o sistema devolve você pra tela inicial e abre um aviso explicando o que o módulo faz ("Gestão de funcionários, ponto eletrônico, movimentações financeiras de colaboradores") com o atalho para contratar. Como as <b>Equipes</b> moram aqui dentro, sem o módulo RH também não há como criar ou editar equipe.</p>
+
+  <h3>A lista de funcionários</h3>
+  <ul>
+    <li>Busca por nome ou cargo, ordenação <span class="ui">A-Z</span>, <span class="ui">Mais recente</span> ou <span class="ui">Mais antigo</span>, e alternância entre <span class="ui">Lista</span> e <span class="ui">Grade</span>.</li>
+    <li>Colunas: <span class="ui">Funcionário</span>, <span class="ui">Cargo</span>, <span class="ui">Contato</span>, <span class="ui">Salário</span>, <span class="ui">Saldo</span> e <span class="ui">Ações</span>.</li>
+    <li>O menu de ações de cada linha traz <span class="ui">Visualizar</span>, <span class="ui">Vale</span>, <span class="ui">Bônus</span>, <span class="ui">Falta</span>, <span class="ui">Pagamento</span>, <span class="ui">Editar</span>, <span class="ui">Excluir</span> e <span class="ui">Link do ponto</span>.</li>
+    <li>Sem ninguém cadastrado: "Nenhum funcionário cadastrado. Clique em 'Novo Funcionário' para começar."</li>
+  </ul>
+
+  <figure>
+    <img src="img/t15-funcionarios.png" alt="Tela Funcionários (RH) com as abas Funcionários, Equipes, Controle de Ponto, Perfil Comportamental e Organograma na lateral, e a lista de funcionários com colunas Funcionário, Cargo, Contato, Salário, Saldo e Ações">
+    <figcaption>Funcionários (RH): as abas na lateral e a lista do time com salário e saldo de cada pessoa.</figcaption>
+  </figure>
+
+  <h3>Excluir funcionário</h3>
+  <p>A confirmação muda conforme o caso:</p>
+  <ul>
+    <li>Sem usuário vinculado: "Excluir funcionário? Todos os dados e movimentações serão perdidos."</li>
+    <li>Com usuário do sistema vinculado: "Este funcionário está vinculado a um usuário do sistema. Deseja excluir o usuário também? Isso liberará o email para reutilização." As opções são <span class="ui">Excluir ambos</span> e <span class="ui">Só o funcionário</span>.</li>
+  </ul>
+
+  <h2>2. Cadastro: dados, foto, chave PIX, admissão</h2>
+
+  <p>O botão <span class="ui">Novo Funcionário</span> abre um formulário com três abas: <span class="ui">Dados</span>, <span class="ui">Pagamento</span> e <span class="ui">Perfil</span>. O botão de salvar fica fixo no rodapé, então dá pra salvar de qualquer aba. Ele é <span class="ui">Criar Funcionário</span> na criação e <span class="ui">Salvar</span> na edição.</p>
+
+  <h3>Campos da aba Dados</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td><b>Foto</b></td><td>Não</td><td>Toque no círculo pra <span class="ui">Adicionar foto do funcionário</span>. Limite de 5 MB, com o erro "Arquivo muito grande (máx 5MB)". Falhando o envio: "Erro ao enviar foto". A foto aparece na lista, no organograma e no painel de ponto.</td></tr>
+      <tr><td><span class="ui">Nome Completo</span></td><td>Sim</td><td>Único campo obrigatório da aba. Validação: "Nome é obrigatório".</td></tr>
+      <tr><td><span class="ui">CPF</span></td><td>Não</td><td>Sai impresso no recibo de pagamento e no holerite.</td></tr>
+      <tr><td><span class="ui">Telefone</span></td><td>Não</td><td>Aparece na coluna Contato da lista.</td></tr>
+      <tr><td><span class="ui">Email</span></td><td>Não, mas</td><td>Vira obrigatório se você ligar a criação de acesso ao sistema.</td></tr>
+      <tr><td><span class="ui">Cargo</span></td><td>Não</td><td>Exemplo sugerido na tela: "Técnico". Aparece na lista, no organograma e no holerite.</td></tr>
+      <tr><td><span class="ui">Endereço</span></td><td>Não</td><td>Endereço completo, usado nos documentos.</td></tr>
+      <tr><td><span class="ui">Data de Admissão</span></td><td>Não</td><td>Aparece no card do funcionário como <span class="ui">Admissão</span> e no holerite CLT.</td></tr>
+      <tr><td><span class="ui">Chave PIX</span></td><td>Não</td><td>"CPF, email, telefone ou chave aleatória". Serve pra você ter a chave à mão na hora de pagar, o sistema não faz o pagamento por você.</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t15-novo-funcionario-dados.png" alt="Formulário Novo Funcionário na aba Dados, com o círculo pontilhado Adicionar foto do funcionário, os campos Nome Completo, CPF e Telefone lado a lado, Email e Cargo lado a lado, Endereço em campo largo, e Data de Admissão e Chave PIX lado a lado, com o botão Criar Funcionário no rodapé">
+    <figcaption>Novo Funcionário, aba Dados: foto, identificação, contato e a chave PIX.</figcaption>
+  </figure>
+
+  <div class="dica">O formulário guarda rascunho do que você digitou. Se fechar sem querer no meio do cadastro, ao reabrir o sistema oferece continuar de onde parou.</div>
+
+  <h2>3. Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)</h2>
+
+  <div class="aviso">Na tela, esta aba se chama <span class="ui">Pagamento</span>, não "Remuneração". É a segunda das três abas do formulário do funcionário.</div>
+
+  <h3>Salário e custo mensal</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que o sistema faz com ele</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Salário</span></td><td>Sim</td><td>É a base de tudo: da folha gerada em Contas a Pagar, do cálculo de pagamento e da sugestão de valor de falta. Validação: "Salário é obrigatório".</td></tr>
+      <tr><td><span class="ui">Custo mensal total</span></td><td>Não</td><td>"Salário + encargos + benefícios". É quanto aquela pessoa custa de verdade pra empresa, número usado na precificação. Ao lado há o botão <span class="ui">Calcular</span>, que abre uma calculadora e devolve o valor com a composição.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Contrato de trabalho</h3>
+  <p>A seção <span class="ui">Contrato de trabalho</span> tem uma chave de <span class="ui">Regime</span>. Escolhendo CLT, aparecem os campos formais:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>O que é</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">CBO</span></td><td>Classificação Brasileira de Ocupações, o código oficial do cargo. Exemplo na tela: "7156-10".</td></tr>
+      <tr><td><span class="ui">Matrícula</span></td><td>O número interno do funcionário na sua empresa. Exemplo na tela: "00123".</td></tr>
+      <tr><td><span class="ui">Dependentes (IRRF)</span></td><td>Quantidade de dependentes para o cálculo do imposto de renda retido.</td></tr>
+      <tr><td><span class="ui">Vale-transporte</span></td><td>Chave liga/desliga. Ligada, aparece o <span class="ui">Valor mensal do VT</span>.</td></tr>
+    </tbody>
+  </table>
+  <p>Esses campos alimentam o holerite gerado no pagamento em modo CLT. Fora do regime CLT eles não aparecem e não são exigidos.</p>
+
+  <div class="aviso">O aviso que a própria tela de pagamento CLT exibe vale como régua: "Valores calculados com base nas tabelas vigentes de INSS, IRRF e FGTS. São estimativas, confirme com o seu contador antes de fechar a folha." O Dominex organiza e documenta o pagamento, ele não substitui a contabilidade.</div>
+
+  <h2>4. Configuração de pagamento: frequência e dia do mês</h2>
+
+  <p>Ainda na aba <span class="ui">Pagamento</span>, a seção <span class="ui">Configuração de Pagamento</span> é a que faz a folha aparecer sozinha em Contas a Pagar. A dica na tela é direta: "Valor da folha aparece automaticamente em Contas a Pagar conforme essa configuração."</p>
+
+  <h3>Campos</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Opções</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Frequência</span></td><td><span class="ui">Mensal</span>, <span class="ui">Quinzenal</span> ou <span class="ui">Semanal</span>.</td></tr>
+      <tr><td><span class="ui">Tipo de dia</span></td><td><span class="ui">Dia útil</span> ou <span class="ui">Dia corrido</span>. Aparece em mensal e quinzenal.</td></tr>
+      <tr><td><span class="ui">N° dia útil do mês</span> ou <span class="ui">Dia do mês</span></td><td>O rótulo muda conforme o tipo de dia escolhido. No mensal, o padrão é o 5º dia.</td></tr>
+      <tr><td><span class="ui">1° pagamento</span> e <span class="ui">2° pagamento</span></td><td>Só no quinzenal. Os padrões são dia 5 e dia 20.</td></tr>
+      <tr><td><span class="ui">Dia da semana</span></td><td>Só no semanal. De Domingo a Sábado.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Como o "dia útil" é calculado</h3>
+  <p>Escolhendo <span class="ui">Dia útil</span>, o sistema conta apenas os dias em que se trabalha, pulando sábados, domingos e feriados cadastrados. Assim, "5º dia útil" cai numa data diferente a cada mês, exatamente como acontece na prática. Escolhendo <span class="ui">Dia corrido</span>, o sistema usa o número do calendário e, em meses curtos, encaixa no último dia disponível (dia 31 em fevereiro vira 28 ou 29).</p>
+
+  <figure>
+    <img src="img/t15-novo-funcionario-pagamento.png" alt="Formulário Novo Funcionário na aba Pagamento, com os campos Salário e Custo mensal total (com botão Calcular) no topo, o bloco Contrato de trabalho com a chave Regime em Informal/CLT, os campos CBO, Matrícula, Dependentes (IRRF) e a chave Vale-transporte, e abaixo o bloco Configuração de Pagamento com Frequência em Mensal e Tipo de dia em Dia útil">
+    <figcaption>Novo Funcionário, aba Pagamento: salário, custo mensal, dados do contrato de trabalho e a configuração que faz a folha aparecer sozinha em Contas a Pagar.</figcaption>
+  </figure>
+
+  <h2>5. Vincular acesso ao sistema: criando o login do funcionário</h2>
+
+  <p>Ainda na aba <span class="ui">Pagamento</span>, no fim do formulário, existem duas seções diferentes e é fácil confundi-las:</p>
+  <ul>
+    <li><b><span class="ui">Vincular a um usuário do sistema</span></b>: liga esse funcionário a um login que <b>já existe</b>. A dica é "Vincula este funcionário a um usuário existente no sistema".</li>
+    <li><b><span class="ui">Criar acesso ao sistema</span></b>: cria um login <b>novo</b> na hora, com perfil Técnico, usando os dados do funcionário. A descrição é "Cria automaticamente um usuário com perfil Técnico".</li>
+  </ul>
+
+  <h3>Passo a passo para criar o acesso</h3>
+  <ol>
+    <li>Preencha o <span class="ui">Email</span> do funcionário na aba <span class="ui">Dados</span>. Sem ele, aparece o aviso vermelho "Preencha o email acima para criar o acesso".</li>
+    <li>Ligue a chave <span class="ui">Criar acesso ao sistema</span>. O <span class="ui">Login de acesso</span> mostrado é o próprio e-mail.</li>
+    <li>Escolha entre digitar uma <span class="ui">Senha</span> ("Defina a senha que o funcionário usará para acessar o sistema") ou usar a chave <span class="ui">Senha temporária (gerada automaticamente)</span>, que tem o botão <span class="ui">Gerar</span> e o aviso "Anote a senha, ela será exibida apenas uma vez".</li>
+    <li>Salve o funcionário.</li>
+  </ol>
+
+  <h3>Validações e mensagens</h3>
+  <ul>
+    <li>Sem nome: "Nome é obrigatório" e o formulário volta pra aba Dados.</li>
+    <li>Com acesso ligado e sem e-mail: "Email é obrigatório para criar acesso", também voltando pra aba Dados.</li>
+    <li>Senha curta: "Senha deve ter pelo menos 6 caracteres", voltando pra aba Pagamento.</li>
+    <li>Deu certo: "Acesso ao sistema criado!" com o e-mail e a senha na mensagem. <b>Anote na hora</b>, porque a senha não é mostrada de novo.</li>
+    <li>Funcionário salvo mas acesso falhou: "Funcionário criado, mas erro ao criar acesso" (ou "Funcionário atualizado, mas erro ao criar acesso"). O cadastro está lá, o login não. Corrija o e-mail e tente de novo pela edição.</li>
+  </ul>
+
+  <div class="aviso">O acesso criado por aqui nasce com perfil <b>Técnico</b>. Se essa pessoa precisar de outras telas (financeiro, contratos, orçamentos), o ajuste é feito depois no editor de permissões, na tela de usuários. Cadastrar como funcionário não dá acesso a nada além do perfil Técnico.</div>
+
+  <h2>6. Vale, falta e bônus — o que vira despesa na hora e o que só entra na folha</h2>
+
+  <p>Cada funcionário tem um saldo, que aparece na lista e no card. O saldo parte do salário e é ajustado pelas movimentações. As três movimentações são <span class="ui">Vale</span>, <span class="ui">Bônus</span> e <span class="ui">Falta</span>, todas no menu de ações da linha.</p>
+
+  <div class="aviso"><b>Esta é a confusão número um deste módulo.</b> <span class="ui">Vale</span> gera despesa no financeiro <b>na hora</b>, porque o dinheiro sai da conta naquele momento. <span class="ui">Bônus</span> e <span class="ui">Falta</span> <b>não</b> geram nada no financeiro na hora: eles são só saldo interno do funcionário e entram no caixa quando a folha é paga. Por isso um bônus lançado hoje não aparece no extrato da conta bancária hoje. Não é erro.</div>
+
+  <h3>Vale</h3>
+  <ul>
+    <li>Campos: <span class="ui">De qual conta sai o vale?</span> (obrigatório), <span class="ui">Valor</span> (obrigatório) e <span class="ui">Descrição</span> (opcional).</li>
+    <li>Sem conta escolhida: "Selecione a conta de saída. O vale precisa ser vinculado a uma conta ou caixa para gerar a despesa correta."</li>
+    <li>Sem nenhuma conta cadastrada: "Nenhuma conta ou caixa ativo encontrado. Cadastre uma conta em Financeiro, Contas e Cartões."</li>
+    <li>Efeito: cria uma despesa paga, categoria <b>Funcionários</b>, descrição "Vale - [nome]", já debitada da conta escolhida. E diminui o saldo do funcionário.</li>
+    <li>Falhando o lançamento da despesa: "Erro ao registrar despesa". O modal continua aberto pra você corrigir a conta e tentar de novo.</li>
+  </ul>
+
+  <h3>Bônus</h3>
+  <ul>
+    <li>Campos: <span class="ui">Valor</span> e <span class="ui">Descrição</span>.</li>
+    <li>Efeito: aumenta o saldo do funcionário. <b>Nada</b> sai do caixa agora. O valor entra no pagamento, na linha <span class="ui">Total de Bônus</span>.</li>
+  </ul>
+
+  <h3>Falta</h3>
+  <ul>
+    <li><span class="ui">Tipo de desconto</span>: <span class="ui">Descontar do salário</span> ("Valor será deduzido do saldo financeiro") ou <span class="ui">Descontar do banco de horas</span> ("Registra Nh negativas no banco de horas").</li>
+    <li><span class="ui">Aplicar perda de DSR</span>: a falta injustificada faz perder o Descanso Semanal Remunerado. Descontando do salário, o sistema explica "A falta injustificada resulta na perda do Descanso Semanal Remunerado (valor × 2)". Descontando do banco de horas, "Desconta 1 dia proporcional do salário (DSR) e 1 dia de trabalho de Nh do banco de horas".</li>
+    <li>O sistema sugere o valor do dia com base no salário: "Sugestão: R$ X/dia (Nh/dia · Nh/mês)".</li>
+    <li>Um resumo mostra <span class="ui">Dia faltado</span>, <span class="ui">Perda DSR</span> e <span class="ui">Total desconto do salário</span> antes de você confirmar.</li>
+    <li>Efeito: diminui o saldo do funcionário. Falta descontada do banco de horas não mexe no saldo financeiro, só nas horas.</li>
+  </ul>
+
+  <h3>Extrato do funcionário</h3>
+  <p>A ação <span class="ui">Extrato</span> abre o histórico completo daquela pessoa, com o resumo <span class="ui">Bônus</span>, <span class="ui">Vales</span>, <span class="ui">Faltas</span> e <span class="ui">Saldo</span>, e a coluna <span class="ui">Saldo após</span> em cada linha. Dali dá pra exportar e gerar recibos. Excluir uma movimentação avisa: "Excluir movimentação? Esta ação não pode ser desfeita. Os saldos serão recalculados."</p>
+
+  <h2>7. Pagar funcionário: modo informal × CLT (com holerite) e o desconto do vale</h2>
+
+  <p>A ação <span class="ui">Pagamento</span> abre o modal com o <span class="ui">Tipo de pagamento</span>, que tem duas opções: <span class="ui">Normal / Informal</span> e <span class="ui">CLT</span>.</p>
+
+  <h3>Modo Normal / Informal</h3>
+  <p>É a conta direta, sem encargos calculados. O resumo mostra:</p>
+  <ul>
+    <li><span class="ui">Salário</span></li>
+    <li><span class="ui">Total de Bônus</span></li>
+    <li>Descontos: <span class="ui">Vales</span> e <span class="ui">Faltas</span></li>
+    <li><span class="ui">Subtotal</span> (salário + bônus − faltas)</li>
+    <li><span class="ui">Descontar dos Vales</span>: um controle pra escolher quanto dos vales acumulados vai ser descontado agora. O padrão é 100%. Escolhendo menos, aparece "Restante: R$ X (será relançado)", e o que sobrou volta como vale pendente para o próximo pagamento.</li>
+    <li><span class="ui">Valor a Pagar</span>, com a fórmula visível "subtotal − desconto (vales)".</li>
+  </ul>
+
+  <h3>Modo CLT</h3>
+  <p>O resumo passa a mostrar <span class="ui">Proventos</span>, <span class="ui">Total de proventos</span>, <span class="ui">Descontos</span>, <span class="ui">Vale-transporte</span>, <span class="ui">Líquido a pagar</span>, <span class="ui">Bases de cálculo</span> e <span class="ui">FGTS do mês (recolhido)</span>. Ao confirmar, o sistema gera o <b>holerite</b> e abre o documento numa nova página, pronto pra imprimir ou salvar em PDF.</p>
+
+  <div class="aviso"><b>O holerite abre em uma nova aba e pode ser bloqueado pelo navegador.</b> Se aparecer a mensagem "Libere os pop-ups para ver o holerite, ou reabra pelo extrato do funcionário", libere os pop-ups para o endereço do sistema. O pagamento já foi registrado, só o documento não abriu: dá pra reabrir depois pelo extrato do funcionário, sem repetir o pagamento.</div>
+
+  <h3>Campos comuns aos dois modos</h3>
+  <ul>
+    <li><span class="ui">Pagar com</span>: a conta ou caixa de onde o dinheiro sai.</li>
+    <li><span class="ui">Observações</span>: opcional.</li>
+    <li>Se os descontos superarem os proventos, o sistema bloqueia com "Descontos maiores que os proventos, líquido negativo. Ajuste os vales ou faltas antes de pagar."</li>
+  </ul>
+
+  <h3>O que acontece ao confirmar</h3>
+  <ol>
+    <li>Registra a movimentação de pagamento no extrato do funcionário.</li>
+    <li>Zera o saldo, reiniciando no salário base.</li>
+    <li>Relança como vale pendente a parte dos vales que você escolheu não descontar agora.</li>
+    <li>Procura uma folha pendente daquele funcionário em Contas a Pagar. Achando, <b>quita aquela linha</b> em vez de criar uma nova, pra não duplicar a despesa. Não achando, cria a despesa de pagamento de salário.</li>
+    <li>No modo CLT, abre o holerite.</li>
+  </ol>
+  <p>Depois disso, o sistema pergunta se você quer o recibo: "Deseja gerar Recibo? O recibo do pagamento será aberto em uma nova página para impressão ou download em PDF." Há dois formatos, <span class="ui">A4 (imprimível)</span> ("Folha inteira, ideal para arquivar e imprimir") e <span class="ui">Térmico 80mm</span> ("Comprovante para impressora de cupom").</p>
+
+  <h2>8. Ponto: gerar o link público do funcionário e bater ponto pelo celular</h2>
+
+  <p>O ponto eletrônico do Dominex não exige que o funcionário tenha login. Ele bate o ponto por um link exclusivo, aberto no navegador do celular.</p>
+
+  <h3>Gerar o link</h3>
+  <ol>
+    <li>Edite o funcionário e vá até a seção <span class="ui">Ponto eletrônico</span>, na aba <span class="ui">Pagamento</span>. A descrição é "Gera um link público pro funcionário bater o ponto pelo celular".</li>
+    <li>Ligue a chave, que passa de <span class="ui">Desativado</span> para <span class="ui">Ativado</span>.</li>
+    <li>Em funcionário novo, aparece "Salve o funcionário para gerar o link de ponto, ele será copiado automaticamente". Salve.</li>
+    <li>O link é gerado e copiado na hora, com a confirmação "Link gerado e copiado!". Em funcionário já salvo, o link fica visível com o botão <span class="ui">Copiar</span>.</li>
+    <li>Também dá pra pegar pelo menu de ações da lista, em <span class="ui">Link do ponto</span>.</li>
+  </ol>
+  <p>Se a cópia automática falhar, aparece "Não foi possível copiar" e o link é mostrado na mensagem pra você copiar à mão. Erro ao gerar: "Erro ao gerar link do ponto".</p>
+
+  <h3>O que o funcionário vê</h3>
+  <p>Abrindo o link no celular, ele vê uma página só dele, com o nome, a foto e o cargo, o título <span class="ui">PONTO ELETRÔNICO</span> e um botão grande com a próxima batida:</p>
+  <table class="dados">
+    <thead><tr><th>Situação</th><th>O que a tela diz</th><th>Botão</th></tr></thead>
+    <tbody>
+      <tr><td>Ainda não bateu</td><td>"Você ainda não bateu o ponto hoje"</td><td><span class="ui">Registrar Entrada</span></td></tr>
+      <tr><td>Trabalhando</td><td>"Trabalhando"</td><td><span class="ui">Iniciar Intervalo</span></td></tr>
+      <tr><td>Em intervalo</td><td>"Em intervalo"</td><td><span class="ui">Voltar do Intervalo</span></td></tr>
+      <tr><td>Depois do intervalo</td><td>"Trabalhando"</td><td><span class="ui">Registrar Saída</span></td></tr>
+      <tr><td>Encerrou</td><td>"Jornada concluída"</td><td>Mostra <span class="ui">PONTO DO DIA CONCLUÍDO</span></td></tr>
+    </tbody>
+  </table>
+  <p>Abaixo fica o bloco <span class="ui">Registros de hoje</span>, com a linha do tempo das batidas: <span class="ui">Entrada</span>, <span class="ui">Início do intervalo</span>, <span class="ui">Fim do intervalo</span> e <span class="ui">Saída</span>.</p>
+
+  <h3>O fluxo de bater o ponto</h3>
+  <ol>
+    <li>O funcionário toca no botão da batida.</li>
+    <li><b>Localização</b>: a página pede a localização e mostra "Obtendo sua localização...". Negando ou falhando, aparece "Não foi possível obter a localização. Verifique as permissões do navegador." com <span class="ui">Tentar novamente</span>. Se a empresa <b>não</b> exige localização, aparece também <span class="ui">Continuar sem localização</span>. Se exige, o registro não avança sem ela.</li>
+    <li><b>Selfie</b>: só aparece se a empresa exigir. A tela diz "Tire uma selfie para confirmar", com <span class="ui">Abrir câmera</span>, e depois <span class="ui">Tirar novamente</span> ou <span class="ui">Usar esta foto</span>.</li>
+    <li><b>Confirmação</b>: mostra <span class="ui">Tipo</span>, <span class="ui">Horário</span> e <span class="ui">Local</span>, e o botão <span class="ui">Confirmar registro</span>.</li>
+    <li>Deu certo: "Entrada registrada" (ou o tipo correspondente). Deu errado: "Não foi possível registrar o ponto", com <span class="ui">Tentar novamente</span>.</li>
+  </ol>
+  <p>Link desativado ou errado mostra "Link inválido ou desativado. Este link de ponto não está mais ativo. Fale com o responsável da sua empresa para receber o link correto." Sem internet: "Não foi possível carregar. Verifique sua conexão."</p>
+
+  <div class="aviso">Selfie e localização <b>só aparecem se a empresa exigir</b>, nas Configurações da aba de ponto. Numa empresa que não liga nenhum dos dois, o funcionário toca no botão, confirma e pronto. Se um funcionário reclamar que "não pede foto", confira primeiro a configuração antes de suspeitar do aparelho dele.</div>
+
+  <!-- PRINT FALTANDO: página pública de ponto (/ponto/:codigo) aberta no celular, com o nome do funcionário, o botão Registrar Entrada e a linha do tempo Registros de hoje. Exige o link individual de um funcionário de teste e a captura sairia com nome e foto de pessoa real da base demo. Precisa de um funcionário fictício com ponto ativado. -->
+
+  <h2>9. Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)</h2>
+
+  <p>A aba <span class="ui">Controle de Ponto</span>, dentro de Funcionários, tem quatro sub-abas: <span class="ui">Hoje</span>, <span class="ui">Histórico</span>, <span class="ui">Relatório</span> e <span class="ui">Config</span>.</p>
+
+  <h3>Hoje</h3>
+  <ul>
+    <li>Indicadores no topo: <span class="ui">Presentes</span>, <span class="ui">Ausentes</span>, <span class="ui">Em intervalo</span> e <span class="ui">Concluídos</span>.</li>
+    <li>Tabela com <span class="ui">Funcionário</span>, <span class="ui">Entrada</span>, <span class="ui">Intervalo</span>, <span class="ui">Saída</span>, <span class="ui">Trabalhado</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>.</li>
+    <li>Situações possíveis: <span class="ui">Presente</span>, <span class="ui">Ausente</span>, <span class="ui">Em intervalo</span>, <span class="ui">Concluído</span> e <span class="ui">Atrasado</span>.</li>
+    <li>Ações por linha: <span class="ui">Ver detalhes</span> e <span class="ui">Registro manual</span>.</li>
+    <li>Sem ninguém cadastrado: "Nenhum funcionário cadastrado. Cadastre funcionários para acompanhar o ponto do dia."</li>
+  </ul>
+
+  <figure>
+    <img src="img/t15-ponto-hoje.png" alt="Sub-aba Hoje do Controle de Ponto, com os quatro indicadores no topo (Presentes 0, Ausentes 7, Em intervalo 0, Concluídos 0) e a tabela com as colunas Funcionário, Entrada, Intervalo, Saída, Trabalhado, Status e Ações, todas as linhas com traço nos horários e o selo cinza Ausente, e os ícones de olho e lápis na coluna Ações">
+    <figcaption>Controle de Ponto, sub-aba Hoje: os indicadores do dia e a tabela de batidas de cada funcionário.</figcaption>
+  </figure>
+
+  <h3>Registro manual</h3>
+  <p>Serve pra quando o funcionário esqueceu de bater ou o celular falhou. Campos: <span class="ui">Tipo de registro</span> (Entrada, Início intervalo, Fim intervalo, Saída), <span class="ui">Horário</span> e <span class="ui">Justificativa</span>, que é <b>obrigatória</b> ("Motivo do registro manual..."). Isso deixa rastro de quem lançou e por quê.</p>
+
+  <h3>Histórico</h3>
+  <ul>
+    <li>Filtros por <span class="ui">Funcionário</span>, <span class="ui">Período</span> e <span class="ui">Status</span> (Completo, Incompleto, Justificado).</li>
+    <li>Colunas: <span class="ui">Data</span>, <span class="ui">Funcionário</span>, <span class="ui">Entrada</span>, <span class="ui">Saída</span>, <span class="ui">Trabalhado</span>, <span class="ui">Saldo</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>.</li>
+    <li>Situações do dia: <span class="ui">Em andamento</span>, <span class="ui">Completo</span>, <span class="ui">Incompleto</span>, <span class="ui">Justificado</span>, <span class="ui">Feriado</span> e <span class="ui">Folga</span>.</li>
+    <li>Totais no rodapé: <span class="ui">Esperado</span>, <span class="ui">Trabalhado</span> e <span class="ui">Saldo</span>.</li>
+    <li>Vazio: "Nenhum registro de ponto. Ainda não há registros de ponto no período."</li>
+  </ul>
+
+  <h3>Relatório (o espelho de ponto)</h3>
+  <ul>
+    <li>Filtros de <span class="ui">Mês</span>, <span class="ui">Ano</span> e <span class="ui">Funcionário</span>. Escolhendo todos, o título vira "Visão geral de todos os funcionários"; escolhendo um, "Relatório de [nome]".</li>
+    <li><span class="ui">Calendário</span> do mês, com cada dia mostrando entrada, saída e trabalhado ao toque. Dias sem batida ficam como <span class="ui">Sem registro</span>.</li>
+    <li>Resumo com <span class="ui">Dias trabalhados</span>, <span class="ui">Total trabalhado</span>, <span class="ui">Saldo do mês</span> e <span class="ui">Faltas / Atrasos</span>.</li>
+    <li>Gráfico <span class="ui">Horas por dia</span>.</li>
+    <li>Exportação em CSV, com as colunas Funcionário, Data, Dia da semana, Entrada, Saída, Trabalhado, Intervalo, Saldo e Status.</li>
+  </ul>
+
+  <h3>Config</h3>
+  <p>Duas partes. A <span class="ui">Jornada Padrão da Empresa</span> vale pra todo mundo, e a <span class="ui">Jornada Individual</span> permite ajustar pessoa por pessoa, dia a dia da semana, inclusive marcando <span class="ui">Folga</span>. Quem não tem jornada própria mostra "Herda empresa (08:00-18:00)".</p>
+  <table class="dados">
+    <thead><tr><th>Configuração</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Entrada padrão</span> e <span class="ui">Saída padrão</span></td><td>O horário esperado. É o que gera a coluna Esperado e o Saldo.</td></tr>
+      <tr><td><span class="ui">Intervalo (min)</span></td><td>Quantos minutos de intervalo a jornada prevê.</td></tr>
+      <tr><td><span class="ui">Exigir selfie</span></td><td>Ligado, o funcionário só consegue bater o ponto tirando uma foto na hora.</td></tr>
+      <tr><td><span class="ui">Exigir geolocalização</span></td><td>Ligado, o registro não avança sem a localização. Desligado, o funcionário pode continuar sem ela.</td></tr>
+      <tr><td><span class="ui">Raio máximo (metros)</span></td><td>Distância aceita em relação ao ponto de referência. A dica é "0 = sem restrição".</td></tr>
+      <tr><td><span class="ui">Tolerância atraso (min)</span></td><td>Quantos minutos além do horário ainda não contam como atraso.</td></tr>
+      <tr><td><span class="ui">Permitir fora do horário</span></td><td>Se o funcionário pode bater ponto fora da jornada prevista.</td></tr>
+    </tbody>
+  </table>
+  <p>O botão é <span class="ui">Salvar configurações</span>. Na jornada individual, <span class="ui">Salvar jornada</span>.</p>
+
+  <figure>
+    <img src="img/t15-ponto-config.png" alt="Sub-aba Config do Controle de Ponto, com o bloco Jornada Padrão da Empresa mostrando Entrada padrão 08:00, Saída padrão 05:00 PM e Intervalo 60 minutos, as chaves Exigir selfie e Exigir geolocalização ligadas, os campos Raio máximo (metros) e Tolerância atraso (min), a chave Permitir fora do horário ligada, o botão Salvar configurações, e abaixo o início da tabela Jornada Individual com um funcionário por linha e a jornada de cada dia da semana">
+    <figcaption>Controle de Ponto, sub-aba Config: a jornada padrão da empresa e as chaves de selfie, geolocalização e tolerância.</figcaption>
+  </figure>
+
+  <h2>10. A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá</h2>
+
+  <div class="regra"><b>Não existe botão "Gerar Folha" no Dominex.</b> Não procure na tela de Funcionários nem no Financeiro: ele não existe. A folha é gerada <b>automaticamente</b> pelo sistema, uma vez por dia, e aparece sozinha em <span class="ui">Financeiro</span>, tela <span class="ui">Contas</span>, aba <span class="ui">A Pagar</span>.</div>
+
+  <h3>Como a folha nasce</h3>
+  <ol>
+    <li>Uma vez por dia, de madrugada, o sistema percorre todos os funcionários <b>ativos</b> com salário maior que zero.</li>
+    <li>Para cada um, calcula as datas de pagamento dos próximos <b>35 dias</b>, usando a <span class="ui">Configuração de Pagamento</span> do cadastro (frequência, tipo de dia e dia escolhido).</li>
+    <li>Cria uma conta a pagar por período, com a descrição "Folha [nome do funcionário] — [período]", no valor do salário e com o vencimento na data calculada.</li>
+    <li>A categoria usada é <b>Folha de Pagamento</b>, que o próprio sistema cria na primeira vez, já classificada como despesa operacional (OPEX) na DRE.</li>
+  </ol>
+
+  <h3>Regras que evitam duplicidade</h3>
+  <ul>
+    <li>O sistema nunca cria duas folhas para o mesmo funcionário no mesmo período. Rodando de novo, ele simplesmente ignora o que já existe.</li>
+    <li>Funcionário <b>inativo</b> ou sem salário cadastrado não gera folha.</li>
+    <li>Como a janela é de 35 dias à frente, a folha do mês que vem já aparece em Contas a Pagar antes de vencer. É proposital: serve pra você enxergar o compromisso com antecedência.</li>
+  </ul>
+
+  <h3>Quitando a folha</h3>
+  <p>Existem dois caminhos, e os dois terminam no mesmo lugar:</p>
+  <ul>
+    <li><b>Pelo Financeiro</b>: em <span class="ui">Contas</span>, aba <span class="ui">A Pagar</span>, a linha da folha tem um ícone de pessoas. Clicando em pagar, abre o modal de pagamento do funcionário (o mesmo do capítulo anterior), já com o período preenchido. A confirmação é "Folha quitada com sucesso". Erro: "Erro ao pagar folha".</li>
+    <li><b>Pelo RH</b>: na tela <span class="ui">Funcionários</span>, ação <span class="ui">Pagamento</span>. Nesse caso, o sistema procura uma folha pendente daquele funcionário e quita ela, em vez de criar uma despesa nova.</li>
+  </ul>
+
+  <div class="dica">O caminho completo é sempre o mesmo: <b>ponto → horas → folha → conta a pagar</b>. O ponto registra a jornada, as horas viram saldo e faltas, a folha nasce sozinha em Contas a Pagar e o pagamento fecha o ciclo. Se algum passo parecer fora do lugar, comece conferindo o cadastro do funcionário, que é onde ficam salário e configuração de pagamento.</div>
+
+  <h2>11. Abas Comportamental (DISC) e Organograma</h2>
+
+  <h3>Perfil Comportamental (DISC)</h3>
+  <p>A aba <span class="ui">Perfil Comportamental</span> mostra o "Perfil Comportamental da Equipe, perfis DISC de todos os funcionários ativos". A explicação da própria tela: "Envie um teste rápido pro funcionário responder pelo link, sem precisar de login. O resultado mostra o estilo de trabalho dele: pontos fortes, o que evitar e como liderá-lo melhor."</p>
+  <ol>
+    <li>Na linha do funcionário, use <span class="ui">Gerar link</span>. Abre o modal <span class="ui">Gerar link de avaliação</span>, com a opção <span class="ui">Funcionário vê o resultado ao final</span> ("Você pode mudar isso a cada avaliação. O padrão vem das configurações da empresa").</li>
+    <li>Confirme em <span class="ui">Gerar link</span> e envie por <span class="ui">Copiar link</span> ou <span class="ui">Compartilhar</span>.</li>
+    <li>Enquanto não respondem, o selo é <span class="ui">Aguardando resposta</span>: "O funcionário ainda não respondeu. Reenvie o link se precisar."</li>
+    <li>Respondido, o selo vira <span class="ui">Respondido</span> e libera <span class="ui">Ver relatório completo</span>.</li>
+  </ol>
+  <p>O detalhe de cada pessoa tem três sub-abas: <span class="ui">Visão geral</span>, <span class="ui">Interações</span> ("Escolha outro funcionário para ver a dinâmica entre os dois perfis", com <span class="ui">Atritos</span>, <span class="ui">Sinergias</span> e <span class="ui">Melhor comunicação</span>) e <span class="ui">Histórico</span>, com a evolução do perfil ao longo do tempo. Há ainda o botão <span class="ui">Comparar</span>, que cruza dois funcionários lado a lado. Refazendo a avaliação, "ela vira o perfil atual e a atual vai para o histórico".</p>
+
+  <h3>Organograma</h3>
+  <p>A aba <span class="ui">Organograma</span> é um quadro visual: "Monte a estrutura da sua empresa em um quadro visual". Você pode ter vários organogramas (por exemplo, "Estrutura 2026").</p>
+  <ul>
+    <li>Criar: <span class="ui">Novo Organograma</span>, dar um <span class="ui">Nome do organograma</span> e confirmar em <span class="ui">Criar</span>.</li>
+    <li>Dentro do quadro: <span class="ui">Adicionar nó</span> (a partir de um funcionário cadastrado ou digitando nome, cargo e setor à mão), <span class="ui">Adicionar caixa</span>, <span class="ui">Organizar</span> ("Reposiciona automaticamente em árvore"), <span class="ui">Desfazer</span> e <span class="ui">Refazer</span>.</li>
+    <li>Nó vindo de funcionário puxa nome, cargo e foto do cadastro: "Nome, cargo e foto vêm do cadastro do funcionário."</li>
+    <li>Ferramentas: <span class="ui">Hierarquia</span>, <span class="ui">Destacar por setor</span>, <span class="ui">Buscar pessoa</span>, <span class="ui">Preferências</span>, <span class="ui">Tela cheia</span> e <span class="ui">Exportar</span> (<span class="ui">Baixar imagem (PNG)</span> ou <span class="ui">Baixar PDF</span>, "Sai no tema atual").</li>
+    <li>O salvamento é automático: o indicador alterna entre <span class="ui">Salvando…</span> e <span class="ui">Salvo</span>.</li>
+    <li>No celular: "Arraste e use os dedos para dar zoom. Edite pelo computador para a melhor experiência."</li>
+    <li>Excluir: "Excluir organograma? Esta ação não pode ser desfeita. O quadro e suas conexões serão perdidos."</li>
+  </ul>
+
+  <figure>
+    <img src="img/t15-organograma.png" alt="Aba Organograma com o texto 'Monte a estrutura da sua empresa em um quadro visual', o botão Novo Organograma no topo, e a lista de dois quadros salvos, cada um com nome, número de nós e os ícones de editar, excluir e abrir">
+    <figcaption>Organograma: a lista de quadros salvos, com o atalho para criar um novo.</figcaption>
+  </figure>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Onde fica o botão Gerar Folha?"</td>
+        <td>Ele não existe</td>
+        <td>A folha é gerada automaticamente uma vez por dia, para todo funcionário ativo com salário, e aparece sozinha em Financeiro, Contas, aba A Pagar, com a descrição "Folha [nome] — [período]". Não há botão pra gerar.</td>
+      </tr>
+      <tr>
+        <td>"A folha do meu funcionário não apareceu"</td>
+        <td>Funcionário inativo, sem salário, ou vencimento além de 35 dias</td>
+        <td>Confira se o funcionário está ativo e com salário maior que zero, e confira a Configuração de Pagamento no cadastro. O sistema só cria folha para os próximos 35 dias, então um vencimento mais distante ainda não aparece.</td>
+      </tr>
+      <tr>
+        <td>"Lancei um bônus e não saiu do caixa"</td>
+        <td>Comportamento correto</td>
+        <td>Bônus e falta são saldo interno do funcionário, não geram lançamento no financeiro na hora. Eles entram no caixa quando a folha é paga. Só o vale gera despesa imediata.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo lançar vale"</td>
+        <td>Falta escolher a conta de saída, ou não há conta cadastrada</td>
+        <td>O vale exige a conta de onde o dinheiro sai. Sem conta cadastrada, aparece "Cadastre uma conta em Financeiro, Contas e Cartões". Crie a conta e repita.</td>
+      </tr>
+      <tr>
+        <td>"Paguei o funcionário e o holerite não abriu"</td>
+        <td>Pop-up bloqueado</td>
+        <td>O holerite CLT abre em nova aba. Libere os pop-ups para o endereço do sistema. O pagamento já foi registrado, então não repita: reabra o holerite pelo extrato do funcionário.</td>
+      </tr>
+      <tr>
+        <td>"Criei o funcionário mas ele não consegue entrar no sistema"</td>
+        <td>Acesso não foi criado ou falhou</td>
+        <td>Cadastrar funcionário não cria login. É preciso ligar "Criar acesso ao sistema" com o e-mail preenchido e senha de pelo menos 6 caracteres. Se apareceu "Funcionário criado, mas erro ao criar acesso", edite o funcionário e tente de novo.</td>
+      </tr>
+      <tr>
+        <td>"O funcionário não recebeu a senha"</td>
+        <td>A senha só é mostrada uma vez</td>
+        <td>A confirmação "Acesso ao sistema criado!" traz o e-mail e a senha, e ela não é exibida de novo. Se ninguém anotou, redefina a senha pela tela de usuários.</td>
+      </tr>
+      <tr>
+        <td>"O link do ponto do funcionário não abre"</td>
+        <td>Ponto desativado no cadastro</td>
+        <td>A mensagem é "Link inválido ou desativado". Edite o funcionário, ligue a chave Ponto eletrônico, salve e envie o link novo.</td>
+      </tr>
+      <tr>
+        <td>"O ponto não pede selfie"</td>
+        <td>A empresa não exige selfie</td>
+        <td>Selfie e localização só aparecem se estiverem ligadas em Funcionários, aba Controle de Ponto, sub-aba Config. Não é problema do celular do funcionário.</td>
+      </tr>
+      <tr>
+        <td>"O funcionário não consegue bater o ponto, fala de localização"</td>
+        <td>Permissão de localização negada no navegador, com a exigência ligada</td>
+        <td>A mensagem é "Não foi possível obter a localização. Verifique as permissões do navegador." Peça pra ele liberar a localização para o site. Se a empresa não exige, ele pode usar "Continuar sem localização".</td>
+      </tr>
+      <tr>
+        <td>"O funcionário esqueceu de bater a saída"</td>
+        <td>Registro faltando no dia</td>
+        <td>Em Funcionários, aba Controle de Ponto, sub-aba Hoje, use Registro manual na linha dele. O tipo, o horário e a justificativa são obrigatórios, e o lançamento fica registrado.</td>
+      </tr>
+      <tr>
+        <td>"Sumiu a aba de ponto"</td>
+        <td>Falta permissão</td>
+        <td>A aba Controle de Ponto só aparece para administrador, gestor ou quem tem permissão de gerenciar ponto ou funcionários. Ajuste no editor de permissões.</td>
+      </tr>
+      <tr>
+        <td>"Cliquei em Equipes no menu e caí em Funcionários"</td>
+        <td>A tela de equipes foi incorporada</td>
+        <td>Está certo. Equipes agora é uma aba dentro de Funcionários, e o endereço antigo redireciona pra lá. Como está dentro do módulo RH, sem esse módulo não há como criar equipe.</td>
+      </tr>
+      <tr>
+        <td>"Não achei a tela de Funcionários no menu"</td>
+        <td>Falta o módulo Funcionários / RH ou a permissão de tela</td>
+        <td>Sem o módulo, o sistema devolve pra tela inicial e mostra o aviso do módulo com opção de contratar. Sem a permissão de tela, o item nem aparece no menu.</td>
+      </tr>
+      <tr>
+        <td>"Descontei só parte dos vales e sobrou saldo"</td>
+        <td>Comportamento correto</td>
+        <td>No pagamento, o campo Descontar dos Vales começa em 100%. Descontando menos, o restante é relançado como vale pendente e entra no próximo pagamento. A tela avisa: "Restante: R$ X (será relançado)".</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Existe botão pra gerar a folha?</dt>
+    <dd>Não. A folha é gerada automaticamente uma vez por dia e aparece em Financeiro, Contas, aba A Pagar, com a descrição "Folha [nome] — [período]" e a categoria Folha de Pagamento. O que você faz é pagar, não gerar.</dd>
+
+    <dt>Com quanta antecedência a folha aparece?</dt>
+    <dd>O sistema calcula os pagamentos dos próximos 35 dias. Então a folha do mês seguinte já aparece em Contas a Pagar antes de vencer, pra você enxergar o compromisso com antecedência.</dd>
+
+    <dt>Vale, bônus e falta: qual mexe no caixa na hora?</dt>
+    <dd>Só o vale. Ele vira uma despesa paga na conta que você escolher, com a descrição "Vale - [nome]". Bônus e falta são saldo interno do funcionário e só entram no financeiro quando a folha é paga.</dd>
+
+    <dt>Preciso do módulo RH pra usar Equipes?</dt>
+    <dd>Sim. As equipes vivem na aba Equipes dentro de Funcionários, que depende do módulo Funcionários / RH. Sem o módulo, não há como criar nem editar equipe.</dd>
+
+    <dt>O funcionário precisa de login pra bater ponto?</dt>
+    <dd>Não. O ponto é batido por um link público e individual, aberto no navegador do celular, sem senha. Ligue a chave Ponto eletrônico no cadastro dele e envie o link.</dd>
+
+    <dt>Como faço pra exigir foto e localização no ponto?</dt>
+    <dd>Em Funcionários, aba Controle de Ponto, sub-aba Config. Ligue Exigir selfie e Exigir geolocalização. Sem essas chaves ligadas, o funcionário bate o ponto direto, sem foto e sem localização.</dd>
+
+    <dt>Dá pra limitar a distância em que o ponto pode ser batido?</dt>
+    <dd>Sim, pelo campo Raio máximo (metros), nas configurações do ponto. Deixando 0, não há restrição de distância.</dd>
+
+    <dt>Como corrijo um ponto esquecido?</dt>
+    <dd>Na sub-aba Hoje do Controle de Ponto, use Registro manual na linha do funcionário. Você escolhe o tipo, o horário e escreve a justificativa, que é obrigatória.</dd>
+
+    <dt>Onde vejo o espelho de ponto do mês?</dt>
+    <dd>Na sub-aba Relatório do Controle de Ponto. Escolha mês, ano e funcionário. Aparece o calendário, o resumo com dias trabalhados, total trabalhado, saldo do mês e faltas/atrasos, e o gráfico de horas por dia. Dá pra exportar em CSV.</dd>
+
+    <dt>Qual a diferença entre pagamento Normal/Informal e CLT?</dt>
+    <dd>Normal/Informal é a conta direta: salário mais bônus, menos faltas e vales. CLT calcula proventos, descontos, vale-transporte, líquido e FGTS do mês, e gera o holerite. Os valores CLT são estimativas com base nas tabelas vigentes, confirme com o contador.</dd>
+
+    <dt>Cadastrar como funcionário já dá acesso ao sistema?</dt>
+    <dd>Não. São coisas separadas. Para criar login, ligue "Criar acesso ao sistema" no cadastro, com e-mail preenchido e senha de pelo menos 6 caracteres. O acesso nasce com perfil Técnico.</dd>
+
+    <dt>Para que serve a chave PIX no cadastro?</dt>
+    <dd>Para você ter a chave à mão na hora de pagar e para constar nos documentos. O sistema não faz a transferência por você.</dd>
+
+    <dt>O que é o DISC?</dt>
+    <dd>É um teste rápido de perfil comportamental, respondido pelo funcionário por um link, sem login. O resultado mostra estilo de trabalho, pontos fortes, o que evitar e como liderar melhor, e permite comparar dois funcionários.</dd>
+
+    <dt>Posso ter mais de um organograma?</dt>
+    <dd>Sim. Cada organograma tem nome próprio, é salvo automaticamente e pode ser exportado em PNG ou PDF.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> RH, funcionário, colaborador, equipe, ponto, bater ponto, cartão de ponto, espelho de ponto, banco de horas, vale, adiantamento, bônus, falta, DSR, folha, folha de pagamento, holerite, contracheque, recibo, CLT, CBO, vale-transporte, salário, admissão, organograma, DISC, perfil comportamental
+  </div>
+</section>

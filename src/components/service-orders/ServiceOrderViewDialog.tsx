@@ -26,6 +26,7 @@ import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionV
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { formatMoney, formatDate, formatDateTime } from '@/lib/format';
+import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 
 interface OSPhoto {
   id: string;
@@ -641,11 +642,23 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             icon: linkCopied ? Check : Link2,
             label: linkCopied ? tv.actionLinkCopied : tv.actionLinkOs,
             onClick: async () => {
-              const url = `${window.location.origin}/acompanhamento/${serviceOrder.id}`;
-              await navigator.clipboard.writeText(url);
-              setLinkCopied(true);
-              toast({ title: tv.toastLinkCopied });
-              setTimeout(() => setLinkCopied(false), 2000);
+              // Link público de acompanhamento (modo cliente). SEMPRE via helper
+              // compartilhado — montar a URL à mão aqui já gerou uma rota
+              // inexistente (/acompanhamento/:id) que ia pro cliente como erro 404.
+              try {
+                const url = buildServiceOrderShareLink({
+                  shortCode: (serviceOrder as any).public_short_code,
+                  customerName: serviceOrder.customer?.name,
+                  serviceName: (serviceOrder as any).service_type?.name,
+                  osId: serviceOrder.id,
+                });
+                await navigator.clipboard.writeText(url);
+                setLinkCopied(true);
+                toast({ title: tv.toastLinkCopied });
+                setTimeout(() => setLinkCopied(false), 2000);
+              } catch {
+                toast({ variant: 'destructive', title: tv.toastLinkCopyError });
+              }
             }
           });
         }

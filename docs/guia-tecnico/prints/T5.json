@@ -1,0 +1,91 @@
+{
+  "secao": "T5",
+  "prints": [
+    {
+      "id": "t5-nova-os-etapa1",
+      "url": "/ordens-servico",
+      "legenda": "Janela Nova Ordem de Serviço na Etapa 1, com a chave Cliente cadastrado e Cliente avulso, o campo de busca de cliente, o bloco de endereço de serviço e o campo Tipo de Serviço.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Nova OS"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t5-configurar-status",
+      "url": "/ordens-servico",
+      "legenda": "Janela Configurações de OS, com a lista de status da empresa, a cor de cada um, a chave interna e a alça de arrastar para reordenar as colunas do kanban.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "main button:has-text(\"Configurações\")"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t5-lista-os",
+      "url": "/ordens-servico",
+      "legenda": "Tela Ordens de Serviço na visão Lista, com as colunas OS, Criador, Cliente, Tipo, Data, Status e Ações.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "button:has(svg.lucide-layout-list)",
+          "opcional": true
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t5-aba-relatorio",
+      "url": "/ordens-servico",
+      "legenda": "Aba Relatório da tela de Ordens de Serviço, com Total de OS, Taxa de conclusão, Tempo médio e Faturamento, mais os gráficos de OS por status e por tipo de serviço.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Relatório"
+        },
+        {
+          "esperar": 3000
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t5-aba-nps",
+      "url": "/ordens-servico",
+      "legenda": "Aba NPS e Satisfação, com NPS Score, Média Geral, Respostas, Taxa de Resposta e a distribuição entre promotores, neutros e detratores.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "NPS e Satisfação"
+        },
+        {
+          "esperar": 3000
+        }
+      ],
+      "recorte": "main"
+    }
+  ]
+}

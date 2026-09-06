@@ -4,7 +4,7 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -54,6 +54,8 @@ import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { StepTransition } from '@/components/ui/step-transition';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { generateRecurrenceDates, findRecurrenceIssue, type RecurrenceIssue, type RecurrenceSpec } from '@/lib/taskRecurrence';
+import { formatDate } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 
 const serviceOrderSchema = z.object({
@@ -95,7 +97,7 @@ const STEPS = [
 export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultStatus,
 }: ServiceOrderFormDialogProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.form;
   const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useProfiles();
@@ -172,6 +174,23 @@ export function ServiceOrderFormDialog({
     setRecurrenceWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   };
 
+  // Spec da recorrência no formato do motor único (src/lib/taskRecurrence.ts).
+  const recurrenceSpec: RecurrenceSpec = useMemo(() => ({
+    recurrence_type: recurrenceType,
+    recurrence_interval: recurrenceInterval,
+    recurrence_end_date: recurrenceEndDate || null,
+    recurrence_weekdays: recurrenceWeekdays,
+  }), [recurrenceType, recurrenceInterval, recurrenceEndDate, recurrenceWeekdays]);
+
+  const describeRecurrenceIssue = useCallback((issue: RecurrenceIssue): string => {
+    switch (issue.code) {
+      case 'missing_end_date': return t.recurrenceErrorNoEndDate;
+      case 'custom_without_weekdays': return t.recurrenceErrorNoWeekday;
+      case 'unsupported_type': return t.recurrenceErrorUnsupported;
+      default: return t.recurrenceErrorUnsupported;
+    }
+  }, [t]);
+
   const selectedServiceType = useMemo(
     () => serviceTypes.find(st => st.id === selectedServiceTypeId),
     [serviceTypes, selectedServiceTypeId]
@@ -227,6 +246,29 @@ export function ServiceOrderFormDialog({
 
   // Save draft on changes
   const watchedValues = form.watch();
+
+  // Prévia da série ANTES de salvar: quantas OS saem e de quando até quando.
+  // É a trava contra o silêncio — se a combinação escolhida gerar uma OS só,
+  // a tela diz isso na hora, em vez de criar uma e o cliente descobrir depois.
+  const recurrencePreview = useMemo<{ error?: string; text?: string } | null>(() => {
+    if (!recurrenceEnabled) return null;
+    const issue = findRecurrenceIssue(recurrenceSpec);
+    if (issue) return { error: describeRecurrenceIssue(issue) };
+    const startDate = watchedValues.scheduled_date || format(new Date(), 'yyyy-MM-dd');
+    try {
+      const dates = generateRecurrenceDates(startDate, recurrenceSpec);
+      if (dates.length <= 1) return { error: t.recurrencePreviewSingle };
+      return {
+        text: t.recurrencePreviewCount
+          .replace('{n}', String(dates.length))
+          .replace('{inicio}', formatDate(dates[0], locale, timezone))
+          .replace('{fim}', formatDate(dates[dates.length - 1], locale, timezone)),
+      };
+    } catch (err) {
+      return { error: getErrorMessage(err) };
+    }
+  }, [recurrenceEnabled, recurrenceSpec, describeRecurrenceIssue, watchedValues.scheduled_date, t, locale, timezone]);
+
   useEffect(() => {
     if (open && !isEditing && !draft.showResumePrompt) {
       draft.saveDraft({ ...watchedValues, _selectedCustomerId: selectedCustomerId, _selectedServiceTypeId: selectedServiceTypeId });
@@ -424,32 +466,24 @@ export function ServiceOrderFormDialog({
       || selectedStandaloneTemplateIds[0]
       || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined);
 
-    // If recurrence is enabled, generate multiple OS entries
-    if (recurrenceEnabled && recurrenceEndDate) {
-      const startDate = data.scheduled_date || format(new Date(), 'yyyy-MM-dd');
-      const dates: string[] = [startDate];
-      const endDate = new Date(recurrenceEndDate + 'T12:00:00');
+    // Recorrência ligada → gera a série inteira pelo motor único
+    // (src/lib/taskRecurrence.ts). A validação abaixo repete a da tela porque
+    // este submit também é chamado direto pelo botão: recorrência que não
+    // renderia série é BLOQUEADA com mensagem, nunca vira uma OS só em silêncio.
+    if (recurrenceEnabled) {
+      const issue = findRecurrenceIssue(recurrenceSpec);
+      if (issue) {
+        editToast({ variant: 'destructive', title: t.toastErrorRecurring, description: describeRecurrenceIssue(issue) });
+        return;
+      }
 
-      if (recurrenceType === 'custom' && recurrenceWeekdays.length > 0) {
-        let current = addDays(new Date(startDate + 'T12:00:00'), 1);
-        while (current <= endDate) {
-          if (recurrenceWeekdays.includes(current.getDay())) {
-            dates.push(format(current, 'yyyy-MM-dd'));
-          }
-          current = addDays(current, 1);
-        }
-      } else {
-        let current = new Date(startDate + 'T12:00:00');
-        const interval = recurrenceInterval || 1;
-        while (true) {
-          if (recurrenceType === 'daily') current = addDays(current, interval);
-          else if (recurrenceType === 'weekly') current = addWeeks(current, interval);
-          else if (recurrenceType === 'biweekly') current = addWeeks(current, 2 * interval);
-          else if (recurrenceType === 'monthly') current = addMonths(current, interval);
-          else break;
-          if (current > endDate) break;
-          dates.push(format(current, 'yyyy-MM-dd'));
-        }
+      const startDate = data.scheduled_date || format(new Date(), 'yyyy-MM-dd');
+      let dates: string[];
+      try {
+        dates = generateRecurrenceDates(startDate, recurrenceSpec);
+      } catch (err) {
+        editToast({ variant: 'destructive', title: t.toastErrorRecurring, description: getErrorMessage(err) });
+        return;
       }
 
       const groupId = crypto.randomUUID();
@@ -1662,8 +1696,15 @@ export function ServiceOrderFormDialog({
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">{t.recurrenceUntil}</Label>
-                        <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
+                        <Label className="text-xs">
+                          {t.recurrenceUntil} <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          type="date"
+                          value={recurrenceEndDate}
+                          onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                          aria-invalid={!recurrenceEndDate}
+                        />
                       </div>
                     </div>
                     {(recurrenceType === 'custom' || recurrenceType === 'weekly') && (
@@ -1687,6 +1728,21 @@ export function ServiceOrderFormDialog({
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {/* Prévia/bloqueio da série — a escolha do usuário nunca é
+                        descartada em silêncio. */}
+                    {recurrencePreview?.error && (
+                      <p className="flex items-start gap-1.5 text-xs text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{recurrencePreview.error}</span>
+                      </p>
+                    )}
+                    {recurrencePreview?.text && (
+                      <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Repeat className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{recurrencePreview.text}</span>
+                      </p>
                     )}
                   </div>
                 )}

@@ -1,0 +1,446 @@
+<section class="tutorial" id="t8">
+  <h1><span class="tcode">T8</span> Estoque, compras e inventário</h1>
+
+  <p class="lead">Controlar o que entra, o que sai e o que sumiu. Vale tanto para quem tem um depósito grande quanto para quem carrega peça na van e quer saber quanto tem de gás, filtro e capacitor antes de sair para a rua.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → Estoque</span>
+    <span><b>Rotas:</b> <code>/estoque</code></span>
+    <span><b>Depende de:</b> nada obrigatório. Fica mais útil depois que existem orçamentos e OS consumindo material</span>
+    <span><b>Quem enxerga:</b> quem tem a tela <b>Estoque</b> liberada. A ação <b>Gerenciar Estoque</b> é uma permissão separada. Além disso, cada <b>local de estoque</b> pode ter acesso restrito a usuários específicos</span>
+    <span><b>Módulo:</b> a tela não depende de módulo pago</span>
+  </div>
+
+  <h2>1. Tela Estoque: as 5 abas e pra que serve cada uma</h2>
+
+  <p>A tela se chama <span class="ui">Estoque</span>, com o subtítulo "Controle de peças e materiais". Ela tem cinco abas na navegação lateral:</p>
+
+  <table class="dados">
+    <thead><tr><th>Aba</th><th>Para que serve</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Estoque Atual</span></td><td>O que existe hoje, por local. É a tela do dia a dia: cadastrar material, ver saldo, registrar entrada e saída, transferir.</td></tr>
+      <tr><td><span class="ui">Histórico de Materiais (Kardex)</span></td><td>Todo movimento que já aconteceu, item por item, com saldo antes e depois.</td></tr>
+      <tr><td><span class="ui">Compras de Material</span></td><td>Requisições de compra, fornecedores e cotações.</td></tr>
+      <tr><td><span class="ui">Inventários</span></td><td>Contagem física: você conta, o sistema compara com o esperado e ajusta a diferença.</td></tr>
+      <tr><td><span class="ui">Posição de Estoque</span></td><td>Qual era o saldo numa data passada. É o retrato do estoque para fechamento e para conferência com o contador.</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t8-estoque.png" alt="Tela Estoque da Dominex na aba Estoque Atual, com os indicadores de total de itens, valor investido, projeção de venda e estoque baixo, mais a tabela de materiais">
+    <figcaption>Estoque: aba Estoque Atual, com os indicadores e a lista de materiais.</figcaption>
+  </figure>
+
+  <h3>Os quatro indicadores da aba Estoque Atual</h3>
+  <ul>
+    <li><span class="ui">Total de itens</span>: quantos materiais diferentes existem.</li>
+    <li><span class="ui">Valor investido (R$)</span>: o quanto está parado em estoque, pelo preço de custo.</li>
+    <li><span class="ui">Projeção venda (R$)</span>: quanto esse mesmo estoque valeria pelo preço de venda.</li>
+    <li><span class="ui">Estoque baixo</span>: quantos materiais estão abaixo do mínimo definido.</li>
+  </ul>
+
+  <h3>No topo da tela, sempre visíveis</h3>
+  <ul>
+    <li><span class="ui">Importar XML (NF-e)</span>: dá entrada no estoque a partir do arquivo da nota do fornecedor.</li>
+    <li><span class="ui">Configurações</span>: abre <span class="ui">Configurações do Estoque</span>, com as abas <span class="ui">Grupos de material</span> e <span class="ui">Locais de estoque</span>.</li>
+  </ul>
+
+  <h2>2. Cadastrar material: categoria/grupo, unidade, estoque mínimo e custo</h2>
+
+  <p>O botão <span class="ui">Cadastrar Material</span> (no celular, o botão flutuante "Material") abre a janela <span class="ui">Novo Item de Estoque</span>. Ao editar, o título vira <span class="ui">Editar Item</span>.</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome do Item *</span></td><td>Sim</td><td>Único campo obrigatório.</td></tr>
+      <tr><td><span class="ui">Código/SKU</span></td><td>Não</td><td>Sugestão "Ex: FLT-001". O sistema propõe um código sequencial sozinho, com o selo <span class="ui">Auto</span>, e a explicação "Código sequencial sugerido automaticamente (você pode personalizar)."</td></tr>
+      <tr><td><span class="ui">Categoria</span></td><td>Não</td><td>Lista fixa: Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos e Outros.</td></tr>
+      <tr><td><span class="ui">Grupo</span></td><td>Não</td><td>Diferente da categoria: o grupo é <b>criado por você</b> e serve para organizar do seu jeito. Dá para criar um grupo novo digitando o nome na própria busca. Sem grupo cadastrado, a mensagem é "Nenhum grupo. Crie em Configurações."</td></tr>
+      <tr><td><span class="ui">Fornecedor</span></td><td>Não</td><td>Texto livre com o nome do fornecedor habitual.</td></tr>
+      <tr><td><span class="ui">Descrição</span></td><td>Não</td><td>"Descrição detalhada do item..."</td></tr>
+      <tr><td><span class="ui">Quantidade</span></td><td>Não</td><td>Quantidade inicial. Ao cadastrar com quantidade maior que zero, o sistema registra uma <b>entrada</b> no local ativo, com a observação "Cadastro inicial", e o movimento aparece no Kardex.</td></tr>
+      <tr><td><span class="ui">Unidade</span></td><td>Não</td><td>Unidade de medida (un, m, kg, L). Aparece nas listas e no relatório.</td></tr>
+      <tr><td><span class="ui">Preço de Custo (R$)</span></td><td>Não</td><td>Quanto você paga. Alimenta o <span class="ui">Valor investido</span> e o custo em orçamento. A nota da tela é "Valor por unidade."</td></tr>
+      <tr><td><span class="ui">Preço de Venda (R$)</span></td><td>Não</td><td>Quanto você cobra. Alimenta a <span class="ui">Projeção venda</span>.</td></tr>
+      <tr><td><span class="ui">Locais deste material</span></td><td>Não</td><td>Bloco por local de estoque, com a explicação "Marque os locais onde este material está presente. Defina a quantidade mínima para cada local." Tem <span class="ui">Marcar todos</span> e <span class="ui">Desmarcar todos</span>.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra">
+    <b>Categoria e Grupo não são a mesma coisa.</b> Categoria é uma lista fechada, igual para todo mundo (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em <span class="ui">Configurações do Estoque</span> → <span class="ui">Grupos de material</span>. Muita gente usa grupo para separar por marca, por linha ou por finalidade.
+  </div>
+
+  <figure>
+    <img src="img/t8-cadastrar-material.png" alt="Janela Novo Item de Estoque com os campos Nome do Item, Código/SKU com o selo Auto e a sugestão EST-003, Grupo, Fornecedor, Descrição, Quantidade, Unidade, Preço de Custo e Preço de Venda, e o início do bloco Locais deste material com os botões Marcar todos e Desmarcar todos">
+    <figcaption>Janela Novo Item de Estoque: o único campo obrigatório é o nome, o SKU já vem sugerido.</figcaption>
+  </figure>
+
+  <h3>Estoque mínimo e o alerta de estoque baixo</h3>
+
+  <p>O estoque mínimo é definido <b>por local</b>, dentro do bloco <span class="ui">Locais deste material</span>. Cada local marcado ganha um campo <span class="ui">Mín.</span>.</p>
+
+  <ul>
+    <li>Quando o saldo daquele local fica <b>abaixo</b> do mínimo, aparece um triângulo vermelho ao lado do material, com a dica "Estoque abaixo do mínimo: X de Y".</li>
+    <li>O indicador <span class="ui">Estoque baixo</span> conta quantos materiais estão nessa situação em algum local.</li>
+    <li>O filtro <span class="ui">Estoque abaixo do mínimo</span> mostra só esses materiais.</li>
+    <li>Na aba de compras, o alerta vira um atalho: "N materiais abaixo do mínimo" com o botão <span class="ui">Criar requisição</span>.</li>
+  </ul>
+
+  <div class="aviso">
+    <b>Sem estoque mínimo preenchido, não existe alerta.</b> Esse é o motivo número um de "o sistema não me avisou que o gás acabou". O mínimo não é preenchido sozinho: alguém precisa definir, material por material e local por local, qual é o ponto de reposição.
+  </div>
+
+  <h3>Alterar quantidade pela edição</h3>
+  <p>Ao editar um material e mudar a quantidade, o sistema <b>não sobrescreve</b> o saldo em silêncio: ele registra um movimento de <b>ajuste</b> com a diferença, com a observação "Ajuste manual", e esse ajuste aparece no Kardex. Assim, todo saldo tem rastro.</p>
+
+  <h3>Entrada e saída rápidas</h3>
+  <p>No menu de ações de cada material existem <span class="ui">Registrar entrada</span> e <span class="ui">Registrar saída</span>. A janela pede <span class="ui">Quantidade</span> e <span class="ui">Observação</span> (com sugestões "Motivo da entrada..." e "Motivo da saída...") e mostra em tempo real o <span class="ui">Saldo atual</span> e o <span class="ui">Saldo após</span>. Se a conta der negativo, aparece o aviso <span class="ui">Saldo ficaria negativo</span>. As confirmações são "Entrada registrada" e "Saída registrada". Erros possíveis: "Informe uma quantidade maior que zero." e "Saldo insuficiente. Disponível: X."</p>
+
+  <h2>3. Depósitos/locais: criar, definir o que existe em cada um e transferir entre eles</h2>
+
+  <p>O botão <span class="ui">Configurações</span>, aba <span class="ui">Locais de estoque</span>, é onde os depósitos são criados. Cada local tem um nome e um deles é marcado como <span class="ui">Principal</span>.</p>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Abra <span class="ui">Configurações</span> no topo da tela de Estoque.</li>
+    <li>Vá na aba <span class="ui">Locais de estoque</span>.</li>
+    <li>Em <span class="ui">Novo local de estoque</span>, digite o nome ("Nome do local...") e confirme.</li>
+    <li>Use <span class="ui">Definir como principal</span> para eleger o local padrão, <span class="ui">Renomear</span> para trocar o nome e <span class="ui">Excluir</span> para remover. Excluir avisa: "O local <i>[nome]</i> será removido. Esta ação não pode ser desfeita."</li>
+  </ol>
+
+  <p>Com mais de um local, a aba <span class="ui">Estoque Atual</span> ganha uma linha de pílulas, uma por depósito. Você troca de depósito tocando na pílula, e os indicadores e a lista passam a refletir só aquele local.</p>
+
+  <div class="dica">
+    Casos comuns de mais de um local: <b>depósito central</b> mais <b>van de cada técnico</b>; ou <b>matriz</b> e <b>filial</b>. Com a van cadastrada como local, dá para saber quanto de gás cada técnico está carregando e repor antes de a rota começar.
+  </div>
+
+  <h3>Definir o que existe em cada local</h3>
+  <p>Ao lado de cada pílula de depósito há uma engrenagem, com o rótulo <span class="ui">Configurar itens deste local</span>. Ela abre a janela <span class="ui">Configurar [nome do local]</span>, com duas abas: <span class="ui">Itens</span> e <span class="ui">Acesso</span>.</p>
+
+  <p>Na aba <span class="ui">Itens</span> você marca quais materiais existem naquele depósito, com busca, <span class="ui">Marcar todos</span>, <span class="ui">Desmarcar todos</span> e um atalho <span class="ui">Adicionar por grupo</span> para trazer um grupo inteiro de uma vez. A confirmação é "Itens do local atualizados".</p>
+
+  <div class="aviso">
+    Não dá para desmarcar um material de um local em que ainda existe saldo. A mensagem é "Não é possível remover [nome]" com "Ainda há saldo neste local. Transfira ou dê baixa antes." e um botão <span class="ui">Transferir saldo</span>. É uma trava contra sumiço de material.
+  </div>
+
+  <figure>
+    <img src="img/t8-config-locais.png" alt="Janela Configurações do Estoque na aba Locais de estoque, com dois depósitos cadastrados: Galpão (teste) com o selo Principal e Van 01 (teste), e o campo Novo local de estoque com o botão de adicionar">
+    <figcaption>Configurações do Estoque, aba Locais de estoque: aqui nasce o exemplo clássico de galpão mais van do técnico.</figcaption>
+  </figure>
+
+  <h3>Transferir entre locais</h3>
+  <p>No menu de ações do material existe <span class="ui">Transferir</span>. A janela <span class="ui">Transferir entre locais de estoque</span> pede <span class="ui">Local de origem</span>, <span class="ui">Local de destino</span>, <span class="ui">Quantidade</span> e <span class="ui">Observações</span> ("Motivo da transferência..."), mostrando o disponível na origem.</p>
+
+  <p>Validações, com o título "Confira os dados": "Selecione o local de origem.", "Selecione o local de destino.", "Origem e destino não podem ser o mesmo local de estoque.", "Informe uma quantidade maior que zero." e "Saldo insuficiente no local de origem."</p>
+
+  <p>Toda transferência aparece no Kardex como movimento do tipo <span class="ui">Transferência</span>, com origem e destino.</p>
+
+  <h2>4. Restrição de acesso por depósito — quem vê o quê</h2>
+
+  <p>Na mesma janela de configuração do local existe a aba <span class="ui">Acesso</span>. Ali há uma chave entre dois estados:</p>
+
+  <table class="dados">
+    <thead><tr><th>Estado</th><th>Explicação na tela</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Aberto</span></td><td>"Todos os usuários da empresa veem este local."</td></tr>
+      <tr><td><span class="ui">Restrito</span></td><td>"Apenas os usuários marcados veem e movimentam este local."</td></tr>
+    </tbody>
+  </table>
+
+  <p>Escolhendo <span class="ui">Restrito</span>, aparece a lista de usuários para marcar quem tem acesso. Alguns aparecem com o rótulo <span class="ui">Sempre tem acesso</span> (a gestão não pode ser bloqueada do próprio estoque). Salvando, aparece "Acesso do local atualizado".</p>
+
+  <div class="regra">
+    Um usuário sem acesso a um depósito <b>não vê aquela pílula</b>, não vê o saldo daquele local, não vê os movimentos daquele local no Kardex e não consegue movimentar nada lá. Para ele, é como se aquele depósito não existisse. <b>Isso é permissão, não é bug.</b> Quando alguém reclama que "meu estoque está com menos itens que o do meu sócio", é quase sempre isso.
+  </div>
+
+  <div class="dica">
+    O uso mais comum da restrição é a van do técnico: cada um enxerga e movimenta apenas o próprio veículo, e a gestão enxerga tudo. Assim o técnico não dá baixa por engano no material do colega.
+  </div>
+
+  <h2>5. Aba Histórico (Kardex): lendo a movimentação item a item</h2>
+
+  <p>A aba <span class="ui">Histórico de Materiais (Kardex)</span> mostra o título <span class="ui">Histórico de Movimentações</span>. É o extrato do estoque: cada linha é um movimento, com o saldo antes e o saldo depois.</p>
+
+  <h3>Colunas</h3>
+  <p><span class="ui">Usuário</span>, <span class="ui">Data e Hora</span>, <span class="ui">Tipo</span>, <span class="ui">Origem</span>, <span class="ui">Material</span>, <span class="ui">Estoque inicial</span>, <span class="ui">Movimento</span> e <span class="ui">Estoque final</span>.</p>
+
+  <h3>Tipos de movimento</h3>
+  <table class="dados">
+    <thead><tr><th>Tipo</th><th>De onde vem</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Entrada</span></td><td>Cadastro inicial com quantidade, entrada manual, entrada de compra e importação de XML da NF-e.</td></tr>
+      <tr><td><span class="ui">Saída</span></td><td>Saída manual e consumo de materiais de um orçamento convertido em OS.</td></tr>
+      <tr><td><span class="ui">Ajuste</span></td><td>Mudança de quantidade na edição do material e ajuste gerado no fechamento de um inventário.</td></tr>
+      <tr><td><span class="ui">Transferência</span></td><td>Movimentação entre dois locais de estoque.</td></tr>
+      <tr><td><span class="ui">Estorno</span></td><td>Reversão de um movimento anterior.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A coluna Origem</h3>
+  <p>É o que amarra o movimento ao seu motivo. Ela mostra <span class="ui">OS</span> com o número da ordem quando o consumo veio de uma OS, ou <span class="ui">Fornecedor: [nome]</span> quando o movimento veio de uma compra. Movimento feito por processo automático aparece como <span class="ui">Sistema</span>. Material apagado depois aparece como <span class="ui">Material removido</span>.</p>
+
+  <figure>
+    <img src="img/t8-kardex.png" alt="Aba Histórico de Materiais (Kardex) da conta de exemplo, sem nenhum movimento no período: ícone de relógio com seta, o texto Nenhuma movimentação encontrada e Tente outro período ou filtro, e o botão Filtros no canto superior direito">
+    <figcaption>Kardex sem movimentação no filtro atual. Com lançamentos, a tabela ganha as colunas Usuário, Data e Hora, Tipo, Origem, Material, Estoque inicial, Movimento e Estoque final.</figcaption>
+  </figure>
+
+  <h3>Filtros</h3>
+  <p><span class="ui">Período</span>, <span class="ui">Material</span> (com <span class="ui">Todos os materiais</span>) e <span class="ui">Tipo de movimento</span> (com <span class="ui">Todos os tipos</span>). Sem movimento: "Sem movimentações" e "As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."</p>
+
+  <div class="dica">
+    O Kardex é a ferramenta para responder "cadê os 20 filtros que compramos mês passado". Filtre pelo material, ordene por data e leia a coluna de saldo: em algum ponto o número muda sem um movimento correspondente, e ali está a resposta.
+  </div>
+
+  <h2>6. Aba Compras: abrir compra, cadastrar fornecedor</h2>
+
+  <p>A aba <span class="ui">Compras de Material</span> mostra o título <span class="ui">Requisições de Compra</span>. Uma requisição é a lista do que você precisa comprar, antes de saber de quem e por quanto.</p>
+
+  <figure>
+    <img src="img/t8-compras.png" alt="Aba Compras de Material com a faixa de alerta 1 material abaixo do mínimo e o atalho Criar requisição, a busca por código ou título, os botões Filtros, Fornecedores e Nova requisição de compra, e dois cartões de requisição: Reposição teste QA (Aberta, 0 cotações) e Reposição de Gases (Aberta, 1 cotação, menor cotação R$ 2.000,00)">
+    <figcaption>Aba Compras de Material: o alerta de estoque abaixo do mínimo vira atalho direto para uma nova requisição.</figcaption>
+  </figure>
+
+  <h3>Criar uma requisição</h3>
+  <ol>
+    <li>Clique em <span class="ui">Nova requisição de compra</span>. Abre a janela <span class="ui">Nova Requisição de Compra</span>.</li>
+    <li>Preencha <span class="ui">Título *</span>. Sugestão da tela: "Ex.: Reposição de materiais, Junho". Sem título, o aviso é "Dê um título à requisição."</li>
+    <li>Em <span class="ui">Materiais</span>, escolha a origem de cada item: <span class="ui">Do estoque</span> (busca no seu cadastro) ou <span class="ui">Fora do estoque</span> (você digita o nome de algo que ainda não existe no cadastro, e ele ganha o selo <span class="ui">Fora do estoque</span>).</li>
+    <li>Preencha <span class="ui">Quantidade</span> e <span class="ui">Unidade</span> de cada material.</li>
+    <li>O atalho <span class="ui">Adicionar itens abaixo do mínimo</span> monta a lista sozinho: escolha o local e o sistema traz tudo que está abaixo do mínimo, mostrando o <span class="ui">Deficit</span> de cada um.</li>
+    <li>Salve. Sem material nenhum, o aviso é "Adicione ao menos um material."</li>
+  </ol>
+
+  <p>A requisição nasce com o status <span class="ui">Aberta</span> e depois pode virar <span class="ui">Concluída</span> ou <span class="ui">Cancelada</span>. O menu de cada uma traz <span class="ui">Editar</span>, <span class="ui">Concluir requisição</span>, <span class="ui">Reabrir requisição</span>, <span class="ui">Cancelar requisição</span> e <span class="ui">Excluir</span>.</p>
+
+  <figure>
+    <img src="img/t8-nova-requisicao.png" alt="Janela Nova Requisição de Compra com o campo Título vazio, o botão âmbar Adicionar itens abaixo do mínimo, a chave Do estoque/Fora do estoque, o campo Adicionar material do estoque, a mensagem Nenhum material adicionado e o campo Observações">
+    <figcaption>Janela Nova Requisição de Compra: título, materiais (do estoque ou não) e o atalho para o que já está abaixo do mínimo.</figcaption>
+  </figure>
+
+  <h3>Cadastrar fornecedor</h3>
+  <p>O botão <span class="ui">Fornecedores</span> abre a janela com a lista. Em <span class="ui">Novo</span>, o cadastro pede <span class="ui">Nome *</span> (único obrigatório), <span class="ui">CPF/CNPJ</span>, <span class="ui">Contato</span>, <span class="ui">Telefone</span>, <span class="ui">E-mail</span> e <span class="ui">Observações</span>. Sem fornecedor cadastrado: "Nenhum fornecedor" e "Cadastre fornecedores para usá-los nas cotações."</p>
+
+  <div class="aviso">
+    Ao editar os materiais de uma requisição que já tem cotações, o aviso é: "Esta requisição já tem cotações. Mudar os materiais vai apagar os preços já informados." Feche as cotações antes de mexer na lista.
+  </div>
+
+  <h2>7. Cotação com vários fornecedores e escolha da vencedora</h2>
+
+  <p>Abrindo uma requisição, aparece a seção <span class="ui">Cotações</span>. Cada cotação é a proposta de <b>um</b> fornecedor para <b>a mesma lista</b> de materiais.</p>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Clique em <span class="ui">Nova cotação</span>. Escolha o <span class="ui">Fornecedor *</span>. Se todos já tiverem cotação, a mensagem é "Todos os fornecedores já têm cotação."</li>
+    <li>Preencha o <span class="ui">Valor unitário (R$)</span> de cada material. O sistema calcula o <span class="ui">Valor total</span> de cada linha e o <span class="ui">Total geral</span>.</li>
+    <li>Salve com <span class="ui">Salvar cotação</span> (ou <span class="ui">Salvar preços</span> ao editar).</li>
+    <li>Repita para os outros fornecedores.</li>
+  </ol>
+
+  <p>Com as cotações lado a lado, a mais barata recebe o selo <span class="ui">Mais barata</span> e o cartão da requisição mostra "Menor cotação: ". O contador "N/M materiais com preço" mostra o quanto de cada cotação já foi preenchido.</p>
+
+  <h3>Aceitar e recusar</h3>
+  <ul>
+    <li><span class="ui">Aceitar</span> marca a cotação como <span class="ui">Aceita</span>, e o cartão passa a mostrar "Aceita: [fornecedor]".</li>
+    <li><span class="ui">Recusar</span> marca como <span class="ui">Recusada</span>. O aviso é: "A cotação de [fornecedor] será marcada como recusada. Os preços ficam guardados, só não entram na comparação."</li>
+    <li><span class="ui">Desfazer aceite</span> e <span class="ui">Reabrir</span> revertem a decisão.</li>
+  </ul>
+
+  <div class="regra">
+    <b>Aceitar a cotação NÃO mexe no estoque.</b> A própria tela avisa: "Aceitar não mexe no estoque. Use Registrar entrada quando o material chegar." São dois momentos diferentes de propósito: decidir de quem comprar e receber a mercadoria. Aceitar antes e receber depois é o normal.
+  </div>
+
+  <h3>Registrar a entrada quando o material chegar</h3>
+  <p>Na cotação aceita, use <span class="ui">Registrar entrada no estoque</span>. A confirmação explica: "Os materiais desta compra serão dados de entrada com o fornecedor <i>[nome]</i> e os preços desta cotação. Materiais fora do estoque serão criados automaticamente. O movimento aparece no histórico (Kardex)."</p>
+
+  <ul>
+    <li>Material que já existe no cadastro recebe uma <b>entrada</b> com a quantidade e o custo daquela cotação.</li>
+    <li>Material marcado como <span class="ui">Fora do estoque</span> é <b>criado no cadastro</b> na hora, com o nome, a unidade e o custo da cotação, e recebe a entrada. Ele ganha o selo <span class="ui">Criar no estoque</span> antes da confirmação.</li>
+    <li>Ao final, a confirmação é "Entrada registrada (N itens)."</li>
+  </ul>
+
+  <h2>8. Importar XML da NF-e e a compra montada sozinha</h2>
+
+  <p>O botão <span class="ui">Importar XML (NF-e)</span>, no topo da tela, abre a janela de mesmo nome. É o caminho mais rápido para dar entrada numa compra: em vez de digitar item por item, você joga o arquivo da nota do fornecedor e o sistema monta tudo.</p>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Clique em <span class="ui">Escolher arquivo XML</span>. A instrução é "Selecione o arquivo da nota fiscal eletrônica para dar entrada no estoque."</li>
+    <li>O sistema lê a nota e mostra o bloco <span class="ui">Fornecedor</span>. Se o fornecedor já existe, aparece <span class="ui">Vinculado</span>. Se não, aparece <span class="ui">Novo</span>, com o aviso "Será criado o fornecedor <i>[nome]</i>." Se não der para identificar: <span class="ui">Não identificado</span>.</li>
+    <li>Em <span class="ui">Produtos da nota</span>, cada item vem com nome, <span class="ui">Qtd</span>, <span class="ui">Unidade</span>, <span class="ui">Custo un.</span> e o <span class="ui">Destino no estoque</span>. Aqui você casa cada produto da nota com um material do seu cadastro, ou escolhe <span class="ui">Criar novo item</span>.</li>
+    <li>Desmarque o que não quiser importar. O resumo mostra "N novos, M no total".</li>
+    <li>Clique em <span class="ui">Confirmar entrada</span>.</li>
+  </ol>
+
+  <!-- PRINT FALTANDO: t8-importar-xml — janela "Importar XML (NF-e)" no passo de conferência, mostrando o bloco Fornecedor e a lista de "Produtos da nota" com destino no estoque. Exige um arquivo XML de exemplo, com dados de fornecedor fictícios. -->
+
+  <h3>Avisos que aparecem</h3>
+  <ul>
+    <li><b>Unidade diferente:</b> "Unidade da nota: X ≠ cadastro: Y". A nota pode vir em caixa e o seu cadastro estar em unidade. Confira antes, porque o sistema vai lançar o número da nota.</li>
+    <li><b>Quantidade zerada:</b> "Quantidade precisa ser maior que zero." e, ao confirmar, "Quantidade inválida" com a orientação de corrigir ou desmarcar o item.</li>
+    <li><b>Nota já importada:</b> "Esta nota já foi importada em [data]. Importar de novo vai duplicar a entrada no estoque. Deseja continuar?", com <span class="ui">Cancelar</span> e <span class="ui">Importar mesmo assim</span>.</li>
+    <li><b>Nota sem chave:</b> "Esta nota não tem chave de acesso. Não será possível avisar se ela for importada de novo." Nesse caso a proteção contra duplicidade não funciona: confira você mesmo.</li>
+    <li>Ao terminar: "NF-e importada. Entrada registrada no estoque.", com o detalhe de quantos itens entraram, quantos foram criados novos e quantos falharam.</li>
+  </ul>
+
+  <div class="dica">
+    Casar corretamente o produto da nota com o material do cadastro na <b>primeira</b> importação daquele fornecedor economiza muito trabalho depois. O nome do produto na nota costuma ser diferente do nome que você usa no dia a dia.
+  </div>
+
+  <h2>9. Aba Inventários: contagem física passo a passo e o ajuste gerado no fechamento</h2>
+
+  <p>Inventário é a conferência física: você conta o que existe de verdade na prateleira e o sistema compara com o que ele achava que existia. A diferença vira ajuste.</p>
+
+  <h3>Criar o inventário (três passos)</h3>
+  <ol>
+    <li><b><span class="ui">Locais</span></b>: "Selecione os locais de estoque que serão contados." Sem local cadastrado: "Nenhum local de estoque cadastrado."</li>
+    <li><b><span class="ui">Escopo</span></b>: "Escolha quais materiais entram na contagem." São três opções: <span class="ui">Todos os materiais dos locais</span>, <span class="ui">Por grupo de material</span> ou <span class="ui">Itens específicos</span>, com busca e seleção múltipla.</li>
+    <li><b><span class="ui">Confirmar</span></b>: mostra o <span class="ui">Resumo do inventário</span> com os locais e o escopo, mais um campo de <span class="ui">Observações</span> ("Contexto, turno, responsável..."). Clique em <span class="ui">Criar inventário</span>. A confirmação é "Inventário criado".</li>
+  </ol>
+
+  <figure>
+    <img src="img/t8-inventario-wizard.png" alt="Assistente de novo inventário no passo 1 de 3 (Locais), com a instrução Selecione os locais de estoque que serão contados e as caixinhas para Galpão (teste), com o selo Principal, e Van 01 (teste), botões Cancelar e Avançar">
+    <figcaption>Assistente de inventário, passo Locais: os três passos aparecem sempre no topo (Locais, Escopo, Confirmar).</figcaption>
+  </figure>
+
+  <h3>Contar</h3>
+  <p>Abrindo o inventário, cada linha traz <span class="ui">Material</span>, <span class="ui">Local</span>, <span class="ui">Esperado</span>, <span class="ui">Contado</span>, <span class="ui">Diferença</span> e <span class="ui">Valor divergência</span>. Você digita a quantidade contada em cada linha. Item não contado aparece como <span class="ui">Não contado</span>. As duas abas <span class="ui">Todos os itens</span> e <span class="ui">Divergências</span> ajudam a focar só no que está errado.</p>
+
+  <h3>Fechar o inventário</h3>
+  <p>O botão <span class="ui">Finalizar inventário</span> abre a confirmação <span class="ui">Finalizar inventário?</span>:</p>
+  <ul>
+    <li>Com divergência: "N itens com divergência. O estoque será ajustado em R$ X. Esta ação não pode ser desfeita."</li>
+    <li>Sem divergência: "Nenhuma divergência encontrada. O estoque não será alterado."</li>
+  </ul>
+  <p>Há ainda um campo <span class="ui">Observações finais</span> ("Registre o motivo ou contexto do inventário..."). Ao confirmar, aparece "Inventário finalizado" com "N itens ajustados no estoque." ou "Nenhuma divergência encontrada."</p>
+
+  <div class="perigo">
+    <b>Finalizar inventário não pode ser desfeito.</b> Cada divergência vira um movimento de <b>ajuste</b> no Kardex e o saldo passa a ser o contado. Se a contagem estiver errada, o erro entra no sistema como verdade. Confira as divergências grandes antes de fechar: normalmente é erro de contagem, não sumiço.
+  </div>
+
+  <p>Inventário aberto pode ser cancelado pelo menu (<span class="ui">Cancelar inventário</span>). Inventário já finalizado <b>não</b> pode, justamente para não reverter ajustes já confirmados. Os status possíveis são <span class="ui">Aberto</span>, <span class="ui">Finalizado</span> e <span class="ui">Cancelado</span>.</p>
+
+  <p>Dá para exportar o inventário em PDF e em Excel, com o total das divergências em destaque.</p>
+
+  <h2>10. Aba Posição: saldo do estoque numa data passada</h2>
+
+  <p>A aba <span class="ui">Posição de Estoque</span> responde a uma pergunta específica: <b>quanto eu tinha em estoque no dia X?</b> É o retrato histórico, reconstruído a partir de todos os movimentos até aquela data.</p>
+
+  <h3>Como usar</h3>
+  <ol>
+    <li>Escolha a data.</li>
+    <li>Se quiser, filtre por <span class="ui">Locais de estoque</span> (o padrão é <span class="ui">Todos os locais</span>).</li>
+    <li>Clique em <span class="ui">Atualizar</span>.</li>
+  </ol>
+
+  <p>A tabela mostra <span class="ui">Local</span>, <span class="ui">SKU</span>, <span class="ui">Material</span>, <span class="ui">Un.</span>, <span class="ui">Saldo</span>, <span class="ui">Valor (custo)</span> e <span class="ui">Projeção venda</span>, com <span class="ui">Total</span> no rodapé. No topo ficam <span class="ui">Valor em estoque (custo)</span> e <span class="ui">Projeção de venda</span>. Antes de atualizar, a mensagem é "Nenhuma posição" com "Selecione uma data e atualize para ver o saldo do estoque."</p>
+
+  <p>O botão <span class="ui">Exportar</span> gera PDF e Excel com o título <span class="ui">Posição de Estoque</span> e a data no cabeçalho.</p>
+
+  <figure>
+    <img src="img/t8-posicao-estoque.png" alt="Aba Posição de Estoque com as pílulas Todos os locais, Galpão (teste) e Van 01 (teste), o seletor de data, os cartões Valor em estoque (custo) R$ 900,00 e Projeção de venda R$ 0,00, e a tabela com Local, SKU, Material, Un., Saldo, Valor (custo) e Projeção venda, com a linha Total ao fim">
+    <figcaption>Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, com o total no rodapé da tabela.</figcaption>
+  </figure>
+
+  <div class="dica">
+    Essa aba é o que o contador pede no fechamento do ano: o valor do estoque em 31 de dezembro. Também serve para conferir "quanto eu tinha antes daquela obra grande" e para justificar variação de custo entre meses.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Concluí a OS e o estoque não baixou"</td>
+        <td>Comportamento correto do sistema</td>
+        <td>Concluir OS <b>não</b> dá baixa em estoque, e não existe campo de material na tela de execução do técnico. A baixa acontece: na <b>conversão de um orçamento em OS</b> (os materiais do orçamento saem do estoque, e o movimento aparece no Kardex com origem OS), na <b>saída manual</b> e no <b>ajuste do inventário</b>.</td>
+      </tr>
+      <tr>
+        <td>"O sistema não avisou que o material acabou"</td>
+        <td>Estoque mínimo não preenchido</td>
+        <td>O alerta depende do mínimo definido por local, dentro do cadastro do material, no bloco <span class="ui">Locais deste material</span>. Sem mínimo, não há alerta e o material não entra no indicador <span class="ui">Estoque baixo</span>.</td>
+      </tr>
+      <tr>
+        <td>"Meu funcionário vê menos itens que eu no estoque"</td>
+        <td>Restrição de acesso por local</td>
+        <td>É permissão, não bug. Na configuração do local, a aba <span class="ui">Acesso</span> pode estar em <span class="ui">Restrito</span>. Quem não está marcado não vê aquele depósito nem os movimentos dele.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo tirar um material do local"</td>
+        <td>Ainda há saldo naquele local</td>
+        <td>A mensagem é "Ainda há saldo neste local. Transfira ou dê baixa antes." Use <span class="ui">Transferir saldo</span> ou registre a saída e depois desmarque.</td>
+      </tr>
+      <tr>
+        <td>"Importei a nota duas vezes e dobrou o estoque"</td>
+        <td>Confirmou o aviso de nota repetida</td>
+        <td>O sistema avisa "Esta nota já foi importada". Se foi confirmado mesmo assim, corrija com uma saída manual da quantidade duplicada, ou com um inventário do material. Notas sem chave de acesso não têm essa proteção.</td>
+      </tr>
+      <tr>
+        <td>"Aceitei a cotação e o estoque não entrou"</td>
+        <td>Aceitar e receber são etapas diferentes</td>
+        <td>A própria tela avisa: "Aceitar não mexe no estoque. Use Registrar entrada quando o material chegar." Abra a cotação aceita e use <span class="ui">Registrar entrada no estoque</span>.</td>
+      </tr>
+      <tr>
+        <td>"Finalizei o inventário com número errado"</td>
+        <td>Fechamento é definitivo</td>
+        <td>Não dá para desfazer nem cancelar inventário finalizado. O caminho é criar um novo inventário com a contagem correta, ou lançar um ajuste manual editando a quantidade do material. Tudo fica registrado no Kardex.</td>
+      </tr>
+      <tr>
+        <td>"O valor investido está diferente do que eu esperava"</td>
+        <td>Preço de custo desatualizado ou local filtrado</td>
+        <td>O valor usa o preço de custo cadastrado. Confira também qual depósito está selecionado nas pílulas: o indicador reflete o local ativo.</td>
+      </tr>
+      <tr>
+        <td>"Consigo importar meus materiais de uma planilha?"</td>
+        <td>Não existe importação em massa por planilha</td>
+        <td>Não existe importação de materiais por CSV ou Excel. O caminho mais próximo é o <span class="ui">Importar XML (NF-e)</span>, que cria os itens a partir da nota do fornecedor e já registra a entrada.</td>
+      </tr>
+      <tr>
+        <td>"Sumiu material e ninguém sabe explicar"</td>
+        <td>Falta olhar o Kardex</td>
+        <td>Abra <span class="ui">Histórico de Materiais (Kardex)</span>, filtre pelo material e leia as colunas de saldo inicial e final. A coluna <span class="ui">Origem</span> mostra se a saída veio de OS ou de fornecedor, e a coluna <span class="ui">Usuário</span> mostra quem lançou.</td>
+      </tr>
+      <tr>
+        <td>"Excluí um material sem querer"</td>
+        <td>Exclusão remove o histórico dele</td>
+        <td>Excluir material remove também as movimentações dele e desvincula das listas de orçamento e de serviço. Não tem como desfazer. Para tirar de circulação sem perder histórico, zere o saldo e deixe o cadastro parado.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Concluir uma OS dá baixa nos materiais usados?</dt>
+    <dd>Não. Concluir OS não altera saldo de estoque, e a tela do técnico nem tem campo de material. A baixa acontece na conversão de orçamento em OS, na saída manual e no ajuste do inventário.</dd>
+
+    <dt>Qual a diferença entre Categoria e Grupo?</dt>
+    <dd>Categoria é uma lista fixa igual para todos (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque, e serve para organizar do seu jeito.</dd>
+
+    <dt>Preciso ter mais de um depósito?</dt>
+    <dd>Não. Quem tem um só trabalha no local principal e nem vê as pílulas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.</dd>
+
+    <dt>Dá para o técnico dar baixa de material pelo celular?</dt>
+    <dd>Não pela tela de execução da OS, que não tem campo de material. A baixa é feita na tela de Estoque, por quem tem a permissão de gerenciar estoque e acesso ao local.</dd>
+
+    <dt>Aceitar a cotação já compra o material?</dt>
+    <dd>Não. Aceitar registra a decisão de qual fornecedor venceu. Quando a mercadoria chega, use <span class="ui">Registrar entrada no estoque</span> na cotação aceita, e aí sim o saldo sobe.</dd>
+
+    <dt>O que acontece com o material "fora do estoque" da requisição?</dt>
+    <dd>Ele fica só como texto na requisição até a entrada ser registrada. Nesse momento, o sistema cria o item no cadastro com o nome, a unidade e o custo da cotação, e dá a entrada.</dd>
+
+    <dt>Como sei quanto tinha em estoque no fim do ano passado?</dt>
+    <dd>Na aba <span class="ui">Posição de Estoque</span>, escolha a data e clique em <span class="ui">Atualizar</span>. Ela reconstrói o saldo daquele dia e mostra o valor total em custo e a projeção de venda, com exportação em PDF e Excel.</dd>
+
+    <dt>Posso fazer inventário só de uma parte do estoque?</dt>
+    <dd>Pode. No passo <span class="ui">Escopo</span>, escolha <span class="ui">Por grupo de material</span> ou <span class="ui">Itens específicos</span>. Contagem parcial mensal por grupo costuma funcionar melhor que uma contagem geral por ano.</dd>
+
+    <dt>Dá para desfazer um inventário finalizado?</dt>
+    <dd>Não. O fechamento gera os ajustes no Kardex e é definitivo. Um novo inventário ou um ajuste manual corrigem o saldo, e tudo fica registrado.</dd>
+
+    <dt>O saldo pode ficar negativo?</dt>
+    <dd>As saídas e transferências avisam antes: "Saldo ficaria negativo" e "Saldo insuficiente. Disponível: X." A regra é bloquear o que passaria do disponível, então saldo negativo não é o comportamento normal do sistema.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa para isso:</b> estoque, almoxarifado, depósito, van, peça, material, insumo, dar baixa, entrada, saída, kardex, extrato do estoque, contagem, balanço, inventário, requisição, cotação, fornecedor, nota do fornecedor, XML da nota
+  </div>
+</section>

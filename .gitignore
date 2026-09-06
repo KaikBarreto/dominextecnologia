@@ -61,3 +61,18 @@ graphify-out/
 .graphifyignore
 melhorias-claude.md
 public/TMP/
+
+# Guia Técnico — fonte de texto e JPEGs da web versionados;
+# PNG bruto e PDF ficam fora (regeráveis / PDF servido pelo Supabase Storage)
+docs/guia-tecnico/img/
+docs/guia-tecnico/img-otim/
+docs/guia-tecnico/img-pdf/
+docs/guia-tecnico/guia.html
+docs/guia-tecnico/*.pdf
+public/guia-tecnico/*.pdf
+# Artefatos gerados do guia: a cópia publicada vive em public/guia-tecnico/.
+# Estes são regeráveis pelos scripts e duplicariam ~2 MB no repositório.
+docs/guia-tecnico/Guia-Tecnico-Dominex.md
+docs/guia-tecnico/Guia-Tecnico-chunks.jsonl
+docs/guia-tecnico/Guia-Tecnico-index.json
+

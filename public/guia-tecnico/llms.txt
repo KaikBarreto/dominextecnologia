@@ -1,0 +1,21 @@
+# Guia Técnico — Dominex
+
+> Manual completo da Dominex, sistema de gestão para empresas de serviço técnico em campo
+> (refrigeração e climatização, elétrica, energia solar, CFTV, dedetização, elevadores e
+> assistência técnica). Uma seção por área do sistema, na ordem da Trilha Domiflix. Cobre o que
+> cada tela faz, o passo a passo, as regras que o sistema aplica, os problemas mais comuns com
+> causa e solução, e as perguntas frequentes.
+
+Atualizado em 06 de setembro de 2026 · versão do sistema v1.22.5 · 18 seções.
+
+## Conteúdo em texto puro
+
+- [Guia completo em markdown](/guia-tecnico/guia.md): o documento inteiro, seção por seção.
+- [Chunks para recuperação](/guia-tecnico/chunks.jsonl): um JSON por linha, cada pedaço auto-contido, com seção, capítulo, tipo, rotas do sistema, palavras-chave e sinônimos. Tipos: visao_geral, capitulo, problema, faq, glossario.
+- [Índice do corpus](/guia-tecnico/index.json): seções, capítulos e contagem de chunks.
+- [Guia em PDF](https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/guia-tecnico/Guia-Tecnico-Dominex.pdf): mesma coisa, diagramado.
+
+## Como usar
+
+Para responder dúvida de usuário, prefira os chunks do tipo `problema` (sintoma relatado, causa provável, como resolver)
+e `faq`. Para explicar um fluxo inteiro, use `capitulo`. Cite sempre a seção de origem (ex: T7, O técnico em campo).

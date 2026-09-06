@@ -1,0 +1,14 @@
+{
+  "secao": "T17",
+  "prints": [
+    {
+      "id": "t17-dashboard-kpis",
+      "url": "/dashboard",
+      "legenda": "Topo do Dashboard em recorte fechado: saudação, filtro de período e os três cartões de indicador (OS Abertas, Taxa de Conclusão e Faturamento), para uso como apoio do capítulo de indicadores.",
+      "passos": [
+        { "esperar": 5000 }
+      ],
+      "recorte": { "seletor": ".grid.gap-3" }
+    }
+  ]
+}

@@ -1,0 +1,415 @@
+<section class="tutorial" id="t6">
+  <h1><span class="tcode">T6</span> Agenda, Equipes e Mapa ao Vivo</h1>
+
+  <p class="lead">Aqui a operação vira rota: quem vai, quando vai e onde está agora. A Agenda organiza a semana da equipe, as Equipes agrupam os técnicos que trabalham juntos e o Mapa mostra onde cada um está enquanto o serviço acontece.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → Agenda. Mapa em Menu → Mapa e Rastreamento. Equipes em Menu → Funcionários → aba Equipes</span>
+    <span><b>Rotas:</b> <code>/agenda</code>, <code>/mapa-ao-vivo</code>, <code>/funcionarios</code></span>
+    <span><b>Depende de:</b> ter OS criadas (T5) e usuários cadastrados</span>
+    <span><b>Quem enxerga:</b> a Agenda precisa da tela <b>Agenda</b> liberada. O mapa precisa da tela <b>Mapa e Rastreamento</b>. As Equipes ficam dentro de <b>Funcionários</b></span>
+    <span><b>Módulo:</b> Agenda e Mapa não dependem de módulo pago. <b>Equipes depende do módulo RH</b>, porque a aba vive dentro da tela Funcionários</span>
+  </div>
+
+  <h2>1. Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)</h2>
+
+  <p>A tela se chama <span class="ui">Agenda</span>. No computador o subtítulo é "Visualize e gerencie os agendamentos de ordens de serviço"; no celular, "Gerencie suas tarefas e compromissos". Ela mostra Ordens de Serviço, Tarefas internas e, para quem tem a permissão de ver contas na agenda, também os avisos de contas a pagar e a receber.</p>
+
+  <figure>
+    <img src="img/t6-agenda.png" alt="Tela Agenda da Dominex com o calendário, os botões de visão Dia, Semana e Mês, a navegação de período e os cartões de OS agendadas">
+    <figcaption>Agenda: calendário com os compromissos do período e os controles de visão.</figcaption>
+  </figure>
+
+  <h3>As três visões</h3>
+
+  <table class="dados">
+    <thead><tr><th>Visão</th><th>O que mostra</th><th>Para que serve</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Dia</span></td><td>As horas do dia, uma faixa por horário, com cada compromisso ocupando o espaço proporcional à duração dele.</td><td>Executar o dia. É a visão do despachante e a que faz sentido na tela pequena.</td></tr>
+      <tr><td><span class="ui">Semana</span></td><td>Sete colunas, uma por dia, com os horários na lateral.</td><td>Distribuir carga e ver buraco na agenda.</td></tr>
+      <tr><td><span class="ui">Mês</span></td><td>Grade do mês, com os compromissos resumidos em cada dia.</td><td>Planejamento e visão de volume.</td></tr>
+    </tbody>
+  </table>
+
+  <p>No celular, a visão que abre é <span class="ui">Dia</span>. O motivo é prático: numa tela de celular, uma semana inteira com sete colunas e horários vira um amontoado ilegível. A visão de Dia mostra um compromisso por vez, com o horário, o cliente, o endereço e o técnico, no tamanho em que dá para ler com o celular na mão.</p>
+
+  <h3>Navegar</h3>
+  <ul>
+    <li>Setas de anterior e próximo movem um dia, uma semana ou um mês, conforme a visão em que você está.</li>
+    <li>O botão <span class="ui">Hoje</span> volta para a data de hoje.</li>
+    <li>No celular, nas visões Dia e Semana, você pode <b>deslizar o dedo</b> para os lados: para a esquerda avança, para a direita volta.</li>
+    <li>A lupa abre a busca <span class="ui">Buscar OS / Tarefa</span>, que procura por número da OS, cliente, descrição e técnico. Ao escolher um resultado, o calendário navega até a data daquele compromisso e abre o resumo dele.</li>
+  </ul>
+
+  <h3>Filtros</h3>
+  <p>O botão <span class="ui">Filtros</span> traz <span class="ui">Técnico</span>, <span class="ui">Cliente</span> e <span class="ui">Status</span>, todos com seleção múltipla. Sem nada marcado, mostra tudo.</p>
+
+  <div class="regra">
+    <b>Quem é técnico só enxerga a própria agenda.</b> Um usuário com o papel de técnico vê apenas as OS em que ele é responsável ou em que a equipe dele foi escalada. Isso não é filtro, é regra de visibilidade e ele não consegue desligar. Para tarefas internas vale uma regra parecida com todos os papéis: sem a permissão <span class="ui">Ver Toda a Agenda</span>, a tarefa só aparece para quem é responsável por ela ou para a equipe dela.
+  </div>
+
+  <h2>2. Criar pelo "+": Nova OS × Nova Tarefa — a diferença que mais confunde</h2>
+
+  <p>Ao clicar no botão de criar (no celular, o botão flutuante <span class="ui">Tarefa/OS</span>), o sistema <b>não</b> abre um formulário direto. Ele abre primeiro a pergunta <span class="ui">O que deseja criar?</span>, com dois cartões:</p>
+
+  <table class="dados">
+    <thead><tr><th>Escolha</th><th>Descrição na tela</th><th>O que acontece</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Ordem de Serviço</span></td>
+        <td>"Atendimento técnico com cliente e equipamento"</td>
+        <td>Abre o formulário de três etapas da OS, já com a data e o horário do lugar onde você clicou no calendário.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Tarefa</span></td>
+        <td>"Atividade interna, reunião ou compromisso"</td>
+        <td>Abre a janela <span class="ui">Nova Tarefa</span>, um formulário bem mais curto.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t6-tipo-entrada.png" alt="Janela O que deseja criar? com dois cartões lado a lado: Ordem de Serviço, com o ícone de prancheta e o texto Atendimento técnico com cliente e equipamento, e Tarefa, com o ícone de check e o texto Atividade interna, reunião ou compromisso">
+    <figcaption>A pergunta que abre antes de qualquer formulário: OS ou Tarefa.</figcaption>
+  </figure>
+
+  <h3>Campos da Nova Tarefa</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Título da Tarefa *</span></td><td>Sim</td><td>Sugestão da tela: "Ex: Comprar materiais, Reunião com cliente..."</td></tr>
+      <tr><td><span class="ui">Cliente (opcional)</span></td><td>Não</td><td>Dá para amarrar a tarefa a um cliente, mas a primeira opção é <span class="ui">Nenhum</span>.</td></tr>
+      <tr><td><span class="ui">Tipo de Tarefa</span></td><td>Não</td><td>Vem do catálogo criado em Serviços → aba Tipos de Tarefas.</td></tr>
+      <tr><td><span class="ui">Responsáveis</span></td><td>Não</td><td>Mesmo seletor da OS: aceita pessoas e equipes.</td></tr>
+      <tr><td><span class="ui">Data</span>, <span class="ui">Horário</span>, <span class="ui">Duração (min)</span></td><td>Não</td><td>Definem o bloco no calendário.</td></tr>
+      <tr><td><span class="ui">Descrição</span></td><td>Não</td><td>"Detalhes da tarefa..."</td></tr>
+      <tr><td><span class="ui">Recorrência</span></td><td>Não</td><td>Mesmas frequências da OS. Ao ligar, o aviso é: "Ativar a recorrência transforma esta tarefa numa série, criando as próximas ocorrências." Ao alterar uma série existente: "Alterar a recorrência atualiza esta tarefa e as próximas da série. As anteriores e as já concluídas permanecem como estão."</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra">
+    <b>Tarefa não é Ordem de Serviço, e essa é a confusão número um da Agenda.</b> A Tarefa aparece só no calendário. Ela <b>não</b> aparece na tela de Ordens de Serviço, não entra nos indicadores de OS, não tem checklist, não tem check-in, não gera link para o cliente, não gera relatório de atendimento e não entra no NPS. Use Tarefa para compromisso interno (reunião, ida ao fornecedor, treinamento, entrega de material) e Ordem de Serviço para tudo que é atendimento a cliente.
+  </div>
+
+  <p>Você também pode criar clicando direto num horário vazio (no computador, duplo clique num dia do mês). O sistema abre a mesma pergunta, já com a data e a hora do ponto clicado.</p>
+
+  <h2>3. Reagendar arrastando no desktop e com toque-e-segure no celular</h2>
+
+  <p>No computador, <b>arraste o cartão</b> do compromisso para o novo dia ou horário. No celular, <b>toque e segure</b> no cartão até ele entrar em modo de movimento; aí aparece a instrução <span class="ui">Toque no horário para mover a OS</span> e um botão <span class="ui">Cancelar</span>. Toque no novo horário para concluir.</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Arrastar muda a data e o horário <b>na hora</b>, sem confirmação, e aparece "OS atualizada com sucesso!". Isso é conveniente e perigoso na mesma medida: um arraste errado move o compromisso de verdade.</li>
+    <li>Arrastar não muda o status da OS. Ela continua exatamente no estado em que estava.</li>
+    <li>Se a OS pertencer a um <b>contrato</b>, a mudança de data abre a pergunta <span class="ui">Alterar data da recorrência?</span>, com as opções <span class="ui">Apenas esta</span> e <span class="ui">Esta e futuras</span>. Escolhendo "Esta e futuras", todas as visitas seguintes daquele contrato deslocam pelo mesmo número de dias.</li>
+    <li>Se a OS pertencer a uma <b>série recorrente</b> criada manualmente, a edição abre a pergunta <span class="ui">Editar recorrência</span>, com <span class="ui">Apenas esta</span> e <span class="ui">Todas da recorrência</span>.</li>
+  </ul>
+
+  <div class="aviso">
+    <b>O arraste avisa o técnico.</b> Mover um compromisso muda a agenda de quem foi escalado. Em dia de operação cheia, combine antes por telefone ou mensagem: o sistema move a data, mas não liga para o cliente final avisando que o horário mudou.
+  </div>
+
+  <h2>4. Legenda de cores por tipo de serviço e a estrela de feriado</h2>
+
+  <p>Cada compromisso no calendário aparece na <b>cor do tipo de serviço</b>. É por isso que vale a pena escolher cores bem diferentes ao cadastrar os serviços: de longe, a agenda passa a se ler como um mapa, sem precisar abrir cartão nenhum.</p>
+
+  <p>O botão <span class="ui">Legenda</span> abre a lista <span class="ui">Legenda — Tipos de Serviço</span>, com a cor e o nome de cada serviço, mais a entrada <span class="ui">Feriado</span>.</p>
+
+  <figure>
+    <img src="img/t6-legenda-agenda.png" alt="Janela pequena Legenda — Tipos de Serviço aberta no celular, listando a bolinha de cor e o nome de três tipos de serviço: Higienização em amarelo, Manutenção Preventiva em verde e Visita Técnica em cinza">
+    <figcaption>O botão Legenda só existe na versão para celular da Agenda; no computador a cor de cada serviço já se aprende olhando o cadastro em Serviços. Nesta captura da conta de exemplo aparecem só os tipos de serviço cadastrados, sem nenhum feriado na janela visível.</figcaption>
+  </figure>
+
+  <h3>Feriados</h3>
+  <ul>
+    <li>Os feriados aparecem marcados no calendário, com uma estrela indicando o dia.</li>
+    <li>A lista de feriados considera os <b>nacionais</b> e também os <b>municipais e estaduais</b>, com base na cidade e no estado cadastrados nos dados da empresa. Se o endereço da empresa estiver incompleto, os feriados locais não aparecem.</li>
+    <li>Dá para desligar a exibição de feriados em Configurações → Usabilidade.</li>
+  </ul>
+
+  <div class="dica">
+    Feriado marcado na agenda evita o erro clássico de agendar manutenção preventiva num dia em que o prédio do cliente está fechado. Vale conferir o cadastro de cidade e estado da empresa para os feriados locais entrarem.
+  </div>
+
+  <h3>Outros sinais no cartão</h3>
+  <ul>
+    <li>OS de contrato PMOC ganha o selo <span class="ui">PMOC</span>.</li>
+    <li>OS pausada aparece em âmbar, com o rótulo <span class="ui">Pausada</span>. Se ela foi marcada como finalizada parcialmente, o rótulo vira <span class="ui">Parcialmente Concluída</span>.</li>
+    <li>Tarefa aparece com o selo <span class="ui">Tarefa</span>.</li>
+  </ul>
+
+  <h2>5. Ordens Pausadas: o diálogo de retomada rápida</h2>
+
+  <p>No topo da Agenda existe um botão com ícone de pausa e o rótulo <span class="ui">OS Pausadas</span>. Quando há alguma pausada, ele fica âmbar e mostra um contador. Clicando, abre a janela <span class="ui">OS Pausadas</span> com a descrição: "Todas as ordens de serviço pausadas, independente da data."</p>
+
+  <p>Essa janela existe para resolver um problema real: a OS que o técnico pausou porque faltou peça, porque o cliente não estava, porque começou a chover. Ela ficou parada na data antiga e ninguém mais olhou para ela.</p>
+
+  <h3>O que a janela mostra</h3>
+  <ul>
+    <li>Uma busca própria: "Buscar por nº OS, cliente ou endereço…".</li>
+    <li>Por OS: o cliente, o endereço, o rótulo <span class="ui">Agendada para:</span> com a data original (ou <span class="ui">Sem data agendada</span>) e há quanto tempo ela está parada, no formato <span class="ui">Pausada há ...</span>.</li>
+    <li>Dois botões por OS: <span class="ui">Ver detalhes</span>, que abre o resumo, e <span class="ui">Retomar agora</span>.</li>
+  </ul>
+
+  <p>Clicando em <span class="ui">Retomar agora</span>, a OS volta para o status <b>Em andamento</b> e aparece o aviso "OS retomada" com o detalhe "OS #N voltou para a agenda."</p>
+
+  <p>Quando não há nenhuma OS pausada, a janela mostra: "Nenhuma OS pausada no momento." e "Quando você pausar uma OS, ela aparece aqui pra não se perder na agenda."</p>
+
+  <figure>
+    <img src="img/t6-os-pausadas.png" alt="Janela OS Pausadas com o campo de busca Buscar por nº OS, cliente ou endereço e o estado vazio: ícone de pausa, o texto Nenhuma OS pausada no momento e a explicação Quando você pausar uma OS, ela aparece aqui pra não se perder na agenda">
+    <figcaption>Janela OS Pausadas sem nenhuma pendência: é este o estado vazio, sem OS parada.</figcaption>
+  </figure>
+
+  <h2>6. A OS retomada aparecendo em duas datas (badge "Retomada")</h2>
+
+  <p>Uma OS pausada há duas semanas e retomada hoje precisa aparecer <b>hoje</b>, senão o técnico não a encontra. Mas se ela simplesmente mudasse de data, você perderia a informação de quando ela foi originalmente agendada. A Dominex resolve isso mostrando a OS <b>nas duas datas</b>.</p>
+
+  <table class="dados">
+    <thead><tr><th>Onde ela aparece</th><th>Como aparece</th></tr></thead>
+    <tbody>
+      <tr><td>Na data agendada original</td><td>Normal, sem marca extra. O histórico fica preservado.</td></tr>
+      <tr><td>Do dia da retomada até hoje</td><td>Com a borda esquerda âmbar, o ícone de play e o selo <span class="ui">Retomada</span>. O texto de apoio ao passar o mouse é: "OS retomada, agendada originalmente para outra data".</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Só entram nessa repetição as OS com status ativo: <b>em andamento</b>, <b>a caminho</b> ou <b>pendente</b>.</li>
+    <li>OS <b>concluída</b> ou <b>cancelada</b> não se repete. Serviço fechado não polui o dia de hoje.</li>
+    <li>A repetição só acontece quando a data original é <b>anterior</b> à retomada. Retomar no mesmo dia não duplica nada.</li>
+    <li>As duas aparições são a <b>mesma OS</b>. Abrir por qualquer uma delas leva ao mesmo lugar, e finalizar por uma finaliza a OS toda.</li>
+  </ul>
+
+  <div class="aviso">
+    Se um gestor olhar a agenda de um dia da semana passada, ele vai ver a OS retomada lá também, marcada como <span class="ui">Retomada</span>. Não é duplicidade nem erro de lançamento: é a mesma OS, mostrada no dia em que ainda estava pendente de execução. Assim que ela for concluída ou cancelada, as aparições extras somem e resta apenas a data original.
+  </div>
+
+  <h2>7. Equipes: onde ficam de verdade (Funcionários → aba Equipes), criar time com cor, ícone, foto e membros</h2>
+
+  <p>As equipes <b>não</b> têm tela própria no menu. Elas vivem em <span class="ui">Funcionários</span>, na aba <span class="ui">Equipes</span>. Quem tiver salvo o endereço antigo <code>/equipes</code> nos favoritos é levado para <code>/funcionarios</code>.</p>
+
+  <div class="perigo">
+    <b>Sem o módulo RH, não dá para criar nem editar equipe.</b> A tela <span class="ui">Funcionários</span> depende do módulo de RH. Sem ele contratado, quem tenta abrir <code>/funcionarios</code> (ou o atalho antigo <code>/equipes</code>) é redirecionado e vê a janela de contratação do módulo. Como a aba Equipes é a <b>única</b> porta de entrada do cadastro de equipes hoje, isso quer dizer: empresa sem o módulo RH não monta equipe.<br><br>
+    O que continua funcionando sem o módulo: as equipes que <b>já existem</b> seguem aparecendo normalmente no seletor <span class="ui">Responsáveis</span> da OS e da Tarefa, e continuam podendo ser escaladas. O que não dá é criar uma nova, renomear, trocar membro ou excluir.
+  </div>
+
+  <h3>Criar uma equipe</h3>
+  <ol>
+    <li>Vá em <span class="ui">Funcionários</span> e abra a aba <span class="ui">Equipes</span>.</li>
+    <li>Clique em <span class="ui">Nova Equipe</span>. Abre a janela com o mesmo nome.</li>
+    <li>Preencha <span class="ui">Nome *</span>. É o único campo obrigatório: sem ele o botão de criar não responde.</li>
+    <li><span class="ui">Descrição</span> é opcional e aparece embaixo do nome no cartão da equipe.</li>
+    <li>Em <span class="ui">Visual da Equipe</span> você define como ela é reconhecida: uma <b>cor</b>, um <b>ícone</b> escolhido numa grade (pessoas, chave inglesa, raio, escudo, caminhão, martelo, capacete, engrenagem, chama, gota, vento, termômetro, cabo, tomada, lâmpada, manômetro) e, se quiser, uma <b>foto</b> pelo botão <span class="ui">Foto</span>. Com foto, ela substitui o ícone no cartão. O botão <span class="ui">Remover</span> tira a foto.</li>
+    <li>Em <span class="ui">Membros</span>, marque os técnicos. É uma lista com caixinhas e avatar. Quando não há usuário disponível, a mensagem é "Nenhum usuário disponível".</li>
+    <li>Clique em <span class="ui">Criar Equipe</span>. Ao editar, o botão é <span class="ui">Salvar</span>.</li>
+  </ol>
+
+  <figure>
+    <img src="img/t6-nova-equipe.png" alt="Janela Nova Equipe com o campo Nome, o campo Descrição, o bloco Visual da Equipe com a prévia do ícone azul, o botão Foto, o código de cor #3b82f6 e a grade de ícones (pessoas, chave inglesa, raio, escudo, caminhão, martelo e outros), e a lista de Membros com uma caixinha para o usuário Fulano">
+    <figcaption>Janela Nova Equipe: nome, visual (cor, ícone ou foto) e a lista de membros com caixinha de seleção.</figcaption>
+  </figure>
+
+  <h3>A lista de equipes</h3>
+  <p>Cada equipe vira um cartão com o ícone (ou a foto) na cor escolhida, o nome, a descrição, o selo <span class="ui">Ativa</span> ou <span class="ui">Inativa</span> e os avatares dos primeiros cinco membros, com um contador para o resto. Sem membro nenhum, aparece <span class="ui">Sem membros</span>. Cada cartão tem <span class="ui">Editar</span> e a lixeira, que pergunta "Tem certeza que deseja excluir esta equipe?".</p>
+
+  <p>No topo há uma busca por nome. Sem resultado: "Nenhuma equipe encontrada" e "Tente outro termo de busca.". Sem equipe nenhuma: "Nenhuma equipe cadastrada" e "Cadastre sua primeira equipe para organizar os técnicos."</p>
+
+  <figure>
+    <img src="img/t6-equipes-lista.png" alt="Aba Equipes dentro de Funcionários (RH), com o menu lateral (Funcionários, Equipes selecionada, Controle de Ponto, Perfil Comportamental, Organograma), o campo Buscar equipe e o estado vazio: ícone de duas pessoas, Nenhuma equipe cadastrada, Cadastre sua primeira equipe para organizar os técnicos, e o botão Nova equipe">
+    <figcaption>Aba Equipes sem nenhuma cadastrada ainda: é aqui, dentro de Funcionários, que a equipe nasce.</figcaption>
+  </figure>
+
+  <div class="perigo">
+    <b>Não existe "líder de equipe".</b> A equipe é uma lista plana de membros: todos entram igual, ninguém tem hierarquia, aprovação, responsabilidade formal nem permissão diferente por estar na equipe. Se o seu processo precisa de um responsável pela equipe, o caminho hoje é escalar <b>a equipe e também o técnico responsável</b> como responsáveis da OS (o seletor aceita os dois juntos), ou escrever o nome de quem responde no campo <span class="ui">Descrição</span> da equipe.
+  </div>
+
+  <h2>8. Escalar equipe inteira numa OS em vez de técnico individual</h2>
+
+  <p>No campo <span class="ui">Responsáveis</span> da OS e da Tarefa, as equipes aparecem numa seção própria, chamada <span class="ui">Equipes</span>, separada da lista de pessoas. Você pode marcar:</p>
+
+  <ul>
+    <li><b>Só técnicos</b>: um ou vários nomes.</li>
+    <li><b>Só equipes</b>: a equipe inteira responde pela OS.</li>
+    <li><b>Os dois juntos</b>: por exemplo a equipe de instalação mais um técnico específico que vai acompanhar.</li>
+  </ul>
+
+  <h3>O que muda ao escalar a equipe</h3>
+  <ul>
+    <li>A OS passa a aparecer na agenda de <b>todos os membros</b> daquela equipe, mesmo os que são usuários com papel de técnico e só enxergam a própria agenda.</li>
+    <li>Qualquer membro da equipe consegue abrir a OS, fazer o check-in, preencher o checklist e finalizar.</li>
+    <li>Se um membro sair da equipe depois, ele deixa de enxergar as OS futuras escaladas para aquela equipe.</li>
+    <li>Escalar equipe não distribui o serviço entre os membros: é a mesma OS, com vários responsáveis possíveis.</li>
+  </ul>
+
+  <div class="dica">
+    Equipe é a resposta certa para serviço que exige duas pessoas (instalação de split de piso-teto, troca de compressor, manutenção em altura) e para plantão, onde você não sabe de véspera qual técnico vai atender. Para serviço de uma pessoa só, com responsabilidade clara, escale o técnico direto: fica mais fácil medir produtividade no Ranking de Técnicos.
+  </div>
+
+  <h2>9. Mapa e Rastreamento — aba Mapa: as cores dos marcadores e o que cada uma significa</h2>
+
+  <p>A tela se chama <span class="ui">Mapa e Rastreamento</span>, com o subtítulo "Posição em tempo real e histórico de deslocamentos". Ela tem duas abas: <span class="ui">Mapa ao Vivo</span> e <span class="ui">Histórico</span>.</p>
+
+  <figure>
+    <img src="img/t6-mapa.png" alt="Tela Mapa e Rastreamento da Dominex mostrando o mapa com os marcadores dos técnicos, a legenda de cores e o botão de atualizar">
+    <figcaption>Mapa ao Vivo: posição dos técnicos em campo, com a legenda de cores.</figcaption>
+  </figure>
+
+  <h3>As cores dos marcadores</h3>
+
+  <table class="dados">
+    <thead><tr><th>Cor</th><th>Legenda</th><th>O que significa</th></tr></thead>
+    <tbody>
+      <tr><td>Verde</td><td><span class="ui">Executando OS</span></td><td>O técnico fez o check-in e está no local, com a OS em andamento.</td></tr>
+      <tr><td>Azul / índigo</td><td><span class="ui">A Caminho</span></td><td>O técnico marcou que saiu para o atendimento. É a cor que aparece enquanto ele se desloca.</td></tr>
+      <tr><td>Vermelho</td><td><span class="ui">Check-out</span></td><td>O último registro daquele técnico foi o encerramento do atendimento.</td></tr>
+      <tr><td>Marcador de destino</td><td><span class="ui">Destino cliente</span></td><td>O ponto onde o atendimento vai acontecer.</td></tr>
+      <tr><td>Marcador de base</td><td><span class="ui">Base da empresa</span></td><td>O endereço cadastrado da sua empresa.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Passando o mouse no marcador, aparece o nome do técnico, o estado atual e há quanto tempo foi a última atualização, no formato <span class="ui">Há N min</span> (ou "menos de 1"). Clicando, o balão maior mostra o mesmo, mais <span class="ui">OS vinculada</span> quando o ponto está ligado a uma OS, e a previsão de chegada no formato <span class="ui">Chegada em ~N min</span> com a distância em quilômetros, quando o técnico está a caminho.</p>
+
+  <p>O botão <span class="ui">Atualizar</span> força uma nova leitura. Fora isso, o mapa se atualiza sozinho conforme os aparelhos dos técnicos enviam posição.</p>
+
+  <div class="aviso">
+    <b>O técnico só aparece no mapa se três coisas forem verdade ao mesmo tempo:</b><br>
+    1) ele autorizou o acesso à localização no navegador do celular;<br>
+    2) ele está com uma OS em <b>A Caminho</b> ou <b>Em Andamento</b> (a posição também continua sendo registrada com a OS pausada);<br>
+    3) ele está com a tela da OS aberta e com internet.<br>
+    Se o técnico fechou o navegador, deixou o celular no bolso com a tela desligada ou negou a permissão de localização, ele não some do sistema, ele apenas para de mandar posição nova. O marcador dele fica no último ponto conhecido e o horário de atualização vai envelhecendo.
+  </div>
+
+  <p>O mapa mostra as posições das <b>últimas 2 horas</b>. Um técnico que não registra nada há mais tempo que isso deixa de aparecer no ao vivo, mas continua no Histórico.</p>
+
+  <h2>10. Aba Histórico: eventos de localização por técnico e por data</h2>
+
+  <p>A aba <span class="ui">Histórico</span> mostra os deslocamentos registrados, com dois filtros: <span class="ui">Técnico</span> (com a opção <span class="ui">Todos os técnicos</span>) e <span class="ui">Data</span>, que começa em hoje.</p>
+
+  <div class="regra">
+    <b>Não existe uma tela separada de rastreamento no menu.</b> O histórico é uma aba da própria tela <span class="ui">Mapa e Rastreamento</span>. Se alguém procurar por "Rastreamento" como item de menu e não achar, é isso: o caminho é Menu → Mapa e Rastreamento → aba Histórico. O endereço antigo <code>/rastreamento</code> redireciona para o mapa.
+  </div>
+
+  <figure>
+    <img src="img/t6-mapa-historico.png" alt="Aba Histórico da tela Mapa e Rastreamento, com o filtro Todos os técnicos, o seletor de data e o estado vazio com o ícone de alfinete e o texto Nenhum deslocamento foi registrado nesta data">
+    <figcaption>Aba Histórico: filtro por técnico e por data. Escolhendo um técnico com movimentação, aparecem os números do dia e a lista de eventos.</figcaption>
+  </figure>
+
+  <h3>Os tipos de evento</h3>
+  <table class="dados">
+    <thead><tr><th>Evento</th><th>Quando é gravado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Check-in</span></td><td>Quando o técnico toca em <span class="ui">Fazer Check-in</span> no local do atendimento.</td></tr>
+      <tr><td><span class="ui">A Caminho</span></td><td>Quando o técnico toca em <span class="ui">A Caminho</span>.</td></tr>
+      <tr><td><span class="ui">Rastreamento</span></td><td>Pontos intermediários gravados durante o deslocamento e a execução.</td></tr>
+      <tr><td><span class="ui">Check-out</span></td><td>Quando a OS é finalizada.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Os números do dia</h3>
+  <p>Além da lista, a aba resume o dia escolhido em: <span class="ui">Check-ins</span>, <span class="ui">Check-outs</span>, <span class="ui">Distância</span> (ou <span class="ui">Distância total</span> quando são vários técnicos) e <span class="ui">Tempo em campo</span>.</p>
+
+  <p>Cada linha da lista traz o horário, o tipo de evento e o endereço resolvido a partir das coordenadas, mais um link <span class="ui">Ver no mapa</span>. Quando não há registro: "Nenhum registro encontrado" e "Nenhum deslocamento foi registrado nesta data." Antes de escolher um técnico: "Selecione um técnico" e "Escolha um técnico e uma data para ver o histórico de deslocamentos."</p>
+
+  <div class="dica">
+    O Histórico é a ferramenta para responder três perguntas concretas do dia a dia: "a que horas o técnico chegou de fato no cliente?", "quantos quilômetros a equipe rodou ontem?" e "essa visita que o cliente diz que não aconteceu, aconteceu?". A distância percorrida é útil para conferir reembolso de combustível.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Criei uma tarefa mas ela não aparece em Ordens de Serviço"</td>
+        <td>Tarefa e OS são coisas diferentes</td>
+        <td>Tarefa é compromisso interno e só vive na Agenda. Se era para ser um atendimento a cliente, crie novamente pelo botão de criar e escolha <span class="ui">Ordem de Serviço</span> na pergunta "O que deseja criar?".</td>
+      </tr>
+      <tr>
+        <td>"O técnico não vê a OS na agenda dele"</td>
+        <td>Ele não é responsável pela OS nem está na equipe escalada</td>
+        <td>Usuário com papel de técnico só enxerga o que é dele ou da equipe dele. Abra a OS e coloque o nome dele (ou a equipe) em <span class="ui">Responsáveis</span>.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo criar equipe, a tela de Funcionários não abre"</td>
+        <td>Empresa sem o módulo RH</td>
+        <td>A aba Equipes fica dentro de Funcionários, que depende do módulo RH. Sem ele, o sistema redireciona e oferece a contratação. As equipes já criadas continuam funcionando nas OS, o que não dá é criar ou editar.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu defino o líder da equipe?"</td>
+        <td>Esse campo não existe</td>
+        <td>A equipe é uma lista plana de membros, sem hierarquia. Se você precisa marcar quem responde, escale a equipe e também o técnico responsável no campo <span class="ui">Responsáveis</span> da OS, ou anote o nome na <span class="ui">Descrição</span> da equipe.</td>
+      </tr>
+      <tr>
+        <td>"Arrastei sem querer e mudei a data de uma OS"</td>
+        <td>Arraste aplica na hora, sem confirmação</td>
+        <td>Basta arrastar de volta para o dia e horário originais, ou abrir a OS e corrigir a data. Se a OS era de contrato, o sistema tinha perguntado antes se era só ela ou também as futuras.</td>
+      </tr>
+      <tr>
+        <td>"A mesma OS aparece em dois dias na agenda"</td>
+        <td>OS pausada e retomada</td>
+        <td>É proposital. Ela continua marcada na data original e também aparece do dia da retomada até hoje, com o selo <span class="ui">Retomada</span>. É a mesma OS: concluir por qualquer uma resolve as duas.</td>
+      </tr>
+      <tr>
+        <td>"O técnico não aparece no mapa"</td>
+        <td>Sem permissão de localização, sem OS ativa ou sem internet</td>
+        <td>Peça para ele abrir a OS no celular, autorizar a localização quando o navegador perguntar e marcar <span class="ui">A Caminho</span> ou fazer o check-in. Sem OS ativa, ele não é rastreado, e isso é de propósito.</td>
+      </tr>
+      <tr>
+        <td>"O marcador do técnico está parado num lugar antigo"</td>
+        <td>O aparelho parou de enviar posição</td>
+        <td>O mapa guarda o último ponto conhecido e mostra "Há N min". Celular com tela apagada, navegador fechado ou sem sinal para de enviar. Peça para ele reabrir a tela da OS.</td>
+      </tr>
+      <tr>
+        <td>"Não acho a tela de Rastreamento no menu"</td>
+        <td>Ela não existe como item separado</td>
+        <td>O histórico é a segunda aba da tela <span class="ui">Mapa e Rastreamento</span>. O endereço antigo redireciona para lá.</td>
+      </tr>
+      <tr>
+        <td>"Os feriados da minha cidade não aparecem"</td>
+        <td>Cidade e estado da empresa em branco</td>
+        <td>Os feriados locais são calculados a partir do endereço cadastrado da empresa. Preencha cidade e estado em Configurações → Empresa. Também confira se a opção de mostrar feriados está ligada em Usabilidade.</td>
+      </tr>
+      <tr>
+        <td>"A agenda está vazia mas eu tenho OS"</td>
+        <td>Filtro ativo ou período errado</td>
+        <td>Confira o botão <span class="ui">Filtros</span>: técnico, cliente ou status podem estar marcados. Confira também se você está no dia certo, especialmente na visão Dia.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Qual a diferença entre Tarefa e Ordem de Serviço?</dt>
+    <dd>Ordem de Serviço é atendimento a cliente: tem checklist, check-in, fotos, assinatura, link para o cliente e relatório. Tarefa é compromisso interno: só aparece na Agenda, com título, responsável, data e descrição.</dd>
+
+    <dt>Empresa sem o módulo RH consegue usar equipe?</dt>
+    <dd>Consegue usar as que já existem, escalando na OS. Não consegue criar, editar nem excluir equipe, porque o cadastro vive dentro da tela Funcionários, que depende do módulo RH.</dd>
+
+    <dt>Como marco quem manda numa equipe?</dt>
+    <dd>Não existe campo de líder. A saída prática é escalar a equipe e também o técnico responsável no campo Responsáveis da OS, assim fica claro quem responde por aquele atendimento.</dd>
+
+    <dt>Arrastar na agenda avisa o técnico?</dt>
+    <dd>A agenda dele muda na hora, mas o sistema não faz uma ligação nem manda mensagem para o cliente final. Em mudança de última hora, combine por fora.</dd>
+
+    <dt>Por que a OS retomada aparece duas vezes?</dt>
+    <dd>Para não perder o histórico e ao mesmo tempo não deixar a OS sumir. Ela continua na data original e também aparece de hoje para trás desde o dia da retomada, com o selo <span class="ui">Retomada</span>. Ao concluir ou cancelar, as aparições extras somem.</dd>
+
+    <dt>O mapa mostra o técnico o dia inteiro?</dt>
+    <dd>Não. A posição só é registrada enquanto ele tem uma OS a caminho, em andamento ou pausada, com a tela aberta e a localização autorizada. Fora disso ele não é rastreado.</dd>
+
+    <dt>Por quanto tempo o mapa ao vivo guarda a posição?</dt>
+    <dd>O mapa ao vivo trabalha com as últimas 2 horas. Registros mais antigos continuam disponíveis na aba <span class="ui">Histórico</span>, filtrando por técnico e data.</dd>
+
+    <dt>Dá para ver a rota que o técnico fez, e não só os pontos?</dt>
+    <dd>O mapa desenha o rastro recente do deslocamento e, quando ele está a caminho, também a rota estimada até o destino, com previsão de chegada. Na aba Histórico, os eventos ficam listados em ordem, com o endereço de cada um e a distância total do dia.</dd>
+
+    <dt>Posso escalar duas equipes na mesma OS?</dt>
+    <dd>Pode. O seletor de responsáveis aceita várias equipes e vários técnicos ao mesmo tempo.</dd>
+
+    <dt>Onde eu vejo tudo que está pausado, de qualquer data?</dt>
+    <dd>No botão <span class="ui">OS Pausadas</span>, no topo da Agenda. Ele lista todas as OS pausadas independentemente da data, mostra há quanto tempo cada uma está parada e permite retomar na hora.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa para isso:</b> agenda, calendário, escala, roteiro do dia, distribuir serviço, mapa dos técnicos, rastreio, onde está o técnico, time, turma, dupla, equipe de instalação, remarcar, reagendar
+  </div>
+</section>

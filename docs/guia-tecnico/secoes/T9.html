@@ -1,0 +1,522 @@
+<section class="tutorial" id="t9">
+  <h1><span class="tcode">T9</span> Orçamentos, Precificação e Proposta</h1>
+
+  <p class="lead">Onde o serviço vira preço e o preço vira documento na mão do cliente: você monta o orçamento em cinco etapas, o sistema calcula o preço a partir dos seus custos reais, gera um link de proposta que o cliente abre no celular e aprova com um toque, e depois transforma o orçamento aprovado em Ordem de Serviço.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → Orçamentos</span>
+    <span><b>Rotas:</b> <code>/orcamentos</code> (tela interna), <code>/proposta/:token</code> (link público que o cliente abre, sem login), <code>/orcamento/:token</code> (link antigo, redireciona para o novo)</span>
+    <span><b>Depende de:</b> T3 (Clientes), T4 (Tipos de Serviço), T8 (Estoque, para puxar material)</span>
+    <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">Orçamentos</span> ligada no editor de permissões (grupo Comercial). Admin e gestor têm por padrão.</span>
+    <span><b>Depende do módulo:</b> a tela de Orçamentos faz parte do kit básico e está em todos os planos. As abas <span class="ui">Custos Globais</span> e <span class="ui">Precificação</span>, o bloco de BDI dentro do orçamento, o campo de deslocamento e as colunas <span class="ui">Custo</span> e <span class="ui">Margem</span> da lista exigem o módulo <b>Precificação Avançada</b>.</span>
+  </div>
+
+  <h2>1. Tela Orçamentos: os indicadores (em aberto, taxa de conversão, ticket médio)</h2>
+
+  <p>A tela abre em <span class="ui">Menu → Orçamentos</span>, com uma barra lateral de abas: <span class="ui">Orçamentos</span> (a lista), <span class="ui">Custos dos Serviços</span>, <span class="ui">Custos Globais</span> e <span class="ui">Precificação</span>. As duas últimas só aparecem com o módulo Precificação Avançada; não vê-las não é bug, é módulo não contratado.</p>
+
+  <figure>
+    <img src="img/t9-orcamentos.png" alt="Tela Orçamentos com barra lateral de abas, três cartões de indicadores (Em Aberto, Conversão, Ticket Médio), campo de busca e tabela com um orçamento em rascunho">
+    <figcaption>Tela Orçamentos: abas na lateral, os três indicadores no topo e a lista de orçamentos com número, cliente, custo, valor, margem e status.</figcaption>
+  </figure>
+
+  <h3>Os três indicadores do topo</h3>
+  <table class="dados">
+    <thead><tr><th>Indicador</th><th>O que soma</th><th>O que acontece ao tocar</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Em Aberto</span></td>
+        <td>Soma do valor dos orçamentos com status <b>Enviado</b>: o dinheiro que está na rua esperando resposta.</td>
+        <td>Filtra a lista mostrando só os orçamentos Enviados.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Conversão</span></td>
+        <td>Aprovados divididos pela soma de enviados, aprovados e rejeitados. Rascunho não entra na conta.</td>
+        <td>Filtra a lista mostrando só os orçamentos Aprovados.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Ticket Médio</span></td>
+        <td>Valor médio dos orçamentos aprovados: quanto vale, em média, um negócio fechado.</td>
+        <td>Nada, é só leitura.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Os seis status de um orçamento</h3>
+  <table class="dados">
+    <thead><tr><th>Status</th><th>Quando acontece</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Rascunho</span></td><td>Criado mas ainda não mandado ao cliente. Estado inicial de todo orçamento salvo por <span class="ui">Salvar rascunho</span>.</td></tr>
+      <tr><td><span class="ui">Enviado</span></td><td>Você gerou o link público. É o único status em que o cliente vê os botões de aprovar e rejeitar.</td></tr>
+      <tr><td><span class="ui">Aprovado</span></td><td>O cliente clicou em Aprovar na proposta pública, ou você aprovou por dentro registrando o recebimento.</td></tr>
+      <tr><td><span class="ui">Rejeitado</span></td><td>O cliente clicou em Rejeitar, ou você marcou como rejeitado pelo menu de ações.</td></tr>
+      <tr><td><span class="ui">Expirado</span></td><td>Automático: orçamento Enviado que passou da validade vira Expirado quando a tela de Orçamentos é aberta.</td></tr>
+      <tr><td><span class="ui">Convertido</span></td><td>O orçamento aprovado já virou Ordem de Serviço.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">A virada para <b>Expirado</b> só é calculada quando alguém abre a tela de Orçamentos. Se ninguém abre a tela por uma semana, os orçamentos vencidos continuam aparecendo como Enviado até a próxima visita. Não existe rotina noturna nem lembrete automático de orçamento vencido.</div>
+
+  <h3>Colunas da lista e ações</h3>
+  <p>A tabela traz <span class="ui">Nº</span> (número sequencial por empresa), <span class="ui">Cliente</span> (com o rótulo <span class="ui">(prospecto)</span> quando não é cliente cadastrado, e a linha de visualizações embaixo), <span class="ui">Data</span>, <span class="ui">Custo</span>, <span class="ui">Valor</span>, <span class="ui">Margem</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>. Custo e Margem só aparecem com o módulo Precificação Avançada e em telas largas. A margem é a diferença entre valor e custo em porcentagem: selo verde a partir de 20%, amarelo entre 0% e 19%, vermelho quando o preço ficou abaixo do custo, e traço quando não há custo apurado. Quase todas as colunas ordenam ao toque no cabeçalho, e o rodapé tem paginação.</p>
+  <p>O menu de três pontinhos oferece: <span class="ui">Visualizar</span>, <span class="ui">Abrir proposta em nova guia</span> (pré-visualização, não conta como visualização do cliente), <span class="ui">Gerar link da proposta</span>, <span class="ui">Aprovar (registrar recebimento)</span> (só em Rascunho e Enviado), <span class="ui">Rejeitar</span> (só em Enviado), <span class="ui">Converter em OS</span> (só em Aprovado ainda não convertido), <span class="ui">Gerar cobrança</span> (só com o módulo Cobranças ativo e cliente cadastrado), <span class="ui">Editar</span> em laranja e <span class="ui">Excluir</span> em vermelho. Quando o orçamento já gerou lançamento financeiro, aparece o selo <span class="ui">Recebido</span> ao lado.</p>
+  <p>Ao excluir, a pergunta é <span class="ui">Excluir orçamento?</span> com o texto <span class="ui">Esta ação não pode ser desfeita.</span> Confirmando, aparece <span class="ui">Orçamento excluído!</span>.</p>
+
+  <div class="perigo">Excluir o orçamento apaga o documento e invalida o link público que você já mandou ao cliente. Para só tirar da frente, deixe como Rejeitado ou Expirado e use o filtro de status.</div>
+
+  <h3>Lista vazia e telefone</h3>
+  <p>Sem nenhum orçamento aparece <span class="ui">Nenhum orçamento cadastrado</span> com <span class="ui">Crie seu primeiro orçamento para começar</span> e o botão <span class="ui">Novo Orçamento</span>. Com filtro ativo e sem resultado, vira <span class="ui">Nenhum orçamento encontrado</span> e <span class="ui">Tente outro termo ou ajuste os filtros</span>. No celular a busca fica no topo, os indicadores viram carrossel, cada orçamento vira uma linha com o círculo colorido do status, criar é pelo botão redondo flutuante <span class="ui">Orçamento</span> e o <span class="ui">Configurar Proposta</span> mora dentro da gaveta de filtros.</p>
+
+  <h2>2. Wizard — Etapa 1 Destinatário: cliente cadastrado × prospect avulso</h2>
+
+  <p>Toque em <span class="ui">Novo Orçamento</span> (no computador, ao lado de Configurar Proposta) ou no botão redondo flutuante do celular. Abre um assistente de cinco etapas: <span class="ui">Destinatário</span>, <span class="ui">Serviços e mão de obra</span>, <span class="ui">Materiais e deslocamento</span>, <span class="ui">Desconto e condições</span> e <span class="ui">Validade e revisão</span>. Dá para clicar no número de qualquer etapa já visitada para voltar; avançar só pelo botão <span class="ui">Próximo</span>.</p>
+
+  <div class="regra">O assistente <b>não fecha ao clicar fora</b>. Para sair, use o X do canto ou o botão <span class="ui">Cancelar</span> da primeira etapa. É proposital: o formulário é longo e um clique fora não pode jogar seu trabalho fora.</div>
+
+  <h3>Escolher o destinatário</h3>
+  <p>No topo tem uma chave com duas posições:</p>
+  <ul>
+    <li><span class="ui">Cliente cadastrado</span>: mostra o campo <span class="ui">Cliente *</span>, um seletor com busca. É o modo recomendado: o documento sai com CNPJ ou CPF e endereço completo, e só assim dá para gerar cobrança e ligar o orçamento ao histórico do cliente.</li>
+    <li><span class="ui">Novo prospecto</span>: mostra <span class="ui">Nome *</span>, <span class="ui">Telefone</span> e <span class="ui">E-mail</span>, para orçar a quem ainda não é cliente sem sujar o cadastro.</li>
+  </ul>
+  <p>O botão <span class="ui">Próximo</span> fica travado sem cliente selecionado ou nome de prospecto. É a única obrigatoriedade da primeira etapa.</p>
+
+  <div class="regra">Orçamento de prospecto <b>não</b> cria cliente no cadastro. O nome, telefone e e-mail ficam guardados só dentro daquele orçamento. Se o prospecto fechar, cadastre o cliente em Clientes e, se quiser, edite o orçamento trocando a chave para <span class="ui">Cliente cadastrado</span>.</div>
+
+  <h3>Salvar rascunho a qualquer momento</h3>
+  <p>O botão <span class="ui">Salvar rascunho</span> aparece no rodapé em <b>todas</b> as etapas e libera assim que existe um destinatário. Ele grava com status Rascunho e fecha o assistente; da segunda vez em diante atualiza a mesma linha, nunca duplica. Reabrindo pelo <span class="ui">Editar</span> da lista, o título vira <span class="ui">Editar Orçamento #</span> seguido do número.</p>
+  <p>Há ainda um resgate rápido: fechando sem salvar, na próxima vez que abrir <span class="ui">Novo Orçamento</span> o sistema pergunta se quer retomar. Ele guarda destinatário, quilometragem, desconto, validade, observações, termos e modelo, mas <b>não</b> guarda serviços e materiais.</p>
+
+  <figure>
+    <img src="img/t9-wizard-destinatario.png" alt="Janela Novo Orçamento na etapa 1 de 5 (Destinatário), com a barra de progresso no topo, a chave Cliente cadastrado / Novo prospecto desligada, o campo Cliente com o seletor Selecione o cliente vazio, e os botões Cancelar, Salvar rascunho e Próximo no rodapé">
+    <figcaption>Etapa 1 do assistente de Novo Orçamento: a chave entre cliente cadastrado e prospecto avulso, e o seletor de cliente ainda sem escolha.</figcaption>
+  </figure>
+
+  <h2>3. Etapa 2 Serviços: puxando do catálogo e o preço padrão entrando sozinho</h2>
+
+  <p>A etapa se chama <span class="ui">Serviços e mão de obra</span>. Ela tem duas partes: o bloco <span class="ui">Configurações BDI</span> (só com o módulo Precificação Avançada) e o bloco <span class="ui">Serviços e Mão de Obra</span>.</p>
+
+  <h3>O bloco de BDI do orçamento</h3>
+  <p>Os campos vêm com as taxas padrão salvas na aba Precificação e podem ser mudados <b>só para este orçamento</b>, sem mexer no padrão da empresa:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>O que é</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Imposto</span></td><td>Percentual de imposto sobre o faturamento. Padrão de fábrica 10%.</td></tr>
+      <tr><td><span class="ui">Adm. Indireta</span></td><td>Percentual de estrutura: aluguel, contador, telefone, tudo que não é do serviço mas você paga todo mês. Padrão de fábrica 12%.</td></tr>
+      <tr><td><span class="ui">Lucro</span></td><td>Percentual de lucro desejado. Padrão de fábrica 10%.</td></tr>
+      <tr><td><span class="ui">Custo / km</span></td><td>Quanto custa cada quilômetro rodado. Usado no deslocamento da etapa seguinte. Padrão de fábrica R$ 1,00.</td></tr>
+      <tr><td><span class="ui">Desconto à vista</span></td><td>Percentual de desconto no pagamento à vista, exibido na proposta como opção de pagamento. Padrão de fábrica 6%.</td></tr>
+      <tr><td><span class="ui">Parcelas (cartão)</span></td><td>Em quantas vezes o cliente pode parcelar, exibido na proposta. Mínimo 1. Padrão de fábrica 10.</td></tr>
+    </tbody>
+  </table>
+  <p>Ao lado do título aparece um selo com o BDI resultante em porcentagem, que fica amarelo quando aperta e vermelho quando fica perigoso.</p>
+  <div class="aviso">Dois alertas podem aparecer na etapa de revisão. O amarelo diz, com estas palavras: "BDI abaixo de 20%, margem de lucro muito apertada." O vermelho, mais grave, diz: "O BDI está muito baixo ou negativo. O preço final não cobre os custos. Revise as taxas." Os dois apontam para o mesmo lugar: os percentuais de imposto, administração indireta e lucro.</div>
+
+  <h3>Adicionar serviços</h3>
+  <p>O seletor <span class="ui">Selecionar tipo de serviço...</span> tem busca por dentro e mostra dois grupos: <span class="ui">Recentes</span>, com os cinco tipos que mais aparecem nos seus orçamentos, e <span class="ui">Todos os serviços</span>, cada um com a bolinha da cor do serviço. Se o serviço ainda não existe, digite o nome e escolha <span class="ui">Criar "&lt;nome&gt;"</span>: ele nasce ativo no catálogo e já entra no orçamento com a quantidade do campo <span class="ui">Qtd:</span>. Com o catálogo vazio, o seletor mostra <span class="ui">Nenhum tipo de serviço cadastrado ainda</span> e você cria o primeiro ali mesmo. Depois toque em <span class="ui">Adicionar</span>.</p>
+
+  <h3>De onde sai o preço que entra sozinho</h3>
+  <p>Ao adicionar um serviço, o sistema monta o custo unitário somando mão de obra (custo por hora vezes as horas), materiais vinculados ao serviço, custos extras, recursos vinculados (veículo, ferramenta, EPI) e brindes. Com esse custo em mãos, a regra de preço é, nesta ordem:</p>
+  <ol>
+    <li>Se o serviço tem custos configurados, o preço unitário é o <b>custo dividido pelo BDI</b>.</li>
+    <li>Se não tem custos, mas o tipo de serviço tem <span class="ui">Preço padrão</span> cadastrado no catálogo, entra o preço padrão.</li>
+    <li>Se não tem nenhum dos dois, entra zero e você digita o preço na mão.</li>
+  </ol>
+  <p>Quando o serviço não tem custo cadastrado, aparece um selo <span class="ui">Sem custos configurados</span> na linha. É o aviso de que a margem daquele item não vai ser calculada.</p>
+
+  <h3>A tabela de serviços</h3>
+  <p>Colunas: <span class="ui">Serviço</span>, <span class="ui">Qtd</span>, <span class="ui">Custo unit.</span>, <span class="ui">Preço unit.</span>, <span class="ui">Total</span> e a lixeira vermelha. Clicando no nome do serviço a linha expande e mostra a abertura do custo: <span class="ui">Mão de obra</span>, <span class="ui">Materiais</span>, <span class="ui">Custos extras</span> e <span class="ui">Custo total unit.</span>. No rodapé fica o <span class="ui">Subtotal Serviços</span>. Cada linha tem um campo <span class="ui">Descrição (opcional)</span>, já preenchido com a descrição do catálogo e editável por orçamento; esse texto sai na proposta embaixo do nome do serviço e é o lugar certo para detalhar escopo.</p>
+
+  <div class="aviso">Se você digitar um preço unitário na mão, aquele item fica <b>travado</b>: mudar as taxas de BDI depois não recalcula mais o preço dele. O mesmo vale para itens que entraram pelo preço padrão do catálogo. Só os itens precificados pela calculadora acompanham a mudança de BDI.</div>
+
+  <h2>4. Etapa 3 Materiais: itens de estoque no orçamento</h2>
+
+  <p>A etapa se chama <span class="ui">Materiais e deslocamento</span>. Existem dois jeitos de colocar material:</p>
+  <ul>
+    <li><b>Do estoque</b>: no seletor <span class="ui">Selecionar do estoque...</span>, que também tem busca e o grupo <span class="ui">Recentes</span> com os cinco itens que mais aparecem nos seus orçamentos. O nome vem com o código do item entre parênteses, quando existe. O preço unitário entra automaticamente com o <b>preço de venda</b> do item; se o item não tiver preço de venda, entra o preço de custo. O custo considerado para a margem é sempre o preço de custo.</li>
+    <li><b>Digitado na mão</b>: enquanto nenhum item de estoque estiver escolhido, aparece o campo <span class="ui">Ou digite o nome do material...</span>. Ao digitar um nome, aparece também o campo <span class="ui">Preço unit.:</span> para você informar o valor.</li>
+  </ul>
+  <p>Informe a <span class="ui">Qtd:</span> e toque em <span class="ui">Adicionar</span>. A tabela mostra <span class="ui">Material</span>, <span class="ui">Qtd</span>, <span class="ui">Preço unit.</span>, <span class="ui">Total</span>, uma descrição opcional por linha e o <span class="ui">Subtotal Materiais</span>. Sem nada adicionado aparece <span class="ui">Nenhum material adicionado</span>.</p>
+
+  <div class="regra">A diferença entre os dois jeitos aparece lá na frente: só o material <b>escolhido do estoque</b> dá baixa quando o orçamento vira Ordem de Serviço. Material digitado na mão entra no documento e no preço, mas nunca mexe no estoque.</div>
+
+  <h3>Deslocamento</h3>
+  <p>Ainda nesta etapa, com o módulo Precificação Avançada, tem o bloco <span class="ui">Deslocamento</span>: você informa a quilometragem e o sistema mostra o valor calculado ao lado, multiplicando pelo custo por quilômetro configurado. Esse valor entra no custo total e aparece na proposta como uma linha própria de deslocamento, se a exibição estiver ligada em Configurar Proposta.</p>
+
+  <h2>5. Etapa 4 Desconto: valor fixo × percentual, e o custo de brindes</h2>
+
+  <p>A etapa se chama <span class="ui">Desconto e condições</span> e tem quatro blocos.</p>
+
+  <h3>Desconto</h3>
+  <p>Um seletor com duas opções, <span class="ui">R$</span> e <span class="ui">%</span>, e um campo de valor ao lado. Escolhendo <span class="ui">R$</span>, o valor digitado é abatido direto do total. Escolhendo <span class="ui">%</span>, o percentual incide sobre a soma de serviços, materiais e deslocamento. O desconto calculado aparece em vermelho ao lado do campo, e o total nunca fica negativo: se o desconto for maior que o orçamento, o total para em zero.</p>
+
+  <h3>Brindes</h3>
+  <p>Uma caixa de seleção <span class="ui">Incluir brindes neste orçamento</span>, marcada por padrão. Brinde é aquele mimo que você entrega junto (imã de geladeira, cartão, kit de limpeza) e que precisa estar cadastrado na aba <span class="ui">Custos Globais</span>, na categoria Brindes, e vinculado ao tipo de serviço.</p>
+  <div class="aviso">Brinde <b>não</b> é linha de desconto: ele entra no <b>custo</b> do serviço, ou seja, sai da sua margem. É por isso que ele aparece precificado nos Custos Globais. Na proposta, quando ligado, aparece um bloco de cortesia dizendo que a proposta acompanha brindes sem custo adicional, e isso vale só nos modelos Vanguarda, Aurora e Prisma.</div>
+
+  <h3>Observações e Condições / Termos</h3>
+  <p>Dois campos de texto livre lado a lado: <span class="ui">Observações</span> e <span class="ui">Condições / Termos</span>.</p>
+  <div class="aviso">Apesar do texto de exemplo do campo dizer "Observações internas", o que você escreve em <span class="ui">Observações</span> <b>aparece para o cliente</b> na proposta, num bloco chamado Observações. E o campo <span class="ui">Condições / Termos</span> aparece como Informações adicionais (ou Condições e termos, dependendo do modelo). Não use esses campos para recado interno de equipe.</div>
+
+  <h2>6. Etapa 5 Revisão: escolher template, validade, observações e termos</h2>
+
+  <p>A última etapa se chama <span class="ui">Validade e revisão</span> e tem dois campos e o resumo.</p>
+  <ul>
+    <li><span class="ui">Válido até</span>: um campo de data. É essa data que faz o orçamento virar Expirado quando passa e ele ainda estava Enviado. Também é o que a proposta mostra ao cliente como <span class="ui">Proposta válida até</span>. Deixar em branco é permitido: aí o orçamento nunca expira sozinho.</li>
+    <li><span class="ui">Template da Proposta</span>: escolhe o modelo visual daquele orçamento específico. Orçamento novo já nasce com o modelo <b>Clean</b> selecionado.</li>
+  </ul>
+  <p>Embaixo aparece o <span class="ui">Resumo do Orçamento</span>. Com o módulo Precificação Avançada ele mostra BDI calculado, lucro médio ponderado, custo total, deslocamento, preço final e as opções de pagamento (à vista com desconto e parcelado no cartão). Sem o módulo, o resumo é simples: <span class="ui">Subtotal Serviços</span>, <span class="ui">Subtotal Materiais</span>, <span class="ui">Desconto</span> e <span class="ui">Total</span>.</p>
+  <p>Sem nenhum item adicionado, no lugar do resumo aparece <span class="ui">Adicione ao menos um serviço ou material para finalizar.</span> e o botão de concluir fica travado. Para finalizar são obrigatórias duas coisas: destinatário e pelo menos um item.</p>
+  <p>O botão final é <span class="ui">Criar Orçamento</span> em orçamento novo, e <span class="ui">Salvar Alterações</span> quando você está editando. Ao concluir aparece <span class="ui">Orçamento criado com sucesso!</span> ou <span class="ui">Orçamento atualizado!</span>.</p>
+
+  <div class="aviso">Editar um orçamento existente <b>substitui a lista inteira de itens</b> pela lista que estiver na tela ao salvar. Se você abrir para editar, apagar um item por engano e salvar, o item some. Confira o resumo antes de salvar.</div>
+
+  <h2>7. Aba Custos do Serviço: mão de obra e materiais por tipo de serviço</h2>
+
+  <p>Aba <span class="ui">Custos dos Serviços</span>, dentro de Orçamentos. É aqui que a precificação automática nasce: você diz uma vez quanto custa executar cada tipo de serviço, e todo orçamento futuro que usar aquele serviço já entra com preço calculado.</p>
+  <p>No topo tem o seletor <span class="ui">Tipo de serviço</span>, com busca. Sem nada escolhido, a tela mostra <span class="ui">Selecione um tipo de serviço para configurar custos.</span> Escolhido o serviço, aparecem as sub-abas <span class="ui">Mão de obra</span>, <span class="ui">Recursos</span>, <span class="ui">Materiais</span> e <span class="ui">Resumo</span>. As sub-abas Recursos e Resumo exigem o módulo Precificação Avançada.</p>
+
+  <h3>Mão de obra</h3>
+  <p>Dois campos: <span class="ui">Custo / hora (R$)</span> e <span class="ui">Horas</span>. Embaixo, o sistema mostra o <span class="ui">Custo HH</span>, que é a multiplicação dos dois.</p>
+  <p>O botão <span class="ui">Calcular</span> abre a <span class="ui">Calculadora de Custo de Mão de Obra</span>: você monta a equipe do serviço, informa o custo mensal de cada pessoa e as horas dela neste serviço, e o sistema devolve o custo por hora médio. A opção <span class="ui">Valor fixo por serviço (não é mensalista)</span> atende diarista e freelancer, somando o valor direto ao custo. Dentro dela, <span class="ui">Calcular custo mensal detalhado</span> monta o custo mensal de um funcionário a partir de salário base, periculosidade ou insalubridade, leis sociais, benefícios (saúde, odontológico, seguro de vida, transporte, refeição), custos anuais rateados por doze (treinamentos e NRs, ASO, EPI e uniformes, celular e internet), regime tributário e jornada mensal, devolvendo o Custo Total Mensal e a Hora Homem.</p>
+  <div class="aviso">A calculadora de custo mensal traz este aviso, que vale repetir para o cliente: os valores são estimados com base na legislação trabalhista e não substituem a orientação do contador.</div>
+
+  <h3>Custos extras</h3>
+  <p>Lista de linhas com <span class="ui">Descrição</span> e <span class="ui">Valor (R$)</span>, somadas em <span class="ui">Total extras</span>. O botão <span class="ui">+ Adicionar</span> abre a janela <span class="ui">Adicionar Custo Extra</span>, com um seletor de tipo (Veículo, Ferramentas, EPI, Combustível, Equipamentos, Outro), descrição e valor. Sem nenhuma linha aparece <span class="ui">Nenhum custo extra.</span></p>
+
+  <h3>Recursos e Materiais</h3>
+  <p>A sub-aba <span class="ui">Recursos</span> lista os recursos globais (veículos, ferramentas, EPIs) para marcar os usados neste serviço; o custo é o custo por hora do recurso vezes as horas do serviço, e dá para trocar por um valor fixo por execução no campo <span class="ui">Sobrescrever:</span>. A sub-aba <span class="ui">Materiais</span> é a lista de materiais sempre gastos neste serviço, com <span class="ui">Item do estoque (opcional)</span> ou <span class="ui">Nome manual</span>, mais <span class="ui">Quantidade</span> e <span class="ui">Custo unit. (R$)</span>. Sem nada, mostra <span class="ui">Nenhum material vinculado.</span></p>
+
+  <h3>Resumo e preço sugerido</h3>
+  <p>A sub-aba <span class="ui">Resumo</span> mostra quatro caixas (Mão de obra, Materiais, Recursos, Extras manuais), o <span class="ui">Custo total</span> e o <span class="ui">Preço sugerido (BDI)</span>, com o coeficiente e o lucro usados embaixo. Ali também tem três campos de simulação, <span class="ui">Imposto (%)</span>, <span class="ui">Adm. indireta (%)</span> e <span class="ui">Lucro (%)</span>, com o lembrete <span class="ui">Simulação. Não altera suas configurações de precificação.</span> e o botão <span class="ui">Restaurar padrão</span>.</p>
+
+  <div class="dica">Esta aba salva sozinha cerca de um segundo depois que você para de digitar, e mostra <span class="ui">Salvo automaticamente</span> quando grava. O botão <span class="ui">Salvar</span> continua ali para quem prefere confirmar na mão.</div>
+
+  <figure>
+    <img src="img/t9-aba-custos-servico.png" alt="Aba Custos por Tipo de Serviço com o serviço Higienização selecionado, sub-aba Mão de obra ativa mostrando Custo/hora 100, Horas 4 e Custo HH R$ 400,00, e o bloco Custos extras com uma linha Veículo de R$ 200,00 e Total extras R$ 200,00">
+    <figcaption>Sub-aba Mão de obra dentro de Custos dos Serviços: custo por hora, horas e o Custo HH calculado, ao lado do bloco de custos extras.</figcaption>
+  </figure>
+
+  <h2>8. Aba Custos Globais: veículos, ferramentas, brindes, EPI</h2>
+
+  <p>Aba <span class="ui">Custos Globais</span>, título <span class="ui">Centro de Custos</span>, com o subtítulo "Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente." <b>Exige o módulo Precificação Avançada.</b></p>
+  <p>A lógica é simples: uma caminhonete não é custo de um serviço só, é custo da empresa inteira. Você cadastra o custo mensal dela uma vez, diz quantas horas por mês ela roda, e o sistema descobre quanto ela custa por hora. Depois, na aba Custos dos Serviços, você marca quais recursos aquele serviço usa.</p>
+
+  <p>São cinco categorias, cada uma com sua aba e seu ícone: <span class="ui">Veículos</span>, <span class="ui">Ferramentas</span>, <span class="ui">Brindes</span>, <span class="ui">EPIs</span> e <span class="ui">Outros</span>. No topo aparecem quatro indicadores: <span class="ui">Custo/hora Veículos</span>, <span class="ui">Custo/hora Ferramentas</span>, <span class="ui">Custo/hora EPIs</span> e <span class="ui">Custo/Brinde</span>.</p>
+
+  <h3>Cadastrar um recurso</h3>
+  <p>O botão <span class="ui">Novo Recurso</span> abre um painel com <span class="ui">Nome</span>, <span class="ui">Foto (opcional)</span>, <span class="ui">Horas de uso mensal (para rateio)</span> (dica na tela: <span class="ui">Padrão: 176h (22 dias × 8h)</span>, é o divisor que transforma custo mensal em custo por hora), a chave <span class="ui">Recurso ativo</span>, a lista de <span class="ui">Componentes de Custo</span> e <span class="ui">Observações</span>. Cada componente tem a opção <span class="ui">Valor anual (÷12)</span>, que divide por doze e mostra o equivalente mensal.</p>
+  <p>Para veículo o sistema já sugere <span class="ui">Depreciação mensal</span>, <span class="ui">Manutenção + Combustível</span>, <span class="ui">Seguro</span> e <span class="ui">Documentação / IPVA</span>; para ferramenta, Depreciação e Manutenção mensal; para EPI, Custo mensal do kit. Há ainda a <span class="ui">Calculadora de Depreciação</span>, com a fórmula na tela (valor de zero quilômetro menos valor após dois anos, dividido por vinte e quatro meses) e o botão <span class="ui">Aplicar ao campo de depreciação</span>. O cartão de <span class="ui">Resumo</span> mostra Total mensal, Horas mensais e Custo/hora.</p>
+
+  <h3>Brindes funcionam diferente</h3>
+  <p>Brinde não é rateado por hora, é por unidade. No cadastro de brinde você lista os <span class="ui">Itens do Brinde</span> informando o <span class="ui">Custo total</span> do lote, as <span class="ui">Unidades no lote</span> e a <span class="ui">Quantidade por brinde</span>; o sistema calcula o custo unitário e o custo por brinde de cada item, e soma no <span class="ui">Custo total por brinde</span>.</p>
+  <p>Ao excluir, a pergunta é <span class="ui">Excluir recurso?</span> (ou <span class="ui">Excluir brinde?</span>) e o texto avisa que a ação remove o recurso e todos os seus componentes de custo.</p>
+
+  <figure>
+    <img src="img/t9-aba-custos-globais.png" alt="Aba Centro de Custos com o botão Novo Recurso no topo, os quatro indicadores Custo/hora Veículos, Custo/hora Ferramentas, Custo/hora EPIs e Custo/Brinde todos zerados, as categorias Veículos, Ferramentas, Brindes, EPIs e Outros, e o estado vazio Nenhum veículo cadastrado com o botão Cadastrar veículo">
+    <figcaption>Centro de Custos sem nenhum recurso cadastrado ainda: os quatro indicadores zerados e a categoria Veículos selecionada, vazia.</figcaption>
+  </figure>
+
+  <h2>9. Aba Precificação (BDI): impostos, administração, lucro, custo por km, desconto à vista e no cartão</h2>
+
+  <div class="regra">Não existe uma tela chamada "BDI" no menu do sistema. A precificação por BDI vive em <b>dois lugares</b>: a aba <span class="ui">Precificação</span> dentro de Orçamentos, que define o padrão da empresa, e o bloco <span class="ui">Configurações BDI</span> dentro de cada orçamento, que ajusta só aquele orçamento. Quem procura BDI em Configurações não vai achar.</div>
+
+  <p>A aba <span class="ui">Precificação</span> tem o subtítulo <span class="ui">Taxas padrão aplicadas em todos os orçamentos via método BDI</span> e <b>exige o módulo Precificação Avançada</b>. Ela é dividida em duas colunas: à esquerda a configuração, à direita o simulador.</p>
+
+  <h3>O que é BDI, em português de obra</h3>
+  <p>O cartão do topo, chamado <span class="ui">Método BDI</span>, explica com estas palavras: "O preço final é calculado dividindo o custo real pelo BDI, garantindo que impostos e overhead nunca sejam subprecificados." E mostra a fórmula <span class="ui">Preço = Custo Total ÷ BDI</span>.</p>
+  <p>O BDI é o que sobra de cada real vendido depois de reservar imposto, administração e lucro. A conta é: cem menos a soma dos três percentuais, dividido por cem. Com imposto 10%, administração 12% e lucro 10%, sobra 68%, e o BDI é 0,68. Um serviço que custa R$ 1.000,00 é vendido por R$ 1.470,59, porque mil dividido por 0,68 dá esse valor. É diferente de "somar 32% em cima": somar por cima daria R$ 1.320,00 e você acabaria pagando parte do imposto do próprio bolso. É exatamente esse erro que o método evita.</p>
+
+  <h3>Campos da aba</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Padrão</th><th>Efeito</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Imposto (%)</span></td><td>10</td><td>Reserva de imposto sobre o faturamento.</td></tr>
+      <tr><td><span class="ui">Adm. Indireta (%)</span></td><td>12</td><td>Reserva para a estrutura fixa da empresa.</td></tr>
+      <tr><td><span class="ui">Lucro Padrão (%)</span></td><td>10</td><td>Lucro alvo aplicado quando o orçamento não define outro.</td></tr>
+      <tr><td><span class="ui">Custo por KM (R$)</span></td><td>1</td><td>Multiplica a quilometragem informada no orçamento.</td></tr>
+      <tr><td><span class="ui">Desconto à vista (%)</span></td><td>6</td><td>Desconto exibido na proposta como pagamento à vista.</td></tr>
+      <tr><td><span class="ui">Parcelas (cartão)</span></td><td>10</td><td>Número de parcelas exibido na proposta.</td></tr>
+    </tbody>
+  </table>
+  <p>Ao lado do título aparece o <span class="ui">BDI atual</span> com quatro casas decimais, e uma barra colorida mostra a composição: vermelho para imposto, amarelo para administração, verde para lucro e a cor da marca para o que sobra, o BDI. Toque em <span class="ui">Salvar</span> e aparece <span class="ui">Configurações de precificação salvas!</span>.</p>
+
+  <div class="perigo">Se a soma de imposto, administração e lucro chegar perto de 100%, o BDI vira quase zero e o preço explode para valores absurdos. O sistema trava o BDI num mínimo de 0,01 para não dividir por zero, mas o preço resultante fica sem sentido. Some sempre bem abaixo de 100.</div>
+
+  <h3>Simulador de Preço</h3>
+  <p>À direita fica o <span class="ui">Simulador de Preço</span>, com selo <span class="ui">Tempo real</span>, para testar qualquer custo sem mexer em orçamento nenhum. Informe <span class="ui">Custo do serviço</span> e <span class="ui">Distância (KM)</span> e ele mostra Deslocamento, Custo Total, BDI, Lucro Esperado, <span class="ui">Preço Final (BDI)</span>, preço <span class="ui">À vista</span> com desconto, valor da parcela no <span class="ui">Cartão</span> e a linha da fórmula com os números aplicados.</p>
+
+  <figure>
+    <img src="img/t9-aba-precificacao.png" alt="Aba Precificação com o cartão Método BDI e a fórmula Preço = Custo Total ÷ BDI à esquerda, os campos Imposto 10%, Adm. Indireta 12% e Lucro Padrão 20% com o BDI atual 0.5800 e a barra de composição vermelho/amarelo/verde, e à direita o Simulador de Preço com Custo do serviço 1000 mostrando Preço Final (BDI) R$ 1.724,14, opção à vista e parcelado no cartão">
+    <figcaption>Aba Precificação: as taxas de BDI com a barra de composição à esquerda, e o Simulador de Preço em tempo real à direita.</figcaption>
+  </figure>
+
+  <h2>10. Configurar Proposta: os 4 templates (Clean, Aurora, Prisma, Vanguarda), cores, logo e seções</h2>
+
+  <p>O botão <span class="ui">Configurar Proposta</span> fica no topo da tela de Orçamentos (no celular, dentro da gaveta de filtros) e abre um assistente de três etapas: <span class="ui">Modelo</span>, <span class="ui">Personalização</span> e <span class="ui">Revisão</span>. O que se salva aqui vale como padrão da empresa para <b>todas</b> as propostas.</p>
+
+  <h3>Etapa Modelo</h3>
+  <p>São quatro modelos:</p>
+  <ul>
+    <li><b>Clean</b>: documento branco, enxuto, estilo orçamento formal. É o padrão de todo orçamento novo e o único que aceita as seções configuráveis.</li>
+    <li><b>Vanguarda</b>: proposta escura e sofisticada, com capa.</li>
+    <li><b>Aurora</b>: proposta escura com barras coloridas vibrantes.</li>
+    <li><b>Prisma</b>: capa preta e branca, geométrica, tipografia condensada.</li>
+  </ul>
+  <div class="aviso">A escolha de modelo feita nesta janela é só para você <b>pré-visualizar</b>. Ela não é salva. O modelo que vale para o documento é o escolhido no campo <span class="ui">Template da Proposta</span>, dentro de cada orçamento, na etapa de revisão. Orçamentos antigos com modelos descontinuados caem automaticamente no Vanguarda.</div>
+
+  <h3>Etapa Personalização</h3>
+  <ul>
+    <li><span class="ui">Logo da proposta</span>: opcional. Vazio, a proposta usa o logo da empresa. Aceita só imagem, no máximo 5 MB. Erros possíveis: <span class="ui">Arquivo muito grande (máx 5MB)</span> e <span class="ui">Apenas imagens são permitidas</span>. Ao subir, aparece <span class="ui">Logo da proposta atualizado</span>; ao remover, <span class="ui">Logo da proposta removido</span>. O logo é salvo na hora, sem esperar o botão Salvar.</li>
+    <li><span class="ui">Personalizar Cores</span>: <span class="ui">Cor Primária</span>, <span class="ui">Cor de Destaque</span> e <span class="ui">Fundo do Cabeçalho</span>.</li>
+    <li><span class="ui">Mostrar paginação?</span>: exibe "Página XX/YY" no rodapé de cada folha. Vale para Vanguarda, Aurora e Prisma.</li>
+    <li><span class="ui">Mostrar deslocamento</span>: exibe a linha de deslocamento no resumo de investimento. Vale para os quatro modelos.</li>
+    <li><span class="ui">Mostrar brindes</span>: exibe a seção de cortesias quando a proposta os inclui. Vale para Vanguarda, Aurora e Prisma.</li>
+    <li><span class="ui">Seções da proposta</span>: liga, desliga, reordena e escreve o texto padrão das sete seções. São elas: <span class="ui">Mensagem de abertura</span>, <span class="ui">Formas de pagamento</span>, <span class="ui">Informações adicionais</span>, <span class="ui">Observações</span>, <span class="ui">Sobre a empresa</span>, <span class="ui">Garantia</span> e <span class="ui">Mensagem de encerramento</span>. A seção Formas de pagamento não tem texto editável: é um bloco calculado a partir do valor do orçamento.</li>
+  </ul>
+  <div class="regra">As seções configuráveis só têm efeito no modelo <b>Clean</b>. Nos modelos escuros a estrutura do documento é fixa. E o texto escrito aqui é o <b>padrão</b>: quando o orçamento tem o próprio texto em Observações ou em Condições / Termos, o texto do orçamento vence.</div>
+
+  <h3>Etapa Revisão</h3>
+  <p>Mostra a proposta montada em folhas A4, com setas para virar página e o indicador <span class="ui">Página X/Y</span>. Confirme em <span class="ui">Salvar</span> e aparece <span class="ui">Configuração da proposta salva</span>. Fechar sem salvar descarta cores, interruptores e seções. O logo é exceção: já foi salvo no envio.</p>
+
+  <figure>
+    <img src="img/t9-configurar-proposta.png" alt="Janela Configurar Proposta na etapa 1 de 3 (Modelo), com a lista dos quatro cartões de modelo à esquerda (Clean selecionado com visto, Vanguarda, Aurora e Prisma, cada um com seu ícone) e à direita a pré-visualização do documento no modelo Clean, com o cabeçalho da empresa, os dados do cliente e as tabelas de Serviços e de Produtos e Materiais">
+    <figcaption>Etapa Modelo do Configurar Proposta: os quatro cartões de modelo à esquerda e a pré-visualização ao vivo do documento à direita, aqui no modelo Clean.</figcaption>
+  </figure>
+
+  <h2>11. Copiar o link público, mandar no WhatsApp e baixar o PDF</h2>
+
+  <p>Existem três caminhos para o orçamento chegar ao cliente, e eles fazem coisas diferentes.</p>
+
+  <h3>Gerar link da proposta</h3>
+  <p>No menu de ações da linha, <span class="ui">Gerar link da proposta</span>. O sistema monta um endereço amigável no formato <code>https://dominex.app/proposta/nome-do-cliente-&lt;código&gt;</code>, copia para a área de transferência e mostra <span class="ui">Link gerado e copiado!</span> com <span class="ui">Já pode colar e enviar pro cliente.</span> Se o navegador bloquear a cópia, o link aparece na própria mensagem.</p>
+  <div class="aviso">Gerar o link <b>promove o orçamento de Rascunho para Enviado</b>. E isso é o que faz aparecerem os botões Aprovar e Rejeitar na página do cliente: em Rascunho, o cliente abre a proposta mas não tem como responder. Se o cliente diz "abri e não achei o botão de aprovar", quase sempre é isso. O sistema nunca faz o caminho inverso: um orçamento já aprovado, rejeitado, convertido ou expirado não volta para Enviado.</div>
+
+  <h3>Visualizar, WhatsApp e PDF</h3>
+  <p>A ação <span class="ui">Visualizar</span> abre a janela <span class="ui">Proposta #</span> seguida do número, com o documento montado exatamente como o cliente vai ver, e três botões no topo: <span class="ui">Gerar cobrança</span> (quando disponível), <span class="ui">WhatsApp</span> e <span class="ui">PDF</span>.</p>
+  <ul>
+    <li><span class="ui">WhatsApp</span> abre o WhatsApp com a mensagem já escrita: <i>Olá! Segue a proposta #número no valor de R$ valor.</i> seguida do endereço da proposta. Você escolhe o contato na hora.</li>
+    <li><span class="ui">PDF</span> gera o arquivo <code>proposta-&lt;número&gt;.pdf</code> e baixa no aparelho.</li>
+  </ul>
+  <div class="aviso">Compartilhar pelo WhatsApp a partir desta janela <b>não</b> muda o status do orçamento. Se você mandar por aí estando em Rascunho, o cliente não vai ter botão de aprovar. Para garantir, use antes a ação <span class="ui">Gerar link da proposta</span>.</div>
+
+  <h3>O documento sai igual por dentro e por fora?</h3>
+  <p>Sim. A pré-visualização interna, o PDF e o link público montam o documento com os mesmos dados: nome do cliente, CNPJ ou CPF, endereço completo (rua, número, bairro, cidade e estado, CEP), e-mail e telefone, mais os dados e o logo da empresa. Em orçamento de prospecto entram só nome, telefone e e-mail digitados.</p>
+  <div class="regra">Se o cliente reclamar que o CNPJ ou o endereço não aparece na proposta, o problema está no <b>cadastro do cliente</b>, não na proposta: preencha documento e endereço em Clientes e gere o documento de novo.</div>
+
+  <h2>12. A visão do cliente em /proposta/:token — aprovar ou rejeitar</h2>
+
+  <p>O cliente abre o link no celular ou no computador, <b>sem login e sem senha</b>. Vê a proposta inteira com a identidade visual da sua empresa (logo, cores e, com White Label, a marca personalizada), um botão flutuante <span class="ui">Baixar PDF</span> no canto inferior direito e, quando o orçamento está Enviado, os botões <span class="ui">Aprovar</span> (verde) e <span class="ui">Rejeitar</span> (vermelho). O <span class="ui">Baixar PDF</span> abre a janela de impressão do navegador, com a dica de escolher "Salvar como PDF" e manter "Gráficos de fundo" ligado, senão as cores somem. Havendo cobrança vinculada (módulo Cobranças), aparece também o botão <span class="ui">Pagar</span>.</p>
+
+  <h3>O que acontece ao aprovar ou rejeitar</h3>
+  <ol>
+    <li>O status do orçamento muda para Aprovado ou Rejeitado. A resposta é única: o sistema só aceita a mudança se o orçamento estava Enviado.</li>
+    <li>O cliente vê a confirmação: <span class="ui">Proposta aprovada! Obrigado.</span> ou <span class="ui">Proposta rejeitada.</span></li>
+    <li>Os <b>administradores</b> da empresa recebem uma notificação no sininho, com o título <span class="ui">Orçamento aprovado</span> ou <span class="ui">Orçamento recusado</span> e a mensagem no formato "Fulano aprovou o orçamento #12 no valor de R$ 3.100,00". A notificação leva direto ao orçamento. Se o orçamento é de cliente cadastrado, a mensagem começa com "O cliente" em vez do nome.</li>
+  </ol>
+  <p>Respondendo duas vezes, o cliente vê <span class="ui">Esta proposta já foi respondida.</span>, <span class="ui">Esta proposta foi aprovada.</span> ou <span class="ui">Esta proposta foi rejeitada.</span>, sem duplicar nada. Caindo a internet no meio da resposta, a página avisa "Não foi possível registrar sua resposta. Verifique sua conexão e tente novamente." e os botões continuam liberados para tentar de novo. Com link errado ou apagado, a página mostra só <span class="ui">Proposta não encontrada.</span></p>
+
+  <div class="regra">Não existe <b>assinatura eletrônica</b> de proposta no Dominex. A aprovação é um clique num botão, sem certificado, sem desenho de assinatura e sem validade jurídica de assinatura digital: fica registrado o status Aprovado, a data e a notificação aos administradores. Precisando de assinatura formal, gere o PDF pelo botão <span class="ui">PDF</span> e assine por fora.</div>
+
+  <div class="regra">O sistema <b>não</b> transforma orçamento em contrato: não existe botão "gerar contrato a partir do orçamento". Contrato é sempre montado do zero na tela de Contratos. Fechando um serviço recorrente, aprove o orçamento (para registrar a venda e o financeiro) e monte o contrato à parte, copiando os valores.</div>
+
+  <!-- PRINT FALTANDO: página pública /proposta/:token vista pelo cliente, com o documento da proposta, o botão flutuante "Baixar PDF" e os botões "Aprovar" e "Rejeitar". Exige um orçamento de teste com status Enviado e um token real, com dados fictícios de cliente. -->
+
+  <h2>13. Contador de visualizações: quantas vezes o cliente abriu e quando</h2>
+
+  <p>Toda vez que alguém abre o link público, o sistema conta. Na lista, embaixo do nome do cliente, aparece um dos dois:</p>
+  <ul>
+    <li><span class="ui">Não visualizada</span>, esmaecido, quando ninguém abriu ainda.</li>
+    <li>Um ícone de olho com o número de aberturas e o tempo relativo, no formato "2 · visto há 8 dias". Passando o mouse por cima aparece o detalhe: <span class="ui">Visualizada 2× · última vez 21/07 14:32 (há 8 dias)</span>.</li>
+  </ul>
+  <p>A mesma informação aparece no topo da janela <span class="ui">Visualizar</span>.</p>
+
+  <h3>Regras da contagem, para responder o cliente sem chutar</h3>
+  <ul>
+    <li>A ação <span class="ui">Abrir proposta em nova guia</span>, usada por você de dentro do sistema, abre em modo pré-visualização e <b>não</b> conta. Isso é de propósito: seu teste não pode inflar o número.</li>
+    <li>Recarregar a página não conta de novo. O sistema ignora aberturas do mesmo aparelho e navegador dentro de uma janela de 30 minutos.</li>
+    <li>Aparelhos diferentes contam separado: cliente no celular e sócio no computador viram duas visualizações. É bom sinal, não erro.</li>
+    <li>Navegador anônimo ou com armazenamento bloqueado conta cada abertura, porque não há como diferenciar recarga de visita nova.</li>
+  </ul>
+  <div class="dica">Esse contador é o melhor sinal de follow-up que existe: proposta com cinco visualizações e nenhuma resposta é cliente indeciso, hora de ligar. Proposta com zero visualização em três dias é link que não chegou, hora de reenviar.</div>
+
+  <h2>14. Aprovar e o que isso lança no financeiro de uma vez só; Converter em OS</h2>
+
+  <h3>Aprovar por dentro do sistema</h3>
+  <p>A ação <span class="ui">Aprovar (registrar recebimento)</span> aparece em Rascunho e Enviado. Abre a janela <span class="ui">Aprovar Orçamento #</span> com a pergunta "Como o cliente pagou? Vamos lançar a receita e os custos no financeiro." Campos:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Valor recebido *</span></td><td>Sim</td><td>Já vem com o valor do orçamento.</td></tr>
+      <tr><td><span class="ui">Forma de pagamento *</span></td><td>Sim</td><td>Dinheiro, Pix, Cartão de débito, Cartão de crédito, Boleto, Transferência ou Cheque.</td></tr>
+      <tr><td><span class="ui">Data do recebimento *</span></td><td>Sim</td><td>Data em que o dinheiro entrou.</td></tr>
+      <tr><td><span class="ui">Caixa / Conta bancária *</span></td><td>Sim</td><td>Onde o dinheiro entrou. Tem busca e permite criar a conta na hora pelo "+" do próprio campo.</td></tr>
+      <tr><td><span class="ui">Tarifa de máquina/gateway (R$)</span></td><td>Não</td><td>A taxa da maquininha. Vira uma despesa separada.</td></tr>
+      <tr><td><span class="ui">Observação</span></td><td>Não</td><td>Texto livre que acompanha o lançamento.</td></tr>
+    </tbody>
+  </table>
+  <p>Confirmando em <span class="ui">Confirmar recebimento</span>, o sistema lança de uma vez só, tudo já marcado como pago e na conta escolhida:</p>
+  <ol>
+    <li>Uma <b>entrada</b> com o valor cheio, categoria <span class="ui">Vendas de Serviços</span> e descrição <span class="ui">Orçamento #</span> seguida do número.</li>
+    <li>Uma <b>saída</b> com o custo dos materiais do orçamento, categoria <span class="ui">CMV - Materiais</span>, num valor só.</li>
+    <li>Uma <b>saída</b> com a mão de obra dos serviços, categoria <span class="ui">CMV - Mão de Obra Avulsa</span>.</li>
+    <li>Uma <b>saída</b> com a tarifa informada, categoria <span class="ui">Tarifas e Taxas</span>.</li>
+  </ol>
+  <p>O orçamento passa a Aprovado e ganha o selo <span class="ui">Recebido</span> na lista. A mensagem de sucesso é <span class="ui">Orçamento aprovado! Receita e custos lançados no financeiro.</span></p>
+
+  <div class="aviso">Aprovar pelo sistema é uma <b>via de mão única</b>: só dá para fazer uma vez por orçamento. Tentando de novo, o sistema recusa com <span class="ui">Lançamentos financeiros já foram gerados para este orçamento</span>. Se você errou o valor ou a conta, corrija os lançamentos direto no Financeiro; não dá para "desaprovar" e refazer.</div>
+  <div class="aviso">Quando o <b>cliente</b> aprova pela proposta pública, o orçamento vira Aprovado mas <b>nenhum lançamento financeiro é criado</b>: a aprovação do cliente é a resposta comercial, e o dinheiro só entra no financeiro quando alguém de dentro usa <span class="ui">Aprovar (registrar recebimento)</span>. Depois que o cliente respondeu, essa ação some da lista (ela só existe em Rascunho e Enviado). Nesse caso, lance o recebimento direto no Financeiro ou gere uma cobrança.</div>
+
+  <h3>Converter em OS</h3>
+  <p>A ação <span class="ui">Converter em OS</span> só aparece em orçamento <b>Aprovado</b> ainda não convertido. Ela cria uma <b>Ordem de Serviço avulsa</b> com:</p>
+  <ul>
+    <li>o mesmo cliente do orçamento;</li>
+    <li>o tipo de serviço do primeiro item de serviço do orçamento;</li>
+    <li>status <span class="ui">Agendada</span>, sem data e sem técnico definidos: você abre a OS depois para agendar e atribuir;</li>
+    <li>valor igual ao preço final do orçamento;</li>
+    <li>descrição <span class="ui">Convertido do Orçamento #</span> seguida do número, e as observações do orçamento copiadas.</li>
+  </ul>
+  <p>Ao terminar aparece <span class="ui">Orçamento convertido!</span> com <span class="ui">OS criada com sucesso.</span>, e o orçamento passa ao status Convertido.</p>
+
+  <div class="regra"><b>É aqui que o estoque baixa.</b> Na conversão, cada material escolhido <b>do estoque</b> gera uma saída na quantidade do orçamento, com a observação <span class="ui">Consumo do Orçamento #</span> seguida do número. Material digitado na mão não mexe em estoque. E o contrário, que é a dúvida número um do suporte: <b>concluir a OS não dá baixa em estoque</b>. A baixa acontece nesta conversão e nos ajustes e inventário da tela de Estoque.</div>
+
+  <div class="aviso">A baixa não checa se há saldo. Se o material não tem estoque suficiente, o saldo daquele item fica negativo e a movimentação é registrada assim mesmo. Confira a Posição de Estoque depois de converter orçamentos grandes.</div>
+
+  <p>A conversão acontece uma vez só: tentando de novo, o sistema recusa com <span class="ui">Orçamento já foi convertido</span>. Falhas aparecem como <span class="ui">Erro na conversão</span> com o motivo.</p>
+
+  <h3>O que NÃO existe neste fluxo</h3>
+  <div class="regra">Não existe conversão de orçamento em contrato (contrato é sempre montado do zero na tela de Contratos), não existe assinatura eletrônica de proposta nem de contrato, não existe lembrete automático de orçamento vencido, não existe envio automático de proposta por e-mail e não existe desfazer de aprovação financeira nem de conversão em OS.</div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Meu cliente abriu a proposta mas não aparece o botão de aprovar"</td>
+        <td>O orçamento ainda está em Rascunho. Os botões Aprovar e Rejeitar só existem no status Enviado.</td>
+        <td>Peça para usar a ação <span class="ui">Gerar link da proposta</span> no menu de três pontinhos: ela copia o link e promove o orçamento para Enviado. O link que já foi mandado continua valendo, é só o cliente recarregar.</td>
+      </tr>
+      <tr>
+        <td>"Não acho a tela de BDI no menu"</td>
+        <td>Não existe tela de BDI. A precificação fica dentro de Orçamentos.</td>
+        <td>Menu → Orçamentos → aba <span class="ui">Precificação</span> para o padrão da empresa, ou o bloco <span class="ui">Configurações BDI</span> dentro de cada orçamento, na etapa Serviços e mão de obra. Exige o módulo Precificação Avançada.</td>
+      </tr>
+      <tr>
+        <td>"Sumiram as abas Custos Globais e Precificação"</td>
+        <td>Módulo Precificação Avançada não contratado ou desativado.</td>
+        <td>Essas abas, o bloco de BDI, o campo de deslocamento e as colunas Custo e Margem são do módulo Precificação Avançada. Sem ele o orçamento funciona, com preço digitado na mão.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu transformo o orçamento aprovado em contrato?"</td>
+        <td>Essa função não existe.</td>
+        <td>Não há botão de orçamento para contrato. Aprove o orçamento e monte o contrato do zero na tela de Contratos, copiando os valores. Vale o mesmo para PMOC.</td>
+      </tr>
+      <tr>
+        <td>"O cliente aprovou a proposta e não entrou nada no financeiro"</td>
+        <td>A aprovação do cliente muda só o status; o lançamento é feito por dentro.</td>
+        <td>É o comportamento correto. Use <span class="ui">Aprovar (registrar recebimento)</span> antes de o cliente responder, ou lance o recebimento direto no Financeiro depois.</td>
+      </tr>
+      <tr>
+        <td>"Tentei aprovar de novo e deu erro"</td>
+        <td>O orçamento já gerou os lançamentos financeiros.</td>
+        <td>A mensagem é <span class="ui">Lançamentos financeiros já foram gerados para este orçamento</span>. A aprovação com lançamento é única; ajuste direto no Financeiro.</td>
+      </tr>
+      <tr>
+        <td>"O estoque não baixou quando eu finalizei a OS"</td>
+        <td>Concluir OS nunca dá baixa em estoque.</td>
+        <td>A baixa acontece na conversão do orçamento em OS e nos ajustes e inventário da tela de Estoque. Material digitado na mão no orçamento nunca baixa.</td>
+      </tr>
+      <tr>
+        <td>"O CNPJ e o endereço do cliente não saem na proposta"</td>
+        <td>O cadastro do cliente está sem documento ou sem endereço, ou o orçamento foi feito como prospecto avulso.</td>
+        <td>Preencha documento e endereço na ficha do cliente em Clientes e gere o documento de novo. Orçamento de prospecto mostra só nome, telefone e e-mail.</td>
+      </tr>
+      <tr>
+        <td>"O preço do serviço entrou zerado no orçamento"</td>
+        <td>O tipo de serviço não tem custos configurados nem preço padrão no catálogo.</td>
+        <td>Digite o preço na mão ali mesmo, ou configure na aba <span class="ui">Custos dos Serviços</span> para o preço passar a entrar sozinho nos próximos orçamentos.</td>
+      </tr>
+      <tr>
+        <td>"Mudei o BDI e o preço de um item não mudou"</td>
+        <td>O item foi precificado na mão ou veio do preço padrão do catálogo, e por isso está travado.</td>
+        <td>Remova o item e adicione de novo para voltar a ser calculado pelo BDI, ou ajuste o preço na mão.</td>
+      </tr>
+      <tr>
+        <td>"Aparece um alerta vermelho dizendo que o BDI está negativo"</td>
+        <td>A soma de imposto, administração e lucro passou de 100%, ou o preço final ficou abaixo do custo.</td>
+        <td>Reveja os três percentuais na etapa Serviços e mão de obra. A soma tem que ficar bem abaixo de 100 para sobrar BDI.</td>
+      </tr>
+      <tr>
+        <td>"O contador mostra aberturas que eu não reconheço"</td>
+        <td>Cada aparelho ou navegador conta uma vez.</td>
+        <td>Recarregar não conta de novo dentro de 30 minutos, e sua abertura por <span class="ui">Abrir proposta em nova guia</span> não é contada. Aparelhos diferentes contam separado.</td>
+      </tr>
+      <tr>
+        <td>"Meu cliente diz que apareceu 'Não foi possível registrar sua resposta. Verifique sua conexão e tente novamente.'"</td>
+        <td>A internet do cliente caiu no momento em que ele tocou em Aprovar ou Rejeitar.</td>
+        <td>Nada foi perdido: o orçamento continua Enviado e os botões seguem liberados. Peça para ele recarregar a página e responder de novo. Se persistir, você mesmo marca o status pelo menu de ações.</td>
+      </tr>
+      <tr>
+        <td>"O PDF que o cliente baixou saiu branco, sem as cores"</td>
+        <td>Gráficos de fundo desligados na janela de impressão do navegador.</td>
+        <td>Oriente a manter "Gráficos de fundo" ligado ao escolher "Salvar como PDF", ou mande você o PDF gerado pelo botão <span class="ui">PDF</span> da janela Visualizar.</td>
+      </tr>
+      <tr>
+        <td>"Apaguei um item sem querer ao editar o orçamento"</td>
+        <td>Salvar a edição substitui a lista inteira de itens pela que está na tela.</td>
+        <td>Não há desfazer: reabra a edição e adicione o item de novo. Confira o resumo antes de salvar.</td>
+      </tr>
+      <tr>
+        <td>"Fechei o orçamento pela metade e perdi tudo"</td>
+        <td>O resgate rápido guarda o cabeçalho, mas não guarda os itens.</td>
+        <td>Ao reabrir <span class="ui">Novo Orçamento</span> aceite retomar: volta destinatário, desconto, validade, observações e modelo. Serviços e materiais precisam ser adicionados de novo. Use <span class="ui">Salvar rascunho</span> para não passar por isso.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Preciso cadastrar o cliente antes de fazer um orçamento?</dt>
+    <dd>Não: troque a chave para <span class="ui">Novo prospecto</span> e informe só o nome. Mas orçamento de prospecto não sai com CNPJ nem endereço no documento e não permite gerar cobrança.</dd>
+
+    <dt>O que exatamente faz o orçamento sair de Rascunho?</dt>
+    <dd>A ação <span class="ui">Gerar link da proposta</span>. Ela copia o link e promove para Enviado. Compartilhar por WhatsApp pela janela Visualizar não muda o status.</dd>
+
+    <dt>Dá para o cliente assinar a proposta?</dt>
+    <dd>Não existe assinatura eletrônica no sistema. O cliente aprova com um clique e fica registrado o status Aprovado com data. Para assinatura formal, baixe o PDF e assine por fora.</dd>
+
+    <dt>Orçamento aprovado vira contrato sozinho?</dt>
+    <dd>Não, e não existe botão para isso. Contrato é sempre montado do zero na tela de Contratos.</dd>
+
+    <dt>Como funciona o cálculo do BDI, em uma frase?</dt>
+    <dd>Preço é igual ao custo dividido pelo BDI, e o BDI é o que sobra de 100% depois de reservar imposto, administração indireta e lucro. Custo de R$ 1.000,00 com BDI de 0,68 vira preço de R$ 1.470,59.</dd>
+
+    <dt>Posso usar um BDI diferente só neste orçamento?</dt>
+    <dd>Pode. Os campos do bloco <span class="ui">Configurações BDI</span> dentro do orçamento valem só para ele. O padrão da empresa fica na aba <span class="ui">Precificação</span>.</dd>
+
+    <dt>O orçamento expira sozinho?</dt>
+    <dd>Sim, mas só quando alguém abre a tela de Orçamentos: um Enviado que passou da data em <span class="ui">Válido até</span> vira Expirado nesse momento. Sem validade preenchida, nunca expira. Não existe lembrete automático.</dd>
+
+    <dt>Quando o estoque baixa, afinal?</dt>
+    <dd>Na conversão do orçamento em OS, e só para os materiais escolhidos do estoque. Concluir a OS não baixa estoque.</dd>
+
+    <dt>Aprovar por dentro do sistema lança quantos registros no financeiro?</dt>
+    <dd>Até quatro, todos na mesma conta e já pagos: a receita em Vendas de Serviços, o custo de materiais em CMV - Materiais, a mão de obra em CMV - Mão de Obra Avulsa e a tarifa em Tarifas e Taxas, quando houver.</dd>
+
+    <dt>Dá para saber se o cliente abriu a proposta?</dt>
+    <dd>Dá. Na lista, embaixo do nome do cliente, aparece o número de aberturas e há quanto tempo foi a última. Sua própria pré-visualização não conta.</dd>
+
+    <dt>Qual modelo de proposta devo usar?</dt>
+    <dd>Clean para documento formal e enxuto: é o padrão e o único que aceita as seções configuráveis. Vanguarda, Aurora e Prisma para apresentação com capa e visual escuro.</dd>
+
+    <dt>Mudei as cores em Configurar Proposta e nada mudou. Por quê?</dt>
+    <dd>Confira se você chegou à etapa Revisão e clicou em <span class="ui">Salvar</span>. Fechar no meio descarta cores, interruptores e seções. O logo é exceção: salva no momento do envio.</dd>
+
+    <dt>O que o cliente precisa para abrir a proposta?</dt>
+    <dd>Só o link. Sem login, sem senha e sem aplicativo para instalar. Funciona no navegador do celular. Mandando para duas pessoas, vale a primeira resposta: a segunda vê <span class="ui">Esta proposta já foi respondida.</span></dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> orçamento, orçar, proposta, proposta comercial, cotação, valor do serviço, mandar o preço, link da proposta, proposta em PDF, fechou o orçamento, cliente aprovou, virou serviço, BDI, margem, markup, preço de venda, custo por hora, hora homem, custo do veículo, brinde, desconto à vista, parcelado no cartão
+  </div>
+</section>

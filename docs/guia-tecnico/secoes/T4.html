@@ -1,0 +1,505 @@
+<section class="tutorial" id="t4">
+  <h1><span class="tcode">T4</span> Serviços, tarefas e checklists</h1>
+
+  <p class="lead">Aqui você monta o cardápio de serviços da sua empresa e os formulários que o técnico vai preencher em campo. Sem esse cadastro, toda Ordem de Serviço nasce sem tipo, sem numeração organizada e sem roteiro de conferência.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → Serviços</span>
+    <span><b>Rotas:</b> <code>/servicos</code>, <code>/checklists/:id</code> (detalhe de um checklist)</span>
+    <span><b>Depende de:</b> nada obrigatório, mas faz mais sentido depois de ter clientes e equipamentos cadastrados</span>
+    <span><b>Quem enxerga:</b> quem tem a tela <b>Serviços</b> liberada nas permissões. Admin e gestor enxergam por padrão</span>
+    <span><b>Módulo:</b> a tela não depende de módulo pago. A aba <b>Fiscal</b> dentro do tipo de serviço só aparece com o módulo de Nota Fiscal. A pergunta de <b>Vídeo</b> no checklist só aparece com o módulo de vídeo</span>
+  </div>
+
+  <h2>1. Onde fica: menu Serviços (/servicos) e as 3 abas</h2>
+
+  <p>A tela se chama <span class="ui">Serviços</span> e o subtítulo dela é "Configure os tipos de serviços, tarefas e checklists". Ela vive no endereço <code>/servicos</code> e é organizada em três abas, que no computador aparecem como uma coluna de navegação à esquerda e no celular como pílulas roláveis no topo:</p>
+
+  <ul>
+    <li><span class="ui">Tipos de Serviços</span>: o catálogo do que sua empresa faz. Instalação, higienização, manutenção preventiva, visita técnica, o que for.</li>
+    <li><span class="ui">Tipos de Tarefas</span>: as categorias dos compromissos internos da agenda (reunião, entrega, compra). Tarefa não é Ordem de Serviço.</li>
+    <li><span class="ui">Checklists</span>: os roteiros de perguntas que o técnico responde no celular durante o atendimento.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t4-servicos.png" alt="Tela Serviços da Dominex com as abas Tipos de Serviços, Tipos de Tarefas e Checklists, mostrando a tabela de tipos de serviço com cor, nome, categoria, descrição, prefixo da OS e valor">
+    <figcaption>Tela Serviços: as três abas de configuração e a tabela de tipos de serviço.</figcaption>
+  </figure>
+
+  <div class="regra">
+    Se alguém da sua equipe tiver salvo o endereço antigo <code>/checklists</code> nos favoritos, ele continua funcionando: o sistema leva a pessoa direto para <code>/servicos</code>. O endereço ainda mais antigo <code>/questionarios</code> também redireciona. O caminho de verdade hoje é <b>Serviços → aba Checklists</b>. O único endereço de checklist que abre uma tela própria é o detalhe de um checklist específico, que o sistema monta sozinho ao você clicar num checklist da lista.
+  </div>
+
+  <p>A aba escolhida fica gravada no endereço do navegador, então dá para mandar um link direto para a aba de Checklists. Cada aba tem busca e listagem próprias. No celular, o botão de criar vira um botão redondo flutuante no canto inferior direito.</p>
+
+  <div class="regra">
+    <b>Custo, mão de obra, materiais e BDI NÃO ficam nesta tela.</b> Muita gente procura aqui e não acha. A composição de custo de um serviço (quanto custa a hora do técnico, quais materiais entram, qual a margem) vive dentro de <b>Orçamentos</b>, nas abas de custo. Nesta tela de Serviços você define apenas o <b>preço padrão</b> sugerido, que é um valor único e simples.
+  </div>
+
+  <h2>2. Aba Tipos de Serviço: nome, cor, categoria, prefixo de numeração da OS</h2>
+
+  <p>Na aba <span class="ui">Tipos de Serviços</span> você vê a lista do que sua empresa oferece. No computador é uma tabela com as colunas <span class="ui">Cor</span>, <span class="ui">Nome</span>, <span class="ui">Categoria</span>, <span class="ui">Descrição</span>, <span class="ui">Prefixo OS</span>, <span class="ui">Valor</span> e <span class="ui">Ações</span>. No celular é uma lista, com o nome em destaque e a categoria, descrição e valor logo abaixo. Tipo desativado aparece com a linha esmaecida e um selo <span class="ui">Inativo</span>.</p>
+
+  <p>Para criar, clique em <span class="ui">Novo Tipo</span> (no celular, no botão flutuante com o rótulo "Tipo"). Abre a janela <span class="ui">Novo Tipo de Serviço</span>. Ao editar um existente, o título vira <span class="ui">Editar Tipo de Serviço</span>.</p>
+
+  <h3>Campos da aba Dados</h3>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que aceita e o que o sistema faz</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Nome *</span></td>
+        <td>Sim</td>
+        <td>Texto livre. Exemplo sugerido pela própria tela: "Manutenção Preventiva". Enquanto o nome estiver vazio, o botão de salvar fica desativado. É esse nome que aparece na criação da OS, na agenda e no relatório entregue ao cliente.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Cor</span></td>
+        <td>Não</td>
+        <td>Seletor de cor mais um campo de texto ao lado (dá para colar o código da cor). Começa em verde. Essa cor é a bolinha que identifica o serviço na agenda e no cartão da OS. Escolher cores bem diferentes entre si é o que faz a agenda ficar legível de longe.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Categoria</span></td>
+        <td>Não</td>
+        <td>Lista de categorias que você mesmo cria pelo botão <span class="ui">Categorias</span>, no topo da aba. Sem escolher, fica como <span class="ui">Sem categoria</span>. Serve para agrupar serviços parecidos e para filtrar a lista.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Descrição</span></td>
+        <td>Não</td>
+        <td>Texto livre e mais longo. Aparece na tabela e ajuda a diferenciar dois serviços de nome parecido.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Prefixo de Numeração OS</span></td>
+        <td>Não</td>
+        <td>Sigla curta, sugestão da tela: "MP, MC, INS". Enquanto você digita, a tela mostra ao lado como vai ficar o número, no formato <code>MP-2026-0001</code>. Sem prefixo, o sistema usa <code>OS</code>.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Vinculado a equipamento</span></td>
+        <td>Não (vem ligado)</td>
+        <td>Chave liga/desliga. Explicada em detalhe no capítulo seguinte.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Ativo</span></td>
+        <td>Não (vem ligado)</td>
+        <td>Chave liga/desliga. Desligado, o serviço some das listas de escolha em OS nova, checklist e orçamento, mas continua nas OS antigas.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Preço padrão (opcional)</span></td>
+        <td>Não</td>
+        <td>Valor em reais. Detalhado no capítulo 5.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t4-tipo-servico-form.png" alt="Janela Novo Tipo de Serviço aberta na aba Dados, com os campos Nome, Cor com seletor e código hexadecimal, Categoria como Sem categoria, Descrição, Prefixo de Numeração OS mostrando a prévia OS-2026-0001, as chaves Vinculado a equipamento e Ativo ligadas, e o campo Preço padrão">
+    <figcaption>Janela Novo Tipo de Serviço, aba Dados: sem prefixo preenchido, a prévia usa o padrão OS.</figcaption>
+  </figure>
+
+  <h3>Categorias de serviço</h3>
+
+  <p>O botão <span class="ui">Categorias</span> abre a janela <span class="ui">Categorias de Serviço</span>. Ali você cria, renomeia, dá cor e exclui categorias. Ao excluir, o aviso é claro: "A categoria será removida. Tipos de serviço vinculados ficarão sem categoria." Ou seja, você não perde nenhum tipo de serviço ao apagar a categoria, ele só volta a ficar sem agrupamento. As confirmações mostram "Categoria criada!", "Categoria atualizada!" e "Categoria excluída!".</p>
+
+  <figure>
+    <img src="img/t4-categorias-servico.png" alt="Janela Categorias de Serviço vazia, com o aviso Nenhuma categoria cadastrada e o formulário Nova categoria com campo de nome, seletor de cor hexadecimal e botão de adicionar">
+    <figcaption>Janela Categorias de Serviço: cadastro rápido de nome e cor para agrupar os tipos de serviço.</figcaption>
+  </figure>
+
+  <p>Quando existe pelo menos uma categoria cadastrada, aparece um filtro no topo da lista. Se houver algum serviço sem categoria, o filtro ganha a opção <span class="ui">Sem categoria</span>.</p>
+
+  <h3>Buscar e excluir</h3>
+
+  <p>O campo de busca no topo procura por nome ou descrição, com o texto de apoio "Buscar por nome ou descrição...". Para excluir, use o menu de três pontos ao fim da linha (no celular, o menu do item) e escolha <span class="ui">Excluir</span>. A confirmação diz: "Tem certeza que deseja excluir este tipo de serviço? Esta ação não pode ser desfeita."</p>
+
+  <div class="aviso">
+    Excluir um tipo de serviço é diferente de desativar. Se já existem OS ou orçamentos usando aquele tipo, o caminho seguro é <b>desligar a chave Ativo</b>, não excluir. Desativado, ele some das listas de escolha e o histórico continua intacto.
+  </div>
+
+  <h2>3. O switch "exige equipamento" e o efeito dele lá na criação da OS</h2>
+
+  <p>Na tela, esse controle se chama <span class="ui">Vinculado a equipamento</span> e vem <b>ligado</b> em todo tipo de serviço novo. Ele responde a uma pergunta simples: esse serviço acontece em cima de uma máquina cadastrada, ou não?</p>
+
+  <ul>
+    <li><b>Ligado</b> (o padrão): ao criar uma OS com esse tipo de serviço, a etapa <span class="ui">Equipamentos e Checklists</span> mostra a lista de equipamentos do cliente escolhido, com caixinhas de seleção, foto do equipamento, marca, modelo, identificador e local. Serve para higienização de split, troca de compressor, inspeção de elevador, manutenção de câmera.</li>
+    <li><b>Desligado</b>: a mesma etapa deixa de mostrar a lista de equipamentos. Serve para orçamento de visita, treinamento, vistoria de obra, laudo, deslocamento, coisas que não são em cima de um bem cadastrado.</li>
+  </ul>
+
+  <div class="regra">
+    Desligar essa chave <b>não faz a etapa 2 sumir por completo</b> na criação da OS. A etapa continua existindo porque ela também guarda os <b>Checklists avulsos</b>, que são checklists no nível da OS inteira, sem equipamento vinculado. O que some é apenas o bloco de seleção de equipamentos.
+  </div>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Se a OS for criada <b>sem escolher tipo de serviço</b> (opção <span class="ui">Nenhum</span>), o sistema assume que exige equipamento e mostra a lista mesmo assim.</li>
+    <li>Mudar essa chave depois não mexe nas OS já criadas. Vale da próxima OS em diante.</li>
+    <li>Quando o cliente escolhido ainda não tem equipamento nenhum, a etapa avisa: "Nenhum equipamento cadastrado para este cliente." e oferece um botão de mais (+) para criar o equipamento na hora, sem sair do formulário.</li>
+    <li>Se nenhum cliente foi escolhido ainda, a mensagem é "Selecione um cliente primeiro para ver equipamentos."</li>
+  </ul>
+
+  <h2>4. Campos fiscais do serviço (código de serviço, NBS, cTribMun, alíquota ISS, item LC116) — por que preencher agora poupa dor no T14</h2>
+
+  <p>Se a sua empresa contratou o módulo de <b>Nota Fiscal</b>, a janela de tipo de serviço ganha uma segunda aba, chamada <span class="ui">Fiscal</span>, ao lado da aba <span class="ui">Dados</span>. Sem o módulo, essa aba não existe e todo o resto continua igual.</p>
+
+  <p>O cabeçalho da aba diz: "Fiscal (NFS-e). Classificação tributária usada ao emitir nota fiscal de serviço. Todos os campos são opcionais." Isso é verdade: o tipo de serviço salva normalmente sem nenhum deles. A diferença é que, preenchendo aqui uma vez, toda nota emitida com esse serviço já nasce classificada.</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>O que é</th><th>Detalhe importante</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Código de serviço (cTribNac)</span></td>
+        <td>Código nacional do serviço</td>
+        <td>Campo de busca: digite parte do código ou da descrição e escolha na lista. Ao escolher, o sistema preenche sozinho o item da LC 116 quando o código traz essa referência.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Código de tributação municipal (cTribMun)</span></td>
+        <td>Complemento de 3 dígitos definido pela prefeitura</td>
+        <td>Só aceita números e no máximo 3 dígitos. A explicação na tela: "Complemento de 3 dígitos definido pela prefeitura, que se junta ao código nacional (ex.: 14.01.01 + 001). Sem ele a prefeitura pode recusar a nota."</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Item da LC 116</span></td>
+        <td>Item da lista de serviços da Lei Complementar 116</td>
+        <td>Texto livre, formato tipo 14.01. Normalmente já vem preenchido pela escolha do código de serviço.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Código NBS</span></td>
+        <td>Nomenclatura Brasileira de Serviços</td>
+        <td>Também é campo de busca. A dica na tela: "Digite ao menos 2 caracteres pra buscar."</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Alíquota de ISS (%)</span></td>
+        <td>Percentual do ISS do serviço</td>
+        <td>Aceita número com vírgula ou ponto. Exemplo mostrado na tela: 5.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>O erro mais comum aqui é o cTribMun pela metade.</b> Se você digitar 1 ou 2 dígitos, o botão de salvar trava e a tela mostra em vermelho: <b>"O código de tributação municipal deve ter 3 dígitos."</b> Se você estiver olhando a aba Dados na hora, a mensagem aparece igualmente no rodapé, ao lado do botão, para você não ficar sem entender por que o salvar não responde. Ou preencha os 3 dígitos, ou apague o campo por completo (vazio é válido).
+  </div>
+
+  <figure>
+    <img src="img/t4-tipo-servico-fiscal.png" alt="Aba Fiscal da janela de tipo de serviço, com os campos Código de serviço (cTribNac), Código de tributação municipal (cTribMun) com exemplo 001, Item da LC 116 preenchido com 14.01, Código NBS e Alíquota de ISS preenchida com 5">
+    <figcaption>Aba Fiscal do tipo de serviço: todos os campos tributários, opcionais.</figcaption>
+  </figure>
+
+  <p>Preencher isso agora é o que evita perder tempo depois. Na hora de emitir a nota fiscal do serviço, o sistema puxa esses códigos automaticamente. Sem eles preenchidos aqui, cada nota vira uma consulta manual à prefeitura, e nota recusada por classificação errada volta com código de erro difícil de decifrar.</p>
+
+  <h2>5. Preço padrão do serviço e como ele auto-preenche o orçamento</h2>
+
+  <p>O último campo da aba <span class="ui">Dados</span> é <span class="ui">Preço padrão (opcional)</span>. É um campo de dinheiro, com sugestão "Ex: 350,00", e a explicação embaixo é exatamente esta: "Valor sugerido ao adicionar este serviço em um orçamento. Pode ser editado pelo vendedor."</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Campo vazio significa <b>sem preço padrão</b>. Na tabela da lista ele aparece como um traço na coluna <span class="ui">Valor</span>.</li>
+    <li>O valor é apenas <b>sugestão</b>. Quem monta o orçamento pode alterar linha a linha sem mexer no cadastro.</li>
+    <li>O preço padrão tem <b>menor prioridade</b> que a calculadora de custos do orçamento. Se você configurou custo, mão de obra e margem para aquele serviço, é o cálculo que manda. O preço padrão é o atalho para quem ainda não configurou custo nenhum.</li>
+    <li>É um valor único por serviço. Não existe tabela de preço por cliente nem por região nesta tela.</li>
+  </ul>
+
+  <div class="dica">
+    Quem trabalha com preço fechado (higienização de split R$ 180,00, visita técnica R$ 120,00) ganha muito tempo preenchendo o preço padrão. Quem trabalha por composição de custo pode deixar em branco e montar tudo em Orçamentos.
+  </div>
+
+  <h2>6. Aba Tipos de Tarefa — as categorias da "Nova Tarefa" da Agenda</h2>
+
+  <p>A aba se chama <span class="ui">Tipos de Tarefas</span> e o subtítulo é "Configure os tipos de tarefas utilizadas na agenda". Ela funciona igual à aba de tipos de serviço, mas com bem menos campos, porque tarefa não vira Ordem de Serviço.</p>
+
+  <p>Clicando em <span class="ui">Novo Tipo</span> abre a janela <span class="ui">Novo Tipo de Tarefa</span>, com quatro campos:</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome *</span></td><td>Sim</td><td>Sugestão da tela: "Ex: Reunião, Entrega, Compra". Sem nome, o botão de criar fica travado.</td></tr>
+      <tr><td><span class="ui">Cor</span></td><td>Não</td><td>Identifica visualmente a tarefa no calendário.</td></tr>
+      <tr><td><span class="ui">Descrição</span></td><td>Não</td><td>Texto de apoio, aparece na tabela.</td></tr>
+      <tr><td><span class="ui">Ativo</span></td><td>Não (ligado)</td><td>Desligado, o tipo some da lista ao criar tarefa nova.</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t4-tipos-tarefa.png" alt="Aba Tipos de Tarefas selecionada no menu lateral de Serviços, com a tabela mostrando cor, nome, descrição e status Ativo de três tipos de tarefa: Ligação de retorno, Tarefa do cobrador e Tarefa do vendedor">
+    <figcaption>Aba Tipos de Tarefas: catálogo separado do de tipos de serviço, usado só na Agenda.</figcaption>
+  </figure>
+
+  <p>Esses tipos alimentam o campo <span class="ui">Tipo de Tarefa</span> do formulário <span class="ui">Nova Tarefa</span> da Agenda. Se você nunca cadastrar nenhum, o campo fica vazio e a tarefa é criada sem categoria, o que funciona, só perde a organização visual.</p>
+
+  <div class="regra">
+    <b>Tarefa não é Ordem de Serviço.</b> Tarefa é compromisso interno: reunião, ida ao fornecedor, entrega de material, treinamento. Ela aparece na Agenda, mas <b>não</b> aparece na tela de Ordens de Serviço, não tem checklist, não tem link para o cliente e não gera relatório de atendimento. Tipo de tarefa e tipo de serviço são catálogos separados de propósito.
+  </div>
+
+  <p>Excluir um tipo de tarefa pede confirmação: "Tem certeza que deseja excluir este tipo de tarefa? Esta ação não pode ser desfeita."</p>
+
+  <h2>7. Aba Checklists: criar template do zero × importar do catálogo de modelos prontos</h2>
+
+  <p>A aba <span class="ui">Checklists</span> tem o subtítulo "Modelos de checklist reutilizáveis em OS e PMOC". A lista mostra as colunas <span class="ui">Nome</span>, <span class="ui">Perguntas</span>, <span class="ui">Serviços</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>. Na coluna Serviços, um checklist que vale para tudo aparece com o selo <span class="ui">Todos</span>; um checklist restrito mostra as bolinhas coloridas dos serviços ligados a ele (até três, depois um contador com o resto).</p>
+
+  <figure>
+    <img src="img/t4-checklists-lista.png" alt="Aba Checklists com a tabela de modelos, colunas Nome, Perguntas, Serviços e Status, listando checklists de PMOC (Sistemas Centrais, Expansão Direta) e outros como Condicionadores de Ar (Split/ACJ), todos com o selo Todos em Serviços e Ativo em Status">
+    <figcaption>Aba Checklists: cada linha mostra a contagem de perguntas e se vale para todos os serviços ou só alguns.</figcaption>
+  </figure>
+
+  <h3>Caminho A: criar do zero</h3>
+
+  <ol>
+    <li>Clique em <span class="ui">Novo checklist</span> (no celular, no botão flutuante "Checklist"). Abre a janela <span class="ui">Novo Checklist</span>.</li>
+    <li>Preencha <span class="ui">Nome do checklist</span>. A sugestão da tela é "Ex: Checklist de manutenção preventiva". Sem nome, o botão <span class="ui">Criar</span> fica travado.</li>
+    <li>Em <span class="ui">Serviços habilitados</span>, deixe a chave <span class="ui">Todos os serviços</span> ligada, ou desligue e marque só os tipos de serviço em que esse checklist deve aparecer. A lista mostra a bolinha de cor do serviço e a categoria dele embaixo.</li>
+    <li>Clique em <span class="ui">Criar</span>. O sistema já abre o checklist recém-criado, pronto para você adicionar perguntas.</li>
+  </ol>
+
+  <figure>
+    <img src="img/t4-novo-checklist.png" alt="Janela Novo Checklist com o campo Nome do checklist vazio (placeholder Ex: Checklist de manutenção preventiva) e a chave Todos os serviços ligada em Serviços habilitados">
+    <figcaption>Janela Novo Checklist: nome mais a chave Todos os serviços, o resto se ajusta depois de criado.</figcaption>
+  </figure>
+
+  <h3>Caminho B: importar do catálogo de modelos prontos</h3>
+
+  <p>O botão <span class="ui">Catálogo de Checklists</span> (no celular só <span class="ui">Catálogo</span>) abre uma biblioteca de modelos já escritos. O aviso no topo é honesto: "Estes são apenas modelos sugeridos." e "Cada empresa deve adequá-los aos seus próprios processos. As perguntas ficam totalmente editáveis depois."</p>
+
+  <p>O catálogo tem duas seções:</p>
+
+  <ul>
+    <li><span class="ui">Modelos de checklist</span>: modelos curados por segmento. Para empresas de refrigeração e climatização, os modelos são <b>Instalação de Split</b>, <b>Higienização de Split</b>, <b>Manutenção Preventiva de Split</b> e <b>Carga de Gás</b>, todos com perguntas prontas, incluindo campos numéricos com unidade (pressão em psi, temperatura em °C, corrente em A, gás em g) e assinatura do cliente no fim. Para os demais segmentos, o modelo é <b>Visita Técnica</b>, um roteiro genérico de atendimento.</li>
+    <li><span class="ui">Catálogo PMOC</span>: atividades da norma, agrupadas por seção. A explicação na tela: "Atividades da norma. Marque as que quiser ou selecione uma seção inteira." Essa seção só aparece para empresas do segmento de refrigeração e climatização.</li>
+  </ul>
+
+  <p>Cada atividade importada do catálogo PMOC já vem com o tipo certo: atividade de medição vira pergunta de <b>número</b>, com unidade e faixa esperada; atividade de verificação vira pergunta de <b>conformidade</b>. A frequência da norma (mensal, trimestral, semestral, anual) também é trazida junto.</p>
+
+  <p>O catálogo pode ser usado de dois jeitos: pelo botão da aba, ele <b>cria um checklist novo</b> já preenchido (o sistema pede o nome depois de você escolher as perguntas). Dentro de um checklist já existente, o mesmo botão <b>acrescenta</b> as perguntas escolhidas ao que já está lá.</p>
+
+  <figure>
+    <img src="img/t4-catalogo-checklists.png" alt="Modal Catálogo de Checklists com o aviso de que são apenas modelos sugeridos, campo de busca, a seção Modelos de Checklist listando Instalação de Split, Higienização de Split, Manutenção Preventiva de Split e Carga de Gás com botão Selecionar, e o início da seção Catálogo PMOC com contadores por seção">
+    <figcaption>Catálogo de Checklists: modelos curados de refrigeração em cima, Catálogo PMOC embaixo.</figcaption>
+  </figure>
+
+  <h3>Mensagens que você pode ver</h3>
+  <ul>
+    <li>"Nada a importar" com o detalhe "Essas perguntas já estão no checklist." O sistema compara pelo texto da pergunta e não duplica.</li>
+    <li>"Importação concluída" e, quando aplicável, "N pergunta(s) já existiam e foram ignoradas."</li>
+    <li>"Nada selecionado" com "Escolha ao menos uma pergunta ou modelo."</li>
+  </ul>
+
+  <h2>8. Editor de checklist: sim/não, conformidade, texto, número, medição PMOC, seleção, foto, assinatura</h2>
+
+  <p>Clicando num checklist da lista você entra no editor dele. No topo fica o nome (clique nele para renomear na hora), a contagem de perguntas, a chave <span class="ui">Ativo</span> e a lixeira. Logo abaixo, à direita, fica <span class="ui">Serviços habilitados</span>. O corpo é a lista de perguntas, na ordem em que o técnico vai ver.</p>
+
+  <p>Para adicionar, use <span class="ui">Nova Pergunta</span> (no celular, o botão flutuante "Pergunta"). A janela <span class="ui">Nova Pergunta</span> tem:</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Pergunta</span></td><td>O texto que o técnico lê. Obrigatório: sem ele o botão de salvar fica travado.</td></tr>
+      <tr><td><span class="ui">Descrição interna (opcional)</span></td><td>Instrução só para o técnico. A própria tela avisa: "Visível apenas durante o preenchimento. Não aparece no relatório nem no portal do cliente." Ótimo para colocar o procedimento, o torque, a faixa aceitável.</td></tr>
+      <tr><td><span class="ui">Tipos de resposta</span></td><td>Blocos clicáveis, um por formato. A nota diz: "Marque uma ou mais formas de responder. Pode combinar."</td></tr>
+      <tr><td><span class="ui">Campo obrigatório</span></td><td>Vem ligado. Pergunta obrigatória em branco bloqueia a finalização da OS.</td></tr>
+      <tr><td><span class="ui">Frequência</span></td><td>Só aparece para empresas com o módulo de <b>Contratos</b>. Define em quais visitas a pergunta aparece (toda visita, mensal, bimestral, trimestral, semestral, anual ou personalizado por meses, dias ou número de visitas).</td></tr>
+    </tbody>
+  </table>
+
+  <!-- PRINT FALTANDO: t4-nova-pergunta — modal "Nova Pergunta" dentro de um checklist, mostrando os blocos de "Tipos de resposta" (Verdadeiro/Falso, Conformidade, Texto, Número, Foto, Seleção, Assinatura) e a chave "Campo obrigatório". Exige entrar num checklist existente antes; nenhuma ação de salvar é necessária. -->
+
+  <h3>Os formatos de resposta disponíveis</h3>
+
+  <table class="dados">
+    <thead><tr><th>Formato</th><th>Como o técnico responde</th><th>Como sai no relatório</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Verdadeiro/Falso</span></td><td>Uma chave liga/desliga.</td><td>Selo verde "Sim" ou selo vermelho "Não".</td></tr>
+      <tr><td><span class="ui">Conformidade</span></td><td>Três botões: <span class="ui">Conforme</span>, <span class="ui">Não Conforme</span> e <span class="ui">N/A</span>. Tocar de novo no mesmo botão limpa a resposta.</td><td>Selo verde, vermelho ou cinza com o texto correspondente. É o formato certo para inspeção e para PMOC.</td></tr>
+      <tr><td><span class="ui">Texto</span></td><td>Caixa de texto de duas linhas, que cresce conforme escreve.</td><td>O texto na íntegra.</td></tr>
+      <tr><td><span class="ui">Número</span></td><td>Teclado numérico, aceita casa decimal.</td><td>O número. Se a pergunta veio do catálogo com unidade e faixa esperada, o relatório mostra a unidade e destaca quando o valor ficou fora da faixa.</td></tr>
+      <tr><td>Medição PMOC</td><td>Campo numérico com a unidade fixada à direita e a faixa esperada logo abaixo. Se o valor sai da faixa, a borda fica âmbar e aparece o aviso "Valor fora da faixa esperada — confira o equipamento ou registre observação". <b>O sistema não bloqueia:</b> o técnico precisa poder registrar o valor anômalo justamente para documentar a anomalia.</td><td>Valor, unidade, faixa esperada e o aviso de fora da faixa.</td></tr>
+      <tr><td><span class="ui">Seleção</span></td><td>Lista de opções com caixinhas. O técnico pode marcar <b>mais de uma</b>.</td><td>As opções escolhidas.</td></tr>
+      <tr><td><span class="ui">Foto</span></td><td>Dois botões lado a lado: <span class="ui">Tirar Foto</span> e <span class="ui">Galeria</span>.</td><td>As fotos, clicáveis para ampliar.</td></tr>
+      <tr><td><span class="ui">Vídeo</span></td><td>Gravação de clipe curto. Depende de módulo, veja o capítulo 10.</td><td>Player na tela; no PDF, um aviso de que o vídeo está disponível na versão online.</td></tr>
+      <tr><td><span class="ui">Assinatura</span></td><td>Área para assinar com o dedo, centralizada, com botão de limpar.</td><td>A assinatura desenhada.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>Medição PMOC não é um tipo que você escolhe no editor.</b> A lista de tipos oferecida ao criar uma pergunta manualmente é: Verdadeiro/Falso, Conformidade, Texto, Número, Foto, Vídeo, Seleção e Assinatura. As perguntas de medição com unidade e faixa esperada entram no checklist pelo <b>Catálogo PMOC</b> e pela rotina de contrato PMOC. Se você quer medição criada à mão, use o tipo <span class="ui">Número</span> e escreva a unidade no texto da pergunta.
+  </div>
+
+  <h3>Reordenar, editar e remover perguntas</h3>
+  <ul>
+    <li>No computador, arraste a pergunta pela alça à esquerda para mudar a ordem.</li>
+    <li>No celular, use as setas para cima e para baixo ao lado de cada pergunta.</li>
+    <li>Remover pede confirmação: "Remover pergunta?" com o aviso "Esta ação não pode ser desfeita."</li>
+    <li>Nas perguntas de <span class="ui">Seleção</span>, cada opção pode ser renomeada clicando nela e removida pelo X vermelho.</li>
+  </ul>
+
+  <h2>9. Combinar tipos na mesma pergunta (ex.: sim/não + foto) e exigir câmera</h2>
+
+  <p>Os blocos de <span class="ui">Tipos de resposta</span> não são um rádio: você pode marcar vários. Marcando dois ou mais, aparece um novo painel chamado <span class="ui">Modo de resposta múltipla</span>, com uma chave entre dois valores:</p>
+
+  <ul>
+    <li><span class="ui">Exclusivo</span>: "O técnico escolhe um único tipo para responder; os outros somem automaticamente." Serve para dar liberdade. Exemplo: o técnico responde por texto <b>ou</b> por foto, o que for mais rápido no momento.</li>
+    <li><span class="ui">Cumulativo</span>: "O técnico responde todos os tipos juntos nesta pergunta (ex.: marca a opção E anexa a foto)." Serve para exigir a evidência. Exemplo clássico: "Dreno desobstruído?" com Verdadeiro/Falso <b>mais</b> Foto, cumulativo. O técnico marca sim e anexa a foto do dreno.</li>
+  </ul>
+
+  <h3>Ajustes que aparecem conforme o tipo escolhido</h3>
+
+  <table class="dados">
+    <thead><tr><th>Ajuste</th><th>Quando aparece</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Exigir foto da câmera</span></td>
+        <td>Quando o tipo Foto está marcado</td>
+        <td>"Bloqueia upload da galeria, exige foto tirada na hora." Com essa chave ligada, o técnico vê apenas o botão <span class="ui">Tirar Foto</span>, ocupando a largura toda. O botão <span class="ui">Galeria</span> desaparece.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Permitir múltiplas fotos</span></td>
+        <td>Quando o tipo Foto está marcado</td>
+        <td>"Se desativado, o técnico envia apenas uma foto." Com a chave desligada e uma foto já enviada, uma nova tentativa mostra "Apenas uma foto permitida" com a orientação "Remova a atual para enviar outra."</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Exigir gravação na hora</span></td>
+        <td>Quando o tipo Vídeo está marcado</td>
+        <td>"Bloqueia escolha da galeria, o técnico precisa gravar o vídeo no momento."</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Opções de resposta</span></td>
+        <td>Quando o tipo Seleção está marcado</td>
+        <td>Campo para adicionar opção por opção. Enter adiciona. Sem opção nenhuma, a pergunta fica sem o que marcar.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="dica">
+    <b>Quando usar "Exigir foto da câmera":</b> em auditoria, laudo, comprovação de serviço executado, foto de antes e depois. A foto sai obrigatoriamente do momento da visita. <b>Quando NÃO usar:</b> quando o técnico legitimamente precisa anexar uma foto que já tirou (uma foto da plaqueta que ele fotografou na chegada, um print de laudo antigo). Nesse caso deixe a chave desligada e ele escolhe entre câmera e galeria.
+  </div>
+
+  <h2>10. Pergunta de vídeo (módulo pago, com limite de perguntas)</h2>
+
+  <p><b>A pergunta de vídeo depende do módulo de perguntas em vídeo.</b> Sem ele contratado, o bloco <span class="ui">Vídeo</span> simplesmente não aparece na lista de tipos de resposta. Uma exceção: se uma pergunta já era de vídeo e você abre para editar, a opção continua visível para não sumir a escolha já feita.</p>
+
+  <p>O módulo traz um <b>limite de perguntas de vídeo por checklist</b>, definido pelo plano. Ao tentar salvar uma pergunta de vídeo acima do limite, aparece o erro em vermelho com o título "Limite de perguntas de vídeo" e o texto "Seu plano permite até N pergunta(s) de vídeo por checklist."</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>O limite é contado <b>por checklist</b>, não por empresa e não por OS.</li>
+    <li>Ao editar uma pergunta que já é de vídeo, ela não conta contra ela mesma. Você não fica travado editando o texto de uma pergunta existente.</li>
+    <li><b>O técnico em campo nunca é bloqueado por esse limite.</b> A trava é apenas na hora de montar o checklist. Uma vez que a pergunta existe, ela é respondida normalmente.</li>
+    <li>Cada pergunta de vídeo guarda <b>um único clipe de até 30 segundos</b>. Regravar substitui o anterior.</li>
+  </ul>
+
+  <h2>11. Vincular checklist a tipos de serviço e desativar sem perder histórico</h2>
+
+  <p>Dentro do checklist, o controle <span class="ui">Serviços habilitados</span> (canto superior direito, logo abaixo do nome) define em quais tipos de serviço aquele roteiro aparece.</p>
+
+  <ul>
+    <li><b>Nenhum serviço marcado</b> significa <b>todos</b>. A lista mostra o selo <span class="ui">Todos</span> nesse caso.</li>
+    <li><b>Um ou mais marcados</b>: ao criar uma OS, o checklist só aparece na lista de escolha se o tipo de serviço da OS estiver entre os marcados.</li>
+    <li>Só entram na lista de escolha os tipos de serviço <b>ativos</b>.</li>
+    <li>A mudança é salva na hora, sem botão de confirmar.</li>
+  </ul>
+
+  <h3>Desativar em vez de excluir</h3>
+
+  <p>Este é o ponto mais importante do capítulo. A chave <span class="ui">Ativo</span> no topo do checklist, e também a lixeira e a opção <span class="ui">Excluir</span> da lista, levam ao mesmo lugar: uma confirmação chamada <span class="ui">Desativar checklist?</span> com o texto:</p>
+
+  <div class="regra">
+    "O checklist <i>[nome]</i> deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes."
+  </div>
+
+  <p>O botão de confirmação se chama <span class="ui">Desativar</span>, não "Excluir". Isso é de propósito: <b>o checklist nunca é apagado de verdade</b>. Uma OS de dois anos atrás continua exibindo, no relatório dela, exatamente as perguntas e as respostas daquele checklist. Se o cliente ou um fiscal pedir o histórico, ele está lá.</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Checklist desativado some da aba <span class="ui">Checklists</span> (a lista só mostra os ativos).</li>
+    <li>Checklist desativado some da lista de escolha ao criar ou editar OS.</li>
+    <li>O histórico das OS antigas fica intacto, com perguntas, respostas, fotos e assinaturas.</li>
+    <li>Não existe uma tela de "checklists desativados" para reativar. Se você desativou por engano, fale com o suporte antes de recriar do zero.</li>
+  </ul>
+
+  <div class="perigo">
+    <b>O que NÃO existe nesta tela:</b> não existe importação em massa de tipos de serviço, de tipos de tarefa ou de checklists por planilha. Não existe versionamento de checklist (editar uma pergunta muda o checklist para todas as OS futuras, mas não altera as respostas já gravadas). Não existe agrupamento de perguntas em seções dentro de um mesmo checklist: a organização é pela ordem das perguntas. E, como já dito, custo, materiais e BDI do serviço não moram aqui, moram em Orçamentos.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Cadastrei o serviço mas o botão de salvar não funciona"</td>
+        <td>Nome vazio, ou código de tributação municipal com menos de 3 dígitos na aba Fiscal</td>
+        <td>Confira se o campo <span class="ui">Nome</span> está preenchido. Se estiver, abra a aba <span class="ui">Fiscal</span>: o campo de código municipal aceita 3 dígitos ou nenhum. A mensagem "O código de tributação municipal deve ter 3 dígitos." aparece no rodapé do formulário.</td>
+      </tr>
+      <tr>
+        <td>"Não aparece a aba Fiscal no tipo de serviço"</td>
+        <td>Empresa sem o módulo de Nota Fiscal</td>
+        <td>Explique que a aba Fiscal só existe para quem contratou o módulo de emissão de NFS-e. Sem ele, o tipo de serviço tem só a aba de dados, e isso não impede nada do dia a dia.</td>
+      </tr>
+      <tr>
+        <td>"Sumiu um checklist que eu usava"</td>
+        <td>Alguém desativou o checklist</td>
+        <td>Checklist desativado some da listagem e da escolha em OS nova, mas as OS antigas continuam com ele. Não dá para reativar pela tela: o caminho é criar um novo com as mesmas perguntas ou acionar o suporte.</td>
+      </tr>
+      <tr>
+        <td>"O checklist não aparece quando eu crio a OS"</td>
+        <td>O checklist está limitado a outros tipos de serviço, ou está desativado</td>
+        <td>Abra o checklist e olhe <span class="ui">Serviços habilitados</span>. Se houver serviços marcados, ele só aparece em OS daqueles tipos. Deixar nenhum marcado faz ele valer para todos.</td>
+      </tr>
+      <tr>
+        <td>"Na criação da OS não aparece a lista de equipamentos"</td>
+        <td>O tipo de serviço está com <span class="ui">Vinculado a equipamento</span> desligado, ou o cliente não tem equipamento cadastrado</td>
+        <td>Abra o tipo de serviço e confira a chave. Se ela estiver ligada, o problema é falta de equipamento no cliente: a tela mostra "Nenhum equipamento cadastrado para este cliente." e oferece o botão de mais (+) para criar na hora.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo colocar mais uma pergunta de vídeo"</td>
+        <td>Limite do plano atingido naquele checklist</td>
+        <td>A mensagem é "Seu plano permite até N pergunta(s) de vídeo por checklist". Ou remova uma pergunta de vídeo existente, ou distribua as perguntas em checklists diferentes, ou converse sobre aumentar o limite do plano.</td>
+      </tr>
+      <tr>
+        <td>"Excluí a categoria e sumiram meus serviços"</td>
+        <td>Confusão entre categoria e tipo de serviço</td>
+        <td>Excluir categoria não apaga tipo de serviço nenhum. Os tipos que estavam nela ficam como <span class="ui">Sem categoria</span>. Basta abrir cada um e escolher outra categoria.</td>
+      </tr>
+      <tr>
+        <td>"O técnico está mandando foto antiga da galeria"</td>
+        <td>A pergunta não está com a exigência de câmera ligada</td>
+        <td>Abra o checklist, edite a pergunta de foto e ligue <span class="ui">Exigir foto da câmera</span>. A partir daí só aparece o botão <span class="ui">Tirar Foto</span> para ele.</td>
+      </tr>
+      <tr>
+        <td>"O número da OS não tem a sigla do serviço"</td>
+        <td>Prefixo de numeração em branco</td>
+        <td>Abra o tipo de serviço e preencha <span class="ui">Prefixo de Numeração OS</span>. A tela mostra a prévia do formato ao lado. Vale para as OS criadas dali em diante.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu coloco quanto custa esse serviço para a empresa?"</td>
+        <td>Procurando custo na tela errada</td>
+        <td>Preço padrão fica aqui e é o valor sugerido de venda. Custo, mão de obra, materiais e margem ficam em <b>Orçamentos</b>, nas abas de custo de serviço.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Qual a diferença entre desativar e excluir um tipo de serviço?</dt>
+    <dd>Desativar tira o serviço das listas de escolha, mas mantém tudo que já foi feito com ele. Excluir apaga o cadastro para sempre e não pode ser desfeito. Para serviço que já foi usado em OS, sempre desative.</dd>
+
+    <dt>Posso ter dois checklists diferentes na mesma OS?</dt>
+    <dd>Pode. Na criação da OS você anexa um ou mais checklists por equipamento, e ainda pode anexar checklists avulsos, que valem para a OS inteira sem estar ligados a nenhuma máquina.</dd>
+
+    <dt>Se eu mudar uma pergunta do checklist, as OS antigas mudam?</dt>
+    <dd>Não. As respostas já gravadas continuam como estão. A mudança vale para as próximas OS que usarem aquele checklist.</dd>
+
+    <dt>O técnico consegue ver a descrição interna da pergunta?</dt>
+    <dd>Sim, só ele. Ela aparece durante o preenchimento no celular, mas não sai no relatório nem no portal do cliente.</dd>
+
+    <dt>Dá para o técnico responder sim/não e mandar a foto na mesma pergunta?</dt>
+    <dd>Dá. Marque os dois tipos de resposta na mesma pergunta e coloque o modo em <span class="ui">Cumulativo</span>. Assim ele é obrigado a fazer as duas coisas. No modo <span class="ui">Exclusivo</span>, ele escolhe uma das duas.</dd>
+
+    <dt>O preço padrão do serviço entra automaticamente na OS?</dt>
+    <dd>Ele é usado como sugestão ao adicionar o serviço num orçamento, e o vendedor pode alterar. Ele não preenche valor de OS sozinho.</dd>
+
+    <dt>Preciso preencher os campos fiscais para trabalhar?</dt>
+    <dd>Não. Todos são opcionais e o serviço salva sem eles. Eles só importam na hora de emitir nota fiscal de serviço, e preenchê-los uma vez evita ter que consultar código a cada emissão.</dd>
+
+    <dt>Meu segmento não é refrigeração. Por que só aparece um modelo no catálogo?</dt>
+    <dd>Os modelos curados de refrigeração e climatização já foram escritos. Para os demais segmentos existe o modelo genérico de Visita Técnica, que serve de esqueleto: importe, renomeie as perguntas e adapte ao seu processo. Tudo fica editável.</dd>
+
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa para isso:</b> cadastro de serviço, tabela de serviços, tipo de OS, formulário do técnico, questionário, roteiro de inspeção, ficha de vistoria, lista de verificação, modelo de checklist, catálogo de serviços, prefixo da OS
+  </div>
+</section>

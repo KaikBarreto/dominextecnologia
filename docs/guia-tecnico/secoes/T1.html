@@ -1,0 +1,506 @@
+<section class="tutorial" id="t1">
+  <h1><span class="tcode">T1</span> Configurações e identidade da empresa</h1>
+
+  <p class="lead">É aqui que a Dominex deixa de ser um sistema genérico e passa a ser o sistema da sua empresa: logo no relatório que o cliente recebe, CNPJ e endereço nos documentos, moeda e fuso certos, preferências de uso do time e as integrações de cobrança. Tudo numa tela só, dividida em abas, e tudo salvo automaticamente.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → botão <span class="ui">Configurações</span> (no rodapé do menu lateral, ao lado de Sair; no celular, no rodapé da gaveta <span class="ui">Menu</span>)</span>
+    <span><b>Rotas:</b> <code>/configuracoes</code> (as abas usam <code>?tab=</code>, por exemplo <code>/configuracoes?tab=integracoes</code>)</span>
+    <span><b>Depende de:</b> T0 (visão geral do sistema)</span>
+    <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Configurações</span>. Dentro dela, os padrões da empresa (idioma, moeda, fuso) e a Zona de Perigo só são editáveis por administrador.</span>
+    <span><b>Módulo:</b> a seção <b>White Label</b> exige o módulo White Label. O resto da tela é base.</span>
+  </div>
+
+  <div class="aviso">
+    <b>Não procure o botão Salvar: ele não existe nesta tela.</b> A Dominex salva sozinha, cerca de 1 segundo depois que você para de digitar, e também na hora em que você sai de um campo. O selo no canto superior direito diz em que pé está: <span class="ui">Salvando…</span> enquanto grava, <span class="ui">Alterações não salvas</span> quando há algo pendente e <span class="ui">Salvo</span> quando está tudo gravado. Se você sair da tela com uma alteração pendente, ela é enviada mesmo assim.
+  </div>
+
+  <figure>
+    <img src="img/t1-configuracoes.png" alt="Tela Configurações da Dominex na aba Empresa, com o menu de abas à esquerda (Empresa, Regional, Usuários e Permissões, Usabilidade, Atalhos, Aparência, Integrações) e, à direita, os blocos Identidade Visual, Dados Cadastrais, Contato, Endereço, White Label, Documentos Legais e Zona de Perigo. No topo direito aparece o selo Salvo.">
+    <figcaption>Configurações, aba Empresa: as sete abas à esquerda e o formulário completo à direita, com o selo <span class="ui">Salvo</span> no topo.</figcaption>
+  </figure>
+
+  <h2>1. Aba Empresa: logo, dados cadastrais, contato e endereço (CEP preenche sozinho)</h2>
+
+  <p>A aba <span class="ui">Empresa</span> abre no cartão <span class="ui">Dados da Empresa</span>, descrito na própria tela como "Informações da empresa que aparecem em etiquetas e documentos". É o que sai impresso no relatório da OS, no orçamento, na proposta e nos documentos de contrato.</p>
+
+  <h3>Identidade Visual (o logo)</h3>
+  <ul>
+    <li>Sem logo, aparece uma área tracejada com <span class="ui">Clique para enviar o logo</span> e a dica <span class="ui">PNG, JPG até 5MB</span>.</li>
+    <li>Com logo, aparecem os botões <span class="ui">Substituir</span> e <span class="ui">Remover</span>. Remover pede confirmação: <span class="ui">Remover logo?</span> com o aviso "O logo atual será removido permanentemente".</li>
+    <li>Erros possíveis: <span class="ui">Arquivo muito grande (máx 5MB)</span>, <span class="ui">Apenas imagens são permitidas</span> e <span class="ui">Erro ao enviar logo</span>.</li>
+    <li>Dica prática: use PNG com fundo transparente. Esse logo é o que aparece no cabeçalho do relatório da OS que o cliente recebe.</li>
+  </ul>
+
+  <h3>Dados Cadastrais</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que aceita e o que o sistema faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome da Empresa</span></td><td>Na prática sim</td><td>Texto livre. É o nome que sai nos documentos e o nome que a Zona de Perigo pede pra confirmar exclusão de dados.</td></tr>
+      <tr><td><span class="ui">CNPJ/CPF</span></td><td>Não pelo formulário, mas exigido pra emitir nota fiscal</td><td>Aceita CPF e CNPJ, e o sistema formata sozinho enquanto você digita (00.000.000/0000-00).</td></tr>
+      <tr><td><span class="ui">Segmento de Atuação da Empresa</span></td><td>Somente leitura</td><td>Mostra o ramo da empresa com ícone e cor. Não é um campo editável.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>O Segmento não se altera pela tela.</b> Ele aparece dentro de uma caixa cinza, sem lista para escolher. O próprio texto abaixo do campo explica: "Define quais ferramentas e recursos do seu segmento aparecem no sistema. Para alterar, fale com a Dominex." Isso é proposital: o segmento decide, por exemplo, se a <span class="ui">Área do Técnico™</span> aparece no menu. Se a empresa mudou de ramo, o caminho é falar com o suporte.
+  </div>
+
+  <h3>Contato</h3>
+  <ul>
+    <li><span class="ui">Telefone</span>: formatado automaticamente enquanto você digita.</li>
+    <li><span class="ui">Email</span>: é o e-mail comercial da empresa, o que sai nos documentos. Não é o e-mail de login de ninguém.</li>
+  </ul>
+
+  <h3>Endereço (o CEP preenche o resto)</h3>
+  <ol>
+    <li>Digite o <span class="ui">CEP</span>. O sistema busca e preenche sozinho <span class="ui">Endereço</span>, <span class="ui">Bairro</span>, <span class="ui">UF</span> e <span class="ui">Cidade</span>.</li>
+    <li>Complete o <span class="ui">Número</span> e, se precisar, o <span class="ui">Complemento</span> (sala, andar).</li>
+    <li>O campo <span class="ui">Endereço</span> também tem sugestão automática: comece a digitar a rua e escolha na lista. Ao escolher, ele preenche número, bairro, cidade, estado e CEP de uma vez.</li>
+    <li><span class="ui">UF / Cidade</span> pode ser ajustado à mão pelos dois seletores, se a busca de CEP trouxer algo diferente.</li>
+  </ol>
+
+  <div class="dica">
+    <b>Dados da empresa e dados pessoais são telas diferentes.</b> Aqui, em Configurações, ficam os dados da <b>empresa</b>, que saem nos documentos. Seu nome, seu telefone e sua senha ficam em <span class="ui">Meu Perfil</span>, aberto pelo cartão do seu perfil no menu. Trocar o nome no Perfil não muda o nome da empresa, e vice-versa.
+  </div>
+
+  <div class="dica">
+    Preencher o endereço completo não é só estética. A cidade do endereço é usada pra identificar o município na emissão de nota fiscal de serviço. Empresa com endereço meio preenchido costuma travar na hora de emitir a primeira nota.
+  </div>
+
+  <h2>2. O switch "mostrar em documentos" campo a campo — o que sai no PDF e no relatório</h2>
+
+  <p>Ao lado de vários campos existe um interruptor pequeno com o rótulo <span class="ui">Exibir em documentos</span>. Ele não apaga o dado: ele decide se aquele dado <b>aparece impresso</b> no cabeçalho dos documentos gerados pelo sistema (relatório da OS, orçamento, proposta, documentos de contrato).</p>
+
+  <table class="dados">
+    <thead><tr><th>Interruptor</th><th>Onde fica</th><th>Ligado (padrão)</th><th>Desligado</th></tr></thead>
+    <tbody>
+      <tr><td>Nome da Empresa</td><td>Ao lado do campo <span class="ui">Nome da Empresa</span></td><td>O nome sai no cabeçalho dos documentos</td><td>O documento sai sem o nome escrito (útil pra quem já tem o nome dentro do logo)</td></tr>
+      <tr><td>CNPJ/CPF</td><td>Ao lado do campo <span class="ui">CNPJ/CPF</span></td><td>O documento sai com o CNPJ</td><td>O documento sai sem o CNPJ</td></tr>
+      <tr><td>Telefone</td><td>Ao lado do campo <span class="ui">Telefone</span></td><td>O telefone sai no cabeçalho</td><td>Some do cabeçalho</td></tr>
+      <tr><td>Email</td><td>Ao lado do campo <span class="ui">Email</span></td><td>O e-mail sai no cabeçalho</td><td>Some do cabeçalho</td></tr>
+      <tr><td>Endereço</td><td>No título da seção <span class="ui">Endereço</span>, valendo pro endereço inteiro</td><td>Rua, número, bairro, cidade, UF e CEP saem no cabeçalho</td><td>Nenhuma linha de endereço aparece</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Os cinco interruptores nascem <b>ligados</b>. Empresa nova já sai com tudo aparecendo.</li>
+    <li>O endereço é um interruptor só: não dá pra mostrar a cidade e esconder a rua.</li>
+    <li>Desligar um interruptor não apaga o dado do cadastro. Ele continua guardado e continua valendo pra nota fiscal e pra cobrança.</li>
+    <li>A mudança vale pros documentos gerados dali pra frente, e também pra reimpressão de documentos antigos, porque o cabeçalho é montado na hora.</li>
+  </ul>
+
+  <div class="dica">
+    Padrão que funciona bem: logo com o nome da empresa dentro, interruptor de <b>Nome</b> desligado (pra não repetir), e CNPJ, telefone, e-mail e endereço ligados. O cabeçalho fica limpo e o cliente ainda tem como te achar.
+  </div>
+
+  <h2>3. White Label: logo full + ícone, cor primária, estilo do QR Code e cabeçalho do relatório com preview ao vivo</h2>
+
+  <p><b>Depende do módulo White Label.</b> Sem o módulo, no lugar da seção aparece uma faixa tracejada com o título <span class="ui">White Label</span>, o texto <span class="ui">Módulo não disponível no seu plano atual</span> e um selo <span class="ui">Contratar</span>. Clicando nela abre a janela do módulo, com preço e o botão de adicionar ao plano.</p>
+
+  <p>Com o módulo ativo, o primeiro controle é <span class="ui">Ativar White Label</span>, descrito como "Substitui o logo e a cor padrão do sistema". Enquanto ele estiver desligado, nada do resto aparece.</p>
+
+  <h3>Logo completo e Ícone</h3>
+  <ul>
+    <li><span class="ui">Logo completo</span>: o logo horizontal usado no menu aberto e nos documentos. Se você não enviar um específico, o sistema mostra o aviso "Usando o logo da empresa por padrão" e reaproveita o logo da Identidade Visual. Sem nenhum dos dois, o texto é "Será utilizado o logo da empresa".</li>
+    <li><span class="ui">Ícone (1:1)</span>: o quadradinho usado quando o menu lateral está encolhido. A tela pede 128 por 128 pixels.</li>
+    <li>Os dois aceitam <span class="ui">Substituir</span> e <span class="ui">Remover</span>, mesmo limite de 5 MB e mesmas mensagens de erro do logo da empresa.</li>
+  </ul>
+
+  <h3>Cor primária</h3>
+  <p><span class="ui">Cor primária</span> "substitui a cor verde padrão do sistema". Você escolhe pelo seletor de cor e a faixa ao lado mostra o resultado. A cor muda na hora, na tela inteira, antes mesmo de salvar. Ela também é a cor que o seu cliente vê no relatório da OS e no portal.</p>
+
+  <h3>QR Code</h3>
+  <p>A seção <span class="ui">QR Code</span> personaliza os QR Codes gerados pelo sistema, com o logo da sua marca no centro. Três controles e uma pré-visualização ao vivo ao lado:</p>
+  <table class="dados">
+    <thead><tr><th>Controle</th><th>Opções</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Estilo dos pontos</span></td><td><span class="ui">Quadrado</span>, <span class="ui">Arredondado</span>, <span class="ui">Pontos</span>, <span class="ui">Elegante</span></td></tr>
+      <tr><td><span class="ui">Cantos</span></td><td><span class="ui">Quadrado</span>, <span class="ui">Arredondado</span>, <span class="ui">Ponto</span></td></tr>
+      <tr><td><span class="ui">Cor do QR Code</span></td><td>Qualquer cor pelo seletor. Começa na cor primária.</td></tr>
+    </tbody>
+  </table>
+  <p>Abaixo da pré-visualização aparece a legenda <span class="ui">Pré-visualização</span>. O QR de exemplo aponta pro site da Dominex, só pra você ver o desenho.</p>
+
+  <div class="aviso">
+    QR Code muito estilizado com cor clara pode não ser lido por celular antigo ou com câmera ruim. Se o seu cliente reclamar que "o QR não abre", volte pro estilo <span class="ui">Quadrado</span> com cor escura e teste de novo.
+  </div>
+
+  <h3>Cabeçalho do Relatório de Serviço</h3>
+  <p>Personaliza a faixa que aparece no topo do relatório da OS concluída, aquele documento que o cliente recebe. A pré-visualização fica logo acima dos controles e muda enquanto você mexe.</p>
+  <table class="dados">
+    <thead><tr><th>Controle</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Cor de fundo do cabeçalho</span></td><td>A cor da faixa do topo do relatório.</td></tr>
+      <tr><td><span class="ui">Cor do texto</span></td><td>A cor do nome, CNPJ e contatos escritos na faixa.</td></tr>
+      <tr><td><span class="ui">Cor da barra de status</span></td><td>A cor da tarja de status do documento.</td></tr>
+      <tr><td><span class="ui">Tamanho do logo</span></td><td>Régua deslizante. Vai de 40 até 300 quando o tipo é Logo Completo, e até 140 quando é Ícone.</td></tr>
+      <tr><td><span class="ui">Fundo atrás do logo</span></td><td>Liga ou desliga um retângulo atrás do logo. Desligado, "remove o fundo". Ligado, libera o campo <span class="ui">Cor do fundo</span>.</td></tr>
+      <tr><td><span class="ui">Tipo de logo no relatório</span></td><td>Dois botões: <span class="ui">Logo Completo</span> ("Usa o logo completo da empresa") ou <span class="ui">Ícone</span> ("Usa o ícone configurado no White Label").</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>A marca personalizada acompanha a empresa em todo canto onde o cliente final entra: relatório da OS, portal do cliente, orçamento, proposta e a tela de pagamento. Nessas telas a marca Dominex não aparece.</li>
+    <li>A cor fica guardada no navegador pra não piscar o verde padrão a cada atualização de página.</li>
+    <li>A marca de um cliente nunca aparece pra outro. Cada empresa vê a própria marca, sempre.</li>
+    <li>Logo com fundo branco em tema escuro fica ruim: prefira PNG transparente.</li>
+  </ul>
+
+  <div class="regra">
+    O White Label muda a aparência, não os dados. Ele <b>não</b> troca o nome da empresa nos documentos (isso é o campo <span class="ui">Nome da Empresa</span>) e <b>não</b> tira o crédito "Desenvolvido por Auctus" do rodapé do sistema interno, que é a assinatura da empresa que desenvolve a plataforma.
+  </div>
+
+  <h2>4. Aba Regional: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC</h2>
+
+  <p>A aba <span class="ui">Regional</span> tem três cartões, e a diferença entre os dois primeiros é o ponto que mais confunde.</p>
+
+  <h3>Cartão <span class="ui">Meu idioma</span> (todo mundo mexe)</h3>
+  <ul>
+    <li>Descrição na tela: "O idioma que VOCÊ vê no sistema. Aplica na hora, só para você."</li>
+    <li>Um seletor <span class="ui">Idioma</span> com bandeira. A troca vale imediatamente, sem recarregar.</li>
+    <li>A dica abaixo do campo: "Preferência pessoal. Sobrepõe o idioma padrão da empresa só para você."</li>
+    <li>Curiosidade útil pro suporte: o endereço das telas também muda de idioma. Um usuário em inglês vê <code>/work-orders</code> onde o brasileiro vê <code>/ordens-servico</code>. Links antigos em português continuam funcionando pra todo mundo.</li>
+  </ul>
+
+  <h3>Cartão <span class="ui">Padrões da empresa</span> (só administrador)</h3>
+  <p>Quem não é administrador vê o cartão, mas com o aviso <span class="ui">(somente admin)</span> ao lado da descrição e os campos travados.</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Idioma padrão da empresa</span></td><td>"Idioma aplicado a todos que não escolheram um pessoalmente."</td></tr>
+      <tr><td><span class="ui">Moeda</span></td><td>"Moeda de operação usada nos valores do sistema."</td></tr>
+      <tr><td><span class="ui">Fuso horário</span></td><td>"Usado para datas e horários exibidos no sistema." O seletor tem busca própria, com a dica <span class="ui">Buscar fuso (ex: Sao Paulo)</span>.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Ao trocar o idioma padrão, o sistema oferece um atalho: aparece a pergunta <span class="ui">Usar os padrões de [idioma] para moeda e fuso?</span> com os botões <span class="ui">Manter atuais</span> e <span class="ui">Usar padrões</span>. Aceitando, ele ajusta moeda e fuso juntos e confirma com <span class="ui">Padrões de [idioma] aplicados</span>.</p>
+
+  <div class="aviso">
+    <b>Trocar a moeda não converte valor nenhum.</b> O aviso da própria tela: "A moeda é a de operação da empresa. Trocar não converte os valores já registrados, eles continuam com o número original." Ou seja, um lançamento de 1.500 continua 1.500, só passa a ser exibido com o outro símbolo. Não use a troca de moeda como conversor.
+  </div>
+
+  <h3>Cartão <span class="ui">Perfil Comportamental</span></h3>
+  <ul>
+    <li>Um interruptor: <span class="ui">Funcionário vê o próprio resultado do teste comportamental</span>.</li>
+    <li>Explicação da tela: "Ligado: ao terminar, o funcionário vê o próprio perfil. Desligado: vê só uma tela de agradecimento, e o resultado fica só para o RH."</li>
+    <li>Serve pro teste DISC aplicado aos funcionários. Se a sua empresa usa o resultado em processo seletivo, o comum é deixar desligado.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t1-regional.png" alt="Aba Regional das Configurações. À esquerda, o menu de abas com Regional em destaque. À direita, o cartão Meu idioma com o seletor de Idioma em Português e o aviso de que é preferência pessoal, e abaixo o cartão Padrões da empresa, com Idioma padrão da empresa em Português, o campo Moeda em BRL — Real brasileiro (R$) e o início do campo Fuso horário.">
+    <figcaption>Aba Regional: cartões Meu idioma e Padrões da empresa. O cartão Perfil Comportamental fica logo abaixo, fora do recorte.</figcaption>
+  </figure>
+
+  <h2>5. Aba Usabilidade: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda</h2>
+
+  <p>A aba <span class="ui">Usabilidade</span> reúne preferências de comportamento do sistema, agrupadas em quatro blocos. Cada interruptor confirma com a mensagem <span class="ui">Preferência salva!</span>.</p>
+
+  <table class="dados">
+    <thead><tr><th>Bloco</th><th>Preferência</th><th>O que faz</th><th>Nasce</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="4">Ordens de Serviço</td><td><span class="ui">Salvamento Automático</span></td><td>"Salvar automaticamente rascunhos de ordens de serviço ao editar."</td><td>Ligado</td></tr>
+      <tr><td><span class="ui">Exibir Valores</span></td><td>"Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço."</td><td>Ligado</td></tr>
+      <tr><td><span class="ui">Exigir Assinatura</span></td><td>"Tornar obrigatória a assinatura do cliente ao finalizar OS."</td><td>Desligado</td></tr>
+      <tr><td><span class="ui">Salvar fotos no dispositivo</span></td><td>"Mostra um botão para salvar a foto no seu aparelho. No iPhone abre a opção Salvar Imagem; no Android baixa direto."</td><td>Ligado</td></tr>
+      <tr><td rowspan="2">Interface</td><td><span class="ui">Tabelas Compactas</span></td><td>"Reduzir espaçamento nas tabelas para exibir mais dados por página."</td><td>Desligado</td></tr>
+      <tr><td><span class="ui">Fotos de Equipamentos</span></td><td>"Exibir miniaturas de fotos dos equipamentos nas listagens."</td><td>Ligado</td></tr>
+      <tr><td>Segurança</td><td><span class="ui">Confirmar Exclusões</span></td><td>"Exibir diálogo de confirmação antes de excluir registros."</td><td>Ligado</td></tr>
+      <tr><td>Agenda</td><td><span class="ui">Exibir Feriados</span></td><td>"Mostrar feriados nacionais e municipais na agenda."</td><td>Ligado</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>Essas preferências são do aparelho, não da empresa.</b> Elas ficam guardadas no navegador de quem mexeu. Se o gestor liga <span class="ui">Exigir Assinatura</span> no computador dele, isso não muda o celular do técnico. Quando a regra precisa valer pra todo mundo, ela tem que ser configurada no aparelho de cada um, ou tratada como orientação de processo.
+  </div>
+
+  <div class="regra">
+    <b>Não existe um interruptor de "exigir assinatura" dentro da tela de criação da OS.</b> Essa preferência mora aqui, em Configurações › Usabilidade, e vale pro fluxo de finalização. Se alguém procura uma caixinha de assinatura obrigatória no formulário da OS, ela não existe.
+  </div>
+
+  <div class="dica">
+    <span class="ui">Exibir Valores</span> desligado é o ajuste mais pedido por quem não quer que o técnico veja o preço da peça e da mão de obra dentro da OS. Combine com a permissão de ação do financeiro, no tutorial de usuários e permissões, pra fechar de verdade.
+  </div>
+
+  <figure>
+    <img src="img/t1-usabilidade.png" alt="Aba Usabilidade das Configurações, com o bloco Ordens de Serviço mostrando os interruptores Salvamento Automático (ligado), Exibir Valores (ligado), Exigir Assinatura (desligado) e Salvar fotos no dispositivo (ligado), e abaixo o início do bloco Interface com Tabelas Compactas (desligado) e Fotos de Equipamentos (ligado).">
+    <figcaption>Aba Usabilidade nos valores padrão. Os blocos Segurança, Agenda e o cartão Origens ficam mais abaixo na mesma aba, fora do recorte.</figcaption>
+  </figure>
+
+  <h2>6. Card Origens — o catálogo compartilhado entre Clientes e CRM</h2>
+
+  <p>Ainda dentro da aba <span class="ui">Usabilidade</span>, abaixo das preferências, existe o cartão <span class="ui">Origens</span>, descrito como "Lista de origens usada no cadastro de clientes e nas oportunidades do CRM". É a resposta pra pergunta "de onde veio esse cliente?".</p>
+
+  <h3>Começando do zero</h3>
+  <p>Empresa nova vê a mensagem "Nenhuma origem cadastrada. Crie um conjunto inicial e edite à vontade depois." com o botão <span class="ui">Criar origens padrão</span>. Ele cria de uma vez: Indicação, Site, Telefone, WhatsApp, Google, Instagram, Facebook, Parceiro, Feira/Evento e Outro, cada uma com ícone e cor próprios.</p>
+
+  <h3>Gerenciando</h3>
+  <ol>
+    <li>Clique em <span class="ui">Gerenciar origens</span> no canto do cartão.</li>
+    <li>Na janela, cada origem aparece com o quadradinho colorido, o ícone e o nome, mais as ações <span class="ui">Editar</span> (laranja) e <span class="ui">Excluir</span> (vermelho).</li>
+    <li>Para criar, digite o nome na linha de baixo, escolha ícone e cor e clique em <span class="ui">Adicionar</span>.</li>
+    <li>Origem desativada continua aparecendo na lista do cartão, marcada com <span class="ui">Inativa</span>, mas some da hora de escolher em um cadastro novo.</li>
+  </ol>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>A lista é uma só, compartilhada. O que você cria aqui aparece no cadastro de clientes e nas oportunidades do CRM.</li>
+    <li>Não crie origem demais. Cinco a oito opções bem escolhidas dão relatório útil; trinta origens deixam o dado inútil.</li>
+    <li>A origem é o que alimenta a pergunta "qual canal me traz mais cliente?" no funil comercial. Preencher no cadastro é o que faz o relatório existir.</li>
+  </ul>
+
+  <h2>7. Aba Atalhos e aba Aparência (sidebar × barra superior, tema claro/escuro)</h2>
+
+  <h3>Aba Atalhos</h3>
+  <p>Título na tela: <span class="ui">Atalhos de Teclado</span>, com a descrição "Use atalhos para acessar funcionalidades rapidamente". Em cima fica o interruptor geral, que mostra <span class="ui">Atalhos estão ativados</span> ou <span class="ui">Atalhos estão desativados</span>. A lista vem dividida em <span class="ui">Navegação</span> e <span class="ui">Geral</span>, e cada linha mostra a tecla ao lado.</p>
+
+  <table class="dados">
+    <thead><tr><th>Atalho</th><th>Vai para</th></tr></thead>
+    <tbody>
+      <tr><td>Shift + D</td><td>Dashboard</td></tr>
+      <tr><td>Shift + O</td><td>Ordens de Serviço</td></tr>
+      <tr><td>Shift + A</td><td>Agenda</td></tr>
+      <tr><td>Shift + C</td><td>Clientes</td></tr>
+      <tr><td>Shift + E</td><td>Equipamentos</td></tr>
+      <tr><td>Shift + R</td><td>CRM</td></tr>
+      <tr><td>Shift + F</td><td>Financeiro</td></tr>
+      <tr><td>Shift + I</td><td>Estoque</td></tr>
+      <tr><td>Shift + Q</td><td>Orçamentos</td></tr>
+      <tr><td>Shift + T</td><td>Contratos</td></tr>
+      <tr><td>Shift + S</td><td>Configurações</td></tr>
+      <tr><td>Shift + P</td><td>Perfil</td></tr>
+    </tbody>
+  </table>
+
+  <p>O bloco <span class="ui">Dicas</span> no fim da aba repete o essencial: use a tecla modificadora mais a letra, os atalhos não funcionam enquanto você digita em um campo de texto, e dá pra desativar tudo pelo interruptor de cima.</p>
+
+  <div class="regra">
+    Os atalhos são só de navegação. Não existe atalho de teclado pra criar OS, salvar formulário ou abrir uma busca global. E eles valem no computador: no celular não há teclado físico.
+  </div>
+
+  <h3>Aba Aparência</h3>
+  <p>Título <span class="ui">Aparência</span>, descrição "Personalize a interface visual do sistema". Três blocos:</p>
+  <ul>
+    <li><b><span class="ui">Estilo de Navegação (Desktop)</span></b>: escolha entre <span class="ui">Menu Lateral</span> ("Sidebar tradicional à esquerda") e <span class="ui">Menu Superior</span> ("Barra horizontal no topo"). A descrição avisa que "Esta opção só afeta a visualização em desktop".</li>
+    <li><b><span class="ui">Tema do Sistema</span></b>: <span class="ui">Tema Claro</span> ou <span class="ui">Tema Escuro</span>. O mesmo controle existe no menu do seu perfil, em <span class="ui">Tema</span>.</li>
+    <li><b><span class="ui">Menu (lateral e superior)</span></b>: a cor do menu, independente do tema. <span class="ui">Escuro (recomendado)</span> deixa "Menu sempre escuro, com destaque na cor da marca". <span class="ui">Seguir o tema</span> faz o menu acompanhar claro ou escuro.</li>
+  </ul>
+  <p>Essas três escolhas são pessoais e ficam guardadas no navegador de cada um.</p>
+
+  <figure>
+    <img src="img/t1-atalhos.png" alt="Aba Atalhos de Teclado das Configurações, com o interruptor geral ligado e o texto Atalhos estão ativados, e abaixo a lista de Navegação com as teclas de cada tela: Shift+D para Dashboard, Shift+O para Ordens de Serviço, Shift+A para Agenda, Shift+C para Clientes, Shift+E para Equipamentos e o início de Shift+R para CRM.">
+    <figcaption>Aba Atalhos, com o interruptor geral e a lista de atalhos de Navegação.</figcaption>
+  </figure>
+
+  <h2>8. Aba Integrações: Recebimentos (Asaas) e o estado atual do WhatsApp</h2>
+
+  <p>A aba <span class="ui">Integrações</span> tem duas subabas em pílula: <span class="ui">WhatsApp</span> e <span class="ui">Recebimentos</span>.</p>
+
+  <div class="perigo">
+    <b>WhatsApp está "Em breve" e não conecta.</b> A subaba <span class="ui">WhatsApp</span> aparece com um selo amarelo <span class="ui">Em breve</span> e mostra um cartão fixo com o título <span class="ui">Avisos por WhatsApp</span> e o texto "Em breve você poderá avisar seus clientes automaticamente pelo WhatsApp. Estamos finalizando os últimos ajustes." <b>Não existe hoje</b> tela de conexão por QR Code, nem gatilho de aviso automático de OS a caminho, iniciada ou concluída. Não prometa esse recurso ao cliente e não ensine passo a passo de conexão.
+  </div>
+
+  <figure>
+    <img src="img/t1-integracoes-whatsapp.png" alt="Aba Integrações das Configurações na subaba WhatsApp, com a pílula WhatsApp trazendo o selo amarelo Em breve ao lado, ao lado da pílula Recebimentos. Abaixo, o cartão fixo com o ícone do WhatsApp em verde, o título Avisos por WhatsApp, o texto explicando que a função está em ajuste final e o selo laranja Em breve.">
+    <figcaption>Subaba WhatsApp mostrando o selo Em breve: não existe conexão por QR Code hoje.</figcaption>
+  </figure>
+
+  <h3>Recebimentos (Asaas)</h3>
+  <p>É a integração que permite cobrar os <b>seus</b> clientes por Pix, boleto e cartão, usando a <b>sua própria conta Asaas</b>. Nada a ver com o pagamento da assinatura da Dominex, que é assunto de outro tutorial.</p>
+
+  <p>Sem o recurso no plano, aparece <span class="ui">Recebimentos não contratado</span> com o texto "Este recurso não está incluído no seu plano atual. Fale com nosso time para cobrar seus clientes online por Pix, boleto e cartão."</p>
+
+  <h4>Ativando</h4>
+  <ol>
+    <li>O cartão <span class="ui">Recebimentos (Asaas)</span> pede a chave: "Cole a chave de API da sua conta Asaas para ativar os recebimentos. Você gera essa chave no painel da Asaas, em Configurações, Integrações."</li>
+    <li>Se você não sabe onde achar, o link <span class="ui">Onde encontro minha chave?</span> abre o passo a passo: entrar em asaas.com, ir em "Configurações da conta" e depois "Integrações", clicar em "Gerar chave de API" ou copiar a existente, e colar a chave (começa com "$aact_").</li>
+    <li>Clique em <span class="ui">Ativar recebimentos</span>. Dando certo, aparece <span class="ui">Recebimentos ativados!</span>. Dando errado: "Não foi possível ativar os recebimentos. Confira a chave e tente novamente."</li>
+    <li>O estado da integração aparece como <span class="ui">Ativo</span>, <span class="ui">Em verificação</span>, <span class="ui">Desativado</span> ou <span class="ui">Recusado</span>. Em verificação significa que a Asaas ainda está aprovando a sua conta.</li>
+  </ol>
+
+  <h4>O que dá pra configurar depois de ativo</h4>
+  <table class="dados">
+    <thead><tr><th>Configuração</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Lançar cobranças no Financeiro automaticamente</span></td><td>"Cada cobrança vira um a receber que baixa sozinho quando o cliente paga."</td></tr>
+      <tr><td><span class="ui">Lançar a taxa da Asaas como despesa</span></td><td>"Ao receber, a tarifa cobrada pela Asaas entra como despesa no seu Financeiro, para o caixa bater certo."</td></tr>
+      <tr><td><span class="ui">Multa e juros por atraso</span></td><td>Multa por atraso em porcentagem e juros ao mês. O aviso da tela: "O limite máximo da Asaas é 10% ao mês."</td></tr>
+      <tr><td><span class="ui">Preferências de cobrança</span></td><td>Vencimento padrão em dias, descrição padrão, meios de pagamento habilitados (Pix, Boleto, Cartão de crédito) e máximo de parcelas no cartão.</td></tr>
+      <tr><td><span class="ui">Desconto por antecipação</span></td><td>Percentual de desconto e até quantos dias antes do vencimento. Em branco, não aplica desconto.</td></tr>
+      <tr><td><span class="ui">Lançamento no Financeiro</span></td><td>Conta bancária de destino, categoria da receita e categoria da taxa da Asaas.</td></tr>
+    </tbody>
+  </table>
+
+  <p>A seção <span class="ui">Taxas da Asaas</span> mostra os valores praticados: Pix R$ 0,00, Boleto de R$ 0,99 a R$ 1,99, Cartão de crédito de 1,99% + R$ 0,49 a 2,99%. O aviso é explícito: "As taxas são cobradas pela Asaas diretamente na sua conta. A Dominex não retém nada por transação."</p>
+
+  <p>Para desligar, o botão <span class="ui">Desativar recebimentos</span> pede confirmação com o aviso "Cobranças já geradas continuam válidas, mas você não poderá criar novas até reativar".</p>
+
+  <div class="regra">
+    <b>Não existe configuração do link de avaliação do Google dentro de Configurações.</b> Quem procura onde colar o link do Google Maps pra pedir avaliação ao cliente deve ir na configuração de avaliação (NPS) da ordem de serviço, não aqui.
+  </div>
+
+  <h2>9. Documentos legais e a Zona de Perigo (Zerar Sistema) — o que ela apaga</h2>
+
+  <h3>Documentos Legais</h3>
+  <p>No fim da aba <span class="ui">Empresa</span> fica o cartão <span class="ui">Documentos Legais</span>, "Consulte e baixe os termos que regem o uso do Dominex". O botão <span class="ui">Ver termos de uso</span> abre o documento em janela, com opção de <span class="ui">Baixar PDF</span>. Abaixo, quando já houve aceite, aparece a linha <span class="ui">Aceito em [data]</span> com um sinal verde. É o comprovante de que a sua empresa aceitou os termos, útil em auditoria.</p>
+
+  <h3>Zona de Perigo</h3>
+  <p>Um cartão vermelho no fim da aba <span class="ui">Empresa</span>, com o título <span class="ui">Zona de Perigo</span> e a advertência "Ações irreversíveis. Revise cuidadosamente antes de confirmar". Dentro, a ação <span class="ui">Zerar Sistema</span>, descrita como "Exclui dados operacionais selecionados. Dados da empresa e usuários são preservados. Toda operação fica registrada em log de auditoria".</p>
+
+  <div class="perigo">
+    <b>Zerar Sistema apaga de verdade e não tem como desfazer.</b> A tela repete isso duas vezes: "Esta ação irá DELETAR PERMANENTEMENTE os dados operacionais da empresa" e "Esta ação NÃO PODE ser desfeita!". Use só quando a empresa terminou os testes e vai começar a operação real com a base limpa.
+  </div>
+
+  <h4>O que você escolhe apagar</h4>
+  <p>A janela mostra a pergunta <span class="ui">Escolha o que deseja remover:</span> com <span class="ui">Marcar tudo</span> e um contador de selecionados. Os itens vêm em quatro grupos:</p>
+  <table class="dados">
+    <thead><tr><th>Grupo</th><th>Item</th><th>O que remove</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="4">Operacional</td><td><span class="ui">Ordens de Serviço</span></td><td>Todas as OS, fotos, materiais consumidos, avaliações e formulários respondidos.</td></tr>
+      <tr><td><span class="ui">Equipamentos</span></td><td>Todos os equipamentos cadastrados nos clientes.</td></tr>
+      <tr><td><span class="ui">Contratos e PMOC</span></td><td>Todos os contratos, cronogramas PMOC e documentos PMOC personalizados.</td></tr>
+      <tr><td><span class="ui">Configurações personalizadas</span></td><td>Etapas de CRM personalizadas, formulários de OS e recursos de custo.</td></tr>
+      <tr><td rowspan="2">Comercial (CRM)</td><td><span class="ui">Orçamentos e Propostas</span></td><td>Todos os orçamentos e propostas.</td></tr>
+      <tr><td><span class="ui">Clientes e Leads</span></td><td>Todos os cadastros de clientes, contatos, portais e leads.</td></tr>
+      <tr><td rowspan="2">Financeiro</td><td><span class="ui">Movimentações</span></td><td>Todas as transações de caixa, banco, cartão, receitas e despesas.</td></tr>
+      <tr><td><span class="ui">Categorias financeiras</span></td><td>As categorias personalizadas. As padrões são mantidas.</td></tr>
+      <tr><td rowspan="3">RH e Inventário</td><td><span class="ui">Funcionários e equipe</span></td><td>Todos os funcionários, vales, pagamentos, ponto eletrônico e equipes.</td></tr>
+      <tr><td><span class="ui">Materiais</span></td><td>Todos os materiais cadastrados e o estoque deles.</td></tr>
+      <tr><td><span class="ui">Estoque</span></td><td>Zera o estoque (movimentações), mantém os materiais cadastrados.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Marcar <span class="ui">Materiais</span> força marcar <span class="ui">Estoque</span> junto, e o item fica travado com a explicação "Necessário porque o cadastro de materiais foi marcado".</p>
+
+  <h4>O que sempre fica</h4>
+  <p>A janela lista, sob o título <span class="ui">Serão mantidos:</span>, três coisas: <b>Dados básicos da empresa</b>, <b>Usuários cadastrados</b> e <b>Histórico de pagamentos</b>. Ninguém perde o login, e a assinatura continua igual.</p>
+
+  <h4>Confirmação</h4>
+  <ol>
+    <li>Marque o que quer apagar.</li>
+    <li>No campo <span class="ui">Para confirmar, digite o nome da empresa:</span> digite exatamente o nome cadastrado. Errando, aparece "O nome digitado não confere com o nome da empresa."</li>
+    <li>Clique em <span class="ui">Sim, Zerar Sistema</span>. A tela mostra <span class="ui">Apagando dados...</span> e a etapa atual.</li>
+    <li>Terminando: <span class="ui">Sistema zerado com sucesso</span>, com o aviso de que o log de auditoria foi gerado.</li>
+  </ol>
+
+  <h4>Mensagens de erro possíveis</h4>
+  <table class="dados">
+    <thead><tr><th>Mensagem exibida</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td>"Esta ação precisa de conexão com a internet. Você está offline."</td><td>Reconecte e tente de novo. A operação nem começa sem internet.</td></tr>
+      <tr><td>"Você não tem permissão para zerar o sistema. Apenas o administrador da empresa pode fazer isso."</td><td>Peça pro administrador da empresa executar.</td></tr>
+      <tr><td>"Uma etapa demorou demais. Tente novamente, o que já foi apagado continua apagado."</td><td>Repita a operação. O que já foi removido não volta e não é removido duas vezes.</td></tr>
+      <tr><td>"Não foi possível concluir a etapa por uma dependência inesperada. Avise o suporte com o nome da etapa."</td><td>Anote o nome da etapa que apareceu na tela e abra chamado.</td></tr>
+      <tr><td>"Não foi possível recriar uma configuração padrão. Tente novamente em alguns segundos."</td><td>Espere alguns segundos e repita.</td></tr>
+      <tr><td>"Não foi possível zerar o sistema. Tente novamente ou avise o suporte."</td><td>Erro genérico. Repita uma vez e, persistindo, acione o suporte.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    O cartão <span class="ui">Zona de Perigo</span> só aparece pra administrador da empresa. Se você não vê o cartão, você não tem esse poder, e o servidor confere de novo antes de apagar qualquer coisa.
+  </div>
+
+  <!-- PRINT FALTANDO: janela Zerar Sistema aberta, mostrando a lista de grupos com as caixas desmarcadas, o bloco "Serão mantidos" e o campo de confirmação do nome da empresa em branco. NÃO declarado para captura automática de propósito: a conta demo roda em produção e este modal é o único caminho para apagar dados operacionais em massa. Capturar manualmente, em conta de teste isolada. -->
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Não tem botão de salvar nas configurações"</td>
+        <td>A tela salva sozinha</td>
+        <td>É assim mesmo. Olhe o selo no topo direito: Salvando, Alterações não salvas ou Salvo. Sair do campo já grava.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo mudar o segmento da minha empresa"</td>
+        <td>Campo somente leitura por definição</td>
+        <td>Só a Dominex altera o segmento, porque ele define quais ferramentas aparecem. Abra chamado no suporte informando o novo ramo.</td>
+      </tr>
+      <tr>
+        <td>"Quero conectar meu WhatsApp e não acho o QR Code"</td>
+        <td>Recurso ainda não liberado</td>
+        <td>A aba WhatsApp está marcada como Em breve e mostra só um aviso. Não existe conexão por QR Code hoje. Avise que ainda não está disponível.</td>
+      </tr>
+      <tr>
+        <td>"O CNPJ não aparece no relatório da OS"</td>
+        <td>Interruptor Exibir em documentos desligado</td>
+        <td>Vá em Configurações › Empresa e ligue o interruptor ao lado do campo CNPJ/CPF. O dado continua cadastrado, só não estava sendo impresso.</td>
+      </tr>
+      <tr>
+        <td>"Ativei o White Label e o logo não mudou"</td>
+        <td>Nenhum logo específico foi enviado</td>
+        <td>Sem logo próprio no White Label, o sistema usa o logo da Identidade Visual. Envie o logo completo e o ícone quadrado.</td>
+      </tr>
+      <tr>
+        <td>"Mudei a moeda e meus valores ficaram errados"</td>
+        <td>Expectativa de conversão</td>
+        <td>Trocar a moeda não converte valor. Os números continuam iguais, só muda o símbolo. Volte a moeda anterior se foi engano.</td>
+      </tr>
+      <tr>
+        <td>"Liguei Exigir Assinatura e o técnico continua finalizando sem assinar"</td>
+        <td>A preferência é por aparelho</td>
+        <td>As preferências de Usabilidade ficam no navegador de quem configurou. Precisa ligar também no celular do técnico.</td>
+      </tr>
+      <tr>
+        <td>"Não aparece nenhuma origem no cadastro de cliente"</td>
+        <td>Catálogo de origens vazio</td>
+        <td>Vá em Configurações › Usabilidade, cartão Origens, e clique em Criar origens padrão. Depois edite à vontade.</td>
+      </tr>
+      <tr>
+        <td>"Onde coloco o link do Google pra pedir avaliação?"</td>
+        <td>Procurando no lugar errado</td>
+        <td>Não fica em Configurações. Fica na configuração de avaliação (NPS) da ordem de serviço.</td>
+      </tr>
+      <tr>
+        <td>"Zerei o sistema e perdi meus usuários?"</td>
+        <td>Confusão sobre o alcance</td>
+        <td>Não. Zerar Sistema preserva dados da empresa, usuários e histórico de pagamentos. Só apaga o que foi marcado.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Como sei que minha alteração foi salva?</dt>
+    <dd>Pelo selo no topo direito da tela. Quando ele mostra Salvo com o sinal verde, está gravado.</dd>
+
+    <dt>O logo da empresa e o logo do White Label são a mesma coisa?</dt>
+    <dd>Não. O da Identidade Visual é o logo geral, usado nos documentos. O do White Label é o que troca a marca do sistema. Se você não enviar um do White Label, ele reaproveita o da Identidade Visual.</dd>
+
+    <dt>Meu cliente vai ver a marca Dominex?</dt>
+    <dd>Com o White Label ligado, não. O relatório da OS, o portal e a tela de pagamento saem com a sua marca e a sua cor.</dd>
+
+    <dt>Qual o tamanho ideal do ícone do White Label?</dt>
+    <dd>A tela pede 128 por 128 pixels, quadrado. É o que aparece quando o menu lateral está encolhido.</dd>
+
+    <dt>Trocar meu idioma muda o idioma dos meus colegas?</dt>
+    <dd>Não. Meu idioma é pessoal. Quem muda pra todo mundo é o campo Idioma padrão da empresa, e só administrador mexe nele.</dd>
+
+    <dt>Onde ligo ou desligo os feriados na agenda?</dt>
+    <dd>Configurações › Usabilidade › bloco Agenda › Exibir Feriados. Nasce ligado.</dd>
+
+    <dt>Posso desligar a confirmação antes de excluir?</dt>
+    <dd>Pode, em Usabilidade › Segurança › Confirmar Exclusões. Não recomendamos: é a rede de proteção contra clique errado.</dd>
+
+    <dt>A Dominex fica com uma parte do que eu recebo pela Asaas?</dt>
+    <dd>Não. A própria tela diz: as taxas são cobradas pela Asaas diretamente na sua conta e a Dominex não retém nada por transação.</dd>
+
+    <dt>Desativar os recebimentos cancela as cobranças que já mandei?</dt>
+    <dd>Não. As cobranças já geradas continuam válidas. Você só não consegue criar novas até reativar.</dd>
+
+    <dt>Zerar Sistema apaga meu histórico de pagamentos da assinatura?</dt>
+    <dd>Não. Dados da empresa, usuários e histórico de pagamentos são sempre preservados.</dd>
+
+    <dt>Consigo desfazer um Zerar Sistema?</dt>
+    <dd>Não. É permanente. A operação fica registrada em log de auditoria, mas os dados não voltam.</dd>
+
+    <dt>Onde vejo os termos de uso que aceitei?</dt>
+    <dd>Em Configurações › Empresa › Documentos Legais › Ver termos de uso. A data do aceite aparece logo abaixo do botão.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> configurações, ajustes, dados da empresa, papel timbrado, logo, marca, cor do sistema, personalizar, tema escuro, fuso, moeda, integrações, chave da Asaas, apagar tudo, zerar, limpar base
+  </div>
+</section>

@@ -1,0 +1,62 @@
+{
+  "secao": "T15",
+  "prints": [
+    {
+      "id": "t15-novo-funcionario-dados",
+      "url": "/funcionarios",
+      "legenda": "Formulário Novo Funcionário na aba Dados, com foto, Nome Completo, CPF, Telefone, Email, Cargo, Endereço, Data de Admissão e Chave PIX.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Funcionário" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t15-novo-funcionario-pagamento",
+      "url": "/funcionarios",
+      "legenda": "Formulário Novo Funcionário na aba Pagamento, com Salário, Custo mensal total, Contrato de trabalho, Configuração de Pagamento, Ponto eletrônico e Criar acesso ao sistema.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Funcionário" },
+        { "esperar": 1500 },
+        { "clicar": "Pagamento" },
+        { "esperar": 1200 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t15-ponto-config",
+      "url": "/funcionarios",
+      "legenda": "Aba Controle de Ponto, sub-aba Config, com a Jornada Padrão da Empresa e as chaves Exigir selfie, Exigir geolocalização, Raio máximo e Tolerância atraso.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Controle de Ponto" },
+        { "esperar": 1800 },
+        { "clicar": "^Config$" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t15-ponto-hoje",
+      "url": "/funcionarios",
+      "legenda": "Aba Controle de Ponto, sub-aba Hoje, com os indicadores Presentes, Ausentes, Em intervalo e Concluídos e a tabela de batidas do dia.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Controle de Ponto" },
+        { "esperar": 2000 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t15-organograma",
+      "url": "/funcionarios/organograma",
+      "legenda": "Aba Organograma com a lista de quadros salvos e o botão Novo Organograma.",
+      "passos": [
+        { "esperar": 3000 }
+      ],
+      "recorte": "main"
+    }
+  ]
+}

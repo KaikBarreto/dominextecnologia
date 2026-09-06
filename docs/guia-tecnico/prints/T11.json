@@ -1,0 +1,239 @@
+{
+  "secao": "T11",
+  "prints": [
+    {
+      "id": "t11-filtros-contratos",
+      "url": "/contratos",
+      "legenda": "Painel de filtros da tela Contratos, com os três grupos Status, Saúde e Tipo.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Filtros"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t11-novo-contrato-identificacao",
+      "url": "/contratos",
+      "legenda": "Assistente Novo Contrato na etapa Identificação, com a trilha de etapas no topo, os campos Nome do Contrato e Cliente, e a chave É um contrato PMOC?.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Novo Contrato"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t11-wizard-pmoc-unidade",
+      "url": "/contratos",
+      "legenda": "Assistente do contrato com a chave PMOC ligada, mostrando a trilha de 6 etapas e a etapa Unidade e RT com o seletor de Responsável Técnico e o bloco Identificação da Unidade.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Novo Contrato"
+        },
+        {
+          "esperar": 2000
+        },
+        {
+          "preencher": "[role=dialog] input[placeholder^=\"Ex: Manuten\"]",
+          "valor": "Contrato de teste (guia)"
+        },
+        {
+          "esperar": 400
+        },
+        {
+          "clicarSeletor": "[role=dialog] [role=\"switch\"]"
+        },
+        {
+          "esperar": 900
+        },
+        {
+          "clicar": "Selecione o cliente"
+        },
+        {
+          "esperar": 800
+        },
+        {
+          "clicarSeletor": "[role=\"option\"]:has-text(\"Cliente Demo\"), [cmdk-item]:has-text(\"Cliente Demo\")"
+        },
+        {
+          "esperar": 800
+        },
+        {
+          "clicar": "Próximo",
+          "opcional": true
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t11-configuracoes-contrato-documentos",
+      "url": "/configuracoes-contrato",
+      "legenda": "Aba Documentos das Configurações de Contrato, com os modelos padrão do Termo de Responsabilidade Técnica e do Certificado de Conformidade e o bloco Validade dos documentos.",
+      "passos": [
+        {
+          "esperar": 3000
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t11-novo-responsavel-tecnico",
+      "url": "/configuracoes-contrato?tab=rt",
+      "legenda": "Janela Novo Responsável Técnico, com Nome completo, CFT/CREA, Modalidade, Número de registro e as abas de assinatura Enviar imagem e Desenhar.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Novo Responsável"
+        },
+        {
+          "esperar": 1800
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t11-responsaveis-tecnicos-lista",
+      "url": "/configuracoes-contrato?tab=rt",
+      "legenda": "Aba Responsáveis Técnicos com os contadores Total, Ativos e Inativos e a tabela com Nome, CFT/CREA, Modalidade, Registro e Status.",
+      "passos": [
+        {
+          "esperar": 3000
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t11-contrato-visao-geral",
+      "url": "/contratos",
+      "legenda": "Detalhe de um contrato na aba Visão Geral, com os blocos Informações, Resumo, Progresso e Portal do Contrato, e a navegação lateral de abas.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 3000
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t11-portal-do-contrato",
+      "url": "/contratos",
+      "legenda": "Bloco Portal do Contrato dentro da Visão Geral, com o link público, a chave Portal Público e os botões Copiar link, Imprimir QR Code e Regenerar token.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "rolarAte": "text=Portal do Contrato"
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t11-contrato-documentos",
+      "url": "/contratos?tipo=pmoc",
+      "legenda": "Aba Documentos de um contrato PMOC, com os cards Dossiê PMOC, Termo de Responsabilidade Técnica, Certificado de Conformidade e Planilha PMOC, e o interruptor de documentos no portal.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Documentos"
+        },
+        {
+          "esperar": 2500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t11-contrato-nova-receita",
+      "url": "/contratos",
+      "legenda": "Janela Nova Conta a Receber da aba Financeiro do contrato, com Descrição, Valor, Conta bancária, Categoria, Vencimento, Recorrência e Quantidade de parcelas.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "main :text-is(\"Financeiro\")"
+        },
+        {
+          "esperar": 2000
+        },
+        {
+          "clicar": "Nova Receita"
+        },
+        {
+          "esperar": 1800
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t11-renovar-contrato",
+      "url": "/contratos",
+      "legenda": "Janela Renovar / Estender contrato, com as opções +6 meses e +12 meses e o resumo do horizonte atual e do novo horizonte.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Renovar / Estender"
+        },
+        {
+          "esperar": 1800
+        }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}

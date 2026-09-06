@@ -1,0 +1,173 @@
+{
+  "secao": "T12",
+  "prints": [
+    {
+      "id": "t12-ficha-cliente-portal",
+      "url": "/clientes",
+      "legenda": "Topo da ficha do cliente com a chave Portal Público ligada e o menu Ações aberto, mostrando Copiar link do portal e Abrir portal. Censurar CPF/CNPJ, telefone e endereço reais.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "main button:has-text(\"Ações\")",
+          "opcional": true
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t12-cliente-aba-chamados",
+      "url": "/clientes",
+      "legenda": "Aba Chamados na ficha do cliente, com a lista dos chamados abertos pelo portal (OS, Descrição, Status e Data) ou o estado vazio.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Chamados"
+        },
+        {
+          "esperar": 1800
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t12-painel-nps",
+      "url": "/ordens-servico",
+      "legenda": "Aba NPS e Satisfação com os indicadores NPS Score, Média Geral, Respostas e Taxa de Resposta, e os gráficos de Distribuição NPS e Média por Categoria.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "NPS e Satisfação"
+        },
+        {
+          "esperar": 2500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t12-nps-detratores",
+      "url": "/ordens-servico",
+      "legenda": "Blocos Ranking de Técnicos e Detratores em Aberto do painel de NPS. Censurar nomes reais de cliente e de técnico.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "NPS e Satisfação"
+        },
+        {
+          "esperar": 2500
+        },
+        {
+          "rolarAte": "text=Detratores em Aberto"
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t12-configuracoes-nps",
+      "url": "/ordens-servico",
+      "legenda": "Janela Configurações de NPS com a Pergunta da escala 0 a 10, a chave Avaliação por estrelas e a lista de Critérios de avaliação com as setas de ordem.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "NPS e Satisfação"
+        },
+        {
+          "esperar": 2500
+        },
+        {
+          "clicarSeletor": "main button:has-text(\"Configurações\")"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t12-nps-avaliacao-google",
+      "url": "/ordens-servico",
+      "legenda": "Seção Avaliação no Google dentro das Configurações de NPS, com o campo Link do Google Maps, o botão Gerar link de avaliação, o campo do link final e o bloco Quando convidar o cliente.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "NPS e Satisfação"
+        },
+        {
+          "esperar": 2500
+        },
+        {
+          "clicarSeletor": "main button:has-text(\"Configurações\")"
+        },
+        {
+          "esperar": 2000
+        },
+        {
+          "rolarAte": "text=Avaliação no Google"
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t12-como-pegar-link-google",
+      "url": "/ordens-servico",
+      "legenda": "Diálogo Como pegar o link da sua empresa no Google Maps, com os cinco passos numerados e a dica final.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "NPS e Satisfação"
+        },
+        {
+          "esperar": 2500
+        },
+        {
+          "clicarSeletor": "main button:has-text(\"Configurações\")"
+        },
+        {
+          "esperar": 2000
+        },
+        {
+          "clicar": "Como pegar o link?"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}

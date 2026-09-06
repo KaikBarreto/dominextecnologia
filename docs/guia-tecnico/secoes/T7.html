@@ -1,0 +1,476 @@
+<section class="tutorial" id="t7">
+  <h1><span class="tcode">T7</span> O técnico em campo + Área do Técnico™</h1>
+
+  <p class="lead">Esta é a parte que o técnico vive: abrir a OS no celular, avisar que está a caminho, fazer o check-in, preencher o checklist com foto, colher assinatura e finalizar. No fim, a caixa de ferramentas de cálculo que ele leva no bolso.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> o técnico abre a OS pelo link dela, direto no navegador do celular. A Área do Técnico™ fica no Menu → Área do Técnico™ e também num botão flutuante dentro da OS</span>
+    <span><b>Rotas:</b> <code>/os-tecnico/&lt;endereço da OS&gt;</code> para a OS. <code>/area-tecnico</code> para as ferramentas</span>
+    <span><b>Depende de:</b> a OS existir e estar atribuída (T5), e o checklist estar montado (T4)</span>
+    <span><b>Quem enxerga:</b> a OS abre para técnico, gestor e, sem login, para o cliente em modo leitura. A Área do Técnico™ exige a tela <b>Área do Técnico™</b> liberada</span>
+    <span><b>Módulo:</b> a execução da OS não depende de módulo pago. A resposta em vídeo depende do módulo de vídeo. As ferramentas dependem do <b>segmento</b> da empresa</span>
+  </div>
+
+  <div class="aviso">
+    <b>Leia antes de tudo: a OS precisa de internet para gravar.</b> Toda resposta de checklist, foto, vídeo, assinatura, check-in e finalização é enviada ao servidor no momento em que o técnico responde. <b>Não existe fila de sincronização: nada fica guardado no celular esperando o sinal voltar.</b> Se a resposta não subir, o app mostra o erro <span class="ui">Erro ao salvar resposta</span> e o técnico precisa tentar de novo com sinal. Trabalhar num subsolo ou numa casa de máquinas sem sinal e "sincronizar depois" <b>não funciona</b>: o certo é sair para um ponto com sinal e preencher ali. Quando o sinal cai, o app avisa numa faixa vermelha no topo: <span class="ui">Sem conexão</span> — não é possível salvar agora, reconecte para continuar.
+  </div>
+
+  <h2>1. Abrindo a OS no celular: o link, o endereço amigável e o que o técnico vê primeiro</h2>
+
+  <p>O técnico não precisa navegar por menu nenhum: ele abre o <b>link da OS</b>, que chega por mensagem, por atalho salvo ou pela própria Agenda dele. O endereço tem o formato amigável <code>dominex.app/os-tecnico/nome-do-cliente-servico-CODIGO</code>. Links antigos com o código longo continuam funcionando: o sistema resolve e ainda arruma o endereço na barra do navegador sozinho.</p>
+
+  <h3>Os três públicos do mesmo endereço</h3>
+  <table class="dados">
+    <thead><tr><th>Quem abre</th><th>O que aparece</th></tr></thead>
+    <tbody>
+      <tr><td>Técnico ou gestor <b>logado</b>, OS em aberto</td><td>A tela de execução, com os botões de ação.</td></tr>
+      <tr><td>Técnico ou gestor <b>logado</b>, OS concluída</td><td>O relatório do serviço, com baixar PDF, imprimir e copiar link.</td></tr>
+      <tr><td>Qualquer pessoa <b>sem login</b></td><td>O modo cliente, somente leitura. O sistema entra nesse modo sozinho, sem ninguém precisar escolher nada.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra">
+    O <b>mesmo endereço</b> serve para os três. Sem sessão iniciada, ele vira modo cliente automaticamente. Por isso, quando o técnico reclama que "não aparecem os botões", a primeira pergunta é: ele está logado no celular? Deslogado, ele vê a OS como o cliente veria, e não consegue fazer check-in nem preencher.
+  </div>
+
+  <figure>
+    <img src="img/t7-os-modo-cliente.png" alt="Ordem de serviço aberta pelo link público, sem login, em modo cliente: cabeçalho verde com o número da OS e o selo Concluída, cartão da empresa e dados do cliente Supermercado Bom Preço Ltda com CNPJ, telefone e endereço, registro fotográfico separado em Antes, Durante e Depois, checklist de Condicionadores de Ar com dezenas de itens marcados Conforme, Não Conforme e N/A, campo de observações, vídeo da manutenção, assinaturas do técnico e do cliente, e uma barra fixa embaixo com os botões Baixar PDF, Imprimir e Copiar Link">
+    <figcaption>O modo cliente pelo link público: o mesmo relatório que o técnico monta durante o atendimento, aberto sem login, em somente leitura, com opção de baixar o PDF, imprimir ou copiar o link.</figcaption>
+  </figure>
+
+  <p>É essa tela — e não uma versão resumida — que o cliente final recebe quando pede "me manda o relatório do serviço": fotos de antes/durante/depois, o checklist completo com cada item marcado, observações do técnico, vídeo (quando o módulo está ativo) e as duas assinaturas, tudo no mesmo link que foi usado para acompanhar o atendimento. O cliente não edita nada nessa tela, mas pode baixar o PDF, imprimir ou copiar o link para reenviar.</p>
+
+  <h3>O que o técnico vê primeiro</h3>
+  <p>No topo, o número da OS e o status atual. Abaixo, os blocos <span class="ui">Cliente</span> (com nome, telefone e endereço), <span class="ui">Descrição do Serviço</span> e <span class="ui">Observações</span>. Se a OS tiver um endereço de serviço próprio, ele aparece em destaque com o rótulo <span class="ui">Endereço deste serviço</span> e a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."</p>
+
+  <p>Antes do check-in, o cartão de ação se chama <span class="ui">Ir para o Atendimento</span>, com a orientação: "Informe ao cliente que você está a caminho ou faça o check-in ao chegar." e dois botões: <span class="ui">A Caminho</span> e <span class="ui">Fazer Check-in</span>.</p>
+
+  <p>Se a OS estiver pausada, o cartão vira <span class="ui">OS Pausada</span>, com a explicação "Esta OS foi pausada. Retome o atendimento para continuar o preenchimento." e um único botão, <span class="ui">Retomar OS</span>. Enquanto pausada, os checklists ficam bloqueados e aparece o aviso "OS pausada, retome o atendimento para preencher os checklists."</p>
+
+  <h2>2. A Caminho → mapa em tela cheia com botão pra Waze e Google Maps</h2>
+
+  <p>Tocando em <span class="ui">A Caminho</span>, três coisas acontecem: a posição atual do técnico é registrada, a OS muda para o status <b>A Caminho</b> e aparece a confirmação "Status atualizado: A Caminho!".</p>
+
+  <p>A tela então mostra o cartão <span class="ui">Rota até o cliente</span>, com um mapa e três botões: <span class="ui">Waze</span>, <span class="ui">Google Maps</span> e <span class="ui">Ampliar</span>. O <span class="ui">Ampliar</span> abre o mapa em tela cheia, para conferir o trajeto antes de sair.</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>O destino segue uma ordem: primeiro o <b>endereço de serviço da OS</b>, se houver; depois o <b>endereço do cliente</b>. Dentro de cada um, primeiro as coordenadas salvas, depois o endereço em texto.</li>
+    <li>Os botões abrem o Waze e o Google Maps <b>fora do sistema</b>, no aplicativo instalado. A navegação em si acontece lá, não dentro da Dominex.</li>
+    <li>Sem endereço nem coordenada, o botão avisa: "Sem endereço para abrir a navegação."</li>
+    <li>Enquanto o técnico está <b>A Caminho</b>, a posição dele continua sendo enviada e o gestor acompanha no Mapa ao Vivo. O cliente, se abrir o link, vê "Técnico a caminho..." e o acompanhamento em tempo real.</li>
+  </ul>
+
+  <div class="dica">
+    Marcar <span class="ui">A Caminho</span> não é burocracia: é o que faz o cliente conseguir acompanhar sozinho, sem ligar para o escritório perguntando "a que horas o técnico chega". A previsão de chegada aparece para o gestor no mapa, com distância em quilômetros.
+  </div>
+
+  <h2>3. Check-in: a OS vira "Em Andamento" e a localização é registrada</h2>
+
+  <p>Ao chegar, o técnico toca em <span class="ui">Fazer Check-in</span>. O cartão nesse momento se chama <span class="ui">Iniciar Atendimento</span>, com a orientação "Chegou no local? Faça o check-in para iniciar."</p>
+
+  <h3>O que o check-in faz</h3>
+  <ol>
+    <li>Pede a <b>localização</b> do aparelho. É obrigatório: sem localização, o check-in não acontece.</li>
+    <li>Grava o horário exato e as coordenadas na OS.</li>
+    <li>Muda o status para <b>Em Andamento</b>.</li>
+    <li>Libera os checklists, as fotos e as assinaturas para preenchimento.</li>
+    <li>Mostra a confirmação "Check-in realizado com sucesso!".</li>
+    <li>Em segundo plano, converte as coordenadas em um endereço legível e completa o registro. Se essa parte falhar, fica só a coordenada, e o check-in continua válido.</li>
+  </ol>
+
+  <div class="aviso">
+    <b>Antes do check-in, nada de checklist aparece.</b> Isso é proposital: garante que o preenchimento aconteça no local, com hora e posição registradas. Se o técnico está no cliente e a tela não mostra o checklist, quase sempre falta o check-in.
+  </div>
+
+  <!-- PRINT FALTANDO: t7-os-antes-checkin — tela da OS no celular antes do check-in, com o cartão "Ir para o Atendimento" e os botões "A Caminho" e "Fazer Check-in". Declarado em prints/T7.json. -->
+
+  <h3>Mensagens de erro de localização, e o que fazer com cada uma</h3>
+
+  <table class="dados">
+    <thead><tr><th>Mensagem</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td>"Você precisa permitir o acesso à localização para registrar o serviço. Abra as configurações do navegador, libere a localização para este site e tente novamente."</td><td>A permissão foi negada. Nas configurações do site no navegador, autorize a localização e recarregue a página.</td></tr>
+      <tr><td>"Não conseguimos obter sua localização agora. Verifique se o GPS do aparelho está ligado e se você tem sinal."</td><td>GPS desligado ou sem sinal. Ligue a localização do aparelho e tente de novo.</td></tr>
+      <tr><td>"Não conseguimos obter sua localização nem pelo GPS, nem pelas redes próximas. Verifique se o GPS do aparelho está ligado, se você tem sinal de internet, e tente sair pra um local mais aberto."</td><td>Nem o GPS nem a localização por rede responderam. Saia de dentro do subsolo ou da casa de máquinas.</td></tr>
+      <tr><td>"A localização demorou demais para responder. Tente de novo daqui a alguns segundos."</td><td>Espere alguns segundos com o aparelho parado e tente outra vez.</td></tr>
+      <tr><td>"Seu navegador não suporta geolocalização. Use um navegador atualizado."</td><td>Navegador muito antigo ou navegador embutido de outro aplicativo. Abra o link no Chrome ou no Safari.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Preenchendo checklist por equipamento: sim/não, conformidade, medição, seleção, número</h2>
+
+  <p>Depois do check-in aparece o bloco <span class="ui">Checklists</span>. Ele é organizado <b>por equipamento</b>: um cabeçalho por máquina, com o nome dela e, quando existe, o ambiente ou o local. Se aquele equipamento tem mais de um checklist, cada um vira um bloco próprio com o nome do checklist. O cabeçalho gruda no topo enquanto você rola, para o técnico nunca perder de vista em qual equipamento está.</p>
+
+  <p>Cada bloco mostra o quanto já foi respondido e um selo: <span class="ui">Concluído</span> ou <span class="ui">Pendente</span>, mais o contador de <span class="ui">N pendentes</span>.</p>
+
+  <h3>Como cada tipo de pergunta se comporta</h3>
+
+  <table class="dados">
+    <thead><tr><th>Tipo</th><th>Como responder</th><th>Quando salva</th></tr></thead>
+    <tbody>
+      <tr><td>Sim/Não</td><td>Uma chave. Ligada mostra o selo verde <span class="ui">Sim</span>, desligada o selo vermelho <span class="ui">Não</span>. Sem responder, aparece <span class="ui">Não respondido</span>.</td><td>No toque.</td></tr>
+      <tr><td>Conformidade</td><td>Três botões: <span class="ui">Conforme</span> (verde), <span class="ui">Não Conforme</span> (vermelho) e <span class="ui">N/A</span> (laranja). Tocar de novo no mesmo botão limpa a resposta.</td><td>No toque.</td></tr>
+      <tr><td>Texto</td><td>Caixa de texto de duas linhas.</td><td><b>Ao sair do campo</b>, não a cada letra.</td></tr>
+      <tr><td>Número</td><td>Teclado numérico, aceita decimal.</td><td><b>Ao sair do campo.</b></td></tr>
+      <tr><td>Medição</td><td>Campo numérico com a unidade fixa à direita e a faixa esperada logo abaixo, no formato "Faixa esperada: mín a máx". Fora da faixa, a borda fica âmbar e aparece "Valor fora da faixa esperada, confira o equipamento ou registre observação".</td><td><b>Ao sair do campo.</b></td></tr>
+      <tr><td>Seleção</td><td>Lista de opções com caixinhas. Dá para marcar <b>mais de uma</b>. Aparece o contador "N selecionadas".</td><td>No toque.</td></tr>
+      <tr><td>Foto</td><td>Dois botões, detalhado no capítulo 5.</td><td>Ao terminar o envio.</td></tr>
+      <tr><td>Vídeo</td><td>Gravação de clipe curto, detalhado no capítulo 6.</td><td>Ao terminar o envio.</td></tr>
+      <tr><td>Assinatura</td><td>Área para assinar com o dedo, centralizada, com botão de limpar.</td><td>Ao confirmar a assinatura.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>Medição fora da faixa não trava.</b> O aviso é âmbar, não é bloqueio. Isso é de propósito: se a pressão está errada, o técnico precisa <b>poder</b> registrar o valor errado, porque é justamente esse registro que documenta o problema. Trava seria pior: o técnico arredondaria o número para conseguir fechar a OS.
+  </div>
+
+  <div class="regra">
+    <b>Texto e número só salvam quando o técnico sai do campo.</b> Se ele digitar e fechar a tela sem tocar em outro lugar, a resposta pode não subir. Na prática o toque seguinte já resolve, mas vale a orientação: depois de digitar, toque fora do campo e confira se a resposta ficou.
+  </div>
+
+  <h3>Perguntas que não aparecem em toda visita</h3>
+  <p>Em OS de contrato, uma pergunta pode ter <b>frequência</b>: mensal, trimestral, semestral, anual ou personalizada. Nesse caso ela só aparece na visita em que vence. Se nenhuma pergunta daquele checklist vence na visita atual, o bloco mostra "Nenhuma pergunta prevista para esta visita." Se o checklist estiver vazio, a mensagem é "Nenhuma pergunta configurada para este checklist."</p>
+
+  <h3>Editar a OS em campo</h3>
+  <p>Quem tiver a permissão <span class="ui">Editar OS em campo</span> encontra, no menu de mais ações, a opção <span class="ui">Editar OS</span>. Ela abre um painel com duas abas, <span class="ui">Equipamentos</span> e <span class="ui">Checklists avulsos</span>, para acrescentar um equipamento que apareceu na hora ou anexar um checklist que faltava.</p>
+
+  <div class="regra">
+    A opção <span class="ui">Editar OS</span> fica <b>desativada quando não há internet</b>, com a dica <span class="ui">Disponível apenas online</span>. Ela é uma das poucas partes do app que avisa isso explicitamente.
+  </div>
+
+  <h2>5. Fotos: Tirar Foto × Galeria, e quando só a câmera é permitida</h2>
+
+  <p>Toda pergunta de foto mostra <b>dois botões lado a lado</b>: <span class="ui">Tirar Foto</span>, com ícone de câmera, e <span class="ui">Galeria</span>, com ícone de imagem.</p>
+
+  <table class="dados">
+    <thead><tr><th>Botão</th><th>O que abre</th><th>Quando usar</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Tirar Foto</span></td><td>A câmera traseira, direto.</td><td>Foto do momento: antes e depois, medição no manifold, avaria encontrada, equipamento instalado.</td></tr>
+      <tr><td><span class="ui">Galeria</span></td><td>As fotos já salvas no aparelho.</td><td>Foto que o técnico já tinha tirado (a plaqueta que ele fotografou na chegada, um comprovante, uma imagem recebida por mensagem).</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra">
+    Os dois botões existem <b>separados de propósito</b>. Em muitos celulares Android, um botão único de "anexar arquivo" abre apenas a galeria, e o técnico fica sem conseguir fotografar na hora. Ter o botão de câmera dedicado garante o caminho mais comum em campo, e ter o botão de galeria preserva o caso legítimo de anexar depois.
+  </div>
+
+  <!-- PRINT FALTANDO: t7-foto-camera-galeria — pergunta de foto no checklist mostrando os dois botões lado a lado, "Tirar Foto" e "Galeria". Exige uma OS com check-in feito, o que é uma ação proibida na conta demo. Precisa de uma OS de teste isolada. -->
+
+  <h3>Quando só a câmera é permitida</h3>
+  <p>Se a pergunta foi criada com a opção <span class="ui">Exigir foto da câmera</span> ligada, o botão <span class="ui">Galeria</span> <b>desaparece</b> e o <span class="ui">Tirar Foto</span> passa a ocupar a largura inteira. O técnico só consegue anexar uma foto tirada naquele momento. É a configuração certa para laudo, auditoria e comprovação de execução.</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Fotos de iPhone no formato HEIC são <b>convertidas automaticamente</b> antes do envio. O técnico não precisa mudar nada nos ajustes do aparelho.</li>
+    <li>Toda foto é comprimida e redimensionada antes de subir, para não estourar o pacote de dados no meio da rua.</li>
+    <li>Se a pergunta permite várias fotos, elas viram um carrossel. Se permite só uma e já existe uma, a tentativa mostra "Apenas uma foto permitida" com "Remova a atual para enviar outra."</li>
+    <li>Ao terminar, aparece "Foto enviada!" ou "N fotos enviadas!".</li>
+    <li>Falha no envio mostra "Erro ao enviar foto" com o motivo. A foto <b>não</b> fica numa fila: é preciso tentar de novo.</li>
+    <li>Remover pede confirmação: "Remover foto?" com "Tem certeza que deseja remover esta foto? Essa ação não pode ser desfeita."</li>
+    <li>Se a opção <span class="ui">Salvar fotos no dispositivo</span> estiver ligada em Configurações → Usabilidade, depois de tirar a foto pela câmera o app oferece guardar uma cópia no aparelho. No iPhone abre a opção de salvar imagem; no Android baixa direto.</li>
+    <li>Tocar numa foto abre o visualizador dentro do próprio app, com zoom. Ela nunca abre numa aba nova.</li>
+  </ul>
+
+  <h2>6. Resposta em vídeo</h2>
+
+  <p><b>A pergunta de vídeo depende do módulo de perguntas em vídeo.</b> Sem ele, esse tipo de pergunta nem existe nos checklists da empresa.</p>
+
+  <p>Quando existe, o técnico vê o botão <span class="ui">Gravar vídeo (até 30s)</span>, com a nota "Clipe curto de até 30 segundos. Precisa de conexão para enviar." e, quando permitido, também um botão <span class="ui">Galeria</span>.</p>
+
+  <h3>Como funciona a gravação</h3>
+  <ol>
+    <li>Tocando em gravar, o app pede acesso à câmera e abre um <b>modo tela cheia</b> com a imagem ao vivo e um contador regressivo.</li>
+    <li>A gravação para sozinha aos 30 segundos, ou antes se o técnico tocar em <span class="ui">Parar gravação</span>.</li>
+    <li>O clipe sobe e aparece a confirmação "Vídeo enviado!".</li>
+    <li>Para trocar, o botão vira <span class="ui">Regravar vídeo</span>. Regravar <b>substitui</b> o clipe anterior: cada pergunta guarda um único vídeo.</li>
+  </ol>
+
+  <h3>Regras e mensagens</h3>
+  <ul>
+    <li>Se a pergunta foi criada com <span class="ui">Exigir gravação na hora</span>, o botão de galeria não aparece.</li>
+    <li>Vídeo escolhido da galeria acima do tamanho aceito mostra "Vídeo muito grande" com "O vídeo precisa ter no máximo 30 segundos. Grave um clipe mais curto."</li>
+    <li>Sem acesso à câmera: "Não foi possível acessar a câmera" com "Verifique a permissão da câmera e tente de novo."</li>
+    <li>No relatório em tela, o vídeo toca no próprio player. No <b>PDF e na impressão</b>, ele vira um aviso escrito de que o vídeo está disponível na versão online, porque vídeo não cabe em papel.</li>
+  </ul>
+
+  <h2>7. Pausar e retomar a OS depois — e como isso aparece na agenda do gestor</h2>
+
+  <p>No menu de mais ações (o botão de três traços no rodapé) existe <span class="ui">Pausar OS</span>. Pausar muda o status para <b>Pausada</b> e mostra "OS pausada com sucesso!". Tudo que já foi preenchido fica salvo.</p>
+
+  <p>Com a OS pausada, o técnico vê o cartão <span class="ui">OS Pausada</span> e o botão <span class="ui">Retomar OS</span>. Retomando, a OS volta para <b>Em Andamento</b> e aparece "OS retomada com sucesso!".</p>
+
+  <h3>Como o gestor enxerga isso</h3>
+  <ul>
+    <li>No topo da <b>Agenda</b> existe o botão <span class="ui">OS Pausadas</span>, com um contador âmbar. Ele lista todas as OS pausadas, de qualquer data, mostrando há quanto tempo cada uma está parada, e permite <span class="ui">Retomar agora</span> na hora.</li>
+    <li>Depois de retomada, a OS <b>aparece em duas datas</b> na agenda: continua marcada na data original e aparece também do dia da retomada até hoje, com a borda âmbar, o ícone de play e o selo <span class="ui">Retomada</span>. É a mesma OS, não é duplicidade.</li>
+    <li>Assim que ela for concluída ou cancelada, as aparições extras somem.</li>
+  </ul>
+
+  <div class="dica">
+    Pausar é a resposta certa para "faltou peça", "o cliente não estava", "começou a chover", "o quadro estava desligado". Melhor pausar do que deixar a OS aberta e esquecida: pausada ela entra na fila visível do gestor.
+  </div>
+
+  <h2>8. Assinatura do técnico e do cliente</h2>
+
+  <p>Existem dois lugares onde a assinatura acontece, e vale entender a diferença.</p>
+
+  <table class="dados">
+    <thead><tr><th>Onde</th><th>Como é ligada</th><th>Comportamento</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Bloco <span class="ui">Assinaturas</span>, no fim da OS</td>
+        <td>Só aparece quando a OS pede assinatura. Hoje isso é ligado <b>automaticamente</b> nas OS geradas por <b>contrato</b>, que já nascem exigindo a <b>assinatura do técnico</b>.</td>
+        <td>Mostra <span class="ui">Assinatura do Técnico</span> e, quando exigida, <span class="ui">Assinatura do Cliente</span>. Sem assinar, a finalização é bloqueada.</td>
+      </tr>
+      <tr>
+        <td>Pergunta do tipo <span class="ui">Assinatura</span> dentro do checklist</td>
+        <td>Você coloca na hora de montar o checklist, em qualquer OS.</td>
+        <td>Vira mais uma pergunta do roteiro. Marcada como obrigatória, também bloqueia a finalização.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="perigo">
+    <b>Não existe uma chave manual de "exigir assinatura" na criação da OS.</b> Quem procura por esse botão na janela de Nova OS não vai achar, porque ele não existe. Para OS avulsa, o caminho oficial de exigir assinatura é <b>colocar uma pergunta do tipo Assinatura no checklist e marcá-la como campo obrigatório</b>. Aí o sistema não deixa finalizar sem a assinatura.<br><br>
+    Existe uma opção chamada <span class="ui">Exigir Assinatura</span> em Configurações → Usabilidade. <b>Ela não tem efeito na execução da OS hoje.</b> Não oriente o cliente a contar com ela.
+  </div>
+  <!-- INCERTO: a chave "Exigir Assinatura" existe em Configurações → Usabilidade, é gravada no aparelho, mas nenhum ponto do código a lê. Reportado ao Tech Lead: ou a chave passa a valer, ou ela deveria sair da tela. Confirmar antes de este parágrafo virar material público. -->
+
+  <h3>O que fica gravado junto com a assinatura</h3>
+  <ul>
+    <li>O desenho da assinatura.</li>
+    <li>O <b>momento exato</b> em que ela foi capturada.</li>
+    <li>A <b>localização</b> naquele momento. Se o GPS falhar na hora de assinar, o sistema usa a posição do check-in ou do check-out como referência.</li>
+  </ul>
+
+  <p>Limpar a assinatura apaga também o carimbo de hora e de lugar dela.</p>
+
+  <p>Se o técnico tentar finalizar sem assinar, as mensagens são "Assinatura do técnico obrigatória" ou "Assinatura do cliente obrigatória".</p>
+
+  <h2>9. Finalizar (e o "finalizar parcialmente" em contrato PMOC)</h2>
+
+  <p>No rodapé, o botão verde <span class="ui">Finalizar OS</span> encerra o atendimento. Antes de aceitar, o sistema confere uma sequência de coisas.</p>
+
+  <h3>A sequência de verificação</h3>
+  <ol>
+    <li><b>Campos obrigatórios do checklist.</b> Faltando algum, aparece "Campos obrigatórios pendentes" com "Preencha os campos: ..." e os nomes das primeiras perguntas em falta.</li>
+    <li><b>Atalho de conformidade.</b> Se as pendências forem <b>apenas</b> perguntas que podem ser marcadas como conformes (sim/não e conformidade), em vez de bloquear, o app abre a janela <span class="ui">Checklist incompleto</span>: "Faltam N itens do checklist sem resposta. Você pode voltar e preencher, ou marcar os N restantes como Conforme para concluir agora." Os botões são <span class="ui">Voltar e preencher</span> e <span class="ui">Marcar N como Conforme e concluir</span>. Junto vai o aviso: "Isto é apenas uma facilidade de preenchimento: o conteúdo é de responsabilidade do técnico e do responsável técnico, e o sistema não se responsabiliza pelo que for preenchido." Se houver qualquer pendência de texto, número ou seleção, o atalho não é oferecido e o bloqueio permanece.</li>
+    <li><b>Assinaturas</b>, quando a OS as exige.</li>
+    <li><b>Conformidade PMOC</b>, quando a OS pertence a contrato PMOC. É preciso escolher entre "Conforme, tudo dentro do esperado", "Parcial, alguma medida fora da faixa, mas operacional" e "Não-conforme, problema técnico a registrar". Sem escolher: "Classificação PMOC obrigatória" com "Selecione conforme, parcial ou não-conforme antes de finalizar." Escolhendo parcial ou não-conforme sem escrever a nota: "Notas obrigatórias" com "Descreva o que foi observado para classificação parcial ou não-conforme."</li>
+    <li><b>Confirmação final.</b> Passando por tudo, abre <span class="ui">Finalizar OS?</span> com "Tem certeza que deseja finalizar e concluir esta OS?".</li>
+  </ol>
+
+  <!-- PRINT FALTANDO: t7-checklist-incompleto — janela "Checklist incompleto" com os botões "Voltar e preencher" e "Marcar N como Conforme e concluir" e o aviso de responsabilidade. Só existe depois de tentar finalizar uma OS com pendências, o que é ação proibida na conta demo. -->
+
+  <h3>O que acontece ao finalizar</h3>
+  <ul>
+    <li>Registra o <b>check-out</b> com hora e localização.</li>
+    <li>Muda o status para <b>Concluída</b>.</li>
+    <li>Grava as assinaturas com hora e lugar.</li>
+    <li>Em OS de contrato PMOC, grava a classificação de conformidade e as notas.</li>
+    <li>Prepara a <b>pesquisa de satisfação</b>, que passa a aparecer para o cliente no mesmo link da OS.</li>
+    <li>Mostra "OS finalizada com sucesso!" e a tela vira o relatório do serviço.</li>
+  </ul>
+
+  <div class="perigo">
+    <b>Finalizar não dá baixa em material nenhum.</b> Não existe, na tela de execução, campo de material usado nem botão de consumo de estoque. Concluir a OS não altera saldo de estoque. A baixa acontece na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque.
+  </div>
+
+  <h3>Finalizar Parcial</h3>
+
+  <p>Ao lado do botão verde existe o botão laranja <span class="ui">Finalizar Parcial</span>. Ele abre a janela <span class="ui">Finalizar parcialmente?</span> com o texto: "A OS ficará marcada como Parcialmente Concluída e aparecerá nas OS pausadas até ser concluída de verdade." e a nota "O que você já preencheu fica salvo. Você pode retomar e concluir quando terminar o serviço."</p>
+
+  <table class="dados">
+    <thead><tr><th></th><th>Finalizar OS</th><th>Finalizar Parcial</th></tr></thead>
+    <tbody>
+      <tr><td>Status final</td><td>Concluída</td><td>Pausada, com a marca <span class="ui">Parcialmente Concluída</span></td></tr>
+      <tr><td>Verifica obrigatórios, assinatura e PMOC</td><td>Sim</td><td><b>Não.</b> É intencionalmente incompleta</td></tr>
+      <tr><td>Registra check-out</td><td>Sim</td><td>Não</td></tr>
+      <tr><td>Gera pesquisa de satisfação</td><td>Sim</td><td>Não</td></tr>
+      <tr><td>Aparece em OS Pausadas na Agenda</td><td>Não</td><td>Sim</td></tr>
+    </tbody>
+  </table>
+
+  <p>Confirmando, aparece "OS finalizada parcialmente" e o técnico volta para a tela anterior. Quando a OS for concluída de verdade depois, a marca de parcial é limpa automaticamente.</p>
+
+  <div class="regra">
+    <b>Finalizar Parcial está disponível em qualquer OS</b> com check-in feito, não apenas nas de contrato PMOC. Ele é a saída honesta para o serviço que ficou pela metade: o registro fica, o gestor vê na fila de pausadas e o cliente não recebe pesquisa de satisfação de um serviço que não terminou.
+  </div>
+
+  <h2>10. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)</h2>
+
+  <div class="regra">
+    <b>Área do Técnico™ não é a tela de executar OS.</b> São duas coisas diferentes com nomes parecidos. A execução da OS é o link da ordem de serviço. A Área do Técnico™ é uma caixa de ferramentas de cálculo e consulta, que existe independentemente de haver OS aberta.
+  </div>
+
+  <figure>
+    <img src="img/t7-area-tecnico.png" alt="Tela Área do Técnico da Dominex com os cartões das ferramentas disponíveis para o segmento da empresa e o seletor de nicho no topo">
+    <figcaption>Área do Técnico™: o painel com as ferramentas do segmento da empresa.</figcaption>
+  </figure>
+
+  <p>Para empresas de <b>refrigeração e climatização</b>, as ferramentas são:</p>
+
+  <table class="dados">
+    <thead><tr><th>Ferramenta</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Catálogo</span></td><td>"Consulte modelos, capacidades e códigos de erro."</td></tr>
+      <tr><td><span class="ui">Carga Térmica</span></td><td>"Calcule os BTUs ideais para o ambiente."</td></tr>
+      <tr><td><span class="ui">Conversão</span></td><td>"Converta pressão, temperatura, potência e medidas."</td></tr>
+      <tr><td><span class="ui">Cálculo de Capacitor</span></td><td>"Encontre o capacitor certo pelo BTU e tensão."</td></tr>
+      <tr><td><span class="ui">Cabo Elétrico</span></td><td>"Bitola do cabo e disjuntor pelo BTU, tensão e distância."</td></tr>
+      <tr><td><span class="ui">Superaquecimento</span></td><td>"Calcule SH e SC pela pressão e temperatura."</td></tr>
+      <tr><td><span class="ui">Régua de Gases</span></td><td>"Pressão de saturação dos gases por temperatura."</td></tr>
+      <tr><td><span class="ui">Retrofit de Gás</span></td><td>"Gases drop-in para trocar o refrigerante."</td></tr>
+      <tr><td><span class="ui">Ciclo de Refrigeração</span></td><td>"Entenda o ciclo básico e os termos técnicos."</td></tr>
+      <tr><td><span class="ui">Diluição de Produto</span></td><td>"Calcule produto + água pela proporção e volume final."</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t7-carga-termica.png" alt="Ferramenta Carga Térmica aberta na Área do Técnico, com os campos Altura, Largura e Comprimento em metros, Quantidade de pessoas, Eletroeletrônicos, Janelas, a chave Ambiente ensolarado e, embaixo, o resultado Capacidade Necessária com o alternador entre BTU e TR, sem nenhum valor preenchido ainda">
+    <figcaption>Carga Térmica: dimensiona os BTUs do ambiente a partir de medidas, pessoas e equipamentos.</figcaption>
+  </figure>
+
+  <figure>
+    <img src="img/t7-regua-gases.png" alt="Ferramenta Régua de Gases com uma escala vertical de PSI e °C lado a lado, o seletor de fórmula Dew/Bubble, o campo Gás com R-410A escolhido, o alternador de unidade psi/bar e o resultado de exemplo 121 PSI equivalente a 5°C">
+    <figcaption>Régua de Gases: pressão de saturação por temperatura, com escala arrastável e escolha do gás refrigerante.</figcaption>
+  </figure>
+
+  <p>Para <b>TI e assistência técnica</b>, as ferramentas são <span class="ui">Calculadora de Fonte (PSU)</span> ("Estime o consumo dos componentes e a wattagem ideal da fonte"), <span class="ui">Conversor de Armazenamento</span> ("Converta GB/GiB/TB/TiB e velocidade Mbps para MB/s") e <span class="ui">Laudo Técnico</span> ("Preencha o diagnóstico e gere um laudo em PDF para entregar ao cliente"). Para <b>estética automotiva</b>, existe <span class="ui">Diluição de Produto</span>.</p>
+
+  <div class="aviso">
+    <b>As ferramentas mudam conforme o segmento da empresa.</b> Empresa de elevadores não vê as calculadoras de refrigeração. Se o segmento da sua empresa ainda não tem ferramenta nenhuma no catálogo, o item <span class="ui">Área do Técnico™</span> não aparece no menu e o endereço redireciona para o início. O segmento é definido pela Dominex, não é editável pelo cliente.
+  </div>
+
+  <h2>11. Usar a calculadora de dentro da OS, sem sair da tela</h2>
+
+  <p>Durante a execução da OS, aparece um <b>botão flutuante</b> no canto inferior esquerdo, com o ícone da Área do Técnico™. Tocando nele, as ferramentas abrem <b>em cima da OS</b>, em tela cheia.</p>
+
+  <h3>Por que isso importa</h3>
+  <ul>
+    <li>A OS continua montada <b>por baixo</b>. Nada do que já foi preenchido se perde.</li>
+    <li>No rodapé há um botão vermelho <span class="ui">Voltar para OS</span>, que devolve o técnico exatamente onde ele estava, no mesmo equipamento e no mesmo checklist.</li>
+    <li>É o caminho para converter uma pressão, conferir a bitola do cabo ou olhar o código de erro sem abandonar o preenchimento.</li>
+  </ul>
+
+  <div class="regra">
+    Hoje o botão flutuante da Área do Técnico™ dentro da OS aparece apenas para empresas do segmento de <b>refrigeração e climatização</b>. Nos demais segmentos que têm ferramentas, elas continuam acessíveis pelo menu, na tela própria da Área do Técnico™.
+  </div>
+  <!-- INCERTO: o atalho flutuante dentro da OS é liberado por uma comparação direta com o segmento 'refrigeracao', enquanto a tela própria usa o registro de ferramentas por segmento. Resultado: TI/assistência e estética automotiva têm ferramentas na tela mas não têm o atalho dentro da OS. Reportado ao Tech Lead como possível inconsistência. -->
+
+  <h2>12. As ferramentas com cadeado: o que é do seu segmento e o que é de outro</h2>
+
+  <p>No topo da Área do Técnico™ existe um seletor de nicho. Ele permite espiar o conjunto de ferramentas de <b>outros segmentos</b>, e é aí que aparecem os cadeados.</p>
+
+  <ul>
+    <li>Escolhendo o <b>seu</b> segmento, tudo abre normalmente.</li>
+    <li>Escolhendo <b>outro</b> segmento, a barra lateral mostra os nomes das ferramentas daquele nicho com um <b>cadeado</b> ao lado, e o conteúdo vira uma tela de apresentação daquele conjunto, em vez da calculadora em si.</li>
+  </ul>
+
+  <p>São vitrines, não ferramentas funcionando. Alguns exemplos do que aparece bloqueado: para <b>elétrica</b>, Dimensionamento de Disjuntor, Queda de Tensão, Bitola de Cabo e Carga Instalada. Para <b>energia solar</b>, Dimensionamento Fotovoltaico, Nº de Painéis, Geração Mensal e Dimensionar Inversor. Para <b>CFTV</b>, Dimensionamento de HD, Banda de Vídeo, Câmeras por Área e Fonte/Nobreak. Para <b>elevadores</b>, Cálculo de Contrapeso, Capacidade de Carga, Velocidade × Pavimentos e Checklist. Para <b>dedetização</b>, Dosagem por Área, Diluição, Área de Cobertura e Reaplicação. Existem listas parecidas para telecom, construção, engenharia, automação, limpeza, manutenção predial e estética automotiva.</p>
+
+  <figure>
+    <img src="img/t7-ferramentas-cadeado.png" alt="Área do Técnico com o seletor de nicho no topo trocado para Instalações Elétricas: a barra lateral lista Dimensionamento de Disjuntor, Queda de Tensão, Bitola de Cabo e Carga Instalada, cada uma com um cadeado ao lado, e o centro da tela mostra a vitrine do segmento com o aviso 'Sua empresa não tem acesso às ferramentas do segmento de Instalações Elétricas' e o botão Falar com representante">
+    <figcaption>Seletor de nicho em Instalações Elétricas: as ferramentas daquele segmento aparecem com cadeado na barra lateral, e no centro fica a vitrine no lugar da calculadora, com um botão para falar com um representante e contratar o segmento.</figcaption>
+  </figure>
+
+  <div class="dica">
+    Se o técnico estranhar o cadeado, a explicação é simples: aquelas ferramentas são de outro ramo, não do dele. Não é falta de permissão do usuário nem bloqueio por plano dentro do mesmo ramo, é o catálogo de outro segmento. Empresa que atua em mais de um ramo deve falar com a Dominex sobre isso, porque o segmento é definido pela Dominex. A própria vitrine já oferece o caminho: o botão <span class="ui">Falar com representante</span> leva direto ao WhatsApp comercial para negociar o acesso àquele segmento.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"O técnico preencheu tudo no cliente e não salvou nada"</td>
+        <td>Sem internet no local</td>
+        <td>Explique com franqueza: cada resposta é enviada na hora, e <b>não existe fila para sincronizar depois</b>. Sem sinal, o app mostra "Erro ao salvar resposta". A orientação para a equipe é preencher com sinal, ou sair para um ponto com sinal antes de responder.</td>
+      </tr>
+      <tr>
+        <td>"Aparece uma faixa vermelha dizendo que vai sincronizar quando reconectar"</td>
+        <td>Aviso de conexão perdida</td>
+        <td>A faixa indica que o celular perdeu a conexão. Enquanto ela estiver na tela, <b>nada é gravado</b>. Peça para o técnico recuperar o sinal e refazer o que tentou responder, conferindo se a resposta ficou na tela.</td>
+      </tr>
+      <tr>
+        <td>"O técnico não consegue fazer check-in"</td>
+        <td>Localização negada ou GPS desligado</td>
+        <td>O check-in exige localização. Peça para autorizar a localização para o site nas configurações do navegador, ligar o GPS do aparelho e tentar de novo em local aberto.</td>
+      </tr>
+      <tr>
+        <td>"Não aparece o checklist para o técnico"</td>
+        <td>Falta o check-in, ou a OS está pausada, ou ele está deslogado</td>
+        <td>O checklist só abre depois do check-in. Se a OS estiver pausada, ele precisa tocar em <span class="ui">Retomar OS</span>. Se ele abriu o link sem estar logado, está vendo o modo cliente.</td>
+      </tr>
+      <tr>
+        <td>"O técnico só consegue anexar foto da galeria, não abre a câmera"</td>
+        <td>Está tocando no botão errado</td>
+        <td>São dois botões separados: <span class="ui">Tirar Foto</span> abre a câmera, <span class="ui">Galeria</span> abre as fotos do aparelho. Se só aparece um botão de câmera, é porque a pergunta foi configurada com <span class="ui">Exigir foto da câmera</span>.</td>
+      </tr>
+      <tr>
+        <td>"A foto do iPhone não sobe"</td>
+        <td>Quase sempre é conexão, não formato</td>
+        <td>Fotos HEIC do iPhone são convertidas automaticamente. Se aparece "Erro ao enviar foto", o problema é sinal. Peça para tentar de novo em local com internet.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo finalizar a OS"</td>
+        <td>Pendência de checklist, assinatura ou classificação PMOC</td>
+        <td>Leia a mensagem exibida. "Campos obrigatórios pendentes" lista as perguntas em falta. "Assinatura do técnico obrigatória" ou "Assinatura do cliente obrigatória" pedem a assinatura. "Classificação PMOC obrigatória" pede escolher conforme, parcial ou não-conforme.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu marco as peças que usei na OS?"</td>
+        <td>Esse campo não existe na execução</td>
+        <td>Não existe registro de material dentro da tela de execução, e concluir a OS não mexe em estoque. O consumo é lançado pelo orçamento convertido em OS, ou manualmente na tela de Estoque.</td>
+      </tr>
+      <tr>
+        <td>"Onde está o botão de exigir assinatura?"</td>
+        <td>Esse botão não existe na criação da OS</td>
+        <td>Nas OS de contrato, a assinatura do técnico já é exigida sozinha. Para OS avulsa, coloque uma pergunta do tipo <span class="ui">Assinatura</span> no checklist marcada como obrigatória.</td>
+      </tr>
+      <tr>
+        <td>"O técnico ficou sem a Área do Técnico™"</td>
+        <td>Segmento da empresa sem ferramentas, ou tela sem permissão</td>
+        <td>As ferramentas existem por segmento. Se o segmento não tem ferramenta cadastrada, o item não aparece no menu. Confira também se a tela <span class="ui">Área do Técnico™</span> está liberada para o cargo dele.</td>
+      </tr>
+      <tr>
+        <td>"Aparece cadeado nas calculadoras"</td>
+        <td>Ele trocou o nicho no seletor do topo</td>
+        <td>Ferramentas com cadeado são de outro ramo. Peça para voltar o seletor para o segmento da empresa e tudo abre.</td>
+      </tr>
+      <tr>
+        <td>"O cliente abriu o link e não viu o relatório"</td>
+        <td>A OS ainda não foi finalizada</td>
+        <td>Antes da conclusão, o cliente vê o acompanhamento ("Aguardando início do atendimento", "Técnico a caminho...", "Técnico em atendimento..."). O relatório completo aparece depois de finalizada.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>O app do técnico funciona sem internet?</dt>
+    <dd>Não para gravar. O app abre rápido mesmo com sinal ruim, porque a tela em si fica guardada no aparelho, mas <b>toda resposta, foto, assinatura, check-in e finalização precisam de conexão no momento em que acontecem</b>. Não existe fila que sincroniza depois. Sem sinal, o app avisa que não conseguiu salvar.</dd>
+
+    <dt>O técnico precisa instalar algum aplicativo?</dt>
+    <dd>Não. Ele abre o link da OS no navegador do celular.</dd>
+
+    <dt>Por que o check-in exige localização?</dt>
+    <dd>Porque é o registro de que o atendimento aconteceu naquele endereço e naquele horário. Esse dado alimenta o mapa ao vivo, o histórico de deslocamento e a comprovação do serviço para o cliente.</dd>
+
+    <dt>O que acontece se o técnico esquecer de finalizar?</dt>
+    <dd>A OS fica em andamento. O gestor consegue finalizar pelo resumo da OS na tela de Ordens de Serviço, ou abrir a OS como técnico e finalizar de lá.</dd>
+
+    <dt>Qual a diferença entre Pausar e Finalizar Parcial?</dt>
+    <dd>Pausar apenas para o atendimento. Finalizar Parcial também deixa a OS pausada, mas marcada como <span class="ui">Parcialmente Concluída</span>, deixando explícito que o serviço foi feito pela metade. Os dois mantêm o preenchimento salvo e aparecem na fila de OS Pausadas.</dd>
+
+    <dt>O cliente vê o checklist enquanto o técnico preenche?</dt>
+    <dd>O cliente vê o andamento pelo link, com as respostas aparecendo conforme são salvas e o rótulo "Aguardando resposta..." nas que ainda não foram preenchidas.</dd>
+
+    <dt>Dá para o técnico usar a calculadora sem perder o preenchimento?</dt>
+    <dd>Dá. O botão flutuante abre as ferramentas por cima da OS e o botão <span class="ui">Voltar para OS</span> devolve exatamente onde ele estava.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa para isso:</b> app do técnico, tela do celular, link da OS, checklist de campo, ordem no celular, bater ponto na OS, check-in, dar baixa na OS, fechar a OS, assinar no celular, calculadora do técnico, ferramentas
+  </div>
+</section>

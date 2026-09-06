@@ -1,0 +1,524 @@
+<section class="tutorial" id="t3">
+  <h1><span class="tcode">T3</span> Clientes e Equipamentos</h1>
+
+  <p class="lead">A base de tudo na Dominex. Sem cliente cadastrado e sem equipamento vinculado a ele, não existe ordem de serviço, orçamento, contrato nem PMOC. Esta seção mostra como montar essa base do jeito certo na primeira vez, para não ter que refazer depois.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu lateral → Clientes, e Menu lateral → Equipamentos</span>
+    <span><b>Rotas:</b> <code>/clientes</code>, <code>/clientes/:id</code>, <code>/equipamentos</code>, <code>/equipamentos/:id</code>, formulário público de captação em <code>/cadastro/:codigo</code></span>
+    <span><b>Depende de:</b> T2 (Usuários, cargos e permissões)</span>
+    <span><b>Quem enxerga:</b> quem tem a tela <b>Clientes</b> (<code>screen:customers</code>) e a tela <b>Equipamentos</b> (<code>screen:equipment</code>) liberadas no cargo. Ambas fazem parte do módulo básico, ou seja, estão inclusas em qualquer plano pago.</span>
+  </div>
+
+  <h2>1. Tela Clientes: grade × lista, busca por nome/documento/razão social</h2>
+
+  <p>A tela <span class="ui">Clientes</span> abre em <code>/clientes</code> e lista todos os clientes da sua empresa. Cada linha é um cliente com foto (ou as iniciais do nome num círculo colorido), nome, documento, empresa, tipo (PF ou PJ), telefone, e-mail e cidade.</p>
+
+  <figure>
+    <img src="img/t3-clientes.png" alt="Tela de Clientes da Dominex com a barra de busca no topo, o alternador entre visualização em grade e em lista, e a tabela de clientes com colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No topo da lista, Cliente Demo e Cliente SoNome QA aparecem cadastrados só com o nome, com Empresa, Contato e Endereço em traço; logo abaixo, clientes completos como Clínica Vida & Saúde já trazem o documento embaixo do nome, telefone e e-mail na coluna Contato e a rua na coluna Endereço.">
+    <figcaption>Tela Clientes: repare a diferença entre um cadastro completo (documento, contato e endereço preenchidos) e um cliente salvo só com o nome, com as demais colunas em traço.</figcaption>
+  </figure>
+
+  <p>Isso mostra na prática o que a busca vai encontrar: um cliente pode ficar só com o nome por um tempo, e as colunas Empresa, Contato e Endereço simplesmente ficam em traço até alguém completar o cadastro.</p>
+
+  <p>No canto direito, acima da lista, existe um alternador de visualização com duas opções:</p>
+  <ul>
+    <li><b>Grade</b>: cada cliente vira um cartão quadrado com a foto grande, o nome, o telefone e a cidade embaixo, e um selo <span class="ui">PJ</span> ou <span class="ui">PF</span>. Bom para reconhecer cliente pela cara.</li>
+    <li><b>Lista</b>: no computador é uma tabela com as colunas <span class="ui">Foto</span>, <span class="ui">Nome</span>, <span class="ui">Empresa</span>, <span class="ui">Tipo</span>, <span class="ui">Contato</span>, <span class="ui">Endereço</span> e <span class="ui">Ações</span>. No celular vira uma lista compacta com foto pequena, nome e a linha de telefone e cidade.</li>
+  </ul>
+  <p>A escolha entre grade e lista fica salva no seu navegador.</p>
+
+  <h3>Buscar cliente</h3>
+  <p>O campo de busca no topo diz <span class="ui">Buscar por nome, empresa, email ou documento...</span> no computador e <span class="ui">Buscar clientes...</span> no celular. A busca é tolerante: acha mesmo com acento diferente ou letra maiúscula trocada, e procura em quatro lugares ao mesmo tempo:</p>
+  <ul>
+    <li>Nome do cliente;</li>
+    <li>E-mail;</li>
+    <li>CPF ou CNPJ (campo <span class="ui">CPF/CNPJ</span>);</li>
+    <li>Razão social (o campo gravado como <span class="ui">Razão Social</span> na aba Fiscal).</li>
+  </ul>
+  <p>Não existe busca por telefone, por cidade nem por origem.</p>
+
+  <p>No computador, os títulos <span class="ui">Nome</span>, <span class="ui">Empresa</span>, <span class="ui">Tipo</span> e <span class="ui">Endereço</span> são clicáveis e ordenam a tabela. A lista mostra 10 clientes por página por padrão, e o rodapé permite trocar o tamanho da página.</p>
+
+  <p>No fim da linha existe um menu de três pontinhos com:</p>
+  <ul>
+    <li><span class="ui">Visualizar</span>: abre a ficha completa do cliente.</li>
+    <li><span class="ui">Editar</span> (em laranja): abre o formulário de cadastro já preenchido.</li>
+    <li><span class="ui">Excluir</span> (em vermelho): pede confirmação antes.</li>
+  </ul>
+  <p>Clicar em qualquer ponto da linha, ou do cartão na grade, já abre a ficha do cliente.</p>
+
+  <h3>Quem pode o quê</h3>
+  <p>Quem enxerga a tela pode consultar. As ações dependem de permissão no cargo:</p>
+  <table class="dados">
+    <thead><tr><th>Ação</th><th>Permissão necessária</th></tr></thead>
+    <tbody>
+      <tr><td>Botão <span class="ui">Novo Cliente</span> aparecer</td><td><span class="ui">Criar Cliente</span></td></tr>
+      <tr><td>Ação <span class="ui">Editar</span> aparecer</td><td><span class="ui">Editar Cliente</span></td></tr>
+      <tr><td>Ação <span class="ui">Excluir</span> aparecer</td><td><span class="ui">Excluir Cliente</span></td></tr>
+      <tr><td>Aba <span class="ui">Financeiro</span> na ficha do cliente</td><td><span class="ui">Ver Financeiro do Cliente</span></td></tr>
+    </tbody>
+  </table>
+  <p>Quem tem cargo de administrador ou de gestor tem todas essas ações liberadas automaticamente, sem precisar marcar uma a uma.</p>
+
+  <h3>Excluir cliente</h3>
+  <p>Ao clicar em <span class="ui">Excluir</span>, aparece a confirmação <span class="ui">Excluir cliente</span> com o texto "Tem certeza que deseja excluir o cliente "NOME"? Esta ação não pode ser desfeita.". Confirmando, o sistema mostra <span class="ui">Cliente excluído com sucesso!</span> e o cliente some de todas as listas e seletores.</p>
+
+  <div class="aviso">
+    <b>O cliente some da tela, mas o histórico dele não vira pó.</b> A exclusão marca o cadastro como excluído em vez de apagar a linha. Ordens de serviço, orçamentos e lançamentos financeiros que já apontavam para aquele cliente continuam existindo. Mesmo assim, trate como definitivo: não existe lixeira nem botão de restaurar na tela. Se a intenção é só parar de atender, o certo é deixar o cadastro parado, não excluir.
+  </div>
+
+  <p>Ainda no topo, ao lado do botão <span class="ui">Novo Cliente</span>, existem dois botões, uma engrenagem e uma prancheta:</p>
+  <ul>
+    <li><b>Configurar origens</b>: abre o catálogo de "de onde veio esse cliente".</li>
+    <li><b>Formulários de captação de cliente</b>: abre os links públicos de autocadastro.</li>
+  </ul>
+  <p>No celular esses dois botões aparecem em linha logo abaixo da busca, escritos <span class="ui">Origens</span> e <span class="ui">Formulários</span>, e o botão de criar cliente vira um botão flutuante redondo no canto inferior, escrito <span class="ui">Cliente</span>.</p>
+
+  <h2>2. Cadastro — aba Contato (foto, tipo PF/PJ, telefones, e-mail, origem)</h2>
+
+  <p>Clicando em <span class="ui">Novo Cliente</span>, abre uma janela chamada <span class="ui">Novo Cliente</span> (ou <span class="ui">Editar Cliente</span> quando é edição). No celular ela sobe de baixo como uma gaveta. A janela tem duas abas: <span class="ui">Contato</span> e <span class="ui">Fiscal</span>. O botão de salvar fica fixo no rodapé e diz <span class="ui">Criar</span> em cadastro novo e <span class="ui">Salvar</span> em edição.</p>
+
+  <h3>Campos da aba Contato</h3>
+  <figure>
+    <img src="img/t3-novo-cliente-contato.png" alt="Janela Novo Cliente aberta na aba Contato, com o círculo de foto e o botão Foto no topo, e os campos Nome, Tipo (Pessoa Jurídica), Telefone, Celular, Email, Data de Nascimento, Origem (Nenhuma) e Observações, todos em branco, e os botões Cancelar e Criar no rodapé.">
+    <figcaption>Janela Novo Cliente na aba Contato, com todos os campos em branco.</figcaption>
+  </figure>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que aceita e o que o sistema faz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Foto</span></td><td>Não</td><td>Botão que abre a galeria ou a câmera. A imagem é convertida e reduzida antes de subir. Aparece como avatar em toda lista e na ficha.</td></tr>
+      <tr><td><span class="ui">Nome *</span></td><td>Sim</td><td>Mínimo de 2 caracteres. É o nome que aparece em OS, orçamento, contrato e portal. Pode ser apelido comercial.</td></tr>
+      <tr><td><span class="ui">Tipo</span></td><td>Sim (já vem escolhido)</td><td><span class="ui">Pessoa Jurídica</span> ou <span class="ui">Pessoa Física</span>. O padrão é Pessoa Jurídica. Define o selo PJ ou PF nas listas.</td></tr>
+      <tr><td><span class="ui">Telefone</span></td><td>Não</td><td>Máscara de telefone fixo, no formato (00) 0000-0000.</td></tr>
+      <tr><td><span class="ui">Celular</span></td><td>Não</td><td>Máscara de celular, no formato (00) 00000-0000. É o número que ganha botão de WhatsApp na ficha.</td></tr>
+      <tr><td><span class="ui">Email</span></td><td>Não</td><td>Se preenchido, precisa ser um e-mail válido. É o mesmo campo do <span class="ui">E-mail fiscal</span> da aba Fiscal.</td></tr>
+      <tr><td><span class="ui">Data de Nascimento</span></td><td>Não</td><td>Seletor de data.</td></tr>
+      <tr><td><span class="ui">Origem</span></td><td>Não</td><td>Lista com busca. Traz o catálogo de origens da empresa e permite criar uma origem nova na hora, digitando o nome e confirmando.</td></tr>
+      <tr><td><span class="ui">Observações</span></td><td>Não</td><td>Texto livre. Aparece na aba Geral da ficha do cliente.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Mensagens de erro possíveis</h3>
+  <ul>
+    <li><span class="ui">Nome deve ter no mínimo 2 caracteres</span>, abaixo do campo Nome.</li>
+    <li><span class="ui">Email inválido</span>, abaixo do campo Email.</li>
+    <li><span class="ui">Erro</span>, com a descrição do problema, quando o salvamento falha no servidor.</li>
+  </ul>
+  <p>Se você estiver na aba Fiscal e clicar em salvar com o Nome vazio, o sistema volta sozinho para a aba Contato e mostra o erro lá. Isso evita a sensação de "cliquei em salvar e não aconteceu nada".</p>
+
+  <div class="dica">
+    <b>O formulário guarda rascunho sozinho.</b> Enquanto você preenche um cliente NOVO, o sistema salva o que foi digitado. Se a janela fechar sem querer, na próxima vez que você clicar em <span class="ui">Novo Cliente</span> aparece a pergunta para retomar o rascunho ou descartar. Isso vale só para cadastro novo: em edição de cliente já existente, não há rascunho.
+  </div>
+
+  <p>Ao salvar, o sistema tenta descobrir a coordenada do endereço digitado para que a rota do técnico e o mapa ao vivo já saiam certos. Se não conseguir, o cadastro é salvo assim mesmo, sem travar. Escolher o endereço pela sugestão automática do campo <span class="ui">Logradouro</span> deixa a coordenada mais precisa.</p>
+
+  <h2>3. Cadastro — aba Fiscal: buscar por CNPJ e o endereço se preencher sozinho</h2>
+
+  <p>A aba <span class="ui">Fiscal</span> começa com o aviso: "Dados do tomador usados na emissão de NFS-e. Todos opcionais, preencha quando for emitir nota." É onde mora o endereço do cliente e os dados que a nota fiscal de serviço exige.</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Para que serve</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Razão Social</span></td><td>Nome oficial da empresa na Receita. Aparece na coluna Empresa da lista.</td></tr>
+      <tr><td><span class="ui">Nome Fantasia</span></td><td>Nome comercial.</td></tr>
+      <tr><td><span class="ui">CPF/CNPJ</span></td><td>Documento do cliente, com máscara automática. Tem uma lupa do lado direito.</td></tr>
+      <tr><td><span class="ui">Inscrição Municipal</span></td><td>Somente números.</td></tr>
+      <tr><td><span class="ui">Inscrição Estadual</span></td><td>Texto livre, exemplo 123.456.789.112.</td></tr>
+      <tr><td><span class="ui">E-mail fiscal</span></td><td>É o mesmo e-mail da aba Contato: mudar aqui muda lá.</td></tr>
+      <tr><td><span class="ui">CEP</span></td><td>Ao completar o CEP, o sistema busca e preenche logradouro, bairro, cidade e UF.</td></tr>
+      <tr><td><span class="ui">Logradouro</span></td><td>Com sugestão automática de endereço enquanto você digita. Escolher uma sugestão também preenche número, bairro, cidade, UF e CEP.</td></tr>
+      <tr><td><span class="ui">Número</span>, <span class="ui">Complemento</span>, <span class="ui">Bairro</span></td><td>Texto livre.</td></tr>
+      <tr><td><span class="ui">UF / Cidade</span></td><td>Dois seletores encadeados: escolher o estado libera a lista de cidades daquele estado.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A busca automática pelo CNPJ</h3>
+  <figure>
+    <img src="img/t3-novo-cliente-fiscal.png" alt="Janela Novo Cliente na aba Fiscal, com o aviso sobre dados do tomador para NFS-e, os campos Razão Social e Nome Fantasia lado a lado, o campo CPF/CNPJ com a lupa de consulta, Inscrição Municipal, Inscrição Estadual, E-mail fiscal, e o bloco Endereço fiscal com CEP e Logradouro, todos em branco.">
+    <figcaption>Janela Novo Cliente na aba Fiscal, com o campo CPF/CNPJ (lupa de consulta) e o bloco de endereço fiscal.</figcaption>
+  </figure>
+  <p>Quando você digita um CNPJ completo (14 dígitos) no campo <span class="ui">CPF/CNPJ</span>, o sistema consulta os dados públicos da Receita sozinho. Também dá para forçar a consulta clicando na lupa. Se der certo, aparece o aviso <span class="ui">Dados da empresa preenchidos!</span>. Se não, aparece <span class="ui">CNPJ não encontrado na Receita</span> ou <span class="ui">Não foi possível consultar o CNPJ agora</span>.</p>
+
+  <div class="aviso">
+    <b>A consulta de CNPJ SOBRESCREVE o que você já digitou.</b> Quando os dados voltam da Receita, o sistema substitui o que estiver preenchido em: Razão Social, Nome Fantasia, Email, Telefone, CEP, Logradouro, Número, Complemento, Bairro, Cidade e UF. O único campo protegido é o <span class="ui">Nome</span>: se você já escreveu alguma coisa nele, ele é mantido; se estiver vazio, o sistema preenche com o nome fantasia (ou com a razão social, se não houver fantasia). Por isso a ordem certa é: <b>primeiro o CNPJ, depois os ajustes manuais</b>. Se você preencher o endereço na mão e só depois digitar o CNPJ, perde o que digitou.
+  </div>
+
+  <div class="regra">
+    O código do município (usado pela emissão de nota fiscal) é resolvido automaticamente pelo CEP ou pela escolha da cidade. Ele não aparece como campo editável na tela, é preenchido por trás. Se a nota fiscal reclamar de município, o caminho é reabrir o cliente e escolher de novo o estado e a cidade, ou redigitar o CEP.
+  </div>
+
+  <div class="perigo">
+    <b>O cliente NÃO tem anexos, campos customizados nem múltiplos endereços.</b> É <b>um endereço por cliente</b>, e é esse endereço que vai para a OS e para a nota fiscal. Não existe aba de arquivos no cadastro do cliente, e não dá para criar campos próprios como você faz em equipamento. Se o cliente tem várias unidades (loja centro, galpão, filial), o caminho hoje é: cadastrar equipamentos com o campo <span class="ui">Local</span> preenchido, ou usar contrato PMOC, que tem ambientes com endereço próprio da unidade. Se precisa guardar um documento (contrato assinado, laudo), anexe no contrato, que tem a seção <span class="ui">Documentos anexados</span>.
+  </div>
+
+  <div class="regra">
+    Não existe importação em massa nem exportação em massa de clientes. Cada cliente é cadastrado na tela, criado na hora a partir de um equipamento ou de um orçamento, ou entra sozinho pelo formulário público de captação.
+  </div>
+
+  <h2>4. Origens de cliente: montar o catálogo de "de onde veio esse cliente"</h2>
+
+  <p>Origem é a resposta para "como esse cliente chegou até mim". Serve para você saber onde vale a pena investir. O catálogo é da empresa inteira e aparece no campo <span class="ui">Origem</span> do cadastro de cliente e no CRM. Para abrir: na tela <span class="ui">Clientes</span>, botão de engrenagem no topo (no celular, botão <span class="ui">Origens</span>). Abre a janela <span class="ui">Origens de Clientes</span>.</p>
+
+  <h3>Primeira vez: criar o conjunto padrão</h3>
+  <p>Com o catálogo vazio, aparece <span class="ui">Nenhuma origem cadastrada</span> e o convite "Crie um conjunto inicial de origens (Indicação, Site, WhatsApp, Google…) e edite ou exclua à vontade depois." O botão <span class="ui">Criar origens padrão</span> cria 10 origens de uma vez: Indicação, Site, Telefone, WhatsApp, Google, Instagram, Facebook, Parceiro, Feira/Evento e Outro. Todas nascem editáveis e apagáveis, não são fixas do sistema.</p>
+
+  <h3>Criar, editar e excluir</h3>
+  <figure>
+    <img src="img/t3-origens-cliente.png" alt="Janela Origens de Clientes. No estado sem nenhuma origem cadastrada, mostra o ícone de etiqueta, a mensagem Nenhuma origem cadastrada e o botão Criar origens padrão; embaixo, a barra pontilhada com o campo Nova origem, o seletor de ícone, o seletor de cor (código hexadecimal) e o botão Adicionar.">
+    <figcaption>Janela Origens de Clientes, com a barra de criação (nome, ícone e cor) sempre disponível no rodapé, mesmo com o catálogo vazio.</figcaption>
+  </figure>
+  <p>Na barra pontilhada de baixo você digita em <span class="ui">Nova origem...</span>, escolhe um ícone numa lista de 20 opções, escolhe a cor e clica em <span class="ui">Adicionar</span>. Cada origem da lista tem um menu com <span class="ui">Editar</span> (edição no lugar, com nome, ícone e cor) e <span class="ui">Excluir</span>. As confirmações são <span class="ui">Origem criada!</span>, <span class="ui">Origem atualizada!</span> e <span class="ui">Origem removida!</span>.</p>
+
+  <div class="aviso">
+    Excluir uma origem não apaga a origem dos clientes que já a tinham. O cliente continua mostrando o texto antigo no campo <span class="ui">Origem</span>, e esse valor segue aparecendo na lista de escolha daquele cliente específico para não se perder. O que some é a opção para novos cadastros.
+  </div>
+
+  <h2>5. Formulários de captação: gerar o link público de cadastro pra colocar na bio</h2>
+
+  <p>Formulário de captação é uma página pública, sem login, onde o próprio cliente preenche os dados dele e cai direto na sua base. É o link para colocar na bio do Instagram, no WhatsApp Business, num QR Code de balcão ou num anúncio. Para abrir: na tela <span class="ui">Clientes</span>, botão de prancheta no topo (no celular, botão <span class="ui">Formulários</span>). Abre a janela <span class="ui">Formulários de captação</span>, com o subtítulo "Links públicos para o cliente se cadastrar sozinho." e o botão <span class="ui">Novo formulário</span> no rodapé.</p>
+
+  <h3>Criar um formulário: três abas</h3>
+  <figure>
+    <img src="img/t3-formularios-captacao.png" alt="Janela Formulários de captação, no estado sem nenhum formulário criado: ícone de prancheta, a mensagem Nenhum formulário ainda, o texto Crie um link público para receber cadastros de novos clientes, e o botão Novo formulário no rodapé.">
+    <figcaption>Janela Formulários de captação, no estado inicial, antes de criar o primeiro link.</figcaption>
+  </figure>
+  <p><b>Aba Geral</b></p>
+  <ul>
+    <li><span class="ui">Título</span>: obrigatório. É o texto grande no topo da página pública. Exemplo sugerido: "Cadastro de novos clientes". Salvar sem título mostra <span class="ui">Informe um título para o formulário</span>.</li>
+    <li><span class="ui">Descrição (opcional)</span>: texto que aparece abaixo do título na página pública.</li>
+    <li><span class="ui">Formulário ativo</span>: chave liga e desliga. Desligado, o link para de aceitar cadastros sem precisar apagar nada.</li>
+    <li><span class="ui">Expira em (opcional)</span>: data e hora. Depois dela o link deixa de aceitar cadastros.</li>
+  </ul>
+
+  <p><b>Aba Campos</b></p>
+  <figure>
+    <img src="img/t3-formulario-captacao-campos.png" alt="Aba Campos da janela Novo formulário de captação, com a lista de campos (Nome, Tipo de cliente PF/PJ, CPF/CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número...), cada um com duas chaves lado a lado, Exibir e Obrigatório. Só o campo Nome está com as duas chaves ligadas.">
+    <figcaption>Aba Campos do formulário de captação: cada campo tem as chaves Exibir e Obrigatório, e só Nome nasce ligado.</figcaption>
+  </figure>
+  <p>Lista os 16 campos que podem aparecer na página pública, cada um com duas chaves: <span class="ui">Exibir</span> e <span class="ui">Obrigatório</span>. Os campos disponíveis são: Nome, Tipo de cliente (PF/PJ), CPF / CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número, Bairro, Complemento, Cidade, Estado (UF) e Observações.</p>
+  <p>Formulário novo já nasce com <span class="ui">Nome</span> exibido e obrigatório, e todo o resto desligado. Marcar <span class="ui">Obrigatório</span> só faz efeito se o campo estiver exibido. Se você desligar todos, ao salvar aparece <span class="ui">Habilite ao menos um campo do formulário</span>.</p>
+
+  <p><b>Aba LGPD</b></p>
+  <ul>
+    <li><span class="ui">Exigir consentimento</span>: vem ligado. O cliente precisa marcar a caixa de aceite antes de enviar.</li>
+    <li><span class="ui">Texto do consentimento</span>: se deixar em branco, o sistema usa o texto padrão "Autorizo o contato e o tratamento dos meus dados para fins de atendimento, conforme a Lei Geral de Proteção de Dados (LGPD)."</li>
+  </ul>
+
+  <h3>Gerar e compartilhar o link</h3>
+  <p>O link só existe depois que o formulário é salvo. Tentando copiar antes, aparece <span class="ui">Salve o formulário primeiro</span> com a explicação "O link é gerado depois que o formulário é criado.". Depois de salvo, o botão <span class="ui">Gerar e copiar link</span> (no rodapé da janela de edição) e o ícone de corrente na lista copiam um endereço no formato <code>/cadastro/nome-do-formulario-codigo</code>. Aparece <span class="ui">Link gerado e copiado!</span>.</p>
+
+  <p>Na lista, cada formulário mostra o título, um selo de situação e o total de cadastros recebidos. Os selos são <span class="ui">Ativo</span>, <span class="ui">Inativo</span> (chave desligada) e <span class="ui">Expirado</span> (a data de expiração passou; a chave fica travada). Excluir mostra "Tem certeza que deseja excluir "TÍTULO"? O link deixará de funcionar."</p>
+
+  <h3>O que o cliente vê no link</h3>
+  <p>A página pública abre com a marca da sua empresa (logo e cor, se você usa identidade própria), o título e a descrição do formulário, os campos que você habilitou e a caixa de aceite. O botão é <span class="ui">Enviar cadastro</span>. Deu certo, aparece <span class="ui">Cadastro enviado com sucesso</span> e "Recebemos seus dados. Em breve entraremos em contato.".</p>
+  <p>Mensagens que o visitante pode ver:</p>
+  <ul>
+    <li><span class="ui">Preencha os campos obrigatórios.</span></li>
+    <li><span class="ui">É preciso aceitar os termos para enviar.</span></li>
+    <li><span class="ui">Formulário não encontrado</span>, com "Confira o link e tente novamente." quando o código não existe.</li>
+    <li><span class="ui">Formulário indisponível</span>, com "Este formulário não está mais disponível." quando o formulário está desligado, expirado ou atingiu o limite.</li>
+    <li><span class="ui">Muitas tentativas. Tente novamente mais tarde.</span> quando o mesmo dispositivo tenta demais.</li>
+  </ul>
+
+  <div class="regra">
+    O sistema tem proteção contra abuso no formulário público: no máximo 5 envios em 10 minutos para o mesmo formulário vindos do mesmo dispositivo, e no máximo 30 envios por dia daquele dispositivo. A validação de e-mail, CPF, CNPJ, telefone e CEP acontece no servidor, não só na tela, então dado inválido não entra na base mesmo que alguém tente burlar a página.
+  </div>
+
+  <div class="dica">
+    Cliente que entrou por formulário público aparece na sua base com a origem gravada como <span class="ui">public_form</span>. É assim que você separa quem chegou sozinho de quem você prospectou.
+  </div>
+
+  <h2>6. Detalhe do cliente: Geral, Equipamentos, Histórico, Tarefas, Contratos, Financeiro</h2>
+
+  <p>Clicando num cliente, abre a ficha completa. No topo ficam a foto, o nome, o seletor para trocar rapidamente de cliente, os botões de WhatsApp e o menu <span class="ui">Ações</span>. As abas variam conforme o plano e as permissões:</p>
+
+  <table class="dados">
+    <thead><tr><th>Aba</th><th>Quando aparece</th><th>O que traz</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Geral</span></td><td>Sempre</td><td>Informações, Endereço, Responsável no Local e Observações.</td></tr>
+      <tr><td><span class="ui">Equipamentos</span></td><td>Sempre</td><td>Equipamentos daquele cliente, com botão <span class="ui">Novo Equipamento</span> já vinculado a ele.</td></tr>
+      <tr><td><span class="ui">Histórico de OS</span></td><td>Sempre</td><td>Todas as ordens de serviço do cliente, com número, status e data, e o botão <span class="ui">Nova OS</span>.</td></tr>
+      <tr><td><span class="ui">Tarefas</span></td><td>Sempre</td><td>Tarefas ligadas ao cliente, com data, horário e situação (Pendente, Em andamento, Concluída).</td></tr>
+      <tr><td><span class="ui">Chamados</span></td><td>Só com o módulo Portal do Cliente</td><td>Chamados abertos pelo próprio cliente no portal.</td></tr>
+      <tr><td><span class="ui">Contratos</span></td><td>Sempre</td><td>Contratos do cliente, com nome, status, frequência e início, e o botão <span class="ui">Novo Contrato</span>.</td></tr>
+      <tr><td><span class="ui">Financeiro</span></td><td>Só com a permissão <span class="ui">Ver Financeiro do Cliente</span></td><td>Lançamentos do cliente, com subabas <span class="ui">Tudo</span>, <span class="ui">A vencer</span> e <span class="ui">Pagas</span>.</td></tr>
+      <tr><td><span class="ui">Cobranças</span></td><td>Só com o módulo Cobranças <b>e</b> conta de recebimento ativa</td><td>Cobranças online do cliente, com link de pagamento, envio por WhatsApp e estorno.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    A aba <span class="ui">Cobranças</span> exige DUAS coisas ao mesmo tempo: o módulo Cobranças contratado <b>e</b> a conta de recebimento ativada. Faltando uma das duas, a aba simplesmente não aparece, sem nenhuma mensagem explicando. Se o cliente reclamar que "sumiu a aba de cobranças", confira primeiro a ativação da conta de recebimento.
+  </div>
+
+  <h3>Aba Geral por dentro</h3>
+  <figure>
+    <img src="img/t3-cliente-detalhe-geral.png" alt="Ficha de um cliente sem contato cadastrado, aba Geral. No topo, o avatar, o nome do cliente com selo PJ, a chave Portal Público e o menu Ações. Abaixo, a navegação por abas (Geral, Equipamentos, Histórico de OS, Tarefas, Chamados, Contratos, Financeiro, Cobranças) e o bloco Responsável no Local (falar com), com o estado vazio Nenhum contato cadastrado e o botão Adicionar contato.">
+    <figcaption>Ficha do cliente na aba Geral: topo com Portal Público e Ações, abas do cliente e o bloco Responsável no Local. Este cliente de exemplo ainda não tem CPF/CNPJ, telefone nem endereço preenchidos, por isso os blocos Informações e Endereço não aparecem.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Informações</b>: Origem, CPF/CNPJ, Inscrição Estadual, Email, Telefone, Celular, Nome Fantasia e Data de Nascimento.</li>
+    <li><b>Endereço</b>: o endereço completo com dois atalhos, <span class="ui">Abrir no Google Maps</span> e <span class="ui">Abrir no Waze</span>. Serve para o gestor conferir a rota antes de mandar o técnico.</li>
+    <li><b>Responsável no Local (falar com)</b>: os contatos do cliente.</li>
+    <li><b>Observações</b>: o texto livre digitado no cadastro.</li>
+  </ul>
+
+  <h3>Portal do cliente no topo da ficha</h3>
+  <p>Se a sua empresa tem o módulo Portal do Cliente, aparece no topo da ficha a chave <span class="ui">Portal Público</span> e, no menu <span class="ui">Ações</span>, as opções <span class="ui">Copiar link do portal</span> e <span class="ui">Abrir portal</span>. O texto de ajuda da chave diz: "Ligado: qualquer pessoa com o link vê o portal (somente leitura). Desligado: o link exige login da sua empresa."</p>
+
+  <h2>7. Contatos e "Responsável no Local" — WhatsApp direto de dentro do sistema</h2>
+
+  <p>Um cliente empresa tem uma pessoa que abre a porta, outra que aprova o orçamento e outra que assina. A seção <span class="ui">Responsável no Local (falar com)</span>, na aba Geral da ficha, é onde essas pessoas ficam.</p>
+
+  <p>Com a lista vazia aparece <span class="ui">Nenhum contato cadastrado</span> e "Cadastre quem falar no local deste cliente", com o botão <span class="ui">Adicionar contato</span>.</p>
+
+  <h3>Campos do contato</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome *</span></td><td>Sim</td><td>Nome da pessoa.</td></tr>
+      <tr><td><span class="ui">Cargo</span></td><td>Não</td><td>Exemplos que a própria tela sugere: Gerente, Supervisor, Zelador.</td></tr>
+      <tr><td><span class="ui">Telefone</span></td><td>Não</td><td>Formato (00) 00000-0000. É este número que vira o botão de WhatsApp.</td></tr>
+      <tr><td><span class="ui">Email corporativo</span></td><td>Não</td><td>Exemplo contato@empresa.com.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Cada contato da lista tem o menu com <span class="ui">WhatsApp</span> (só aparece se houver telefone), <span class="ui">Editar contato</span> e <span class="ui">Excluir contato</span>. O WhatsApp abre a conversa direto com o número, sem salvar na agenda do celular. No cabeçalho da ficha, o telefone e o celular do próprio cliente também ganham botão de WhatsApp.</p>
+
+  <div class="regra">
+    O contato do "Responsável no Local" não é um usuário do sistema e não recebe login. Ele é só uma agenda de quem falar naquele endereço. Quem entra no sistema é usuário, cadastrado em Configurações.
+  </div>
+
+  <h2>8. Tela Equipamentos: cadastro, categorias e criar o cliente na hora, só com o nome</h2>
+
+  <p>A tela <span class="ui">Equipamentos</span>, em <code>/equipamentos</code>, tem duas abas na lateral (pílulas no celular): <span class="ui">Equipamentos</span> e <span class="ui">Categorias</span>.</p>
+
+  <figure>
+    <img src="img/t3-equipamentos.png" alt="Tela de Equipamentos da Dominex com as abas Equipamentos e Categorias na lateral, busca, filtros e a lista de equipamentos com colunas Foto, Nome, Local, Cliente, Categoria e Status">
+    <figcaption>Tela Equipamentos: navegação lateral com Equipamentos e Categorias, busca, filtros e a lista.</figcaption>
+  </figure>
+
+  <p>A busca diz <span class="ui">Buscar por nome, identificador, marca ou cliente...</span> e procura em cinco campos: nome, identificador, marca, modelo e nome do cliente. Ao lado tem o botão <span class="ui">Filtros</span>, com dois filtros de múltipla escolha: <span class="ui">Categoria</span> e <span class="ui">Cliente</span>. Nenhum marcado significa "mostrar tudo".</p>
+  <p>As colunas são <span class="ui">Foto</span>, <span class="ui">Nome</span>, <span class="ui">Local</span>, <span class="ui">Cliente</span>, <span class="ui">Categoria</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>. Status é <span class="ui">Ativo</span> ou <span class="ui">Inativo</span>. Também existe o alternador entre grade e lista, igual ao de Clientes.</p>
+  <p>Criar, editar e excluir equipamento exige a permissão <span class="ui">Gerenciar Equipamentos</span> (ou cargo de administrador ou gestor). Excluir mostra "Tem certeza que deseja excluir "NOME"? Esta ação não pode ser desfeita." e o aviso <span class="ui">Equipamento excluído!</span>.</p>
+
+  <h3>Cadastrar um equipamento</h3>
+  <figure>
+    <img src="img/t3-novo-equipamento.png" alt="Janela Novo Equipamento, com o quadrado pontilhado Foto/Adicionar, o seletor Cliente com o texto Selecione o cliente, o campo Nome, o campo Identificador travado escrito Gerado automaticamente ao salvar, o campo Validade da Garantia e o campo Observações, todos vazios.">
+    <figcaption>Janela Novo Equipamento, com o seletor de Cliente e o campo Identificador travado até salvar.</figcaption>
+  </figure>
+  <p>O botão <span class="ui">Novo Equipamento</span> abre a janela com estes campos:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Foto</span></td><td>Não</td><td>Quadrado pontilhado com <span class="ui">Adicionar</span>. A imagem é reduzida antes de subir.</td></tr>
+      <tr><td><span class="ui">Cliente *</span></td><td>Sim</td><td>Lista com busca. Todo equipamento pertence a um cliente, sem exceção.</td></tr>
+      <tr><td><span class="ui">Nome *</span></td><td>Sim</td><td>Como você chama o aparelho, por exemplo "Split Sala de Reunião".</td></tr>
+      <tr><td><span class="ui">Identificador</span></td><td>Não editável</td><td>Fica travado, escrito <span class="ui">Gerado automaticamente ao salvar</span>. O sistema gera um número sequencial por empresa, com 4 dígitos: 0001, 0002, 0003.</td></tr>
+      <tr><td><span class="ui">Categoria</span></td><td>Não</td><td>Só aparece se existir pelo menos uma categoria cadastrada.</td></tr>
+      <tr><td>Campos configuráveis</td><td>Depende</td><td>Marca, Modelo, Nº de Série, Capacidade/Especificação, Local e Data de Instalação. Cada um pode ser renomeado, escondido ou tornado obrigatório.</td></tr>
+      <tr><td><span class="ui">Validade da Garantia</span></td><td>Não</td><td>Data.</td></tr>
+      <tr><td><span class="ui">Observações</span></td><td>Não</td><td>Texto livre.</td></tr>
+    </tbody>
+  </table>
+  <p>Se faltar um campo marcado como obrigatório, aparece o aviso <span class="ui">Preencha os campos obrigatórios</span> listando quais, e cada campo em falta ganha a mensagem <span class="ui">Campo obrigatório</span> embaixo. Se o salvamento falhar no servidor, aparece <span class="ui">Erro ao salvar equipamento</span>.</p>
+
+  <div class="dica">
+    O formulário de equipamento também guarda o que você digitou enquanto a janela está aberta. Se você abrir o seletor de cliente, criar um cliente novo e voltar, o resto do formulário continua preenchido.
+  </div>
+
+  <h3>Criar o cliente na hora, só com o nome</h3>
+  <p>No campo <span class="ui">Cliente *</span>, se você digitar um nome que não existe, aparece a opção de criar. Também existe a opção fixa <span class="ui">+ Novo cliente</span> dentro da lista. Isso abre a janela <span class="ui">Novo cliente</span> com quatro campos: <span class="ui">Nome</span>, <span class="ui">CPF / CNPJ</span>, <span class="ui">E-mail (opcional)</span> e <span class="ui">Telefone (opcional)</span>, e o botão <span class="ui">Criar cliente</span>. O nome que você digitou já vem preenchido.</p>
+
+  <div class="aviso">
+    <b>Essa mesma janela se comporta de dois jeitos diferentes, e isso confunde muita gente.</b>
+    <ul>
+      <li>Aberta a partir do <b>cadastro de equipamento</b>: o CPF/CNPJ é <b>opcional</b>. Dá para criar o cliente só com o nome e completar o cadastro depois. Basta o nome preenchido para o botão <span class="ui">Criar cliente</span> liberar.</li>
+      <li>Aberta a partir de uma <b>cobrança online</b>: o CPF/CNPJ é <b>obrigatório</b>, porque o meio de pagamento exige o documento. Sem ele aparece <span class="ui">Informe o CPF ou CNPJ do cliente para cobrar.</span> e nada é salvo.</li>
+    </ul>
+    Ou seja, "não consigo criar cliente só com o nome" quase sempre significa que a pessoa está no fluxo de cobrança, não no de equipamento.
+  </div>
+  <p>Digitando um CNPJ completo nessa janela rápida, o sistema consulta a Receita e preenche razão social, e-mail e telefone, mas só nos campos vazios. O tipo do cliente sai do documento: 14 dígitos vira Pessoa Jurídica, o resto vira Pessoa Física.</p>
+
+  <h3>Categorias de equipamento</h3>
+  <figure>
+    <img src="img/t3-categorias-equipamento.png" alt="Aba Categorias da tela Equipamentos, sem nenhuma categoria criada: navegação lateral com as abas Equipamentos e Categorias, título CATEGORIAS DE EQUIPAMENTOS, o botão Nova Categoria no canto superior direito, o ícone de etiqueta, a mensagem Nenhuma categoria criada, o texto Crie categorias para organizar seus equipamentos e um segundo botão Nova Categoria centralizado.">
+    <figcaption>Aba Categorias da tela Equipamentos, no estado sem nenhuma categoria criada.</figcaption>
+  </figure>
+  <p>A aba <span class="ui">Categorias</span> mostra <span class="ui">Categorias de Equipamentos</span> com o botão <span class="ui">Nova Categoria</span>. Cada categoria tem <span class="ui">Nome da categoria</span> (a tela sugere "Ex: Split, Cassete, VRF...") e <span class="ui">Cor</span>, que vira uma bolinha ao lado do nome nas listas. Sem nenhuma, aparece <span class="ui">Nenhuma categoria criada</span>.</p>
+
+  <div class="regra">
+    <b>Excluir categoria que tem equipamento vinculado:</b> o sistema deixa excluir. A confirmação já avisa: "Esta ação não pode ser desfeita. Equipamentos com esta categoria perderão a associação." Os equipamentos NÃO são apagados, eles apenas ficam sem categoria e passam a aparecer com a coluna Categoria vazia. Depois é só editar cada um e escolher a categoria nova. Não existe passo de "mover todos os equipamentos para outra categoria" antes de excluir.
+  </div>
+
+  <h2>9. Campos customizados de equipamento: criar, ordenar, marcar obrigatório e visível</h2>
+
+  <p>Cada ramo precisa guardar coisas diferentes: gás refrigerante, corrente nominal, número do lacre, potência do painel, data da última carga. O botão <span class="ui">Configurar Campos</span>, no topo da lista de equipamentos, abre a janela <span class="ui">Configurar Campos do Equipamento</span>, com a explicação: "Configure quais campos aparecem no cadastro de equipamentos. Você pode excluir, ocultar, renomear, reordenar e definir como obrigatório."</p>
+
+  <div class="aviso">
+    <b>Campo customizado de equipamento é por EMPRESA, não por categoria.</b> Todo equipamento da sua empresa enxerga o mesmo conjunto de campos extras, independente da categoria. Não existe "campo que só aparece em Split" ou "campo só de Chiller". Se você criar um campo chamado "Carga de gás", ele aparece no cadastro de todo equipamento, inclusive de uma câmara fria ou de um portão eletrônico.
+  </div>
+
+  <h3>O que dá para fazer com cada campo</h3>
+  <ul>
+    <li><b>Renomear</b>: dá para transformar "Capacidade/Especificação" em "BTUs", por exemplo.</li>
+    <li><b>Mostrar</b> ou <b>Ocultar</b>: campo oculto some do cadastro, mas o que já estava salvo continua guardado.</li>
+    <li><b>Tornar obrigatório</b> ou <b>Tornar opcional</b>: campo obrigatório ganha asterisco e trava o salvamento se ficar vazio.</li>
+    <li><b>Mover para cima</b> e <b>Mover para baixo</b>, ou arrastar, define a ordem no formulário.</li>
+    <li><b>Tipo e opções</b>, e <b>Excluir</b>.</li>
+  </ul>
+
+  <h3>Tipos de campo</h3>
+  <table class="dados">
+    <thead><tr><th>Tipo</th><th>Como aparece para quem preenche</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Texto</span></td><td>Caixa de texto livre.</td></tr>
+      <tr><td><span class="ui">Número</span></td><td>Campo numérico, aceita casa decimal. Apagando tudo, ele fica vazio de verdade, não fica preso em zero.</td></tr>
+      <tr><td><span class="ui">Data</span></td><td>Seletor de data.</td></tr>
+      <tr><td><span class="ui">Sim/Não</span></td><td>Lista com duas opções, <span class="ui">Sim</span> e <span class="ui">Não</span>.</td></tr>
+      <tr><td><span class="ui">Lista de opções</span></td><td>Você cadastra as opções uma a uma (<span class="ui">Adicionar opção</span>) e quem preenche escolhe uma delas.</td></tr>
+    </tbody>
+  </table>
+  <p>A própria tela avisa, ao trocar o tipo: "Trocar o tipo muda só como o valor é exibido, o dado já salvo é preservado."</p>
+
+  <h3>Criar um campo novo</h3>
+  <figure>
+    <img src="img/t3-configurar-campos-equipamento.png" alt="Janela Configurar Campos do Equipamento, com o texto explicativo sobre excluir, ocultar, renomear, reordenar e tornar campos obrigatórios. Nesta empresa a lista está vazia, com a mensagem Nenhum campo configurado, e embaixo o bloco Adicionar novo campo, com o campo Nome do campo, o seletor de Tipo do campo (Texto selecionado) e o botão de adicionar (+).">
+    <figcaption>Janela Configurar Campos do Equipamento: aqui a lista está vazia (nenhum campo configurado), com o bloco Adicionar novo campo pronto para o primeiro cadastro.</figcaption>
+  </figure>
+  <p>No fim da janela existe o bloco <span class="ui">Adicionar novo campo</span>: você digita o nome em <span class="ui">Nome do campo</span>, escolhe o <span class="ui">Tipo do campo</span>, cadastra as opções se for lista, e clica em <span class="ui">Adicionar campo</span>. Aparece <span class="ui">Campo criado!</span>. O campo novo nasce visível, opcional e no fim da ordem.</p>
+
+  <h3>Excluir um campo</h3>
+  <p>A confirmação diz: <span class="ui">Excluir campo</span>, "Tem certeza que deseja excluir este campo? Dados já salvos neste campo serão mantidos no banco de dados." Ou seja, o campo some do formulário, mas o histórico não é destruído. Se quiser só tirar da tela sem risco, prefira <span class="ui">Ocultar</span> a <span class="ui">Excluir</span>.</p>
+
+  <div class="regra">
+    Os seis campos que já vêm de fábrica (Marca, Modelo, Nº de Série, Capacidade/Especificação, Local e Data de Instalação) são configuráveis exatamente como os campos criados por você: dá para renomear, esconder, reordenar e tornar obrigatórios. Se a lista de campos aparecer vazia na sua empresa, nenhum desses campos vai aparecer no cadastro de equipamento até ser criado nesta janela.
+  </div>
+
+  <h2>10. Detalhe do equipamento: QR Code, etiqueta configurável, anexos e histórico de OS</h2>
+
+  <p>Clicando num equipamento, abre a ficha dele com três abas: <span class="ui">Geral</span>, <span class="ui">Anexos</span> e <span class="ui">Histórico / Tarefas</span>.</p>
+
+  <p>Na aba <span class="ui">Geral</span>, no topo, ficam a foto do equipamento e o QR Code, com o identificador em destaque abaixo. O bloco <span class="ui">Informações</span> lista, em formato rótulo e valor: Categoria, Cliente, Marca, Modelo, Nº de Série, Local, Data de Instalação, Garantia até, Identificador, Observações e todos os campos customizados preenchidos.</p>
+
+  <h3>O QR Code e os quatro botões</h3>
+  <!-- PRINT FALTANDO: ficha do equipamento mostrando o QR Code com os botões Baixar QR (PNG), Abrir link e Copiar link DESABILITADOS e a mensagem "Cliente sem portal ativo". Exige um equipamento de cliente sem portal ativo, situação que não dá pra forçar sem desativar o portal de um cliente real da conta demo. Capturar manualmente numa conta de teste isolada. -->
+  <p>Abaixo do QR ficam quatro botões: <span class="ui">Gerar Etiqueta</span>, <span class="ui">Baixar QR (PNG)</span>, <span class="ui">Abrir link</span> e <span class="ui">Copiar link</span>.</p>
+
+  <div class="aviso">
+    <b>Três desses botões só funcionam se o cliente tiver portal ativo.</b> <span class="ui">Baixar QR (PNG)</span>, <span class="ui">Abrir link</span> e <span class="ui">Copiar link</span> ficam apagados e sem clique quando o cliente não tem portal, e a mensagem <span class="ui">Cliente sem portal ativo</span> aparece logo abaixo. É que o QR aponta para o portal daquele cliente, filtrado naquele aparelho: sem portal, não existe endereço para onde apontar. O portal é criado automaticamente para todo cliente novo, então esse aviso costuma aparecer em cadastro antigo ou quando o portal foi desativado. Confira na ficha do cliente, no menu <span class="ui">Ações</span>, se aparece <span class="ui">Copiar link do portal</span>.
+  </div>
+
+  <p>O <span class="ui">Gerar Etiqueta</span> continua funcionando mesmo sem portal, só que a etiqueta sai sem o QR Code.</p>
+
+  <h3>A etiqueta configurável</h3>
+  <figure>
+    <img src="img/t3-equipamento-etiqueta.png" alt="Janela Gerar Etiqueta de Identificação, com o aviso sobre imprimir em tamanho real, a lista Itens da etiqueta com caixinhas marcadas para QR Code, Nome do equipamento e Identificador (Marca, Modelo, Nº de série, Localização e Nome do cliente desmarcados), os três tamanhos predefinidos 5×5 cm, 5×8 cm (selecionado) e 6×6 cm, os campos Largura e Altura, e a área de Pré-visualização.">
+    <figcaption>Janela Gerar Etiqueta de Identificação: itens marcáveis, tamanhos predefinidos e pré-visualização.</figcaption>
+  </figure>
+  <p>O botão <span class="ui">Gerar Etiqueta</span> abre <span class="ui">Gerar Etiqueta de Identificação</span>, com "Escolha o tamanho da etiqueta para impressão."</p>
+  <p><b>Itens da etiqueta</b>: caixinhas para escolher o que vai impresso. As opções são Nome da empresa, Telefone da empresa, E-mail da empresa, QR Code, Nome do equipamento, Identificador, Marca, Modelo, Nº de série, Localização e Nome do cliente. Só aparecem as opções que têm conteúdo: se o equipamento não tem marca cadastrada, a opção Marca nem aparece na lista.</p>
+  <p><b>Tamanho</b>: três atalhos prontos, <span class="ui">5×5 cm</span>, <span class="ui">5×8 cm</span> e <span class="ui">6×6 cm</span>, mais os campos <span class="ui">Largura (cm)</span> e <span class="ui">Altura (cm)</span> para medida livre. A medida é limitada entre 2 cm e 30 cm.</p>
+  <p>Há uma <span class="ui">Pré-visualização</span> ao lado, e o aviso: "Ao imprimir, certifique-se que nas configurações de impressão o dimensionamento está em tamanho real." Sem isso a etiqueta sai fora de medida. A configuração da etiqueta (itens marcados e tamanho) fica guardada no navegador daquele computador; em outro computador ela volta ao padrão.</p>
+
+  <h3>Aba Anexos</h3>
+  <p>O bloco <span class="ui">Arquivos anexados</span> tem o botão <span class="ui">Enviar</span>, que aceita vários arquivos de uma vez. Durante o envio aparece <span class="ui">Enviando 2 de 5...</span> e no fim <span class="ui">3 anexos enviados!</span>. Os arquivos são agrupados em três blocos: <span class="ui">Imagens</span>, <span class="ui">PDFs</span> e <span class="ui">Outros Documentos</span>. Sem nada, aparece <span class="ui">Nenhum anexo</span>. Excluir pede a confirmação <span class="ui">Excluir anexo</span>, "Tem certeza que deseja excluir este anexo?".</p>
+  <p>É aqui que vão manual do fabricante, nota de compra, foto da placa de identificação e laudo. Diferente do cadastro de cliente, o <b>equipamento tem anexos</b>.</p>
+
+  <div class="aviso">
+    Os anexos do equipamento aparecem para o cliente final no portal, na aba <span class="ui">Anexos</span> do equipamento. Não anexe documento interno (custo, margem, ficha de fornecedor) na ficha do equipamento.
+  </div>
+
+  <h3>Aba Histórico / Tarefas</h3>
+  <p>Duas seções. <span class="ui">Ordens de Serviço Relacionadas</span> lista todas as OS que citaram aquele equipamento, com número, status e data. Sem nenhuma, aparece <span class="ui">Nenhuma OS relacionada a este equipamento</span>. Abaixo, <span class="ui">Tarefas</span> anota pendências rápidas do aparelho, digitando em <span class="ui">Nova tarefa...</span>.</p>
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Digitei o CNPJ e ele apagou o endereço que eu tinha preenchido"</td>
+        <td>A consulta de CNPJ sobrescreve razão social, fantasia, e-mail, telefone e o endereço inteiro</td>
+        <td>Explique que a ordem certa é digitar o CNPJ PRIMEIRO e ajustar na mão depois. O único campo protegido é o Nome. Peça para reabrir o cliente, corrigir o endereço e salvar.</td>
+      </tr>
+      <tr>
+        <td>"Fechei a janela sem querer e perdi o cadastro"</td>
+        <td>Rascunho automático</td>
+        <td>Clicar em <span class="ui">Novo Cliente</span> de novo faz aparecer a pergunta para retomar o rascunho. Vale só para cadastro novo.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu anexo o contrato assinado do cliente?"</td>
+        <td>O cadastro de cliente não tem anexos</td>
+        <td>Anexe no contrato (aba <span class="ui">Documentos anexados</span> do contrato) ou na ficha do equipamento (aba <span class="ui">Anexos</span>). No cliente não existe.</td>
+      </tr>
+      <tr>
+        <td>"Meu cliente tem três lojas, como cadastro os três endereços?"</td>
+        <td>É um endereço por cliente</td>
+        <td>Duas saídas: cadastrar os equipamentos com o campo <span class="ui">Local</span> preenchido com o nome da loja, ou usar contrato PMOC, que tem ambientes com endereço próprio da unidade. Alguns clientes cadastram uma ficha por unidade, com o nome "Cliente X, Loja Centro".</td>
+      </tr>
+      <tr>
+        <td>"O botão de copiar o link do QR do equipamento está apagado"</td>
+        <td>Cliente sem portal ativo</td>
+        <td>Aparece a mensagem <span class="ui">Cliente sem portal ativo</span>. Abra a ficha do cliente e confira se o menu <span class="ui">Ações</span> mostra <span class="ui">Copiar link do portal</span>. Sem portal, só a etiqueta sem QR funciona.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo criar cliente só com o nome"</td>
+        <td>A janela rápida está sendo aberta pelo fluxo de cobrança, que exige documento</td>
+        <td>Se a mensagem for <span class="ui">Informe o CPF ou CNPJ do cliente para cobrar.</span>, é o fluxo de cobrança. Pelo cadastro de equipamento, o documento é opcional e o nome basta.</td>
+      </tr>
+      <tr>
+        <td>"Criei o campo de gás só para os splits, mas ele aparece em tudo"</td>
+        <td>Campo customizado é por empresa, não por categoria</td>
+        <td>Explique que hoje o catálogo de campos extras é único para a empresa. A saída é deixar o campo opcional e preencher só onde faz sentido.</td>
+      </tr>
+      <tr>
+        <td>"Não aparece Marca nem Modelo no cadastro de equipamento"</td>
+        <td>Campos ocultos ou inexistentes na configuração de campos</td>
+        <td>Abra <span class="ui">Configurar Campos</span> na tela de Equipamentos. Oculto, use <span class="ui">Mostrar</span>. Lista vazia, crie os campos ali.</td>
+      </tr>
+      <tr>
+        <td>"O link do formulário de captação não funciona"</td>
+        <td>Formulário desligado, expirado ou nunca salvo</td>
+        <td>Se o visitante vê <span class="ui">Formulário indisponível</span>, confira o selo na lista: <span class="ui">Inativo</span> ou <span class="ui">Expirado</span>. Se você não conseguiu copiar o link, é porque o formulário ainda não foi salvo.</td>
+      </tr>
+      <tr>
+        <td>"Preciso importar 800 clientes de uma planilha"</td>
+        <td>Não existe importação em massa</td>
+        <td>Não há esse recurso hoje. As opções são cadastrar na tela, criar na hora a partir de OS, orçamento ou equipamento, ou publicar um formulário de captação e pedir para os clientes se cadastrarem.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Preciso preencher CPF ou CNPJ para cadastrar o cliente?</dt>
+    <dd>Não. Só o Nome é obrigatório. O documento vira obrigatório na hora de emitir nota fiscal ou gerar cobrança online.</dd>
+
+    <dt>Qual a diferença entre o campo Nome e o campo Razão Social?</dt>
+    <dd>Nome é como você chama o cliente no dia a dia, e é o que aparece nas listas, na OS e no portal. Razão Social é o nome oficial na Receita, usado na nota fiscal. Os dois podem ser diferentes.</dd>
+
+    <dt>Um equipamento pode ficar sem cliente?</dt>
+    <dd>Não. O campo <span class="ui">Cliente</span> é obrigatório no cadastro de equipamento. Todo equipamento pertence a um cliente.</dd>
+
+    <dt>Posso escolher o número do identificador do equipamento?</dt>
+    <dd>Não. Ele é gerado automaticamente ao salvar, sequencial por empresa, com quatro dígitos (0001, 0002, e assim por diante). O campo fica travado no formulário.</dd>
+
+    <dt>Para onde o QR Code do equipamento leva?</dt>
+    <dd>Para o portal daquele cliente, já filtrado naquele aparelho. Quem escaneia vê os dados e o histórico do equipamento sem precisar de senha, desde que o portal esteja público.</dd>
+
+    <dt>Dá para criar um campo de equipamento que só apareça numa categoria?</dt>
+    <dd>Não. Os campos extras são da empresa inteira e aparecem em todo equipamento. Deixe o campo opcional e preencha só onde faz sentido.</dd>
+
+    <dt>O cliente que se cadastrou sozinho pelo link já entra completo?</dt>
+    <dd>Entra só com os campos que você habilitou, e com a origem marcada como formulário público. O resto fica em branco e precisa ser completado antes de emitir nota.</dd>
+
+    <dt>Consigo mandar WhatsApp para o cliente de dentro do sistema?</dt>
+    <dd>Sim. Na ficha do cliente, o telefone e o celular ganham botão de WhatsApp, e cada contato do <span class="ui">Responsável no Local</span> também. O sistema abre a conversa sem você precisar salvar o número na agenda.</dd>
+
+    <dt>Onde vejo tudo que já fiz para um cliente?</dt>
+    <dd>Na ficha dele, aba <span class="ui">Histórico de OS</span>. Para um aparelho específico, abra o equipamento e vá em <span class="ui">Histórico / Tarefas</span>.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> ficha do cliente, cadastro de cliente, base de clientes, aparelho, máquina, equipamento, ativo, TAG, plaquinha, etiqueta, QR do aparelho, de onde veio o cliente, formulário de cadastro, link da bio, contato do local, responsável da obra, zelador
+  </div>
+</section>

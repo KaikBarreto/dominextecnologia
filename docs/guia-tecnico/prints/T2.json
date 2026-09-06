@@ -1,0 +1,19 @@
+{
+  "secao": "T2",
+  "prints": [
+    {
+      "id": "t2-permissoes-acoes-da-tela",
+      "url": "/configuracoes?tab=usuarios",
+      "legenda": "Editor de permissões com uma tela desligada e expandida, exibindo o bloco Ações desta tela e o aviso de que as ações continuam valendo por conta própria. Nada é salvo: o modal é apenas aberto e fechado.",
+      "passos": [
+        { "esperar": 3500 },
+        { "clicar": "Criar Usuário" },
+        { "esperar": 1500 },
+        { "rolarAte": "text=Ordens de Serviço", "opcional": true },
+        { "clicar": "Ordens de Serviço", "opcional": true },
+        { "esperar": 1200 }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}

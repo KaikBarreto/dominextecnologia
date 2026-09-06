@@ -1,0 +1,334 @@
+<section class="tutorial" id="t0">
+  <h1><span class="tcode">T0</span> Bem-vindo à Dominex</h1>
+
+  <p class="lead">A Dominex é o sistema onde a sua empresa de serviço técnico organiza tudo num lugar só: o cadastro do cliente, o equipamento instalado no endereço dele, a ordem de serviço que o técnico executa em campo, o orçamento enviado, o contrato recorrente e o dinheiro que entra e sai. Este tutorial é a visão de cima: o que existe, onde fica, como se chama e por que uma tela pode não aparecer pra você.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> vale pro sistema inteiro (menu lateral no computador, barra de baixo no celular)</span>
+    <span><b>Rotas:</b> <code>/dashboard</code>, <code>/agenda</code>, <code>/ordens-servico</code>, <code>/orcamentos</code>, <code>/clientes</code>, <code>/equipamentos</code>, <code>/servicos</code>, <code>/contratos</code>, <code>/funcionarios</code>, <code>/estoque</code>, <code>/crm</code>, <code>/financeiro/relatorio</code>, <code>/notas-fiscais</code>, <code>/mapa-ao-vivo</code>, <code>/area-tecnico</code>, <code>/configuracoes</code>, <code>/perfil</code>, <code>/assinatura</code>, <code>/domiflix</code>, <code>/changelog</code></span>
+    <span><b>Depende de:</b> nada. É o primeiro tutorial da trilha.</span>
+    <span><b>Quem enxerga:</b> todo mundo que faz login. O que cada pessoa vê depende do cargo e do plano contratado.</span>
+  </div>
+
+  <div class="aviso">
+    <b>Leia isto antes de procurar uma tela e não achar.</b> O menu da Dominex não é igual pra todo mundo. Ele muda por dois motivos: o <b>plano contratado</b> da empresa (módulo que a empresa não paga não aparece pra ninguém) e o <b>cargo do usuário</b> (permissão de tela desligada some do menu daquela pessoa). Se um colega vê "CRM" e você não vê, quase sempre é permissão. Se ninguém da empresa vê, é módulo.
+  </div>
+
+  <h2>1. O que a Dominex resolve — do chamado do cliente até o dinheiro na conta</h2>
+
+  <p>A Dominex foi feita pra empresa que presta serviço técnico em campo: refrigeração e climatização, instalações elétricas, energia solar, CFTV e segurança eletrônica, provedores de internet, construção civil, elevadores, limpeza e conservação, dedetização, assistência técnica de informática. O ciclo do dinheiro dessas empresas é sempre o mesmo: alguém pede um serviço, um técnico vai até o local, o serviço é executado e registrado, o cliente recebe um comprovante, e aquilo vira dinheiro a receber.</p>
+
+  <p>O sistema acompanha esse ciclo inteiro. Não é um "app de ordem de serviço" isolado: é o cadastro, a operação, o comercial e o financeiro amarrados, pra você não digitar o mesmo cliente em três lugares diferentes.</p>
+
+  <h3>O caminho completo de um trabalho</h3>
+  <ol>
+    <li><b>Cliente cadastrado.</b> A ficha do cliente guarda nome, documento, contato e endereço de atendimento. Todo o resto se pendura nela.</li>
+    <li><b>Equipamento cadastrado.</b> O que está instalado no endereço do cliente (o aparelho de ar, o quadro elétrico, a câmera, o elevador). É o que recebe manutenção e tem histórico próprio.</li>
+    <li><b>Catálogo montado.</b> Os tipos de serviço que você vende, os tipos de tarefa que o técnico executa e os checklists que ele preenche em campo.</li>
+    <li><b>Ordem de Serviço aberta.</b> A OS junta cliente, endereço, equipamento, tipo de serviço, data e técnico responsável.</li>
+    <li><b>Agenda e equipe.</b> A OS entra na agenda e é atribuída a um técnico. No mapa ao vivo você acompanha quem já mandou posição de GPS.</li>
+    <li><b>Execução em campo.</b> O técnico abre a OS no celular, preenche o checklist, tira foto, registra material usado e finaliza.</li>
+    <li><b>Comprovante pro cliente.</b> A OS concluída vira um relatório com a marca da sua empresa, que o cliente abre por link, sem instalar nada e sem criar senha.</li>
+    <li><b>Comercial.</b> O que não estava fechado vira orçamento ou proposta. O que é recorrente vira contrato (ou PMOC, no caso da climatização).</li>
+    <li><b>Financeiro.</b> Entradas e saídas, contas a pagar e a receber, e o resultado do mês.</li>
+    <li><b>Nota fiscal.</b> Se a empresa contratou o módulo de emissão, a NFS-e sai de dentro do sistema.</li>
+  </ol>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Não dá pra abrir uma OS sem cliente cadastrado. O cliente é a raiz de tudo.</li>
+    <li>Cada empresa enxerga só os próprios dados. Cliente, OS, financeiro e configuração são separados por empresa, e isso é garantido no servidor, não só na tela.</li>
+    <li>O sistema é um só, mas cada usuário tem a própria porta de entrada: ao fazer login, você cai na primeira tela a que tem acesso. Quem só tem Agenda liberada cai na Agenda.</li>
+    <li>Tudo que o cliente final vê (relatório de OS, portal, orçamento, proposta, cobrança) é aberto por <b>link</b>. O cliente final nunca cria login nem senha na Dominex.</li>
+  </ul>
+
+  <div class="regra">
+    A Dominex <b>não</b> tem importação em massa de clientes, equipamentos ou leads. Não existe "subir uma planilha" pra popular a base. O caminho hoje é cadastrar pela tela, e vários formulários têm criação rápida (o botão "+" dentro do próprio campo de busca) pra você não precisar sair do fluxo.
+  </div>
+
+  <h2>2. Tour pelo menu: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM, Financeiro</h2>
+
+  <p>No computador, o menu fica na barra lateral esquerda, na ordem abaixo. Itens com seta (Operacional, Gestão, Financeiro) são grupos: clicar abre a lista de dentro. Um grupo inteiro some do menu quando nenhum item de dentro dele está liberado pra você.</p>
+
+  <table class="dados">
+    <thead><tr><th>Item do menu</th><th>Para onde leva</th><th>Pra que serve</th><th>Exige módulo pago?</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Dashboard</span></td><td><code>/dashboard</code></td><td>Painel de abertura com indicadores, mapa da equipe, fluxo de caixa e OS que precisam de atenção.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Agenda</span></td><td><code>/agenda</code></td><td>Calendário das visitas e compromissos. É a tela do dia a dia de quem escala técnico.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Operacional › Ordens de Serviço</span></td><td><code>/ordens-servico</code></td><td>Lista completa de OS: abrir, acompanhar, filtrar e ver histórico.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Operacional › Mapa e Rastreamento</span></td><td><code>/mapa-ao-vivo</code></td><td>Mapa com a posição dos técnicos em campo e o histórico de deslocamento.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Área do Técnico™</span></td><td><code>/area-tecnico</code></td><td>Ferramentas de apoio do técnico (cálculos e tabelas do ramo).</td><td>Não, mas só aparece em segmento que tem ferramentas cadastradas. Hoje, Refrigeração e Climatização.</td></tr>
+      <tr><td><span class="ui">Orçamentos</span></td><td><code>/orcamentos</code></td><td>Orçamentos e propostas enviados ao cliente.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Gestão › Serviços</span></td><td><code>/servicos</code></td><td>Catálogo: abas <span class="ui">Tipos de Serviços</span>, <span class="ui">Tipos de Tarefas</span> e <span class="ui">Checklists</span>.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Gestão › Clientes</span></td><td><code>/clientes</code></td><td>Cadastro de clientes, com contato, endereço e histórico.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Gestão › Equipamentos</span></td><td><code>/equipamentos</code></td><td>Equipamentos instalados nos clientes e o histórico de cada um.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Gestão › Contratos</span></td><td><code>/contratos</code></td><td>Contratos recorrentes e PMOC, com as visitas programadas.</td><td>Sim: Gestão de Contratos e PMOC</td></tr>
+      <tr><td><span class="ui">Gestão › Funcionários (RH)</span></td><td><code>/funcionarios</code></td><td>Funcionários, equipes, ponto eletrônico e pagamentos.</td><td>Sim: Funcionários / RH</td></tr>
+      <tr><td><span class="ui">Gestão › Estoque</span></td><td><code>/estoque</code></td><td>Materiais, saldo por local e movimentações.</td><td>Não</td></tr>
+      <tr><td><span class="ui">CRM</span></td><td><code>/crm</code></td><td>Funil de vendas com leads, etapas e acompanhamento.</td><td>Sim: CRM</td></tr>
+      <tr><td><span class="ui">Financeiro › Visão Geral</span></td><td><code>/financeiro/relatorio</code></td><td>Resumo financeiro e resultado do período.</td><td>Não (a aba de DRE dentro dela exige Financeiro Avançado)</td></tr>
+      <tr><td><span class="ui">Financeiro › Movimentações Financeiras</span></td><td><code>/financeiro/movimentacoes</code></td><td>Lançamentos de entrada e saída, contas, cartões e categorias.</td><td>Não</td></tr>
+      <tr><td><span class="ui">Financeiro › Contas a Pagar/Receber</span></td><td><code>/financeiro/contas</code></td><td>Contas em aberto, vencidas e a vencer.</td><td>Sim: Financeiro Avançado</td></tr>
+      <tr><td><span class="ui">Financeiro › Notas Fiscais</span></td><td><code>/notas-fiscais</code></td><td>Emissão e consulta de NFS-e.</td><td>Sim: Emissão de Notas Fiscais</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t0-menu-lateral.png" alt="Menu lateral escuro da Dominex com os itens Dashboard (ativo, com barra verde embaixo), Agenda, Operacional com seta, Área do Técnico™, Orçamentos, Gestão com seta, CRM e Financeiro com seta.">
+    <figcaption>Menu lateral do computador, na ordem real: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM e Financeiro. A seta indica grupo que abre.</figcaption>
+  </figure>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Item de menu só aparece se a pessoa tem a <b>permissão da tela</b> E a empresa tem o <b>módulo</b>, quando o item exige módulo. São dois portões independentes.</li>
+    <li>Grupo sem nenhum filho visível some inteiro. Se você desligou Serviços, Clientes, Equipamentos, Contratos, Funcionários e Estoque de um técnico, o grupo <span class="ui">Gestão</span> nem aparece pra ele.</li>
+    <li>Digitar o endereço da tela na barra do navegador não fura o bloqueio: sem permissão, o sistema devolve você pra primeira tela liberada.</li>
+    <li>Sem módulo contratado, abrir a tela mostra o aviso <span class="ui">Módulo não disponível</span> com o preço e os botões <span class="ui">Adicionar módulo</span> e <span class="ui">Ver planos</span>.</li>
+  </ul>
+
+  <div class="regra">
+    <b>Não existe menu de PMOC.</b> O PMOC é um tipo de contrato: o caminho é <span class="ui">Gestão › Contratos</span> e filtrar pelo tipo. Também não existe item de menu para <span class="ui">Checklists</span>, <span class="ui">Equipes</span> ou <span class="ui">Responsáveis Técnicos</span> soltos: Checklists é uma aba dentro de <span class="ui">Serviços</span>, Equipes é uma aba dentro de <span class="ui">Funcionários</span>, e Responsáveis Técnicos vive nas Configurações de Contrato. E <span class="ui">Tutoriais</span> não é uma tela: leva pro Domiflix.
+  </div>
+
+  <h2>3. Sidebar × Barra superior × menu do celular — a mesma coisa em 3 lugares</h2>
+
+  <p>O mesmo menu aparece de três jeitos, conforme o tamanho da tela e a sua preferência. O conteúdo é idêntico: muda só a forma.</p>
+
+  <h3>No computador, menu lateral (padrão)</h3>
+  <ul>
+    <li>Barra fixa à esquerda com o logo em cima, a lista de telas no meio e o seu cartão de perfil embaixo.</li>
+    <li>O botão no canto superior esquerdo <b>encolhe</b> a barra pra mostrar só os ícones, ganhando espaço na tela. Passar o mouse sobre um ícone mostra o nome.</li>
+    <li>No cartão de perfil (embaixo) você abre: <span class="ui">Perfil</span>, <span class="ui">Assinatura</span>, <span class="ui">Tema</span> (Claro ou Escuro), <span class="ui">Tutoriais | Domiflix</span>, <span class="ui">Central de Ajuda</span> e <span class="ui">Falar com o Suporte</span>. No fundo desse menu fica o cartão de troca de conta, pra quem usa mais de um login no mesmo computador.</li>
+    <li>Logo abaixo do cartão ficam os botões <span class="ui">Configurações</span> e <span class="ui">Sair</span>.</li>
+    <li>No alto da tela, à direita: relógio com o fuso da empresa, seletor de idioma, sino de notificações e o botão de sair.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t0-dashboard-completo.png" alt="Tela cheia da Dominex no computador: menu lateral escuro à esquerda com o cartão de perfil embaixo e os botões Configurações e Sair, cabeçalho com data, idioma, sino e sair, e o Dashboard ao centro com os cartões OS Abertas, Taxa de Conclusão e Faturamento e os blocos Equipe em Campo, OS por Status, Fluxo de Caixa e Requer Atenção.">
+    <figcaption>O sistema inteiro no computador: menu lateral à esquerda, cabeçalho no topo e a tela de conteúdo no centro.</figcaption>
+  </figure>
+
+  <h3>No computador, barra superior (opcional)</h3>
+  <p>Em <span class="ui">Configurações › Aparência › Estilo de Navegação (Desktop)</span> você troca <span class="ui">Menu Lateral</span> por <span class="ui">Menu Superior</span>. A barra passa a ficar deitada no topo, com os mesmos itens. O texto da própria tela avisa: essa opção só afeta a visualização no computador, o celular continua igual.</p>
+
+  <h3>No celular</h3>
+  <ul>
+    <li>Barra fixa embaixo com 5 atalhos: <span class="ui">Início</span>, <span class="ui">OS</span>, <span class="ui">Agenda</span> (o botão redondo grande no meio), <span class="ui">Clientes</span> e <span class="ui">Menu</span>.</li>
+    <li>Esses 5 atalhos são sempre os mesmos. Se você não tem acesso a uma dessas telas, o sistema te devolve pra primeira tela liberada em vez de mostrar erro.</li>
+    <li><span class="ui">Menu</span> abre a gaveta com o menu completo (os mesmos grupos do computador), mais a seção <span class="ui">Conta</span> com Perfil, Assinatura, Tutoriais, Central de Ajuda e Falar com o Suporte. No rodapé da gaveta ficam o seletor de tema, <span class="ui">Configurações</span> e <span class="ui">Sair</span>.</li>
+    <li>Puxar a tela pra baixo recarrega o sistema, igual a apertar F5 no computador. Com um formulário aberto, o gesto não dispara, pra não perder o que você digitou.</li>
+    <li>No tablet aparece também o botão de menu sanduíche no topo, além da barra de baixo.</li>
+  </ul>
+
+  <div class="aviso">
+    <b>Instalar como aplicativo: hoje não tem esse passo a passo.</b> O aviso "Instalar Dominex" existe no código, mas <b>não está ativo</b> no sistema, então nenhum cliente vê esse convite. A Dominex funciona pelo navegador do celular normalmente. Se alguém quiser um atalho na tela inicial, isso é feito pelo próprio navegador (opção "Adicionar à tela de início", no menu do Chrome ou do Safari), não por um botão dentro do sistema. Não prometa "instalar o app" pro cliente.
+  </div>
+
+  <h2>4. Vocabulário: Ordem de Serviço, Tarefa, Contrato, PMOC, Checklist, Cargo, Módulo</h2>
+
+  <p>Estas são as palavras que aparecem em toda tela da Dominex. Usar o nome certo economiza metade do tempo de suporte.</p>
+
+  <table class="dados">
+    <thead><tr><th>Palavra</th><th>O que é na Dominex</th></tr></thead>
+    <tbody>
+      <tr><td><b>Cliente</b></td><td>Quem contrata o seu serviço. Tem ficha própria com documento, contato e endereço de atendimento. Nunca confundir com o usuário do sistema.</td></tr>
+      <tr><td><b>Técnico</b></td><td>Quem executa o serviço em campo. É um usuário do sistema marcado como <span class="ui">Técnico</span>, o que faz ele aparecer na lista de técnicos da OS e permite colocá-lo em equipes.</td></tr>
+      <tr><td><b>Ordem de Serviço (OS)</b></td><td>O trabalho a ser feito: cliente, endereço, equipamento, tipo de serviço, data e técnico. É a unidade central do sistema.</td></tr>
+      <tr><td><b>Tipo de Serviço</b></td><td>O que você vende (instalação, manutenção preventiva, limpeza, visita técnica). Fica em <span class="ui">Serviços › Tipos de Serviços</span>.</td></tr>
+      <tr><td><b>Tipo de Tarefa</b></td><td>A atividade que o técnico executa dentro da OS, com o checklist ligado a ela. Fica em <span class="ui">Serviços › Tipos de Tarefas</span>.</td></tr>
+      <tr><td><b>Checklist</b></td><td>O roteiro de perguntas e conferências que o técnico preenche em campo. Fica em <span class="ui">Serviços › Checklists</span>. Não existe menu solto de Checklists.</td></tr>
+      <tr><td><b>Tarefas (a gaveta do topo)</b></td><td>Cuidado com o duplo sentido: além do "tipo de tarefa" da OS, existe uma lista de <span class="ui">Tarefas</span> pessoais, aberta pelo ícone no alto da tela, com um lembrete diário. São coisas diferentes.</td></tr>
+      <tr><td><b>Equipamento</b></td><td>O aparelho instalado no endereço do cliente, com histórico próprio de atendimentos.</td></tr>
+      <tr><td><b>Contrato</b></td><td>O vínculo recorrente com o cliente: valor, período e visitas programadas.</td></tr>
+      <tr><td><b>PMOC</b></td><td>Plano de Manutenção, Operação e Controle, exigido por lei na climatização. Na Dominex é um <b>tipo de contrato</b>, com etapas e documentos extras. Não tem tela própria.</td></tr>
+      <tr><td><b>Orçamento</b> e <b>Proposta</b></td><td>A cotação enviada ao cliente antes de virar OS avulsa ou contrato.</td></tr>
+      <tr><td><b>Origem</b></td><td>De onde o cliente ou o lead veio (Indicação, Site, WhatsApp, Google). É uma lista sua, compartilhada entre o cadastro de clientes e o CRM.</td></tr>
+      <tr><td><b>Cargo</b></td><td>Um conjunto de permissões salvo com nome (por exemplo "Técnico de Campo"). Você monta uma vez e aplica em vários usuários.</td></tr>
+      <tr><td><b>Permissão de tela</b></td><td>Liga ou desliga uma tela inteira pra um usuário. Desligou, some do menu dele.</td></tr>
+      <tr><td><b>Permissão de ação</b></td><td>Liga ou desliga uma ação dentro de uma tela (criar OS, excluir cliente, excluir lançamento financeiro).</td></tr>
+      <tr><td><b>Módulo</b></td><td>Um pedaço do sistema que a empresa contrata (CRM, Contratos e PMOC, Funcionários, Notas Fiscais, Financeiro Avançado, White Label). Vale pra empresa inteira.</td></tr>
+      <tr><td><b>Plano</b></td><td>O pacote que a empresa assina. Define quantos usuários cabem e quais módulos vêm inclusos.</td></tr>
+      <tr><td><b>Segmento</b></td><td>O ramo da sua empresa. Define quais ferramentas do ramo aparecem. Só a Dominex altera esse campo.</td></tr>
+      <tr><td><b>Portal do Cliente</b></td><td>A página que o seu cliente abre por link pra acompanhar OS, equipamentos, contratos e cobranças.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. O que é módulo contratado e por que uma tela pode não aparecer pra você</h2>
+
+  <p>Existem <b>dois portões</b> diferentes entre você e uma tela, e eles não se substituem.</p>
+
+  <p><b>Portão 1, o módulo.</b> Vale pra empresa toda. É o que está contratado no plano. Se a empresa não tem o módulo CRM, ninguém da empresa vê o CRM, nem o dono. Isso se resolve em <span class="ui">Assinatura</span>, contratando o módulo.</p>
+
+  <p><b>Portão 2, a permissão.</b> Vale por pessoa. É o que o administrador configurou em <span class="ui">Configurações › Usuários e Permissões</span>. Se a empresa tem o CRM mas a sua permissão de tela do CRM está desligada, você não vê. Isso se resolve com o administrador da sua empresa, não com o suporte.</p>
+
+  <h3>Como saber qual dos dois é o seu caso</h3>
+  <ol>
+    <li>Pergunte a um colega administrador se ele vê a tela. Se ele vê e você não, é permissão.</li>
+    <li>Se ninguém vê, abra <span class="ui">Assinatura</span> (pelo cartão de perfil no menu) e olhe a lista de módulos do seu plano.</li>
+    <li>Se você tentar abrir uma tela de módulo não contratado, aparece a janela <span class="ui">Módulo não disponível</span>, com o nome do módulo, o preço a partir de e os botões <span class="ui">Adicionar módulo</span> e <span class="ui">Ver planos</span>. O botão leva direto pro montador de plano com aquele módulo já marcado.</li>
+  </ol>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>Durante o <b>período de teste</b>, todos os módulos ficam liberados. Quando o teste termina ou a assinatura é ativada, valem os módulos do plano contratado. Não é promessa: é benefício do teste.</li>
+    <li>Alguns módulos não abrem uma tela nova, eles ligam pedaços dentro de telas que você já tem. É o caso de <b>Financeiro Avançado</b> (DRE e Contas a Pagar/Receber), <b>Precificação Avançada</b> (BDI e custos no orçamento), <b>Portal do Cliente</b> e <b>White Label</b>.</li>
+    <li>A <span class="ui">Área do Técnico™</span> não depende de módulo: ela aparece conforme o segmento da empresa. Hoje só o segmento Refrigeração e Climatização tem ferramentas cadastradas.</li>
+  </ul>
+
+  <h2>6. Os 3 públicos do sistema: gestor no escritório, técnico no celular, cliente no link público</h2>
+
+  <p>Três pessoas diferentes usam a Dominex de três jeitos diferentes. Entender isso evita 90% da confusão de acesso.</p>
+
+  <h3>1) O gestor, no escritório</h3>
+  <ul>
+    <li>Faz login com e-mail e senha e usa o sistema inteiro no computador.</li>
+    <li>É quem cadastra, agenda, cobra, configura a empresa e cria os outros usuários.</li>
+    <li>Normalmente tem o selo <span class="ui">MASTER</span> no cartão de perfil, que indica administrador da empresa.</li>
+  </ul>
+
+  <h3>2) O técnico, no celular</h3>
+  <ul>
+    <li>Também faz login, mas costuma ter poucas telas liberadas: Agenda e Ordens de Serviço, por exemplo.</li>
+    <li>Abre a OS, preenche checklist, tira foto, registra material e finaliza pelo celular.</li>
+    <li>Um técnico pode trabalhar praticamente só pelo <b>link da OS</b>, sem precisar da tela de listagem de OS liberada. Isso é intencional e se configura na permissão (o assunto está detalhado no tutorial de usuários e permissões).</li>
+    <li>Não existe fila de sincronização offline de verdade. O aplicativo precisa de internet no momento de salvar. Em local com sinal ruim, oriente o técnico a conferir se a ação foi salva antes de sair.</li>
+  </ul>
+
+  <h3>3) O cliente final, no link público</h3>
+  <ul>
+    <li>O cliente <b>nunca</b> cria conta, login ou senha na Dominex.</li>
+    <li>Ele recebe um link (por WhatsApp, e-mail ou QR Code) e abre direto no navegador do celular.</li>
+    <li>Pelos links públicos ele pode: ver o relatório da OS concluída, acompanhar o Portal do Cliente, abrir o orçamento ou a proposta, ver o portal do contrato ou do PMOC, e pagar uma cobrança.</li>
+    <li>O link público mostra a marca da <b>sua</b> empresa quando o White Label está ligado, não a marca Dominex.</li>
+  </ul>
+
+  <div class="regra">
+    <b>Não existe login com senha para o cliente final no Portal, nem login social (Google ou Microsoft) para ninguém.</b> O acesso do cliente é sempre por link. Se o cliente pede "minha senha do portal", a resposta correta é reenviar o link do portal dele.
+  </div>
+
+  <div class="regra">
+    O painel interno da Dominex (endereços que começam com <code>/admin</code>) <b>não é do cliente</b>. É a área de trabalho da própria Dominex, usada pra gerir empresas, vendedores e cobranças da carteira. Nenhum usuário de empresa cliente tem acesso, e ele não faz parte do produto que você contratou.
+  </div>
+
+  <h2>7. Onde pedir ajuda e como usar o Domiflix (minha lista, continuar assistindo, perfil)</h2>
+
+  <p>Existem três caminhos de ajuda dentro do sistema, e eles ficam no mesmo lugar: no cartão de perfil, no rodapé do menu lateral (no computador) ou na seção <span class="ui">Conta</span> da gaveta <span class="ui">Menu</span> (no celular).</p>
+
+  <h3>Central de Ajuda</h3>
+  <ul>
+    <li>Abre um painel lateral com o título <span class="ui">Central de Ajuda</span> e uma lista de perguntas frequentes que você expande clicando.</li>
+    <li>O texto de abertura é: "Dúvidas frequentes sobre o sistema. Caso não encontre sua resposta, entre em contato pelo Suporte via WhatsApp."</li>
+    <li>Hoje ela cobre perguntas curtas de rotina, como criar uma OS, cadastrar cliente, controle financeiro, pagamento de funcionários, ponto, contratos recorrentes, CRM, estoque, exportação de relatórios e troca de senha.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t0-central-ajuda.png" alt="Painel lateral Central de Ajuda aberto sobre o Dashboard, com o texto de abertura sobre dúvidas frequentes e a lista recolhida de perguntas: Como criar uma Ordem de Serviço (destacada em azul), Como cadastrar um novo cliente, Como funciona o controle financeiro, Como funcionam os pagamentos de funcionários, Como configurar o controle de ponto, Como criar contratos recorrentes, O que é o CRM e como usar, Como funciona o módulo de Estoque, Como exportar relatórios e Como alterar minha senha, cada uma com uma seta para expandir.">
+    <figcaption>Central de Ajuda aberta, com a lista de perguntas frequentes recolhida.</figcaption>
+  </figure>
+
+  <h3>Falar com o Suporte</h3>
+  <ul>
+    <li>Abre uma conversa no WhatsApp com a equipe da Dominex, em uma nova aba.</li>
+    <li>É o caminho para dúvida específica da sua empresa, erro que trava a operação e pedido de mudança de plano ou de segmento.</li>
+  </ul>
+
+  <h3>Domiflix, os tutoriais em vídeo</h3>
+  <p>O Domiflix é a área de treinamento em vídeo da Dominex, no formato de um serviço de streaming. Você chega nele por <span class="ui">Tutoriais | Domiflix</span> no cartão de perfil. O endereço antigo <code>/tutoriais</code> leva pro Domiflix automaticamente.</p>
+  <ul>
+    <li><span class="ui">Início</span>: a página principal, com o destaque em cima e as prateleiras de conteúdo embaixo.</li>
+    <li><span class="ui">Módulos</span>: as aulas completas, organizadas por área do sistema.</li>
+    <li><span class="ui">Lives</span>: as gravações de encontros ao vivo.</li>
+    <li><span class="ui">Minha Lista</span>: o que você marcou pra assistir depois. Você adiciona pelo botão <span class="ui">Minha lista</span> na capa do título, e ele passa a mostrar <span class="ui">Na lista</span>.</li>
+    <li><span class="ui">Continuar Assistindo</span>: a fila do que você começou e não terminou. O último título assistido aparece primeiro.</li>
+    <li><b>Busca</b>: a lupa no topo procura por nome do título, descrição, marcador e também pelo nome e pela descrição dos episódios. Precisa de pelo menos 2 letras.</li>
+    <li><span class="ui">Editar perfil Domiflix</span>: você escolhe um nome de exibição e um ícone só do Domiflix. Os dois avisos da tela são claros: a mudança de nome é exclusiva do Domiflix e não afeta o nome usado no sistema, e o ícone escolhido não substitui a sua foto no sistema. Existe também a opção <span class="ui">Minha foto</span>, que volta a usar a foto da sua conta.</li>
+    <li><span class="ui">Voltar ao sistema</span> devolve você pra Dominex.</li>
+  </ul>
+
+  <h3>Onde ver o que mudou no sistema</h3>
+  <p>No rodapé de qualquer tela aparece <span class="ui">Dominex v1.22.5 · Desenvolvido por Auctus</span>. Clicar no número da versão abre a tela de novidades, com a lista das melhorias, correções e recursos novos, em português e sem termo técnico. Ao lado do número existe um ícone de recarregar: ele limpa o cache do navegador e recarrega o sistema, e é a primeira coisa a tentar quando a tela parece "presa" numa versão antiga.</p>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Sumiu uma tela do meu menu"</td>
+        <td>Permissão de tela desligada pelo administrador, ou módulo que deixou de estar no plano</td>
+        <td>Pergunte se um colega administrador vê a tela. Se ele vê, o caminho é Configurações › Usuários e Permissões. Se ninguém vê, é módulo: confira em Assinatura.</td>
+      </tr>
+      <tr>
+        <td>"Não acho o PMOC no menu"</td>
+        <td>PMOC não tem menu próprio</td>
+        <td>PMOC é um tipo de contrato. O caminho é Gestão › Contratos e filtrar pelo tipo PMOC. Exige o módulo Gestão de Contratos e PMOC.</td>
+      </tr>
+      <tr>
+        <td>"Onde instalo o aplicativo da Dominex?"</td>
+        <td>Não existe convite de instalação dentro do sistema</td>
+        <td>A Dominex roda no navegador do celular. Se quiser um atalho na tela inicial, use a opção do próprio navegador. Não existe loja de aplicativos nem botão de instalar dentro do sistema.</td>
+      </tr>
+      <tr>
+        <td>"Meu cliente pede a senha do portal dele"</td>
+        <td>Expectativa de login que não existe</td>
+        <td>O cliente final não tem login nem senha. Reenvie o link do portal dele. O acesso é sempre por link.</td>
+      </tr>
+      <tr>
+        <td>"O sistema está estranho / não atualizou"</td>
+        <td>Versão antiga guardada no navegador</td>
+        <td>Peça pra clicar no ícone de recarregar ao lado de "Dominex v1.22.5" no rodapé. Ele limpa o cache e recarrega. No celular, puxar a tela pra baixo também recarrega.</td>
+      </tr>
+      <tr>
+        <td>"Entrei e caí numa tela diferente da do meu colega"</td>
+        <td>Cada usuário cai na primeira tela que tem permissão</td>
+        <td>É o comportamento correto. Quem tem Agenda liberada cai na Agenda, quem tem Dashboard cai no Dashboard. Pra mudar, ajuste as permissões.</td>
+      </tr>
+      <tr>
+        <td>"Aparece Módulo não disponível quando clico"</td>
+        <td>Módulo pago fora do plano atual</td>
+        <td>É o portão de plano. O botão Adicionar módulo abre o montador de plano com o módulo já marcado. O valor entra na próxima cobrança.</td>
+      </tr>
+      <tr>
+        <td>"Mudei meu nome no Domiflix e o sistema não mudou"</td>
+        <td>Comportamento esperado</td>
+        <td>O nome e o ícone do Domiflix são exclusivos da área de vídeo. Para mudar o nome do sistema, use Perfil.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Preciso instalar alguma coisa pra usar a Dominex?</dt>
+    <dd>Não. É tudo pelo navegador, no computador e no celular. Não existe programa pra baixar.</dd>
+
+    <dt>Por que meu técnico vê menos coisas que eu?</dt>
+    <dd>Porque o menu respeita a permissão de cada usuário. É proposital: o técnico vê o que precisa pra trabalhar, e o financeiro fica fora do alcance dele.</dd>
+
+    <dt>Qual a diferença entre módulo e permissão?</dt>
+    <dd>Módulo é o que a empresa paga, vale pra todo mundo. Permissão é o que o administrador libera pra cada pessoa. Sem módulo, ninguém vê. Com módulo e sem permissão, só quem foi liberado vê.</dd>
+
+    <dt>Onde eu mudo o menu de lateral pra superior?</dt>
+    <dd>Em Configurações › Aparência › Estilo de Navegação (Desktop). Vale só no computador.</dd>
+
+    <dt>O que é a Área do Técnico™?</dt>
+    <dd>É um conjunto de ferramentas de apoio do ramo, como cálculos e tabelas. Ela aparece conforme o segmento da empresa, e hoje só o segmento Refrigeração e Climatização tem ferramentas cadastradas.</dd>
+
+    <dt>Meu cliente consegue ver o sistema todo pelo link?</dt>
+    <dd>Não. O link público mostra só aquilo: a OS dele, o portal dele, o orçamento dele. Ele não navega pro resto do sistema nem vê outros clientes.</dd>
+
+    <dt>O que é aquele "/admin" que às vezes aparece em conversa com o suporte?</dt>
+    <dd>É o painel interno da própria Dominex, usado pela nossa equipe. Não faz parte do que a sua empresa contrata e nenhum usuário de cliente acessa.</dd>
+
+    <dt>Como sei se estou na versão mais nova?</dt>
+    <dd>O número da versão fica no rodapé de qualquer tela. Clicar nele abre a lista de novidades. O ícone ao lado recarrega o sistema limpando o cache.</dd>
+
+    <dt>Posso trocar de conta sem sair do sistema?</dt>
+    <dd>Sim. No fundo do menu do seu perfil existe um cartão de troca de conta, que lista as contas já usadas naquele navegador.</dd>
+
+    <dt>Existe uma busca única que procura em tudo?</dt>
+    <dd>Não. Cada tela tem a própria busca (clientes, OS, orçamentos, usuários). Não existe uma caixa única de busca global.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> menu, barra lateral, painel, tela inicial, aba, área do técnico, app do técnico, link do cliente, plano, módulo, permissão, cargo, treinamento, tutoriais, vídeos, ajuda, suporte
+  </div>
+</section>

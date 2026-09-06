@@ -1,0 +1,39 @@
+{
+  "secao": "T10",
+  "prints": [
+    {
+      "id": "t10-nova-oportunidade",
+      "url": "/crm",
+      "legenda": "Janela Nova Oportunidade com os campos Título, Cliente, Vendedor Responsável, Origem, Estágio, Valor Estimado, Probabilidade, Previsão Fechamento e Observações, sem nada preenchido.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Nova Oportunidade" },
+        { "esperar": 1800 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-gerenciar-estagios",
+      "url": "/crm",
+      "legenda": "Janela Gerenciar Estágios do Pipeline com o bloco Novo Estágio (nome e cor) e a lista de estágios com as marcações de ganho e perdido.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "[title=\"Gerenciar estágios\"]" },
+        { "esperar": 1800 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-webhooks",
+      "url": "/crm",
+      "legenda": "Janela Webhooks de Leads Externos com o bloco Criar novo webhook (Nome e Origem padrão) e a documentação dos campos obrigatórios e opcionais. Censurar o código secreto de qualquer URL exibida.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "[title=\"Configurar webhooks\"]" },
+        { "esperar": 1800 },
+        { "rolarAte": "Como usar o webhook", "opcional": true }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}

@@ -1,0 +1,640 @@
+<section class="tutorial" id="t11">
+  <h1><span class="tcode">T11</span> Contratos e PMOC</h1>
+
+  <p class="lead">Receita recorrente e conformidade legal no mesmo lugar. É aqui que você transforma cliente avulso em contrato mensal, programa todas as visitas do ano de uma vez e emite os documentos que a Lei Federal 13.589/2018 exige de quem faz manutenção de climatização.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu lateral → Contratos. As configurações de documentos e os Responsáveis Técnicos ficam em Contratos → botão <b>Configurações de Contrato</b>.</span>
+    <span><b>Rotas:</b> <code>/contratos</code>, <code>/contratos/:id</code>, <code>/configuracoes-contrato</code>. O portal público da unidade fica em <code>/contrato/unidade/:token</code>.</span>
+    <span><b>Depende de:</b> T3 (Clientes e Equipamentos), T4 (Serviços, tarefas e checklists), T10 (CRM)</span>
+    <span><b>Quem enxerga:</b> quem tem a tela <b>Contratos</b> (<code>screen:contracts</code>) liberada no cargo <b>e</b> cuja empresa tem o módulo de contratos contratado.</span>
+  </div>
+
+  <h2>1. Onde fica o PMOC hoje: não tem menu próprio, é um tipo de contrato</h2>
+
+  <p>PMOC quer dizer Plano de Manutenção, Operação e Controle. É a exigência da Lei Federal 13.589/2018 para quem opera sistemas de climatização: existe um plano escrito, um Responsável Técnico que assina, um cronograma de manutenção e um conjunto de documentos que precisa estar disponível na unidade.</p>
+
+  <div class="perigo">
+    <b>Não existe menu PMOC na Dominex, e não existe tela de PMOC separada.</b> Se alguém procurar "PMOC" no menu lateral, não vai achar. O PMOC é um <b>tipo de contrato</b>. O caminho certo é: <b>Menu → Contratos</b>, e depois usar o filtro <span class="ui">Tipo</span> marcando <span class="ui">PMOC</span>. Endereços antigos que apontavam para uma tela de PMOC redirecionam sozinhos para a lista de contratos já filtrada, então link salvo não quebra, mas o caminho que você deve ensinar é sempre Contratos.
+  </div>
+
+  <p>Na prática, existem dois tipos de contrato no mesmo lugar:</p>
+  <ul>
+    <li><b>Contrato comum</b>: qualquer serviço recorrente. Limpeza de caixa d'água trimestral, dedetização semestral, manutenção de elevador mensal, monitoramento de CFTV. Gera visitas programadas e cobrança, e pronto.</li>
+    <li><b>Contrato PMOC</b>: tudo do contrato comum, mais a estrutura da norma. Ganha Responsável Técnico, identificação da unidade, ambientes climatizados, rotina por máquina, cronograma anual, quatro documentos regulatórios, portal público com QR Code e o selo "Conforme Lei Federal 13.589/2018" nas ordens de serviço.</li>
+  </ul>
+
+  <p>A chave que decide isso é a pergunta <span class="ui">É um contrato PMOC?</span>, na primeira etapa do cadastro. Ela pode ser ligada e desligada depois, com aviso.</p>
+
+  <div class="regra">
+    <b>O módulo de contratos é pago.</b> Sem ele contratado, o item <span class="ui">Contratos</span> não abre e a tela mostra o convite de contratar o módulo. Sem contratos, o cliente continua trabalhando com ordens de serviço avulsas e orçamentos normalmente, só não tem recorrência programada, cronograma nem documentos PMOC. Também não aparece a aba <span class="ui">Contratos</span> com conteúdo dentro da ficha do cliente, nem o portal da unidade.
+  </div>
+
+  <h2>2. Tela Contratos: indicadores, filtros de status, saúde e tipo</h2>
+
+  <figure>
+    <img src="img/t11-contratos.png" alt="Tela Contratos da Dominex com a busca, o botão de filtros e a tabela de contratos. A coluna Contrato traz nomes como PMOC - Clínica Vida & Saúde e Preventiva Trimestral - Condomínio Jardim das Flores (contratos PMOC com o selo PMOC ao lado do nome), a coluna Cliente mostra o cliente vinculado a cada um (Clínica Vida & Saúde, Condomínio Jardim das Flores, Restaurante Sabor Carioca), e as colunas Frequência e Saúde trazem os selos Mensal/Trimestral/Semestral e Em dia/Manutenção Pendente/Atenção.">
+    <figcaption>Tela Contratos: busca, filtros e a lista de contratos com o nome do contrato, o cliente vinculado e o semáforo de saúde.</figcaption>
+  </figure>
+
+  <h3>Os quatro indicadores</h3>
+  <table class="dados">
+    <thead><tr><th>Indicador</th><th>O que conta exatamente</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Contratos Ativos</span></td><td>Contratos com situação Ativo. Pausados, cancelados e expirados ficam de fora.</td></tr>
+      <tr><td><span class="ui">OSs Geradas (mês)</span></td><td>Visitas de contrato agendadas para o mês corrente, de todos os contratos.</td></tr>
+      <tr><td><span class="ui">Próximas 7 dias</span></td><td>Visitas que ainda vão acontecer (não concluídas nem canceladas) com data nos próximos 7 dias.</td></tr>
+      <tr><td><span class="ui">Vencendo em 30d</span></td><td>Contratos ativos cuja ÚLTIMA visita programada cai dentro dos próximos 30 dias. É o alerta de "vai acabar a agenda desse contrato, hora de renovar".</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Busca e filtros</h3>
+  <figure>
+    <img src="img/t11-filtros-contratos.png" alt="Painel Filtros da tela Contratos, com o grupo Status (Ativo, Pausado, Cancelado, Expirado, cada um com uma bolinha colorida), o grupo Saúde (Em dia, Manutenção Pendente, ATENÇÃO) e o grupo Tipo (PMOC, Comum não-PMOC), cada grupo com o texto Vazio = todos, e os botões Limpar filtros e Aplicar no rodapé.">
+    <figcaption>Painel de filtros da tela Contratos: os três grupos Status, Saúde e Tipo.</figcaption>
+  </figure>
+  <p>A busca procura por <b>nome do contrato</b> e por <b>nome do cliente</b>. O botão <span class="ui">Filtros</span> abre três filtros, todos de múltipla escolha, onde nada marcado significa "mostrar tudo":</p>
+  <ul>
+    <li><span class="ui">Status</span>: <span class="ui">Ativo</span>, <span class="ui">Pausado</span>, <span class="ui">Cancelado</span>, <span class="ui">Expirado</span>.</li>
+    <li><span class="ui">Saúde</span>: <span class="ui">Em dia</span>, <span class="ui">Manutenção Pendente</span>, <span class="ui">ATENÇÃO</span>.</li>
+    <li><span class="ui">Tipo</span>: <span class="ui">PMOC</span> ou <span class="ui">Comum (não-PMOC)</span>.</li>
+  </ul>
+  <p>Quando você marca só um tipo, o endereço da página passa a carregar esse filtro, então dá para salvar nos favoritos um link que já abre só os PMOC.</p>
+
+  <h3>O semáforo de saúde, regra exata</h3>
+  <div class="regra">
+    A saúde do contrato conta quantas visitas dele estão <b>atrasadas</b>, ou seja, com data anterior a hoje e ainda não concluídas nem canceladas. A regra é:
+    <ul>
+      <li><b>Nenhuma atrasada</b> = <span class="ui">Em dia</span> (verde).</li>
+      <li><b>Exatamente uma atrasada</b> = <span class="ui">Manutenção Pendente</span> (laranja).</li>
+      <li><b>Duas ou mais atrasadas</b> = <span class="ui">ATENÇÃO</span> (vermelho).</li>
+    </ul>
+    Não é opinião do sistema nem cálculo de risco: é só contagem de visita vencida em aberto. Concluir ou cancelar a visita atrasada faz o semáforo voltar ao verde na hora.
+  </div>
+
+  <!-- INCERTO: o editor de permissões lista a permissão "Gerenciar Contratos" (fn:manage_contracts), mas nenhuma tela do app consulta essa chave hoje. Na prática quem abre a tela Contratos consegue criar, editar e excluir. Confirmar com o Tech Lead se a permissão deve gatear os botões antes de documentar isso como controle de acesso. -->
+  <h3>Colunas e ações da lista</h3>
+  <p>No computador a tabela traz <span class="ui">Status</span>, <span class="ui">Contrato</span>, <span class="ui">Cliente</span>, <span class="ui">Frequência</span>, <span class="ui">Saúde</span>, <span class="ui">Próxima OS</span>, <span class="ui">Itens</span> e <span class="ui">Ações</span>. Contratos PMOC exibem um ícone de vento ao lado do nome. Contrato prestes a acabar ganha o selo <span class="ui">Acabando</span>.</p>
+  <p>O menu de ações de cada linha tem <span class="ui">Visualizar</span>, <span class="ui">Pausar</span> ou <span class="ui">Retomar</span>, <span class="ui">Editar</span> e <span class="ui">Excluir</span>.</p>
+
+  <div class="aviso">
+    <b>Pausar e retomar existem SÓ na lista.</b> Dentro do contrato aberto não há botão de pausar. Se o cliente perguntar "onde pauso esse contrato", a resposta é: volte para a lista <span class="ui">Contratos</span> e use o menu de três pontinhos da linha. Contrato pausado para de gerar visitas novas; as que já foram geradas continuam na agenda.
+  </div>
+
+  <h2>3. Wizard do contrato comum (5 etapas) × wizard PMOC (6 etapas)</h2>
+
+  <p>O botão <span class="ui">Novo Contrato</span> abre um assistente em etapas, com a trilha numerada no topo. O número de etapas muda conforme a chave PMOC:</p>
+
+  <table class="dados">
+    <thead><tr><th>Contrato comum (5 etapas)</th><th>Contrato PMOC (6 etapas)</th></tr></thead>
+    <tbody>
+      <tr><td>1. <span class="ui">Identificação</span></td><td>1. <span class="ui">Identificação</span></td></tr>
+      <tr><td>2. <span class="ui">Ambientes e Equipamentos</span></td><td>2. <span class="ui">Unidade &amp; RT</span></td></tr>
+      <tr><td>3. <span class="ui">Frequência</span></td><td>3. <span class="ui">Ambientes e Equipamentos</span></td></tr>
+      <tr><td>4. <span class="ui">Equipe &amp; Cobrança</span></td><td>4. <span class="ui">Frequência</span></td></tr>
+      <tr><td>5. <span class="ui">Revisão</span></td><td>5. <span class="ui">Equipe &amp; Cobrança</span></td></tr>
+      <tr><td></td><td>6. <span class="ui">Revisão</span></td></tr>
+    </tbody>
+  </table>
+  <p>A diferença é exatamente uma etapa: <span class="ui">Unidade &amp; RT</span>, que só existe no PMOC. Os botões de navegação no rodapé são <span class="ui">Cancelar</span>, <span class="ui">Voltar</span>, <span class="ui">Próximo</span> e, na última etapa, <span class="ui">Criar Contrato</span> (ou <span class="ui">Salvar Alterações</span> em edição).</p>
+
+  <h3>Etapa 1, Identificação</h3>
+  <figure>
+    <img src="img/t11-novo-contrato-identificacao.png" alt="Assistente Novo Contrato na etapa 1 de 5, Identificação, com a trilha de etapas no topo (Identificação, Ambientes e Equipamentos, Frequência, Equipe & Cobrança, Revisão), o campo Nome do Contrato com o exemplo Ex: Manutenção Preventiva Mensal — Empresa X, o seletor Cliente com Selecione o cliente, e a chave desligada É um contrato PMOC? com a explicação sobre vincular Responsável Técnico e gerar OSs com selo de conformidade legal.">
+    <figcaption>Assistente Novo Contrato na etapa Identificação, com a trilha de 5 etapas e a chave É um contrato PMOC?.</figcaption>
+  </figure>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome do Contrato *</span></td><td>Sim</td><td>A tela sugere o formato "Manutenção Preventiva Mensal, Empresa X". A dica embaixo diz "Dê um nome claro que identifique este contrato".</td></tr>
+      <tr><td><span class="ui">Cliente *</span></td><td>Sim</td><td>Lista com busca. Também dá para cadastrar um cliente novo na hora, sem sair do assistente.</td></tr>
+      <tr><td><span class="ui">É um contrato PMOC?</span></td><td>Não</td><td>Chave liga e desliga. O texto explica: "Plano de Manutenção, Operação e Controle. Ative para vincular um Responsável Técnico e gerar OSs com selo de conformidade legal."</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ligar e desligar o PMOC de um contrato que já existe</h3>
+  <p>Ao <b>ligar</b> num contrato existente, aparece a confirmação <span class="ui">Transformar em contrato PMOC?</span>, listando o que é habilitado: os passos Unidade e RT, o escopo e a rotina por máquina com os padrões da norma, e o selo da lei com os documentos e a Planilha PMOC.</p>
+  <p>Ao <b>desligar</b>, aparece <span class="ui">Desligar PMOC deste contrato?</span> avisando que o contrato perde os passos Unidade e RT com o Responsável Técnico vinculado, perde o escopo e a rotina por máquina da norma (cada equipamento volta ao checklist comum), e perde o selo da lei, ficando os documentos e a Planilha PMOC sem sentido para aquele contrato. O texto fecha dizendo que as próximas visitas passam a usar o checklist comum, que as ordens de serviço já geradas não mudam e que dá para reativar o PMOC depois.</p>
+
+  <h2>4. Etapa Unidade (só PMOC): ambientes e equipamentos por ambiente</h2>
+
+  <p>Esta etapa só aparece com a chave PMOC ligada. Ela responde duas perguntas que a norma faz: <b>quem é o responsável técnico</b> e <b>qual é exatamente o local climatizado</b>.</p>
+
+  <h3>Responsável Técnico (RT)</h3>
+  <figure>
+    <img src="img/t11-wizard-pmoc-unidade.png" alt="Assistente Novo Contrato com a chave PMOC ligada, agora com 6 etapas na trilha (Identificação concluída, e a etapa 2 de 6, Unidade & RT, em destaque, seguida de Ambientes e Equipamentos, Frequência, Equipe & Cobrança e Revisão). Mostra o seletor Responsável Técnico (RT) com Sem RT atribuído e o botão de mais (+), e o bloco Identificação da Unidade com os campos Nome da unidade / local, Endereço (logradouro), Número, Complemento, Bairro, CEP, Cidade e UF.">
+    <figcaption>Etapa Unidade & RT do assistente PMOC, com o seletor de Responsável Técnico e o bloco Identificação da Unidade.</figcaption>
+  </figure>
+  <p>É um seletor com os Responsáveis Técnicos ativos da empresa, mais um botão de mais (+) que abre o cadastro rápido sem sair do assistente. O texto de ajuda diz: "Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018. Diferente do Técnico Executor (quem executa as OSs no campo)."</p>
+
+  <div class="aviso">
+    <b>Responsável Técnico e Técnico Executor são pessoas diferentes e papéis diferentes.</b> O RT é quem assina os documentos da norma, com registro no conselho profissional. O Técnico Executor é quem vai até o local fazer a manutenção. Podem ser a mesma pessoa na prática, mas no sistema são campos separados, em etapas diferentes do assistente.
+  </div>
+
+  <p>Salvar um contrato PMOC sem RT é permitido, mas o sistema avisa com <span class="ui">Sem Responsável Técnico (RT) definido</span> e a explicação "Recomendamos definir um RT antes de ativar PMOC. Você pode atribuir depois." Sem RT completo os documentos regulatórios não saem certos.</p>
+
+  <h3>Identificação da Unidade</h3>
+  <p>A explicação na tela: "Endereço do ambiente climatizado deste contrato (a loja/site). Pode ser diferente do endereço do cliente. Pré-preenchido a partir do cliente, ajuste se a unidade tiver endereço próprio."</p>
+  <p>Campos: <span class="ui">Nome da unidade / local</span> (exemplos sugeridos: Loja Centro, Galpão 2), <span class="ui">Endereço (logradouro)</span>, <span class="ui">Número</span>, <span class="ui">Complemento</span>, <span class="ui">Bairro</span>, <span class="ui">CEP</span>, <span class="ui">Cidade</span> e <span class="ui">UF</span>.</p>
+
+  <div class="dica">
+    É aqui que se resolve o caso do cliente com várias unidades. O cadastro do cliente tem um endereço só, mas cada contrato PMOC carrega o endereço da sua unidade. Cliente com três lojas vira três contratos PMOC, um por loja, todos apontando para o mesmo cliente. Cada um ganha o próprio cronograma, os próprios documentos e o próprio QR Code no quadro.
+  </div>
+
+  <h3>Ambientes e equipamentos por ambiente</h3>
+  <p>Na etapa <span class="ui">Ambientes e Equipamentos</span> (que existe nos dois tipos de contrato) você monta a estrutura física. Em PMOC ela se chama <span class="ui">Ambientes climatizados</span>; em contrato comum, apenas <span class="ui">Ambientes</span>.</p>
+  <p>Cada ambiente tem os campos:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Para que serve</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Identificação do ambiente</span></td><td>Exemplo sugerido: "2º andar, Sala 201".</td></tr>
+      <tr><td><span class="ui">Tipo de atividade</span> (PMOC) ou <span class="ui">Tipo / uso do ambiente</span> (comum)</td><td>Exemplo: "Escritório administrativo".</td></tr>
+      <tr><td><span class="ui">Área climatizada (m²)</span></td><td>Tem um botão <span class="ui">Calcular</span> que abre uma calculadora de área.</td></tr>
+      <tr><td><span class="ui">Carga térmica (TR)</span></td><td>A ajuda explica: "TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h."</td></tr>
+      <tr><td><span class="ui">Nº de ocupantes fixos</span></td><td>"Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local)."</td></tr>
+      <tr><td><span class="ui">Nº de ocupantes flutuantes</span></td><td>"Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes)."</td></tr>
+    </tbody>
+  </table>
+  <p>Dentro de cada ambiente fica a lista <span class="ui">Equipamentos deste ambiente</span>. Você adiciona equipamentos já cadastrados naquele cliente (com busca), cria um equipamento novo na hora, ou adiciona um <span class="ui">item manual</span>, que é um serviço sem equipamento associado (por exemplo "Limpeza de dutos"), com nome e descrição.</p>
+  <p>Equipamentos que ainda não foram colocados em nenhum ambiente ficam num grupo chamado <span class="ui">Sem ambiente</span>, com a explicação "Equipamentos deste contrato que ainda não estão em nenhum ambiente. Adicione a um ambiente ou remova do contrato."</p>
+
+  <h3>Escopo da norma e "Começa na visita", por máquina</h3>
+  <p>Só em PMOC, cada equipamento do ambiente ganha dois ajustes que definem a rotina dele:</p>
+  <ul>
+    <li><span class="ui">Escopo da norma</span>: <span class="ui">Expansão Direta</span> (Split, Cassete, Piso Teto, Hi-wall, Janela, ACJ) ou <span class="ui">Sistemas Centrais</span> (VRF, Chiller, Fan Coil, UTA, Self Contained). A escolha define quais seções da norma entram no checklist daquela máquina.</li>
+    <li><span class="ui">Começa na visita</span>: "Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal."</li>
+  </ul>
+  <p>Há ainda o botão <span class="ui">Checklists da Máquina</span>, que abre o catálogo de atividades da norma para aquele equipamento e permite ajustar item a item. É por aqui que o sistema sabe que a limpeza de filtro é mensal, a serpentina é trimestral e a revisão elétrica é anual, sem você precisar montar isso na mão.</p>
+
+  <div class="regra">
+    O padrão da norma vem ligado. Enquanto ele estiver ligado, as atividades ficam travadas para edição, com o aviso "Atividades do padrão travadas pela norma. Desligue o padrão PMOC para personalizar." Isso é proposital: PMOC é conformidade legal, e o caminho seguro é começar pelo padrão. Quem tem motivo para personalizar desliga o padrão de forma consciente.
+  </div>
+
+  <h2>5. Etapa Frequência: mensal, bimestral, trimestral, semestral, anual, ou por dias</h2>
+
+  <p>Esta etapa define <b>quando</b> as visitas acontecem e <b>por quanto tempo</b> o contrato roda.</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Tipo de Frequência</span></td><td>Duas opções: <span class="ui">A cada X meses</span> ou <span class="ui">A cada X dias</span>.</td></tr>
+      <tr><td><span class="ui">Atalhos rápidos</span> (meses)</td><td><span class="ui">Mensal</span> (1), <span class="ui">Bimestral</span> (2), <span class="ui">Trimestral</span> (3), <span class="ui">Semestral</span> (6), <span class="ui">Anual</span> (12).</td></tr>
+      <tr><td><span class="ui">Atalhos rápidos</span> (dias)</td><td><span class="ui">Semanal</span> (7), <span class="ui">Quinzenal</span> (15), <span class="ui">30 dias</span>, <span class="ui">45 dias</span>, <span class="ui">60 dias</span>, <span class="ui">90 dias</span>.</td></tr>
+      <tr><td><span class="ui">Intervalo (meses) *</span> ou <span class="ui">Intervalo (dias) *</span></td><td>Valor livre, para quando nenhum atalho serve.</td></tr>
+      <tr><td><span class="ui">Data de Início *</span></td><td>Começa preenchida com a data de hoje. É a data da primeira visita.</td></tr>
+      <tr><td><span class="ui">Horizonte (meses)</span></td><td>Por quantos meses o contrato gera visitas. O padrão é 12.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A prévia das visitas</h3>
+  <!-- PRINT FALTANDO: etapa Frequência do assistente com os atalhos rápidos e a Prévia das visitas em calendário. Exige avançar duas etapas do assistente preenchendo Nome e Cliente; capturar manualmente ou declarar com passos de preenchimento sem salvar. -->
+  <p>Logo abaixo aparece a <span class="ui">Prévia das visitas</span> com o calendário e a contagem de ocorrências. Dias com visita ficam marcados e a dica diz "Dias com visita agendada. Toque num dia para ver as atividades." Visita que cai em sábado ou domingo ganha o selo <span class="ui">Fim de semana</span>, e um aviso conta quantas ocorrências caem em fim de semana. Isso serve para você ajustar a data de início antes de criar, não depois.</p>
+
+  <div class="aviso">
+    <b>Cadência do PMOC.</b> A própria tela avisa: "A Lei 13.589/2018 recomenda visita mensal no PMOC, é o padrão e a escolha mais segura. Você pode personalizar a cadência (ex.: a cada 14 dias), ciente de que a norma pede mensal." Escolhendo qualquer coisa diferente de mensal, a tela mostra o alerta "Cadência personalizada selecionada, fora do mensal recomendado pela norma." O sistema não impede, mas registra a escolha na tela para você decidir com consciência. Se o cliente vai usar o PMOC como prova de conformidade, o caminho seguro é mensal.
+  </div>
+
+  <h3>Serviços com frequência própria</h3>
+  <p>Existe o bloco <span class="ui">Opções avançadas, serviços com frequência própria</span>: "Adicione serviços com frequências diferentes (ex: filtro mensal, serpentina trimestral). Quando houver serviços aqui, o sistema gera 1 visita por mês agrupando tudo que vence."</p>
+  <p>Ou seja, você não precisa de uma visita por serviço. O sistema junta tudo que vence naquele mês numa visita só. Cada atividade recebe um código de frequência: <span class="ui">Mensal</span>, <span class="ui">Trimestral</span>, <span class="ui">Semestral</span>, <span class="ui">Anual</span> ou <span class="ui">Eventual</span>.</p>
+
+  <div class="regra">
+    Atividade marcada como <span class="ui">Eventual</span> NÃO entra no cronograma automático. Se todas as atividades do plano forem eventuais, aparece o aviso "Só há serviços eventuais, nenhuma visita será agendada automaticamente" e o contrato é criado com zero visitas. Eventual serve para o que só acontece sob demanda.
+  </div>
+
+  <h2>6. Etapa Equipe e a revisão final — e as OS geradas de uma vez pro horizonte inteiro</h2>
+
+  <h3>Etapa Equipe &amp; Cobrança</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Técnicos Executores *</span></td><td>Sim</td><td>"Técnicos ou equipes que vão a campo executar as ordens de serviço deste contrato. Diferente do Responsável Técnico (RT) regulatório do PMOC." Pode ser um técnico ou uma equipe inteira.</td></tr>
+      <tr><td><span class="ui">Responsáveis Financeiros (Cobrança)</span></td><td>Não</td><td>Usuários que acompanham a cobrança daquele contrato.</td></tr>
+      <tr><td><span class="ui">Tipo de Serviço</span></td><td>Não</td><td>"Opcional. Escolher um tipo define a cor e o rótulo das OSs na agenda."</td></tr>
+      <tr><td><span class="ui">Checklist Padrão</span></td><td>Não</td><td>Aplica um checklist a todas as visitas. "Pode ser sobrescrito por item."</td></tr>
+      <tr><td><span class="ui">Observações (opcional)</span></td><td>Não</td><td>"Instruções gerais, condições do contrato..."</td></tr>
+      <tr><td><span class="ui">Contrato Ativo</span></td><td>Já vem ligado</td><td>"OSs só serão geradas para contratos ativos."</td></tr>
+    </tbody>
+  </table>
+  <p>Tentar salvar sem executor mostra <span class="ui">Sem responsável pela execução</span> com "Selecione ao menos 1 técnico ou equipe para executar o contrato.", e o assistente volta sozinho para esta etapa.</p>
+
+  <h3>Etapa Revisão</h3>
+  <p>A última etapa mostra a <span class="ui">Revisão do Contrato</span> em dois formatos ao mesmo tempo: uma <span class="ui">Ficha técnica</span> com rótulo e valor (Nome, Cliente, Frequência, Início, Horizonte, Visitas, Ambientes e Equipamentos, Status, Tipo, Responsável Técnico, Técnicos Executores) e uma narrativa escrita em português corrido, explicando o que vai acontecer. Em PMOC ela ainda detalha o <span class="ui">Plano por máquina</span> e <span class="ui">O que entra na primeira visita</span>.</p>
+
+  <div class="regra">
+    <b>As visitas são geradas de uma vez, no momento de criar o contrato.</b> Não existe robô rodando todo dia para criar a OS do dia seguinte. Ao clicar em <span class="ui">Criar Contrato</span>, o sistema calcula todas as visitas do horizonte configurado (12 meses por padrão) e cria TODAS as ordens de serviço na agenda de uma vez, já com data, técnico responsável, equipamentos e checklist de cada uma. Elas aparecem na agenda imediatamente, com as datas futuras.
+  </div>
+
+  <p>Ao terminar, aparece a confirmação no formato "Contrato PMOC criado com 12 OSs geradas na agenda". Se alguma visita falhar na criação, a mensagem muda para "Contrato criado com 10 de 12 OSs geradas na agenda", e o número que faltou é informado. Em contrato PMOC também aparece <span class="ui">Gerando documentos do contrato…</span> com "TRT, Certificado, Cronograma e Dossiê estão sendo criados em segundo plano."</p>
+
+  <div class="aviso">
+    Editar um contrato ativo mudando data de início, frequência, horizonte ou o plano de serviços dispara a pergunta <span class="ui">Recalcular visitas futuras?</span>. A explicação é clara: "visita(s) futura(s) não realizada(s) serão refeitas. Visitas já realizadas, em andamento ou a caminho são preservadas. Cobranças (financeiro) não são afetadas." Ou seja, o que o técnico já mexeu não é destruído, e o financeiro não é tocado.
+  </div>
+
+  <div class="perigo">
+    <b>Não existe conversão de orçamento em contrato.</b> Orçamento aprovado não vira contrato com um botão, e não há nenhum lugar em que se escolha "gerar contrato a partir deste orçamento". Contrato é sempre criado manualmente, em <span class="ui">Contratos</span> → <span class="ui">Novo Contrato</span>. Se você fechou um contrato a partir de uma proposta, o caminho é abrir o contrato do zero e usar a proposta só como referência para o valor e para o escopo. Orçamento converte em ordem de serviço, não em contrato.
+  </div>
+
+  <h2>7. Detalhe do contrato: as abas de contrato comum × as abas extras de PMOC</h2>
+
+  <p>Abrindo um contrato, a navegação lateral (pílulas no celular) muda conforme o tipo:</p>
+
+  <table class="dados">
+    <thead><tr><th>Aba</th><th>Contrato comum</th><th>Contrato PMOC</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Visão Geral</span></td><td>Sim</td><td>Sim</td></tr>
+      <tr><td><span class="ui">Ocorrências</span></td><td>Sim</td><td>Sim</td></tr>
+      <tr><td><span class="ui">Ambientes e Equipamentos</span></td><td>Sim</td><td>Sim</td></tr>
+      <tr><td><span class="ui">Histórico PMOC</span></td><td><b>Não</b></td><td>Sim</td></tr>
+      <tr><td><span class="ui">Financeiro</span></td><td>Sim</td><td>Sim</td></tr>
+      <tr><td><span class="ui">Documentos</span></td><td>Sim (só anexos)</td><td>Sim (anexos + os 4 documentos gerados)</td></tr>
+      <tr><td><span class="ui">Cronograma</span></td><td><b>Não</b></td><td>Sim</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso">
+    <b>Cronograma e Histórico PMOC existem SÓ em contrato PMOC.</b> Se o cliente reclamar que não acha o cronograma, a primeira pergunta é: esse contrato está com a chave PMOC ligada? Em contrato comum essas duas abas nem aparecem na lateral.
+  </div>
+
+  <h3>Visão Geral por dentro</h3>
+  <figure>
+    <img src="img/t11-contrato-visao-geral.png" alt="Detalhe do contrato PMOC - Clínica Vida & Saúde, aba Visão Geral. No topo, o nome do contrato repete o nome do cliente logo abaixo, com o selo Ativo e os botões Editar contrato e Excluir contrato. Abaixo, o aviso Contrato acabando. À esquerda, o bloco Informações com Cliente (Clínica Vida & Saúde), Frequência Mensal, Início 01/03/2026, Horizonte 12 meses e a Observação PMOC obrigatório para ambiente de saúde, e o começo do bloco Portal do Contrato com a chave Portal Público ligada. À direita, o bloco Resumo com os botões Renovar / Estender e Plano de Manutenção, e o bloco Progresso mostrando 2 de 2 concluídas (100%). A navegação lateral traz Visão Geral, Ocorrências, Ambientes e Equipamentos, Histórico PMOC, Financeiro, Documentos e Cronograma.">
+    <figcaption>Aba Visão Geral do contrato PMOC - Clínica Vida & Saúde: o cabeçalho repete o nome do cliente, e ao lado ficam os blocos Informações, Resumo e Progresso.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Informações</b>: Cliente, Frequência, Início, Horizonte e Observações.</li>
+    <li><b>Resumo</b>: Frequência, Início, Horizonte, Total de ocorrências e Próxima OS, com os botões <span class="ui">Renovar / Estender</span>, <span class="ui">Plano de Manutenção</span> e <span class="ui">Relatório de Visitas</span>.</li>
+    <li><b>Progresso</b>: quantas visitas já foram concluídas, no formato "8 de 12 concluídas (67%)".</li>
+    <li><b>Portal do Contrato</b>: o link público e o QR Code.</li>
+  </ul>
+  <p>Quando o contrato está acabando, aparece no topo o aviso <span class="ui">Contrato acabando</span> com "A última visita está chegando. Toque para renovar e gerar o próximo ciclo.", e clicar nele já abre a renovação.</p>
+
+  <h3>Aba Ocorrências</h3>
+  <p>Lista todas as visitas do contrato numa tabela com <span class="ui">#</span>, <span class="ui">Data</span>, <span class="ui">Dia</span>, <span class="ui">OS</span>, <span class="ui">Serviços</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>. Visita vencida ganha o selo <span class="ui">Atrasada</span>. Existe a ação <span class="ui">Pular (cancelar esta visita)</span>, que abre a confirmação <span class="ui">Cancelar esta visita?</span> com "A ordem de serviço desta visita será marcada como cancelada e não aparecerá mais como pendente. Você pode reativá-la depois pela tela da OS."</p>
+
+  <h2>8. Aba Cronograma (PMOC): verde/laranja/vermelho e o PDF anual</h2>
+
+  <p>A aba <span class="ui">Cronograma</span> mostra <span class="ui">Cronograma do contrato</span>, com "Visualize todas as manutenções desta unidade em formato calendário." É o mesmo calendário da agenda, filtrado só naquele contrato.</p>
+
+  <h3>As três cores, regra exata</h3>
+  <!-- PRINT FALTANDO: aba Cronograma de um contrato PMOC, com o calendário mostrando visitas em verde, laranja e vermelho e o botão Imprimir PDF Anual. Exige um contrato PMOC com visitas concluídas e atrasadas na conta demo. -->
+  <table class="dados">
+    <thead><tr><th>Cor</th><th>Quando</th></tr></thead>
+    <tbody>
+      <tr><td><b>Verde</b></td><td>A visita está <b>concluída</b>.</td></tr>
+      <tr><td><b>Vermelho</b></td><td>A visita tem data no passado, não está concluída e não está cancelada. É a manutenção atrasada.</td></tr>
+      <tr><td><b>Laranja</b></td><td>Todo o resto: agendada, pendente, a caminho, em andamento, pausada, ou cancelada com data futura. É a manutenção pendente.</td></tr>
+    </tbody>
+  </table>
+  <p>No computador, clicar num dia abre um painel lateral com as visitas daquele dia e o resumo de cada uma, com o atalho <span class="ui">Abrir OS em tela cheia</span>. No celular, clicar numa visita já leva direto para a ordem de serviço.</p>
+
+  <h3>Imprimir o PDF anual</h3>
+  <p>O botão <span class="ui">Imprimir PDF Anual</span> gera o cronograma anual em PDF e abre numa nova aba. Enquanto processa, o botão vira <span class="ui">Gerando…</span>. É o documento que fica no quadro da unidade e que o fiscal olha.</p>
+
+  <h3>Contrato sem nenhuma visita</h3>
+  <p>Se o contrato não tem nenhuma ordem de serviço vinculada, a aba mostra <span class="ui">Nenhuma OS encontrada para este contrato</span> com a explicação "Este contrato não tem ordens de serviço geradas. Você pode gerar agora todo o cronograma de uma vez, datas, técnico responsável e equipamentos do contrato serão respeitados." e o botão <span class="ui">Gerar OSs deste contrato agora</span>. É a ferramenta de recuperação para contrato antigo que ficou órfão.</p>
+
+  <h2>9. Aba Documentos: TRT, Certificado, Dossiê e Planilha — gerar, assinar e baixar</h2>
+
+  <p>São quatro documentos, todos em PDF:</p>
+  <table class="dados">
+    <thead><tr><th>Documento</th><th>O que é</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Termo de Responsabilidade Técnica</span> (TRT)</td><td>Onde o Responsável Técnico assume a responsabilidade pelo plano. Vira a página 2 do Dossiê e também sai como PDF individual. Tem prazo de validade.</td></tr>
+      <tr><td><span class="ui">Certificado de Conformidade</span></td><td>Página 3 do Dossiê, com o selo da Lei Federal 13.589/2018. Também sai individual e também tem validade.</td></tr>
+      <tr><td><span class="ui">Dossiê PMOC</span></td><td>"Documento completo: capa + Termo de Responsabilidade Técnica + Certificado de Conformidade + Cronograma Anual." A capa tem visual padrão Dominex e não é editável.</td></tr>
+      <tr><td><span class="ui">Planilha PMOC</span></td><td>"Identificação do ambiente, Responsável Técnico, relação dos equipamentos climatizados e o plano de manutenção com periodicidade (mensal, trimestral, semestral, anual) e mapa dos 12 meses."</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Antes de gerar: as pendências</h3>
+  <figure>
+    <img src="img/t11-contrato-documentos.png" alt="Aba Documentos do contrato PMOC - Clínica Vida & Saúde, com o cabeçalho trazendo o nome do contrato e os botões Editar contrato e Excluir contrato, a navegação lateral (Visão Geral, Ocorrências, Ambientes e Equipamentos, Histórico PMOC, Financeiro, Documentos selecionada, Cronograma), o alerta Dados faltando pra gerar documentos PMOC listando Razão social da empresa, CNPJ da empresa, Modalidade do RT, CFT/CREA do RT e Endereço do cliente, o interruptor Documentos no portal do cliente marcado Oculto, e os cards Dossiê PMOC (Não gerado) e Termo de Responsabilidade Técnica (Não gerado, com os botões Gerar TRT e Editar texto).">
+    <figcaption>Aba Documentos do contrato PMOC - Clínica Vida & Saúde: o alerta de dados faltando e os cards de cada documento, ainda não gerados.</figcaption>
+  </figure>
+  <div class="aviso">
+    <b>Os quatro documentos só saem certos se três blocos de dados estiverem completos.</b> Quando falta alguma coisa, a aba mostra no topo o alerta <span class="ui">Dados faltando pra gerar documentos PMOC</span> com "Cadastre os campos abaixo antes de gerar TRT/Dossiê pra que o PDF saia com os dados reais, e não com placeholder genérico." A lista traz link direto para o lugar de resolver. Os itens possíveis são:
+    <ul>
+      <li><b>Da empresa</b>: <span class="ui">Razão social da empresa</span> e <span class="ui">CNPJ da empresa</span>, resolvidos em Configurações, aba Empresa.</li>
+      <li><b>Do Responsável Técnico</b>: <span class="ui">Nome do Responsável Técnico</span>, <span class="ui">Modalidade do RT</span> e <span class="ui">CFT/CREA do RT</span>, resolvidos no cadastro de Responsáveis Técnicos.</li>
+      <li><b>Do cliente</b>: <span class="ui">Cliente vinculado ao contrato</span>, <span class="ui">CNPJ/CPF do cliente</span> e <span class="ui">Endereço do cliente</span>, resolvidos no cadastro do cliente.</li>
+    </ul>
+  </div>
+
+  <p>Se você tentar gerar mesmo assim, cada erro tem uma mensagem própria com atalho. As principais:</p>
+  <table class="dados">
+    <thead><tr><th>Mensagem</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">CNPJ da empresa não cadastrado</span></td><td>"O TRT exige CNPJ pela Lei 13.589/2018. Cadastre o CNPJ em Configurações → Empresa antes de gerar o documento."</td></tr>
+      <tr><td><span class="ui">Razão social da empresa não cadastrada</span></td><td>Cadastrar em Configurações, aba Empresa.</td></tr>
+      <tr><td><span class="ui">Responsável Técnico não atribuído</span></td><td>"Esse contrato PMOC precisa de um RT vinculado. Edite o contrato e selecione um Responsável Técnico na seção PMOC."</td></tr>
+      <tr><td><span class="ui">CFT/CREA do RT em branco</span></td><td>Editar o RT e preencher o registro profissional.</td></tr>
+      <tr><td><span class="ui">Modalidade do RT em branco</span></td><td>Editar o RT e preencher a modalidade (por exemplo Engenharia Mecânica, Refrigeração).</td></tr>
+      <tr><td><span class="ui">Endereço do cliente em branco</span></td><td>"O Certificado de Conformidade exige endereço do cliente. Edite o cadastro do cliente e preencha o endereço antes de gerar."</td></tr>
+      <tr><td><span class="ui">Contrato não é PMOC</span></td><td>Editar o contrato e ligar a chave PMOC.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Gerar, versionar e baixar</h3>
+  <p>Cada documento tem o botão de gerar (<span class="ui">Gerar TRT</span>, <span class="ui">Gerar Certificado</span>, <span class="ui">Gerar Dossiê completo</span>, <span class="ui">Gerar Planilha PMOC</span>) e, depois de gerado, o botão de baixar e o de <span class="ui">Gerar nova versão</span>. O bloco <span class="ui">Histórico de versões</span> guarda todas as versões emitidas, cada uma com data e botão <span class="ui">Baixar</span>.</p>
+  <p>O sistema não regera à toa: se nada mudou desde a última geração, a mensagem é <span class="ui">PDF já estava atualizado</span> com "Os dados não mudaram desde a última versão. Usando a versão atual." Quando gera de verdade, aparece <span class="ui">Dossiê PMOC gerado!</span> e "Versão 3 criada com sucesso."</p>
+
+  <h3>Assinatura do Responsável Técnico</h3>
+  <p>Os selos de cada documento são <span class="ui">Assinado</span>, <span class="ui">Sem assinatura</span> e <span class="ui">Não gerado</span>. Quando o RT não tem assinatura cadastrada, aparece o aviso <span class="ui">Assinatura do RT pendente</span>: "O RT não tem assinatura cadastrada. Os PDFs (TRT e Dossiê) foram gerados com linha em branco pra assinar à mão. Cadastre a assinatura agora pra o PDF ser regerado automaticamente." O botão é <span class="ui">Adicionar assinatura agora</span>.</p>
+
+  <div class="perigo">
+    <b>Não existe assinatura eletrônica de contrato dentro do produto.</b> A "assinatura" do Responsável Técnico é a imagem da assinatura dele, escaneada ou desenhada, que é <b>carimbada no PDF</b>. Isso não é assinatura digital com certificado, e não vale como assinatura eletrônica jurídica do contrato com o cliente. O contrato comercial com o cliente continua sendo assinado fora do sistema, e o arquivo assinado pode ser anexado na aba <span class="ui">Documentos</span>. A própria tela é honesta quanto a isso: sem imagem de assinatura, o PDF sai com <b>linha em branco para assinar à mão</b>.
+  </div>
+
+  <h3>Validade e vencimento</h3>
+  <p>TRT e Certificado têm data de validade, mostrada como <span class="ui">Válido até</span>. Quando um deles vence, a aba mostra no topo <span class="ui">Há documentos vencidos neste contrato.</span> com a instrução de gerar uma versão nova para renovar a validade. O prazo padrão de validade é configurado em Configurações de Contrato.</p>
+
+  <h3>Liberar os documentos no portal do cliente</h3>
+  <p>No topo da aba existe o interruptor <span class="ui">Documentos no portal do cliente</span>, com os estados <span class="ui">Liberado</span> e <span class="ui">Oculto</span>: "Quando liberado, o cliente vê os documentos (Dossiê, Termo, Certificado, Cronograma) no portal público da unidade."</p>
+
+  <div class="aviso">
+    Esse interruptor nasce <b>desligado</b>. Documento gerado NÃO aparece automaticamente para o cliente no portal. Se o cliente reclamar que "gerei o dossiê e o meu cliente não vê", quase sempre é isso: falta clicar em <span class="ui">Liberar documentos no portal do cliente</span> na aba Documentos daquele contrato.
+  </div>
+
+  <h3>Documentos anexados</h3>
+  <p>Além dos quatro gerados, existe a seção <span class="ui">Documentos anexados</span>, que vale para contrato PMOC e para contrato comum. Serve para o contrato assinado, laudos, fotos e qualquer arquivo relevante. Cada anexo pode ser baixado, renomeado (o campo é <span class="ui">Nome de exibição</span>) e excluído. Ao enviar, o sistema pergunta o nome de exibição antes. O mesmo interruptor de portal libera esses anexos para o cliente final.</p>
+
+  <h2>10. Responsáveis Técnicos: cadastro, CFT/CREA, assinatura e carimbo (Configurações de Contrato)</h2>
+
+  <div class="regra">
+    <b>Não existe tela própria de Responsáveis Técnicos no menu.</b> O cadastro vive em <b>Contratos → Configurações de Contrato → aba Responsáveis Técnicos</b>. Endereços antigos que apontavam para uma tela separada redirecionam para essa aba automaticamente, então links salvos e os atalhos das mensagens de erro continuam funcionando, mas o caminho a ensinar é sempre pelo botão <span class="ui">Configurações de Contrato</span>, no topo da tela de Contratos.
+  </div>
+
+  <figure>
+    <img src="img/t11-configuracoes-contrato.png" alt="Tela Configurações de Contrato da Dominex, com a navegação lateral mostrando as abas Documentos e Responsáveis Técnicos">
+    <figcaption>Configurações de Contrato: as abas Documentos e Responsáveis Técnicos.</figcaption>
+  </figure>
+
+  <p>A tela <span class="ui">Configurações de Contrato</span> tem o subtítulo "Documentos e responsáveis técnicos" e duas abas: <span class="ui">Documentos</span> e <span class="ui">Responsáveis Técnicos</span>.</p>
+
+  <h3>Aba Responsáveis Técnicos</h3>
+  <figure>
+    <img src="img/t11-responsaveis-tecnicos-lista.png" alt="Aba Responsáveis Técnicos, com o botão Novo Responsável no topo, os três contadores Total, Ativos e Inativos, o campo de busca Buscar responsável técnico, e a tabela com as colunas Nome, CFT/CREA, Modalidade, Registro, Contato, Status e Ações. A única linha cadastrada mostra traço nas colunas CFT/CREA, Modalidade, Registro e Contato (ainda não preenchidas) e o selo Ativo.">
+    <figcaption>Aba Responsáveis Técnicos: contadores Total/Ativos/Inativos e a tabela de cadastro.</figcaption>
+  </figure>
+  <p>Mostra "Cadastro regulatório PMOC (Lei 13.589/2018)" com os contadores <span class="ui">Total</span>, <span class="ui">Ativos</span> e <span class="ui">Inativos</span>, busca, filtro de situação e o botão <span class="ui">Novo Responsável</span>. A tabela traz <span class="ui">Nome</span>, <span class="ui">CFT/CREA</span>, <span class="ui">Modalidade</span>, <span class="ui">Registro</span>, <span class="ui">Contato</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>.</p>
+
+  <h3>Campos do Responsável Técnico</h3>
+  <figure>
+    <img src="img/t11-novo-responsavel-tecnico.png" alt="Janela Novo Responsável Técnico, com os campos Nome completo (exemplo Ex: João da Silva), CFT/CREA e Modalidade lado a lado, Número de registro (ART/TRT), Email e Telefone lado a lado, o bloco Assinatura digitalizada com as abas Enviar imagem (selecionada, com a área de upload PNG ou JPG até 2MB e a dica de fotografar a assinatura no papel) e Desenhar, e o campo Carimbo do responsável logo abaixo.">
+    <figcaption>Janela Novo Responsável Técnico: dados de identificação, registro profissional e a assinatura digitalizada.</figcaption>
+  </figure>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Exemplo que a tela sugere</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome completo</span></td><td>Sim</td><td>Ex: João da Silva</td></tr>
+      <tr><td><span class="ui">CFT/CREA</span></td><td>Não no cadastro, mas <b>exigido para gerar documento</b></td><td>Ex: CREA-SP 1234567</td></tr>
+      <tr><td><span class="ui">Modalidade</span></td><td>Não no cadastro, mas <b>exigida para gerar documento</b></td><td>Ex: Engenheiro Mecânico</td></tr>
+      <tr><td><span class="ui">Número de registro (ART/TRT)</span></td><td>Não</td><td>Ex: ART 1234567/2026</td></tr>
+      <tr><td><span class="ui">Email</span> e <span class="ui">Telefone</span></td><td>Não</td><td>Contato do profissional.</td></tr>
+      <tr><td><span class="ui">Assinatura digitalizada</span></td><td>Não</td><td>Duas abas: <span class="ui">Enviar imagem</span> ou <span class="ui">Desenhar</span>. PNG ou JPG, no máximo 2 MB.</td></tr>
+      <tr><td><span class="ui">Carimbo do responsável</span></td><td>Não</td><td>Imagem do carimbo profissional.</td></tr>
+      <tr><td><span class="ui">Observações</span></td><td>Não</td><td>Informações adicionais.</td></tr>
+      <tr><td><span class="ui">Cadastro ativo</span></td><td>Já vem ligado</td><td>"Quando inativo, este RT não aparece como opção em novos contratos."</td></tr>
+    </tbody>
+  </table>
+
+  <p>A dica na tela sobre a assinatura é direta: "Fotografe a assinatura no papel e envie. Mais aceito juridicamente." Ou seja, entre desenhar com o dedo e fotografar a assinatura em papel, o sistema recomenda fotografar.</p>
+  <p>Mensagens possíveis: <span class="ui">Nome obrigatório</span> com "Informe o nome completo do responsável técnico.", <span class="ui">Imagem rejeitada</span> com "Formato inválido. Use PNG ou JPG." ou "Imagem muito grande. Máximo 2MB."</p>
+  <p>Inativar um RT abre <span class="ui">Inativar responsável técnico?</span>: "Este RT não aparecerá mais como opção em novos contratos. Contratos existentes com este RT vinculado não serão alterados."</p>
+
+  <h3>Aba Documentos das Configurações de Contrato</h3>
+  <figure>
+    <img src="img/t11-configuracoes-contrato-documentos.png" alt="Aba Documentos das Configurações de Contrato, com o título Modelos padrão de documentos PMOC e a explicação de que editar aqui não altera contratos já existentes. Dois cards lado a lado: Termo de Responsabilidade Técnica (Página 2 do Dossiê PMOC) e Certificado de Conformidade (Página 3 do Dossiê PMOC, Lei 13.589/2018), cada um com o texto padrão e o link Editar texto. Abaixo, o bloco Validade dos documentos com os campos Validade do TRT (meses) e Validade do Certificado (meses), ambos com 12.">
+    <figcaption>Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do Certificado de Conformidade, e a validade dos documentos em meses.</figcaption>
+  </figure>
+  <p>É onde ficam os <span class="ui">Modelos padrão de documentos PMOC</span>: "Modelos usados como ponto de partida ao criar um novo contrato PMOC. Editar aqui não altera contratos já existentes." Há um modelo para o Termo de Responsabilidade Técnica e outro para o Certificado de Conformidade, cada um com <span class="ui">Editar texto</span> e <span class="ui">Restaurar texto padrão</span>. O editor aceita negrito, listas, links e variáveis (que aparecem como etiquetas e são substituídas pelos dados de cada contrato no PDF).</p>
+  <p>Abaixo fica <span class="ui">Validade dos documentos</span>: "Quantos meses cada documento gerado fica válido. A data de vencimento é calculada a partir da data de geração." Os campos são <span class="ui">Validade do TRT (meses)</span> e <span class="ui">Validade do Certificado (meses)</span>.</p>
+
+  <div class="dica">
+    Cada contrato também pode ter o texto do TRT e do Certificado personalizado só para ele, pela aba Documentos do próprio contrato, botão <span class="ui">Editar texto</span>. Lá existe o atalho <span class="ui">Puxar template padrão da empresa</span> para trazer o modelo que você configurou aqui.
+  </div>
+
+  <h2>11. Aba Financeiro do contrato: cobrança única ou parcelada, marcar paga, aplicar em massa</h2>
+
+  <p>A aba <span class="ui">Financeiro</span> do contrato mostra quatro indicadores no topo: <span class="ui">Previsto</span>, <span class="ui">Recebido</span>, <span class="ui">Pendente</span> e <span class="ui">Atrasado</span>. Abaixo fica o bloco <span class="ui">Contas a Receber</span> com todas as parcelas do contrato.</p>
+
+  <h3>Criar a cobrança do contrato</h3>
+  <figure>
+    <img src="img/t11-contrato-nova-receita.png" alt="Janela Nova Conta a Receber, com o campo Descrição já pré-preenchido com Mensalidade - PMOC - Clínica Vida & Saúde (sugerido a partir do nome do contrato), o campo Valor (R$) com 0,00, o seletor Conta bancária / caixa com Selecione a conta de recebimento, o seletor Categoria, o campo Data de Vencimento (1ª parcela) e o seletor Recorrência com Única selecionado. O botão do rodapé está desabilitado, escrito Criar Conta a Receber.">
+    <figcaption>Janela Nova Conta a Receber da aba Financeiro do contrato: a Descrição já vem como "Mensalidade - PMOC - Clínica Vida & Saúde", puxada do nome do contrato.</figcaption>
+  </figure>
+  <p>O botão <span class="ui">Nova Receita</span> abre <span class="ui">Nova Conta a Receber</span> com estes campos:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Descrição</span></td><td>Vem sugerido com o prefixo "Mensalidade". Exemplo na tela: "Ex: Mensalidade Março".</td></tr>
+      <tr><td><span class="ui">Valor (R$)</span></td><td>O valor de cada parcela.</td></tr>
+      <tr><td><span class="ui">Conta bancária / caixa</span></td><td>"Conta para onde o dinheiro vai. Aplicada a todas as parcelas."</td></tr>
+      <tr><td><span class="ui">Categoria</span></td><td>Categoria financeira da receita.</td></tr>
+      <tr><td><span class="ui">Data de Vencimento (1ª parcela)</span></td><td>Data da primeira cobrança.</td></tr>
+      <tr><td><span class="ui">Recorrência</span></td><td><span class="ui">Única</span>, <span class="ui">Mensal</span>, <span class="ui">Bimestral</span>, <span class="ui">Trimestral</span>, <span class="ui">Semestral</span> ou <span class="ui">Anual</span>.</td></tr>
+      <tr><td><span class="ui">Quantidade de parcelas</span></td><td>Quantas cobranças criar de uma vez.</td></tr>
+    </tbody>
+  </table>
+  <p>O botão final vira <span class="ui">Criar 12 Parcelas</span> quando há recorrência, ou <span class="ui">Criar Conta a Receber</span> quando é única.</p>
+
+  <div class="regra">
+    A cobrança do contrato é criada <b>separada</b> das visitas. Definir a frequência das visitas não cria a cobrança sozinho: são duas coisas independentes, no mesmo contrato. Um contrato pode ter 12 visitas mensais e uma cobrança anual única, ou 4 visitas trimestrais e 12 parcelas mensais.
+  </div>
+
+  <h3>Marcar como paga e editar</h3>
+  <p>Cada parcela tem os selos <span class="ui">Pago</span>, <span class="ui">Pendente</span> e <span class="ui">Atrasado</span>, e três ações rápidas: <span class="ui">Marcar como pago</span>, <span class="ui">Editar</span> e <span class="ui">Excluir</span>. Ao editar uma parcela, o sistema pergunta <span class="ui">Aplicar alterações</span>: "Deseja alterar apenas esta conta ou todas as contas pendentes vinculadas a este contrato?", com os botões <span class="ui">Somente esta</span> e <span class="ui">Todas pendentes</span>.</p>
+
+  <h3>Aplicar a todas</h3>
+  <p>O botão <span class="ui">Aplicar a todas</span> resolve contratos antigos cujas parcelas nasceram sem conta bancária ou sem categoria. A janela explica: "Define a conta bancária e/ou categoria em <b>todas as parcelas</b> deste contrato de uma vez. Deixe um campo em branco para não alterá-lo." A confirmação diz quantas parcelas foram atualizadas.</p>
+
+  <h3>Mostrar a cobrança na agenda</h3>
+  <p>Existe a chave <span class="ui">Agenda</span> no bloco de contas a receber. Ligada, os vencimentos do contrato aparecem como alerta na agenda. As confirmações são <span class="ui">Cobranças visíveis na agenda</span> e <span class="ui">Cobranças ocultas da agenda</span>.</p>
+
+  <h2>12. Portal do Contrato/PMOC: link e QR Code pro cliente</h2>
+
+  <p>Todo contrato tem uma página pública própria, no bloco <span class="ui">Portal do Contrato</span> da aba Visão Geral: "Página pública deste contrato para o cliente final. Aparece no QR Code colado no quadro físico." O endereço segue o formato <code>dominex.app/contrato/unidade/pmoc-&lt;nome-do-cliente&gt;-&lt;código&gt;</code>, por exemplo <code>dominex.app/contrato/unidade/pmoc-clinica-vida-saude-b5kka5f52rsa</code>: é esse link, sem login nenhum, que abre direto no celular de quem escaneia o QR Code colado no quadro da unidade.</p>
+
+  <h3>Os quatro controles</h3>
+  <figure>
+    <img src="img/t11-portal-do-contrato.png" alt="Bloco Portal do Contrato na aba Visão Geral, com a explicação Página pública deste contrato para o cliente final, a chave Portal Público ligada com o texto Qualquer pessoa com o link vê o portal (somente leitura), o campo com o endereço completo do portal (https://www.dominex.app/contrato/unidade/pmoc-clinica-vida-saude-b5kka5f52rsa), o QR Code inteiro gerado logo abaixo e os botões Copiar link e Imprimir QR Code.">
+    <figcaption>Bloco Portal do Contrato: a chave Portal Público, o endereço completo no formato dominex.app/contrato/unidade/pmoc-&lt;cliente&gt;-&lt;código&gt; e o QR Code pronto para colar na unidade.</figcaption>
+  </figure>
+  <ul>
+    <li><span class="ui">Portal Público</span>: a chave que decide se qualquer pessoa com o link vê o portal (somente leitura) ou se o link exige login da sua empresa. Ligada, aparece <span class="ui">Portal público ativado</span>; desligada, <span class="ui">Portal agora exige login</span>.</li>
+    <li><span class="ui">Copiar link</span>: copia o endereço, com a confirmação <span class="ui">Link copiado</span> e "Cole onde quiser compartilhar."</li>
+    <li><span class="ui">Imprimir QR Code</span>: baixa um PDF com o QR Code pronto para imprimir e colar no quadro da unidade.</li>
+    <li><span class="ui">Regenerar token</span>: troca o endereço do portal.</li>
+  </ul>
+
+  <div class="perigo">
+    <b>Regenerar o token invalida todo QR Code já impresso deste contrato.</b> A própria confirmação avisa: "Isso invalida QR Codes já impressos deste contrato. Clientes que escanearem o QR antigo verão página de erro." e "Você precisará imprimir e colar um QR Code novo no quadro físico da unidade." Só use se o link vazou para quem não devia ver. Depois de regenerar, imprima e troque o adesivo na unidade no mesmo dia.
+  </div>
+
+  <h3>O que o cliente vê no portal da unidade</h3>
+  <!-- PRINT FALTANDO: portal público da unidade (/contrato/unidade/:token) na Visão Geral, com a barra da Lei 13.589/2018 e os cards de Plano, Frequência e Próxima manutenção. Depende de um token público real de contrato da conta demo, que não dá pra descobrir por navegação; capturar manualmente copiando o link no contrato. CENSURAR nome e endereço reais do cliente. -->
+  <p>O portal abre com a identidade visual da sua empresa e uma barra fina no topo que diz, em contrato PMOC, "Plano de Manutenção, Operação e Controle, Lei 13.589/2018". As seções são:</p>
+  <ul>
+    <li><span class="ui">Visão Geral</span>: Plano, Contrato, Frequência, Próxima manutenção, Início do contrato, Conformidade e Status, mais o bloco <span class="ui">Responsável Técnico</span> com nome, modalidade e registro.</li>
+    <li><span class="ui">Equipamentos</span>: quando a unidade tem equipamentos cadastrados.</li>
+    <li><span class="ui">Cronograma</span>: o calendário das manutenções.</li>
+    <li><span class="ui">Ocorrências</span>: as visitas, com a possibilidade de acompanhar ao vivo.</li>
+    <li><span class="ui">Documentos</span>: só em contrato PMOC, ou quando há anexos liberados. Cada documento mostra <span class="ui">Válido até</span> e o botão <span class="ui">Baixar PDF</span>. Documento gerado sem assinatura aparece com <span class="ui">Assinatura pendente</span>.</li>
+    <li><span class="ui">Histórico</span> e, em PMOC, <span class="ui">Histórico PMOC</span>, com a prova de cumprimento da Planilha tarefa por tarefa.</li>
+    <li><span class="ui">Cobranças</span>: quando existem cobranças online para aquele cliente.</li>
+  </ul>
+  <p>No rodapé fixo aparece a próxima manutenção e o botão <span class="ui">Abrir chamado nesta unidade</span>.</p>
+  <p>Se o link estiver errado ou o token tiver sido regenerado, o visitante vê <span class="ui">Portal não encontrado</span> com "Este link de QR Code não está mais ativo ou pode ter sido renovado. Procure a empresa responsável pela manutenção para obter o link atualizado."</p>
+
+  <h2>13. Renovar (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança</h2>
+
+  <h3>Renovar / Estender</h3>
+  <figure>
+    <img src="img/t11-renovar-contrato.png" alt="Janela Renovar / Estender contrato, com a explicação de que estende o contrato e gera o próximo ciclo de visitas sem alterar as existentes, os botões Estender por +6 meses e +12 meses (12 meses selecionado), o resumo Horizonte atual: 12 meses → novo: 24 meses e Frequência: Mensal, e o botão Renovar +12 meses no rodapé.">
+    <figcaption>Janela Renovar / Estender contrato: escolha entre +6 ou +12 meses e o resumo do novo horizonte.</figcaption>
+  </figure>
+  <p>O botão <span class="ui">Renovar / Estender</span>, no bloco Resumo da Visão Geral, abre a janela <span class="ui">Renovar / Estender contrato</span>: "Estende este contrato e gera o próximo ciclo de visitas, continuando de onde a última visita parou. As visitas existentes não são alteradas."</p>
+  <p>A escolha é entre <span class="ui">+6 meses</span> e <span class="ui">+12 meses</span>, com 12 já selecionado. Abaixo o sistema mostra o horizonte atual e o novo (por exemplo, 12 meses passando para 24) e a frequência que será usada.</p>
+
+  <div class="regra">
+    <b>Renovar não cria um contrato novo.</b> É o MESMO contrato que ganha mais meses de horizonte, e o sistema gera só as visitas <b>depois da última visita existente</b>. Rodar a renovação duas vezes seguidas sem escolher mais meses não duplica nada: aparece <span class="ui">Nada a gerar</span> com "O contrato já está estendido até a última visita." Deu certo, a mensagem é <span class="ui">Contrato renovado!</span> com "12 nova(s) visita(s) geradas até 31/12/2027."
+  </div>
+  <p>Renovar contrato que não está ativo não faz nada: aparece <span class="ui">Contrato inativo</span> com "Reative o contrato antes de renovar."</p>
+
+  <h3>Pausar e retomar</h3>
+  <p>Feito só pela lista de contratos, no menu de três pontinhos da linha (<span class="ui">Pausar</span> ou <span class="ui">Retomar</span>). O sistema confirma com <span class="ui">Status do contrato atualizado!</span>. Contrato pausado deixa de gerar visitas novas quando você edita ou renova, mas as visitas já criadas continuam na agenda e podem ser executadas normalmente.</p>
+
+  <h3>Excluir contrato</h3>
+  <!-- PRINT FALTANDO: diálogo de exclusão de contrato listando o que será excluído e o que será preservado, com a caixinha "Tenho certeza que desejo excluir". Abrir esse diálogo exige clicar em Excluir na linha do contrato, um dos botões proibidos na captura automatizada. Capturar manualmente numa conta de teste isolada, sem confirmar. -->
+  <p>A exclusão pede confirmação com uma caixinha <span class="ui">Tenho certeza que desejo excluir</span> que precisa ser marcada antes de o botão liberar. A janela lista, com números reais daquele contrato, o que vai acontecer.</p>
+
+  <div class="perigo">
+    <b>Exclusão de contrato, o que some e o que fica.</b>
+    <ul>
+      <li><b>Some</b>: as ordens de serviço <b>futuras</b> do contrato (com tudo dentro delas, checklists preenchidos, fotos e avaliações), os itens do contrato, os ambientes e as <b>cobranças em aberto</b> (contas a receber ainda não pagas).</li>
+      <li><b>Fica</b>: as ordens de serviço <b>passadas</b>, que são desvinculadas do contrato e permanecem no histórico como OS avulsas; e os <b>recebimentos já realizados</b>, que continuam no caixa e no faturamento, apenas sem o vínculo com o contrato.</li>
+    </ul>
+    A confirmação final resume: "8 OSs futuras apagadas · 14 OSs passadas mantidas no histórico · 6 recebimentos já realizados preservados no caixa · 6 cobranças em aberto removidas". Esta ação não pode ser desfeita. Se a intenção é só parar de gerar visitas, <b>pause em vez de excluir</b>.
+  </div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Não acho o PMOC no menu"</td>
+        <td>Não existe menu PMOC</td>
+        <td>PMOC é um tipo de contrato. Vá em <span class="ui">Contratos</span> e use o filtro <span class="ui">Tipo</span> marcando <span class="ui">PMOC</span>. Se a tela Contratos não abre, é o módulo de contratos que não está contratado.</td>
+      </tr>
+      <tr>
+        <td>"Criei o contrato e não apareceu OS nenhuma na agenda"</td>
+        <td>Contrato criado como pausado, ou plano só com atividades eventuais</td>
+        <td>Confira se o contrato está <span class="ui">Ativo</span>: só contrato ativo gera visitas. Se estiver ativo e mesmo assim vazio, veja se todas as atividades do plano estão marcadas como <span class="ui">Eventual</span>, que não entra no cronograma. Na aba Cronograma existe o botão <span class="ui">Gerar OSs deste contrato agora</span>.</td>
+      </tr>
+      <tr>
+        <td>"Onde eu converto o orçamento aprovado em contrato?"</td>
+        <td>Essa conversão não existe</td>
+        <td>Contrato é sempre criado manualmente em <span class="ui">Contratos</span> → <span class="ui">Novo Contrato</span>. Orçamento converte em ordem de serviço, não em contrato.</td>
+      </tr>
+      <tr>
+        <td>"O PDF do dossiê saiu com os dados errados / com colchetes"</td>
+        <td>Falta algum dado obrigatório da empresa, do RT ou do cliente</td>
+        <td>Abra a aba <span class="ui">Documentos</span> do contrato: o alerta <span class="ui">Dados faltando pra gerar documentos PMOC</span> lista exatamente o que falta, com link para resolver. Complete e gere uma versão nova.</td>
+      </tr>
+      <tr>
+        <td>"Gerei os documentos mas meu cliente não vê no portal"</td>
+        <td>O interruptor de portal está oculto</td>
+        <td>Na aba <span class="ui">Documentos</span> do contrato, clique em <span class="ui">Liberar documentos no portal do cliente</span>. Ele nasce desligado.</td>
+      </tr>
+      <tr>
+        <td>"O PDF saiu com uma linha em branco no lugar da assinatura"</td>
+        <td>O RT não tem imagem de assinatura cadastrada</td>
+        <td>Isso é proposital: o documento sai para assinar à mão. Para sair assinado, cadastre a assinatura do RT (foto da assinatura no papel é o recomendado) e gere uma nova versão.</td>
+      </tr>
+      <tr>
+        <td>"Não acho a tela de Responsáveis Técnicos"</td>
+        <td>Ela vive dentro de Configurações de Contrato</td>
+        <td>Vá em <span class="ui">Contratos</span> → botão <span class="ui">Configurações de Contrato</span> → aba <span class="ui">Responsáveis Técnicos</span>.</td>
+      </tr>
+      <tr>
+        <td>"Não tem aba Cronograma no meu contrato"</td>
+        <td>É contrato comum, não PMOC</td>
+        <td>Cronograma e Histórico PMOC só existem em contrato com a chave PMOC ligada. Edite o contrato e ligue <span class="ui">É um contrato PMOC?</span> se for o caso.</td>
+      </tr>
+      <tr>
+        <td>"Não acho o botão de pausar dentro do contrato"</td>
+        <td>Pausar só existe na lista</td>
+        <td>Volte para <span class="ui">Contratos</span> e use o menu de três pontinhos da linha do contrato.</td>
+      </tr>
+      <tr>
+        <td>"Mudei a data de início e o sistema perguntou se eu quero recalcular"</td>
+        <td>Comportamento normal ao mexer no cronograma</td>
+        <td>Confirmar refaz só as visitas futuras não realizadas. Visitas já concluídas, em andamento ou a caminho são preservadas, e as cobranças não são afetadas.</td>
+      </tr>
+      <tr>
+        <td>"O QR Code colado na unidade parou de funcionar"</td>
+        <td>O token do portal foi regenerado</td>
+        <td>Regenerar o token invalida todo QR antigo. Abra o contrato, copie o link novo, use <span class="ui">Imprimir QR Code</span> e troque o adesivo na unidade.</td>
+      </tr>
+      <tr>
+        <td>"Excluí o contrato e sumiu o faturamento do mês"</td>
+        <td>Confusão: recebimento pago é preservado</td>
+        <td>O que a exclusão remove são as cobranças EM ABERTO. Recebimento já pago continua no caixa e no faturamento, só perde o vínculo com o contrato. As OS passadas também ficam no histórico.</td>
+      </tr>
+      <tr>
+        <td>"Meu contrato PMOC é a cada 15 dias e o sistema fica avisando"</td>
+        <td>Cadência fora do mensal recomendado pela norma</td>
+        <td>O sistema não bloqueia, só avisa que a Lei 13.589/2018 recomenda visita mensal. Se o PMOC vai servir de prova de conformidade, o mais seguro é mensal.</td>
+      </tr>
+      <tr>
+        <td>"Preciso assinar o contrato eletronicamente pelo sistema"</td>
+        <td>Não existe assinatura eletrônica de contrato</td>
+        <td>A Dominex não assina contrato eletronicamente. Assine fora e anexe o arquivo assinado na aba <span class="ui">Documentos</span> do contrato. A assinatura do RT nos PDFs do PMOC é uma imagem carimbada, não assinatura digital com certificado.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Qual a diferença entre contrato comum e contrato PMOC?</dt>
+    <dd>Os dois geram visitas programadas e cobrança. O PMOC acrescenta Responsável Técnico, identificação da unidade, ambientes climatizados, rotina por máquina segundo a norma, cronograma anual, quatro documentos regulatórios, portal público com QR Code e o selo da Lei 13.589/2018 nas ordens de serviço.</dd>
+
+    <dt>Preciso do PMOC mesmo?</dt>
+    <dd>A Lei Federal 13.589/2018 obriga o Plano de Manutenção, Operação e Controle para edificações de uso público e coletivo com sistema de climatização acima de determinada capacidade. Quem faz manutenção de climatização nesses locais precisa entregar o PMOC. Para dúvida sobre enquadramento específico, o cliente deve consultar o Responsável Técnico dele.</dd>
+
+    <dt>Existe um robô que cria a OS do dia todo dia?</dt>
+    <dd>Não. Todas as visitas do horizonte são criadas de uma vez, no momento em que você cria o contrato (ou renova). Elas já nascem na agenda com as datas futuras.</dd>
+
+    <dt>Quantos meses de visitas o contrato gera?</dt>
+    <dd>O que estiver no campo <span class="ui">Horizonte (meses)</span>, que vem com 12 por padrão. Terminando o horizonte, use <span class="ui">Renovar / Estender</span> para somar mais 6 ou mais 12 meses.</dd>
+
+    <dt>Renovar cria um contrato novo?</dt>
+    <dd>Não. É o mesmo contrato com mais meses de horizonte, e só as visitas depois da última existente são criadas. Renovar duas vezes seguidas não duplica visita.</dd>
+
+    <dt>O que é Responsável Técnico e qual a diferença para o técnico que vai ao local?</dt>
+    <dd>O Responsável Técnico é o engenheiro ou técnico com CFT/CREA que assina os documentos da norma. O Técnico Executor é quem vai a campo executar a manutenção. São campos separados, em etapas diferentes do assistente.</dd>
+
+    <dt>Um cliente com três lojas precisa de três contratos?</dt>
+    <dd>Em PMOC, sim, é o caminho natural: cada contrato carrega a identificação da sua unidade, com endereço próprio, e ganha cronograma, documentos e QR Code independentes. Todos apontam para o mesmo cliente.</dd>
+
+    <dt>O contrato gera a cobrança sozinho?</dt>
+    <dd>Não. A frequência das visitas e a cobrança são configuradas separadamente. A cobrança é criada na aba <span class="ui">Financeiro</span> do contrato, em <span class="ui">Nova Receita</span>, escolhendo valor, recorrência e quantidade de parcelas.</dd>
+
+    <dt>Meu cliente pode ver o cronograma dele?</dt>
+    <dd>Pode, pelo portal do contrato. Copie o link no bloco <span class="ui">Portal do Contrato</span> ou imprima o QR Code e cole no quadro da unidade. O portal precisa estar com a chave <span class="ui">Portal Público</span> ligada.</dd>
+
+    <dt>Documento vencido some do portal?</dt>
+    <dd>Não some. Ele aparece marcado como vencido, e a aba Documentos do contrato mostra o alerta de documento vencido. Gere uma versão nova para renovar a validade.</dd>
+
+    <dt>Posso mudar o texto do Termo de Responsabilidade Técnica?</dt>
+    <dd>Pode, em dois níveis. O modelo padrão da empresa fica em Configurações de Contrato, aba Documentos, e serve de ponto de partida para contratos novos. O texto de um contrato específico é editado na aba Documentos daquele contrato.</dd>
+
+    <dt>Se eu desligar o PMOC de um contrato, perco as ordens de serviço?</dt>
+    <dd>Não. As ordens já geradas não mudam. O que muda é dali para a frente: as próximas visitas passam a usar o checklist comum, e o contrato perde a estrutura da norma, o RT vinculado e os documentos regulatórios. Dá para religar depois.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> contrato, contrato de manutenção, mensalidade, cliente fixo, PMOC, plano de manutenção, laudo, ART, TRT, dossiê, planilha, cronograma anual, responsável técnico, engenheiro, visita programada, preventiva, unidade, ambiente climatizado, quadro do PMOC, QR do quadro
+  </div>
+</section>

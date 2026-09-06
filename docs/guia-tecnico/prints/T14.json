@@ -1,0 +1,103 @@
+{
+    "secao": "T14",
+    "prints": [
+        {
+            "id": "t14-config-fiscal-empresa",
+            "url": "/notas-fiscais",
+            "legenda": "Modal Configurações fiscais na seção 1. Empresa, com razão social, CNPJ, endereço fiscal, a chave Homologação/Produção e o bloco Status da emissão.",
+            "viewport": { "largura": 1440, "altura": 2200 },
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Configurações fiscais"
+                },
+                {
+                    "esperar": 1500
+                }
+            ],
+            "recorte": "dialog"
+        },
+        {
+            "id": "t14-config-fiscal-certificado",
+            "url": "/notas-fiscais",
+            "legenda": "Modal Configurações fiscais na seção 2. Certificado A1, com o seletor de arquivo .pfx/.p12, o campo de senha e a caixa de autorização de guarda do certificado.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Configurações fiscais"
+                },
+                {
+                    "esperar": 1500
+                },
+                {
+                    "clicar": "Certificado A1"
+                },
+                {
+                    "esperar": 1500
+                }
+            ],
+            "recorte": "dialog"
+        },
+        {
+            "id": "t14-config-fiscal-tributacao",
+            "url": "/notas-fiscais",
+            "legenda": "Modal Configurações fiscais na seção 3. Tributação, com Regime tributário, Inscrição Municipal e Inscrição Estadual.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Configurações fiscais"
+                },
+                {
+                    "esperar": 1500
+                },
+                {
+                    "clicar": "Tributação"
+                },
+                {
+                    "esperar": 1500
+                }
+            ],
+            "recorte": "dialog"
+        },
+        {
+            "id": "t14-nova-nota-stepper",
+            "url": "/notas-fiscais",
+            "legenda": "Assistente Nova NFS-e na etapa Pessoas, com as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, e o resumo com o contador de pendências.",
+            "passos": [
+                {
+                    "esperar": 3000
+                },
+                {
+                    "clicar": "Nova Nota"
+                },
+                {
+                    "esperar": 2000
+                }
+            ],
+            "recorte": "dialog"
+        },
+        {
+            "id": "t14-como-funciona",
+            "url": "/notas-fiscais",
+            "legenda": "Bloco Como funciona? aberto na tela Notas Fiscais, com a explicação em linguagem simples sobre quando emitir, o que a prefeitura exige, quem paga o ISS e o que fazer ao errar a nota.",
+            "passos": [
+                {
+                    "esperar": 2500
+                },
+                {
+                    "clicar": "Como funciona?"
+                },
+                {
+                    "esperar": 1200
+                }
+            ],
+            "recorte": "main"
+        }
+    ]
+}

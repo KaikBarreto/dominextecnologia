@@ -1,0 +1,368 @@
+<section class="tutorial" id="t17">
+  <h1><span class="tcode">T17</span> Dashboard, rotina e truques</h1>
+
+  <p class="lead">Parar de achar e começar a medir. O Dashboard é a tela que responde, em dez segundos, se o dia está sob controle: quantas OS estão abertas, quem está em campo agora, quanto entrou no período e o que está atrasado. Aqui você aprende a ler cada bloco e a montar a rotina diária, semanal e mensal que mantém o sistema vivo.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → <span class="ui">Dashboard</span> (no celular, o atalho <span class="ui">Início</span> na barra de baixo)</span>
+    <span><b>Rotas:</b> <code>/dashboard</code>, <code>/changelog</code></span>
+    <span><b>Depende de:</b> T16 (assinatura e módulos). Na prática, o Dashboard só fica interessante depois que existem OS, clientes e lançamentos financeiros.</span>
+    <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Dashboard</span>. Sem ela, o item some do menu e o usuário entra direto na primeira tela liberada.</span>
+    <span><b>Módulo:</b> nenhum. O Dashboard é base.</span>
+  </div>
+
+  <h2>1. Dashboard: os KPIs (OS abertas, pendentes, técnicos em campo, taxa de conclusão, faturamento, clientes ativos)</h2>
+
+  <p>A tela abre com uma saudação personalizada ("Olá, [seu nome]!") e uma frase que muda conforme a hora: "Bom dia. Aqui está o resumo da sua operação.", "Boa tarde. Veja como está o dia." ou "Boa noite. Resumo do dia de hoje.".</p>
+
+  <p>Do lado direito do cabeçalho fica o <b>filtro de período</b>, que comanda a tela inteira. As opções são <span class="ui">Todos os tempos</span>, <span class="ui">Hoje</span>, <span class="ui">Últimos 7 dias</span>, <span class="ui">Este mês</span> (a opção que já vem marcada), <span class="ui">Mês passado</span>, <span class="ui">Últimos 30 dias</span>, <span class="ui">Este ano</span> e <span class="ui">Personalizado</span>, que abre um calendário de início e fim. No celular, o filtro aparece logo abaixo da saudação.</p>
+
+  <h3>Os três indicadores do topo</h3>
+  <table class="dados">
+    <thead><tr><th>Indicador</th><th>O que ele conta</th><th>Linha de apoio</th><th>Clicando, vai para</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">OS Abertas</span></td><td>Todas as OS do período que estão pendentes, agendadas, a caminho ou em andamento. Ou seja, tudo que ainda não foi concluído nem cancelado.</td><td><span class="ui">N pendentes</span>, o recorte de quem ainda nem foi agendado.</td><td>Ordens de Serviço</td></tr>
+      <tr><td><span class="ui">Taxa de Conclusão</span></td><td>A porcentagem de OS concluídas em relação ao total que teve desfecho no período.</td><td><span class="ui">N concluídas este mês</span></td><td>Ordens de Serviço</td></tr>
+      <tr><td><span class="ui">Faturamento</span></td><td>A soma de todas as entradas <b>pagas</b> no período, com o número subindo em animação ao carregar.</td><td><span class="ui">no período selecionado</span></td><td>Financeiro</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t17-dashboard-kpis.png" alt="Os três cartões de indicador do Dashboard lado a lado: OS Abertas em laranja com o número 5, o texto 0 pendentes e a seta de tendência com 29% em queda; Taxa de Conclusão em azul com 0%, o texto 0 concluídas este mês e a seta de tendência; e Faturamento em verde com R$ 0,00, o texto no período selecionado e a seta de tendência com 100% em queda.">
+    <figcaption>Os três cartões de indicador do topo, com a seta de tendência de cada um.</figcaption>
+  </figure>
+
+  <p><b>OS Abertas</b> e <b>Faturamento</b> mostram também uma seta de tendência com a variação em relação ao período anterior de mesmo tamanho. Se você está olhando "Este mês", a comparação é com o mês anterior. Se está olhando "Últimos 7 dias", a comparação é com os 7 dias antes desses.</p>
+
+  <div class="aviso">
+    <b>O Faturamento exclui movimento interno.</b> Transferência entre contas e pagamento de fatura de cartão não entram, porque é dinheiro trocando de bolso dentro da própria empresa, não receita nova. Sem esse corte, transferir R$ 10.000,00 de um banco pro outro inflaria o faturamento em R$ 10.000,00. Se o cliente diz "sumiu dinheiro do meu faturamento", quase sempre é isso: era transferência.
+  </div>
+
+  <div class="aviso">
+    <b>O Faturamento conta só o que já foi pago.</b> Conta a receber ainda em aberto não aparece aqui. Para enxergar o que está previsto, o caminho é <span class="ui">Financeiro › Contas a Pagar/Receber</span>, que depende do módulo Financeiro Avançado.
+  </div>
+
+  <div class="regra">
+    <b>Onde ficam "técnicos em campo" e "clientes ativos".</b> Eles não são cartões de indicador no topo. O número de <b>técnicos em campo agora</b> aparece dentro do bloco <span class="ui">Desempenho da Equipe</span>, no rodapé do bloco. E não existe hoje um cartão de <b>clientes ativos</b> no Dashboard: a contagem de clientes você vê na própria tela de Clientes. Se alguém procura esses dois números como cartão no topo, eles não estão lá.
+  </div>
+
+  <p>No celular os três cartões viram um carrossel que você arrasta pro lado, em vez de ficarem lado a lado.</p>
+
+  <h2>2. Mapa ao vivo, fluxo de caixa e evolução de OS na tela inicial</h2>
+
+  <figure>
+    <img src="img/t0-dashboard-completo.png" alt="Dashboard da Dominex com a saudação Olá Maicon, o filtro Este mês no topo direito e os três cartões de indicador: OS Abertas 5 com 0 pendentes em amarelo, Taxa de Conclusão 0% com 0 concluídas este mês em azul e Faturamento R$ 0,00 no período selecionado em verde. Abaixo, os blocos Equipe em Campo com o mapa e a mensagem Nenhum técnico em campo agora, OS por Status com a contagem por situação, Fluxo de Caixa com entradas, saídas e saldo zerados, Evolução de OS, OS por Tipo de Serviço em rosca, Desempenho da Equipe vazio, Requer Atenção com 20 OS atrasadas listando número da OS, cliente e dias de atraso, e Chamados abertos vazio.">
+    <figcaption>Dashboard completo: os três cartões de indicador no topo, o mapa da equipe e o fluxo de caixa à esquerda, e o resumo por status, o tipo de serviço e o bloco <span class="ui">Requer Atenção</span> à direita.</figcaption>
+  </figure>
+
+  <h3>Equipe em Campo (o mapa)</h3>
+  <ul>
+    <li>Título <span class="ui">Equipe em Campo</span>, com o selo <span class="ui">Ao vivo</span>.</li>
+    <li>Mostra os técnicos que têm OS <b>em andamento</b> ou <b>a caminho</b> agendada pra hoje.</li>
+    <li>A posição no mapa é o <b>GPS ao vivo</b> do celular do técnico, não o endereço do cliente.</li>
+    <li>Sem ninguém em campo, a mensagem é <span class="ui">Nenhum técnico em campo agora</span>.</li>
+    <li>O botão <span class="ui">Abrir Mapa ao Vivo</span> leva pra tela completa de mapa e rastreamento.</li>
+  </ul>
+
+  <div class="aviso">
+    <b>O mapa só plota técnico que já mandou o primeiro ponto de GPS.</b> Um técnico com OS em andamento mas sem posição enviada simplesmente não aparece, e isso é proposital: o sistema não inventa coordenada. Se um técnico "sumiu" do mapa, o motivo mais comum é a permissão de localização negada no celular dele ou o aplicativo fechado.
+  </div>
+
+  <h3>Fluxo de Caixa</h3>
+  <ul>
+    <li>Um gráfico com duas linhas: <span class="ui">Entradas</span> e <span class="ui">Saídas</span>, mais o resumo <span class="ui">Entradas:</span>, <span class="ui">Saídas:</span> e <span class="ui">Saldo:</span>.</li>
+    <li>Ele segue o mesmo filtro de período do topo, mas o fim é sempre limitado a hoje. Escolhendo "Este ano" em março, o gráfico vai de janeiro a março e não desenha uma linha zerada até dezembro.</li>
+    <li>Quando o período tem 31 dias ou menos, o gráfico agrupa <b>por dia</b>. Acima disso, agrupa <b>por mês</b>.</li>
+    <li>Assim como o faturamento, ele <b>exclui transferências e pagamento de fatura</b>. Sem esse corte, uma transferência apareceria duas vezes, como entrada numa conta e saída na outra.</li>
+    <li>Sem lançamento no período, aparece <span class="ui">Sem dados para exibir</span>.</li>
+  </ul>
+
+  <h3>Evolução de OS</h3>
+  <ul>
+    <li>Título <span class="ui">Evolução de OS</span>, com três visões: <span class="ui">Diário</span>, <span class="ui">Semanal</span> e <span class="ui">Mensal</span>.</li>
+    <li>Duas séries: <span class="ui">Total</span> (todas as OS agendadas naquele intervalo) e <span class="ui">Concluídas</span>.</li>
+    <li>A distância entre as duas linhas é a sua fila de trabalho pendente. Linha de concluídas colada na de total significa operação em dia.</li>
+    <li>Sem dados, mostra <span class="ui">Sem dados no período</span>.</li>
+  </ul>
+
+  <h2>3. Top Técnicos, resumo por status, OS por tipo e OS críticas</h2>
+
+  <h3>Desempenho da Equipe</h3>
+  <ul>
+    <li>Lista os técnicos com OS <b>concluída</b> no período, do que mais concluiu pro que menos concluiu.</li>
+    <li>Cada linha mostra o nome, a foto, a quantidade de OS concluídas e, quando dá pra calcular, a nota média das avaliações e o tempo médio de atendimento.</li>
+    <li>O tempo médio sai da diferença entre o check-in e o check-out da OS. Atendimento sem check-in ou sem check-out não entra na conta, e atendimento com mais de 24 horas de diferença é descartado, pra não distorcer a média com um check-out esquecido.</li>
+    <li>No rodapé do bloco aparece a contagem de <b>técnicos em campo agora</b> e o botão <span class="ui">Ver relatório</span>, que leva pra lista de OS.</li>
+    <li>Sem ninguém, a mensagem é <span class="ui">Nenhum técnico com OS concluída no período</span>.</li>
+  </ul>
+
+  <h3>OS por Status</h3>
+  <p>Um resumo com a contagem de cada situação no período: <span class="ui">Pendente</span>, <span class="ui">Agendada</span>, <span class="ui">A Caminho</span>, <span class="ui">Em Andamento</span>, <span class="ui">Concluída</span> e <span class="ui">Cancelada</span>. É o retrato mais direto da sua fila. Muita coisa em Pendente significa OS entrando e ninguém agendando.</p>
+
+  <h3>OS por Tipo de Serviço</h3>
+  <p>Mostra quais serviços mais aparecem no período, do mais frequente pro menos, com o total ao lado. Serve pra decidir onde vale investir em treinamento, em estoque e em campanha. Sem dados, aparece <span class="ui">Sem OS no período</span>.</p>
+
+  <h3>Requer Atenção (as OS críticas)</h3>
+  <ul>
+    <li>Lista as OS com data agendada <b>anterior a hoje</b> que ainda não foram concluídas nem canceladas. É a lista de atrasadas.</li>
+    <li>Vem ordenada da mais atrasada pra menos, e mostra até 5 por vez.</li>
+    <li>Cada linha traz o número da OS, o nome do cliente, a cidade, o tipo de serviço e a marca <span class="ui">Atrasada Nd</span>. Quando a OS ainda não tem técnico, aparece também <span class="ui">sem técnico</span>, e o atalho <span class="ui">Atribuir técnico</span>.</li>
+    <li>O botão do rodapé é <span class="ui">Ver todas as OS críticas</span>.</li>
+    <li>Com tudo em dia, aparece <span class="ui">Tudo em dia!</span> e "Nenhuma OS requer atenção imediata".</li>
+  </ul>
+
+  <div class="dica">
+    Este é o bloco mais importante do Dashboard pro dia a dia. OS atrasada sem técnico é dinheiro parado e cliente esperando. Zerar esta lista todo dia é a diferença entre uma operação organizada e uma operação que só reage a reclamação.
+  </div>
+
+  <div class="regra">
+    A lista <span class="ui">Requer Atenção</span> não considera o filtro de período do topo: ela olha tudo o que está atrasado, independente do mês escolhido. É proposital, atraso antigo não pode sumir da vista.
+  </div>
+
+  <h2>4. Chamados do Portal e o alerta de chamado novo</h2>
+
+  <p>Quando o seu cliente abre um chamado pelo Portal do Cliente, ele entra no sistema como uma OS com origem no portal. Dois lugares do Dashboard mostram isso.</p>
+
+  <h3>O bloco <span class="ui">Chamados abertos</span></h3>
+  <ul>
+    <li>Lista os chamados vindos do portal que ainda não foram concluídos nem cancelados.</li>
+    <li>Cada linha mostra o cliente, a descrição do pedido e há quanto tempo ele chegou, no formato <span class="ui">há 2 horas</span>.</li>
+    <li>Sem descrição, aparece <span class="ui">Sem descrição</span>. Sem cliente identificado, <span class="ui">Cliente não informado</span>.</li>
+    <li>Mostra até 5 por vez, com o botão <span class="ui">Ver todos os chamados</span>.</li>
+    <li>Sem nada aberto: <span class="ui">Nenhum chamado aberto</span> e "Chamados recebidos pelo portal aparecem aqui".</li>
+  </ul>
+
+  <h3>O aviso de chamado novo</h3>
+  <ul>
+    <li>Ao entrar no Dashboard, se existem chamados que você ainda não viu, aparece um aviso na frente com o texto <span class="ui">Você tem N chamados de cliente aguardando</span>.</li>
+    <li>Dois botões: <span class="ui">Ver chamados</span>, que leva pra lista de OS, e <span class="ui">Depois</span>, que dispensa.</li>
+    <li>O aviso é por lote: dispensando, ele só volta a aparecer quando <b>chegar chamado novo</b>. Ele não fica insistindo com o mesmo chamado.</li>
+    <li>A marca de "já vi" é guardada por usuário, no navegador. Trocando de computador, o aviso pode reaparecer uma vez.</li>
+  </ul>
+
+  <div class="regra">
+    Este bloco só faz sentido pra quem tem o <b>Portal do Cliente</b> em uso. Empresa que não divulgou o portal simplesmente nunca vai ver chamado aqui, porque não existe outra forma de um chamado nascer com essa origem.
+  </div>
+
+  <h2>5. Atalhos de teclado e busca rápida</h2>
+
+  <p>No computador, a Dominex tem atalhos de teclado de navegação, ligados por padrão. Eles são configurados em <span class="ui">Configurações › Atalhos</span>, onde existe um interruptor geral que mostra <span class="ui">Atalhos estão ativados</span> ou <span class="ui">Atalhos estão desativados</span>.</p>
+
+  <table class="dados">
+    <thead><tr><th>Tecla</th><th>Vai para</th></tr></thead>
+    <tbody>
+      <tr><td>Shift + D</td><td>Dashboard</td></tr>
+      <tr><td>Shift + O</td><td>Ordens de Serviço</td></tr>
+      <tr><td>Shift + A</td><td>Agenda</td></tr>
+      <tr><td>Shift + C</td><td>Clientes</td></tr>
+      <tr><td>Shift + E</td><td>Equipamentos</td></tr>
+      <tr><td>Shift + R</td><td>CRM</td></tr>
+      <tr><td>Shift + F</td><td>Financeiro</td></tr>
+      <tr><td>Shift + I</td><td>Estoque</td></tr>
+      <tr><td>Shift + Q</td><td>Orçamentos</td></tr>
+      <tr><td>Shift + T</td><td>Contratos</td></tr>
+      <tr><td>Shift + S</td><td>Configurações</td></tr>
+      <tr><td>Shift + P</td><td>Perfil</td></tr>
+    </tbody>
+  </table>
+
+  <ul>
+    <li>Os atalhos <b>não funcionam enquanto você digita</b> em um campo de texto. Isso é proposital: escrever a letra "o" na descrição de uma OS não pode jogar você pra outra tela.</li>
+    <li>São só de navegação. Não existe atalho pra criar OS, salvar formulário ou abrir uma janela.</li>
+    <li>No celular não há atalhos, porque não há teclado físico.</li>
+  </ul>
+
+  <h3>Sobre a busca</h3>
+  <div class="regra">
+    <b>Não existe uma busca única que procura em tudo.</b> Cada tela tem a própria busca, e é ali que você acha o que precisa: <span class="ui">Buscar clientes...</span> na tela de Clientes, <span class="ui">Buscar por nome ou telefone...</span> na de Usuários, e assim por diante. A "busca rápida" da Dominex, na prática, é a combinação do atalho de teclado (Shift + a letra da tela) com a busca da própria tela. Se o cliente procura uma caixa de busca global no topo, ela não existe.
+  </div>
+
+  <div class="dica">
+    Truque que funciona: Shift + C, digitar as três primeiras letras do cliente, abrir a ficha. São dois segundos, sem tocar no mouse. Vale a pena treinar os quatro atalhos que você mais usa e ignorar o resto.
+  </div>
+
+  <h2>6. Rotina diária (5 min): OS críticas, chamados novos, agenda de amanhã</h2>
+
+  <p>Cinco minutos de manhã, sempre na mesma ordem. A ideia não é analisar, é <b>não deixar nada cair</b>.</p>
+
+  <ol>
+    <li><b>Abra o Dashboard.</b> Com o filtro em <span class="ui">Este mês</span>, olhe primeiro o bloco <span class="ui">Requer Atenção</span>. Toda OS atrasada tem que sair dali hoje: ou é reagendada, ou ganha técnico, ou é cancelada com motivo.</li>
+    <li><b>Priorize as sem técnico.</b> Dentro de Requer Atenção, as que mostram <span class="ui">sem técnico</span> são as mais graves: ninguém está indo. Use o atalho <span class="ui">Atribuir técnico</span>.</li>
+    <li><b>Veja os chamados do portal.</b> No bloco <span class="ui">Chamados abertos</span>, cada linha é um cliente esperando resposta. Se o aviso <span class="ui">Você tem N chamados de cliente aguardando</span> apareceu, resolva antes de dispensar.</li>
+    <li><b>Confira quem está em campo.</b> O bloco <span class="ui">Equipe em Campo</span> mostra quem já está rodando. Técnico que deveria estar em campo e não aparece no mapa merece uma ligação.</li>
+    <li><b>Olhe a agenda de amanhã.</b> Vá em <span class="ui">Agenda</span> e avance um dia. Confirme que todas as visitas têm técnico, que ninguém está com o dia impossível e que os feriados estão considerados.</li>
+    <li><b>Fim.</b> Se sobrou tempo, olhe <span class="ui">OS por Status</span>: um monte de OS em <span class="ui">Pendente</span> quer dizer que estão entrando pedidos e ninguém está agendando.</li>
+  </ol>
+
+  <div class="dica">
+    Faça essa rodada sempre no mesmo horário, de preferência antes de o primeiro técnico sair. Depois que a equipe está na rua, remanejar custa combustível e paciência.
+  </div>
+
+  <h2>7. Rotina semanal (20 min): funil do CRM, orçamentos em aberto, estoque mínimo</h2>
+
+  <p>Uma vez por semana, num horário tranquilo, com o filtro do Dashboard em <span class="ui">Últimos 7 dias</span>.</p>
+
+  <ol>
+    <li><b>Funil do CRM.</b> Abra <span class="ui">CRM</span> e olhe onde os leads estão parados. Lead que não se move em uma semana normalmente está esperando você, não o contrário. Exige o módulo CRM.</li>
+    <li><b>Orçamentos em aberto.</b> Abra <span class="ui">Orçamentos</span> e filtre os que ainda não foram respondidos. Orçamento enviado e não cobrado é a receita mais barata que existe: o trabalho de fazer já foi feito.</li>
+    <li><b>Estoque mínimo.</b> Abra <span class="ui">Estoque</span> e veja os materiais abaixo da quantidade mínima. Comprar com uma semana de antecedência é sempre mais barato que comprar correndo no dia da instalação.</li>
+    <li><b>Desempenho da equipe.</b> No Dashboard, com o filtro em <span class="ui">Últimos 7 dias</span>, olhe o bloco <span class="ui">Desempenho da Equipe</span>: quem concluiu mais, quem tem nota mais baixa e quem está demorando mais por atendimento.</li>
+    <li><b>OS por Tipo de Serviço.</b> No mesmo período, veja qual serviço puxou a semana. Isso orienta a compra de material e a próxima campanha.</li>
+    <li><b>Taxa de Conclusão.</b> Se ela caiu em relação à semana anterior, alguma coisa travou: falta de peça, falta de técnico ou cliente sem responder.</li>
+  </ol>
+
+  <div class="aviso">
+    O funil do CRM só existe pra quem contratou o módulo CRM, e a aba de contas a pagar e receber só pra quem tem o Financeiro Avançado. Se a sua empresa não tem esses módulos, pule esses passos ou avalie contratar em <span class="ui">Assinatura › Gerenciar Meu Plano</span>.
+  </div>
+
+  <h2>8. Rotina mensal (1h): DRE, contas a receber vencidas, contratos a vencer, NPS</h2>
+
+  <p>Uma hora por mês, de preferência nos primeiros dias, com o filtro em <span class="ui">Mês passado</span> pra olhar o mês fechado.</p>
+
+  <ol>
+    <li><b>DRE.</b> Vá em <span class="ui">Financeiro › Visão Geral</span> e abra a aba de DRE. É o demonstrativo de resultado: quanto entrou, quanto saiu e o que sobrou. Exige o módulo Financeiro Avançado.</li>
+    <li><b>Contas a receber vencidas.</b> Em <span class="ui">Financeiro › Contas a Pagar/Receber</span>, filtre o que está vencido. Cobrar no dia 5 é muito mais fácil que cobrar no dia 45.</li>
+    <li><b>Contas a pagar do mês que começa.</b> Ainda na mesma tela, olhe pra frente: o que vence nos próximos 30 dias e se o caixa cobre.</li>
+    <li><b>Contratos a vencer.</b> Abra <span class="ui">Contratos</span> e veja quais terminam nos próximos 60 dias. Renovação conversada com antecedência é renovação fechada. Exige o módulo Gestão de Contratos e PMOC.</li>
+    <li><b>Avaliações (NPS).</b> Olhe as avaliações que os clientes deixaram ao fim das OS. Toda nota baixa merece uma ligação, e toda nota alta merece um convite pra avaliar no Google.</li>
+    <li><b>Faturamento comparado.</b> No Dashboard, compare o faturamento do mês fechado com o anterior usando a seta de tendência do cartão <span class="ui">Faturamento</span>.</li>
+    <li><b>Uso do plano.</b> Em <span class="ui">Assinatura</span>, olhe o cartão <span class="ui">Uso da conta</span>: se os usuários estão perto do limite ou se a cota de notas fiscais está apertada, resolva antes de travar no meio do mês.</li>
+    <li><b>Higiene de cadastro.</b> Desative usuários que saíram da empresa (libera vaga do plano na hora) e revise se alguém está com permissão demais.</li>
+  </ol>
+
+  <div class="dica">
+    Faça a rotina mensal sempre no mesmo dia útil, com o mês fechado. Olhar o mês pela metade dá uma leitura errada do resultado e leva a decisão ruim.
+  </div>
+
+  <h2>9. Onde ver as novidades do sistema (Changelog) e como pedir ajuda</h2>
+
+  <h3>Novidades do sistema</h3>
+  <ul>
+    <li>No rodapé de qualquer tela aparece <span class="ui">Dominex v1.22.5 · Desenvolvido por Auctus</span>. Clicar no número da versão abre a tela de novidades.</li>
+    <li>A tela se chama <span class="ui">Novidades</span> e tem uma busca (<span class="ui">Buscar atualizações...</span>) e filtros: <span class="ui">Todas</span>, <span class="ui">Recursos</span>, <span class="ui">Melhorias</span>, <span class="ui">Correções</span> e <span class="ui">Segurança</span>.</li>
+    <li>A versão que você está usando aparece marcada com <span class="ui">Versão atual</span>.</li>
+    <li>Cada versão lista as mudanças, com <span class="ui">Ver mais</span> e <span class="ui">Ver menos</span> quando a lista é longa.</li>
+    <li>É tudo escrito em português comum, focado no que muda pra você, sem termo técnico.</li>
+  </ul>
+
+  <h3>Quando o sistema parece travado numa versão antiga</h3>
+  <p>Ao lado do número da versão, no rodapé, existe um ícone de recarregar. Ele limpa o cache do navegador e recarrega o sistema. É a primeira coisa a tentar quando uma tela some, um botão não responde ou o cliente jura que a correção não chegou. No celular, puxar a tela pra baixo faz o mesmo efeito de recarregar.</p>
+
+  <h3>Como pedir ajuda</h3>
+  <ol>
+    <li><b>Central de Ajuda</b>: no menu do seu perfil, abre um painel com as dúvidas mais comuns, do tipo "como criar uma Ordem de Serviço" e "como funciona o controle financeiro".</li>
+    <li><b>Tutoriais | Domiflix</b>: no mesmo menu, abre a área de vídeos com as aulas completas por área do sistema.</li>
+    <li><b>Falar com o Suporte</b>: abre a conversa no WhatsApp com a equipe da Dominex. É o caminho pra problema específico da sua empresa.</li>
+  </ol>
+
+  <div class="dica">
+    Ao abrir um chamado, mande três coisas: o número da versão que está no rodapé, o nome exato da tela e o que você esperava que acontecesse. Com isso o suporte resolve na primeira resposta, sem ficar perguntando.
+  </div>
+
+  <figure>
+    <img src="img/t17-changelog.png" alt="Tela Novidades com o selo verde Versão atual 1.22.5 abaixo do título, o campo Buscar atualizações, os filtros Todas, Recursos, Melhorias, Correções e Segurança, e a lista de versões em cartões: 1.22.5 com a etiqueta Correção e o selo preto Versão atual, seguida de 1.22.4, 1.22.3, 1.22.2, 1.22.1, 1.22.0 e 1.21.29, cada uma com a data e uma seta para expandir.">
+    <figcaption>Tela <span class="ui">Novidades</span>: a versão que você está usando aparece marcada com <span class="ui">Versão atual</span>, e a seta de cada cartão abre a lista de mudanças daquela versão.</figcaption>
+  </figure>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Meu faturamento no Dashboard está menor do que eu recebi"</td>
+        <td>Transferências e pagamento de fatura são excluídos, e só o que está pago entra</td>
+        <td>Transferência entre contas e pagamento de fatura de cartão não são receita, então não entram. E conta a receber ainda em aberto também não conta. Confira em Financeiro.</td>
+      </tr>
+      <tr>
+        <td>"O técnico está trabalhando e não aparece no mapa"</td>
+        <td>Sem ponto de GPS enviado</td>
+        <td>O mapa só plota quem já mandou posição. Peça pro técnico abrir a Área do Técnico ou a OS no celular e liberar a permissão de localização.</td>
+      </tr>
+      <tr>
+        <td>"Não acho o cartão de clientes ativos no Dashboard"</td>
+        <td>Ele não existe como cartão</td>
+        <td>O Dashboard tem três cartões: OS Abertas, Taxa de Conclusão e Faturamento. A contagem de clientes fica na tela de Clientes.</td>
+      </tr>
+      <tr>
+        <td>"O gráfico de fluxo de caixa está com meses vazios no fim"</td>
+        <td>Filtro de período mais longo que o mês atual</td>
+        <td>O gráfico para em hoje de propósito, pra não desenhar futuro zerado. Escolhendo Este ano, ele vai de janeiro até o mês corrente.</td>
+      </tr>
+      <tr>
+        <td>"Mudei o filtro e as OS atrasadas continuam as mesmas"</td>
+        <td>Comportamento esperado</td>
+        <td>O bloco Requer Atenção olha tudo o que está atrasado, independente do período escolhido. Atraso antigo não pode sumir da vista.</td>
+      </tr>
+      <tr>
+        <td>"O aviso de chamados não aparece mais"</td>
+        <td>Já foi dispensado e não há chamado novo</td>
+        <td>O aviso volta quando chega um chamado novo. Os chamados em aberto continuam listados no bloco Chamados abertos.</td>
+      </tr>
+      <tr>
+        <td>"Os atalhos de teclado não funcionam"</td>
+        <td>O cursor está dentro de um campo de texto, ou o interruptor está desligado</td>
+        <td>Clique numa área vazia da tela antes de usar o atalho. Confira também Configurações › Atalhos, onde há um interruptor geral.</td>
+      </tr>
+      <tr>
+        <td>"Onde fica a busca geral do sistema?"</td>
+        <td>Não existe busca global</td>
+        <td>Cada tela tem a própria busca. Use o atalho da tela e depois a busca dela.</td>
+      </tr>
+      <tr>
+        <td>"O sistema não atualizou depois da correção"</td>
+        <td>Versão antiga guardada no navegador</td>
+        <td>Clique no ícone de recarregar ao lado do número da versão no rodapé. No celular, puxe a tela pra baixo.</td>
+      </tr>
+      <tr>
+        <td>"Não vejo a aba de DRE"</td>
+        <td>Falta o módulo Financeiro Avançado</td>
+        <td>A DRE e as Contas a Pagar/Receber dependem do módulo Financeiro Avançado. Contrate em Assinatura › Gerenciar Meu Plano.</td>
+      </tr>
+      <tr>
+        <td>"Meu Dashboard está vazio"</td>
+        <td>Período sem movimento ou base ainda nova</td>
+        <td>Troque o filtro pra Todos os tempos. Se continuar vazio, é porque ainda não existem OS e lançamentos cadastrados.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>O que exatamente conta como "OS Aberta"?</dt>
+    <dd>Toda OS do período que está pendente, agendada, a caminho ou em andamento. Concluída e cancelada não entram.</dd>
+
+    <dt>A taxa de conclusão considera OS cancelada?</dt>
+    <dd>Não. Ela compara as concluídas com o total que teve desfecho no período, sem contar as canceladas.</dd>
+
+    <dt>O faturamento do Dashboard é o mesmo do meu DRE?</dt>
+    <dd>Não necessariamente. O Dashboard soma as entradas já pagas no período, sem movimento interno. O DRE tem regras próprias de regime e de datas.</dd>
+
+    <dt>Por que uma transferência entre contas não aparece no faturamento?</dt>
+    <dd>Porque não é receita: é dinheiro saindo de uma conta sua e entrando em outra conta sua. Contar isso inflaria o resultado.</dd>
+
+    <dt>De onde vem a posição dos técnicos no mapa?</dt>
+    <dd>Do GPS do celular do técnico, ao vivo. Não é o endereço do cliente.</dd>
+
+    <dt>O tempo médio de atendimento sai de onde?</dt>
+    <dd>Da diferença entre o check-in e o check-out da OS. Sem os dois registros, aquela OS não entra na média.</dd>
+
+    <dt>Consigo escolher um período personalizado?</dt>
+    <dd>Sim. No filtro do topo, escolha Personalizado e informe a data de início e de fim.</dd>
+
+    <dt>Como sei quais chamados são novos?</dt>
+    <dd>Pelo aviso que aparece ao entrar no Dashboard. Ele conta os chamados que chegaram depois da última vez que você olhou.</dd>
+
+    <dt>Dá pra desligar os atalhos de teclado?</dt>
+    <dd>Dá, em Configurações › Atalhos, no interruptor do topo.</dd>
+
+    <dt>Onde vejo o que mudou na última atualização?</dt>
+    <dd>Clique no número da versão no rodapé de qualquer tela. Abre a tela de Novidades, com filtros por tipo de mudança.</dd>
+
+    <dt>Qual a rotina mínima se eu tiver muito pouco tempo?</dt>
+    <dd>Todo dia, o bloco Requer Atenção e os chamados do portal. Toda semana, orçamentos em aberto. Todo mês, contas a receber vencidas. Com isso você já não perde dinheiro por esquecimento.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> painel, dashboard, tela inicial, indicadores, gráficos, faturamento, atrasadas, pendentes, mapa dos técnicos, chamados, atalhos, novidades, atualização, versão
+  </div>
+</section>

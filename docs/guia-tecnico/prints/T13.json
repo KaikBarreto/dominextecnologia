@@ -1,0 +1,58 @@
+{
+  "secao": "T13",
+  "prints": [
+    {
+      "id": "t13-novo-cartao-modal",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Modal Novo Cartão com Dia de fechamento, Dia de vencimento, Limite de crédito e a frase automática que explica a regra da fatura.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Cartão" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t13-nova-transacao-modal",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Modal Nova Transação com Tipo de Movimentação, Categoria, Valor, Conta, Forma de pagamento, Descrição, Data e Parcelas.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Transação" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t13-categorias",
+      "url": "/financeiro/relatorio?tab=categorias",
+      "legenda": "Aba Categorias do Relatório, com as listas de Categorias de Receita e Categorias de Despesa e o selo Sistema nas categorias que não podem ser editadas.",
+      "passos": [
+        { "esperar": 3000 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t13-cobrar-modal",
+      "url": "/financeiro/relatorio",
+      "legenda": "Modal Nova cobrança (recebimento do cliente pelo Asaas da própria empresa), com Cliente, Valor, Vencimento, Descrição e Forma de pagamento.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Cobrar", "opcional": true },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t13-cartao-faturas",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Tela de um cartão de crédito com a barra de limite, o valor da fatura em aberto e a lista de faturas com as situações Aberta, Fechada, Parcial e Paga.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Cartão Nubank PJ", "opcional": true },
+        { "esperar": 2000 }
+      ],
+      "recorte": "main"
+    }
+  ]
+}

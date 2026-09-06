@@ -1,0 +1,624 @@
+<section class="tutorial" id="t13">
+  <h1><span class="tcode">T13</span> Financeiro</h1>
+
+  <p class="lead">O Financeiro do Dominex é onde entra o dinheiro que você recebe do cliente, sai o que você paga de fornecedor, funcionário e imposto, e onde o sistema mostra se o mês fechou no azul ou no vermelho. É o módulo que mais evita prejuízo, porque ele junta conta bancária, caixa, cartão de crédito, contas a pagar, contas a receber e resultado num lugar só.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu lateral, grupo <span class="ui">Financeiro</span>, com três telas próprias: <span class="ui">Relatório</span>, <span class="ui">Movimentações</span> e <span class="ui">Contas</span></span>
+    <span><b>Rotas:</b> <code>/financeiro/relatorio</code>, <code>/financeiro/movimentacoes</code>, <code>/financeiro/contas</code></span>
+    <span><b>Depende de:</b> T12 (Portal do Cliente). Contas a Pagar/Receber e a aba DRE exigem o módulo <b>Financeiro Avançado</b></span>
+    <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Financeiro</span>. Dentro dela, as ações <span class="ui">Gerenciar Financeiro</span>, <span class="ui">Excluir Lançamento Financeiro</span> e <span class="ui">Ver Totais Financeiros</span> são separadas</span>
+  </div>
+
+  <h2>1. Os 3 endereços do menu Financeiro e o que cada um responde</h2>
+
+  <p>O Financeiro deixou de ser uma tela só com muitas abas e virou um grupo no menu com três telas independentes. Cada uma responde a uma pergunta diferente, e saber qual pergunta é qual economiza metade das dúvidas de suporte.</p>
+
+  <table class="dados">
+    <thead><tr><th>Tela</th><th>Endereço</th><th>Pergunta que ela responde</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Relatório</span></td><td><code>/financeiro/relatorio</code></td><td>"Como foi o meu mês?" Traz a Visão Geral com os cards de receita, despesa e saldo, a DRE, as Categorias e, quando contratado, Cobranças e Assinaturas.</td></tr>
+      <tr><td><span class="ui">Movimentações</span></td><td><code>/financeiro/movimentacoes</code></td><td>"Quanto tem em cada conta e o que passou por ela?" Traz o carrossel de contas bancárias, caixas e cartões, com o extrato de cada uma e as faturas de cada cartão.</td></tr>
+      <tr><td><span class="ui">Contas</span></td><td><code>/financeiro/contas</code></td><td>"O que eu tenho pra pagar e pra receber?" É a programação financeira, com vencimentos, atrasos e baixas. Exige o módulo Financeiro Avançado.</td></tr>
+    </tbody>
+  </table>
+
+  <p>O topo das três telas é o mesmo: título <span class="ui">Financeiro</span>, um seletor de período (que abre em <span class="ui">Este mês</span>) e, quando a empresa tem recebimento online ativo, o botão <span class="ui">Cobrar</span>. Trocar o período no topo muda o que as três telas mostram.</p>
+
+  <figure>
+    <img src="img/t13-financeiro-relatorio.png" alt="Tela Relatório do Financeiro com cards verdes de Receitas, vermelho de Despesas e azul de Saldo do Período, blocos A Receber e A Pagar, seção Saldo por Conta com caixa, bancos e cartões, botões Nova Receita, Nova Despesa e Exportar CSV, gráfico Fluxo de Caixa e rosca de Distribuição por Categoria">
+    <figcaption>Financeiro, tela Relatório, aba Visão Geral: cards do período, saldo por conta e os dois gráficos.</figcaption>
+  </figure>
+
+  <h3>As abas de dentro do Relatório</h3>
+  <ul>
+    <li><span class="ui">Visão Geral</span>: sempre aparece.</li>
+    <li><span class="ui">DRE - Resultado</span>: só aparece com o módulo <b>Financeiro Avançado</b>. Se você abrir o endereço com <code>?tab=dre</code> sem o módulo, o sistema devolve você pra Visão Geral, sem mensagem de erro.</li>
+    <li><span class="ui">Categorias</span>: sempre aparece.</li>
+    <li><span class="ui">Cobranças</span> e <span class="ui">Assinaturas</span>: só aparecem quando a empresa tem o módulo <b>Cobranças</b> contratado <b>e</b> a conta de recebimento ativa. Faltando qualquer uma das duas, as abas somem.</li>
+  </ul>
+
+  <h3>Recebimento do cliente pelo Asaas, na sua própria conta</h3>
+  <p>O Dominex permite gerar link de pagamento (Pix, boleto ou cartão) pra você cobrar o seu cliente. O dinheiro cai na <b>sua</b> conta Asaas: você conecta a sua própria chave em <span class="ui">Configurações</span>, aba <span class="ui">Integrações</span>. Isso não tem nenhuma relação com a mensalidade que você paga pelo sistema, que é outro assunto e vive na tela Assinatura.</p>
+  <ul>
+    <li>Com o módulo <b>Cobranças</b> ativo e a conta ligada, aparece o botão <span class="ui">Cobrar</span> no topo do Financeiro, que abre o formulário <span class="ui">Nova cobrança</span> com cliente, valor, vencimento, descrição e forma de pagamento (Pix, boleto, Pix e boleto, cartão de crédito, ou deixar o cliente escolher).</li>
+    <li>Com o módulo contratado mas a conta ainda não ativa, o botão vira <span class="ui">Ir para Integrações</span>. A mensagem é: "Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações."</li>
+    <li>Sem o módulo, não aparece botão nenhum.</li>
+    <li>Depois de gerada, a cobrança aparece na aba <span class="ui">Cobranças</span> com status <span class="ui">A receber</span>, <span class="ui">Pago</span>, <span class="ui">Vencido</span> ou <span class="ui">Estornado</span>, e as ações <span class="ui">Copiar link</span> e <span class="ui">Estornar</span>.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t13-cobrar-modal.png" alt="Modal Nova cobrança com o campo Cliente, Valor em reais, Vencimento, Forma de pagamento mostrando 'Cliente escolhe', campo Descrição com o exemplo Manutenção do ar-condicionado, uma seção recolhida Opções avançadas e o botão Gerar cobrança">
+    <figcaption>Nova cobrança: o formulário de link de pagamento gerado pelo botão Cobrar.</figcaption>
+  </figure>
+
+  <div class="regra">As rotas antigas <code>/financeiro/dre</code>, <code>/financeiro/caixas-bancos</code>, <code>/financeiro/categorias</code> e <code>/financeiro/configuracoes</code> não existem mais como telas. Elas continuam funcionando, mas apenas redirecionando: a primeira cai no Relatório na aba DRE, e as outras três caem em Movimentações. Se alguém tiver um atalho salvo, o atalho não quebra, só muda de destino.</div>
+
+  <h2>2. Movimentações: criar a primeira conta bancária/caixa</h2>
+
+  <p>Antes de lançar qualquer receita ou despesa, o sistema precisa saber de onde o dinheiro sai e pra onde ele vai. Isso é a conta. No Dominex existem três tipos:</p>
+
+  <table class="dados">
+    <thead><tr><th>Tipo</th><th>Pra que serve</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Caixa</span></td><td>Dinheiro vivo, o caixa da empresa ou o cofre. Tem saldo inicial e saldo atual.</td></tr>
+      <tr><td><span class="ui">Conta Bancária</span></td><td>Banco, com instituição escolhida da lista oficial. Tem saldo inicial e saldo atual.</td></tr>
+      <tr><td><span class="ui">Cartão de Crédito</span></td><td>Não tem saldo, tem fatura e limite. Regras próprias, explicadas no capítulo do cartão.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Abra <span class="ui">Financeiro</span>, tela <span class="ui">Movimentações</span>.</li>
+    <li>Na coluna da esquerda (no celular, no carrossel de pílulas), toque em <span class="ui">Nova Conta</span>.</li>
+    <li>Preencha <span class="ui">Nome da Conta</span> (obrigatório), por exemplo "Banco Inter" ou "Caixa da oficina".</li>
+    <li>Escolha o <span class="ui">Tipo</span>: Caixa, Conta Bancária ou Cartão de Crédito.</li>
+    <li>Em conta bancária e cartão, escolha a <span class="ui">Instituição</span>. A lista de bancos vem da base oficial brasileira, com um grupo <span class="ui">Mais populares</span> no topo e <span class="ui">Todos os bancos</span> abaixo, e traz o logotipo do banco.</li>
+    <li>Em caixa e conta bancária, informe o <span class="ui">Saldo Inicial (R$)</span>. É quanto já existe naquela conta no dia em que você começa a usar o sistema.</li>
+    <li>Escolha uma <span class="ui">Cor</span>. Ela identifica a conta nos cards, no gráfico de rosca e no extrato. Há 21 cores prontas e um seletor de cor personalizada no botão "+".</li>
+    <li>Confira a <span class="ui">Pré-visualização</span>, que mostra como a conta vai aparecer na lista, e confirme em <span class="ui">Criar Conta</span>.</li>
+  </ol>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>O botão de salvar fica desabilitado enquanto o nome estiver vazio. Nome é o único campo realmente obrigatório.</li>
+    <li>Ao criar, aparece a confirmação "Conta criada com sucesso!". Ao editar, "Conta atualizada!".</li>
+    <li>Ao editar uma conta que já tem movimento, o formulário mostra o aviso: "Editar o saldo inicial recalcula o saldo atual da conta." O saldo atual é sempre saldo inicial mais entradas pagas menos saídas pagas, então mexer no inicial desloca tudo.</li>
+    <li>Cartão de crédito não tem saldo inicial. O campo some e no lugar aparecem fechamento, vencimento e limite.</li>
+    <li>Excluir conta abre a confirmação "Excluir conta" com o texto "Tem certeza? Transações vinculadas perderão a referência à conta." Os lançamentos não são apagados, eles ficam sem conta.</li>
+    <li>As contas aparecem separadas em dois grupos, <span class="ui">CONTAS BANCÁRIAS</span> e <span class="ui">CARTÕES</span>. Quem não tem nenhum cartão vê a lista plana, sem títulos de seção.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t13-financeiro-movimentacoes.png" alt="Tela Movimentações Financeiras com a lista lateral de contas e cartões, card verde de Saldo total em contas, card de Faturas de cartão, rosca de Distribuição entre contas e o interruptor Incluir compras no cartão desligado">
+    <figcaption>Financeiro, tela Movimentações: contas e cartões na lateral, saldo consolidado e distribuição entre contas.</figcaption>
+  </figure>
+
+  <h2>3. Lançar receita e despesa, marcar como pago, editar e excluir</h2>
+
+  <p>Um lançamento é qualquer entrada ou saída de dinheiro. Você cria pelo botão <span class="ui">Transação</span> em Movimentações, ou pelos botões <span class="ui">Nova Receita</span> e <span class="ui">Nova Despesa</span> na Visão Geral do Relatório.</p>
+
+  <h3>Campos do formulário <span class="ui">Nova Transação</span></h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que o sistema faz com ele</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Tipo de Movimentação</span> (Receita ou Despesa)</td><td>Sim</td><td>Define se o valor soma ou subtrai do saldo e de que lado ele entra na DRE.</td></tr>
+      <tr><td><span class="ui">Categoria</span></td><td>Não, mas recomendado</td><td>Alimenta a rosca de distribuição e a classificação da DRE. Dá pra criar categoria na hora, digitando o nome e usando a opção <span class="ui">Criar "..."</span>.</td></tr>
+      <tr><td><span class="ui">Valor (R$)</span></td><td>Sim</td><td>Precisa ser positivo. A validação é "Valor deve ser positivo".</td></tr>
+      <tr><td><span class="ui">Conta Bancária / Caixa</span></td><td>Sim</td><td>Define de qual conta o dinheiro sai ou entra. A validação é "Selecione uma conta ou caixa". Se não houver nenhuma conta cadastrada, aparece o bloco "Nenhuma conta cadastrada" com o atalho <span class="ui">Cadastrar agora</span>.</td></tr>
+      <tr><td><span class="ui">Forma de pagamento</span></td><td>Não</td><td>Dinheiro, PIX, Cartão de Crédito, Cartão de Débito, Transferência, Boleto ou Cheque. O sistema lembra a última usada.</td></tr>
+      <tr><td><span class="ui">Descrição</span></td><td>Sim</td><td>Validação "Descrição é obrigatória". É o texto que aparece no extrato.</td></tr>
+      <tr><td><span class="ui">Data</span></td><td>Sim</td><td>Validação "Data é obrigatória". É a data do fato.</td></tr>
+      <tr><td><span class="ui">Parcelas</span></td><td>Não</td><td>"À vista" ou o número de parcelas. Com mais de uma, o sistema gera todas as parcelas com vencimentos mensais a partir da data informada.</td></tr>
+      <tr><td><span class="ui">Comprovantes / Notas Fiscais</span></td><td>Não</td><td>Aceita imagens (JPG, PNG) e PDFs, vários por lançamento. Em compra parcelada, os comprovantes são vinculados a todas as parcelas.</td></tr>
+      <tr><td><span class="ui">Já foi pago</span> / <span class="ui">Já foi recebido</span></td><td>Não</td><td>Ligado, entra como realizado. Desligado, vai pra contas a pagar ou a receber. O próprio formulário avisa: "Irá para contas a pagar".</td></tr>
+      <tr><td><span class="ui">Observações</span></td><td>Não</td><td>Anotação interna, não aparece pro cliente.</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t13-nova-transacao-modal.png" alt="Modal Nova Transação com os botões Receita (selecionado, verde) e Despesa, campo Categoria, Valor em reais, Conta Bancária / Caixa, Forma de pagamento, Descrição, e na base os campos Data e Parcelas com 'À vista' selecionado">
+    <figcaption>Nova Transação: escolha entre Receita e Despesa e os campos comuns de um lançamento.</figcaption>
+  </figure>
+
+  <h3>Editar</h3>
+  <p>Editar valor, descrição, data ou categoria é uma edição simples. Duas mudanças, porém, exigem que o sistema refaça o lançamento do zero, e por isso ele pede confirmação antes:</p>
+  <ul>
+    <li><b>Transformar uma despesa à vista em parcelada.</b> A mensagem é: "Você está alterando esta despesa para N parcelas. A transação original será removida e N novas parcelas serão criadas no lugar. Os anexos serão preservados em todas as parcelas. Continuar?"</li>
+    <li><b>Trocar a forma de pagamento</b> (por exemplo, de PIX para Cartão de Crédito). A mensagem explica que a original será removida e recriada com a nova forma, preservando os anexos.</li>
+  </ul>
+  <p>Se os comprovantes não conseguirem ser transferidos, aparece o aviso "Anexos não foram preservados: a nova despesa foi criada, mas os comprovantes da original não puderam ser vinculados. Reanexe manualmente." Nesse caso o lançamento está certo, só falta reanexar.</p>
+
+  <h3>Excluir, e quem pode excluir</h3>
+  <div class="aviso"><b>Excluir lançamento financeiro é uma permissão separada e não vem ligada por padrão.</b> Quem sempre pode excluir: administrador, gestor e quem tem acesso total. Qualquer outro usuário só consegue se o administrador tiver marcado, no editor de permissões, a ação <span class="ui">Excluir Lançamento Financeiro</span> (descrição na tela: "Excluir transações financeiras (contas a pagar, contas a receber e movimentações)"). Sem essa marcação, o botão de excluir nem aparece, e mesmo por outro caminho o servidor recusa. Ter acesso à tela Financeiro e poder criar lançamento não dá direito de apagar.</div>
+  <ul>
+    <li>Ao excluir, o sistema pergunta antes e mostra "Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita." A confirmação de sucesso é "Transação excluída com sucesso!".</li>
+    <li>Se o lançamento fizer parte de um conjunto (por exemplo, veio de um orçamento aprovado), abre o diálogo <span class="ui">Movimentação vinculada</span>, que mostra quantos outros lançamentos estão ligados e oferece <span class="ui">Excluir todos os N lançamentos</span> ou <span class="ui">Excluir somente este lançamento</span>. Excluindo todos, o orçamento fica desvinculado e pode ser aprovado de novo.</li>
+    <li>Excluir um lançamento com filhos (tarifa de máquina, recebimento parcial) apaga os filhos junto.</li>
+    <li>Excluir um <b>pagamento de fatura de cartão</b> não é uma exclusão comum: o sistema estorna o pagamento inteiro, apaga as duas pernas do movimento e recalcula a fatura. Está explicado no capítulo do pagamento de fatura.</li>
+  </ul>
+
+  <h2>4. Extrato com "saldo após" e o ajuste manual de saldo</h2>
+
+  <p>Clicando numa conta bancária ou caixa na lateral de <span class="ui">Movimentações</span>, você abre o extrato daquela conta. É um card colorido no topo com o saldo, e abaixo a lista de movimentações com as colunas <span class="ui">Data</span>, <span class="ui">Usuário</span>, <span class="ui">Tipo</span>, <span class="ui">Descrição</span>, <span class="ui">Categoria</span>, <span class="ui">Conta</span>, <span class="ui">Valor</span>, <span class="ui">Saldo Após</span> e <span class="ui">Ações</span>.</p>
+
+  <h3>O que é a coluna "Saldo Após"</h3>
+  <p>É o saldo da conta logo depois daquela movimentação, como no extrato do banco. O sistema calcula de trás pra frente: parte do saldo atual da conta e vai desfazendo cada lançamento até o começo. Por isso a coluna só aparece quando você está olhando <b>uma conta específica</b>, nunca na visão de todas as contas juntas, e ela considera todo o histórico da conta, não só o período filtrado. Cartão de crédito não tem "saldo após", porque cartão não tem saldo, tem fatura.</p>
+
+  <h3>Ajustar saldo</h3>
+  <p>Serve pra quando o saldo do sistema não bate com o do banco, seja porque faltou lançar alguma coisa antiga, seja porque o saldo inicial foi digitado errado.</p>
+  <ol>
+    <li>No menu de ações da conta, escolha <span class="ui">Ajustar saldo</span>.</li>
+    <li>O campo <span class="ui">Saldo em conta (R$)</span> já vem preenchido com o saldo atual calculado. Digite quanto a conta <b>realmente</b> tem.</li>
+    <li>O sistema mostra a frase "Será lançado um ajuste de R$ X (entrada)" ou "(saída)".</li>
+    <li>Confirme em <span class="ui">Confirmar ajuste</span>. A confirmação é "Saldo ajustado! Novo saldo da conta: R$ ...".</li>
+  </ol>
+  <div class="regra">O ajuste vira um lançamento de verdade no extrato, com a categoria reservada <b>Ajuste de saldo</b>. Ele NÃO entra na DRE, porque é conciliação de caixa e não é receita nem despesa real. Se você digitar exatamente o mesmo valor que já está lá, o sistema não lança nada e avisa "O saldo já está nesse valor. Nenhum ajuste foi necessário." Cartão de crédito não tem ajuste de saldo, só conta e caixa.</div>
+
+  <h3>Recalcular faturas</h3>
+  <p>No menu de ações de um cartão existe <span class="ui">Recalcular faturas</span>. Serve pra quando você mudou o dia de fechamento e as compras antigas ficaram na fatura errada. A confirmação diz: "Tem certeza? Isso vai recalcular a fatura de todas as despesas deste cartão. As suas despesas e valores não serão alterados, só a fatura em que cada uma aparece." Nenhum valor muda, só a fatura de destino de cada compra.</p>
+
+  <h2>5. Transferência entre contas — e por que ela nunca é receita nem despesa</h2>
+
+  <p>Transferência é tirar dinheiro de uma conta sua e colocar em outra conta sua. Do banco pro caixa, do caixa pro banco, de um banco pra outro. Não é faturamento e não é despesa: o patrimônio não mudou, só mudou de lugar.</p>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Em <span class="ui">Movimentações</span>, abra o menu de ações da conta e escolha <span class="ui">Transferir</span>.</li>
+    <li>Escolha a <span class="ui">Origem</span> e o <span class="ui">Destino</span>. Os dois campos têm busca e permitem criar conta na hora.</li>
+    <li>Informe o <span class="ui">Valor (R$)</span> e a <span class="ui">Data</span>.</li>
+    <li>A <span class="ui">Descrição</span> é opcional. Sem descrição, o sistema grava "Transferência entre contas".</li>
+    <li>Confirme em <span class="ui">Transferir</span>. A confirmação é "Transferência realizada!".</li>
+  </ol>
+
+  <h3>O que acontece por baixo</h3>
+  <div class="regra">Toda transferência gera <b>dois</b> lançamentos ao mesmo tempo, sempre: uma saída na conta de origem e uma entrada na conta de destino, ambas já marcadas como realizadas, ambas na categoria "Transferência entre contas". Os dois lançamentos ficam marcados como um par interno. É esse par que faz o sistema entender que aquilo não é resultado, é balanço.</div>
+  <p>Consequência prática, e isso <b>não é erro</b>:</p>
+  <ul>
+    <li>Transferir R$ 10.000,00 do Inter pro Nubank <b>não</b> aumenta o card <span class="ui">Receitas</span> do período.</li>
+    <li>A transferência <b>não</b> aparece na DRE, nem como receita nem como despesa.</li>
+    <li>Ela <b>aparece</b> no extrato das duas contas, porque de fato saiu de uma e entrou na outra, e ela muda o saldo das duas.</li>
+    <li>O <b>pagamento de fatura de cartão</b> segue exatamente a mesma lógica: também é um par interno, também fica fora do faturamento e da DRE.</li>
+  </ul>
+  <p>Se você vir uma transferência sendo contada como receita em algum relatório, isso é problema pra reportar ao suporte, não é o comportamento esperado.</p>
+
+  <h2>6. Cadastrar cartão de crédito: fechamento, vencimento e limite</h2>
+
+  <p>O cartão é um tipo de conta, criado pelo botão <span class="ui">Novo Cartão</span> na lateral de <span class="ui">Movimentações</span>, ou escolhendo o tipo <span class="ui">Cartão de Crédito</span> no formulário de conta.</p>
+
+  <h3>Campos exclusivos do cartão</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>O que significa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Dia de fechamento</span></td><td>Dia do mês em que a fatura para de acumular compras. Escolhido numa lista de 1 a 31. O padrão sugerido é 10.</td></tr>
+      <tr><td><span class="ui">Dia de vencimento</span></td><td>Dia do mês em que a fatura precisa ser paga. Também de 1 a 31. O padrão sugerido é 20.</td></tr>
+      <tr><td><span class="ui">Limite de crédito (R$)</span></td><td>Opcional. Se preenchido, o sistema mostra a barra de limite e o quanto sobrou de disponível.</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/t13-novo-cartao-modal.png" alt="Modal Novo Cartão com Nome da Conta, Tipo em Cartão de Crédito, Instituição, os campos Dia de fechamento (Dia 10) e Dia de vencimento (Dia 20) lado a lado, a frase que explica que a fatura fechada no dia 10 vence no dia 20 do mesmo mês, o campo Limite de crédito opcional e a paleta de cores">
+    <figcaption>Novo Cartão: dia de fechamento e vencimento lado a lado, com a frase automática que explica a regra da fatura.</figcaption>
+  </figure>
+
+  <h3>A regra do fechamento, que é a que mais confunde</h3>
+  <div class="aviso"><b>Compra feita NO próprio dia do fechamento já entra na fatura seguinte.</b> Com fechamento no dia 20: uma compra no dia 19 cai na fatura em formação; uma compra no dia 20 já vai pra próxima. O formulário mostra essa frase enquanto você escolhe os dias, e ela muda sozinha conforme os números.</div>
+  <p>A relação entre os dois dias também é automática:</p>
+  <ul>
+    <li>Se o vencimento é <b>maior</b> que o fechamento (fecha dia 10, vence dia 20), a fatura vence no <b>mesmo mês</b>. O texto na tela é: "A fatura que fecha no dia 10 vence no dia 20 do mesmo mês."</li>
+    <li>Se o vencimento é <b>menor ou igual</b> ao fechamento (fecha dia 25, vence dia 5), a fatura vence no <b>mês seguinte</b>, e a pré-visualização do cartão mostra "(mês seguinte)".</li>
+  </ul>
+  <p>Meses curtos são tratados sozinhos: se o fechamento é dia 31 e o mês tem 30 dias, o sistema usa o último dia do mês. Fevereiro segue a mesma regra, com 28 ou 29 dias conforme o ano.</p>
+
+  <h3>O que aparece na tela do cartão</h3>
+  <ul>
+    <li>No card do cartão: <span class="ui">Fatura em aberto</span> com o valor acumulado, e, quando há limite, <span class="ui">Limite total</span> e <span class="ui">Disponível</span> com uma barra.</li>
+    <li>A linha de regra "fecha dia X, vence dia Y" ou "fecha dia X, vence Z dias depois".</li>
+    <li>A lista de faturas, cada uma com "Vence em DD/MM/AAAA, fecha em DD/MM/AAAA, N lançamentos" e um selo de situação: <span class="ui">Aberta</span>, <span class="ui">Fechada</span>, <span class="ui">Parcial</span> ou <span class="ui">Paga</span>.</li>
+    <li>O card <span class="ui">Faturas de cartão</span> na visão geral de Movimentações soma as faturas abertas de todos os cartões. Ele fica <b>separado</b> do saldo em contas de propósito: fatura de cartão é dívida, não é dinheiro em caixa.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t13-cartao-faturas.png" alt="Tela do cartão Nubank PJ dentro de Movimentações, com o card roxo mostrando Fatura em aberto de R$ 820,00, a barra de limite total R$ 8.000,00 e disponível R$ 7.180,00, a linha 'fecha dia 5, vence dia 15' e, abaixo, a fatura de Julho 2026 com o selo laranja Fechada e o botão Pagar Fatura">
+    <figcaption>Tela do cartão: card de limite e fatura em aberto, e a lista de faturas com o selo de situação.</figcaption>
+  </figure>
+
+  <h2>7. Compra parcelada no cartão: a prévia parcela a parcela e o mês de cada fatura</h2>
+
+  <p>Ao criar uma despesa e escolher uma conta do tipo cartão, o formulário abre um bloco roxo chamado <span class="ui">Despesa no Cartão de Crédito</span>. Ele existe pra você conferir, antes de salvar, em qual fatura cada valor vai cair.</p>
+
+  <h3>Compra à vista no cartão</h3>
+  <p>Aparece uma linha só, do tipo "→ fatura de outubro 2026 — R$ 450,00", e um campo <span class="ui">Mês da fatura</span> que você pode ajustar manualmente se precisar jogar a compra pra outro ciclo.</p>
+
+  <h3>Compra parcelada</h3>
+  <p>Escolhendo, por exemplo, 6 parcelas, o bloco mostra "6 parcelas distribuídas nas faturas do cartão Nubank PJ" e lista <b>uma linha por parcela</b>, no formato "1/6 → fatura de outubro 2026 — R$ 75,00", "2/6 → fatura de novembro 2026 — R$ 75,00", e assim por diante. Cada parcela é calculada com a própria data de vencimento e a própria regra de fechamento, então uma compra feita depois do fechamento já começa na fatura seguinte.</p>
+
+  <h3>Regras que o sistema aplica</h3>
+  <ul>
+    <li>O valor é dividido igualmente, e a <b>última</b> parcela recebe a diferença de centavos do arredondamento. Somando todas, dá exatamente o valor da compra.</li>
+    <li>A descrição de cada parcela ganha o sufixo "(1/6)", "(2/6)" e assim por diante.</li>
+    <li><b>Nenhuma</b> parcela de cartão nasce marcada como paga. O formulário nem mostra a chave "Já foi pago" pra cartão. Quem fica pago é a fatura.</li>
+    <li>O bloco roxo traz o lembrete: "Compra no cartão não sai do caixa nem da conta bancária, ela entra na fatura e some do fechamento de caixa."</li>
+    <li>O sistema cria automaticamente a fatura de cada mês tocado pelas parcelas, se ela ainda não existir.</li>
+    <li>Na lista de Movimentações, as compras de cartão ficam escondidas por padrão. O interruptor <span class="ui">Incluir compras no cartão</span> as traz de volta. O texto de apoio explica o motivo: "Por padrão a lista traz só movimento de conta e caixa. O que saiu do caixa foi o pagamento da fatura, não cada compra." Sem esse corte, o gasto pareceria dobrado, uma vez na compra e outra no pagamento da fatura.</li>
+  </ul>
+
+  <h2>8. Pagar a fatura: integral × parcial, e o limite voltando</h2>
+
+  <p>O botão <span class="ui">Pagar Fatura</span> fica em cada linha de fatura, na tela do cartão dentro de Movimentações, e também na seção <span class="ui">Faturas de Cartão</span> da tela Contas.</p>
+
+  <h3>Quando o pagamento é liberado</h3>
+  <div class="regra">A fatura só pode ser paga <b>a partir do dia do fechamento, inclusive o próprio dia</b>. Antes disso o botão fica travado, com um cadeado, e explica: "Esta fatura ainda está aberta, ela fecha em DD/MM/AAAA. A partir dessa data o pagamento é liberado." Se alguém tentar por outro caminho, o servidor recusa com "Esta fatura ainda não fechou. O pagamento é liberado a partir de DD/MM/AAAA."</div>
+
+  <h3>Passo a passo</h3>
+  <ol>
+    <li>Clique em <span class="ui">Pagar Fatura</span>.</li>
+    <li>Em <span class="ui">Pagar com</span>, escolha a conta ou caixa de onde o dinheiro sai. Não pode ser outro cartão: a mensagem de recusa é "Não é possível pagar uma fatura com outro cartão." Se não houver conta cadastrada, aparece "Cadastre um caixa ou conta primeiro."</li>
+    <li>Confira a <span class="ui">Data do pagamento</span>.</li>
+    <li>O campo <span class="ui">Valor a pagar</span> já vem preenchido com o restante da fatura. Você pode diminuir.</li>
+    <li>Confirme em <span class="ui">Confirmar Pagamento</span>.</li>
+  </ol>
+
+  <h3>Integral: quita tudo e devolve o limite</h3>
+  <p>Pagando o valor cheio, a tela mostra o aviso verde "Fatura será completamente quitada" antes de você confirmar. Depois de confirmar, aparece "Fatura quitada! Pagamento registrado e limite do cartão liberado." O que o sistema faz:</p>
+  <ul>
+    <li>Cria os <b>dois</b> lançamentos do movimento: a saída na conta que pagou e a entrada no cartão. É a entrada no cartão que devolve o limite disponível. Os dois ficam marcados como movimento interno, então não entram no faturamento nem na DRE.</li>
+    <li>Marca a fatura como <span class="ui">Paga</span>.</li>
+    <li><b>Quita todas as compras daquela fatura</b>, carimbando nelas a data do pagamento. É esse passo que faz a compra no cartão finalmente aparecer no seu resultado.</li>
+  </ul>
+
+  <h3>Parcial: registra o pagamento, mas não quita nenhuma compra</h3>
+  <div class="aviso">Pagando menos que o total, o sistema avisa antes de confirmar: "Pagamento parcial, ficará R$ X em aberto", e complementa: "As compras desta fatura só entram no seu resultado, no Regime de Caixa, quando a fatura for quitada por inteiro. No Regime de Competência elas já aparecem no mês da compra." Depois de confirmar, aparece "Pagamento parcial registrado! Ainda faltam R$ X para quitar esta fatura." A fatura fica com a situação <span class="ui">Parcial</span>.</div>
+  <p>O motivo de o pagamento parcial não quitar nada é simples: não existe como saber <b>quais</b> compras foram pagas. Qualquer critério inventado (as mais antigas primeiro, rateio proporcional) produziria número falso no resultado, e número falso é pior que número ausente. Assim que um pagamento completa a fatura, todas as compras dela são quitadas de uma vez.</p>
+
+  <h3>Estornar um pagamento de fatura</h3>
+  <ul>
+    <li>Excluir o lançamento de "Pagamento de Fatura" estorna a operação inteira: apaga <b>as duas</b> pernas, recalcula quanto já foi pago daquela fatura e devolve a situação certa (Aberta, Parcial ou Paga).</li>
+    <li>Se a fatura deixar de estar paga, as compras dela voltam a ficar pendentes. Pagar quita, estornar desquita, sempre nos dois sentidos.</li>
+    <li>Existe um caso em que o sistema <b>recusa</b> o estorno: pagamentos muito antigos, importados de antes dessa mecânica, em que a saída original do banco não pôde ser identificada. A mensagem é: "Este pagamento foi importado de um registro antigo e não pode ser estornado automaticamente, porque a saída original da conta bancária não pôde ser identificada. Ajuste manualmente pelo extrato." A recusa é proposital: estornar naquele caso deixaria a fatura em aberto com o dinheiro já saído do banco, e o risco seria você pagar duas vezes.</li>
+  </ul>
+
+  <h2>9. Visão Geral: cards de saldo, gráfico de fluxo de caixa e pizza por categoria</h2>
+
+  <p>A Visão Geral é a primeira aba de <span class="ui">Relatório</span> e responde "como foi o período". Tudo nela respeita o seletor de período do topo.</p>
+
+  <h3>Os cards</h3>
+  <table class="dados">
+    <thead><tr><th>Card</th><th>O que soma</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Receitas</span></td><td>Entradas já recebidas no período.</td></tr>
+      <tr><td><span class="ui">Despesas</span></td><td>Saídas já pagas no período.</td></tr>
+      <tr><td><span class="ui">Saldo do Período</span></td><td>Receitas menos Despesas. O ícone de ajuda explica: "O saldo do período é o total de receitas já recebidas menos o total de despesas já pagas dentro do período filtrado. Não considera valores a receber/a pagar nem o saldo existente nas contas."</td></tr>
+      <tr><td><span class="ui">A Receber</span></td><td>Entradas do período ainda não recebidas. Clicar leva pra tela Contas.</td></tr>
+      <tr><td><span class="ui">A Pagar</span></td><td>Saídas do período ainda não pagas. Clicar leva pra tela Contas.</td></tr>
+    </tbody>
+  </table>
+  <p>Abaixo vem <span class="ui">SALDO POR CONTA</span>, com um cartãozinho por conta. Os cartões de crédito aparecem com o selo <span class="ui">FATURA</span> e o valor em vermelho, pra ninguém confundir dívida de cartão com dinheiro disponível.</p>
+
+  <h3>Os gráficos</h3>
+  <ul>
+    <li><span class="ui">FLUXO DE CAIXA</span>: barras de receitas e despesas por mês. No celular, mostra os últimos 3 meses.</li>
+    <li><span class="ui">DISTRIBUIÇÃO POR CATEGORIA</span>: rosca com o peso de cada categoria. No celular, mostra as 5 maiores. Sem dado no período, aparece "Sem dados no período. Nenhuma movimentação para distribuir por categoria neste período."</li>
+    <li><span class="ui">ÚLTIMAS MOVIMENTAÇÕES</span>: as 8 mais recentes, com selo <span class="ui">Pago</span> ou <span class="ui">Pendente</span>, e o atalho <span class="ui">Ver todas →</span> que abre Movimentações.</li>
+  </ul>
+  <div class="regra">Transferências entre contas e pagamentos de fatura de cartão ficam fora dos cards de Receitas e Despesas. É movimento interno: sem esse corte, transferir R$ 10.000,00 de um banco pro outro apareceria como R$ 10.000,00 de receita.</div>
+
+  <h2>10. Categorias: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe</h2>
+
+  <p>As categorias vivem na aba <span class="ui">Categorias</span> da tela <span class="ui">Relatório</span>. Elas são divididas em duas listas, <span class="ui">Categorias de Receita</span> e <span class="ui">Categorias de Despesa</span>.</p>
+
+  <h3>Campos do formulário</h3>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome</span></td><td>Sim</td><td>Validação "Nome é obrigatório". Exemplo sugerido na tela: "Serviços".</td></tr>
+      <tr><td><span class="ui">Tipo</span></td><td>Sim</td><td>Receita, Despesa ou Ambos. Validação "Tipo é obrigatório".</td></tr>
+      <tr><td><span class="ui">Grupo DRE</span></td><td>Não</td><td>Impostos e Deduções, CMV (Custo do Serviço) ou Despesas Operacionais (OPEX). É o que decide em qual linha do resultado a categoria entra.</td></tr>
+      <tr><td><span class="ui">Cor</span></td><td>Sim</td><td>Validação "Cor é obrigatória". Usada nos gráficos.</td></tr>
+      <tr><td><span class="ui">Ícone</span></td><td>Não</td><td>Só visual.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ordenar</h3>
+  <p>No computador dá pra arrastar as categorias pra mudar a ordem (o cabeçalho mostra a dica "arraste para reordenar"). Existem também as ações <span class="ui">Mover para cima</span> e <span class="ui">Mover para baixo</span>. A ordem definida aqui é a ordem em que elas aparecem nos seletores de categoria dos formulários.</p>
+
+  <h3>Categorias do sistema</h3>
+  <ul>
+    <li>Algumas categorias vêm marcadas com o selo <span class="ui">Sistema</span>. Passando o mouse, aparece "Categoria do sistema".</li>
+    <li>Tentar editar mostra "Categoria do sistema não pode ser editada". Tentar excluir mostra "Categoria do sistema não pode ser excluída".</li>
+    <li>Exemplos de categorias criadas pelo próprio sistema: <b>Folha de Pagamento</b> (criada quando a primeira folha de um funcionário é gerada, já classificada como OPEX), <b>Ajuste de saldo</b>, <b>Transferência entre contas</b>, <b>Pagamento de Fatura</b>, <b>Tarifas e Taxas</b> e <b>Recebimento parcial</b>.</li>
+  </ul>
+
+  <figure>
+    <img src="img/t13-categorias.png" alt="Aba Categorias do Financeiro com as listas Categorias de Receita e Categorias de Despesa lado a lado, cada categoria com ícone colorido e nome; algumas linhas, como Vendas de Serviços, CMV - Mão de Obra Avulsa, CMV - Materiais e Folha de Pagamento, trazem um pequeno ícone de cadeado ao lado do nome">
+    <figcaption>Categorias de Receita e Despesa: o cadeado ao lado do nome marca a categoria do sistema, que não pode ser editada nem excluída.</figcaption>
+  </figure>
+
+  <h3>Excluir categoria</h3>
+  <p>A confirmação é clara sobre o efeito: "Tem certeza? Transações com esta categoria não serão afetadas." Ou seja, os lançamentos antigos continuam com o nome da categoria gravado, eles não somem e não mudam de valor.</p>
+
+  <div class="regra"><b>Não existe subcategoria no financeiro do Dominex.</b> A lista de categorias é plana: não dá pra criar "Veículos" com "Combustível" e "Manutenção" dentro. Se você precisa desse detalhe, o caminho hoje é criar categorias irmãs com nome composto, como "Veículos, Combustível" e "Veículos, Manutenção", e usar a ordenação por arrastar pra deixá-las juntas na lista. O agrupamento contábil de verdade é feito pelo campo <span class="ui">Grupo DRE</span>, que junta várias categorias em Impostos, CMV ou OPEX.</div>
+
+  <h2>11. Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial</h2>
+
+  <div class="aviso">Esta tela exige o módulo <b>Financeiro Avançado</b>. Sem ele, abrir <code>/financeiro/contas</code> direto pela URL leva você de volta pro Relatório, sem mensagem de erro. O módulo também é o que libera a aba DRE.</div>
+
+  <p>A tela <span class="ui">Contas</span> tem duas sub-abas, <span class="ui">A Pagar</span> e <span class="ui">A Receber</span>, e no topo os cards <span class="ui">Total Pendente</span>, <span class="ui">Total Vencido</span>, <span class="ui">Próximos 7 dias</span> e <span class="ui">Total Pago</span> (ou <span class="ui">Total Recebido</span>). Há busca por nome, descrição, categoria ou valor, filtro por situação (<span class="ui">Pendentes</span>, <span class="ui">Vencidas</span>, <span class="ui">Pagas</span>, <span class="ui">Todas</span>) e filtro por categoria.</p>
+
+  <h3>Criar uma conta com recorrência</h3>
+  <ol>
+    <li>Clique em <span class="ui">Nova Conta</span>.</li>
+    <li>Escolha o <span class="ui">Tipo</span>: <span class="ui">A Pagar</span> ou <span class="ui">A Receber</span>.</li>
+    <li>Preencha <span class="ui">Descrição</span> (obrigatória, exemplo da tela: "Aluguel do escritório") e <span class="ui">Valor (R$)</span> (obrigatório, maior que zero).</li>
+    <li>Informe o <span class="ui">Vencimento</span> e escolha a <span class="ui">Categoria</span>.</li>
+    <li>Escolha a <span class="ui">Conta Bancária / Caixa</span>. É obrigatória: sem ela o botão de salvar fica desabilitado. Não havendo nenhuma cadastrada, aparece "É necessário cadastrar uma conta ou caixa" com o atalho <span class="ui">Cadastrar agora</span>.</li>
+    <li>Se for salário, dá pra vincular um <span class="ui">Funcionário</span>. Em contas a receber e em categorias de contrato, dá pra vincular <span class="ui">Contrato</span> e <span class="ui">Cliente</span>.</li>
+    <li>Escolha a <span class="ui">Recorrência</span>: <span class="ui">Única</span>, <span class="ui">Semanal</span>, <span class="ui">Mensal</span> ou <span class="ui">Anual</span>. Escolhendo qualquer uma diferente de Única, aparece o campo <span class="ui">Parcelas</span>.</li>
+    <li>Confirme em <span class="ui">Criar Conta</span>.</li>
+  </ol>
+
+  <div class="regra"><b>A recorrência cria todas as parcelas de uma vez, na hora.</b> Não é um agendamento que dispara depois: escolhendo Mensal com 12 parcelas, o sistema grava as 12 linhas imediatamente, com vencimento mês a mês e a descrição numerada "(1/12)", "(2/12)" e assim por diante, todas em aberto. O número mínimo é 2 e o máximo é 60. Se você precisa cancelar a recorrência no meio, exclui as parcelas futuras uma a uma, não existe botão de "parar recorrência".</div>
+
+  <h3>Dar baixa numa conta a pagar</h3>
+  <ol>
+    <li>Na linha da conta, use <span class="ui">Marcar pago</span>.</li>
+    <li>Abre o <span class="ui">Confirmar pagamento</span>, com <span class="ui">Pago com</span> (conta ou caixa, obrigatório), <span class="ui">Forma de pagamento</span>, <span class="ui">Data do pagamento</span> e <span class="ui">Observações</span>.</li>
+    <li>Confirme. A linha passa pra situação <span class="ui">Pago</span> e o valor sai da conta escolhida.</li>
+  </ol>
+
+  <h3>Receber, inclusive parcialmente</h3>
+  <p>Em <span class="ui">A Receber</span>, a ação é <span class="ui">Marcar recebido</span>, que abre o modal <span class="ui">Como foi recebido?</span>:</p>
+  <ul>
+    <li><span class="ui">Valor recebido</span>: já vem com o total. Informando um valor menor, o sistema registra um <b>recebimento parcial</b>. A dica na tela é: "Restante a receber: R$ X. Informe um valor menor para registrar um recebimento parcial."</li>
+    <li><span class="ui">Novo vencimento do saldo restante</span>: obrigatório no recebimento parcial. "Saldo de R$ X ficará pendente com este novo vencimento."</li>
+    <li><span class="ui">Forma de pagamento</span>, <span class="ui">Data do recebimento</span> e <span class="ui">Caixa / Conta bancária</span>: todos obrigatórios.</li>
+    <li><span class="ui">Tarifa de máquina/gateway (R$)</span>: opcional. "Será lançado como despesa em 'Tarifas e Taxas' (deduzida da receita líquida no DRE)." O resumo mostra valor bruto, tarifa e líquido na conta.</li>
+    <li>Validações: "Informe um valor maior que zero." e "Valor não pode ser maior que o restante (R$ X)."</li>
+    <li>Conta <b>parcelada</b> não aceita recebimento parcial. A tela avisa: "Conta parcelada, recebimento parcial não está disponível."</li>
+    <li>A confirmação é "Recebimento confirmado!". A conta passa a mostrar <span class="ui">Parcial</span>, com "Recebido R$ X de R$ Y".</li>
+  </ul>
+  <p>Em <span class="ui">Ver histórico</span> aparecem todos os recebimentos daquela conta, com a opção de <span class="ui">Estornar</span> um deles: "O valor de R$ X voltará a ficar pendente nesta conta. Esta ação não pode ser desfeita." Estornar exige a mesma permissão de excluir lançamento financeiro.</p>
+
+  <h3>Faturas de cartão dentro de Contas a Pagar</h3>
+  <p>As despesas de cartão não aparecem uma a uma aqui. Elas aparecem agrupadas numa seção própria, <span class="ui">Faturas de Cartão</span>, com uma linha por fatura. A tela explica: "Faturas de cartão ficam fora do filtro por categoria (e dos totais acima): uma fatura junta despesas de várias categorias."</p>
+
+  <h3>Folha de pagamento aparecendo sozinha aqui</h3>
+  <p>Linhas com o nome "Folha [nome do funcionário] — [período]" e a categoria <span class="ui">Folha de Pagamento</span> são geradas automaticamente pelo sistema, não por você. Elas trazem um ícone de pessoas e, ao clicar em pagar, abrem o modal de pagamento de funcionário (com desconto de vale e, no modo CLT, holerite). A confirmação é "Folha quitada com sucesso".</p>
+
+  <!-- PRINT FALTANDO: tela Contas a Pagar/Receber com as sub-abas A Pagar e A Receber, os quatro cards de totais e a seção Faturas de Cartão. A conta de demonstração usada na captura NÃO tem o módulo Financeiro Avançado, então /financeiro/contas redireciona pro Relatório e o print sai errado (o arquivo t13-financeiro-contas.png capturado hoje mostra, na verdade, a tela Relatório). Precisa de uma conta com o módulo ligado. -->
+
+  <h2>12. DRE: o botão Caixa × Competência e o que muda no número</h2>
+
+  <p>A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou faltou dinheiro no período". Ela fica na aba <span class="ui">DRE - Resultado</span> da tela <span class="ui">Relatório</span> e exige o módulo <b>Financeiro Avançado</b>.</p>
+
+  <h3>Como o resultado é montado</h3>
+  <table class="dados">
+    <thead><tr><th>Linha</th><th>De onde vem</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">(+) Receita Bruta</span></td><td>Todas as entradas.</td></tr>
+      <tr><td><span class="ui">(-) Impostos e Deduções</span></td><td>Saídas cujas categorias estão no grupo DRE "Impostos".</td></tr>
+      <tr><td><span class="ui">(=) Receita Líquida</span></td><td>Receita bruta menos impostos.</td></tr>
+      <tr><td><span class="ui">(-) CMV (Custo da Mercadoria/Serviço)</span></td><td>Saídas cujas categorias estão no grupo DRE "CMV".</td></tr>
+      <tr><td><span class="ui">(=) Lucro Bruto</span></td><td>Receita líquida menos CMV. Mostra também a margem em porcentagem.</td></tr>
+      <tr><td><span class="ui">(-) Despesas Operacionais (OPEX)</span></td><td>Todo o resto das saídas.</td></tr>
+      <tr><td><span class="ui">(=) Resultado Líquido (EBITDA)</span></td><td>O número final, com o rótulo <span class="ui">Superávit</span>, <span class="ui">Déficit</span> ou <span class="ui">Equilibrado</span>.</td></tr>
+    </tbody>
+  </table>
+  <p>Cada bloco abre e fecha, mostrando as categorias que compõem o total. No topo há três indicadores: <span class="ui">Margem</span>, <span class="ui">Receita Líq.</span> e <span class="ui">EBITDA</span>, e um gráfico <span class="ui">Evolução Receita × Despesas</span> mês a mês.</p>
+
+  <h3>O botão Caixa × Competência</h3>
+  <p>No cabeçalho escuro da tabela existe um botão de duas posições. Ele muda a régua que a DRE usa pra decidir em qual mês cada lançamento entra. Em linguagem de dono de empresa:</p>
+  <ul>
+    <li><b><span class="ui">Regime de Caixa</span></b>: conta o dinheiro no mês em que ele <b>entrou ou saiu da conta</b>. Só aparece o que já foi pago ou recebido. É o "quanto sobrou no bolso". A dica na tela diz: "Conta a despesa no mês em que o dinheiro saiu da conta. Uma compra no cartão entra no mês em que você pagou a fatura."</li>
+    <li><b><span class="ui">Regime de Competência</span></b>: conta no mês em que a coisa <b>aconteceu</b>, tenha sido paga ou não. É o "quanto o mês custou de verdade". A dica na tela diz: "Conta a despesa no mês em que ela aconteceu, mesmo que você ainda não tenha pago. Uma compra no cartão entra no mês da compra."</li>
+  </ul>
+  <div class="aviso"><b>O padrão é Regime de Caixa.</b> Essa escolha é uma lente de leitura, não uma configuração da empresa: ela não fica salva, e ao sair e voltar a DRE abre de novo em Caixa. Trocar o regime não altera nenhum lançamento, só muda a forma de somar.</div>
+  <p>No rodapé da DRE, o sistema repete qual régua está valendo: "* Regime de Caixa: cada lançamento entra no mês em que o dinheiro entrou ou saiu da conta. Só aparece o que já foi pago ou recebido." ou "* Regime de Competência: cada lançamento entra no mês em que aconteceu, pago ou não."</p>
+
+  <h3>Exemplo prático</h3>
+  <p>Você compra R$ 3.000,00 de material em 28 de agosto, com boleto pra 15 de setembro.</p>
+  <ul>
+    <li>Em <b>Competência</b>, os R$ 3.000,00 aparecem em <b>agosto</b>, mesmo antes de você pagar. Agosto mostra o custo real do que foi consumido no mês.</li>
+    <li>Em <b>Caixa</b>, os R$ 3.000,00 só aparecem em <b>setembro</b>, quando o dinheiro sai. Agosto fica mais leve e setembro mais pesado.</li>
+  </ul>
+  <p>Nenhum dos dois é "o certo": são perguntas diferentes. Para saber se você tem dinheiro pra pagar as contas, use Caixa. Para saber se o serviço que você vendeu deu lucro, use Competência. Se o seu contador pedir a DRE, pergunte a ele qual regime ele quer.</p>
+
+  <h3>O que fica de fora da DRE nos dois regimes</h3>
+  <ul>
+    <li>Transferências entre contas.</li>
+    <li>Pagamentos de fatura de cartão.</li>
+    <li>Lançamentos da categoria <b>Ajuste de saldo</b>.</li>
+  </ul>
+  <p>Existe ainda uma data opcional de início da DRE nas configurações da empresa. Quando preenchida, o rodapé mostra "DRE contabilizado a partir de DD/MM/AAAA" e nada anterior a essa data entra no resultado. Serve pra empresa que migrou de outro sistema e não quer arrastar histórico incompleto.</p>
+
+  <h2>13. O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura</h2>
+
+  <p>Compra no cartão de crédito é o único lançamento do sistema que tem <b>três</b> datas diferentes, e é por isso que ele confunde tanto. Vale gravar as três:</p>
+
+  <table class="dados">
+    <thead><tr><th>Data</th><th>O que é</th><th>Exemplo</th></tr></thead>
+    <tbody>
+      <tr><td><b>Data da compra</b></td><td>O dia em que você comprou.</td><td>25/08</td></tr>
+      <tr><td><b>Mês da fatura</b></td><td>O ciclo do cartão em que a compra caiu. Depende do dia de fechamento.</td><td>fatura de setembro</td></tr>
+      <tr><td><b>Data do pagamento</b></td><td>O dia em que você pagou a fatura e o dinheiro saiu do banco.</td><td>15/09</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Qual data manda em cada tela</h3>
+  <table class="dados">
+    <thead><tr><th>Tela</th><th>Data que ela usa</th><th>Por quê</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Movimentações</span> e <span class="ui">Contas a Pagar</span></td><td><b>Mês da fatura</b></td><td>É o mês em que você precisa ter o dinheiro no bolso. A coluna de data mostra, ao passar o mouse, "Compra em DD/MM" e "Data exibida: vencimento da fatura".</td></tr>
+      <tr><td><span class="ui">DRE em Regime de Competência</span></td><td><b>Data da compra</b></td><td>O gasto aconteceu no dia da compra, independente de quando a fatura fecha ou vence.</td></tr>
+      <tr><td><span class="ui">DRE em Regime de Caixa</span></td><td><b>Data do pagamento da fatura</b></td><td>Foi nesse dia que o dinheiro saiu da conta.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra"><b>A compra de cartão NUNCA entra na DRE pelo mês da fatura.</b> O mês da fatura é uma terceira data, que não é nem a do fato nem a do pagamento, e por isso não serve de base pro resultado. Se ela fosse usada, uma compra feita depois do dia de fechamento sumiria do mês em que aconteceu.</div>
+
+  <h3>O exemplo completo, com fechamento no dia 20</h3>
+  <ol>
+    <li>Compra de R$ 1.200,00 em <b>25/08</b>. Como o fechamento é dia 20, ela cai na <b>fatura de setembro</b>.</li>
+    <li>Essa fatura vence e é paga em <b>15/09</b>.</li>
+    <li>Na tela <span class="ui">Movimentações</span> filtrada por setembro, a compra aparece (mês da fatura).</li>
+    <li>Na <b>DRE em Competência</b> filtrada por agosto, os R$ 1.200,00 aparecem em <b>agosto</b>.</li>
+    <li>Na <b>DRE em Caixa</b>, aparecem em <b>setembro</b>, e só depois que a fatura foi paga por inteiro.</li>
+  </ol>
+
+  <h3>Por que a compra pode "não aparecer" no resultado</h3>
+  <p>Se você está no <span class="ui">Regime de Caixa</span> e a fatura ainda não foi quitada integralmente, as compras daquela fatura ainda não contam como pagas, e portanto não entram no resultado. Isso é esperado. Duas saídas:</p>
+  <ul>
+    <li>Trocar pro <span class="ui">Regime de Competência</span>, onde elas já aparecem no mês da compra.</li>
+    <li>Quitar a fatura por inteiro. No momento em que ela fecha em <span class="ui">Paga</span>, todas as compras dela passam a contar, com a data do pagamento.</li>
+  </ul>
+  <div class="aviso">Pagamento parcial de fatura não faz nenhuma compra entrar no Regime de Caixa. Só a quitação integral faz. A própria tela de pagamento avisa isso antes de você confirmar.</div>
+
+  <h2>14. Exportar CSV e gerar o PDF da DRE</h2>
+
+  <h3>Exportar CSV da Visão Geral</h3>
+  <ol>
+    <li>Abra <span class="ui">Financeiro</span>, tela <span class="ui">Relatório</span>, aba <span class="ui">Visão Geral</span>.</li>
+    <li>Ajuste o período no topo. O arquivo respeita exatamente o que está filtrado na tela.</li>
+    <li>Clique em <span class="ui">Exportar CSV</span>. O arquivo <code>transacoes.csv</code> baixa na hora.</li>
+  </ol>
+  <p>As colunas são <span class="ui">Data</span>, <span class="ui">Tipo</span> (Receita ou Despesa), <span class="ui">Descrição</span>, <span class="ui">Categoria</span>, <span class="ui">Valor</span> e <span class="ui">Status</span> (Pago ou Pendente). O separador é ponto-e-vírgula e o valor usa vírgula decimal, que é o formato que o Excel em português abre direto, sem pedir configuração.</p>
+
+  <h3>Exportar a lista de movimentações em PDF ou Excel</h3>
+  <p>Na tela <span class="ui">Movimentações</span>, o botão <span class="ui">Exportar</span> abre duas opções, <span class="ui">PDF</span> e <span class="ui">Excel</span>. O arquivo leva o mesmo recorte que está na tela, ou seja, respeita período, busca e filtros de tipo, categoria e conta. O documento traz três totais no topo: <span class="ui">ENTRADAS</span>, <span class="ui">SAÍDAS</span> e <span class="ui">SALDO</span>. Se der erro, aparece "Erro ao gerar PDF" ou "Erro ao gerar Excel".</p>
+
+  <h3>Gerar o PDF da DRE</h3>
+  <ol>
+    <li>Abra a aba <span class="ui">DRE - Resultado</span>.</li>
+    <li>Escolha o período no topo e o regime (Caixa ou Competência) no botão da tabela.</li>
+    <li>Clique em <span class="ui">Exportar</span>, no cabeçalho escuro da tabela. Enquanto gera, o botão mostra "Exportando...".</li>
+    <li>Abre uma nova aba do navegador com a DRE diagramada, cabeçalho da sua empresa (nome, CNPJ, telefone, e-mail, endereço e logotipo) e um botão <span class="ui">Imprimir / Salvar PDF</span> no canto.</li>
+  </ol>
+  <div class="dica">O documento carimba o regime usado, com uma linha explicando ("Regime de Caixa: cada valor entra no mês em que o dinheiro entrou ou saiu da conta"). Isso importa: sem esse carimbo, o contador recebe o PDF e não sabe qual régua gerou aqueles números.</div>
+  <div class="aviso">O PDF da DRE abre em uma <b>nova aba</b>. Se o navegador estiver bloqueando pop-ups, nada acontece na tela. Libere os pop-ups para o endereço do sistema e clique de novo.</div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Fiz uma transferência do banco pro caixa e não apareceu no faturamento"</td>
+        <td>Comportamento correto do sistema</td>
+        <td>Transferência entre contas não é receita nem despesa, é dinheiro seu mudando de lugar. Ela aparece no extrato das duas contas e muda os dois saldos, mas fica de fora dos cards de Receitas e Despesas e da DRE de propósito.</td>
+      </tr>
+      <tr>
+        <td>"Comprei no cartão e a despesa não aparece no resultado"</td>
+        <td>Fatura ainda não foi quitada por inteiro e a DRE está em Regime de Caixa</td>
+        <td>Troque o botão da DRE para Regime de Competência: a compra aparece no mês em que foi feita. Ou pague a fatura integralmente, que aí ela passa a contar também no Regime de Caixa.</td>
+      </tr>
+      <tr>
+        <td>"Paguei parte da fatura e as compras continuam pendentes"</td>
+        <td>Pagamento parcial, por regra, não quita nenhuma compra</td>
+        <td>É proposital: não há como saber quais compras foram pagas. Assim que o pagamento completar a fatura, todas as compras dela são quitadas de uma vez.</td>
+      </tr>
+      <tr>
+        <td>"Paguei a fatura e o limite do cartão não voltou"</td>
+        <td>Pagamento antigo, feito antes da correção, com só uma perna registrada</td>
+        <td>Pagamentos feitos pelo botão Pagar Fatura hoje geram as duas pernas e devolvem o limite na hora, com a mensagem "Pagamento registrado e limite do cartão liberado". Se um pagamento antigo ficou torto, o estorno pode ser recusado com uma mensagem explicando, e o acerto é manual pelo extrato. Acione o suporte com o cartão e o mês.</td>
+      </tr>
+      <tr>
+        <td>"O botão Pagar Fatura está travado com um cadeado"</td>
+        <td>A fatura ainda não fechou</td>
+        <td>A fatura só pode ser paga a partir do dia do fechamento, inclusive nesse mesmo dia. Passe o mouse no botão: ele mostra a data exata em que o pagamento é liberado.</td>
+      </tr>
+      <tr>
+        <td>"Sumiu a aba DRE" ou "Sumiu Contas a Pagar"</td>
+        <td>Falta o módulo Financeiro Avançado</td>
+        <td>As duas dependem do módulo Financeiro Avançado. Sem ele, a aba não aparece e o endereço direto devolve pro Relatório. Dá pra contratar em Assinatura, Gerenciar Meu Plano.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo excluir um lançamento, o botão nem aparece"</td>
+        <td>Falta a permissão Excluir Lançamento Financeiro</td>
+        <td>Excluir é uma permissão à parte e não vem ligada. Administrador e gestor sempre podem. Para os demais, o administrador precisa marcar a ação Excluir Lançamento Financeiro no editor de permissões daquele usuário.</td>
+      </tr>
+      <tr>
+        <td>"Quero criar uma subcategoria dentro de Veículos"</td>
+        <td>Não existe hierarquia de categoria</td>
+        <td>A lista de categorias é plana. Crie categorias irmãs com nome composto ("Veículos, Combustível") e use o campo Grupo DRE para agrupar contabilmente em Impostos, CMV ou OPEX.</td>
+      </tr>
+      <tr>
+        <td>"O saldo da conta no sistema não bate com o do banco"</td>
+        <td>Falta lançamento antigo ou saldo inicial errado</td>
+        <td>Use o menu da conta, Ajustar saldo, informe o saldo real e o sistema lança a diferença como "Ajuste de saldo". Esse ajuste aparece no extrato mas não polui a DRE.</td>
+      </tr>
+      <tr>
+        <td>"Minhas compras de cartão sumiram da lista de movimentações"</td>
+        <td>O interruptor "Incluir compras no cartão" está desligado, que é o padrão</td>
+        <td>Ligue o interruptor Incluir compras no cartão na visão geral de Movimentações. Por padrão a lista traz só movimento de conta e caixa, porque o que saiu do caixa foi o pagamento da fatura, não cada compra.</td>
+      </tr>
+      <tr>
+        <td>"Criei uma conta recorrente e quero cancelar as próximas"</td>
+        <td>A recorrência já gerou todas as parcelas</td>
+        <td>A recorrência cria todas as parcelas na hora, não é um agendamento. Para interromper, exclua as parcelas futuras (exige a permissão de excluir lançamento).</td>
+      </tr>
+      <tr>
+        <td>"Cliquei em Exportar na DRE e não abriu nada"</td>
+        <td>Pop-up bloqueado pelo navegador</td>
+        <td>O documento abre em uma nova aba. Libere os pop-ups para o endereço do sistema e clique de novo em Exportar.</td>
+      </tr>
+      <tr>
+        <td>"Apareceu uma despesa de Folha que eu não lancei"</td>
+        <td>A folha é gerada automaticamente</td>
+        <td>Funcionário ativo com salário cadastrado gera a linha de folha sozinho em Contas a Pagar, com a categoria Folha de Pagamento. É esperado, e o pagamento é feito de lá.</td>
+      </tr>
+      <tr>
+        <td>"Cadê a tela de BDI aqui no Financeiro?"</td>
+        <td>BDI não vive no Financeiro</td>
+        <td>Não existe tela de BDI dentro do Financeiro. O cálculo de BDI faz parte da precificação e vive dentro de Orçamentos, com o módulo Precificação Avançada.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Qual regime eu devo deixar na DRE?</dt>
+    <dd>O sistema abre sempre em Regime de Caixa. Use Caixa para saber quanto dinheiro realmente entrou e saiu no mês. Use Competência para saber quanto o mês custou de verdade, incluindo o que ainda não foi pago. A escolha não fica salva e não altera nenhum lançamento.</dd>
+
+    <dt>Compra no cartão entra no resultado?</dt>
+    <dd>Entra. No Regime de Competência, no mês da compra, mesmo sem a fatura paga. No Regime de Caixa, no mês em que a fatura foi paga, e só depois que ela for quitada por inteiro. Nunca entra pelo mês da fatura.</dd>
+
+    <dt>Pagar a fatura devolve o limite do cartão?</dt>
+    <dd>Sim. O pagamento cria dois lançamentos: a saída na conta que pagou e uma entrada no cartão, e é essa entrada que libera o limite. A mensagem de sucesso é "Fatura quitada! Pagamento registrado e limite do cartão liberado." No pagamento parcial, o limite volta na proporção do que foi pago, mas as compras continuam pendentes.</dd>
+
+    <dt>Posso pagar a fatura de um cartão com outro cartão?</dt>
+    <dd>Não. O sistema recusa com "Não é possível pagar uma fatura com outro cartão." A conta pagadora precisa ser um caixa ou uma conta bancária.</dd>
+
+    <dt>Por que a compra que fiz no dia do fechamento foi pra fatura do mês seguinte?</dt>
+    <dd>Porque o próprio dia do fechamento já pertence ao ciclo seguinte. Com fechamento no dia 20, a fatura acumula do dia 20 do mês anterior até o dia 19. O formulário do cartão avisa isso: "Compras feitas no dia do fechamento já entram na próxima fatura."</dd>
+
+    <dt>Dá pra criar subcategoria de categoria financeira?</dt>
+    <dd>Não. A lista de categorias é plana, sem hierarquia. Para agrupar, use o campo Grupo DRE (Impostos, CMV ou OPEX) ou crie categorias irmãs com nome composto.</dd>
+
+    <dt>Todo mundo que enxerga o Financeiro pode apagar lançamento?</dt>
+    <dd>Não. Excluir lançamento financeiro é uma permissão separada, que não vem ligada por padrão. Administrador, gestor e quem tem acesso total sempre podem. Os demais só com a ação Excluir Lançamento Financeiro marcada no editor de permissões.</dd>
+
+    <dt>A transferência entre contas some do meu faturamento, isso é bug?</dt>
+    <dd>Não, é o comportamento correto. Transferência e pagamento de fatura são movimento interno e ficam fora do faturamento e da DRE. Eles continuam aparecendo no extrato das contas envolvidas.</dd>
+
+    <dt>Como faço pro sistema mostrar quanto sobrou de limite no cartão?</dt>
+    <dd>Preencha o campo Limite de crédito no cadastro do cartão. Com o limite preenchido, a tela do cartão mostra a barra de uso, o Limite total e o Disponível.</dd>
+
+    <dt>Recorrência mensal dispara sozinha todo mês?</dt>
+    <dd>Não. Ao criar a conta com recorrência, o sistema já grava todas as parcelas de uma vez, com os vencimentos futuros. O mínimo são 2 parcelas e o máximo 60.</dd>
+
+    <dt>Onde eu configuro a conta que recebe os pagamentos dos meus clientes?</dt>
+    <dd>Em Configurações, aba Integrações. Você conecta a sua própria conta Asaas, e o dinheiro cai direto nela. Isso é independente da mensalidade que você paga pelo sistema.</dd>
+
+    <dt>O que é o "saldo após" no extrato?</dt>
+    <dd>É o saldo da conta logo depois daquela movimentação, como no extrato do banco. Ele só aparece quando você abre uma conta específica, e considera todo o histórico da conta, não só o período filtrado.</dd>
+
+    <dt>Excluí uma categoria, perdi os lançamentos dela?</dt>
+    <dd>Não. A confirmação avisa: "Transações com esta categoria não serão afetadas." Os lançamentos antigos continuam com o nome da categoria gravado.</dd>
+
+    <dt>Como faço a DRE começar só a partir do mês em que entrei no sistema?</dt>
+    <dd>Existe uma data de início da DRE nas configurações da empresa. Preenchida, nada anterior a ela entra no resultado, e o rodapé da DRE passa a exibir "DRE contabilizado a partir de DD/MM/AAAA".</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> financeiro, caixa, fluxo de caixa, contas a pagar, contas a receber, extrato, conciliação, fatura do cartão, limite do cartão, DRE, resultado, lucro, faturamento, regime de caixa, regime de competência, categoria de despesa, transferência, baixa, dar baixa, recebimento parcial, boleto, Pix, link de pagamento
+  </div>
+</section>

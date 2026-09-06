@@ -1,0 +1,60 @@
+{
+  "secao": "T9",
+  "prints": [
+    {
+      "id": "t9-wizard-destinatario",
+      "url": "/orcamentos",
+      "legenda": "Assistente de Novo Orçamento na etapa 1 (Destinatário), com a chave Cliente cadastrado / Novo prospecto e o seletor de cliente, sem nada preenchido.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Orçamento" },
+        { "esperar": 1800 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t9-configurar-proposta",
+      "url": "/orcamentos",
+      "legenda": "Janela Configurar Proposta aberta na etapa Modelo, com os quatro modelos de proposta (Clean, Vanguarda, Aurora, Prisma).",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Configurar Proposta" },
+        { "esperar": 2000 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t9-aba-custos-servico",
+      "url": "/orcamentos",
+      "legenda": "Aba Custos dos Serviços com um tipo de serviço selecionado, mostrando as sub-abas Mão de obra, Recursos, Materiais e Resumo.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Custos dos Serviços" },
+        { "esperar": 2500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t9-aba-custos-globais",
+      "url": "/orcamentos",
+      "legenda": "Aba Custos Globais (Centro de Custos) com os indicadores de custo por hora e as categorias Veículos, Ferramentas, Brindes, EPIs e Outros.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Custos Globais" },
+        { "esperar": 2500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t9-aba-precificacao",
+      "url": "/orcamentos",
+      "legenda": "Aba Precificação com o cartão do método BDI, as taxas de imposto, administração indireta e lucro com a barra de composição, e o Simulador de Preço.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Precificação" },
+        { "esperar": 2500 }
+      ],
+      "recorte": "main"
+    }
+  ]
+}

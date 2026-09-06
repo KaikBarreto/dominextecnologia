@@ -1,0 +1,446 @@
+<section class="tutorial" id="t10">
+  <h1><span class="tcode">T10</span> CRM: funil, leads e captação</h1>
+
+  <p class="lead">Parar de perder oportunidade em conversa de WhatsApp: todo pedido de orçamento vira um cartão num funil visível, com dono, valor, probabilidade e próximo passo marcado, do primeiro contato até o negócio fechado.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu → CRM</span>
+    <span><b>Rotas:</b> <code>/crm</code></span>
+    <span><b>Depende de:</b> T3 (Clientes) e T9 (Orçamentos)</span>
+    <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">CRM</span> ligada no editor de permissões (grupo Comercial) <b>e</b> pertencer a uma empresa com o módulo CRM ativo. Admin e gestor têm a permissão por padrão.</span>
+    <span><b>Configuração ligada:</b> o catálogo de <span class="ui">Origens</span>, em Configurações → Usabilidade, é compartilhado entre o cadastro de clientes e as oportunidades do CRM.</span>
+  </div>
+
+  <h2>1. Tela CRM: kanban × lista, e o empty-state "criar estágios padrão"</h2>
+
+  <p>O CRM abre em <span class="ui">Menu → CRM</span>. Duas coisas precisam estar verdadeiras para ele existir: o módulo CRM contratado e a permissão de tela ligada para o usuário.</p>
+
+  <div class="aviso">Sem o módulo CRM, o item <span class="ui">CRM</span> <b>não aparece no menu</b>, nem no menu lateral do computador nem na gaveta "Mais" do celular. Não há tela cinza, não há mensagem de bloqueio, simplesmente não existe aquele item. Quem procurar o funil e não achar deve conferir primeiro com o responsável pela assinatura se o módulo está contratado. Se o módulo está ativo e mesmo assim a pessoa não vê o CRM, aí sim é permissão: um administrador liga a tela <span class="ui">CRM</span> para aquele usuário no editor de permissões.</div>
+
+  <figure>
+    <img src="img/t10-crm.png" alt="Tela CRM com os cartões Total de Leads e Valor Total, campo de busca e o quadro Pipeline de Vendas mostrando o estado inicial, com o convite Configure seu funil de vendas e os botões Começar com estágios padrão e Personalizar estágios">
+    <figcaption>CRM recém-aberto, ainda sem funil montado: o convite <span class="ui">Configure seu funil de vendas</span> com os botões de criar os estágios padrão ou personalizar do zero.</figcaption>
+  </figure>
+
+  <h3>O que tem na tela</h3>
+  <p>No topo, o cabeçalho <span class="ui">CRM</span> com o subtítulo <span class="ui">Gerencie oportunidades e leads</span> e três botões: dois ícones, <span class="ui">Gerenciar estágios</span> e <span class="ui">Configurar webhooks</span>, e o botão <span class="ui">Nova Oportunidade</span>.</p>
+  <p>Logo abaixo, os cartões de resumo. Sempre aparecem dois: <span class="ui">Total de Leads</span> e <span class="ui">Valor Total</span>. Quando o funil já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: <b>os cartões respeitam os filtros</b>. Se você filtrou por um vendedor, o Total de Leads é o total daquele vendedor, não da empresa.</p>
+  <p>Depois vêm a busca <span class="ui">Buscar por título ou cliente...</span>, o botão <span class="ui">Filtros</span> e o quadro <span class="ui">Pipeline de Vendas</span>, que é o kanban. Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades passaram pelo filtro.</p>
+
+  <h3>Kanban e lista</h3>
+  <p>No computador a visão é sempre o <b>kanban</b>: uma coluna por estágio, lado a lado, com rolagem horizontal quando há muitos estágios. Cada coluna tem um cabeçalho colorido com o nome do estágio, a quantidade de oportunidades e a soma dos valores, e uma área rolável com os cartões.</p>
+  <p>No celular você escolhe entre <span class="ui">Lista</span> e <span class="ui">Kanban</span> dentro da gaveta <span class="ui">Filtros</span>, no bloco <span class="ui">Visualização</span>. Na visão Lista, cada oportunidade vira uma linha com o círculo colorido do estágio, o título, o cliente, o valor e a previsão de fechamento, e aparece acima um carrossel com um chip por estágio: tocar no chip filtra a lista por aquele estágio, e um selo <span class="ui">Estágio: nome</span> mostra o filtro ativo, com um X para limpar. Criar é pelo botão redondo flutuante <span class="ui">Lead</span> no canto inferior.</p>
+
+  <h3>O funil vazio</h3>
+  <p>Empresa nova não tem nenhum estágio, e por isso o kanban mostra o convite <span class="ui">Configure seu funil de vendas</span>, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: <span class="ui">Começar com estágios padrão</span> e <span class="ui">Personalizar estágios</span>.</p>
+  <p>O botão de estágios padrão cria cinco colunas de uma vez, prontas para uso, e mostra <span class="ui">Estágios padrão criados!</span>. É o caminho recomendado: dá para renomear e recolorir tudo depois.</p>
+  <table class="dados">
+    <thead><tr><th>Estágio padrão</th><th>Cor</th><th>Marcação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Lead</span></td><td>Cinza</td><td>Neutro</td></tr>
+      <tr><td><span class="ui">Proposta</span></td><td>Azul</td><td>Neutro</td></tr>
+      <tr><td><span class="ui">Negociação</span></td><td>Amarelo</td><td>Neutro</td></tr>
+      <tr><td><span class="ui">Fechado (Ganho)</span></td><td>Verde</td><td>Ganho</td></tr>
+      <tr><td><span class="ui">Fechado (Perdido)</span></td><td>Vermelho</td><td>Perdido</td></tr>
+    </tbody>
+  </table>
+  <p>Com os estágios criados mas nenhuma oportunidade, o quadro mostra <span class="ui">Nenhuma oportunidade</span> com a orientação de tocar em Nova Oportunidade. Se há oportunidades mas nenhuma passa pelo filtro, a mensagem vira <span class="ui">Nenhum resultado encontrado</span>, seguida de "Tente ajustar os filtros para encontrar as oportunidades desejadas". Coluna vazia mostra <span class="ui">Sem oportunidades</span>.</p>
+
+  <h2>2. Montar o funil: criar, renomear, reordenar e colorir estágios</h2>
+
+  <p>O botão de engrenagem <span class="ui">Gerenciar estágios</span> (no celular, dentro da gaveta de filtros, no bloco Configurações) abre a janela <span class="ui">Gerenciar Estágios do Pipeline</span>. Os estágios são <b>da sua empresa</b>: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.</p>
+
+  <figure>
+    <img src="img/t10-gerenciar-estagios.png" alt="Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o bloco pontilhado Novo Estágio contendo o campo Nome do estágio, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios">
+    <figcaption>Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o bloco de criar um novo estágio, com nome e cor.</figcaption>
+  </figure>
+
+  <h3>Criar</h3>
+  <p>No bloco pontilhado <span class="ui">Novo Estágio</span>, digite o nome no campo <span class="ui">Nome do estágio</span>, escolha a cor no seletor de cores ao lado e toque no botão de mais. Aparece <span class="ui">Estágio criado com sucesso!</span> e o estágio entra no fim do funil. O botão fica travado enquanto o nome estiver vazio.</p>
+
+  <h3>Renomear, recolorir e marcar</h3>
+  <p>Cada linha da lista tem um menu com <span class="ui">Editar</span> (laranja) e <span class="ui">Excluir</span> (vermelho). Em <span class="ui">Editar</span>, a linha abre no modo de edição com o campo de nome, o seletor de cor e as duas chaves <span class="ui">Ganho</span> e <span class="ui">Perdido</span>. O X descarta e o visto confirma. Confirmando, aparece <span class="ui">Estágio atualizado!</span>.</p>
+
+  <h3>Reordenar</h3>
+  <p>A lista mostra a dica <span class="ui">Arraste para reordenar os estágios</span>. Segure a alça de arrasto à esquerda da linha e solte na posição desejada. A nova ordem vale para o kanban imediatamente. É assim que se acerta o funil na ordem real da sua venda: primeiro contato, visita técnica, proposta enviada, negociação, fechamento.</p>
+
+  <h3>Excluir</h3>
+  <p>Ao excluir, o sistema pergunta <span class="ui">Remover estágio?</span> com o texto "Esta ação não pode ser desfeita. Leads neste estágio ficarão sem estágio atribuído." e os botões <span class="ui">Cancelar</span> e <span class="ui">Remover</span>. Confirmando, aparece <span class="ui">Estágio removido!</span>.</p>
+  <div class="aviso">Excluir um estágio <b>não apaga as oportunidades dele</b>: elas ficam sem estágio e passam a ser exibidas na <b>primeira coluna</b> do funil. Não é perda de dado, é realocação. Se você viu leads antigos aparecendo do nada na primeira coluna, quase sempre alguém apagou um estágio.</div>
+
+  <div class="dica">Monte o funil com o menor número de colunas que você consegue explicar em voz alta. Funil com dez estágios ninguém mantém atualizado, e funil desatualizado não serve para decidir nada. Cinco ou seis colunas costumam dar conta de empresa de serviço técnico em campo.</div>
+
+  <h2>3. Marcar estágio como "ganho" e como "perdido" — e o que muda</h2>
+
+  <p>Dentro da edição de cada estágio existem duas chaves: <span class="ui">Ganho</span>, com o ícone de troféu verde, e <span class="ui">Perdido</span>, com o ícone de X vermelho. Elas são <b>excludentes</b>: ligar uma desliga a outra automaticamente. Um estágio pode ser neutro (as duas desligadas), de ganho ou de perda.</p>
+
+  <table class="dados">
+    <thead><tr><th>Marcação</th><th>O que muda de verdade</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Ganho</span></td>
+        <td>O <b>primeiro</b> estágio marcado como ganho vira um cartão de resumo no topo da tela (no computador), mostrando o nome do estágio e a soma dos valores das oportunidades que estão nele. É o seu "quanto eu fechei". No gerenciador, o estágio ganha o troféu.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Perdido</span></td>
+        <td>Arrastar uma oportunidade para um estágio marcado como perdido <b>abre obrigatoriamente</b> a janela <span class="ui">Motivo da Perda</span>. Sem escolher um motivo, a oportunidade não se move. No gerenciador, o estágio ganha o X vermelho.</td>
+      </tr>
+      <tr>
+        <td>Neutro</td>
+        <td>O <b>primeiro</b> estágio neutro também vira um cartão de resumo no topo, com a soma dos valores. É o seu "quanto está em andamento". Mover para um estágio neutro é direto, sem perguntas.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="regra">As marcações <b>não</b> disparam nada além disso. Marcar um estágio como ganho não cria orçamento, não cria Ordem de Serviço, não lança nada no financeiro e não muda o cadastro do cliente. Elas servem para o resumo do topo e para forçar o registro do motivo da perda. Quem fecha negócio ainda precisa criar o orçamento em Orçamentos e, se for o caso, a OS.</div>
+
+  <h2>4. Criar oportunidade: título, cliente (ou criar na hora), vendedor, origem, valor, probabilidade, previsão</h2>
+
+  <p>O botão <span class="ui">Nova Oportunidade</span> (no celular, o botão redondo flutuante <span class="ui">Lead</span>) abre a janela <span class="ui">Nova Oportunidade</span>. Editando uma existente, o título vira <span class="ui">Editar Oportunidade</span>.</p>
+
+  <figure>
+    <img src="img/t10-nova-oportunidade.png" alt="Janela Nova Oportunidade vazia, com o campo Título da Oportunidade, os seletores Cliente (Nenhum cliente) e Vendedor Responsável (Não atribuído), Origem (Não informado) e Estágio (Não atribuído), os campos Valor Estimado, Probabilidade e Previsão Fechamento, o campo Observações e os botões Cancelar e Salvar">
+    <figcaption>Janela Nova Oportunidade sem nada preenchido: só o título é obrigatório, todos os demais campos são opcionais.</figcaption>
+  </figure>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que aceita e o que o sistema faz</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Título da Oportunidade *</span></td>
+        <td>Sim</td>
+        <td>Texto livre, com o exemplo <span class="ui">Ex: Instalação de 3 splits</span>. É o que aparece grande no cartão do kanban. É o <b>único</b> campo obrigatório.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Cliente</span></td>
+        <td>Não</td>
+        <td>Seletor com busca (<span class="ui">Buscar cliente...</span>), com a opção <span class="ui">Nenhum cliente</span> e, embaixo do nome, o documento ou o e-mail para diferenciar homônimos. Digitando um nome que não existe, aparece <span class="ui">Cadastrar "&lt;nome&gt;"</span> para criar o cliente na hora, sem sair da tela.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Vendedor Responsável</span></td>
+        <td>Não</td>
+        <td>Lista dos usuários da empresa, mais a opção <span class="ui">Não atribuído</span>. O rosto e o nome do responsável aparecem no cartão do kanban.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Origem</span></td>
+        <td>Não</td>
+        <td>Seletor com busca alimentado pelo catálogo de <span class="ui">Origens</span> da empresa, com a bolinha da cor de cada origem, mais <span class="ui">Não informado</span>. Digitando uma origem nova, aparece <span class="ui">Adicionar "&lt;nome&gt;"</span> e ela nasce no catálogo, ficando disponível também no cadastro de clientes.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Estágio</span></td>
+        <td>Não</td>
+        <td>Em oportunidade nova já vem com o <b>primeiro</b> estágio do funil selecionado. Também aceita <span class="ui">Não atribuído</span>, e nesse caso o cartão aparece na primeira coluna.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Valor Estimado (R$)</span></td>
+        <td>Não</td>
+        <td>Número com centavos. Alimenta o Valor Total do topo, a soma por coluna do kanban e o filtro de faixa de valor.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Probabilidade (%)</span></td>
+        <td>Não</td>
+        <td>De 0 a 100, começa em 50. Vira uma barrinha no cartão: verde a partir de 70%, amarela de 40% a 69%, vermelha abaixo de 40%.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Previsão Fechamento</span></td>
+        <td>Não</td>
+        <td>Data. Aparece como selo no cartão e na linha da lista no celular.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Observações</span></td>
+        <td>Não</td>
+        <td>Texto livre, com o exemplo <span class="ui">Detalhes da oportunidade...</span>. Aparece na aba Detalhes do lead.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Os botões são <span class="ui">Cancelar</span> e <span class="ui">Salvar</span>. Ao salvar aparece <span class="ui">Lead criado com sucesso!</span> ou <span class="ui">Lead atualizado com sucesso!</span>. Se algo falhar, o aviso é <span class="ui">Erro ao criar lead</span> ou <span class="ui">Erro ao atualizar lead</span> com o motivo.</p>
+
+  <div class="aviso">A criação de cliente na hora, pelo <span class="ui">Cadastrar "&lt;nome&gt;"</span>, é a mesma janela usada nas cobranças e por isso <b>exige CPF ou CNPJ</b>. Só o nome não passa: aparece o aviso <span class="ui">Informe o CPF ou CNPJ do cliente para cobrar.</span> e nada é salvo. Se você ainda não tem o documento do prospecto, deixe o campo Cliente em branco, crie a oportunidade só com o título, e vincule o cliente depois. Digitando um CNPJ, o sistema busca a razão social, o e-mail e o telefone automaticamente.</div>
+
+  <div class="regra">Não existe <b>importação de leads em massa</b>. Não há botão de importar planilha, CSV ou lista de contatos no CRM. Lead entra de três formas: criado à mão nesta janela, recebido por um webhook de captação, ou digitado por outra pessoa da equipe. Uma base grande vinda de fora precisa ser lançada uma a uma, ou entrar pelo webhook.</div>
+
+  <div class="regra">Não existe <b>distribuição automática por vendedor</b>. O sistema não sorteia, não faz rodízio nem reveza os leads entre a equipe. Quem define o <span class="ui">Vendedor Responsável</span> é uma pessoa, na criação ou na edição. Lead que chega por webhook nasce <b>sem vendedor</b>, e alguém precisa atribuir.</div>
+
+  <h2>5. Arrastar entre estágios e o motivo da perda obrigatório</h2>
+
+  <p>No computador, mover uma oportunidade é arrastar o cartão de uma coluna e soltar em outra. O cartão fica com a mãozinha de arrastar, e ao soltar aparece <span class="ui">Lead atualizado com sucesso!</span>.</p>
+  <p>No celular não há arraste. Abra o menu de três pontinhos da linha e escolha <span class="ui">Mover para</span> seguido do nome do estágio: a lista traz todos os estágios menos aquele em que a oportunidade já está, cada um com sua bolinha colorida. O mesmo menu tem <span class="ui">Editar</span>.</p>
+
+  <h3>Quando o destino é um estágio de perda</h3>
+  <p>Soltando o cartão num estágio marcado como <b>perdido</b>, o sistema abre a janela <span class="ui">Motivo da Perda</span>, com o texto <span class="ui">Registre o motivo da perda do negócio</span> e o nome da oportunidade. Os campos são:</p>
+  <ul>
+    <li><span class="ui">Motivo *</span>: lista fixa com <span class="ui">Preço alto</span>, <span class="ui">Concorrente escolhido</span>, <span class="ui">Sem orçamento</span>, <span class="ui">Não respondeu</span>, <span class="ui">Projeto cancelado</span>, <span class="ui">Fora do escopo</span> e <span class="ui">Outro</span>. O botão de confirmar fica travado enquanto nada estiver escolhido.</li>
+    <li><span class="ui">Detalhes (opcional)</span>: texto livre.</li>
+  </ul>
+  <p>Os botões são <span class="ui">Cancelar</span> e <span class="ui">Confirmar Perda</span>. Cancelando, a oportunidade <b>não</b> muda de estágio: ela volta para onde estava.</p>
+
+  <div class="aviso">O motivo da perda é gravado como <b>texto dentro das Observações</b> da oportunidade, no formato "Motivo da perda: Preço alto" seguido dos detalhes. Não é um campo estruturado: não existe relatório de motivos de perda, não dá para filtrar por motivo nem somar quantos negócios você perdeu por preço. E como ele é escrito no campo de Observações, <b>o texto que já estava lá é substituído</b>. Se a observação da oportunidade era importante, copie antes de mover o cartão para o estágio de perda.</div>
+
+  <h2>6. Detalhe do lead: ligar, WhatsApp, e-mail e registrar interação com próxima ação</h2>
+
+  <p>Tocar no cartão (ou na linha, no celular) abre o detalhe da oportunidade, com o título, o nome do cliente e dois botões no canto: <span class="ui">Editar</span>, em laranja, e a lixeira vermelha. A janela tem duas abas: <span class="ui">Detalhes</span> e <span class="ui">Histórico</span> com a quantidade de interações entre parênteses.</p>
+
+  <h3>Aba Detalhes</h3>
+  <p>No topo, um seletor <span class="ui">Status:</span> com cinco opções: <span class="ui">Lead</span>, <span class="ui">Proposta</span>, <span class="ui">Negociação</span>, <span class="ui">Negócio Fechado (Ganho)</span> e <span class="ui">Negócio Perdido</span>. Mudar ali salva na hora.</p>
+  <div class="aviso">Esse <span class="ui">Status</span> é uma classificação <b>separada do estágio do funil</b>. Ele é uma lista fixa do sistema, não é configurável, e mover o cartão no kanban <b>não</b> muda o Status, assim como mudar o Status não move o cartão. Os cartões, as somas e os filtros do funil olham o <b>estágio</b>. Use o Status apenas se a sua equipe já se acostumou com ele; na dúvida, ignore e trabalhe pelo kanban.</div>
+
+  <p>Abaixo vêm quatro caixas: <span class="ui">Valor Estimado</span> (ou <span class="ui">Não informado</span>), <span class="ui">Probabilidade</span>, <span class="ui">Previsão Fechamento</span> (ou <span class="ui">Não definida</span>) e <span class="ui">Origem</span> (ou <span class="ui">Não informada</span>).</p>
+
+  <h3>Falar com o cliente sem sair da tela</h3>
+  <p>Quando a oportunidade tem cliente vinculado, aparece o bloco <span class="ui">Contato do Cliente</span> com atalhos diretos:</p>
+  <ul>
+    <li>O <b>telefone</b> é um link: no celular, tocar abre o discador. No computador, abre o aplicativo de telefone configurado.</li>
+    <li>Ao lado do telefone aparece o botão verde <span class="ui">WhatsApp</span>, que abre a conversa com aquele número já selecionado. O sistema arruma o número sozinho, tirando parênteses, traços e espaços, e acrescentando o código do Brasil quando falta.</li>
+    <li>O <b>e-mail</b> é um link que abre o programa de e-mail com o destinatário preenchido.</li>
+  </ul>
+  <p>Mais abaixo aparecem as <span class="ui">Observações</span>, a data de criação (<span class="ui">Criado em:</span>) e há quanto tempo a oportunidade foi mexida pela última vez (<span class="ui">Atualizado:</span>).</p>
+
+  <h3>Aba Histórico: registrar interação</h3>
+  <p>É o coração do acompanhamento. O botão <span class="ui">Nova Interação</span> abre o bloco <span class="ui">Registrar Interação</span> com quatro campos:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Conteúdo</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Tipo de Interação *</span></td><td>Sim</td><td><span class="ui">Ligação</span>, <span class="ui">E-mail</span>, <span class="ui">WhatsApp</span>, <span class="ui">Reunião</span>, <span class="ui">Visita</span>, <span class="ui">Proposta Enviada</span> ou <span class="ui">Outro</span>. Cada um tem seu ícone na linha do tempo.</td></tr>
+      <tr><td><span class="ui">Próxima Ação</span></td><td>Não</td><td>Texto curto do que precisa acontecer depois, com o exemplo <span class="ui">Ex: Enviar proposta</span>.</td></tr>
+      <tr><td><span class="ui">Descrição *</span></td><td>Sim</td><td>O que foi conversado, com o exemplo <span class="ui">Descreva o que foi conversado...</span>.</td></tr>
+      <tr><td><span class="ui">Data da Próxima Ação</span></td><td>Não</td><td>A data do próximo contato.</td></tr>
+    </tbody>
+  </table>
+  <p>O botão <span class="ui">Registrar</span> só libera com tipo e descrição preenchidos, e ao salvar aparece <span class="ui">Interação registrada!</span>. A interação entra na linha do tempo, da mais recente para a mais antiga, com ícone, tipo, data e hora, o texto da conversa e, quando existe, uma faixa amarela com <span class="ui">Próxima ação:</span> e a data.</p>
+  <p>Sem nenhuma interação, aparece <span class="ui">Nenhuma interação registrada</span> com <span class="ui">Clique em "Nova Interação" para registrar o primeiro contato</span>.</p>
+
+  <div class="regra">A <span class="ui">Próxima Ação</span> e a sua data são apenas <b>anotações</b>. O sistema não envia lembrete, não notifica, não cria tarefa na agenda e não avisa quando a data chega. Quem confere é você, abrindo o lead. É por isso que a rotina diária de revisão do funil, no fim deste tutorial, é tão importante.</div>
+
+  <h3>Excluir a oportunidade</h3>
+  <p>O botão de lixeira vermelha, no topo do detalhe, apaga a oportunidade. Confirmando, aparece <span class="ui">Lead removido com sucesso!</span>.</p>
+  <div class="aviso">A confirmação de exclusão de lead usa a <b>janelinha do próprio navegador</b>, com a pergunta <span class="ui">Tem certeza que deseja excluir este lead?</span> e os botões OK e Cancelar em inglês ou no idioma do navegador. É diferente do resto do sistema, que usa a caixa de confirmação padrão do Dominex. Não é falha nem site invadido: é só uma tela mais antiga. E não há desfazer: apagou, apagou, junto com o histórico de interações.</div>
+
+  <!-- PRINT FALTANDO: detalhe de uma oportunidade aberto na aba Histórico, com o bloco "Registrar Interação" e a linha do tempo de interações. Exige um lead de teste já cadastrado na conta de demonstração. -->
+
+  <h2>7. Filtros: origem, vendedor, faixa de valor, busca</h2>
+
+  <p>A busca <span class="ui">Buscar por título ou cliente...</span> procura ao mesmo tempo no <b>título da oportunidade</b> e no <b>nome do cliente vinculado</b>. Ela é tolerante a acento e a maiúscula, então "negociacao" acha "Negociação".</p>
+  <p>O botão <span class="ui">Filtros</span> abre quatro filtros que se combinam:</p>
+  <ul>
+    <li><span class="ui">Origem</span>: lista de marcação múltipla. Sem nada marcado, o rótulo é <span class="ui">Todas</span>.</li>
+    <li><span class="ui">Vendedor</span>: lista dos usuários da empresa, também de marcação múltipla. Sem nada marcado, <span class="ui">Todos</span>.</li>
+    <li><span class="ui">Valor Mínimo</span> e <span class="ui">Valor Máximo</span>: faixa de valor estimado, com os exemplos <span class="ui">R$ 0</span> e <span class="ui">R$ 999.999</span>.</li>
+  </ul>
+  <p>Com filtro ativo, aparecem selos escuros abaixo da busca, no formato <span class="ui">Origem: Site</span>, <span class="ui">Vendedor: Maria</span>, <span class="ui">Min</span> e <span class="ui">Max</span>, cada um com um X para remover só aquele. Com mais de uma opção marcada, o selo mostra "2 selecionadas". O botão de limpar zera tudo de uma vez, inclusive a busca.</p>
+
+  <div class="aviso">O filtro <span class="ui">Origem</span> usa uma <b>lista fixa</b> do sistema: Indicação, Site, Telefone, WhatsApp, Google, Instagram, Facebook, Parceiro, Feira/Evento e Outro. Já o campo Origem do cadastro da oportunidade usa o <b>catálogo de Origens da sua empresa</b>, que você edita em Configurações → Usabilidade → card <span class="ui">Origens</span>. As duas listas nascem iguais, mas se afastam assim que você cria uma origem própria: uma oportunidade marcada como "Meta Ads" existe, aparece no cartão e no detalhe, mas <b>não pode ser filtrada</b>, porque "Meta Ads" não está na lista fixa do filtro. Se você depende de filtrar por canal, o jeito de contornar hoje é manter as origens dentro dos dez nomes da lista fixa, ou usar a busca por título.</div>
+
+  <div class="dica">Combinação que resolve a maior parte das perguntas do dia a dia: filtre por <span class="ui">Vendedor</span> e olhe o cartão <span class="ui">Valor Total</span>. Ele passa a mostrar o valor em aberto daquele vendedor, porque os cartões de resumo respeitam os filtros.</div>
+
+  <h2>8. Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar</h2>
+
+  <p>Webhook é um endereço que outro sistema chama quando alguém preenche um formulário. Serve para o lead do seu site, do formulário de anúncio ou de uma ferramenta de automação cair direto no funil, sem ninguém digitar.</p>
+  <p>O botão de webhook no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela <span class="ui">Webhooks de Leads Externos</span>.</p>
+
+  <figure>
+    <img src="img/t10-webhooks.png" alt="Janela Webhooks de Leads Externos com o bloco Criar novo webhook contendo os campos Nome e Origem padrão (Sem origem fixa) e o botão Criar webhook, a lista Webhooks configurados vazia com Nenhum webhook cadastrado, e abaixo o bloco Como usar o webhook com os campos obrigatórios name e phone, os opcionais email, source, title, notes e value, e um exemplo de JSON">
+    <figcaption>Janela Webhooks de Leads Externos: o bloco de criar um novo webhook em cima e, embaixo, a documentação de como outro sistema deve chamá-lo.</figcaption>
+  </figure>
+
+  <h3>Criar</h3>
+  <p>No bloco <span class="ui">Criar novo webhook</span>:</p>
+  <ul>
+    <li><span class="ui">Nome</span>: como você reconhece essa fonte, com o exemplo <span class="ui">Ex: Meta Ads - Campanha Março</span>. Esse nome também vira o título padrão dos leads que entrarem por ali.</li>
+    <li><span class="ui">Origem padrão</span>: uma origem do catálogo da empresa, ou <span class="ui">Sem origem fixa</span>.</li>
+  </ul>
+  <p>O botão <span class="ui">Criar webhook</span> gera o endereço e mostra <span class="ui">Webhook criado com sucesso!</span>.</p>
+
+  <h3>A lista de webhooks</h3>
+  <p>Cada webhook aparece com o nome, um selo <span class="ui">Ativo</span> ou <span class="ui">Inativo</span>, o selo <span class="ui">Origem:</span> quando tem origem fixa, uma chave <span class="ui">Ativo</span> para ligar e desligar, uma lixeira vermelha, e o campo com a URL completa mais o botão de copiar, que mostra <span class="ui">URL copiada!</span> (ou <span class="ui">Não foi possível copiar a URL</span> se o navegador bloquear). Sem nenhum, aparece <span class="ui">Nenhum webhook cadastrado.</span></p>
+
+  <div class="perigo">A URL do webhook <b>termina com um código secreto</b>. Quem tiver esse endereço consegue criar oportunidades no seu funil. Trate como senha: cole só no painel da ferramenta que vai enviar os leads, não publique em grupo de WhatsApp e não deixe em documento compartilhado. Suspeitou de vazamento? Desligue a chave <span class="ui">Ativo</span> ou apague o webhook e crie outro, com endereço novo.</div>
+
+  <h3>O que mandar no webhook</h3>
+  <p>A própria janela traz a documentação, no bloco <span class="ui">Como usar o webhook</span>: faça uma requisição <b>POST</b> para a URL, com os dados do lead em JSON.</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que é</th></tr></thead>
+    <tbody>
+      <tr><td><code>name</code></td><td>Sim</td><td>Nome completo do lead.</td></tr>
+      <tr><td><code>phone</code></td><td>Sim</td><td>Telefone, apenas números.</td></tr>
+      <tr><td><code>email</code></td><td>Não</td><td>E-mail do lead.</td></tr>
+      <tr><td><code>source</code></td><td>Não</td><td>Origem do lead, por exemplo "Meta Ads".</td></tr>
+      <tr><td><code>title</code></td><td>Não</td><td>Título personalizado da oportunidade.</td></tr>
+      <tr><td><code>notes</code></td><td>Não</td><td>Observações adicionais.</td></tr>
+      <tr><td><code>value</code></td><td>Não</td><td>Valor estimado, em número.</td></tr>
+    </tbody>
+  </table>
+  <p>O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema é tolerante com os nomes dos campos: aceita <code>nome</code> no lugar de <code>name</code>, <code>telefone</code> ou <code>whatsapp</code> no lugar de <code>phone</code>, <code>valor</code> no lugar de <code>value</code>, e <code>mensagem</code> ou <code>observations</code> no lugar de <code>notes</code>.</p>
+
+  <h3>O que o sistema faz com o que chega</h3>
+  <ul>
+    <li>O <b>título</b> vira o que veio em <code>title</code>; sem isso, vira "Lead via" seguido do nome do webhook.</li>
+    <li>A <b>origem</b> obedece a esta ordem: a origem fixa do webhook vence; sem ela, vale a que veio no envio; sem nenhuma das duas, fica "Webhook Externo".</li>
+    <li>Nome, telefone, e-mail e a fonte são gravados nas <b>Observações</b> da oportunidade, uma informação por linha. O lead não fica vinculado a um cliente cadastrado.</li>
+    <li>A oportunidade entra no <b>primeiro estágio neutro</b> do funil, ou seja, o primeiro que não é de ganho nem de perda.</li>
+    <li>O <b>vendedor fica em branco</b>. Alguém precisa abrir e atribuir.</li>
+  </ul>
+
+  <h3>Erros que o webhook devolve</h3>
+  <ul>
+    <li>Sem código na URL: <span class="ui">Token do webhook é obrigatório</span>.</li>
+    <li>Código errado, ou webhook desligado na chave <span class="ui">Ativo</span>: <span class="ui">Webhook inválido ou inativo</span>.</li>
+    <li>Chamada que não é POST: <span class="ui">Método não permitido</span>.</li>
+    <li>Falha no processamento: <span class="ui">Erro interno</span>.</li>
+  </ul>
+  <p>Quando dá certo, a resposta traz <code>success</code> junto com o lead criado.</p>
+
+  <div class="aviso">Antes de apontar uma campanha paga para o webhook, faça um <b>envio de teste</b> com um nome fictício e confira se o cartão apareceu no funil. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave <span class="ui">Ativo</span> ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil tem pelo menos um estágio neutro criado.</div>
+  <!-- INCERTO: no código deste repositório, a função que recebe o lead externo não informa a empresa dona ao gravar a oportunidade, e a coluna de empresa é obrigatória na tabela de leads. Isso indica que a criação por webhook pode falhar com "Erro interno" em produção. Preciso de confirmação com um POST real antes de afirmar no guia que o webhook entrega o lead. -->
+
+  <div class="regra">O <b>formulário público de cadastro de cliente</b> (o link de captação que você compartilha para o próprio cliente se cadastrar) <b>não cria lead no CRM</b>: ele cria um <b>cliente</b> na tela de Clientes, com a origem marcada como formulário público. São dois caminhos completamente separados. Se você espera ver no funil quem preencheu aquele formulário, não vai encontrar: procure em Clientes.</div>
+
+  <div class="regra">A <b>avaliação DISC</b> (perfil comportamental) é do módulo de Funcionários e RH, aplicada a colaborador. Ela não tem nenhuma relação com o CRM, não avalia lead e não aparece no funil.</div>
+
+  <h2>9. Rotina sugerida: revisão diária do funil em 5 minutos</h2>
+
+  <p>O CRM só vale o que a disciplina de olhar para ele vale. Como o sistema não manda lembrete de próxima ação nem cobra ninguém, a rotina abaixo é o que transforma o funil numa ferramenta de verdade. Cinco minutos, todo dia, no mesmo horário.</p>
+
+  <ol>
+    <li><b>Abra o CRM e olhe os quatro cartões do topo.</b> Total de Leads e Valor Total dão o tamanho da carteira; os cartões do estágio ganho e do estágio neutro dizem quanto já fechou e quanto está em jogo.</li>
+    <li><b>Varra a coluna da direita para a esquerda.</b> Comece pelo estágio mais perto do fechamento: são as oportunidades com maior chance de virar dinheiro esta semana.</li>
+    <li><b>Abra cada cartão parado e olhe a linha <span class="ui">Atualizado:</span></b>, que mostra há quanto tempo ninguém mexe naquela oportunidade. Passou de uma semana sem interação, ou está esperando resposta, ligue.</li>
+    <li><b>Registre toda conversa como interação</b>, mesmo a que não deu em nada, e sempre preencha a <span class="ui">Próxima Ação</span> com a data. Um lead sem próxima ação marcada é um lead que vai ser esquecido.</li>
+    <li><b>Mova o cartão na hora.</b> Falou com o cliente e ele pediu proposta? Arraste para o estágio de proposta ali mesmo. Funil que só é atualizado na sexta-feira não serve para decidir nada.</li>
+    <li><b>Perdeu, marque como perdido e escolha o motivo.</b> É desconfortável e é o dado mais útil que existe: depois de trinta perdas registradas, o padrão aparece sozinho.</li>
+    <li><b>Uma vez por semana, filtre por vendedor</b> e olhe o Valor Total de cada um. Cinco segundos por pessoa mostram quem está com a carteira cheia e quem precisa de mais lead.</li>
+  </ol>
+
+  <div class="dica">Combine com a tela de Orçamentos: oportunidade que chegou ao estágio de proposta deve ter um orçamento correspondente, e o contador de visualizações da proposta diz se o cliente abriu. Funil no estágio de proposta há cinco dias, com a proposta aberta três vezes e sem resposta, é ligação pendente.</div>
+
+  <h2 class="suporte">Suporte: problemas comuns</h2>
+  <table class="faq">
+    <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Não tem CRM no meu menu"</td>
+        <td>Módulo CRM não contratado, ou permissão de tela desligada para aquele usuário.</td>
+        <td>Sem o módulo, o item não aparece no menu para ninguém da empresa. Confirme a contratação com quem cuida da assinatura. Se o módulo está ativo e só uma pessoa não vê, um administrador liga a tela <span class="ui">CRM</span> para ela no editor de permissões.</td>
+      </tr>
+      <tr>
+        <td>"Abri o CRM e não tem coluna nenhuma"</td>
+        <td>A empresa ainda não criou os estágios do funil.</td>
+        <td>É o estado inicial. Toque em <span class="ui">Começar com estágios padrão</span> para criar as cinco colunas prontas, ou em <span class="ui">Personalizar estágios</span> para montar do seu jeito.</td>
+      </tr>
+      <tr>
+        <td>"Criei uma origem nova e ela não aparece no filtro"</td>
+        <td>O filtro de origem usa uma lista fixa do sistema; o cadastro usa o catálogo da empresa.</td>
+        <td>É uma limitação conhecida. A oportunidade fica marcada corretamente, mas não é filtrável por essa origem. Para filtrar, mantenha as origens dentro dos dez nomes da lista fixa, ou use a busca por título.</td>
+      </tr>
+      <tr>
+        <td>"Apareceu uma janelinha estranha, em inglês, quando fui excluir um lead"</td>
+        <td>A exclusão de lead usa a confirmação do próprio navegador.</td>
+        <td>É normal nessa tela e não é invasão. Confirme em OK para excluir ou em Cancelar para desistir. Lembre que não há desfazer.</td>
+      </tr>
+      <tr>
+        <td>"Apaguei um estágio e os leads sumiram"</td>
+        <td>Eles não sumiram: ficaram sem estágio e aparecem na primeira coluna.</td>
+        <td>Olhe a primeira coluna do funil. Arraste cada cartão para o estágio certo, ou recrie o estágio e mova de volta.</td>
+      </tr>
+      <tr>
+        <td>"Quero um relatório de por que estou perdendo negócio"</td>
+        <td>O motivo da perda é texto livre dentro das Observações.</td>
+        <td>Não existe relatório nem filtro por motivo. O motivo fica escrito na oportunidade e só pode ser lido uma a uma. Se isso é importante, avise o time de produto.</td>
+      </tr>
+      <tr>
+        <td>"Movi o lead para perdido e sumiu o que eu tinha escrito nas observações"</td>
+        <td>O motivo da perda é gravado no campo de Observações e substitui o texto anterior.</td>
+        <td>É o comportamento atual. Oriente a copiar a observação antes de mover para um estágio de perda.</td>
+      </tr>
+      <tr>
+        <td>"Tenho uma planilha com 300 contatos, como importo?"</td>
+        <td>Não existe importação em massa no CRM.</td>
+        <td>Não há botão de importar planilha. As opções são lançar um a um em <span class="ui">Nova Oportunidade</span> ou usar um webhook de captação, mandando os contatos por uma ferramenta de automação.</td>
+      </tr>
+      <tr>
+        <td>"O sistema distribui os leads entre meus vendedores?"</td>
+        <td>Não existe distribuição automática.</td>
+        <td>O <span class="ui">Vendedor Responsável</span> é sempre escolhido por uma pessoa. Lead que chega por webhook nasce sem vendedor e precisa ser atribuído na mão.</td>
+      </tr>
+      <tr>
+        <td>"Configurei o webhook e o lead não caiu no funil"</td>
+        <td>Webhook desligado, URL incompleta, chamada que não é POST, ou funil sem estágio neutro.</td>
+        <td>Confira a chave <span class="ui">Ativo</span>, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo pelo menos nome e telefone. Faça um envio de teste e confira no funil antes de ligar a campanha.</td>
+      </tr>
+      <tr>
+        <td>"Mandei o link de cadastro para o cliente preencher e não vi o lead no CRM"</td>
+        <td>O formulário público de captação cria cliente, não lead.</td>
+        <td>Procure na tela de Clientes: o cadastro está lá, com a origem de formulário público. São dois caminhos diferentes e não existe ligação automática entre eles.</td>
+      </tr>
+      <tr>
+        <td>"O sistema não me avisou da próxima ação que eu marquei"</td>
+        <td>Próxima ação é só anotação.</td>
+        <td>Não há lembrete, notificação nem tarefa na agenda. A conferência é manual, na revisão diária do funil.</td>
+      </tr>
+      <tr>
+        <td>"O Status do lead e a coluna do kanban estão diferentes"</td>
+        <td>São dois campos independentes.</td>
+        <td>O Status é uma lista fixa dentro do detalhe; a coluna é o estágio configurável do funil. Um não mexe no outro. Os números e filtros da tela seguem o estágio.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo cadastrar o cliente na hora, dentro da oportunidade"</td>
+        <td>A criação rápida de cliente exige CPF ou CNPJ.</td>
+        <td>Aparece <span class="ui">Informe o CPF ou CNPJ do cliente para cobrar.</span> Sem o documento, deixe o campo Cliente em branco e vincule depois, pela edição da oportunidade.</td>
+      </tr>
+      <tr>
+        <td>"O total de leads mudou sozinho"</td>
+        <td>Os cartões de resumo respeitam os filtros ativos.</td>
+        <td>Limpe os filtros no botão de limpar para voltar ao total da empresa. Com filtro ativo, aparece um selo ao lado de Pipeline de Vendas no formato "3 de 12".</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="suporte">Perguntas frequentes</h2>
+  <dl class="qa">
+    <dt>Preciso pagar à parte para usar o CRM?</dt>
+    <dd>Sim, o CRM é um módulo contratado à parte. Sem ele o item nem aparece no menu do sistema.</dd>
+
+    <dt>Posso montar o funil do meu jeito?</dt>
+    <dd>Pode, e é o recomendado. Os estágios são da sua empresa: você cria, renomeia, escolhe a cor, arrasta para reordenar e apaga. O conjunto padrão de cinco colunas é só um ponto de partida.</dd>
+
+    <dt>O que muda quando marco um estágio como ganho ou perdido?</dt>
+    <dd>Ganho faz o valor daquele estágio virar um cartão de resumo no topo. Perdido faz o sistema pedir obrigatoriamente o motivo quando você arrasta um cartão para lá. Nada mais é disparado: nem orçamento, nem OS, nem lançamento financeiro.</dd>
+
+    <dt>Preciso vincular um cliente cadastrado para criar uma oportunidade?</dt>
+    <dd>Não. Só o título é obrigatório. Cliente, vendedor, origem, valor, probabilidade, previsão e observações são todos opcionais.</dd>
+
+    <dt>Dá para criar o cliente sem sair do CRM?</dt>
+    <dd>Dá: digite o nome no campo Cliente e escolha <span class="ui">Cadastrar "&lt;nome&gt;"</span>. Essa janela rápida exige CPF ou CNPJ. Sem o documento em mãos, deixe em branco e vincule depois.</dd>
+
+    <dt>Como movo um lead no celular, se não dá para arrastar?</dt>
+    <dd>Pelo menu de três pontinhos da linha, na opção <span class="ui">Mover para</span> seguida do nome do estágio.</dd>
+
+    <dt>Onde fica registrado o motivo da perda?</dt>
+    <dd>Dentro das Observações da própria oportunidade, como texto. Não é campo estruturado: não dá para filtrar nem gerar relatório por motivo, e o texto que estava nas Observações é substituído.</dd>
+
+    <dt>O CRM avisa quando chega a data da próxima ação?</dt>
+    <dd>Não. Próxima ação e data são anotações para você ler na revisão do funil. Não há notificação, e-mail nem tarefa na agenda.</dd>
+
+    <dt>Consigo importar meus contatos de uma planilha?</dt>
+    <dd>Não existe importação em massa. Ou você lança um a um, ou manda os contatos por um webhook de captação usando uma ferramenta de automação.</dd>
+
+    <dt>O sistema divide os leads entre a equipe automaticamente?</dt>
+    <dd>Não. O vendedor responsável é sempre escolhido por uma pessoa, e lead vindo de webhook nasce sem vendedor.</dd>
+
+    <dt>O formulário público de cadastro cria lead no funil?</dt>
+    <dd>Não. Aquele formulário cria um <b>cliente</b>, que aparece na tela de Clientes. Para o lead cair no funil, o caminho é o webhook de captação do CRM.</dd>
+
+    <dt>Posso desligar um webhook sem apagar?</dt>
+    <dd>Pode: use a chave <span class="ui">Ativo</span> na linha do webhook. Desligado, ele passa a recusar os envios com a mensagem de webhook inválido ou inativo, e você pode religar depois com o mesmo endereço.</dd>
+
+    <dt>A avaliação DISC serve para qualificar lead?</dt>
+    <dd>Não. O DISC é do módulo de Funcionários e RH, aplicado a colaborador, e não tem nenhuma ligação com o CRM.</dd>
+
+    <dt>Meu vendedor consegue ver os leads dos outros?</dt>
+    <dd>O acesso à tela é controlado pela permissão <span class="ui">CRM</span>. Quem tem a tela liberada enxerga o funil da empresa e pode usar o filtro <span class="ui">Vendedor</span> para ver só a própria carteira.</dd>
+  </dl>
+
+  <div class="glossario">
+    <b>Palavras que o cliente usa pra isso:</b> funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio
+  </div>
+</section>

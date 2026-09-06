@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
-import { generateRecurrenceDates } from '@/lib/taskRecurrence';
+import { generateRecurrenceDates, findRecurrenceIssue, type RecurrenceIssue } from '@/lib/taskRecurrence';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { TaskFormData } from '@/components/schedule/TaskFormDialog';
@@ -27,6 +27,18 @@ import type { TaskFormData } from '@/components/schedule/TaskFormDialog';
  * generateRecurrenceDates). Toasts e invalidação de ['service-orders'] feitos
  * aqui dentro — o chamador não precisa repetir.
  */
+
+// Copy PT-BR do bloqueio de recorrência (mesma régua do formulário de OS).
+function describeRecurrenceIssue(issue: RecurrenceIssue): string {
+  switch (issue.code) {
+    case 'missing_end_date':
+      return 'Informe até quando a recorrência vai. Sem essa data não dá pra criar a série.';
+    case 'custom_without_weekdays':
+      return 'Escolha pelo menos um dia da semana para repetir.';
+    default:
+      return 'Esta frequência ainda não é suportada. Escolha outra.';
+  }
+}
 
 // Status considerados "concluídos" para preservar ocorrências passadas na edição.
 const isCompletedStatus = (status?: string | null) => status === 'concluida';
@@ -88,6 +100,24 @@ export function useTaskSubmit() {
    */
   const submitTask = useCallback(
     async (data: TaskFormData, editingTask: any | null) => {
+      // Recorrência pedida que NÃO geraria série (sem data final, personalizado
+      // sem dia da semana, frequência não suportada) é barrada com mensagem —
+      // nunca salva uma tarefa só em silêncio.
+      const recurrenceIssue = findRecurrenceIssue({
+        recurrence_type: data.recurrence_type,
+        recurrence_interval: data.recurrence_interval,
+        recurrence_end_date: data.recurrence_end_date,
+        recurrence_weekdays: data.recurrence_weekdays,
+      });
+      if (recurrenceIssue) {
+        toast({
+          variant: 'destructive',
+          title: 'Revise a recorrência',
+          description: describeRecurrenceIssue(recurrenceIssue),
+        });
+        return;
+      }
+
       // ─────────────────── EDIÇÃO ───────────────────
       if (editingTask) {
         const editId = editingTask.id;

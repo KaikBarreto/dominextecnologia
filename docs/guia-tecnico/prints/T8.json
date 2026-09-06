@@ -1,0 +1,143 @@
+{
+  "secao": "T8",
+  "prints": [
+    {
+      "id": "t8-cadastrar-material",
+      "url": "/estoque",
+      "legenda": "Janela Novo Item de Estoque, com Nome, Código/SKU sugerido automaticamente, Categoria, Grupo, preços de custo e venda, e o bloco Locais deste material com a quantidade mínima por local.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Cadastrar Material"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t8-config-locais",
+      "url": "/estoque",
+      "legenda": "Janela Configurações do Estoque na aba Locais de estoque, com a lista de depósitos e o selo Principal.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicarSeletor": "main button:has-text(\"Configurações\")"
+        },
+        {
+          "esperar": 1500
+        },
+        {
+          "clicar": "Locais de estoque",
+          "opcional": true
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t8-kardex",
+      "url": "/estoque",
+      "legenda": "Aba Histórico de Materiais (Kardex), com as colunas Usuário, Data e Hora, Tipo, Origem, Material, Estoque inicial, Movimento e Estoque final.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Histórico de Materiais"
+        },
+        {
+          "esperar": 2500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t8-compras",
+      "url": "/estoque",
+      "legenda": "Aba Compras de Material, com a lista de requisições de compra, o status de cada uma e a contagem de cotações.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Compras de Material"
+        },
+        {
+          "esperar": 2500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t8-nova-requisicao",
+      "url": "/estoque",
+      "legenda": "Janela Nova Requisição de Compra, com Título, a escolha entre material Do estoque e Fora do estoque, e o atalho Adicionar itens abaixo do mínimo.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Compras de Material"
+        },
+        {
+          "esperar": 2000
+        },
+        {
+          "clicar": "Nova requisição de compra"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t8-inventario-wizard",
+      "url": "/estoque",
+      "legenda": "Assistente de novo inventário, no passo de escolha dos locais de estoque que serão contados.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Inventários"
+        },
+        {
+          "esperar": 2000
+        },
+        {
+          "clicar": "Novo inventário"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t8-posicao-estoque",
+      "url": "/estoque",
+      "legenda": "Aba Posição de Estoque, com o seletor de data, o filtro de locais e a tabela de saldo por material com valor em custo e projeção de venda.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Posição de Estoque"
+        },
+        {
+          "esperar": 2500
+        }
+      ],
+      "recorte": "main"
+    }
+  ]
+}

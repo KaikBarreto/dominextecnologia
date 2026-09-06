@@ -1,0 +1,1595 @@
+{
+  "T0": {
+    "code": "T0",
+    "inspiracao": "Interestelar",
+    "titulo": "Bem-vindo à Dominex",
+    "resumo": "A visão de cima. O aluno entende como a Dominex é organizada por dentro, aprende o vocabulário do sistema (OS, contrato, PMOC, módulo, cargo) e descobre onde fica cada coisa antes de mergulhar em qualquer tela.",
+    "duracao": "~20min",
+    "prereq": "nenhum",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "O que a Dominex resolve — do chamado do cliente até o dinheiro na conta"
+      },
+      {
+        "t": "02:00",
+        "nome": "Tour pelo menu: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM, Financeiro"
+      },
+      {
+        "t": "06:00",
+        "nome": "Sidebar × Barra superior × menu do celular — a mesma coisa em 3 lugares"
+      },
+      {
+        "t": "08:00",
+        "nome": "Vocabulário: Ordem de Serviço, Tarefa, Contrato, PMOC, Checklist, Cargo, Módulo"
+      },
+      {
+        "t": "11:00",
+        "nome": "O que é módulo contratado e por que uma tela pode não aparecer pra você"
+      },
+      {
+        "t": "14:00",
+        "nome": "Os 3 públicos do sistema: gestor no escritório, técnico no celular, cliente no link público"
+      },
+      {
+        "t": "17:00",
+        "nome": "Onde pedir ajuda e como usar o Domiflix (minha lista, continuar assistindo, perfil)"
+      }
+    ],
+    "abertura": "Neste tutorial você vai entender como a Dominex funciona por dentro e descobrir onde fica cada coisa.",
+    "recap": "Você conheceu o sistema em alto nível, aprendeu o vocabulário e já sabe por onde começar.",
+    "proximo": "No próximo tutorial: deixar a empresa configurada.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Deixe claro logo no começo que o menu muda conforme o plano e o cargo — é a dúvida nº1 de quem assiste e não acha a tela."
+      }
+    ]
+  },
+  "T1": {
+    "code": "T1",
+    "inspiracao": "Homem de Ferro",
+    "titulo": "Configurações e identidade da empresa",
+    "resumo": "Deixar o sistema com a cara da empresa e pronto pra uso real: logo, dados cadastrais, endereço, idioma/moeda/fuso, preferências de uso, tema e integrações.",
+    "duracao": "~30min",
+    "prereq": "T0",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Aba Empresa: logo, dados cadastrais, contato e endereço (CEP preenche sozinho)"
+      },
+      {
+        "t": "05:00",
+        "nome": "O switch \"mostrar em documentos\" campo a campo — o que sai no PDF e no relatório"
+      },
+      {
+        "t": "08:00",
+        "nome": "White Label: logo full + ícone, cor primária, estilo do QR Code e cabeçalho do relatório com preview ao vivo",
+        "modulo_pago": true
+      },
+      {
+        "t": "13:00",
+        "nome": "Aba Regional: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC"
+      },
+      {
+        "t": "16:00",
+        "nome": "Aba Usabilidade: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda"
+      },
+      {
+        "t": "21:00",
+        "nome": "Card Origens — o catálogo compartilhado entre Clientes e CRM"
+      },
+      {
+        "t": "23:00",
+        "nome": "Aba Atalhos e aba Aparência (sidebar × barra superior, tema claro/escuro)"
+      },
+      {
+        "t": "26:00",
+        "nome": "Aba Integrações: Recebimentos (Asaas) e o estado atual do WhatsApp"
+      },
+      {
+        "t": "28:00",
+        "nome": "Documentos legais e a Zona de Perigo (Zerar Sistema) — o que ela apaga"
+      }
+    ],
+    "abertura": "Neste tutorial você vai deixar a Dominex com a cara da sua empresa.",
+    "recap": "Empresa cadastrada, documentos com sua marca, preferências ajustadas e integrações no lugar.",
+    "proximo": "No próximo tutorial: quem entra no sistema e o que cada um pode fazer.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Salvamento é automático (com debounce) — mostre o selo \"salvando / salvo\" no topo. Não existe botão \"Salvar\" nessa tela."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Segmento é somente-leitura — só a Dominex muda. Explique isso antes que o cliente procure o campo."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "WhatsApp está \"Em breve\" hoje: a aba existe mas mostra um card fixo, não o painel de conexão por QR Code. Não gravar aula de conectar WhatsApp até a flag ser desligada."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe configuração do link de avaliação do Google dentro de Configurações — ele vive na configuração de NPS da OS (T12)."
+      }
+    ]
+  },
+  "T2": {
+    "code": "T2",
+    "inspiracao": "Missão Impossível",
+    "titulo": "Usuários, cargos e permissões",
+    "resumo": "Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.",
+    "duracao": "~25min",
+    "prereq": "T1",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Onde fica: Configurações → Usuários e Permissões"
+      },
+      {
+        "t": "02:00",
+        "nome": "Criar usuário: dados, foto, papel, senha e vínculo com o funcionário do RH"
+      },
+      {
+        "t": "06:00",
+        "nome": "O editor de permissões novo: busca, tela por tela, ações dentro de cada tela"
+      },
+      {
+        "t": "11:00",
+        "nome": "Chip Acesso Total e por que ele não quebra quando a gente lança tela nova"
+      },
+      {
+        "t": "13:00",
+        "nome": "Aba Cargos: criar preset, duplicar, aplicar num usuário e o que acontece ao desmarcar uma permissão"
+      },
+      {
+        "t": "17:00",
+        "nome": "Caso real: técnico que só usa o link de campo — ligar a ação-filha sem ligar a tela-mãe"
+      },
+      {
+        "t": "20:00",
+        "nome": "Ativar × desativar × excluir usuário, e a vaga do plano"
+      },
+      {
+        "t": "22:00",
+        "nome": "Limite de usuários do plano e como contratar mais"
+      }
+    ],
+    "abertura": "Neste tutorial você vai colocar sua equipe no sistema dando pra cada um exatamente o acesso certo.",
+    "recap": "Usuários criados, cargos montados e ninguém enxergando o que não deve.",
+    "proximo": "No próximo tutorial: seus clientes e os equipamentos deles.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Você não consegue desativar, excluir ou trocar o papel do próprio usuário logado — as ações somem na sua linha. Mostre isso pra ninguém achar que é bug."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Reativar usuário fica bloqueado se a empresa já bateu o limite do plano."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Permissão de excluir lançamento financeiro é separada e não vem ligada por padrão (novidade da 1.22.5)."
+      }
+    ]
+  },
+  "T3": {
+    "code": "T3",
+    "inspiracao": "Sherlock",
+    "titulo": "Clientes e Equipamentos",
+    "resumo": "A base de tudo. Sem cliente e sem equipamento não existe OS, orçamento, contrato nem PMOC.",
+    "duracao": "~35min",
+    "prereq": "T2",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela Clientes: grade × lista, busca por nome/documento/razão social"
+      },
+      {
+        "t": "03:00",
+        "nome": "Cadastro — aba Contato (foto, tipo PF/PJ, telefones, e-mail, origem)"
+      },
+      {
+        "t": "07:00",
+        "nome": "Cadastro — aba Fiscal: buscar por CNPJ e o endereço se preencher sozinho"
+      },
+      {
+        "t": "11:00",
+        "nome": "Origens de cliente: montar o catálogo de \"de onde veio esse cliente\""
+      },
+      {
+        "t": "13:00",
+        "nome": "Formulários de captação: gerar o link público de cadastro pra colocar na bio"
+      },
+      {
+        "t": "16:00",
+        "nome": "Detalhe do cliente: Geral, Equipamentos, Histórico, Tarefas, Contratos, Financeiro"
+      },
+      {
+        "t": "21:00",
+        "nome": "Contatos e \"Responsável no Local\" — WhatsApp direto de dentro do sistema"
+      },
+      {
+        "t": "23:00",
+        "nome": "Tela Equipamentos: cadastro, categorias e criar o cliente na hora, só com o nome"
+      },
+      {
+        "t": "27:00",
+        "nome": "Campos customizados de equipamento: criar, ordenar, marcar obrigatório e visível"
+      },
+      {
+        "t": "30:00",
+        "nome": "Detalhe do equipamento: QR Code, etiqueta configurável, anexos e histórico de OS"
+      }
+    ],
+    "abertura": "Neste tutorial você vai montar a base de clientes e equipamentos que sustenta o resto do sistema.",
+    "recap": "Clientes cadastrados com dado fiscal certo, equipamentos etiquetados com QR e prontos pra receber OS.",
+    "proximo": "No próximo tutorial: o catálogo de serviços e os checklists.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Digitar o CNPJ sobrescreve razão social, fantasia, e-mail, telefone e endereço já digitados (só respeita o campo \"Nome\" se já tiver conteúdo). Mostre isso."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O formulário salva rascunho automático — se fechar sem querer, ele oferece retomar."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Botões de QR (\"Baixar PNG\", \"Abrir link\", \"Copiar link\") ficam desabilitados se o cliente não tiver Portal do Cliente ativo. Explique o pré-requisito antes de clicar."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Campo customizado de equipamento é por empresa, não por categoria — todo equipamento vê o mesmo catálogo de campos extras."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Cliente não tem anexos, campos customizados nem múltiplos endereços. É um endereço por cliente. Múltiplos ambientes só existem dentro de contrato PMOC."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe importação/exportação em massa de clientes nem de equipamentos."
+      }
+    ]
+  },
+  "T4": {
+    "code": "T4",
+    "inspiracao": "Ratatouille",
+    "titulo": "Serviços, tarefas e checklists",
+    "resumo": "O mise en place do sistema. Aqui você monta o cardápio de serviços da empresa e os formulários que o técnico vai preencher em campo.",
+    "duracao": "~30min",
+    "prereq": "T3",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Onde fica: menu Serviços (/servicos) e as 3 abas"
+      },
+      {
+        "t": "01:30",
+        "nome": "Aba Tipos de Serviço: nome, cor, categoria, prefixo de numeração da OS"
+      },
+      {
+        "t": "05:00",
+        "nome": "O switch \"exige equipamento\" e o efeito dele lá na criação da OS"
+      },
+      {
+        "t": "07:00",
+        "nome": "Campos fiscais do serviço (código de serviço, NBS, cTribMun, alíquota ISS, item LC116) — por que preencher agora poupa dor no T14"
+      },
+      {
+        "t": "11:00",
+        "nome": "Preço padrão do serviço e como ele auto-preenche o orçamento"
+      },
+      {
+        "t": "13:00",
+        "nome": "Aba Tipos de Tarefa — as categorias da \"Nova Tarefa\" da Agenda"
+      },
+      {
+        "t": "15:00",
+        "nome": "Aba Checklists: criar template do zero × importar do catálogo de modelos prontos"
+      },
+      {
+        "t": "19:00",
+        "nome": "Editor de checklist: sim/não, conformidade, texto, número, medição PMOC, seleção, foto, assinatura"
+      },
+      {
+        "t": "24:00",
+        "nome": "Combinar tipos na mesma pergunta (ex.: sim/não + foto) e exigir câmera"
+      },
+      {
+        "t": "26:00",
+        "nome": "Pergunta de vídeo (módulo pago, com limite de perguntas)",
+        "modulo_pago": true
+      },
+      {
+        "t": "28:00",
+        "nome": "Vincular checklist a tipos de serviço e desativar sem perder histórico"
+      }
+    ],
+    "abertura": "Neste tutorial você vai montar o catálogo de serviços e os checklists que o técnico preenche em campo.",
+    "recap": "Tipos de serviço com preço e dado fiscal, e checklists prontos pra virar relatório.",
+    "proximo": "No próximo tutorial: a Ordem de Serviço, o coração da operação.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Preencher os campos fiscais aqui é o que evita retrabalho na hora de emitir NFS-e."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Desativar checklist não exclui — preserva as OS antigas que já usavam ele."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Custo, mão de obra, materiais e BDI NÃO ficam nesta tela — vivem dentro de Orçamentos (T9). Não junte as duas coisas na mesma explicação, confunde."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "/checklists e /questionarios são endereços antigos que redirecionam. Grave sempre pelo caminho atual (Serviços → Checklists)."
+      }
+    ]
+  },
+  "T5": {
+    "code": "T5",
+    "inspiracao": "Mad Max: Estrada da Fúria",
+    "titulo": "Ordens de Serviço: a visão do gestor",
+    "resumo": "O coração da operação. Abrir, distribuir, acompanhar e fechar OS — tudo do lado de dentro do escritório.",
+    "duracao": "~45min",
+    "prereq": "T4",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela Ordens de Serviço: kanban × lista e os 4 indicadores do topo"
+      },
+      {
+        "t": "04:00",
+        "nome": "Criar OS — Etapa 1: cliente cadastrado × cliente avulso, e o tipo de serviço"
+      },
+      {
+        "t": "09:00",
+        "nome": "Criar OS — Etapa 2: equipamentos e checklists (e quando essa etapa nem aparece)"
+      },
+      {
+        "t": "14:00",
+        "nome": "Criar OS — Etapa 3: técnico e/ou equipe, data, duração, descrição"
+      },
+      {
+        "t": "19:00",
+        "nome": "Recorrência da OS (diária, semanal, quinzenal, mensal, anual, personalizada)"
+      },
+      {
+        "t": "22:00",
+        "nome": "Endereço de serviço diferente do endereço do cliente"
+      },
+      {
+        "t": "24:00",
+        "nome": "O toggle \"gerar Pesquisa de Satisfação ao finalizar\""
+      },
+      {
+        "t": "26:00",
+        "nome": "Mover status arrastando, e o \"+\" no topo da coluna que já nasce com aquele status"
+      },
+      {
+        "t": "29:00",
+        "nome": "Configurar Status: criar status próprio, cor e ordem"
+      },
+      {
+        "t": "32:00",
+        "nome": "Filtros, busca e por que a busca ignora o filtro de período"
+      },
+      {
+        "t": "35:00",
+        "nome": "Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente"
+      },
+      {
+        "t": "38:00",
+        "nome": "Aba Relatório: leitura do dashboard de OS"
+      },
+      {
+        "t": "41:00",
+        "nome": "Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator"
+      }
+    ],
+    "abertura": "Neste tutorial você vai abrir, distribuir e acompanhar Ordem de Serviço do início ao fim.",
+    "recap": "OS criada, técnico avisado, status controlado e cliente com link pra acompanhar.",
+    "proximo": "No próximo tutorial: agenda, equipes e mapa ao vivo.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O formulário salva rascunho enquanto está aberto — mostre recuperando."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Mudar a data de uma OS recorrente ou de contrato abre confirmação. Explique por quê."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "OS de contrato PMOC mostra aviso extra na edição — não é erro."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe toggle manual \"exigir assinatura\" na criação de OS avulsa. Hoje isso só é ligado sozinho quando a OS nasce de contrato PMOC. Não prometa o botão."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Concluir OS não baixa estoque. O vínculo material × tipo de serviço serve pra calcular custo em orçamento, não mexe em saldo físico. Ver T8."
+      }
+    ]
+  },
+  "T6": {
+    "code": "T6",
+    "inspiracao": "Top Gun: Maverick",
+    "titulo": "Agenda, Equipes e Mapa ao Vivo",
+    "resumo": "Onde a operação vira rota. Quem vai, quando vai, e onde está agora.",
+    "duracao": "~30min",
+    "prereq": "T5",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)"
+      },
+      {
+        "t": "03:00",
+        "nome": "Criar pelo \"+\": Nova OS × Nova Tarefa — a diferença que mais confunde"
+      },
+      {
+        "t": "07:00",
+        "nome": "Reagendar arrastando no desktop e com toque-e-segure no celular"
+      },
+      {
+        "t": "10:00",
+        "nome": "Legenda de cores por tipo de serviço e a estrela de feriado"
+      },
+      {
+        "t": "12:00",
+        "nome": "Ordens Pausadas: o diálogo de retomada rápida"
+      },
+      {
+        "t": "14:00",
+        "nome": "A OS retomada aparecendo em duas datas (badge \"Retomada\")"
+      },
+      {
+        "t": "16:00",
+        "nome": "Equipes: onde ficam de verdade (Funcionários → aba Equipes), criar time com cor, ícone, foto e membros"
+      },
+      {
+        "t": "20:00",
+        "nome": "Escalar equipe inteira numa OS em vez de técnico individual"
+      },
+      {
+        "t": "22:00",
+        "nome": "Mapa e Rastreamento — aba Mapa: as cores dos marcadores e o que cada uma significa"
+      },
+      {
+        "t": "26:00",
+        "nome": "Aba Histórico: eventos de localização por técnico e por data"
+      }
+    ],
+    "abertura": "Neste tutorial você vai organizar a semana da equipe e acompanhar o time no mapa em tempo real.",
+    "recap": "Agenda montada, equipes formadas e visibilidade de onde cada técnico está.",
+    "proximo": "No próximo tutorial: o lado do técnico, no celular, em campo.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Tarefa não é OS: não aparece na tela de Ordens de Serviço, é compromisso separado."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Arrastar na agenda muda a data na hora, sem confirmação (exceto OS recorrente/de contrato)."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O técnico só aparece no mapa se deu permissão de localização no celular e está com OS \"a caminho\" ou \"em andamento\"."
+      },
+      {
+        "tipos": [
+          "atencao",
+          "modulo_pago"
+        ],
+        "texto": "A aba Equipes vive dentro de Funcionários, que exige o módulo RH — confirme antes de gravar se o cliente sem RH consegue montar equipe."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe \"líder de equipe\" — é lista plana de membros."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe tela separada de rastreamento; o histórico é aba do próprio Mapa."
+      }
+    ]
+  },
+  "T7": {
+    "code": "T7",
+    "inspiracao": "Perdido em Marte",
+    "titulo": "O técnico em campo + Área do Técnico™",
+    "resumo": "O tutorial que o técnico assiste. Tudo o que acontece no celular, do \"estou a caminho\" até a assinatura do cliente — mais a caixa de ferramentas de cálculo.",
+    "duracao": "~40min",
+    "prereq": "T6",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Abrindo a OS no celular: o link, o endereço amigável e o que o técnico vê primeiro"
+      },
+      {
+        "t": "03:00",
+        "nome": "A Caminho → mapa em tela cheia com botão pra Waze e Google Maps"
+      },
+      {
+        "t": "06:00",
+        "nome": "Check-in: a OS vira \"Em Andamento\" e a localização é registrada"
+      },
+      {
+        "t": "09:00",
+        "nome": "Preenchendo checklist por equipamento: sim/não, conformidade, medição, seleção, número"
+      },
+      {
+        "t": "15:00",
+        "nome": "Fotos: Tirar Foto × Galeria, e quando só a câmera é permitida"
+      },
+      {
+        "t": "18:00",
+        "nome": "Resposta em vídeo",
+        "modulo_pago": true
+      },
+      {
+        "t": "20:00",
+        "nome": "Pausar e retomar a OS depois — e como isso aparece na agenda do gestor"
+      },
+      {
+        "t": "23:00",
+        "nome": "Assinatura do técnico e do cliente"
+      },
+      {
+        "t": "26:00",
+        "nome": "Finalizar (e o \"finalizar parcialmente\" em contrato PMOC)"
+      },
+      {
+        "t": "29:00",
+        "nome": "Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)"
+      },
+      {
+        "t": "35:00",
+        "nome": "Usar a calculadora de dentro da OS, sem sair da tela"
+      },
+      {
+        "t": "37:00",
+        "nome": "As ferramentas com cadeado: o que é do seu segmento e o que é de outro"
+      }
+    ],
+    "abertura": "Neste tutorial você vai executar uma OS do começo ao fim pelo celular, como se estivesse na casa do cliente.",
+    "recap": "Você saiu a caminho, fez check-in, preencheu o checklist com foto, colheu assinatura e finalizou.",
+    "proximo": "No próximo tutorial: estoque, compras e inventário.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Sinal de internet é obrigatório na hora de salvar. O app guarda rascunho do formulário e avisa quando a conexão cai, mas checklist, foto e check-in precisam de rede pra gravar."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não prometer \"funciona offline / sincroniza depois\". Não existe fila de sincronização — as chamadas são sempre online. O que existe é o app abrir rápido mesmo com rede ruim e o rascunho local do formulário. [VALIDAR COM O TECH LEAD a frase exata antes de gravar.]"
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "A mesma URL serve pro técnico, pro gestor e pro cliente — sem login, ela vira modo cliente sozinha. Cuidado ao gravar tela: mostre logado e deslogado."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Área do Técnico™ ≠ executar OS. São duas coisas diferentes com nomes parecidos. Separe bem no vídeo."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "As calculadoras mudam conforme o segmento da empresa — o técnico de elevador não vê as mesmas de refrigeração."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe baixa de material/estoque dentro da tela de execução."
+      }
+    ]
+  },
+  "T8": {
+    "code": "T8",
+    "inspiracao": "Duna",
+    "titulo": "Estoque, compras e inventário",
+    "resumo": "Controlar o que entra, o que sai e o que sumiu. Vale pra quem tem depósito e pra quem carrega peça na van.",
+    "duracao": "~35min",
+    "prereq": "T7",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela Estoque: as 5 abas e pra que serve cada uma"
+      },
+      {
+        "t": "02:00",
+        "nome": "Cadastrar material: categoria/grupo, unidade, estoque mínimo e custo"
+      },
+      {
+        "t": "06:00",
+        "nome": "Depósitos/locais: criar, definir o que existe em cada um e transferir entre eles"
+      },
+      {
+        "t": "11:00",
+        "nome": "Restrição de acesso por depósito — quem vê o quê"
+      },
+      {
+        "t": "13:00",
+        "nome": "Aba Histórico (Kardex): lendo a movimentação item a item"
+      },
+      {
+        "t": "16:00",
+        "nome": "Aba Compras: abrir compra, cadastrar fornecedor"
+      },
+      {
+        "t": "19:00",
+        "nome": "Cotação com vários fornecedores e escolha da vencedora"
+      },
+      {
+        "t": "23:00",
+        "nome": "Importar XML da NF-e e a compra montada sozinha"
+      },
+      {
+        "t": "26:00",
+        "nome": "Aba Inventários: contagem física passo a passo e o ajuste gerado no fechamento"
+      },
+      {
+        "t": "31:00",
+        "nome": "Aba Posição: saldo do estoque numa data passada"
+      }
+    ],
+    "abertura": "Neste tutorial você vai colocar seu estoque sob controle, do cadastro do material até a contagem física.",
+    "recap": "Materiais cadastrados, depósitos organizados, compra cotada e inventário fechado.",
+    "proximo": "No próximo tutorial: orçamento, precificação e proposta.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Alerta de estoque baixo depende do estoque mínimo preenchido no material."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Um usuário pode não ver todos os depósitos — é permissão, não bug."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Concluir OS não dá baixa no estoque. Diga isso explicitamente no vídeo: a baixa acontece na conversão de orçamento em OS (T9) e nos ajustes/inventário, não ao finalizar a OS. [VALIDAR COM O TECH LEAD antes de gravar.]"
+      }
+    ]
+  },
+  "T9": {
+    "code": "T9",
+    "inspiracao": "Mad Men",
+    "titulo": "Orçamentos, Precificação e Proposta",
+    "resumo": "Onde o serviço vira preço e o preço vira documento bonito na mão do cliente.",
+    "duracao": "~45min",
+    "prereq": "T8",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela Orçamentos: os indicadores (em aberto, taxa de conversão, ticket médio)"
+      },
+      {
+        "t": "03:00",
+        "nome": "Wizard — Etapa 1 Destinatário: cliente cadastrado × prospect avulso"
+      },
+      {
+        "t": "07:00",
+        "nome": "Etapa 2 Serviços: puxando do catálogo e o preço padrão entrando sozinho"
+      },
+      {
+        "t": "11:00",
+        "nome": "Etapa 3 Materiais: itens de estoque no orçamento"
+      },
+      {
+        "t": "14:00",
+        "nome": "Etapa 4 Desconto: valor fixo × percentual, e o custo de brindes"
+      },
+      {
+        "t": "17:00",
+        "nome": "Etapa 5 Revisão: escolher template, validade, observações e termos"
+      },
+      {
+        "t": "20:00",
+        "nome": "Aba Custos do Serviço: mão de obra e materiais por tipo de serviço",
+        "modulo_pago": true
+      },
+      {
+        "t": "24:00",
+        "nome": "Aba Custos Globais: veículos, ferramentas, brindes, EPI",
+        "modulo_pago": true
+      },
+      {
+        "t": "27:00",
+        "nome": "Aba Precificação (BDI): impostos, administração, lucro, custo por km, desconto à vista e no cartão",
+        "modulo_pago": true
+      },
+      {
+        "t": "32:00",
+        "nome": "Configurar Proposta: os 4 templates (Clean, Aurora, Prisma, Vanguarda), cores, logo e seções"
+      },
+      {
+        "t": "36:00",
+        "nome": "Copiar o link público, mandar no WhatsApp e baixar o PDF"
+      },
+      {
+        "t": "39:00",
+        "nome": "A visão do cliente em /proposta/:token — aprovar ou rejeitar"
+      },
+      {
+        "t": "41:00",
+        "nome": "Contador de visualizações: quantas vezes o cliente abriu e quando"
+      },
+      {
+        "t": "43:00",
+        "nome": "Aprovar e o que isso lança no financeiro de uma vez só; Converter em OS"
+      }
+    ],
+    "abertura": "Neste tutorial você vai montar um orçamento com preço certo e mandar uma proposta que fecha.",
+    "recap": "Orçamento montado com BDI, proposta enviada, cliente aprovou e virou OS.",
+    "proximo": "No próximo tutorial: o funil de vendas.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Copiar o link público promove o rascunho pra \"enviado\" automaticamente — e é só a partir daí que os botões Aprovar/Rejeitar aparecem pro cliente."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Aprovar internamente já lança receita, custo de material e mão de obra no financeiro de uma vez. E trava: não dá pra aprovar duas vezes."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Converter em OS cria uma OS avulsa e baixa o estoque dos materiais do orçamento."
+      },
+      {
+        "tipos": [
+          "atencao",
+          "modulo_pago"
+        ],
+        "texto": "Custos Globais e Precificação exigem o módulo Precificação Avançada. A coluna de margem na lista também."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe \"orçamento vira contrato\". Contrato é sempre montado do zero (T11). Não prometa o botão."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe assinatura eletrônica de proposta — a aprovação é um clique, sem assinatura formal."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe lembrete automático de orçamento vencido."
+      }
+    ]
+  },
+  "T10": {
+    "code": "T10",
+    "inspiracao": "Suits",
+    "titulo": "CRM: funil, leads e captação",
+    "resumo": "Parar de perder oportunidade em conversa de WhatsApp. Todo lead num funil visível, com dono e próximo passo.",
+    "duracao": "~30min",
+    "prereq": "T9",
+    "modulo_pago": "CRM",
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela CRM: kanban × lista, e o empty-state \"criar estágios padrão\""
+      },
+      {
+        "t": "03:00",
+        "nome": "Montar o funil: criar, renomear, reordenar e colorir estágios"
+      },
+      {
+        "t": "07:00",
+        "nome": "Marcar estágio como \"ganho\" e como \"perdido\" — e o que muda"
+      },
+      {
+        "t": "09:00",
+        "nome": "Criar oportunidade: título, cliente (ou criar na hora), vendedor, origem, valor, probabilidade, previsão"
+      },
+      {
+        "t": "14:00",
+        "nome": "Arrastar entre estágios e o motivo da perda obrigatório"
+      },
+      {
+        "t": "17:00",
+        "nome": "Detalhe do lead: ligar, WhatsApp, e-mail e registrar interação com próxima ação"
+      },
+      {
+        "t": "21:00",
+        "nome": "Filtros: origem, vendedor, faixa de valor, busca"
+      },
+      {
+        "t": "23:00",
+        "nome": "Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar"
+      },
+      {
+        "t": "27:00",
+        "nome": "Rotina sugerida: revisão diária do funil em 5 minutos"
+      }
+    ],
+    "abertura": "Neste tutorial você vai montar seu funil de vendas e parar de perder oportunidade.",
+    "recap": "Funil montado, leads entrando, interações registradas e nada mais se perdendo.",
+    "proximo": "No próximo tutorial: contratos e PMOC.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao",
+          "modulo_pago"
+        ],
+        "texto": "Sem o módulo CRM a tela nem aparece no menu."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O filtro \"Origem\" usa uma lista fixa, que pode não bater com as origens customizadas que você criou no cadastro de cliente. Mostre e explique."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Excluir lead usa a confirmação do navegador, diferente do resto do sistema."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "\"Motivo da perda\" é texto livre gravado nas observações — não é campo estruturado pra relatório."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "O formulário público de captação do cadastro de cliente (T3) não cria lead no CRM — ele cria cliente. São dois caminhos diferentes."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "A avaliação DISC é de funcionário (RH), não tem nada a ver com CRM."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe importação de leads em massa nem distribuição automática por vendedor."
+      }
+    ]
+  },
+  "T11": {
+    "code": "T11",
+    "inspiracao": "Peaky Blinders",
+    "titulo": "Contratos e PMOC",
+    "resumo": "Receita recorrente e conformidade legal no mesmo lugar. É o tutorial mais denso da trilha.",
+    "duracao": "~45min",
+    "prereq": "T10",
+    "modulo_pago": "Gestão de Contratos e PMOC",
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Onde fica o PMOC hoje: não tem menu próprio, é um tipo de contrato"
+      },
+      {
+        "t": "02:00",
+        "nome": "Tela Contratos: indicadores, filtros de status, saúde e tipo"
+      },
+      {
+        "t": "05:00",
+        "nome": "Wizard do contrato comum (5 etapas) × wizard PMOC (6 etapas)"
+      },
+      {
+        "t": "09:00",
+        "nome": "Etapa Unidade (só PMOC): ambientes e equipamentos por ambiente"
+      },
+      {
+        "t": "13:00",
+        "nome": "Etapa Frequência: mensal, bimestral, trimestral, semestral, anual, ou por dias"
+      },
+      {
+        "t": "17:00",
+        "nome": "Etapa Equipe e a revisão final — e as OS geradas de uma vez pro horizonte inteiro"
+      },
+      {
+        "t": "21:00",
+        "nome": "Detalhe do contrato: as abas de contrato comum × as abas extras de PMOC"
+      },
+      {
+        "t": "24:00",
+        "nome": "Aba Cronograma (PMOC): verde/laranja/vermelho e o PDF anual"
+      },
+      {
+        "t": "27:00",
+        "nome": "Aba Documentos: TRT, Certificado, Dossiê e Planilha — gerar, assinar e baixar"
+      },
+      {
+        "t": "32:00",
+        "nome": "Responsáveis Técnicos: cadastro, CFT/CREA, assinatura e carimbo (Configurações de Contrato)"
+      },
+      {
+        "t": "36:00",
+        "nome": "Aba Financeiro do contrato: cobrança única ou parcelada, marcar paga, aplicar em massa"
+      },
+      {
+        "t": "40:00",
+        "nome": "Portal do Contrato/PMOC: link e QR Code pro cliente"
+      },
+      {
+        "t": "42:00",
+        "nome": "Renovar (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança"
+      }
+    ],
+    "abertura": "Neste tutorial você vai montar contrato recorrente e deixar o PMOC em conformidade com a lei.",
+    "recap": "Contrato criado, visitas programadas, documentos assinados e cliente com portal próprio.",
+    "proximo": "No próximo tutorial: o portal do cliente e a sua reputação.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao",
+          "nao_prometer"
+        ],
+        "texto": "Não fale em \"tela de PMOC\" nem em item de menu PMOC — não existe mais. O caminho é Contratos com filtro de tipo."
+      },
+      {
+        "tipos": [
+          "atencao",
+          "nao_prometer"
+        ],
+        "texto": "Não prometa \"robô que gera OS todo dia\". As visitas são geradas de uma vez, no momento de criar ou renovar o contrato, cobrindo todo o horizonte configurado."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Os 4 documentos só saem certos se: empresa com nome/CNPJ, RT com nome + modalidade + registro, e cliente com documento e endereço. A tela lista as pendências com link — mostre isso resolvendo uma pendência ao vivo."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Cronograma e Histórico só existem em contrato PMOC. Não prometa pra contrato comum."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Pausar/retomar só existe na lista, não no detalhe."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Excluir contrato preserva o que já foi pago, mas remove cobrança em aberto — leia o aviso do modal no vídeo."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe assinatura eletrônica de contrato dentro do produto."
+      }
+    ]
+  },
+  "T12": {
+    "code": "T12",
+    "inspiracao": "Black Mirror",
+    "titulo": "Portal do Cliente, NPS e reputação",
+    "resumo": "Transformar serviço bem feito em prova social. O cliente acompanha, avalia e, se gostou, avalia no Google.",
+    "duracao": "~25min",
+    "prereq": "T11",
+    "modulo_pago": "Portal do Cliente (para o portal)",
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "O Portal do Cliente já nasce criado pra todo cliente — só falta torná-lo público"
+      },
+      {
+        "t": "03:00",
+        "nome": "Copiar o link, ligar o switch \"Portal público\" e testar como o cliente vê"
+      },
+      {
+        "t": "06:00",
+        "nome": "O que o cliente enxerga: OS, equipamentos, contratos e cobranças"
+      },
+      {
+        "t": "10:00",
+        "nome": "Cliente abrindo chamado pelo portal — e onde isso cai pra você (aba Chamados)"
+      },
+      {
+        "t": "13:00",
+        "nome": "O QR Code do equipamento levando direto pro portal filtrado naquele aparelho"
+      },
+      {
+        "t": "15:00",
+        "nome": "A avaliação (NPS) que aparece pro cliente ao fim da OS: nota, estrelas por critério, comentário"
+      },
+      {
+        "t": "18:00",
+        "nome": "Configurar os critérios de estrela (nome, cor, ordem)"
+      },
+      {
+        "t": "20:00",
+        "nome": "Nota mínima + convite pra avaliar no Google: colando o link do Google Maps"
+      },
+      {
+        "t": "23:00",
+        "nome": "Lendo o painel de NPS e o que fazer com um detrator"
+      }
+    ],
+    "abertura": "Neste tutorial você vai abrir o sistema pro seu cliente e transformar serviço bom em avaliação boa.",
+    "recap": "Portal ligado, cliente acompanhando, avaliação chegando e review no Google acontecendo.",
+    "proximo": "No próximo tutorial: o financeiro.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Portal com link correto mas sem estar público = acesso negado. É a pegadinha nº1 aqui."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "A aba Chamados no cadastro do cliente só existe com o módulo Portal ativo."
+      },
+      {
+        "tipos": [
+          "atencao",
+          "modulo_pago"
+        ],
+        "texto": "A aba Cobranças exige DUAS coisas ao mesmo tempo: módulo Cobranças e conta de recebimento ativa. Faltando uma, a aba some sem aviso."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O link de contrato dentro do portal abre outra página (Portal PMOC da unidade), não abre dentro do portal."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe login com senha pro cliente final nesse fluxo — o acesso é por link/token."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe chat ou troca de mensagem no portal — o chamado é de mão única."
+      }
+    ]
+  },
+  "T13": {
+    "code": "T13",
+    "inspiracao": "Ozark",
+    "titulo": "Financeiro",
+    "resumo": "O tutorial mais longo, e o que mais evita prejuízo. Dinheiro entrando, saindo, no cartão e no resultado.",
+    "duracao": "~50min",
+    "prereq": "T12",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Os 3 endereços do menu Financeiro e o que cada um responde"
+      },
+      {
+        "t": "02:00",
+        "nome": "Movimentações: criar a primeira conta bancária/caixa"
+      },
+      {
+        "t": "06:00",
+        "nome": "Lançar receita e despesa, marcar como pago, editar e excluir"
+      },
+      {
+        "t": "10:00",
+        "nome": "Extrato com \"saldo após\" e o ajuste manual de saldo"
+      },
+      {
+        "t": "13:00",
+        "nome": "Transferência entre contas — e por que ela nunca é receita nem despesa"
+      },
+      {
+        "t": "16:00",
+        "nome": "Cadastrar cartão de crédito: fechamento, vencimento e limite"
+      },
+      {
+        "t": "19:00",
+        "nome": "Compra parcelada no cartão: a prévia parcela a parcela e o mês de cada fatura"
+      },
+      {
+        "t": "23:00",
+        "nome": "Pagar a fatura: integral × parcial, e o limite voltando"
+      },
+      {
+        "t": "27:00",
+        "nome": "Visão Geral: cards de saldo, gráfico de fluxo de caixa e pizza por categoria"
+      },
+      {
+        "t": "31:00",
+        "nome": "Categorias: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe"
+      },
+      {
+        "t": "35:00",
+        "nome": "Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial",
+        "modulo_pago": true
+      },
+      {
+        "t": "41:00",
+        "nome": "DRE: o botão Caixa × Competência e o que muda no número",
+        "modulo_pago": true
+      },
+      {
+        "t": "45:00",
+        "nome": "O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura"
+      },
+      {
+        "t": "48:00",
+        "nome": "Exportar CSV e gerar o PDF da DRE"
+      }
+    ],
+    "abertura": "Neste tutorial você vai colocar o dinheiro da empresa dentro do sistema e enxergar o resultado de verdade.",
+    "recap": "Contas cadastradas, cartão sob controle, contas a pagar organizadas e DRE lida do jeito certo.",
+    "proximo": "No próximo tutorial: nota fiscal de serviço.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Regime Caixa × Competência é o conceito mais importante do tutorial — dedique tempo. Caixa = o que já entrou/saiu. Competência = o mês do fato, pago ou não."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Compra no cartão entra na DRE pelo mês da compra (Competência) ou do pagamento (Caixa) — nunca pelo mês da fatura."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Pagar a fatura integralmente quita as compras. Pagamento parcial não quita nenhuma — mostre o aviso da tela."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Transferência e pagamento de fatura não entram no faturamento nem na DRE. Não é erro."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Recorrência de contas já cria todas as parcelas de uma vez (não é agendamento que dispara depois)."
+      },
+      {
+        "tipos": [
+          "atencao",
+          "modulo_pago"
+        ],
+        "texto": "Contas a Pagar/Receber e DRE exigem Financeiro Avançado. Sem o módulo, a URL direta redireciona."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Excluir lançamento exige permissão específica (T2)."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe subcategoria/hierarquia — a lista de categorias é plana."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe tela própria de BDI aqui (é dentro de Orçamentos, T9)."
+      }
+    ]
+  },
+  "T14": {
+    "code": "T14",
+    "inspiracao": "Better Call Saul",
+    "titulo": "Notas Fiscais (NFS-e)",
+    "resumo": "Do certificado digital até a nota autorizada com a prefeitura. Passo delicado, feito devagar.",
+    "duracao": "~30min",
+    "prereq": "T13",
+    "modulo_pago": "Emissão de Notas Fiscais",
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "O que é NFS-e e por que a configuração vem antes de tudo"
+      },
+      {
+        "t": "02:00",
+        "nome": "Abrindo Configurações (é um modal, não outra tela) — passo Empresa"
+      },
+      {
+        "t": "05:00",
+        "nome": "Passo Certificado: subindo o A1 (.pfx), senha e o consentimento"
+      },
+      {
+        "t": "09:00",
+        "nome": "Passo Impostos: regime tributário, inscrição municipal, município (IBGE) e alíquota do ISS"
+      },
+      {
+        "t": "13:00",
+        "nome": "Passo Serviços: código de serviço padrão e NBS"
+      },
+      {
+        "t": "15:00",
+        "nome": "A cota mensal de emissão e onde ela aparece"
+      },
+      {
+        "t": "17:00",
+        "nome": "Emitir nota — stepper de 4 passos: Pessoas → Serviço → Valores → Emitir"
+      },
+      {
+        "t": "22:00",
+        "nome": "O caso do Simples Nacional: o percentual que precisa ser preenchido"
+      },
+      {
+        "t": "24:00",
+        "nome": "Nota autorizada: número, protocolo, chave de acesso; baixar PDF (DANFSe) e XML"
+      },
+      {
+        "t": "27:00",
+        "nome": "Cancelar nota com motivo, e reemitir depois (número novo)"
+      }
+    ],
+    "abertura": "Neste tutorial você vai configurar a parte fiscal e emitir sua primeira nota de serviço.",
+    "recap": "Certificado no lugar, impostos configurados, nota emitida e PDF na mão do cliente.",
+    "proximo": "No próximo tutorial: sua equipe, o ponto e a folha.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Sem certificado carregado, a tela volta pro estado guiado e não emite."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Município sem cobertura do padrão nacional bloqueia a emissão mesmo com tudo certo. Confirme a cobertura do município antes de gravar com um exemplo real."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Regime Simples Nacional exige o percentual de tributação na emissão, senão a nota é recusada."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "\"Baixar PDF\" só aparece pra nota autorizada, com cancelamento pendente ou cancelada — não aparece em rascunho nem em nota rejeitada."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Reemitir depois de cancelar gera número novo — não reaproveita o número cancelado."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Configuração fiscal não é página separada — é modal aberto de dentro de Notas Fiscais."
+      }
+    ]
+  },
+  "T15": {
+    "code": "T15",
+    "inspiracao": "The Office",
+    "titulo": "Funcionários, Ponto e Folha",
+    "resumo": "Time cadastrado, ponto batendo e folha caindo no financeiro sem planilha paralela.",
+    "duracao": "~35min",
+    "prereq": "T14",
+    "modulo_pago": "Funcionários / RH",
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela Funcionários e suas 5 abas"
+      },
+      {
+        "t": "02:00",
+        "nome": "Cadastro: dados, foto, chave PIX, admissão"
+      },
+      {
+        "t": "06:00",
+        "nome": "Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)"
+      },
+      {
+        "t": "10:00",
+        "nome": "Configuração de pagamento: frequência e dia do mês"
+      },
+      {
+        "t": "13:00",
+        "nome": "Vincular acesso ao sistema: criando o login do funcionário"
+      },
+      {
+        "t": "16:00",
+        "nome": "Vale, falta e bônus — o que vira despesa na hora e o que só entra na folha"
+      },
+      {
+        "t": "20:00",
+        "nome": "Pagar funcionário: modo informal × CLT (com holerite) e o desconto do vale"
+      },
+      {
+        "t": "24:00",
+        "nome": "Ponto: gerar o link público do funcionário e bater ponto pelo celular"
+      },
+      {
+        "t": "28:00",
+        "nome": "Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)"
+      },
+      {
+        "t": "31:00",
+        "nome": "A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá"
+      },
+      {
+        "t": "33:00",
+        "nome": "Abas Comportamental (DISC) e Organograma"
+      }
+    ],
+    "abertura": "Neste tutorial você vai cadastrar sua equipe, ligar o ponto e fechar a folha dentro do sistema.",
+    "recap": "Funcionários cadastrados, ponto batendo com foto e localização, folha caindo no financeiro.",
+    "proximo": "No próximo tutorial: seu plano e sua assinatura.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Vale gera despesa na hora. Bônus e falta não — só entram no financeiro quando a folha é paga. Essa é a confusão nº1 aqui."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Criar acesso exige e-mail preenchido e senha de no mínimo 6 caracteres."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O holerite CLT abre em popup — pode ser bloqueado pelo navegador. Mostre desbloqueando."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Selfie e localização no ponto só aparecem se a empresa exigir nas Configurações da aba Ponto."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe botão \"Gerar Folha\" — a folha é gerada automaticamente e aparece em Contas a Pagar. Não procure o botão no vídeo."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "Não existe tela separada de ponto pro gestor — é aba dentro de Funcionários."
+      }
+    ]
+  },
+  "T16": {
+    "code": "T16",
+    "inspiracao": "A Rede Social",
+    "titulo": "Sua assinatura, plano e módulos",
+    "resumo": "Entender o que você paga, o que está incluído e como ligar um módulo novo.",
+    "duracao": "~20min",
+    "prereq": "T15",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Tela Assinatura: status, plano atual, vencimento e valor"
+      },
+      {
+        "t": "03:00",
+        "nome": "Card Uso da Conta: usuários usados × contratados"
+      },
+      {
+        "t": "05:00",
+        "nome": "Gerenciar Meu Plano — aba Planos Prontos"
+      },
+      {
+        "t": "08:00",
+        "nome": "Gerenciar Meu Plano — aba Personalizado: montar módulo a módulo + usuários extras"
+      },
+      {
+        "t": "12:00",
+        "nome": "O catálogo de módulos explicado em uma frase cada"
+      },
+      {
+        "t": "15:00",
+        "nome": "Pagar Agora → checkout: Pix, Boleto e Cartão"
+      },
+      {
+        "t": "18:00",
+        "nome": "Mensal × Anual (o desconto que só vale à vista) e o histórico de pagamentos"
+      }
+    ],
+    "abertura": "Neste tutorial você vai entender exatamente o que paga e como ligar um recurso novo.",
+    "recap": "Plano entendido, módulos sob controle e pagamento resolvido.",
+    "proximo": "No último tutorial: a rotina que faz tudo isso girar.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Cartão é sempre recorrente mensal e não tem o desconto anual. Só Pix e Boleto pegam os 20%."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O valor exibido considera preço promocional/personalizado — pode não bater com a tabela pública."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Plano \"Personalizado\" não aparece pra compra direta no checkout."
+      }
+    ]
+  },
+  "T17": {
+    "code": "T17",
+    "inspiracao": "Moneyball",
+    "titulo": "Dashboard, rotina e truques",
+    "resumo": "Fechar a trilha lendo os números e montando a rotina que mantém o sistema vivo.",
+    "duracao": "~25min",
+    "prereq": "T16",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Dashboard: os KPIs (OS abertas, pendentes, técnicos em campo, taxa de conclusão, faturamento, clientes ativos)"
+      },
+      {
+        "t": "05:00",
+        "nome": "Mapa ao vivo, fluxo de caixa e evolução de OS na tela inicial"
+      },
+      {
+        "t": "09:00",
+        "nome": "Top Técnicos, resumo por status, OS por tipo e OS críticas"
+      },
+      {
+        "t": "13:00",
+        "nome": "Chamados do Portal e o alerta de chamado novo"
+      },
+      {
+        "t": "15:00",
+        "nome": "Atalhos de teclado e busca rápida"
+      },
+      {
+        "t": "17:00",
+        "nome": "Rotina diária (5 min): OS críticas, chamados novos, agenda de amanhã"
+      },
+      {
+        "t": "19:00",
+        "nome": "Rotina semanal (20 min): funil do CRM, orçamentos em aberto, estoque mínimo"
+      },
+      {
+        "t": "21:00",
+        "nome": "Rotina mensal (1h): DRE, contas a receber vencidas, contratos a vencer, NPS"
+      },
+      {
+        "t": "23:00",
+        "nome": "Onde ver as novidades do sistema (Changelog) e como pedir ajuda"
+      }
+    ],
+    "abertura": "Neste último tutorial você vai aprender a ler seus números e montar a rotina que mantém tudo girando.",
+    "recap": "Você sabe ler o dashboard e tem uma rotina diária, semanal e mensal pra não deixar nada cair.",
+    "proximo": "Fim da trilha. Volte em qualquer tutorial pelo capítulo que precisar.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Faturamento e fluxo de caixa excluem movimento interno (transferência e pagamento de fatura). Explique pra ninguém achar que sumiu dinheiro."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O mapa só plota técnico que já mandou o primeiro ponto de GPS."
+      }
+    ]
+  }
+}

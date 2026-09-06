@@ -1,0 +1,18 @@
+{
+  "secao": "T0",
+  "prints": [
+    {
+      "id": "t0-central-ajuda",
+      "url": "/dashboard",
+      "legenda": "Painel lateral da Central de Ajuda aberto, com a lista de perguntas frequentes recolhida.",
+      "passos": [
+        { "esperar": 3500 },
+        { "clicarSeletor": "[aria-label=\"Menu da conta\"]" },
+        { "esperar": 900 },
+        { "clicar": "Central de Ajuda" },
+        { "esperar": 1200 }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}

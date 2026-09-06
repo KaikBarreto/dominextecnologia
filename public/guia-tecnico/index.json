@@ -1,0 +1,371 @@
+{
+ "documento": "Guia Técnico — Dominex",
+ "descricao": "Manual completo da Dominex, sistema de gestão para empresas de serviço técnico em campo (refrigeração e climatização, elétrica, energia solar, CFTV, dedetização, elevadores e assistência técnica). Uma seção por área do sistema, na ordem da Trilha Domiflix. Cada chunk é auto-contido e pode ser recuperado isoladamente.",
+ "gerado_em": "2026-09-06",
+ "total_chunks": 641,
+ "total_palavras": 131703,
+ "chunks_por_tipo": {
+  "visao_geral": 18,
+  "capitulo": 186,
+  "problema": 219,
+  "faq": 200,
+  "glossario": 18
+ },
+ "secoes": [
+  {
+   "secao": "T0",
+   "titulo": "Bem-vindo à Dominex",
+   "fase": "01",
+   "fase_titulo": "Deixar o sistema de pé",
+   "chunks": 27,
+   "capitulos": [
+    "O que a Dominex resolve — do chamado do cliente até o dinheiro na conta",
+    "Tour pelo menu: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM, Financeiro",
+    "Sidebar × Barra superior × menu do celular — a mesma coisa em 3 lugares",
+    "Vocabulário: Ordem de Serviço, Tarefa, Contrato, PMOC, Checklist, Cargo, Módulo",
+    "O que é módulo contratado e por que uma tela pode não aparecer pra você",
+    "Os 3 públicos do sistema: gestor no escritório, técnico no celular, cliente no link público",
+    "Onde pedir ajuda e como usar o Domiflix (minha lista, continuar assistindo, perfil)"
+   ]
+  },
+  {
+   "secao": "T1",
+   "titulo": "Configurações e identidade da empresa",
+   "fase": "01",
+   "fase_titulo": "Deixar o sistema de pé",
+   "chunks": 33,
+   "capitulos": [
+    "Aba Empresa: logo, dados cadastrais, contato e endereço (CEP preenche sozinho)",
+    "O switch \"mostrar em documentos\" campo a campo — o que sai no PDF e no relatório",
+    "White Label: logo full + ícone, cor primária, estilo do QR Code e cabeçalho do relatório com preview ao vivo",
+    "Aba Regional: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC",
+    "Aba Usabilidade: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda",
+    "Card Origens — o catálogo compartilhado entre Clientes e CRM",
+    "Aba Atalhos e aba Aparência (sidebar × barra superior, tema claro/escuro)",
+    "Aba Integrações: Recebimentos (Asaas) e o estado atual do WhatsApp",
+    "Documentos legais e a Zona de Perigo (Zerar Sistema) — o que ela apaga"
+   ]
+  },
+  {
+   "secao": "T2",
+   "titulo": "Usuários, cargos e permissões",
+   "fase": "01",
+   "fase_titulo": "Deixar o sistema de pé",
+   "chunks": 31,
+   "capitulos": [
+    "Onde fica: Configurações → Usuários e Permissões",
+    "Criar usuário: dados, foto, papel, senha e vínculo com o funcionário do RH",
+    "O editor de permissões novo: busca, tela por tela, ações dentro de cada tela",
+    "Chip Acesso Total e por que ele não quebra quando a gente lança tela nova",
+    "Aba Cargos: criar preset, duplicar, aplicar num usuário e o que acontece ao desmarcar uma permissão",
+    "Caso real: técnico que só usa o link de campo — ligar a ação-filha sem ligar a tela-mãe",
+    "Ativar × desativar × excluir usuário, e a vaga do plano",
+    "Limite de usuários do plano e como contratar mais"
+   ]
+  },
+  {
+   "secao": "T3",
+   "titulo": "Clientes e Equipamentos",
+   "fase": "02",
+   "fase_titulo": "Os cadastros que sustentam tudo",
+   "chunks": 31,
+   "capitulos": [
+    "Tela Clientes: grade × lista, busca por nome/documento/razão social",
+    "Cadastro — aba Contato (foto, tipo PF/PJ, telefones, e-mail, origem)",
+    "Cadastro — aba Fiscal: buscar por CNPJ e o endereço se preencher sozinho",
+    "Origens de cliente: montar o catálogo de \"de onde veio esse cliente\"",
+    "Formulários de captação: gerar o link público de cadastro pra colocar na bio",
+    "Detalhe do cliente: Geral, Equipamentos, Histórico, Tarefas, Contratos, Financeiro",
+    "Contatos e \"Responsável no Local\" — WhatsApp direto de dentro do sistema",
+    "Tela Equipamentos: cadastro, categorias e criar o cliente na hora, só com o nome",
+    "Campos customizados de equipamento: criar, ordenar, marcar obrigatório e visível",
+    "Detalhe do equipamento: QR Code, etiqueta configurável, anexos e histórico de OS"
+   ]
+  },
+  {
+   "secao": "T4",
+   "titulo": "Serviços, tarefas e checklists",
+   "fase": "02",
+   "fase_titulo": "Os cadastros que sustentam tudo",
+   "chunks": 31,
+   "capitulos": [
+    "Onde fica: menu Serviços (/servicos) e as 3 abas",
+    "Aba Tipos de Serviço: nome, cor, categoria, prefixo de numeração da OS",
+    "O switch \"exige equipamento\" e o efeito dele lá na criação da OS",
+    "Campos fiscais do serviço (código de serviço, NBS, cTribMun, alíquota ISS, item LC116) — por que preencher agora poupa dor no T14",
+    "Preço padrão do serviço e como ele auto-preenche o orçamento",
+    "Aba Tipos de Tarefa — as categorias da \"Nova Tarefa\" da Agenda",
+    "Aba Checklists: criar template do zero × importar do catálogo de modelos prontos",
+    "Editor de checklist: sim/não, conformidade, texto, número, medição PMOC, seleção, foto, assinatura",
+    "Combinar tipos na mesma pergunta (ex.: sim/não + foto) e exigir câmera",
+    "Pergunta de vídeo (módulo pago, com limite de perguntas)",
+    "Vincular checklist a tipos de serviço e desativar sem perder histórico"
+   ]
+  },
+  {
+   "secao": "T5",
+   "titulo": "Ordens de Serviço: a visão do gestor",
+   "fase": "03",
+   "fase_titulo": "A operação rodando",
+   "chunks": 35,
+   "capitulos": [
+    "Tela Ordens de Serviço: kanban × lista e os 4 indicadores do topo",
+    "Criar OS — Etapa 1: cliente cadastrado × cliente avulso, e o tipo de serviço",
+    "Criar OS — Etapa 2: equipamentos e checklists (e quando essa etapa nem aparece)",
+    "Criar OS — Etapa 3: técnico e/ou equipe, data, duração, descrição",
+    "Recorrência da OS (diária, semanal, quinzenal, mensal, anual, personalizada)",
+    "Endereço de serviço diferente do endereço do cliente",
+    "O toggle \"gerar Pesquisa de Satisfação ao finalizar\"",
+    "Mover status arrastando, e o \"+\" no topo da coluna que já nasce com aquele status",
+    "Configurar Status: criar status próprio, cor e ordem",
+    "Filtros, busca e por que a busca ignora o filtro de período",
+    "Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente",
+    "Aba Relatório: leitura do dashboard de OS",
+    "Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator"
+   ]
+  },
+  {
+   "secao": "T6",
+   "titulo": "Agenda, Equipes e Mapa ao Vivo",
+   "fase": "03",
+   "fase_titulo": "A operação rodando",
+   "chunks": 33,
+   "capitulos": [
+    "Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)",
+    "Criar pelo \"+\": Nova OS × Nova Tarefa — a diferença que mais confunde",
+    "Reagendar arrastando no desktop e com toque-e-segure no celular",
+    "Legenda de cores por tipo de serviço e a estrela de feriado",
+    "Ordens Pausadas: o diálogo de retomada rápida",
+    "A OS retomada aparecendo em duas datas (badge \"Retomada\")",
+    "Equipes: onde ficam de verdade (Funcionários → aba Equipes), criar time com cor, ícone, foto e membros",
+    "Escalar equipe inteira numa OS em vez de técnico individual",
+    "Mapa e Rastreamento — aba Mapa: as cores dos marcadores e o que cada uma significa",
+    "Aba Histórico: eventos de localização por técnico e por data"
+   ]
+  },
+  {
+   "secao": "T7",
+   "titulo": "O técnico em campo + Área do Técnico™",
+   "fase": "03",
+   "fase_titulo": "A operação rodando",
+   "chunks": 33,
+   "capitulos": [
+    "Abrindo a OS no celular: o link, o endereço amigável e o que o técnico vê primeiro",
+    "A Caminho → mapa em tela cheia com botão pra Waze e Google Maps",
+    "Check-in: a OS vira \"Em Andamento\" e a localização é registrada",
+    "Preenchendo checklist por equipamento: sim/não, conformidade, medição, seleção, número",
+    "Fotos: Tirar Foto × Galeria, e quando só a câmera é permitida",
+    "Resposta em vídeo",
+    "Pausar e retomar a OS depois — e como isso aparece na agenda do gestor",
+    "Assinatura do técnico e do cliente",
+    "Finalizar (e o \"finalizar parcialmente\" em contrato PMOC)",
+    "Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)",
+    "Usar a calculadora de dentro da OS, sem sair da tela",
+    "As ferramentas com cadeado: o que é do seu segmento e o que é de outro"
+   ]
+  },
+  {
+   "secao": "T8",
+   "titulo": "Estoque, compras e inventário",
+   "fase": "03",
+   "fase_titulo": "A operação rodando",
+   "chunks": 33,
+   "capitulos": [
+    "Tela Estoque: as 5 abas e pra que serve cada uma",
+    "Cadastrar material: categoria/grupo, unidade, estoque mínimo e custo",
+    "Depósitos/locais: criar, definir o que existe em cada um e transferir entre eles",
+    "Restrição de acesso por depósito — quem vê o quê",
+    "Aba Histórico (Kardex): lendo a movimentação item a item",
+    "Aba Compras: abrir compra, cadastrar fornecedor",
+    "Cotação com vários fornecedores e escolha da vencedora",
+    "Importar XML da NF-e e a compra montada sozinha",
+    "Aba Inventários: contagem física passo a passo e o ajuste gerado no fechamento",
+    "Aba Posição: saldo do estoque numa data passada"
+   ]
+  },
+  {
+   "secao": "T9",
+   "titulo": "Orçamentos, Precificação e Proposta",
+   "fase": "04",
+   "fase_titulo": "Vender",
+   "chunks": 45,
+   "capitulos": [
+    "Tela Orçamentos: os indicadores (em aberto, taxa de conversão, ticket médio)",
+    "Wizard — Etapa 1 Destinatário: cliente cadastrado × prospect avulso",
+    "Etapa 2 Serviços: puxando do catálogo e o preço padrão entrando sozinho",
+    "Etapa 3 Materiais: itens de estoque no orçamento",
+    "Etapa 4 Desconto: valor fixo × percentual, e o custo de brindes",
+    "Etapa 5 Revisão: escolher template, validade, observações e termos",
+    "Aba Custos do Serviço: mão de obra e materiais por tipo de serviço",
+    "Aba Custos Globais: veículos, ferramentas, brindes, EPI",
+    "Aba Precificação (BDI): impostos, administração, lucro, custo por km, desconto à vista e no cartão",
+    "Configurar Proposta: os 4 templates (Clean, Aurora, Prisma, Vanguarda), cores, logo e seções",
+    "Copiar o link público, mandar no WhatsApp e baixar o PDF",
+    "A visão do cliente em /proposta/:token — aprovar ou rejeitar",
+    "Contador de visualizações: quantas vezes o cliente abriu e quando",
+    "Aprovar e o que isso lança no financeiro de uma vez só; Converter em OS"
+   ]
+  },
+  {
+   "secao": "T10",
+   "titulo": "CRM: funil, leads e captação",
+   "fase": "04",
+   "fase_titulo": "Vender",
+   "chunks": 40,
+   "capitulos": [
+    "Tela CRM: kanban × lista, e o empty-state \"criar estágios padrão\"",
+    "Montar o funil: criar, renomear, reordenar e colorir estágios",
+    "Marcar estágio como \"ganho\" e como \"perdido\" — e o que muda",
+    "Criar oportunidade: título, cliente (ou criar na hora), vendedor, origem, valor, probabilidade, previsão",
+    "Arrastar entre estágios e o motivo da perda obrigatório",
+    "Detalhe do lead: ligar, WhatsApp, e-mail e registrar interação com próxima ação",
+    "Filtros: origem, vendedor, faixa de valor, busca",
+    "Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar",
+    "Rotina sugerida: revisão diária do funil em 5 minutos"
+   ]
+  },
+  {
+   "secao": "T11",
+   "titulo": "Contratos e PMOC",
+   "fase": "05",
+   "fase_titulo": "Contratos, PMOC e o cliente",
+   "chunks": 41,
+   "capitulos": [
+    "Onde fica o PMOC hoje: não tem menu próprio, é um tipo de contrato",
+    "Tela Contratos: indicadores, filtros de status, saúde e tipo",
+    "Wizard do contrato comum (5 etapas) × wizard PMOC (6 etapas)",
+    "Etapa Unidade (só PMOC): ambientes e equipamentos por ambiente",
+    "Etapa Frequência: mensal, bimestral, trimestral, semestral, anual, ou por dias",
+    "Etapa Equipe e a revisão final — e as OS geradas de uma vez pro horizonte inteiro",
+    "Detalhe do contrato: as abas de contrato comum × as abas extras de PMOC",
+    "Aba Cronograma (PMOC): verde/laranja/vermelho e o PDF anual",
+    "Aba Documentos: TRT, Certificado, Dossiê e Planilha — gerar, assinar e baixar",
+    "Responsáveis Técnicos: cadastro, CFT/CREA, assinatura e carimbo (Configurações de Contrato)",
+    "Aba Financeiro do contrato: cobrança única ou parcelada, marcar paga, aplicar em massa",
+    "Portal do Contrato/PMOC: link e QR Code pro cliente",
+    "Renovar (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança"
+   ]
+  },
+  {
+   "secao": "T12",
+   "titulo": "Portal do Cliente, NPS e reputação",
+   "fase": "05",
+   "fase_titulo": "Contratos, PMOC e o cliente",
+   "chunks": 39,
+   "capitulos": [
+    "O Portal do Cliente já nasce criado pra todo cliente — só falta torná-lo público",
+    "Copiar o link, ligar o switch \"Portal público\" e testar como o cliente vê",
+    "O que o cliente enxerga: OS, equipamentos, contratos e cobranças",
+    "Cliente abrindo chamado pelo portal — e onde isso cai pra você (aba Chamados)",
+    "O QR Code do equipamento levando direto pro portal filtrado naquele aparelho",
+    "A avaliação (NPS) que aparece pro cliente ao fim da OS: nota, estrelas por critério, comentário",
+    "Configurar os critérios de estrela (nome, cor, ordem)",
+    "Nota mínima + convite pra avaliar no Google: colando o link do Google Maps",
+    "Lendo o painel de NPS e o que fazer com um detrator"
+   ]
+  },
+  {
+   "secao": "T13",
+   "titulo": "Financeiro",
+   "fase": "06",
+   "fase_titulo": "O dinheiro e o fiscal",
+   "chunks": 44,
+   "capitulos": [
+    "Os 3 endereços do menu Financeiro e o que cada um responde",
+    "Movimentações: criar a primeira conta bancária/caixa",
+    "Lançar receita e despesa, marcar como pago, editar e excluir",
+    "Extrato com \"saldo após\" e o ajuste manual de saldo",
+    "Transferência entre contas — e por que ela nunca é receita nem despesa",
+    "Cadastrar cartão de crédito: fechamento, vencimento e limite",
+    "Compra parcelada no cartão: a prévia parcela a parcela e o mês de cada fatura",
+    "Pagar a fatura: integral × parcial, e o limite voltando",
+    "Visão Geral: cards de saldo, gráfico de fluxo de caixa e pizza por categoria",
+    "Categorias: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe",
+    "Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial",
+    "DRE: o botão Caixa × Competência e o que muda no número",
+    "O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura",
+    "Exportar CSV e gerar o PDF da DRE"
+   ]
+  },
+  {
+   "secao": "T14",
+   "titulo": "Notas Fiscais (NFS-e)",
+   "fase": "06",
+   "fase_titulo": "O dinheiro e o fiscal",
+   "chunks": 40,
+   "capitulos": [
+    "O que é NFS-e e por que a configuração vem antes de tudo",
+    "Abrindo Configurações (é um modal, não outra tela) — passo Empresa",
+    "Passo Certificado: subindo o A1 (.pfx), senha e o consentimento",
+    "Passo Impostos: regime tributário, inscrição municipal, município (IBGE) e alíquota do ISS",
+    "Passo Serviços: código de serviço padrão e NBS",
+    "A cota mensal de emissão e onde ela aparece",
+    "Emitir nota — stepper de 4 passos: Pessoas → Serviço → Valores → Emitir",
+    "O caso do Simples Nacional: o percentual que precisa ser preenchido",
+    "Nota autorizada: número, protocolo, chave de acesso; baixar PDF (DANFSe) e XML",
+    "Cancelar nota com motivo, e reemitir depois (número novo)"
+   ]
+  },
+  {
+   "secao": "T15",
+   "titulo": "Funcionários, Ponto e Folha",
+   "fase": "07",
+   "fase_titulo": "Gente e crescimento",
+   "chunks": 42,
+   "capitulos": [
+    "Tela Funcionários e suas 5 abas",
+    "Cadastro: dados, foto, chave PIX, admissão",
+    "Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)",
+    "Configuração de pagamento: frequência e dia do mês",
+    "Vincular acesso ao sistema: criando o login do funcionário",
+    "Vale, falta e bônus — o que vira despesa na hora e o que só entra na folha",
+    "Pagar funcionário: modo informal × CLT (com holerite) e o desconto do vale",
+    "Ponto: gerar o link público do funcionário e bater ponto pelo celular",
+    "Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)",
+    "A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá",
+    "Abas Comportamental (DISC) e Organograma"
+   ]
+  },
+  {
+   "secao": "T16",
+   "titulo": "Sua assinatura, plano e módulos",
+   "fase": "07",
+   "fase_titulo": "Gente e crescimento",
+   "chunks": 30,
+   "capitulos": [
+    "Tela Assinatura: status, plano atual, vencimento e valor",
+    "Card Uso da Conta: usuários usados × contratados",
+    "Gerenciar Meu Plano — aba Planos Prontos",
+    "Gerenciar Meu Plano — aba Personalizado: montar módulo a módulo + usuários extras",
+    "O catálogo de módulos explicado em uma frase cada",
+    "Pagar Agora → checkout: Pix, Boleto e Cartão",
+    "Mensal × Anual (o desconto que só vale à vista) e o histórico de pagamentos"
+   ]
+  },
+  {
+   "secao": "T17",
+   "titulo": "Dashboard, rotina e truques",
+   "fase": "07",
+   "fase_titulo": "Gente e crescimento",
+   "chunks": 33,
+   "capitulos": [
+    "Dashboard: os KPIs (OS abertas, pendentes, técnicos em campo, taxa de conclusão, faturamento, clientes ativos)",
+    "Mapa ao vivo, fluxo de caixa e evolução de OS na tela inicial",
+    "Top Técnicos, resumo por status, OS por tipo e OS críticas",
+    "Chamados do Portal e o alerta de chamado novo",
+    "Atalhos de teclado e busca rápida",
+    "Rotina diária (5 min): OS críticas, chamados novos, agenda de amanhã",
+    "Rotina semanal (20 min): funil do CRM, orçamentos em aberto, estoque mínimo",
+    "Rotina mensal (1h): DRE, contas a receber vencidas, contratos a vencer, NPS",
+    "Onde ver as novidades do sistema (Changelog) e como pedir ajuda"
+   ]
+  }
+ ],
+ "tipos": {
+  "visao_geral": "o que é a área, onde fica no menu, quais rotas, quem enxerga",
+  "capitulo": "explicação e passo a passo de um assunto",
+  "problema": "sintoma relatado pelo usuário, causa provável e como resolver",
+  "faq": "uma pergunta e a resposta",
+  "glossario": "as palavras que o usuário usa pra falar da área"
+ }
+}

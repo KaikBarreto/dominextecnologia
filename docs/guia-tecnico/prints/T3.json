@@ -1,0 +1,123 @@
+{
+  "secao": "T3",
+  "prints": [
+    {
+      "id": "t3-novo-cliente-contato",
+      "url": "/clientes",
+      "legenda": "Janela Novo Cliente aberta na aba Contato, com os campos Nome, Tipo, Telefone, Celular, Email, Data de Nascimento, Origem e Observações em branco.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Cliente" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t3-novo-cliente-fiscal",
+      "url": "/clientes",
+      "legenda": "Janela Novo Cliente na aba Fiscal, mostrando Razão Social, Nome Fantasia, CPF/CNPJ com a lupa de consulta, inscrições e o bloco de endereço fiscal.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Cliente" },
+        { "esperar": 1200 },
+        { "clicar": "Fiscal" },
+        { "esperar": 1200 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t3-origens-cliente",
+      "url": "/clientes",
+      "legenda": "Janela Origens de Clientes com o catálogo de origens da empresa, cada uma com ícone colorido, e a barra pontilhada para adicionar uma origem nova.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "[title=\"Configurar origens\"]" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t3-formularios-captacao",
+      "url": "/clientes",
+      "legenda": "Janela Formulários de captação, listando os links públicos de autocadastro com selo de situação, contador de cadastros e o botão Novo formulário.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "[title=\"Formulários de captação de cliente\"]" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t3-formulario-captacao-campos",
+      "url": "/clientes",
+      "legenda": "Aba Campos do formulário de captação, com a lista dos 16 campos e as duas chaves Exibir e Obrigatório em cada um.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "[title=\"Formulários de captação de cliente\"]" },
+        { "esperar": 1200 },
+        { "clicar": "Novo formulário" },
+        { "esperar": 1200 },
+        { "clicar": "Campos" },
+        { "esperar": 1000 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t3-novo-equipamento",
+      "url": "/equipamentos",
+      "legenda": "Janela Novo Equipamento com o seletor de Cliente, o campo Nome, o Identificador travado escrito Gerado automaticamente ao salvar, e os campos configuráveis do equipamento.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Novo Equipamento" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t3-configurar-campos-equipamento",
+      "url": "/equipamentos",
+      "legenda": "Janela Configurar Campos do Equipamento, com a lista de campos, os controles de visível e obrigatório e o bloco Adicionar novo campo.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Configurar Campos" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t3-categorias-equipamento",
+      "url": "/equipamentos",
+      "legenda": "Aba Categorias da tela Equipamentos, com as categorias cadastradas, a bolinha de cor de cada uma e o botão Nova Categoria.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicar": "Categorias" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t3-cliente-detalhe-geral",
+      "url": "/clientes",
+      "legenda": "Ficha do cliente na aba Geral, com o bloco Informações, o bloco Endereço com os atalhos de mapa e a seção Responsável no Local. Censurar CPF/CNPJ, telefone e endereço reais.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "table tbody tr" },
+        { "esperar": 2500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t3-equipamento-etiqueta",
+      "url": "/equipamentos",
+      "legenda": "Janela Gerar Etiqueta de Identificação, com a lista de itens da etiqueta, os tamanhos predefinidos 5x5, 5x8 e 6x6 cm e a pré-visualização.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "table tbody tr" },
+        { "esperar": 2500 },
+        { "clicar": "Gerar Etiqueta" },
+        { "esperar": 1800 }
+      ],
+      "recorte": "dialog"
+    }
+  ]
+}
