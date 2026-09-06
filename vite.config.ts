@@ -30,8 +30,12 @@ export default defineConfig(({ mode }) => ({
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,otf}"],
+        // Páginas estáticas servidas fora da SPA (public/<pasta>/index.html) não
+        // podem entrar no precache nem ser interceptadas pelo navigateFallback —
+        // senão o SW devolve o shell do app e a rota cai no 404 da SPA.
+        globIgnores: ["**/trilha-domiflix/**"],
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/~oauth/],
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/trilha-domiflix/],
         runtimeCaching: [
           // Supabase storage (assets publicos: logos, fotos) — pode cachear.
           {
