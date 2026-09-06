@@ -4,6 +4,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
 import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCompanySettings, type CompanySettings } from '@/hooks/useCompanySettings';
@@ -458,7 +459,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
               </div>
 
               {/* Logo da proposta (opcional, separado do logo da empresa) */}
-              <div className="rounded-xl border border-border p-4 space-y-3">
+              <div className="space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{tp.logoSectionTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -499,8 +500,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                 </div>
               </div>
 
+              <Separator />
+
               {/* Color customization */}
-              <div className="rounded-xl border border-border p-4 space-y-4">
+              <div className="space-y-4">
                 <p className="text-sm font-semibold text-foreground">{tp.colorsSectionTitle}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
@@ -527,8 +530,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                 </div>
               </div>
 
+              <Separator />
+
               {/* Paginação — "Página XX/YY" no rodapé de cada folha da proposta */}
-              <div className="rounded-xl border border-border p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{tp.paginationTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -544,8 +549,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                 />
               </div>
 
+              <Separator />
+
               {/* Deslocamento — linha de deslocamento no bloco de Investimento */}
-              <div className="rounded-xl border border-border p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{tp.displacementTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -561,8 +568,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                 />
               </div>
 
+              <Separator />
+
               {/* Brindes — seção de cortesias quando a proposta inclui brindes */}
-              <div className="rounded-xl border border-border p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{tp.giftsTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -578,9 +587,11 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                 />
               </div>
 
+              <Separator />
+
               {/* Seções da proposta — ligar/desligar, reordenar (setas) e texto
                   padrão. Só o modelo Clean respeita; reflete no preview ao vivo. */}
-              <div className="rounded-xl border border-border p-4 space-y-3">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <ListChecks className="h-4 w-4 text-primary shrink-0" />
                   <div>
@@ -595,7 +606,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                     const hasText = PROPOSAL_TEXT_SECTION_KEYS.includes(s.key as any);
                     const placeholder = sectionPlaceholder(tp, s.key);
                     return (
-                      <div key={s.key} className="rounded-lg border border-border bg-muted/20 p-3 space-y-2.5">
+                      <div key={s.key} className="rounded-lg bg-muted/30 p-3 space-y-2.5">
                         <div className="flex items-center gap-2">
                           {/* Setas de reordenação */}
                           <div className="flex flex-col shrink-0">

@@ -725,11 +725,15 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     <div className="p-6 text-center text-muted-foreground">{tv.osNotFound}</div>
   );
 
+  // Sem `ml-auto`: o badge flui logo após o texto em vez de ser empurrado pro
+  // canto, onde colidia com o botão "FECHAR" que Dialog/Drawer injetam ali
+  // (print do CEO). `flex-wrap` garante que um número de OS longo quebra linha
+  // em vez de forçar o badge pra cima do botão.
   const title = serviceOrder ? (
-    <span className="flex items-center gap-3">
-      <Eye className="h-5 w-5" />
-      {tv.osPrefix}{formatOSNumberDigits(serviceOrder.order_number)}
-      <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border ml-auto`}>
+    <span className="flex flex-wrap items-center gap-2">
+      <Eye className="h-5 w-5 shrink-0" />
+      <span>{tv.osPrefix}{formatOSNumberDigits(serviceOrder.order_number)}</span>
+      <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border`}>
         {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
       </Badge>
     </span>
@@ -755,7 +759,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
       <>
         <Drawer open={open} onOpenChange={onOpenChange}>
           <DrawerContent className="max-h-[90dvh]">
-            <DrawerHeader><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
+            {/* pr-8 reserva espaço pro botão "FECHAR" no canto (padrão ResponsiveModal). */}
+            <DrawerHeader className="pr-28"><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
             <div className="px-4 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(90dvh - 80px)' }}>{content}</div>
           </DrawerContent>
         </Drawer>
@@ -768,7 +773,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] p-0">
-          <DialogHeader className="p-6 pb-0"><DialogTitle>{title}</DialogTitle></DialogHeader>
+          {/* pr-8 reserva espaço pro botão "FECHAR" que o DialogContent injeta no canto. */}
+          <DialogHeader className="p-6 pb-0 pr-28"><DialogTitle>{title}</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[calc(90vh-80px)]">
             <div className="p-6 pt-4">{content}</div>
           </ScrollArea>

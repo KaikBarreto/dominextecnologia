@@ -42,6 +42,48 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.23.1',
+    date: '6 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cliente avulso não mostra mais equipamentos de outros clientes',
+        description: 'Ao abrir uma ordem de serviço para um cliente avulso, a etapa de equipamentos exibia a lista de todos os equipamentos cadastrados na empresa, de qualquer cliente, e permitia marcá-los. Agora a lista só mostra os equipamentos do cliente escolhido, e no modo avulso ela vem vazia com o aviso de que os equipamentos podem ser cadastrados depois. Trocar de cliente também limpa a seleção de equipamentos e checklists, para nada do cliente anterior ir junto.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Histórico de materiais mostra o local de estoque',
+        description: 'Cada movimentação passou a exibir de qual local ela saiu ou entrou, e nas transferências aparece o caminho completo, como Galpão para Van 01. Também dá para filtrar o histórico por local. Antes, com mais de um estoque, era impossível saber a origem de uma entrada ou baixa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Materiais usados aparecem ao abrir o serviço na Agenda',
+        description: 'Clicando em um serviço na Agenda e abrindo os detalhes, você já vê os materiais consumidos naquela ordem de serviço, com quantidade, local de estoque e custo, sem precisar entrar na OS. O bloco só aparece quando existe consumo lançado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tela de Estoque muito melhor no celular',
+        description: 'Corrigimos o cabeçalho que aparecia duplicado, o título que ficava cortado, os nomes de aba que quebravam no meio da palavra e os locais de estoque apertados. O botão de adicionar material também não cobre mais o último item da lista, e valores altos deixaram de estourar os cartões de resumo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Telas mais limpas, com menos molduras',
+        description: 'Revisamos as janelas de Novo Orçamento, Configurar Proposta e Nova Ordem de Serviço para tirar o excesso de caixas dentro de caixas. Os blocos agora se separam por título e espaçamento, o que deixa a leitura mais leve. Nenhum cálculo, valor ou etapa mudou.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Etiqueta de status não cobre mais o botão de fechar',
+        description: 'Ao abrir os detalhes de uma ordem de serviço, a etiqueta de situação, como Pendente, ficava por cima do botão Fechar da janela. Agora ela aparece ao lado do número da OS, no computador e no celular.',
+        category: 'correcao',
+      },
+      {
+        title: 'Zona de Perigo mais evidente nas Configurações',
+        description: 'A área que reúne as ações irreversíveis, na aba Empresa, ganhou um cabeçalho vermelho destacado, deixando claro que ali dentro nada volta atrás. O que a função faz e quem pode usá-la continua igual.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.23.0',
     date: '6 de setembro de 2026',
     type: 'minor',

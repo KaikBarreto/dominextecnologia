@@ -21,6 +21,18 @@ interface StatCarouselProps {
   loading?: boolean;
 }
 
+// Degrada o tamanho da fonte do valor do chip conforme o texto cresce — números
+// curtos (1-4 dígitos) e "R$ 930" continuam em text-2xl (aparência inalterada);
+// valores longos (ex.: "R$ 1.234.567,89") encolhem em vez de estourar o chip.
+// `truncate` é só o backstop de último caso (texto absurdamente longo).
+function getChipValueSizeClass(value: string): string {
+  const len = value.length;
+  if (len <= 8) return 'text-2xl';
+  if (len <= 11) return 'text-xl';
+  if (len <= 14) return 'text-base';
+  return 'text-sm';
+}
+
 /**
  * Stats de listagem. Mobile = carrossel horizontal de chips snap-x. Desktop = grid auto-fit.
  */
@@ -55,7 +67,7 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
               type="button"
               onClick={item.onClick}
               className={cn(
-                'snap-start shrink-0 flex flex-col items-center justify-center gap-1.5 h-[120px] min-w-[112px] p-3 rounded-2xl border bg-card text-center transition-all active:scale-95',
+                'snap-start shrink-0 flex flex-col items-center justify-center gap-1.5 h-[120px] min-w-[112px] max-w-[140px] p-3 rounded-2xl border bg-card text-center transition-all active:scale-95',
                 item.active
                   ? 'ring-2 ring-primary border-primary/60 shadow-md'
                   : 'border-border shadow-sm'
@@ -70,7 +82,14 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate max-w-full">
                 {item.label}
               </span>
-              <span className="text-2xl font-bold leading-none">{item.displayValue ?? item.count}</span>
+              <span
+                className={cn(
+                  'font-bold leading-none truncate max-w-full',
+                  getChipValueSizeClass(String(item.displayValue ?? item.count)),
+                )}
+              >
+                {item.displayValue ?? item.count}
+              </span>
             </button>
           ))}
         </div>

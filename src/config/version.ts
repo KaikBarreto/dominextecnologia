@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.23.0";
+export const APP_VERSION = "1.23.1";
 
-export const VERSION_NOTES = "Agora o técnico pode anotar na ordem de serviço os materiais que usou e, ao finalizar, conferir um resumo e confirmar a baixa no estoque de uma vez. O número da OS também ficou mais curto e fácil de ler.";
+export const VERSION_NOTES = "Corrigimos uma falha em que a ordem de serviço para cliente avulso listava equipamentos de outros clientes. O histórico de materiais agora mostra o local de estoque, a Agenda exibe os materiais usados no serviço, e a tela de Estoque ficou bem melhor no celular.";
