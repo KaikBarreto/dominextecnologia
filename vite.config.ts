@@ -5,6 +5,17 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
+// Páginas estáticas servidas fora da SPA: cada uma é um public/<pasta>/index.html
+// que o Cloudflare Pages entrega antes do fallback da SPA. Precisam ficar FORA do
+// precache e FORA do navigateFallback do service worker.
+//
+// Incidente 1ec91a97 (/trilha-domiflix): sem isso o SW devolve o shell do app e a
+// rota cai no 404 da SPA. O defeito é invisível em curl e em aba anônima, que não
+// têm service worker registrado — só quem já usou o sistema vê o erro.
+//
+// Página nova: acrescente a pasta aqui e só aqui.
+const PAGINAS_ESTATICAS = ["trilha-domiflix", "guia-tecnico"];
+
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -32,10 +43,16 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,otf}"],
         // Páginas estáticas servidas fora da SPA (public/<pasta>/index.html) não
         // podem entrar no precache nem ser interceptadas pelo navigateFallback —
-        // senão o SW devolve o shell do app e a rota cai no 404 da SPA.
-        globIgnores: ["**/trilha-domiflix/**"],
+        // senão o SW devolve o shell do app e a rota cai no 404 da SPA. As duas
+        // listas saem de PAGINAS_ESTATICAS (topo do arquivo): estavam escritas à
+        // mão e separadas, e é exatamente assim que a próxima página nasce
+        // quebrada, lembrando de uma lista e esquecendo a outra.
+        globIgnores: PAGINAS_ESTATICAS.map((pasta) => `**/${pasta}/**`),
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/trilha-domiflix/],
+        navigateFallbackDenylist: [
+          /^\/~oauth/,
+          ...PAGINAS_ESTATICAS.map((pasta) => new RegExp(`^/${pasta}`)),
+        ],
         runtimeCaching: [
           // Supabase storage (assets publicos: logos, fotos) — pode cachear.
           {
