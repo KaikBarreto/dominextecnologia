@@ -217,7 +217,7 @@ T0  Bem-vindo à Dominex
 ⚠️ Mudar a data de uma OS **recorrente ou de contrato** abre confirmação. Explique por quê.
 ⚠️ OS de contrato PMOC mostra aviso extra na edição — não é erro.
 🚫 **Não existe toggle manual "exigir assinatura"** na criação de OS avulsa. Hoje isso só é ligado sozinho quando a OS nasce de contrato PMOC. Não prometa o botão.
-🚫 **Concluir OS não baixa estoque.** O vínculo material × tipo de serviço serve pra calcular custo em orçamento, não mexe em saldo físico. Ver T8.
+⚠️ **Baixa de estoque ao concluir a OS depende do recurso estar ligado** (Configurações → Usabilidade → "Consumo de estoque na OS", desligado por padrão). Com ele ligado, o técnico lança o material usado durante o atendimento e a baixa é confirmada num resumo editável na finalização. Com ele desligado, concluir a OS não mexe em saldo físico. O vínculo material × tipo de serviço continua servindo só pra calcular custo em orçamento. Ver T5, T7 e T8.
 
 ---
 
@@ -1179,7 +1179,7 @@ Painel master (`/admin/*`): gestão de empresas, vendedores, health score, cobra
 Abra o sistema e confirme cada ponto abaixo. Se algum voltar diferente, o capítulo correspondente muda ou sai.
 
 1. **T7 — a frase sobre offline.** O app usa sempre rede pra salvar; não existe fila de sincronização. **Definir com o Tech Lead a frase exata** que pode ser dita sobre "trabalhar em campo com sinal ruim" antes de gravar qualquer coisa.
-2. **T5/T8 — baixa de estoque.** Confirmar que concluir OS realmente não debita estoque, e que a baixa acontece só na conversão de orçamento em OS e nos ajustes/inventário.
+2. ~~**T5/T8 — baixa de estoque.**~~ **RESOLVIDO em 06/09/2026 (v1.23.0/1.23.1).** Existem DOIS caminhos independentes de baixa: (a) conversão de orçamento em OS e ajustes/inventário, que sempre valeram; e (b) o consumo lançado dentro da própria OS, confirmado no resumo da finalização, que depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade, desligado por padrão). O Guia Técnico já foi corrigido em T5, T7, T8 e T9.
 3. **T5 — assinatura obrigatória.** Confirmar se existe algum ponto do fluxo (fora de contrato PMOC) onde o gestor liga a exigência de assinatura.
 4. **T6 — Equipes sem módulo RH.** Confirmar se empresa sem o módulo Funcionários consegue criar/editar equipe, já que a aba vive dentro de `/funcionarios`.
 5. **T1 — WhatsApp.** Confirmar se a flag "Em breve" continua ligada na data da gravação.
