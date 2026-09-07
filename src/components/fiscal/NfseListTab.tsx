@@ -345,17 +345,25 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
   // ─── Ação: Download PDF ───────────────────────────────────────────────────
 
   /**
-   * Baixa o DANFSE (PDF) da nota.
+   * Abre o DANFSE (PDF) da nota em uma aba nova.
    *
    * O motor próprio não guarda o PDF numa URL (o documento é gerado sob demanda
-   * pela rota `nfse-danfse`), então pedimos o PDF e entregamos o ARQUIVO — que é
-   * o que o usuário quer fazer com uma nota fiscal: mandar pro cliente. Abrir
-   * documento em aba nova é anti-padrão da casa.
+   * pela rota `nfse-danfse`), então pedimos o PDF e abrimos o resultado — regra
+   * do CEO pra essa tela: "baixar PDF" deve abrir em nova aba, não forçar
+   * download.
+   *
+   * `window.open` chamado DEPOIS de um `await` perde a "transient activation"
+   * do clique e o navegador bloqueia o popup. Por isso abrimos a aba (em
+   * branco) ANTES da chamada assíncrona, e só setamos a URL quando o PDF fica
+   * pronto — a aba já existe, então não há bloqueio. Se mesmo assim o
+   * navegador não deixar abrir a aba em branco (`win` nulo), caímos pro
+   * download antigo e avisamos o usuário.
    */
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
   const handleDownloadPdf = async (row: NfseListRow) => {
     setPdfLoadingId(row.id);
     const tid = toast.loading(tList.pdfLoading);
+    const win = window.open('', '_blank', 'noopener');
     try {
       const res = await invokeNfse<{ pdfBase64?: string | null; pdfUrl?: string | null; nomeArquivo?: string }>(
         'nfse-danfse',
@@ -363,6 +371,7 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
       );
       toast.dismiss(tid);
       if (!res.ok || (!res.data?.pdfBase64 && !res.data?.pdfUrl)) {
+        win?.close();
         toast.error(res.message ?? tList.pdfError);
         return;
       }
@@ -375,16 +384,25 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
             ),
           )
         : res.data.pdfUrl!;
-      const a = document.createElement('a');
-      a.href = href;
-      a.download = nome;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      // Só revoga o que nós criamos, e depois do clique (revogar antes cancela
-      // o download em alguns navegadores).
-      if (res.data.pdfBase64) setTimeout(() => URL.revokeObjectURL(href), 60_000);
+      if (win) {
+        win.location.href = href;
+      } else {
+        // Popup bloqueado mesmo com a abertura antecipada: cai pro download,
+        // que não depende de gesto do usuário.
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = nome;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast.info(tList.pdfPopupBlocked);
+      }
+      // Só revoga o blob que NÓS criamos, e só depois de tempo suficiente pra
+      // aba nova terminar de carregar o PDF — revogar cedo demais faz a aba
+      // perder a fonte e mostrar página em branco.
+      if (res.data.pdfBase64) setTimeout(() => URL.revokeObjectURL(href), 120_000);
     } catch {
+      win?.close();
       toast.dismiss(tid);
       toast.error(tList.pdfError);
     } finally {

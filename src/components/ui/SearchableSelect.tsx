@@ -72,6 +72,17 @@ interface SearchableSelectProps {
    * quando há texto sem match exato, o item passa a exibir o `createOptionLabel`.
    */
   createAlwaysLabel?: string;
+  /**
+   * Repassado ao trigger (Button) — pra `<Label htmlFor>` conseguir focar o
+   * combobox por clique no rótulo. Opcional, aditivo.
+   */
+  id?: string;
+  /**
+   * Notifica o texto digitado na busca a cada mudança. Usado por composições
+   * externas (ex: `CustomerSelectField`) que precisam do texto pra pré-preencher
+   * um dialog de criação rápida aberto por um botão fora deste componente.
+   */
+  onSearchChange?: (query: string) => void;
 }
 
 export function SearchableSelect({
@@ -88,6 +99,8 @@ export function SearchableSelect({
   onCreateOption,
   createOptionLabel = 'Criar "{name}"',
   createAlwaysLabel,
+  id,
+  onSearchChange,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -196,6 +209,7 @@ export function SearchableSelect({
     <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -222,7 +236,7 @@ export function SearchableSelect({
           <CommandInput
             placeholder={searchPlaceholder}
             value={query}
-            onValueChange={setQuery}
+            onValueChange={(v) => { setQuery(v); onSearchChange?.(v); }}
           />
           <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain touch-pan-y">
             {/* Catálogo vazio (nada cadastrado, sem busca) → CTA custom quando fornecido.

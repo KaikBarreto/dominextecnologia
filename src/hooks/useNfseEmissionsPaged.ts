@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import type { NfseEmission } from '@/hooks/useNfse';
 
 /**
  * Linha retornada pela RPC `get_nfse_emissions_paged`.
@@ -51,6 +52,12 @@ export interface NfseEmissionRow {
   created_by: string | null;
   created_by_name: string | null;
   created_by_avatar_url: string | null;
+
+  // ---- Tomador/intermediário avulso (migration 20260906210000) — dados
+  // digitados na hora, sem virar cadastro em `customers`. A RPC já faz
+  // COALESCE(customers.name, tomador_avulso->>'nome') pra exibição/busca.
+  tomador_avulso: NfseEmission['tomador_avulso'];
+  intermediario_avulso: NfseEmission['intermediario_avulso'];
 }
 
 export interface FetchEmissionsPagedParams {

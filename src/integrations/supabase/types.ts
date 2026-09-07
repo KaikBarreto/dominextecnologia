@@ -811,6 +811,7 @@ export type Database = {
           iss_aliquota: number | null
           item_lc116: string | null
           municipio_ibge: string | null
+          percentual_trib_sn: number | null
           pode_emitir: boolean
           provedor: string
           reg_ap_trib_sn: string
@@ -839,6 +840,7 @@ export type Database = {
           iss_aliquota?: number | null
           item_lc116?: string | null
           municipio_ibge?: string | null
+          percentual_trib_sn?: number | null
           pode_emitir?: boolean
           provedor?: string
           reg_ap_trib_sn?: string
@@ -867,6 +869,7 @@ export type Database = {
           iss_aliquota?: number | null
           item_lc116?: string | null
           municipio_ibge?: string | null
+          percentual_trib_sn?: number | null
           pode_emitir?: boolean
           provedor?: string
           reg_ap_trib_sn?: string
@@ -5299,6 +5302,7 @@ export type Database = {
           fisqal_fiscal_request_id: string | null
           id: string
           idempotency_key: string | null
+          intermediario_avulso: Json | null
           intermediario_customer_id: string | null
           municipio_incidencia_ibge: string | null
           numero_nfse: string | null
@@ -5308,6 +5312,7 @@ export type Database = {
           regime_apuracao: string | null
           service_type_id: string | null
           status: string
+          tomador_avulso: Json | null
           tp_ret_issqn: string | null
           trib_issqn: string | null
           updated_at: string | null
@@ -5339,6 +5344,7 @@ export type Database = {
           fisqal_fiscal_request_id?: string | null
           id?: string
           idempotency_key?: string | null
+          intermediario_avulso?: Json | null
           intermediario_customer_id?: string | null
           municipio_incidencia_ibge?: string | null
           numero_nfse?: string | null
@@ -5348,6 +5354,7 @@ export type Database = {
           regime_apuracao?: string | null
           service_type_id?: string | null
           status?: string
+          tomador_avulso?: Json | null
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
           updated_at?: string | null
@@ -5379,6 +5386,7 @@ export type Database = {
           fisqal_fiscal_request_id?: string | null
           id?: string
           idempotency_key?: string | null
+          intermediario_avulso?: Json | null
           intermediario_customer_id?: string | null
           municipio_incidencia_ibge?: string | null
           numero_nfse?: string | null
@@ -5388,6 +5396,7 @@ export type Database = {
           regime_apuracao?: string | null
           service_type_id?: string | null
           status?: string
+          tomador_avulso?: Json | null
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
           updated_at?: string | null
@@ -9865,6 +9874,7 @@ export type Database = {
           emitida_em: string
           error_message: string
           id: string
+          intermediario_avulso: Json
           municipio_incidencia_ibge: string
           numero_nfse: string
           pdf_url: string
@@ -9872,6 +9882,7 @@ export type Database = {
           protocolo: string
           service_type_id: string
           status: string
+          tomador_avulso: Json
           total_count: number
           tp_ret_issqn: string
           trib_issqn: string

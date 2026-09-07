@@ -27,6 +27,7 @@ import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
 import { BDISummaryCard } from '@/components/quotes/BDISummaryCard';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { supabase } from '@/integrations/supabase/client';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
@@ -799,12 +800,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     }
   };
 
-  // ── Options ──
-  const customerOptions = useMemo(
-    () => (customers ?? []).map(c => ({ value: c.id, label: c.name })),
-    [customers]
-  );
-
   // Frequência de uso do tenant — deriva dos quote_items dos orçamentos já
   // carregados por useQuotes (sem query nova). Conta quantas vezes cada
   // service_type_id / inventory_id apareceu; usamos pra destacar "Recentes"
@@ -1064,8 +1059,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               {customerMode === 'existing' ? (
                 <div className="space-y-1">
                   <Label className="text-xs">{tq.recipientCustomerLabel}</Label>
-                  <SearchableSelect
-                    options={customerOptions}
+                  <CustomerSelectField
+                    customers={customers ?? []}
                     value={customerId}
                     onValueChange={setCustomerId}
                     placeholder={tq.recipientCustomerPlaceholder}

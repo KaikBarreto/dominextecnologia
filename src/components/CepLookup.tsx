@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cepMask } from '@/utils/masks';
 
 interface AddressData {
   logradouro: string;
@@ -18,12 +19,6 @@ interface CepLookupProps {
   value: string;
   onChange: (cep: string) => void;
   onAddressFound: (address: AddressData) => void;
-}
-
-function cepMask(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 5) return digits;
-  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
 export function CepLookup({ value, onChange, onAddressFound }: CepLookupProps) {

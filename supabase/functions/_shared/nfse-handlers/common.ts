@@ -8,6 +8,7 @@
 // =============================================================================
 
 import { jsonResponse } from "../fiscal-auth.ts";
+import { isValidDocument } from "../document-validation.ts";
 import {
   friendlyFiscalMessage,
   NfseProviderError,
@@ -164,3 +165,171 @@ export const COL_SERVICE_TYPE = "service_type_id";
  * Só é carimbada no INSERT — um UPDATE nunca reescreve o autor original.
  */
 export const COL_CREATED_BY = "created_by";
+
+// =============================================================================
+// TOMADOR / INTERMEDIÁRIO AVULSO (digitado na hora, sem cadastro em `customers`)
+// =============================================================================
+// Migration 20260906210000 criou `nfse_emissions.tomador_avulso` /
+// `.intermediario_avulso` (jsonb). É SNAPSHOT da nota: vale só ali, não vira
+// cliente, e fica congelado com o documento fiscal.
+//
+// Estas funções são a ÚNICA porta de entrada desse dado nas duas edges
+// (nfse-save-draft e nfse-emit) — o rascunho e a emissão têm que enxergar
+// exatamente o mesmo objeto, senão o que o usuário revisa no modal não é o que
+// vai à prefeitura.
+
+/** Nome das colunas jsonb (migration 20260906210000). */
+export const COL_TOMADOR_AVULSO = "tomador_avulso";
+export const COL_INTERMEDIARIO_AVULSO = "intermediario_avulso";
+
+/** Endereço do avulso — mesmas chaves que o front coleta no `CepLookup`. */
+export interface EnderecoAvulso {
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  /** Só dígitos (8). */
+  cep?: string;
+  /** IBGE do município (7 dígitos). */
+  ibge?: string;
+}
+
+/** Tomador (ou intermediário) digitado na hora. */
+export interface PessoaAvulsa {
+  nome?: string;
+  /** Só dígitos (11 = CPF · 14 = CNPJ). */
+  documento?: string;
+  email?: string;
+  endereco?: EnderecoAvulso;
+}
+
+/** Remove chaves com valor vazio — jsonb da nota não guarda `""`. */
+function semVazios(obj: Record<string, string>): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v) out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Normaliza o objeto avulso vindo do body.
+ *
+ * - `undefined`/`null`/não-objeto → `null` ("não informado").
+ * - Objeto sem NENHUM campo preenchido → `null` também: um `{}` gravado na
+ *   coluna passaria no CHECK do banco e depois se comportaria como "tem tomador
+ *   avulso" numa nota que não tem nada. Vazio é ausente.
+ * - Documento, CEP e IBGE viram SÓ DÍGITOS aqui, uma vez. Assim a coluna nunca
+ *   guarda "12.345.678/0001-90" numa nota e "12345678000190" na outra.
+ * - UF em maiúsculas (2 letras) — o layout nacional não usa UF do tomador
+ *   (o município sai do IBGE), mas a tela mostra.
+ *
+ * NÃO valida obrigatoriedade: rascunho é parcial por natureza. Quem cobra campo
+ * é `validarPessoaAvulsaParaEmissao`, na hora de emitir.
+ */
+export function normalizarPessoaAvulsa(raw: unknown): PessoaAvulsa | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const src = raw as Record<string, unknown>;
+  const endSrc = (src.endereco && typeof src.endereco === "object" &&
+      !Array.isArray(src.endereco))
+    ? src.endereco as Record<string, unknown>
+    : {};
+
+  const endereco = semVazios({
+    logradouro: clean(endSrc.logradouro),
+    numero: clean(endSrc.numero),
+    complemento: clean(endSrc.complemento),
+    bairro: clean(endSrc.bairro),
+    cidade: clean(endSrc.cidade),
+    uf: clean(endSrc.uf).toUpperCase().slice(0, 2),
+    cep: onlyDigits(endSrc.cep),
+    ibge: onlyDigits(endSrc.ibge),
+  });
+
+  const base = semVazios({
+    nome: clean(src.nome),
+    documento: onlyDigits(src.documento),
+    email: clean(src.email),
+  });
+
+  if (!base && !endereco) return null;
+  return { ...(base ?? {}), ...(endereco ? { endereco } : {}) } as PessoaAvulsa;
+}
+
+/** Campos do endereço que o layout nacional exige quando o bloco VAI no XML. */
+const ENDERECO_OBRIGATORIO: Array<[keyof EnderecoAvulso, string]> = [
+  ["logradouro", "logradouro"],
+  ["numero", "número"],
+  ["bairro", "bairro"],
+  ["cep", "CEP"],
+  ["ibge", "código IBGE do município (preenchido pela busca do CEP)"],
+];
+
+/**
+ * Valida uma pessoa avulsa NA HORA DE EMITIR. Devolve mensagem PT-BR ou "".
+ *
+ * Regras (todas espelhando o que a prefeitura/o layout realmente cobram):
+ *
+ * 1. Nome e CPF/CNPJ são obrigatórios — o caminho do cliente cadastrado já
+ *    barra nota sem documento do tomador ("CPF/CNPJ do cliente" em
+ *    `missing_fields`), e aqui não existe cadastro pra consertar depois.
+ *
+ * 2. O documento passa pelo dígito verificador (`isValidDocument`). No caminho
+ *    cadastrado só o tamanho é olhado, porque o cadastro já validou na tela do
+ *    cliente; aqui o dado nasce agora e ninguém mais o confere.
+ *
+ * 3. ENDEREÇO É TUDO OU NADA (armadilha 7 do motor próprio):
+ *    o XSD exige `endNac/cMun`, `endNac/CEP`, `xLgr`, `nro` e `xBairro` dentro
+ *    do bloco. Meio bloco = rejeição **E1235** com mensagem enganosa ("esperado
+ *    cMun"), que na real é o IBGE ausente. Por isso:
+ *      - nenhum campo de endereço  → OK, o bloco é omitido (o layout aceita:
+ *        o governo resolve o endereço pelo CNPJ);
+ *      - endereço COMPLETO         → OK, vai no XML;
+ *      - endereço PELA METADE      → 422 aqui, dizendo o que falta. Deixar
+ *        passar significaria descartar em silêncio o endereço que a pessoa
+ *        acabou de digitar — e a nota sairia diferente do formulário.
+ *    `cidade`/`uf` NÃO entram na obrigatoriedade: não existem na DPS (o
+ *    município vai pelo IBGE); ficam guardados só para a tela.
+ */
+export function validarPessoaAvulsaParaEmissao(
+  pessoa: PessoaAvulsa | null,
+  rotulo: "tomador" | "intermediário",
+): string {
+  if (!pessoa) return `Informe os dados do ${rotulo}.`;
+
+  const nome = clean(pessoa.nome);
+  if (!nome) return `Informe o nome do ${rotulo}.`;
+
+  const documento = onlyDigits(pessoa.documento);
+  if (!documento) return `Informe o CPF/CNPJ do ${rotulo}.`;
+  if (!isValidDocument(documento)) {
+    return `O CPF/CNPJ do ${rotulo} é inválido. Confira os números digitados.`;
+  }
+
+  const end = pessoa.endereco;
+  if (end) {
+    const preenchidos = ENDERECO_OBRIGATORIO.filter(([k]) => clean(end[k]));
+    const faltando = ENDERECO_OBRIGATORIO.filter(([k]) => !clean(end[k]));
+    // Só cobra quando a pessoa COMEÇOU a preencher o endereço.
+    const comecouEndereco = preenchidos.length > 0 ||
+      !!clean(end.cidade) || !!clean(end.uf) || !!clean(end.complemento);
+    if (comecouEndereco && faltando.length > 0) {
+      return `Complete o endereço do ${rotulo} (falta: ${
+        faltando.map(([, r]) => r).join(", ")
+      }) ou deixe o endereço todo em branco.`;
+    }
+  }
+
+  return "";
+}
+
+/**
+ * `true` quando o endereço do avulso está COMPLETO o bastante para virar bloco
+ * `end` no XML. Incompleto → o bloco inteiro é omitido (nunca pela metade).
+ */
+export function enderecoAvulsoCompleto(end: EnderecoAvulso | undefined): boolean {
+  if (!end) return false;
+  return ENDERECO_OBRIGATORIO.every(([k]) => !!clean(end[k]));
+}

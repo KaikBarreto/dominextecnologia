@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,14 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { Switch } from '@/components/ui/switch';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
-import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Calculator, UserCog } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCustomers } from '@/hooks/useCustomers';
+import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
 import {
   useTenantCharges,
   buildCheckoutUrl,
@@ -29,7 +31,14 @@ import {
   type CreateChargeResult,
 } from '@/hooks/useTenantCharges';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
-import { useTenantCardFees, grossUpForCustomer } from '@/hooks/useTenantCardFees';
+import { useTenantFees } from '@/hooks/useTenantCardFees';
+import {
+  simulateNetAmount,
+  type PaymentMethod as SimulatorMethod,
+  type SimulationResult,
+  type SimulatorFees,
+} from '@/lib/asaasFeeSimulator';
+import { getDocumentStatus } from '@/lib/documentValidation';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { formatBRL } from '@/utils/currency';
 
@@ -65,12 +74,33 @@ function todayISO(): string {
   return new Date(d.getTime() - off).toISOString().slice(0, 10);
 }
 
+/**
+ * Quantos dias faltam de hoje até `iso` (yyyy-mm-dd). Comparação dia-a-dia em
+ * UTC a partir dos componentes da data local — nunca vira o dia por fuso.
+ * Nunca negativo (vencimento no passado conta como hoje).
+ */
+function daysFromToday(iso: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  if (!m) return 0;
+  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((target - today) / 86400000));
+}
+
+/** Meio de pagamento da cobrança → meio entendido pelo simulador de taxas. */
+const METHOD_TO_SIMULATOR: Record<Exclude<BillingMethod, 'UNDEFINED'>, SimulatorMethod> = {
+  PIX: 'pix',
+  BOLETO: 'boleto',
+  CREDIT_CARD: 'card',
+};
+
 export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, source }: ChargeDialogProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
   const { toast } = useToast();
 
-  const { customers } = useCustomers();
+  const { customers, updateCustomer } = useCustomers();
   const { create } = useTenantCharges();
   const paymentAccount = useTenantPaymentAccount();
   // Personalização do QR (logo do tenant white-label + estilo/cor das settings).
@@ -118,19 +148,41 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [feePayer, setFeePayer] = useState<'company' | 'customer'>('company');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Tabela de taxa de cartão do tenant (para o PREVIEW do repasse). O cálculo
-  // autoritativo roda no edge de criação; aqui é só o número mostrado ao usuário.
-  const { fees: cardFees, feePayerDefault, isLoading: feesLoading } = useTenantCardFees({ enabled: open });
+  // Taxas EFETIVAS da conta Asaas do tenant (cartão, Pix, boleto, antecipação
+  // e prazos), usadas para o RESUMO do líquido e para o default de quem paga a
+  // taxa. O cálculo autoritativo do repasse roda no edge de criação — aqui é
+  // estimativa mostrada ao usuário antes de gerar a cobrança.
+  const {
+    card: cardFees,
+    pix: pixFee,
+    bankSlip: bankSlipFee,
+    anticipation: anticipationFee,
+    settlementDays: accountSettlementDays,
+    source: cardFeesSource,
+    extrasSource: feeExtrasSource,
+    feePayerDefault,
+    isLoading: feesLoading,
+  } = useTenantFees({ enabled: open });
 
-  // Quick-create de cliente na hora
-  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
-  const [quickCustomerInitialName, setQuickCustomerInitialName] = useState('');
+  const tenantFees = useMemo<SimulatorFees | null>(() => {
+    if (!cardFees) return null;
+    return {
+      card: cardFees,
+      pix: pixFee,
+      bankSlip: bankSlipFee,
+      anticipation: anticipationFee,
+      settlementDays: accountSettlementDays,
+    };
+  }, [cardFees, pixFee, bankSlipFee, anticipationFee, accountSettlementDays]);
 
-  // Opções para o SearchableSelect de clientes
-  const customerOptions = useMemo(
-    () => customers.map((c) => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
-    [customers],
-  );
+  // Simular a antecipação do recebimento (dinheiro em ~1 dia, com custo).
+  // É só simulação: nada disso é enviado ao edge, a antecipação é contratada
+  // dentro da Asaas.
+  const [anticipate, setAnticipate] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+
+  // Edição do cadastro do cliente sem sair da cobrança (CPF/CNPJ faltando).
+  const [editCustomerOpen, setEditCustomerOpen] = useState(false);
 
   // Opções avançadas — inicializadas com o default da conta, editáveis por cobrança.
   const [finePercent, setFinePercent] = useState('');
@@ -195,6 +247,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setMethod(methodOptions[0]?.value ?? 'UNDEFINED');
     setInstallmentCount(1);
     setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
+    setAnticipate(false);
+    setShowSchedule(false);
     setShowAdvanced(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
@@ -221,16 +275,89 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     return '';
   })();
 
-  // ── Repasse de taxa ao cliente (preview) ───────────────────────────────────
-  // Só se aplica quando: forma = Cartão E parcelas > 1 E cliente paga a taxa.
-  // O valor enviado ao Asaas é SEMPRE o valor original; o gross-up autoritativo
-  // é feito no edge com a taxa real do Asaas. Aqui só mostramos o número.
-  const isCardInstallment = method === 'CREDIT_CARD' && installmentCount > 1;
+  // ── Documento do cliente (CPF/CNPJ) ────────────────────────────────────────
+  // A Asaas EXIGE CPF/CNPJ para emitir a cobrança. O edge é quem valida de
+  // verdade (`ensureAsaasCustomer`); aqui avisamos antes, para o usuário não
+  // preencher tudo e só descobrir o problema no "Gerar cobrança".
+  const documentStatus = useMemo(
+    () => (selectedCustomer ? getDocumentStatus(selectedCustomer.document) : null),
+    [selectedCustomer],
+  );
+  const documentBlocked = documentStatus === 'missing' || documentStatus === 'invalid';
+  const documentMessage = useMemo(() => {
+    if (!selectedCustomer || !documentBlocked) return null;
+    const name = selectedCustomer.name;
+    return documentStatus === 'missing'
+      ? t.missingDocument.missing(name)
+      : t.missingDocument.invalid(name);
+  }, [selectedCustomer, documentBlocked, documentStatus, t.missingDocument]);
 
-  const grossUp = useMemo(() => {
-    if (feePayer !== 'customer' || !isCardInstallment || !cardFees || amount <= 0) return null;
-    return grossUpForCustomer(amount, installmentCount, cardFees);
-  }, [feePayer, isCardInstallment, cardFees, amount, installmentCount]);
+  // ── Resumo do líquido (estimativa) ─────────────────────────────────────────
+  // Fórmula ÚNICA do front: src/lib/asaasFeeSimulator.ts (o mesmo helper do
+  // Simulador de venda em Ajustes). O número contratual continua sendo o do
+  // edge `tenant-asaas-create-charge`, que recalcula com a taxa real.
+  const dueDays = useMemo(() => daysFromToday(dueDate), [dueDate]);
+
+  const simulatorMethod: SimulatorMethod | null =
+    method === 'UNDEFINED' ? null : METHOD_TO_SIMULATOR[method];
+
+  const simulation = useMemo<SimulationResult | null>(() => {
+    if (!simulatorMethod || !tenantFees || amount <= 0) return null;
+    return simulateNetAmount({
+      amount,
+      method: simulatorMethod,
+      installments: simulatorMethod === 'card' ? installmentCount : 1,
+      // Repasse ao cliente só existe no cartão (é o que o edge faz); nos demais
+      // meios a empresa sempre absorve a taxa.
+      feePayer: simulatorMethod === 'card' ? feePayer : 'company',
+      fees: tenantFees,
+      anticipate,
+      dueDays,
+    });
+  }, [simulatorMethod, tenantFees, amount, installmentCount, feePayer, anticipate, dueDays]);
+
+  // "Cliente escolhe": não dá para saber a taxa antes, então mostramos quanto
+  // sobra em cada meio habilitado (cartão sempre à vista aqui).
+  const multiSimulation = useMemo(() => {
+    if (method !== 'UNDEFINED' || !tenantFees || amount <= 0) return null;
+    const run = (m: SimulatorMethod) =>
+      simulateNetAmount({
+        amount,
+        method: m,
+        installments: 1,
+        feePayer: 'company',
+        fees: tenantFees,
+        anticipate: false,
+        dueDays,
+      });
+    const rows: { key: string; label: string; result: SimulationResult }[] = [];
+    if (allowPix) rows.push({ key: 'pix', label: t.methods.pix, result: run('pix') });
+    if (allowBoleto) rows.push({ key: 'boleto', label: t.methods.boleto, result: run('boleto') });
+    if (allowCard) rows.push({ key: 'card', label: t.net.chooseCardLabel, result: run('card') });
+    return rows.length > 0 ? rows : null;
+  }, [method, tenantFees, amount, dueDays, allowPix, allowBoleto, allowCard, t.methods, t.net]);
+
+  // Alguma taxa mostrada NÃO veio da conta do tenant (caiu na tabela de
+  // referência). Nesse caso o número é aproximado e a UI tem que dizer isso.
+  // A procedência é olhada por meio de pagamento: cartão tem fonte própria
+  // (`source`), Pix/boleto/antecipação vêm de `extrasSource`.
+  const feesAreReference =
+    (simulatorMethod === 'card'
+      ? cardFeesSource === 'fallback'
+      : simulatorMethod != null
+        ? feeExtrasSource === 'fallback'
+        : cardFeesSource === 'fallback' || feeExtrasSource === 'fallback') ||
+    simulation?.usedReferenceFees === true ||
+    multiSimulation?.some((r) => r.result.usedReferenceFees) === true;
+
+  const money = (v: number) => formatMoney(v, 'BRL', locale);
+  const percentLabel = (v: number) => {
+    try {
+      return `${v.toLocaleString(toBcp47(locale), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+    } catch {
+      return `${v.toFixed(2)}%`;
+    }
+  };
 
   const handleClose = (next: boolean) => {
     if (!next) resetForm();
@@ -263,6 +390,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     }
     if (!dueDate) {
       toast({ variant: 'destructive', title: t.validation.dueDateRequired });
+      return;
+    }
+    // Espelho do gate do edge: sem CPF/CNPJ válido a Asaas recusa a cobrança.
+    // Evita uma ida à edge só para receber o erro de volta.
+    if (documentBlocked && documentMessage) {
+      toast({ variant: 'destructive', title: documentMessage });
       return;
     }
 
@@ -343,7 +476,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
           <>
             {/* Cliente */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">{t.fields.customer}</Label>
+              <Label htmlFor="charge-customer" className="text-sm font-medium">
+                {t.fields.customer}
+              </Label>
               {lockCustomer && presetCustomerId ? (
                 // Travado: exibe o nome do cliente sem permitir troca.
                 // Quando 0 clientes E travado, este branch nunca renderiza
@@ -352,35 +487,57 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   {customers.find((c) => c.id === presetCustomerId)?.name ?? presetCustomerId}
                 </div>
               ) : (
-                // Seleção livre: sempre mostra o SearchableSelect, mesmo com
-                // 0 clientes — o botão "Criar <nome>" é mais útil justamente
-                // quando o catálogo está vazio.
-                <SearchableSelect
-                  options={customerOptions}
+                // Combobox com busca + botão "+" dentro da borda (padrão do
+                // sistema). requireDocument: a Asaas exige CPF/CNPJ para emitir.
+                <CustomerSelectField
+                  id="charge-customer"
                   value={customerId}
                   onValueChange={setCustomerId}
+                  customers={customers}
+                  requireDocument
                   placeholder={t.fields.customerPlaceholder}
                   searchPlaceholder={t.quickCustomer.searchPlaceholder}
-                  onCreateOption={(query) => {
-                    setQuickCustomerInitialName(query);
-                    setQuickCustomerOpen(true);
-                  }}
-                  createOptionLabel={t.quickCustomer.createOptionLabel}
-                  createAlwaysLabel={t.quickCustomer.createAlwaysLabel}
                 />
+              )}
+
+              {/* Cliente sem CPF/CNPJ (ou com documento errado): avisa AQUI e
+                  deixa completar o cadastro sem perder o que já foi preenchido.
+                  Vale também no modo travado (cobrança vinda de um orçamento). */}
+              {documentBlocked && documentMessage && (
+                <div className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 p-2.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <p className="text-xs leading-snug text-foreground">{documentMessage}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="shrink-0 bg-warning text-warning-foreground hover:bg-warning/90"
+                    onClick={() => setEditCustomerOpen(true)}
+                  >
+                    <UserCog className="mr-2 h-4 w-4" />
+                    {t.missingDocument.cta}
+                  </Button>
+                </div>
               )}
             </div>
 
-            {/* Quick-create de cliente (mini-dialog) */}
-            <QuickCustomerDialog
-              open={quickCustomerOpen}
-              initialName={quickCustomerInitialName}
-              onOpenChange={setQuickCustomerOpen}
-              onCreated={(id) => {
-                setCustomerId(id);
-                setQuickCustomerOpen(false);
-              }}
-            />
+            {/* Cadastro completo do cliente selecionado — abre por cima da
+                cobrança e, ao salvar, o aviso some sozinho (a lista de clientes
+                é invalidada pelo hook). Nada do formulário de cobrança se perde. */}
+            {selectedCustomer && (
+              <CustomerFormDialog
+                open={editCustomerOpen}
+                onOpenChange={setEditCustomerOpen}
+                customer={selectedCustomer}
+                onSubmit={async (data) => {
+                  // O form já validou os campos (zod); o cast só reconcilia o
+                  // tipo inferido do resolver com o input do hook.
+                  await updateCustomer.mutateAsync({ ...(data as CustomerInput), id: selectedCustomer.id });
+                }}
+                isLoading={updateCustomer.isPending}
+              />
+            )}
 
             {/* Valor (máscara de dinheiro, NÃO NumericInput) */}
             <div className="space-y-2">
@@ -455,58 +612,31 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
 
-                {/* Quem paga a taxa do cartão — só quando parcelas > 1 */}
-                {installmentCount > 1 && (
-                  <div className="space-y-1.5 pt-1">
-                    <Label className="text-sm font-medium">{t.installments.feePayerLabel}</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setFeePayer('company')}
-                        className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                          feePayer === 'company'
-                            ? 'border-primary bg-primary/10 text-foreground'
-                            : 'border-input bg-background text-muted-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {t.installments.feePayerCompany}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFeePayer('customer')}
-                        className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                          feePayer === 'customer'
-                            ? 'border-primary bg-primary/10 text-foreground'
-                            : 'border-input bg-background text-muted-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {t.installments.feePayerCustomer}
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {feePayer === 'customer'
-                        ? t.installments.feePayerCustomerHint
-                        : t.installments.feePayerCompanyHint}
-                    </p>
-
-                    {/* Preview do repasse — só quando cliente paga, com taxa e valor prontos */}
-                    {feePayer === 'customer' && amount > 0 && (
-                      feesLoading && !cardFees ? (
-                        <p className="text-xs text-muted-foreground">{t.installments.feePayerLoading}</p>
-                      ) : grossUp ? (
-                        <p className="rounded-md bg-muted px-3 py-2 text-xs text-foreground">
-                          {t.installments.feePayerCustomerSummary(
-                            installmentCount,
-                            formatMoney(grossUp.installmentValue, 'BRL', locale),
-                            formatMoney(grossUp.totalValue, 'BRL', locale),
-                            formatMoney(grossUp.feePassedOn, 'BRL', locale),
-                          )}
-                        </p>
-                      ) : null
-                    )}
-                  </div>
-                )}
+            {/* Quem paga a taxa do cartão. Vale em QUALQUER cobrança de cartão
+                (inclusive à vista): o edge aplica o repasse sempre que
+                billingType = CREDIT_CARD, então esconder no 1x escondia um
+                repasse que acontecia mesmo assim. O efeito no dinheiro aparece
+                logo abaixo, no resumo do recebimento. */}
+            {method === 'CREDIT_CARD' && (
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">{t.installments.feePayerLabel}</Label>
+                <SegmentedControl
+                  options={[
+                    { value: 'company' as const, label: t.installments.feePayerCompany },
+                    { value: 'customer' as const, label: t.installments.feePayerCustomer },
+                  ]}
+                  value={feePayer}
+                  onValueChange={(v) => setFeePayer(v)}
+                  aria-label={t.installments.feePayerLabel}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {feePayer === 'customer'
+                    ? t.installments.feePayerCustomerHint
+                    : t.installments.feePayerCompanyHint}
+                </p>
               </div>
             )}
 
@@ -600,13 +730,197 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
               )}
             </div>
 
+            {/* ── Resumo do recebimento (ESTIMATIVA) ──────────────────────────
+                Mostra quanto sobra depois da taxa da Asaas, quando o dinheiro
+                cai e o custo da antecipação. O cálculo é do simulador do front;
+                o valor contratual é recalculado no edge ao gerar a cobrança. */}
+            {amount > 0 && (
+              <div className="space-y-2.5 rounded-md border border-border bg-muted/40 p-3">
+                <div className="flex items-center gap-2">
+                  <Calculator className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-foreground">{t.net.title}</p>
+                </div>
+
+                {feesLoading && !tenantFees ? (
+                  <p className="text-xs text-muted-foreground">{t.net.loading}</p>
+                ) : !tenantFees ? (
+                  <p className="text-xs text-muted-foreground">{t.net.fallbackWarning}</p>
+                ) : (
+                  <>
+                    {/* Taxa não veio da conta do tenant: o número é referência,
+                        e o usuário precisa saber disso antes de confiar nele. */}
+                    {feesAreReference && (
+                      <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                        <p className="text-xs leading-snug text-foreground">{t.net.fallbackWarning}</p>
+                      </div>
+                    )}
+
+                    {simulation && (
+                      <>
+                        <dl className="space-y-1.5 text-sm">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <dt className="text-muted-foreground">
+                              {simulation.feePassedOn > 0 ? t.net.targetNet : t.net.gross}
+                            </dt>
+                            <dd className="font-medium tabular-nums text-foreground">{money(amount)}</dd>
+                          </div>
+
+                          {/* Repasse ao cliente: o que ele paga a mais e o total dele. */}
+                          {simulation.feePassedOn > 0 && (
+                            <>
+                              <div className="flex items-baseline justify-between gap-3">
+                                <dt className="text-muted-foreground">{t.net.feePassedOn}</dt>
+                                <dd className="font-medium tabular-nums text-foreground">
+                                  + {money(simulation.feePassedOn)}
+                                </dd>
+                              </div>
+                              <div className="flex items-baseline justify-between gap-3">
+                                <dt className="text-muted-foreground">{t.net.customerPays}</dt>
+                                <dd className="font-medium tabular-nums text-foreground">{money(simulation.gross)}</dd>
+                              </div>
+                            </>
+                          )}
+
+                          <div className="flex items-baseline justify-between gap-3">
+                            <dt className="text-muted-foreground">
+                              {t.net.fee}
+                              <span className="block text-[11px] leading-snug text-muted-foreground">
+                                {simulation.feeBreakdown.percent > 0
+                                  ? t.net.feeComposition(
+                                      percentLabel(simulation.feeBreakdown.percent),
+                                      money(simulation.feeBreakdown.fixed),
+                                    )
+                                  : t.net.feeFixedOnly(money(simulation.feeBreakdown.fixed))}
+                              </span>
+                            </dt>
+                            <dd className="font-medium tabular-nums text-destructive">
+                              - {money(simulation.feeTotal)}
+                            </dd>
+                          </div>
+
+                          {simulation.anticipationCost != null && simulation.anticipationCost > 0 && (
+                            <div className="flex items-baseline justify-between gap-3">
+                              <dt className="text-muted-foreground">{t.net.anticipationCost}</dt>
+                              <dd className="font-medium tabular-nums text-destructive">
+                                - {money(simulation.anticipationCost)}
+                              </dd>
+                            </div>
+                          )}
+
+                          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                            <dt className="font-semibold text-foreground">{t.net.net}</dt>
+                            <dd className="text-base font-bold tabular-nums text-success">
+                              {money(simulation.netAfterAnticipation)}
+                            </dd>
+                          </div>
+                        </dl>
+
+                        {simulation.installmentValue != null && (
+                          <p className="text-xs text-muted-foreground">
+                            {t.net.installmentLine(simulation.installments, money(simulation.installmentValue))}
+                          </p>
+                        )}
+
+                        <p className="text-xs text-muted-foreground">
+                          {simulation.installments > 1
+                            ? t.net.settlementFirstInstallment(simulation.settlementDays)
+                            : simulation.settlementDays <= 0
+                              ? t.net.settlementToday
+                              : t.net.settlementDays(simulation.settlementDays)}
+                        </p>
+
+                        {/* Quando cada parcela cai na conta da empresa. */}
+                        {simulation.scheduleDetailed.length > 1 && (
+                          <div>
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 text-xs font-medium text-primary"
+                              onClick={() => setShowSchedule((v) => !v)}
+                            >
+                              {showSchedule ? t.net.scheduleHide : t.net.scheduleShow}
+                              {showSchedule ? (
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            {showSchedule && (
+                              <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto rounded-md bg-background p-2">
+                                {simulation.scheduleDetailed.map((item) => (
+                                  <li
+                                    key={item.installmentNumber}
+                                    className="flex items-baseline justify-between gap-3 text-xs"
+                                  >
+                                    <span className="text-muted-foreground">
+                                      {t.net.scheduleItem(
+                                        item.installmentNumber,
+                                        formatDate(item.date, locale, timezone),
+                                      )}
+                                    </span>
+                                    <span className="font-medium tabular-nums text-foreground">
+                                      {money(item.amount)}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Antecipação: SIMULAÇÃO. Nada é enviado ao Asaas por
+                            aqui, a antecipação é contratada lá dentro. */}
+                        {(simulatorMethod === 'card' || simulatorMethod === 'boleto') && (
+                          <div className="flex items-start gap-2.5 border-t border-border pt-2.5">
+                            <Switch
+                              id="charge-anticipate"
+                              checked={anticipate}
+                              onCheckedChange={setAnticipate}
+                              className="mt-0.5"
+                            />
+                            <Label htmlFor="charge-anticipate" className="cursor-pointer">
+                              <span className="block text-xs font-medium text-foreground">
+                                {t.net.anticipateLabel}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] font-normal leading-snug text-muted-foreground">
+                                {t.net.anticipateHint}
+                              </span>
+                            </Label>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* "Cliente escolhe": líquido de cada meio habilitado. */}
+                    {multiSimulation && (
+                      <div className="space-y-1.5">
+                        <p className="text-xs text-muted-foreground">{t.net.chooseTitle}</p>
+                        <dl className="space-y-1 text-sm">
+                          {multiSimulation.map((row) => (
+                            <div key={row.key} className="flex items-baseline justify-between gap-3">
+                              <dt className="text-muted-foreground">{row.label}</dt>
+                              <dd className="font-semibold tabular-nums text-success">
+                                {money(row.result.net)}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    )}
+
+                    <p className="text-[11px] leading-snug text-muted-foreground">{t.net.estimate}</p>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => handleClose(false)} disabled={create.isPending}>
                 {t.cancel}
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={create.isPending || !customerId || !amount || amount <= 0}
+                disabled={create.isPending || !customerId || !amount || amount <= 0 || documentBlocked}
               >
                 {create.isPending ? (
                   <>

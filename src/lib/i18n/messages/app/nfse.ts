@@ -19,8 +19,8 @@ export const nfse = {
         'Você não tem acesso ao módulo de Notas Fiscais. Fale com o administrador da sua empresa.',
     },
     tabs: {
-      overview: 'Visão Geral',
-      list: 'NFS-e',
+      overview: 'Relatório fiscal',
+      list: 'Notas Fiscais',
     },
     quota: {
       unlimited: 'Notas ilimitadas',
@@ -68,6 +68,7 @@ export const nfse = {
       loading: 'Carregando notas fiscais...',
       pdfLoading: 'Gerando o PDF da nota...',
       pdfError: 'Não foi possível gerar o PDF agora. A nota continua válida, tente de novo em instantes.',
+      pdfPopupBlocked: 'Seu navegador bloqueou a nova aba, o PDF foi baixado.',
       customerFallback: 'Cliente',
       xmlUnavailable: 'O XML desta nota ainda não está disponível.',
       toastNoEmitPermission: 'Você não tem permissão para emitir notas fiscais.',
@@ -465,6 +466,10 @@ export const nfse = {
         },
         regApTribSnHint:
           'Na dúvida, escolha a primeira opção, é o caso da grande maioria das empresas do Simples.',
+        percentualTribSn: {
+          label: 'Percentual de tributos do Simples Nacional (%)',
+          hint: 'Usado como padrão em toda nota nova. Você ainda pode mudar em cada nota. Peça o número ao seu contador, a gente não estima isso.',
+        },
         inscricaoMunicipal: 'Inscrição Municipal',
         inscricaoEstadual: 'Inscrição Estadual',
         saveBtn: 'Salvar tributação',
@@ -542,11 +547,46 @@ export const nfse = {
           emptyMessage: 'Nenhum cliente encontrado.',
           required: 'Selecione o tomador do serviço.',
           missingDoc: 'Este cliente está sem CPF/CNPJ. Complete os dados fiscais antes de emitir.',
+          completarCadastro: 'Completar cadastro',
+          manualNameRequired: 'Informe o nome ou razão social do tomador.',
+          manualDocRequired: 'Informe o CPF/CNPJ do tomador.',
         },
         intermediario: {
           toggle: 'Intermediário do serviço (opcional)',
           placeholder: 'Selecione o intermediário',
           removeAriaLabel: 'Remover intermediário',
+          manualNameRequired: 'Informe o nome ou razão social do intermediário.',
+          naoEnviadoAviso:
+            'Ainda não enviamos o intermediário na nota fiscal — os dados ficam salvos no rascunho, mas não aparecem na nota emitida.',
+          naoSuportadoEmissao:
+            'O intermediário do serviço ainda não é enviado na nota fiscal. Remova o intermediário para emitir — os dados ficam salvos no rascunho.',
+        },
+        // Modo "digitar manualmente" do tomador/intermediário (dados avulsos,
+        // só valem nesta nota — não viram cadastro em Clientes).
+        manual: {
+          modeCadastro: 'Selecionar cadastrado',
+          modeManual: 'Digitar manualmente',
+          hint: 'Dados avulsos — não criam um cadastro de cliente, valem só nesta nota.',
+          name: 'Nome ou razão social',
+          document: 'CPF/CNPJ',
+          email: 'E-mail',
+          addressSectionTitle: 'Endereço',
+          cep: 'CEP',
+          address: 'Logradouro',
+          addressNumber: 'Número',
+          complement: 'Complemento',
+          neighborhood: 'Bairro',
+          city: 'Cidade',
+          state: 'UF',
+          notSupported:
+            'Em breve: ainda não é possível salvar nem emitir com dados digitados manualmente (aguardando liberação técnica). Por enquanto, selecione um cliente cadastrado ou crie um novo pelo botão "+".',
+          addressHint:
+            'Preencha pelo CEP: os campos abaixo (inclusive o código do município) vêm automaticamente da busca. Ou o endereço completo, ou nenhum campo dele — pela metade a nota é recusada.',
+          ibgeFieldLabel: 'código IBGE do município (preenchido pela busca do CEP)',
+          enderecoIncompletoTomador:
+            'Complete o endereço do tomador (falta: {campos}) ou deixe o endereço todo em branco.',
+          enderecoIncompletoIntermediario:
+            'Complete o endereço do intermediário (falta: {campos}) ou deixe o endereço todo em branco.',
         },
       },
       // ---- Etapa 2 — Serviço ----
@@ -657,7 +697,7 @@ export const nfse = {
           optional: '(opcional)',
           hint: 'Percentual total de tributos para empresas no Simples Nacional.',
           hintSimples:
-            'Carga tributária aproximada do Simples Nacional, o percentual da faixa/anexo da sua empresa. Peça ao seu contador, não estimamos esse número.',
+            'Vem das Configurações fiscais (aba Tributação); dá pra mudar nesta nota. É a carga tributária aproximada do Simples Nacional, o percentual da faixa/anexo da sua empresa — peça ao seu contador, não estimamos esse número.',
           required:
             'Informe o percentual de tributos do Simples Nacional. Ele é obrigatório na nota para empresas optantes do Simples.',
         },
@@ -731,7 +771,7 @@ export const nfse = {
         "You don't have access to the Service Invoices module. Contact your company's administrator.",
     },
     tabs: {
-      overview: 'Overview',
+      overview: 'Tax Report',
       list: 'Invoices',
     },
     quota: {
@@ -779,6 +819,7 @@ export const nfse = {
       loading: 'Loading invoices...',
       pdfLoading: 'Generating the invoice PDF...',
       pdfError: 'Could not generate the PDF right now. The invoice is still valid, please try again shortly.',
+      pdfPopupBlocked: 'Your browser blocked the new tab, the PDF was downloaded instead.',
       customerFallback: 'Customer',
       xmlUnavailable: 'The XML for this invoice is not available yet.',
       toastNoEmitPermission: "You don't have permission to issue invoices.",
@@ -1165,6 +1206,10 @@ export const nfse = {
         },
         regApTribSnHint:
           'If unsure, pick the first option, it applies to the vast majority of Simples Nacional companies.',
+        percentualTribSn: {
+          label: 'Simples Nacional tax percentage (%)',
+          hint: "Used as the default on every new invoice. You can still change it per invoice. Ask your accountant for this number, we don't estimate it.",
+        },
         inscricaoMunicipal: 'Municipal Registration',
         inscricaoEstadual: 'State Registration',
         saveBtn: 'Save taxation',
@@ -1241,11 +1286,46 @@ export const nfse = {
           emptyMessage: 'No customer found.',
           required: 'Please select the service recipient.',
           missingDoc: 'This customer has no tax ID. Complete their tax details before issuing.',
+          completarCadastro: 'Complete registration',
+          manualNameRequired: "Please enter the recipient's name or company name.",
+          manualDocRequired: "Please enter the recipient's tax ID.",
         },
         intermediario: {
           toggle: 'Service intermediary (optional)',
           placeholder: 'Select intermediary',
           removeAriaLabel: 'Remove intermediary',
+          manualNameRequired: "Please enter the intermediary's name or company name.",
+          naoEnviadoAviso:
+            "We don't send the intermediary on the invoice yet — the data is saved to the draft, but it won't appear on the issued invoice.",
+          naoSuportadoEmissao:
+            'The service intermediary is not yet sent on the invoice. Remove the intermediary to issue — the data stays saved in the draft.',
+        },
+        // "Enter manually" mode for the recipient/intermediary (one-off data,
+        // valid only for this invoice — does not create a customer record).
+        manual: {
+          modeCadastro: 'Select existing',
+          modeManual: 'Enter manually',
+          hint: 'One-off data — does not create a customer record, valid only for this invoice.',
+          name: 'Name or company name',
+          document: 'Tax ID',
+          email: 'Email',
+          addressSectionTitle: 'Address',
+          cep: 'ZIP code',
+          address: 'Street',
+          addressNumber: 'Number',
+          complement: 'Complement',
+          neighborhood: 'Neighborhood',
+          city: 'City',
+          state: 'State',
+          notSupported:
+            'Coming soon: saving or issuing with manually entered data is not yet supported (pending technical release). For now, select an existing customer or create one with the "+" button.',
+          addressHint:
+            'Fill in via ZIP code: the fields below (including the municipality code) are filled automatically from the lookup. Either the full address, or none of it — halfway makes the invoice get rejected.',
+          ibgeFieldLabel: 'municipality code (filled in by the ZIP code lookup)',
+          enderecoIncompletoTomador:
+            'Complete the recipient\'s address (missing: {campos}) or leave the whole address blank.',
+          enderecoIncompletoIntermediario:
+            'Complete the intermediary\'s address (missing: {campos}) or leave the whole address blank.',
         },
       },
       servico: {
@@ -1354,7 +1434,7 @@ export const nfse = {
           optional: '(optional)',
           hint: 'Total tax percentage for Simples Nacional companies.',
           hintSimples:
-            'Approximate Simples Nacional tax burden, the percentage of your company bracket. Ask your accountant, we do not estimate this number.',
+            'Comes from Fiscal Settings (Taxation tab); you can change it on this invoice. It is the approximate Simples Nacional tax burden, the percentage of your company bracket — ask your accountant, we do not estimate this number.',
           required:
             'Enter the Simples Nacional total tax rate. It is mandatory on the invoice for Simples Nacional companies.',
         },
@@ -1427,7 +1507,7 @@ export const nfse = {
         'No tienes acceso al módulo de Facturas de Servicio. Habla con el administrador de tu empresa.',
     },
     tabs: {
-      overview: 'Resumen',
+      overview: 'Informe fiscal',
       list: 'Facturas',
     },
     quota: {
@@ -1475,6 +1555,7 @@ export const nfse = {
       loading: 'Cargando facturas...',
       pdfLoading: 'Generando el PDF de la factura...',
       pdfError: 'No se pudo generar el PDF ahora. La factura sigue válida, inténtalo de nuevo en instantes.',
+      pdfPopupBlocked: 'Tu navegador bloqueó la nueva pestaña, el PDF se descargó.',
       customerFallback: 'Cliente',
       xmlUnavailable: 'El XML de esta factura todavía no está disponible.',
       toastNoEmitPermission: 'No tienes permiso para emitir facturas.',
@@ -1863,6 +1944,10 @@ export const nfse = {
         },
         regApTribSnHint:
           'En caso de duda, elige la primera opción, es el caso de la gran mayoría de las empresas del Simples.',
+        percentualTribSn: {
+          label: 'Porcentaje de tributos del Simples Nacional (%)',
+          hint: 'Se usa como valor predeterminado en cada nota nueva. Igual puedes cambiarlo en cada nota. Pídele el número a tu contador, nosotros no lo estimamos.',
+        },
         inscricaoMunicipal: 'Registro Municipal',
         inscricaoEstadual: 'Registro Estatal',
         saveBtn: 'Guardar tributación',
@@ -1939,11 +2024,46 @@ export const nfse = {
           emptyMessage: 'No se encontró ningún cliente.',
           required: 'Selecciona el receptor del servicio.',
           missingDoc: 'Este cliente no tiene identificación fiscal. Completa sus datos antes de emitir.',
+          completarCadastro: 'Completar registro',
+          manualNameRequired: 'Ingresa el nombre o razón social del receptor.',
+          manualDocRequired: 'Ingresa la identificación fiscal del receptor.',
         },
         intermediario: {
           toggle: 'Intermediario del servicio (opcional)',
           placeholder: 'Selecciona intermediario',
           removeAriaLabel: 'Eliminar intermediario',
+          manualNameRequired: 'Ingresa el nombre o razón social del intermediario.',
+          naoEnviadoAviso:
+            'Todavía no enviamos el intermediario en la factura — los datos quedan guardados en el borrador, pero no aparecen en la factura emitida.',
+          naoSuportadoEmissao:
+            'El intermediario del servicio todavía no se envía en la factura. Elimina el intermediario para emitir — los datos quedan guardados en el borrador.',
+        },
+        // Modo "ingresar manualmente" del receptor/intermediario (datos
+        // sueltos, válidos solo en esta factura — no crean un registro de cliente).
+        manual: {
+          modeCadastro: 'Seleccionar registrado',
+          modeManual: 'Ingresar manualmente',
+          hint: 'Datos sueltos — no crean un registro de cliente, valen solo para esta factura.',
+          name: 'Nombre o razón social',
+          document: 'Identificación fiscal',
+          email: 'Correo electrónico',
+          addressSectionTitle: 'Dirección',
+          cep: 'Código postal',
+          address: 'Calle',
+          addressNumber: 'Número',
+          complement: 'Complemento',
+          neighborhood: 'Barrio',
+          city: 'Ciudad',
+          state: 'Provincia/Estado',
+          notSupported:
+            'Próximamente: todavía no es posible guardar ni emitir con datos ingresados manualmente (en espera de liberación técnica). Por ahora, selecciona un cliente registrado o crea uno con el botón "+".',
+          addressHint:
+            'Completa por el código postal: los campos de abajo (incluido el código del municipio) se completan automáticamente con la búsqueda. O la dirección completa, o ninguno de sus campos — a medias la factura se rechaza.',
+          ibgeFieldLabel: 'código del municipio (completado por la búsqueda del código postal)',
+          enderecoIncompletoTomador:
+            'Completa la dirección del receptor (falta: {campos}) o deja la dirección completamente en blanco.',
+          enderecoIncompletoIntermediario:
+            'Completa la dirección del intermediario (falta: {campos}) o deja la dirección completamente en blanco.',
         },
       },
       servico: {
@@ -2052,7 +2172,7 @@ export const nfse = {
           optional: '(opcional)',
           hint: 'Porcentaje total de tributos para empresas en el Simples Nacional.',
           hintSimples:
-            'Carga tributaria aproximada del Simples Nacional, el porcentaje del tramo de tu empresa. Consúltalo con tu contador, no estimamos ese número.',
+            'Viene de Configuraciones fiscales (pestaña Tributación); puedes cambiarlo en esta factura. Es la carga tributaria aproximada del Simples Nacional, el porcentaje del tramo de tu empresa — consúltalo con tu contador, no estimamos ese número.',
           required:
             'Informa el porcentaje de tributos del Simples Nacional. Es obligatorio en la factura para empresas del Simples Nacional.',
         },
@@ -2125,7 +2245,7 @@ export const nfse = {
         "Vous n'avez pas accès au module Factures de Service. Contactez l'administrateur de votre entreprise.",
     },
     tabs: {
-      overview: 'Vue d\'ensemble',
+      overview: 'Rapport fiscal',
       list: 'Factures',
     },
     quota: {
@@ -2173,6 +2293,7 @@ export const nfse = {
       loading: 'Chargement des factures...',
       pdfLoading: 'Génération du PDF de la facture...',
       pdfError: "Impossible de générer le PDF pour le moment. La facture reste valide, réessayez dans un instant.",
+      pdfPopupBlocked: "Votre navigateur a bloqué le nouvel onglet, le PDF a été téléchargé.",
       customerFallback: 'Client',
       xmlUnavailable: "Le XML de cette facture n'est pas encore disponible.",
       toastNoEmitPermission: "Vous n'avez pas la permission d'émettre des factures.",
@@ -2562,6 +2683,10 @@ export const nfse = {
         },
         regApTribSnHint:
           "En cas de doute, choisissez la première option, c'est le cas de la grande majorité des entreprises du Simples.",
+        percentualTribSn: {
+          label: 'Pourcentage de taxes du Simples Nacional (%)',
+          hint: "Utilisé par défaut sur chaque nouvelle facture. Vous pouvez toujours le modifier par facture. Demandez ce chiffre a votre comptable, nous ne l'estimons pas.",
+        },
         inscricaoMunicipal: 'Inscription municipale',
         inscricaoEstadual: 'Inscription départementale',
         saveBtn: 'Enregistrer la fiscalité',
@@ -2638,11 +2763,46 @@ export const nfse = {
           emptyMessage: 'Aucun client trouvé.',
           required: 'Veuillez sélectionner le bénéficiaire du service.',
           missingDoc: 'Ce client n\'a pas de numéro fiscal. Complétez ses données avant d\'émettre.',
+          completarCadastro: 'Compléter la fiche',
+          manualNameRequired: 'Veuillez saisir le nom ou la raison sociale du bénéficiaire.',
+          manualDocRequired: 'Veuillez saisir le numéro fiscal du bénéficiaire.',
         },
         intermediario: {
           toggle: 'Intermédiaire du service (facultatif)',
           placeholder: 'Sélectionnez l\'intermédiaire',
           removeAriaLabel: 'Supprimer l\'intermédiaire',
+          manualNameRequired: 'Veuillez saisir le nom ou la raison sociale de l\'intermédiaire.',
+          naoEnviadoAviso:
+            'Nous n\'envoyons pas encore l\'intermédiaire sur la facture — les données restent enregistrées dans le brouillon, mais n\'apparaissent pas sur la facture émise.',
+          naoSuportadoEmissao:
+            'L\'intermédiaire du service n\'est pas encore envoyé sur la facture. Retirez l\'intermédiaire pour émettre — les données restent enregistrées dans le brouillon.',
+        },
+        // Mode "saisie manuelle" du bénéficiaire/intermédiaire (données
+        // ponctuelles, valables seulement pour cette facture — ne créent pas de fiche client).
+        manual: {
+          modeCadastro: 'Sélectionner un client existant',
+          modeManual: 'Saisir manuellement',
+          hint: 'Données ponctuelles — ne créent pas de fiche client, valables seulement pour cette facture.',
+          name: 'Nom ou raison sociale',
+          document: 'Numéro fiscal',
+          email: 'E-mail',
+          addressSectionTitle: 'Adresse',
+          cep: 'Code postal',
+          address: 'Rue',
+          addressNumber: 'Numéro',
+          complement: 'Complément',
+          neighborhood: 'Quartier',
+          city: 'Ville',
+          state: 'État/Province',
+          notSupported:
+            'Bientôt disponible : impossible pour l\'instant d\'enregistrer ou d\'émettre avec des données saisies manuellement (en attente de mise à jour technique). Pour l\'instant, sélectionnez un client existant ou créez-en un avec le bouton "+".',
+          addressHint:
+            'Renseignez via le code postal : les champs ci-dessous (y compris le code de la commune) se remplissent automatiquement à partir de la recherche. Soit l\'adresse complète, soit aucun champ — à moitié remplie, la facture est rejetée.',
+          ibgeFieldLabel: 'code de la commune (rempli par la recherche du code postal)',
+          enderecoIncompletoTomador:
+            'Complétez l\'adresse du bénéficiaire (manquant : {campos}) ou laissez toute l\'adresse vide.',
+          enderecoIncompletoIntermediario:
+            'Complétez l\'adresse de l\'intermédiaire (manquant : {campos}) ou laissez toute l\'adresse vide.',
         },
       },
       servico: {
@@ -2751,7 +2911,7 @@ export const nfse = {
           optional: '(facultatif)',
           hint: 'Pourcentage total de taxes pour les entreprises Simples Nacional.',
           hintSimples:
-            "Charge fiscale approximative du Simples Nacional, le pourcentage de la tranche de votre entreprise. Demandez à votre comptable, nous n'estimons pas ce chiffre.",
+            "Provient des Paramètres fiscaux (onglet Fiscalité) ; modifiable sur cette facture. C'est la charge fiscale approximative du Simples Nacional, le pourcentage de la tranche de votre entreprise — demandez à votre comptable, nous n'estimons pas ce chiffre.",
           required:
             "Renseignez le pourcentage de taxes du Simples Nacional. Il est obligatoire sur la facture pour les entreprises du Simples Nacional.",
         },

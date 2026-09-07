@@ -42,6 +42,18 @@ interface CardPaymentFormProps {
   errorSection?: "card" | "holder" | "address" | null;
   /** Permite parcelar (anual no cartão até 12x). Mensal = 1x fixo. */
   allowInstallments?: boolean;
+  /**
+   * ADITIVO (opcional) — texto do botão de envio. Ausente = copy padrão da
+   * ASSINATURA ("Pagar R$ X e ativar recorrência"). O checkout público de
+   * cobrança avulsa (/pagar/:code) passa a sua própria copy, porque ali NÃO há
+   * recorrência nenhuma e prometer o contrário assustaria o pagador.
+   */
+  submitLabel?: string;
+  /**
+   * ADITIVO (opcional) — aviso acima do botão. Ausente = aviso padrão de
+   * cobrança recorrente da assinatura. `null` esconde o aviso.
+   */
+  billingNotice?: string | null;
   initialData?: {
     holderEmail?: string;
     holderPhone?: string;
@@ -84,6 +96,8 @@ export function CardPaymentForm({
   errorSection,
   allowInstallments = false,
   initialData,
+  submitLabel,
+  billingNotice,
 }: CardPaymentFormProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.common.cardForm;
@@ -462,9 +476,16 @@ export function CardPaymentForm({
         </CollapsibleContent>
       </Collapsible>
 
-      <p className="text-xs text-muted-foreground/70 text-center">
-        {t.billingNotice.replace("{period}", allowInstallments ? t.billingPeriodYear : t.billingPeriodMonth)}
-      </p>
+      {/* Aviso: default = recorrência da assinatura; override (ou null) pelo caller. */}
+      {(billingNotice === undefined
+        ? t.billingNotice.replace("{period}", allowInstallments ? t.billingPeriodYear : t.billingPeriodMonth)
+        : billingNotice) && (
+        <p className="text-xs text-muted-foreground/70 text-center">
+          {billingNotice === undefined
+            ? t.billingNotice.replace("{period}", allowInstallments ? t.billingPeriodYear : t.billingPeriodMonth)
+            : billingNotice}
+        </p>
+      )}
 
       <Button type="submit" className="w-full h-14 text-base font-bold" disabled={isLoading}>
         {isLoading ? (
@@ -473,7 +494,7 @@ export function CardPaymentForm({
             {t.processing}
           </>
         ) : (
-          t.pay.replace("{amount}", amount.toFixed(2).replace(".", ","))
+          submitLabel ?? t.pay.replace("{amount}", amount.toFixed(2).replace(".", ","))
         )}
       </Button>
     </form>

@@ -277,6 +277,14 @@ verify_jwt = false
 [functions.get-tenant-payment-checkout]
 verify_jwt = false
 
+# tenant-asaas-pay-charge-card: paga COM CARTÃO uma cobrança já existente, no nosso
+# checkout (/pagar/:code), sem mandar o pagador pra fatura hospedada da Asaas.
+# PÚBLICA, sem sessão (o pagador é o cliente final do tenant) — o gate é o mesmo
+# public_short_code do checkout, que resolve company_id + chave BYO no servidor.
+# Nunca persiste/loga dado de cartão; a baixa continua sendo do webhook.
+[functions.tenant-asaas-pay-charge-card]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)

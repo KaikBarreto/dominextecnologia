@@ -5,10 +5,17 @@
 //
 // Fluxo:
 //   - Auth de tenant via fiscal-auth.ts.
-//   - Body: { emissionId?, customerId, servico: {...}, valores: {...},
-//             dataCompetencia?, idempotencyKey?, opSimpNac?, regApTribSN? }.
+//   - Body: { emissionId?, customerId | tomadorAvulso, servico: {...},
+//             valores: {...}, dataCompetencia?, idempotencyKey?, opSimpNac?,
+//             regApTribSN? }.
 //     Overrides por nota têm precedência sobre o rascunho, que tem precedência
 //     sobre os defaults da empresa em company_fiscal_settings.
+//   - TOMADOR: `customerId` (cliente cadastrado) XOR `tomadorAvulso` (digitado
+//     na hora, snapshot só desta nota — migration 20260906210000). Os dois no
+//     mesmo body = 400; nenhum dos dois = 400. A ESTRUTURA do bloco `tomador` da
+//     DPS é IDÊNTICA nos dois caminhos: muda a fonte do dado, nunca o formato.
+//   - INTERMEDIÁRIO: bloqueado na emissão (422 `intermediario_nao_suportado`)
+//     enquanto o grupo `interm` da DPS não existir ponta a ponta. Ver o gate.
 //   - Carrega customers (tomador) + company_fiscal_settings (prestador) + companies.
 //     NÃO lê service_orders — emissão é independente da Ordem de Serviço.
 //   - Valida (422 PT-BR) ANTES de falar com o provedor.
@@ -57,13 +64,19 @@ import {
   cleanCTribMun,
   COL_CREATED_BY,
   COL_CTRIBMUN,
+  COL_INTERMEDIARIO_AVULSO,
+  COL_TOMADOR_AVULSO,
+  enderecoAvulsoCompleto,
   isUnknownColumnError,
   logId,
+  normalizarPessoaAvulsa,
   onlyDigits,
   providerErrorResponse,
   validarCTribMunDoBody,
+  validarPessoaAvulsaParaEmissao,
   withoutColumn,
 } from "./common.ts";
+import type { PessoaAvulsa } from "./common.ts";
 
 const TAG = "[nfse-emit]";
 
@@ -75,7 +88,18 @@ const TAG = "[nfse-emit]";
  * nota que já pode ter sido enviada ao provedor. O `created_by` (autoria) entra
  * aqui pelo mesmo motivo do cTribMun.
  */
-const COLUNAS_TOLERANTES = [COL_CTRIBMUN, COL_CREATED_BY];
+const COLUNAS_TOLERANTES = [
+  COL_CTRIBMUN,
+  COL_CREATED_BY,
+  COL_TOMADOR_AVULSO,
+  COL_INTERMEDIARIO_AVULSO,
+];
+
+// ⚠️ Assimetria PROPOSITAL com `save-draft.ts`, onde as colunas do avulso NÃO
+// são toleradas. Lá nada foi enviado a lugar nenhum: falhar alto e pedir pra
+// tentar de novo é honesto. Aqui a gravação acontece DEPOIS de falar com o
+// governo — a nota pode já existir na prefeitura, e perder a LINHA inteira
+// (com número, chave e status) é muito pior que perder o snapshot do tomador.
 
 /**
  * Roda a gravação e, se o banco reclamar de uma coluna OPCIONAL inexistente,
@@ -190,17 +214,38 @@ function cleanDate(v: unknown): string {
 }
 
 /**
- * Idempotency-Key determinística estável por (company, cliente, valor, competência).
+ * Idempotency-Key determinística estável por (company, tomador, valor, competência).
  * Combina com a UNIQUE (company_id, idempotency_key). NÃO depende da OS.
+ *
+ * `identidadeTomador` é o `customers.id` quando o tomador é cadastrado e
+ * `avulso:<CPF/CNPJ>` quando foi digitado na hora — o documento é o que
+ * identifica a pessoa numa nota fiscal, então duas notas iguais pro mesmo
+ * documento continuam batendo na mesma chave, como sempre foi.
  */
 function deterministicKey(
   companyId: string,
-  customerId: string,
+  identidadeTomador: string,
   valor: number,
   dataCompetencia: string,
 ): string {
   const cents = Math.round(valor * 100);
-  return `nfse_${companyId}_${customerId}_${cents}_${dataCompetencia}`.slice(0, 512);
+  return `nfse_${companyId}_${identidadeTomador}_${cents}_${dataCompetencia}`.slice(0, 512);
+}
+
+/**
+ * Identidade do tomador para a chave de idempotência.
+ * Avulso sem documento cai no nome só pra não colidir com outro avulso — mas
+ * esse caso nunca chega a virar linha: `validarPessoaAvulsaParaEmissao` já
+ * barrou a emissão (422) muito antes de qualquer gravação.
+ */
+function identidadeDoTomador(
+  customerId: string,
+  avulso: PessoaAvulsa | null,
+): string {
+  if (customerId) return customerId;
+  const doc = onlyDigits(avulso?.documento);
+  if (doc) return `avulso:${doc}`;
+  return `avulso:${clean(avulso?.nome).toLowerCase()}`;
 }
 
 interface EmitBody {
@@ -209,6 +254,22 @@ interface EmitBody {
   // campo se vier. Em vez de INSERT, a MESMA linha do rascunho "vira" emitida.
   emissionId?: string;
   customerId?: string;
+  /**
+   * Tomador DIGITADO NA HORA (sem cadastro em `customers`).
+   * ALTERNATIVA a `customerId` — exatamente um dos dois. Formato:
+   *   { nome, documento, email?, endereco?: { logradouro, numero, complemento?,
+   *     bairro, cidade?, uf?, cep, ibge } }
+   * O endereço é TUDO OU NADA (ver `validarPessoaAvulsaParaEmissao`).
+   */
+  tomadorAvulso?: unknown;
+  /** Intermediário CADASTRADO. Ver o gate `intermediario_nao_suportado`. */
+  intermediarioCustomerId?: string;
+  /**
+   * Intermediário digitado na hora. Aceito no rascunho, mas HOJE bloqueia a
+   * emissão: o grupo `interm` da DPS ainda não é montado (ver o gate mais
+   * abaixo). Nota fiscal saindo diferente do formulário é pior que não sair.
+   */
+  intermediarioAvulso?: unknown;
   servico?: {
     descricao?: string;
     codigoServico?: string;
@@ -382,12 +443,73 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       draft = draftRow;
     }
 
-    // customerId: body sobrescreve; senão vem do rascunho.
-    const customerId = clean(body?.customerId) || clean(draft?.customer_id);
-    if (!customerId) {
+    // ---- TOMADOR: cliente cadastrado XOR tomador avulso (digitado na hora).
+    //
+    // Precedência igual à do resto do handler: o BODY manda; o rascunho é
+    // fallback. A novidade é que cada nível tem DUAS fontes possíveis e elas se
+    // excluem — a nota tem um tomador só.
+    const customerIdBody = clean(body?.customerId);
+    const tomadorAvulsoBody = normalizarPessoaAvulsa(body?.tomadorAvulso);
+    if (customerIdBody && tomadorAvulsoBody) {
       return jsonResponse(
-        { error: "missing_customer", message: "Cliente não informado." },
+        {
+          error: "tomador_ambiguo",
+          message:
+            "Escolha o tomador de UMA forma só: selecione um cliente cadastrado ou digite os dados manualmente.",
+        },
         400,
+      );
+    }
+
+    let customerId = "";
+    let tomadorAvulso: PessoaAvulsa | null = null;
+    if (customerIdBody) {
+      customerId = customerIdBody;
+    } else if (tomadorAvulsoBody) {
+      tomadorAvulso = tomadorAvulsoBody;
+    } else {
+      // Nada no body → o rascunho decide. O CHECK do banco garante que só uma
+      // das duas colunas está preenchida; o `else if` aqui é cinto de segurança
+      // para linhas gravadas antes da constraint.
+      customerId = clean(draft?.customer_id);
+      if (!customerId) tomadorAvulso = normalizarPessoaAvulsa(draft?.tomador_avulso);
+    }
+
+    if (!customerId && !tomadorAvulso) {
+      return jsonResponse(
+        {
+          error: "missing_customer",
+          message: "Informe o tomador da nota: selecione um cliente ou digite os dados.",
+        },
+        400,
+      );
+    }
+
+    // ---- INTERMEDIÁRIO: aceito no rascunho, BLOQUEADO na emissão (2026-09-06).
+    //
+    // Achado: `nfse-emit` nunca leu `intermediario_customer_id`, o contrato do
+    // provedor (`NfseEmitirInput`) não tem o grupo, e o microserviço monta a DPS
+    // com `TcinfDps(prest, toma, serv, valores)` — sem `interm`. Ou seja: o
+    // usuário escolhia o intermediário, a nota ia à prefeitura SEM ele e ninguém
+    // era avisado. Documento fiscal diferente do que foi preenchido.
+    //
+    // O grupo existe no layout nacional (`infDPS/interm`, do mesmo tipo do
+    // tomador) e vem acompanhado de `vServPrest/vReceb` (valor recebido pelo
+    // intermediário) — mas montá-lo exige mexer no microserviço fiscal da VPS,
+    // que está fora deste deploy. Enquanto isso, o certo é NÃO EMITIR e dizer
+    // por quê: nota errada autorizada custa cancelamento.
+    const temIntermediario = !!clean(body?.intermediarioCustomerId) ||
+      !!normalizarPessoaAvulsa(body?.intermediarioAvulso) ||
+      !!clean(draft?.intermediario_customer_id) ||
+      !!normalizarPessoaAvulsa(draft?.intermediario_avulso);
+    if (temIntermediario) {
+      return jsonResponse(
+        {
+          error: "intermediario_nao_suportado",
+          message:
+            "O intermediário do serviço ainda não é enviado na nota fiscal. Remova o intermediário para emitir — os dados ficam salvos no rascunho.",
+        },
+        422,
       );
     }
 
@@ -407,7 +529,12 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
 
     // ---- Idempotency-Key: body OU determinística estável (sem OS).
     let idempotencyKey = clean(body?.idempotencyKey) ||
-      deterministicKey(companyId, customerId, valorServico, dataCompetencia);
+      deterministicKey(
+        companyId,
+        identidadeDoTomador(customerId, tomadorAvulso),
+        valorServico,
+        dataCompetencia,
+      );
 
     // ---- Idempotência local: se já existe emissão com essa chave, devolve a existente.
     const { data: existing } = await supabase
@@ -513,14 +640,18 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
     // provedor (NfseProviderCtx.fiscal) e o select tolera colunas novas (ex.
     // `provedor`) sem precisar de deploy sincronizado com a migration.
     const [{ data: customer }, { data: fiscal }, { data: companyRow }] = await Promise.all([
-      supabase
-        .from("customers")
-        .select(
-          "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code, ibge_municipality_code",
-        )
-        .eq("id", customerId)
-        .eq("company_id", companyId)
-        .maybeSingle(),
+      // Tomador avulso não tem linha em `customers` — a consulta nem acontece.
+      // (Escopada por company_id quando acontece: o tomador é do tenant.)
+      customerId
+        ? supabase
+          .from("customers")
+          .select(
+            "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code, ibge_municipality_code",
+          )
+          .eq("id", customerId)
+          .eq("company_id", companyId)
+          .maybeSingle()
+        : Promise.resolve({ data: null as Record<string, unknown> | null }),
       supabase
         .from("company_fiscal_settings")
         .select("*")
@@ -532,11 +663,20 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       supabase.from("companies").select("cnpj, email").eq("id", companyId).maybeSingle(),
     ]);
 
-    if (!customer) {
+    if (customerId && !customer) {
       return jsonResponse(
         { error: "customer_not_found", message: "Cliente não encontrado." },
         404,
       );
+    }
+
+    // ---- Tomador avulso: cobrança de campo acontece AQUI, antes de qualquer
+    // coisa irreversível (a RPC de numeração da DPS só roda mais abaixo).
+    if (tomadorAvulso) {
+      const erroTomador = validarPessoaAvulsaParaEmissao(tomadorAvulso, "tomador");
+      if (erroTomador) {
+        return jsonResponse({ error: "invalid_tomador", message: erroTomador }, 422);
+      }
     }
 
     // ---- VALIDAÇÕES (422 PT-BR antes de falar com o provedor).
@@ -580,7 +720,11 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
     const cnpjPrestador = onlyDigits(companyRow?.cnpj);
     if (!cnpjPrestador) missing.push("CNPJ da empresa (prestador)");
 
-    const tomadorDocumento = onlyDigits(customer?.document);
+    // Documento do tomador: do cadastro OU do avulso (já validado acima, com
+    // dígito verificador; aqui é só a rede de segurança compartilhada).
+    const tomadorDocumento = customerId
+      ? onlyDigits(customer?.document)
+      : onlyDigits(tomadorAvulso?.documento);
     if (!tomadorDocumento) missing.push("CPF/CNPJ do cliente");
 
     // Código NBS: body → rascunho → padrão da empresa. Obrigatório.
@@ -622,9 +766,40 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
     }
 
     // ---- Monta tomador.
+    // ⚠️ A ESTRUTURA do bloco é a mesma nas duas origens — muda só a FONTE dos
+    // dados. Não inventar campo novo aqui: o layout nacional recusa a nota por
+    // detalhe (E0121/E0128/E1235 já custaram emissões neste projeto).
     const tomadorTipoInscricao = tomadorDocumento.length > 11 ? "2" : "1"; // 2=CNPJ, 1=CPF
-    const razaoSocialTomador = clean(customer?.company_name) || clean(customer?.name) ||
-      "Consumidor";
+    const razaoSocialTomador = customerId
+      ? (clean(customer?.company_name) || clean(customer?.name) || "Consumidor")
+      : (clean(tomadorAvulso?.nome) || "Consumidor");
+    const emailTomador = customerId
+      ? clean(customer?.email)
+      : clean(tomadorAvulso?.email);
+    // Endereço do TOMADOR — opcional na DPS, mas TUDO OU NADA quando vai
+    // (armadilha 7: bloco pela metade = rejeição E1235 com mensagem enganosa).
+    // Cadastro: mantido byte a byte como sempre foi (o cliente pode ter cadastro
+    // incompleto e o microserviço já omite o bloco nesse caso).
+    // Avulso: só monta quando COMPLETO — e o incompleto já virou 422 acima, com
+    // a lista do que falta, em vez de sumir calado.
+    const enderecoTomador = customerId
+      ? {
+        municipioIbge: cleanIbge(customer?.ibge_municipality_code) || undefined,
+        cep: onlyDigits(customer?.zip_code) || undefined,
+        logradouro: clean(customer?.address) || undefined,
+        numero: clean(customer?.address_number) || undefined,
+        bairro: clean(customer?.neighborhood) || undefined,
+      }
+      : (enderecoAvulsoCompleto(tomadorAvulso?.endereco)
+        ? {
+          municipioIbge: cleanIbge(tomadorAvulso?.endereco?.ibge) || undefined,
+          cep: onlyDigits(tomadorAvulso?.endereco?.cep) || undefined,
+          logradouro: clean(tomadorAvulso?.endereco?.logradouro) || undefined,
+          numero: clean(tomadorAvulso?.endereco?.numero) || undefined,
+          complemento: clean(tomadorAvulso?.endereco?.complemento) || undefined,
+          bairro: clean(tomadorAvulso?.endereco?.bairro) || undefined,
+        }
+        : undefined);
     // Discriminação: body → rascunho (descricao_servico) → fallback.
     const discriminacao = clean(body?.servico?.descricao) ||
       clean(draft?.descricao_servico) ||
@@ -745,13 +920,15 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       const csll = parseNonNegative(body?.valores?.valorCsll ?? draft?.valor_csll);
       if (csll != null && csll > 0) valores.valorCsll = csll;
     }
-    // Percentual total de tributos (Simples Nacional): body → rascunho.
+    // Percentual total de tributos (Simples Nacional):
+    // body → rascunho → default da empresa (company_fiscal_settings.percentual_trib_sn).
     {
       const pct = parseNonNegative(
         firstNonEmpty(
           body?.valores?.percentualTotalTributosSimplesNacional,
           body?.valores?.percentualTribSn,
           draft?.percentual_trib_sn,
+          fiscal.percentual_trib_sn,
         ),
       );
       if (pct != null) valores.percentualTotalTributosSimplesNacional = pct;
@@ -802,7 +979,11 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       : { [COL_CREATED_BY]: userId };
 
     const camposComuns: Record<string, unknown> = {
-      customer_id: customer.id,
+      // Exatamente uma das duas fontes do tomador fica gravada — o par é escrito
+      // JUNTO porque o CHECK `nfse_emissions_tomador_exclusivo` proíbe as duas
+      // preenchidas, e um rascunho pode estar trocando de uma pra outra.
+      customer_id: customerId ? clean(customer?.id) || customerId : null,
+      [COL_TOMADOR_AVULSO]: tomadorAvulso,
       idempotency_key: idempotencyKey,
       valor_servico: valorServico,
       valor_iss: valorIssRegistrado,
@@ -948,16 +1129,10 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
           tipoInscricao: tomadorTipoInscricao,
           inscricaoFederal: tomadorDocumento,
           razaoSocial: razaoSocialTomador,
-          email: clean(customer?.email) || undefined,
+          email: emailTomador || undefined,
           // Endereço do CLIENTE (nunca do prestador). O provedor intermediado
           // ignora; o motor próprio manda no XML quando disponível.
-          endereco: {
-            municipioIbge: cleanIbge(customer?.ibge_municipality_code) || undefined,
-            cep: onlyDigits(customer?.zip_code) || undefined,
-            logradouro: clean(customer?.address) || undefined,
-            numero: clean(customer?.address_number) || undefined,
-            bairro: clean(customer?.neighborhood) || undefined,
-          },
+          endereco: enderecoTomador,
         },
         servico: {
           codigoServico,

@@ -1,26 +1,71 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import {
+  grossUpForCustomer,
+  tierPercent,
+  type CardFeeTable,
+  type PixFee,
+  type BankSlipFee,
+  type AnticipationFee,
+  type SettlementDays,
+  type CardGrossUp,
+} from '@/lib/asaasFeeSimulator';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// useTenantCardFees — tabela de taxa de cartão EFETIVA do tenant, via edge
-// `tenant-asaas-card-fees` (override → cache → Asaas → fallback).
+// useTenantFees — taxas EFETIVAS da conta Asaas do tenant (cartão, Pix, boleto
+// e antecipação), via edge `tenant-asaas-card-fees`
+// (override → cache → Asaas myAccount/fees → fallback).
 //
-// Usada só para o PREVIEW do repasse na tela de cobrança e na config de Ajustes.
-// O gross-up autoritativo (o valor realmente cobrado) roda no edge de criação —
-// aqui é espelho para o usuário ver o número antes de gerar.
+// Usada no card "Taxas da Asaas" das Configurações, no Simulador de venda e no
+// PREVIEW do repasse da tela de cobrança. O gross-up autoritativo (o valor
+// realmente cobrado) roda no edge de criação — aqui é espelho pro usuário ver
+// o número antes de gerar.
+//
+// HONESTIDADE: bloco que a Asaas não devolveu vem `null` (nunca zero inventado).
+// A tela mostra "não informado pela Asaas" ou faixa rotulada como referência.
+//
+// `useTenantCardFees` continua exportado com o MESMO retorno de antes (o modal
+// de cobrança depende dele) — hoje é só um alias de `useTenantFees`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface CardFeeTable {
-  operationValue: number;
-  oneInstallment: number;
-  upToSix: number;
-  upToTwelve: number;
-  upToTwentyOne: number;
-}
+// Reexporta os tipos/fórmulas que agora moram no helper puro (fonte única).
+export type {
+  CardFeeTable,
+  PixFee,
+  BankSlipFee,
+  AnticipationFee,
+  SettlementDays,
+  CardGrossUp,
+} from '@/lib/asaasFeeSimulator';
+export { grossUpForCustomer, tierPercent };
 
 export type CardFeeSource = 'override' | 'cache' | 'asaas' | 'fallback';
+export type FeeExtrasSource = 'cache' | 'asaas' | 'fallback';
 
+/** Contrato devolvido pela edge `tenant-asaas-card-fees`. */
+export interface TenantFees {
+  /** Tabela de cartão efetiva. */
+  card: CardFeeTable;
+  /** Tarifa de Pix recebido. null = a Asaas não informou. */
+  pix: PixFee | null;
+  /** Tarifa de boleto liquidado. null = a Asaas não informou. */
+  bankSlip: BankSlipFee | null;
+  /** Percentuais de antecipação (ao mês). null = a Asaas não expôs. */
+  anticipation: AnticipationFee | null;
+  /** Prazos D+ informados pela Asaas (null onde não expôs). */
+  settlementDays: SettlementDays;
+  /** Procedência da tabela de CARTÃO. */
+  source: CardFeeSource;
+  /** Procedência dos blocos Pix/boleto/antecipação. */
+  extrasSource: FeeExtrasSource;
+  /** Preferência padrão de quem paga a taxa do cartão. */
+  feePayerDefault: 'company' | 'customer';
+  /** Quando o cache foi sincronizado com a Asaas (ISO). */
+  syncedAt: string | null;
+}
+
+/** Compat: shape antigo (só cartão) — mantido pra não quebrar quem importava. */
 export interface TenantCardFees {
   fees: CardFeeTable;
   source: CardFeeSource;
@@ -28,40 +73,34 @@ export interface TenantCardFees {
   syncedAt: string | null;
 }
 
-/** Mesma fórmula do edge (_shared/asaas-card-fees.ts) — mantém o preview fiel. */
-export function tierPercent(fees: CardFeeTable, installmentCount: number): number {
-  const n = Math.max(1, Math.floor(installmentCount));
-  if (n <= 1) return fees.oneInstallment;
-  if (n <= 6) return fees.upToSix;
-  if (n <= 12) return fees.upToTwelve;
-  return fees.upToTwentyOne;
+const EMPTY_SETTLEMENT: SettlementDays = { pix: null, bankSlip: null, card: null };
+
+/** Normaliza a resposta crua da edge no contrato `TenantFees`. */
+function parseResponse(raw: unknown): TenantFees | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const d = raw as Record<string, unknown> & {
+    settlementDays?: Partial<SettlementDays> | null;
+  };
+  const card = (d.card ?? d.fees) as CardFeeTable | undefined;
+  if (!card || typeof card !== 'object') return null;
+  return {
+    card,
+    pix: (d.pix ?? null) as PixFee | null,
+    bankSlip: (d.bankSlip ?? null) as BankSlipFee | null,
+    anticipation: (d.anticipation ?? null) as AnticipationFee | null,
+    settlementDays: {
+      pix: d.settlementDays?.pix ?? null,
+      bankSlip: d.settlementDays?.bankSlip ?? null,
+      card: d.settlementDays?.card ?? null,
+    },
+    source: (d.source ?? 'fallback') as CardFeeSource,
+    extrasSource: (d.extrasSource ?? 'fallback') as FeeExtrasSource,
+    feePayerDefault: d.feePayerDefault === 'customer' ? 'customer' : 'company',
+    syncedAt: typeof d.syncedAt === 'string' ? d.syncedAt : null,
+  };
 }
 
-export interface CardGrossUp {
-  totalValue: number;
-  installmentValue: number;
-  feePassedOn: number;
-}
-
-export function grossUpForCustomer(
-  value: number,
-  installmentCount: number,
-  fees: CardFeeTable,
-): CardGrossUp {
-  const n = Math.max(1, Math.floor(installmentCount));
-  const pct = tierPercent(fees, n);
-  const fixed = Number.isFinite(fees.operationValue) ? Math.max(0, fees.operationValue) : 0;
-  const rate = Number.isFinite(pct) && pct > 0 ? Math.min(pct, 100) / 100 : 0;
-
-  const rawTotal = rate < 1 ? (value + fixed) / (1 - rate) : value + fixed;
-  const totalValue = Math.max(value, Math.round(rawTotal * 100) / 100);
-  const installmentValue = Math.round((totalValue / n) * 100) / 100;
-  const feePassedOn = Math.round((totalValue - value) * 100) / 100;
-
-  return { totalValue, installmentValue, feePassedOn };
-}
-
-export function useTenantCardFees(options?: { enabled?: boolean }) {
+export function useTenantFees(options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
   const { companyId } = useUserCompany();
   const enabled = (options?.enabled ?? true) && !!companyId;
@@ -70,24 +109,23 @@ export function useTenantCardFees(options?: { enabled?: boolean }) {
     queryKey: ['tenant-card-fees', companyId],
     enabled,
     staleTime: 10 * 60 * 1000, // taxa muda raramente; cache local generoso
-    queryFn: async (): Promise<TenantCardFees | null> => {
+    queryFn: async (): Promise<TenantFees | null> => {
       const { data, error } = await supabase.functions.invoke('tenant-asaas-card-fees', {
         body: {},
       });
       if (error) throw error;
-      if (!data || typeof data !== 'object' || !('fees' in data)) return null;
-      return data as TenantCardFees;
+      return parseResponse(data);
     },
   });
 
-  // Força rebuscar no Asaas e atualizar o cache (botão "Sincronizar taxas").
+  // Força rebuscar no Asaas e atualizar o cache (botão "Atualizar taxas").
   const sync = useMutation({
-    mutationFn: async (): Promise<TenantCardFees | null> => {
+    mutationFn: async (): Promise<TenantFees | null> => {
       const { data, error } = await supabase.functions.invoke('tenant-asaas-card-fees', {
         body: { refresh: true },
       });
       if (error) throw error;
-      return (data as TenantCardFees) ?? null;
+      return parseResponse(data);
     },
     onSuccess: (data) => {
       if (data) queryClient.setQueryData(['tenant-card-fees', companyId], data);
@@ -96,11 +134,23 @@ export function useTenantCardFees(options?: { enabled?: boolean }) {
   });
 
   return {
-    fees: query.data?.fees ?? null,
+    /** Alias legado de `card` (o modal de cobrança usa este nome). */
+    fees: query.data?.card ?? null,
+    card: query.data?.card ?? null,
+    pix: query.data?.pix ?? null,
+    bankSlip: query.data?.bankSlip ?? null,
+    anticipation: query.data?.anticipation ?? null,
+    settlementDays: query.data?.settlementDays ?? EMPTY_SETTLEMENT,
     source: query.data?.source ?? null,
+    extrasSource: query.data?.extrasSource ?? null,
     feePayerDefault: query.data?.feePayerDefault ?? 'company',
     syncedAt: query.data?.syncedAt ?? null,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
     sync,
   };
 }
+
+/** Compat histórico — mesmo retorno de `useTenantFees`. */
+export const useTenantCardFees = useTenantFees;

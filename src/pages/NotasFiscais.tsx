@@ -8,10 +8,10 @@ import {
   Settings,
   Shield,
   Loader2,
-  LayoutDashboard,
+  FileBarChart,
 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
-import { FloatingActionButton } from '@/components/ui/floating-action-button';
+import { FABButton } from '@/components/mobile/FABButton';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
@@ -78,7 +78,9 @@ export default function NotasFiscais() {
     settings.pode_emitir || !!settings.provider_company_id || emissions.length > 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<'visao-geral' | 'nfse'>('visao-geral');
+  // Abre na listagem (a informação que o usuário busca primeiro); "Relatório
+  // fiscal" (ex-"Visão Geral") é a 2ª aba.
+  const [tab, setTab] = useState<'visao-geral' | 'nfse'>('nfse');
   const [novaOpen, setNovaOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selected, setSelected] = useState<NfseEmission | null>(null);
@@ -234,10 +236,21 @@ export default function NotasFiscais() {
     </Button>
   );
 
-  // Sub-navegação com rótulos traduzidos.
+  // Ação principal (Nova Nota) — botão normal no desktop, ao lado de
+  // "Configurações fiscais". No mobile vira FAB (ver render abaixo).
+  const novaNotaButton = (
+    <Button className="gap-2" onClick={() => setNovaOpen(true)}>
+      <Plus className="h-4 w-4" />
+      {t.actions.newNote}
+    </Button>
+  );
+
+  // Sub-navegação com rótulos traduzidos. A listagem ("Notas Fiscais") vem
+  // primeiro — é o que o usuário busca ao entrar na tela; "Relatório fiscal"
+  // (ex-"Visão Geral") é o resumo, depois.
   const navTabs: SettingsTab[] = [
-    { value: 'visao-geral', label: t.tabs.overview, icon: LayoutDashboard },
     { value: 'nfse', label: t.tabs.list, icon: FileText },
+    { value: 'visao-geral', label: t.tabs.overview, icon: FileBarChart },
   ];
 
   // Estado vazio guiado: config incompleta → manda configurar; config OK sem
@@ -281,6 +294,7 @@ export default function NotasFiscais() {
                 buraco antes do conteúdo. */}
             {!isMobile && periodFilter}
             {configButton}
+            {!isMobile && novaNotaButton}
           </>
         }
       />
@@ -330,14 +344,16 @@ export default function NotasFiscais() {
         </>
       )}
 
-      {/* Ação principal da tela: emitir. Fica flutuando pra continuar ao
-          alcance mesmo com a lista rolada — antes era um botão no topo, que
-          saía de vista assim que o usuário descia na lista. */}
-      <FloatingActionButton
-        icon={<Plus className="h-6 w-6 lg:h-4 lg:w-4" />}
-        label={t.actions.newNote}
-        onClick={() => setNovaOpen(true)}
-      />
+      {/* Ação principal da tela: emitir. No mobile fica flutuando (FAB) pra
+          continuar ao alcance mesmo com a lista rolada; no desktop já existe o
+          botão inline no header (novaNotaButton), então não duplicamos aqui. */}
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label={t.actions.newNote}
+          onClick={() => setNovaOpen(true)}
+        />
+      )}
 
       {/* Modal Nova Nota (header) */}
       <NovaNotaModal

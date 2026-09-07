@@ -50,6 +50,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
+import { CnpjDocumentInput, type CnpjData } from '@/components/customers/CnpjDocumentInput';
+import { NumericInput } from '@/components/ui/numeric-input';
+import { cnpjMask, cepMask } from '@/utils/masks';
 import { formatDate as formatDateLib } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -86,6 +89,11 @@ interface FiscalForm {
   fiscal_ambiente: FiscalAmbiente;
   /** Apuração de tributos no Simples Nacional ('1'|'2'|'3') — só quando optante. */
   reg_ap_trib_sn: RegApTribSN;
+  /**
+   * Percentual (%) de tributos do Simples Nacional — string crua PT-BR (vírgula
+   * decimal) pra alimentar o `NumericInput`; convertido pra number no save.
+   */
+  percentual_trib_sn: string;
   // Identidade/endereço da empresa — salvos em company_settings (espelhados
   // pra `companies` por trigger server-side; a edge de registro lê de lá).
   razao_social: string;
@@ -111,6 +119,7 @@ const EMPTY_FORM: FiscalForm = {
   // Default Produção: o cliente final emite nota de verdade. Homologação é opt-in.
   fiscal_ambiente: 'producao',
   reg_ap_trib_sn: '1',
+  percentual_trib_sn: '',
   razao_social: '',
   cnpj: '',
   cep: '',
@@ -128,6 +137,17 @@ function daysUntil(iso: string | null): number | null {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Converte string PT-BR (vírgula decimal) pra number, ou `null` se vazio/inválido
+ * — espelha `fromDisplayBR` do `ValoresStep` (nova nota), mas devolve `null` em
+ * vez de `0` porque aqui o campo é opcional (default, não obrigatório na nota).
+ */
+function percentualTribSnFromDisplay(s: string): number | null {
+  const clean = s.trim().replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(clean);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export function FiscalSettingsModal({ open, onOpenChange, initialSection }: FiscalSettingsModalProps) {
@@ -229,6 +249,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         // registro no provedor) → assume Produção (default do time).
         fiscal_ambiente: settings.provider_company_id ? settings.fiscal_ambiente : 'producao',
         reg_ap_trib_sn: normalizeRegApTribSN(settings.reg_ap_trib_sn),
+        percentual_trib_sn:
+          settings.percentual_trib_sn != null ? String(settings.percentual_trib_sn).replace('.', ',') : '',
       }));
     }
   }, [isLoading, settings]);
@@ -240,7 +262,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       setForm((p) => ({
         ...p,
         razao_social: companySettings.name || '',
-        cnpj: companySettings.document || '',
+        // Salvo só com dígitos no banco; exibe mascarado (regra do CEO).
+        cnpj: companySettings.document ? cnpjMask(companySettings.document) : '',
         cep: companySettings.zip_code || '',
         logradouro: companySettings.address || '',
         numero: companySettings.address_number || '',
@@ -371,6 +394,10 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       fiscal_ambiente: form.fiscal_ambiente,
       // Fora do Simples o campo não se aplica — grava o valor neutro.
       reg_ap_trib_sn: isSimples ? form.reg_ap_trib_sn : '1',
+      // Default pra toda nota nova (ainda editável por nota); só faz sentido
+      // no Simples, mas não zera fora dele — a empresa pode voltar a ser
+      // optante e o número informado continua útil.
+      percentual_trib_sn: percentualTribSnFromDisplay(form.percentual_trib_sn),
     };
     try {
       await save(payload);
@@ -474,6 +501,46 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       municipio_ibge: ibge != null && String(ibge).trim() ? String(ibge).trim() : p.municipio_ibge,
     }));
   };
+
+  /**
+   * CNPJ (BrasilAPI, via `CnpjDocumentInput`) → pré-preenche razão social e
+   * endereço fiscal. Ao contrário da busca por CEP (que o usuário dispara de
+   * propósito e substitui o endereço), aqui SÓ preenche campo VAZIO — empresa
+   * já cadastrada não pode ter endereço trocado por baixo dos panos ao reabrir
+   * este modal.
+   *
+   * A BrasilAPI não devolve o código IBGE do município. Se o CEP veio junto e
+   * ainda não temos IBGE, resolve pelo mesmo caminho do backfill por CEP
+   * (`cep-lookup`) — nunca salva com IBGE vazio em silêncio (o usuário sempre
+   * pode completar manualmente pelo StateCitySelector se a consulta falhar).
+   */
+  const handleCnpjDataFound = useCallback(
+    (data: CnpjData) => {
+      let shouldBackfillIbge = false;
+      let backfillZip = '';
+      setForm((p) => {
+        const next = { ...p };
+        if (data.razaoSocial && !p.razao_social.trim()) next.razao_social = data.razaoSocial;
+        const cepWasEmpty = !p.cep.trim();
+        if (data.zipCode && cepWasEmpty) next.cep = cepMask(data.zipCode);
+        if (data.address && !p.logradouro.trim()) next.logradouro = data.address;
+        if (data.addressNumber && !p.numero.trim()) next.numero = data.addressNumber;
+        if (data.complement && !p.complemento.trim()) next.complemento = data.complement;
+        if (data.neighborhood && !p.bairro.trim()) next.bairro = data.neighborhood;
+        if (data.city && !p.cidade.trim()) next.cidade = data.city;
+        if (data.state && !p.uf.trim()) next.uf = data.state;
+        if (data.zipCode && cepWasEmpty && !p.municipio_ibge.trim()) {
+          shouldBackfillIbge = true;
+          backfillZip = data.zipCode;
+        }
+        return next;
+      });
+      if (shouldBackfillIbge) {
+        void backfillIbge(backfillZip);
+      }
+    },
+    [backfillIbge],
+  );
 
   const handleCertSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -646,11 +713,15 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 </div>
                 <div className="space-y-2">
                   <Label>{t.settings.empresa.cnpj}</Label>
-                  <Input
-                    inputMode="numeric"
-                    placeholder={t.settings.empresa.cnpjPlaceholder}
+                  {/* Prestador é sempre CNPJ (nunca CPF) — busca automática na
+                      Receita ao completar 14 dígitos, igual ao cadastro de
+                      cliente. Só preenche campo vazio (ver handleCnpjDataFound). */}
+                  <CnpjDocumentInput
+                    cnpjOnly
                     value={form.cnpj}
-                    onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))}
+                    onChange={(v) => setForm((p) => ({ ...p, cnpj: v }))}
+                    onDataFound={handleCnpjDataFound}
+                    placeholder={t.settings.empresa.cnpjPlaceholder}
                   />
                 </div>
                 {/* Inscrição Municipal: mesmo estado do campo da seção
@@ -936,6 +1007,24 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     </Select>
                     <p className="text-xs text-muted-foreground">
                       {t.settings.impostos.regApTribSnHint}
+                    </p>
+                  </div>
+                )}
+                {/* Default do percentual de tributos do Simples Nacional — hoje
+                    o contador tinha que redigitar esse número em TODA nota;
+                    aqui vira o valor inicial (ainda editável por nota). */}
+                {isSimples && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t.settings.impostos.percentualTribSn.label}</Label>
+                    <NumericInput
+                      decimal
+                      maxDecimals={4}
+                      value={form.percentual_trib_sn}
+                      onValueChange={(v) => setForm((p) => ({ ...p, percentual_trib_sn: v }))}
+                      placeholder="0,00"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t.settings.impostos.percentualTribSn.hint}
                     </p>
                   </div>
                 )}

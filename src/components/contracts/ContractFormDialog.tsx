@@ -19,6 +19,7 @@ import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
@@ -900,11 +901,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setMachineConfigs(configs);
     setMachineConfigsLoaded(true);
   }, [open, editContract, isPmoc, existingPlan, catalogLoading, catalogActivities.length, machineConfigsLoaded]);
-
-  const customerOptions = useMemo(() =>
-    customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
-    [customers]
-  );
 
   const occurrences = useMemo(() =>
     generateOccurrences(new Date(startDate + 'T00:00:00'), freqType, freqValue, horizonMonths),
@@ -2452,27 +2448,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               </div>
               <div className="space-y-2">
                 <Label>{t.info.customerLabel}</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      options={customerOptions}
-                      value={customerId}
-                      onValueChange={v => { setCustomerId(v); if (!isEditing) { setLooseItems([]); setEnvironments([]); setSelectedEnvKey(null); } }}
-                      placeholder={t.info.customerPlaceholder}
-                      searchPlaceholder={t.info.customerSearchPlaceholder}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="shrink-0 h-10 w-10"
-                    onClick={() => setShowQuickCustomer(true)}
-                    title={t.info.newCustomerTitle}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <CustomerSelectField
+                  customers={customers}
+                  value={customerId}
+                  onValueChange={v => { setCustomerId(v); if (!isEditing) { setLooseItems([]); setEnvironments([]); setSelectedEnvKey(null); } }}
+                  placeholder={t.info.customerPlaceholder}
+                  searchPlaceholder={t.info.customerSearchPlaceholder}
+                  onCreateFull={() => setShowQuickCustomer(true)}
+                />
               </div>
 
               {/* PMOC (Onda A v1.9.0) — toggle no TOPO da etapa, logo após o Cliente.

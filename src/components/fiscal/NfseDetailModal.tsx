@@ -34,6 +34,7 @@ import {
   type NfseEmission,
 } from '@/hooks/useNfse';
 import { NfseStatusBadge, isNfseTerminal } from './nfseStatus';
+import { avulsoNome } from './nfseRow';
 
 /** Ação que pode ser auto-disparada ao abrir (vinda do menu da linha/card). */
 export type NfseDetailAction = 'refresh' | 'cancel' | 'pdf' | 'xml';
@@ -70,7 +71,8 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
   const { emissions, refreshStatus, isRefreshingStatus, cancel, isCancelling } = useNfse();
   const { locale, currency, timezone } = useAppLocaleContext();
   // Só para identificar a nota na confirmação de cancelamento: o tipo da
-  // emissão não traz o nome do tomador (o SELECT não faz o join).
+  // emissão não traz o nome do tomador CADASTRADO (o SELECT não faz o join).
+  // Tomador AVULSO já vem na própria linha (`tomador_avulso`) — ver `avulsoNome`.
   const { customers } = useCustomers();
   const t = MESSAGES[locale].app.nfse;
 
@@ -366,7 +368,12 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
                 .replace('{numero}', emission.numero_nfse ?? '—')
                 .replace(
                   '{cliente}',
-                  customers.find((c) => c.id === emission.customer_id)?.name ?? '—',
+                  // Nota com tomador CADASTRADO resolve pelo id; nota com
+                  // tomador AVULSO (sem customer_id) não tem o que buscar em
+                  // `customers` — o nome mora na própria linha (`tomador_avulso`).
+                  customers.find((c) => c.id === emission.customer_id)?.name ??
+                    avulsoNome(emission.tomador_avulso) ??
+                    '—',
                 )
                 .replace(
                   '{valor}',

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
 import { useTeams } from '@/hooks/useTeams';
@@ -190,12 +190,15 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
 
         <div className="space-y-2">
           <Label>{t.labelCustomer}</Label>
-          <SearchableSelect
-            options={[{ value: '_none', label: t.optionNone }, ...customers.map(c => ({ value: c.id, label: c.name }))]}
+          <CustomerSelectField
+            customers={customers}
             value={customerId || '_none'}
             onValueChange={(v) => setCustomerId(v === '_none' ? '' : v)}
             placeholder={t.placeholderSelectCustomer}
             emptyMessage={t.emptyCustomer}
+            allowNone
+            noneValue="_none"
+            noneLabel={t.optionNone}
           />
         </div>
 

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { ChevronDown, ChevronUp, Copy, ExternalLink, Info, Loader2, Users } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
@@ -494,18 +495,13 @@ export function SubscriptionDialog({
                       {customers.find((c) => c.id === presetCustomerId)?.name ?? presetCustomerId}
                     </div>
                   ) : (
-                    <Select value={customerId} onValueChange={setCustomerId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t.fields.customerPlaceholder} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CustomerSelectField
+                      customers={customers}
+                      value={customerId}
+                      onValueChange={setCustomerId}
+                      placeholder={t.fields.customerPlaceholder}
+                      requireDocument
+                    />
                   )}
                 </div>
 

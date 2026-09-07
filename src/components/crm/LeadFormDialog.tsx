@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
@@ -43,10 +43,6 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const { stages } = useCrmStages();
   const { activeOrigins, createOrigin } = useCustomerOrigins();
   const isEditing = !!lead;
-
-  // Quick-create de cliente na hora (mesmo padrão do ChargeDialog).
-  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
-  const [quickCustomerInitialName, setQuickCustomerInitialName] = useState('');
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
     title: '',
@@ -130,36 +126,19 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="customer_id">{t.form.customer}</Label>
-              <SearchableSelect
-                options={[
-                  { value: 'none', label: t.form.customerNone },
-                  ...customers.map((c) => ({
-                    value: c.id,
-                    label: c.name,
-                    sublabel: c.document || c.email || undefined,
-                  })),
-                ]}
+              <CustomerSelectField
+                id="customer_id"
+                customers={customers}
                 value={formData.customer_id || 'none'}
                 onValueChange={(value) =>
                   handleChange('customer_id', value === 'none' ? null : value)
                 }
                 placeholder={t.form.customerPlaceholder}
                 searchPlaceholder={t.form.customerSearch}
-                onCreateOption={(query) => {
-                  setQuickCustomerInitialName(query);
-                  setQuickCustomerOpen(true);
-                }}
-                createOptionLabel={t.form.customerCreate}
-                createAlwaysLabel={t.form.customerCreateAlways}
-              />
-              <QuickCustomerDialog
-                open={quickCustomerOpen}
-                initialName={quickCustomerInitialName}
-                onOpenChange={setQuickCustomerOpen}
-                onCreated={(id) => {
-                  handleChange('customer_id', id);
-                  setQuickCustomerOpen(false);
-                }}
+                allowNone
+                noneValue="none"
+                noneLabel={t.form.customerNone}
+                onCreated={(id) => handleChange('customer_id', id)}
               />
             </div>
 

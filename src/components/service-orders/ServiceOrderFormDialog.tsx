@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, ChevronDown, Plus, Check, Eye, UserPlus, MapPin, Repeat, AlertTriangle, MapPinned, ClipboardList, Wrench } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, ChevronDown, Plus, Check, Eye, MapPin, Repeat, AlertTriangle, MapPinned, ClipboardList, Wrench } from 'lucide-react';
 import { geocodeAddress, buildServiceAddress } from '@/utils/geolocation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,7 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Star } from 'lucide-react';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
@@ -780,11 +781,6 @@ export function ServiceOrderFormDialog({
   const goBack = () => { if (step > 0) setStep(step - 1); };
   const isLastStep = step === activeSteps.length - 1;
 
-  const customerOptions = useMemo(() =>
-    customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
-    [customers]
-  );
-
   // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
   // da OS. Alavanca ligada revela campos estruturados (mesmo padrão do avulso).
   const serviceAddressSection = (
@@ -1190,12 +1186,13 @@ export function ServiceOrderFormDialog({
                   <FormItem>
                     <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
-                      <SearchableSelect
-                        options={customerOptions}
+                      <CustomerSelectField
+                        customers={customers}
                         value={field.value}
                         onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }}
                         placeholder={t.placeholderSelectCustomer}
                         searchPlaceholder={t.placeholderSearchCustomer}
+                        requireDocument={false}
                       />
                     </FormControl>
                     <FormMessage />
@@ -1488,31 +1485,16 @@ export function ServiceOrderFormDialog({
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.labelCustomer}</FormLabel>
-                    <div className="flex">
-                      <div className="flex-1">
-                        <FormControl>
-                          <SearchableSelect
-                            options={customerOptions}
-                            value={field.value}
-                            onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
-                            placeholder={t.placeholderSelectCustomer}
-                            searchPlaceholder={t.placeholderSearchCustomer}
-                            className="rounded-r-none"
-                          />
-                        </FormControl>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label={t.btnCreateCustomer}
-                        title={t.btnCreateCustomer}
-                        onClick={() => setQuickCreateCustomerOpen(true)}
-                        className="rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
-                      >
-                        <UserPlus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <FormControl>
+                      <CustomerSelectField
+                        customers={customers}
+                        value={field.value}
+                        onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
+                        placeholder={t.placeholderSelectCustomer}
+                        searchPlaceholder={t.placeholderSearchCustomer}
+                        onCreateFull={() => setQuickCreateCustomerOpen(true)}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

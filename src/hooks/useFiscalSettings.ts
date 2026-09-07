@@ -64,6 +64,12 @@ export interface FiscalSettings {
   municipio_ibge: string | null;
   fiscal_ambiente: FiscalAmbiente;
   reg_ap_trib_sn: RegApTribSN;
+  /**
+   * Percentual (%) de tributos do Simples Nacional — default salvo pela empresa,
+   * usado para pré-preencher o campo homônimo em toda nota nova (ainda editável
+   * por nota). Coluna `percentual_trib_sn numeric(7,4)` em `company_fiscal_settings`.
+   */
+  percentual_trib_sn: number | null;
   // Read-only (backend)
   /** Id da empresa no provedor de emissão. Preenchido pela edge de registro. */
   provider_company_id: string | null;
@@ -86,6 +92,7 @@ export type FiscalSettingsEditable = Pick<
   | 'municipio_ibge'
   | 'fiscal_ambiente'
   | 'reg_ap_trib_sn'
+  | 'percentual_trib_sn'
 >;
 
 const EMPTY: FiscalSettings = {
@@ -99,6 +106,7 @@ const EMPTY: FiscalSettings = {
   municipio_ibge: null,
   fiscal_ambiente: 'homologacao',
   reg_ap_trib_sn: '1',
+  percentual_trib_sn: null,
   provider_company_id: null,
   provider_certificate_id: null,
   certificate_expires_at: null,
@@ -111,7 +119,7 @@ const COL_PROVIDER_COMPANY_ID = 'fisqal_company_id';
 const COL_PROVIDER_CERTIFICATE_ID = 'fisqal_certificate_id';
 
 const SELECT_COLS =
-  `regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, codigo_nbs_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, reg_ap_trib_sn, ${COL_PROVIDER_COMPANY_ID}, ${COL_PROVIDER_CERTIFICATE_ID}, certificate_expires_at, pode_emitir`;
+  `regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, codigo_nbs_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, reg_ap_trib_sn, percentual_trib_sn, ${COL_PROVIDER_COMPANY_ID}, ${COL_PROVIDER_CERTIFICATE_ID}, certificate_expires_at, pode_emitir`;
 
 export function useFiscalSettings() {
   const { companyId } = useUserCompany();
@@ -129,20 +137,27 @@ export function useFiscalSettings() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return EMPTY;
-      const row = data as Record<string, unknown>;
+      // `percentual_trib_sn` está sendo criado AGORA por dev-database em
+      // paralelo e ainda não existe em types.ts: essa 1 coluna desconhecida no
+      // literal do SELECT_COLS faz o select tipado devolver `SelectQueryError`
+      // pra toda a linha. Cast pontual (via `unknown`) até a regeneração dos
+      // types — remover o `as unknown` quando `percentual_trib_sn` aparecer no
+      // `Row` de `company_fiscal_settings`.
+      const row = data as unknown as Record<string, unknown>;
       return {
         ...EMPTY,
-        ...data,
+        ...row,
         // Reexposição com nome neutro (ver nota no topo do arquivo).
         provider_company_id: (row[COL_PROVIDER_COMPANY_ID] as string | null) ?? null,
         provider_certificate_id: (row[COL_PROVIDER_CERTIFICATE_ID] as string | null) ?? null,
         // `fiscal_ambiente` no banco é text livre — normaliza pro union.
-        fiscal_ambiente: data.fiscal_ambiente === 'producao' ? 'producao' : 'homologacao',
+        fiscal_ambiente: row.fiscal_ambiente === 'producao' ? 'producao' : 'homologacao',
         // `reg_ap_trib_sn` tem CHECK ('1'|'2'|'3') no banco, mas normalizamos aqui
         // também para blindar linhas antigas/nulas.
-        reg_ap_trib_sn: normalizeRegApTribSN(
-          (data as { reg_ap_trib_sn?: unknown }).reg_ap_trib_sn,
-        ),
+        reg_ap_trib_sn: normalizeRegApTribSN(row.reg_ap_trib_sn),
+        // Cast pontual: coluna nova (ver nota acima), types.ts ainda não tem
+        // `percentual_trib_sn` no Row de company_fiscal_settings.
+        percentual_trib_sn: (row.percentual_trib_sn as number | null | undefined) ?? null,
       } as FiscalSettings;
     },
   });
@@ -156,13 +171,15 @@ export function useFiscalSettings() {
         normalized.reg_ap_trib_sn = normalizeRegApTribSN(normalized.reg_ap_trib_sn);
       }
       // upsert por company_id: cria a linha se ainda não existir (1ª config).
+      // `as never` no payload: `percentual_trib_sn` é coluna nova (ver nota do
+      // SELECT_COLS acima), ainda fora do `Insert` gerado em types.ts.
       const { error } = await supabase
         .from('company_fiscal_settings')
         .upsert(
           {
             company_id: companyId,
             ...normalized,
-          },
+          } as never,
           { onConflict: 'company_id' },
         );
       if (error) throw new Error(getErrorMessage(error, 'Não foi possível salvar as configurações fiscais.'));

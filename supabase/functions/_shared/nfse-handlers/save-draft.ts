@@ -10,6 +10,12 @@
 //   - Body (todos OPCIONAIS — rascunho pode ser parcial):
 //       { id?, customerId?, intermediarioCustomerId?, dataCompetencia?,
 //         regimeApuracao?,
+//         // Tomador/intermediário DIGITADO NA HORA (sem cadastro em customers).
+//         // Alternativa a customerId/intermediarioCustomerId — nunca os dois.
+//         tomadorAvulso?: { nome?, documento?, email?,
+//                           endereco?: { logradouro?, numero?, complemento?,
+//                                        bairro?, cidade?, uf?, cep?, ibge? } },
+//         intermediarioAvulso?: { mesmo formato },
 //         servico?: { serviceTypeId?, codigoServico?, codigoNbs?,
 //                     municipioIncidenciaIbge?, descricao?,
 //                     codigoTributacaoMunicipal? },
@@ -33,10 +39,14 @@ import {
   cleanCTribMun,
   COL_CREATED_BY,
   COL_CTRIBMUN,
+  COL_INTERMEDIARIO_AVULSO,
   COL_SERVICE_TYPE,
+  COL_TOMADOR_AVULSO,
   isUnknownColumnError,
+  normalizarPessoaAvulsa,
   withoutColumn,
 } from "./common.ts";
+import type { PessoaAvulsa } from "./common.ts";
 
 function clean(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
@@ -62,6 +72,14 @@ interface DraftBody {
   id?: string;
   customerId?: string;
   intermediarioCustomerId?: string;
+  /**
+   * Tomador digitado na hora, sem virar cliente. ALTERNATIVA a `customerId`
+   * (nunca os dois na mesma nota — há CHECK no banco garantindo isso).
+   * O rascunho aceita o objeto PARCIAL: é "salvar e continuar".
+   */
+  tomadorAvulso?: unknown;
+  /** Intermediário digitado na hora. Alternativa a `intermediarioCustomerId`. */
+  intermediarioAvulso?: unknown;
   dataCompetencia?: string;
   regimeApuracao?: string;
   servico?: {
@@ -89,20 +107,82 @@ interface DraftBody {
   };
 }
 
+/** Resultado do mapeamento do body: colunas a gravar OU erro PT-BR de 400. */
+interface Mapeamento {
+  cols: Record<string, unknown>;
+  erro?: string;
+}
+
+/**
+ * Resolve UMA das partes da nota (tomador ou intermediário) para as suas DUAS
+ * colunas — a do cadastro e a do avulso — e devolve as duas SEMPRE juntas.
+ *
+ * Por que as duas juntas: o banco tem CHECK de exclusão mútua
+ * (`nfse_emissions_tomador_exclusivo`). Num UPDATE parcial, gravar só o avulso
+ * numa linha que já tem `customer_id` estouraria a constraint com um erro cru
+ * de Postgres. Escrevendo o par, trocar de "cadastrado" para "digitado
+ * manualmente" (e vice-versa) é sempre consistente.
+ *
+ * Devolve `null` quando NENHUMA das duas chaves veio no body — aí a coluna nem
+ * entra no UPDATE (rascunho parcial não pode apagar o que já estava salvo).
+ */
+function resolverParte(
+  body: DraftBody,
+  chaveCadastro: "customerId" | "intermediarioCustomerId",
+  chaveAvulso: "tomadorAvulso" | "intermediarioAvulso",
+  colCadastro: string,
+  colAvulso: string,
+  rotulo: string,
+): { cols: Record<string, unknown>; erro?: string } | null {
+  const veioCadastro = chaveCadastro in body;
+  const veioAvulso = chaveAvulso in body;
+  if (!veioCadastro && !veioAvulso) return null;
+
+  const idCadastro = clean(body[chaveCadastro]) || null;
+  const avulso: PessoaAvulsa | null = veioAvulso
+    ? normalizarPessoaAvulsa(body[chaveAvulso])
+    : null;
+
+  if (idCadastro && avulso) {
+    return {
+      cols: {},
+      erro:
+        `Escolha o ${rotulo} de UMA forma só: selecione um cliente cadastrado ou digite os dados manualmente.`,
+    };
+  }
+
+  return { cols: { [colCadastro]: idCadastro, [colAvulso]: avulso } };
+}
+
 /**
  * Monta o objeto de colunas a partir do body — SOMENTE as chaves presentes.
  * Usado tanto no INSERT quanto no UPDATE (no UPDATE, só sobrescreve o que veio).
  */
-function mapBodyToColumns(body: DraftBody): Record<string, unknown> {
+function mapBodyToColumns(body: DraftBody): Mapeamento {
   const cols: Record<string, unknown> = {};
 
-  // Identidade / partes.
-  if ("customerId" in body) {
-    cols.customer_id = clean(body.customerId) || null;
-  }
-  if ("intermediarioCustomerId" in body) {
-    cols.intermediario_customer_id = clean(body.intermediarioCustomerId) || null;
-  }
+  // Identidade / partes. Cadastrado XOR avulso — ver `resolverParte`.
+  const tomador = resolverParte(
+    body,
+    "customerId",
+    "tomadorAvulso",
+    "customer_id",
+    COL_TOMADOR_AVULSO,
+    "tomador",
+  );
+  if (tomador?.erro) return { cols: {}, erro: tomador.erro };
+  if (tomador) Object.assign(cols, tomador.cols);
+
+  const intermediario = resolverParte(
+    body,
+    "intermediarioCustomerId",
+    "intermediarioAvulso",
+    "intermediario_customer_id",
+    COL_INTERMEDIARIO_AVULSO,
+    "intermediário",
+  );
+  if (intermediario?.erro) return { cols: {}, erro: intermediario.erro };
+  if (intermediario) Object.assign(cols, intermediario.cols);
 
   // Competência / regime.
   if ("dataCompetencia" in body) {
@@ -170,7 +250,7 @@ function mapBodyToColumns(body: DraftBody): Record<string, unknown> {
     }
   }
 
-  return cols;
+  return { cols };
 }
 
 /**
@@ -179,6 +259,13 @@ function mapBodyToColumns(body: DraftBody): Record<string, unknown> {
  * muito melhor que perder o rascunho inteiro.
  */
 const COLUNAS_OPCIONAIS = [COL_CTRIBMUN, COL_SERVICE_TYPE, COL_CREATED_BY];
+
+// ⚠️ `tomador_avulso` / `intermediario_avulso` NÃO entram na lista acima de
+// propósito. Elas não são "campo opcional": são a ÚNICA identidade do tomador
+// numa nota sem cliente cadastrado. Descartá-las em silêncio salvaria um
+// rascunho aparentemente OK e sem tomador nenhum, e o usuário só descobriria na
+// emissão. Se a coluna faltar, o certo é falhar alto ("Não foi possível salvar
+// o rascunho") — a migration 20260906210000 é pré-requisito deste deploy.
 
 type DbResult<T> = { data: T | null; error: { code?: string; message?: string } | null };
 
@@ -232,7 +319,13 @@ export async function handleNfseSaveDraft(req: Request): Promise<Response> {
       );
     }
 
-    const cols = mapBodyToColumns(body ?? {});
+    const { cols, erro: erroMapeamento } = mapBodyToColumns(body ?? {});
+    if (erroMapeamento) {
+      return jsonResponse(
+        { error: "tomador_ambiguo", message: erroMapeamento },
+        400,
+      );
+    }
     const draftId = clean(body?.id);
 
     if (draftId) {
@@ -277,6 +370,24 @@ export async function handleNfseSaveDraft(req: Request): Promise<Response> {
         );
       }
       return jsonResponse({ emission: updated }, 200);
+    }
+
+    // ---- Default do percentual do Simples Nacional (company_fiscal_settings)
+    // SÓ no INSERT e SÓ quando a nota não trouxe o campo — o rascunho já nasce
+    // preenchido com o que o contador configurou em Configurações fiscais >
+    // Tributação, sem precisar redigitar em toda NFS-e. Não sobrescreve o que
+    // o usuário digitou (mapBodyToColumns só grava `percentual_trib_sn` quando
+    // "percentualTribSn" veio no body). Falha nessa leitura é NÃO-crítica: o
+    // rascunho segue sem default, exatamente como hoje.
+    if (!("percentual_trib_sn" in cols)) {
+      const { data: fiscalRow } = await supabase
+        .from("company_fiscal_settings")
+        .select("percentual_trib_sn")
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (fiscalRow?.percentual_trib_sn != null) {
+        cols.percentual_trib_sn = fiscalRow.percentual_trib_sn;
+      }
     }
 
     // ---- INSERT de novo rascunho (company_id carimbado, status='rascunho').

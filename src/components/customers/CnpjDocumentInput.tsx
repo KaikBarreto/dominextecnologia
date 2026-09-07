@@ -3,7 +3,7 @@ import { Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { cpfCnpjMask } from '@/utils/masks';
+import { cpfCnpjMask, cnpjMask } from '@/utils/masks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -31,6 +31,14 @@ interface CnpjDocumentInputProps {
   onChange: (v: string) => void;
   onDataFound: (data: CnpjData) => void;
   placeholder?: string;
+  /**
+   * Restringe o campo a CNPJ (sempre formata como CNPJ, mesmo em ≤11 dígitos —
+   * ao contrário do híbrido CPF/CNPJ usado no cadastro de cliente). Use para o
+   * documento do PRESTADOR (a própria empresa da conta), que nunca é CPF.
+   * Aditivo: default `false` preserva o comportamento atual (cadastro de
+   * cliente aceita CPF ou CNPJ).
+   */
+  cnpjOnly?: boolean;
 }
 
 function normalize(raw: string): string {
@@ -46,8 +54,10 @@ export function CnpjDocumentInput({
   value,
   onChange,
   onDataFound,
-  placeholder = '000.000.000-00',
+  placeholder,
+  cnpjOnly = false,
 }: CnpjDocumentInputProps) {
+  const resolvedPlaceholder = placeholder ?? (cnpjOnly ? '00.000.000/0000-00' : '000.000.000-00');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
@@ -135,7 +145,7 @@ export function CnpjDocumentInput({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const masked = cpfCnpjMask(e.target.value);
+    const masked = cnpjOnly ? cnpjMask(e.target.value) : cpfCnpjMask(e.target.value);
     onChange(masked);
     const digits = normalize(masked);
     // Dispara automaticamente ao completar 14 dígitos (CNPJ) durante digitação
@@ -159,7 +169,7 @@ export function CnpjDocumentInput({
       <Input
         value={value}
         onChange={handleChange}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         maxLength={18} // 14 dígitos + 4 separadores do CNPJ
         className="pr-10"
       />

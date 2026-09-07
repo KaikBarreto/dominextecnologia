@@ -7,7 +7,31 @@
 
 import type { Customer } from '@/types/database';
 
-/** Subconjunto de Customer necessário como tomador/intermediário da NFS-e. */
+/** Como o tomador/intermediário chegou nesta nota (etapa Pessoas). */
+export type NfsePartyEntryMode = 'cadastro' | 'manual';
+
+/**
+ * Subconjunto de Customer necessário como tomador/intermediário da NFS-e.
+ *
+ * `partyEntryMode` ausente ou `'cadastro'` = veio de um `Customer` real
+ * (selecionado ou criado via quick-create). `'manual'` = dados avulsos
+ * digitados nesta nota (id `''`), que NÃO viram cadastro em `customers`.
+ *
+ * Batizado de `partyEntryMode` (não `origin`) de propósito: `Customer.origin`
+ * já existe e significa outra coisa (canal de captação do lead — "Site",
+ * "Indicação" etc.); reusar o nome quebraria a atribuição direta de um
+ * `Customer` pra este tipo (o TS reclamaria de `string` vs. o literal union).
+ *
+ * `partyEntryMode: 'manual'` é enviado pra edge como `tomadorAvulso`/
+ * `intermediarioAvulso` (migration 20260906210000 — `nfse-save-draft`/
+ * `nfse-emit` aceitam `customerId` XOR o avulso, nunca os dois). Endereço do
+ * avulso é TUDO OU NADA (validado no client em `NovaNotaModal.pessoasErrors`
+ * — `enderecoAvulsoIncompleto` — espelhando `common.ts` da edge).
+ *
+ * ⚠️ Intermediário (`'cadastro'` OU `'manual'`) é aceito no RASCUNHO mas
+ * SEMPRE bloqueado na EMISSÃO (o microserviço fiscal ainda não monta o grupo
+ * `interm` da DPS) — não é limitação deste tipo, é regra de negócio atual.
+ */
 export type NfseCustomer = Pick<
   Customer,
   | 'id'
@@ -15,6 +39,7 @@ export type NfseCustomer = Pick<
   | 'company_name'
   | 'nome_fantasia'
   | 'document'
+  | 'email'
   | 'address'
   | 'address_number'
   | 'complement'
@@ -24,7 +49,9 @@ export type NfseCustomer = Pick<
   | 'zip_code'
   | 'ibge_municipality_code'
   | 'inscricao_municipal'
->;
+> & {
+  partyEntryMode?: NfsePartyEntryMode;
+};
 
 /**
  * Situação do ISSQN (layout nacional da NFS-e).

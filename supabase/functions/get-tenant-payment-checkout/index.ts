@@ -80,6 +80,19 @@ Deno.serve(async (req) => {
       return json(req, { error: "Esta cobrança não está mais disponível." }, 404);
     }
 
+    // Cartão no checkout PRÓPRIO: o pagador informa o cartão na nossa página
+    // (edge `tenant-asaas-pay-charge-card`) em vez de ir pra fatura hospedada.
+    // Só expomos o BOOLEANO da preferência do tenant (allow_card) — nunca a
+    // config toda da conta de pagamento. Conta inativa/sem chave → sem cartão
+    // in-house (o link hospedado segue como fallback).
+    const { data: payAccount } = await supabase
+      .from("tenant_payment_accounts")
+      .select("status, allow_card")
+      .eq("company_id", charge.company_id)
+      .maybeSingle();
+    const cardInHouseEnabled =
+      payAccount?.status === "active" && payAccount?.allow_card !== false;
+
     // Marca do tenant (só se white_label_enabled) — senão Dominex fixo.
     const { data: settings } = await supabase
       .from("company_settings")
@@ -109,6 +122,9 @@ Deno.serve(async (req) => {
         pix_copy_paste: charge.pix_copy_paste,
         boleto_url: charge.boleto_url,
         public_short_code: charge.public_short_code,
+        // true → checkout de cartão PRÓPRIO (formulário na nossa página).
+        // false → cai no fallback do link hospedado da Asaas (invoice_url).
+        allow_card: cardInHouseEnabled,
       },
     }, 200);
   } catch (e) {

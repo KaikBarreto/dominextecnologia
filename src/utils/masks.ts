@@ -46,6 +46,21 @@ export function cpfCnpjMask(value: string): string {
   return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`;
 }
 
+/**
+ * Máscara SÓ CNPJ: 00.000.000/0000-00 — sempre no formato de CNPJ, mesmo
+ * enquanto o usuário ainda digita (ao contrário de `cpfCnpjMask`, que em ≤11
+ * dígitos formata como CPF). Uso: campo de documento do PRESTADOR (empresa
+ * dona da conta), que nunca é CPF — ex. `CnpjDocumentInput cnpjOnly`.
+ */
+export function cnpjMask(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+
 export function cepMask(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 5) return digits;

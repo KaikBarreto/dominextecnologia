@@ -1,5 +1,6 @@
 import type { NfseEmissionRow } from '@/hooks/useNfseEmissionsPaged';
 import type { NfseEmission } from '@/hooks/useNfse';
+import type { Json } from '@/integrations/supabase/types';
 
 /**
  * Linha da listagem paginada de NFS-e.
@@ -39,6 +40,18 @@ export function nfseDisplayDate(row: {
  * `company_id` fica vazio porque a RPC não devolve (nem deve: já isolou por
  * tenant no corpo) e nenhuma superfície do detalhe usa esse campo.
  */
+/**
+ * Nome de exibição do tomador/intermediário AVULSO (digitado na hora — sem
+ * `customer_id`). `tomador_avulso`/`intermediario_avulso` são `Json` no
+ * schema (podem vir `null`, string ou qualquer shape) — lê com type guard,
+ * nunca `as` direto.
+ */
+export function avulsoNome(pessoa: Json | null | undefined): string | null {
+  if (!pessoa || typeof pessoa !== 'object' || Array.isArray(pessoa)) return null;
+  const nome = (pessoa as Record<string, unknown>).nome;
+  return typeof nome === 'string' && nome.trim() ? nome.trim() : null;
+}
+
 export function nfseRowToEmission(row: NfseListRow): NfseEmission {
   const emission: NfseEmission = {
     id: row.id,
@@ -79,6 +92,8 @@ export function nfseRowToEmission(row: NfseListRow): NfseEmission {
     updated_at: row.created_at,
     fisqal_dps_id: null,
     fisqal_fiscal_request_id: null,
+    tomador_avulso: row.tomador_avulso ?? null,
+    intermediario_avulso: row.intermediario_avulso ?? null,
   };
   return emission;
 }

@@ -42,6 +42,88 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.0',
+    date: '7 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Simulador de venda: veja quanto sobra antes de cobrar',
+        description: 'Uma aba nova em Configurações, em Integrações, onde você coloca o valor da venda, escolhe entre Pix, boleto ou cartão e vê na hora quanto cai na sua conta, quanto foi de taxa, o valor de cada parcela para o cliente, a data em que cada uma chega e quanto custaria antecipar tudo. Os números usam as taxas da sua própria conta.',
+        category: 'recurso',
+      },
+      {
+        title: 'Seu cliente paga com cartão sem sair da sua página',
+        description: 'Antes, ao escolher cartão, o cliente era levado para uma página de fora. Agora ele preenche os dados do cartão na sua própria página de pagamento, com a sua logo, a sua cor e selo de segurança. O pagamento continua sendo processado com a mesma segurança de sempre, e os dados do cartão nunca ficam guardados no sistema.',
+        category: 'recurso',
+      },
+      {
+        title: 'Nota fiscal para quem ainda não é seu cliente cadastrado',
+        description: 'Na hora de emitir uma NFS-e você pode digitar o tomador na hora, com nome, CPF ou CNPJ e endereço, sem precisar criar um cadastro só para aquela nota. Se preferir cadastrar, agora dá para criar o cliente ali mesmo pelo botão de mais, sem sair do meio da emissão.',
+        category: 'recurso',
+      },
+      {
+        title: 'As taxas mostradas agora são as da sua conta',
+        description: 'A tela de Recebimentos mostrava uma tabela fixa de taxas, e nela o Pix aparecia como zero. Não era verdade: o Pix tem uma tarifa fixa por recebimento, com as primeiras do mês isentas. Agora as taxas de Pix, boleto, cartão e antecipação são lidas direto da sua conta, com a data da última atualização. Se por algum motivo não der para ler, o sistema avisa que aqueles são valores de referência em vez de mostrar um número errado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cobrança no cartão à vista podia sair com valor a mais sem aviso',
+        description: 'Quem deixou configurado para repassar a taxa do cartão ao cliente tinha o valor ajustado também nas cobranças à vista, mas a escolha de quem paga a taxa só aparecia na tela quando havia parcelamento. Agora a opção aparece sempre que a forma for cartão, com o efeito em dinheiro logo abaixo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Os códigos de serviço voltaram a aparecer na busca',
+        description: 'No cadastro de tipo de serviço, a busca de código de serviço e de código NBS não trazia nenhum resultado e mostrava um erro. Agora a lista abre normalmente e a busca funciona mesmo digitando sem acento.',
+        category: 'correcao',
+      },
+      {
+        title: 'O intermediário do serviço não estava indo na nota',
+        description: 'O campo de intermediário podia ser preenchido, mas o dado não era enviado para a prefeitura e a nota saía sem ele, sem nenhum aviso. Enquanto o envio não fica pronto, o campo passa a avisar isso de forma clara e a emissão pede que ele seja removido, para você não emitir uma nota diferente do que preencheu.',
+        category: 'correcao',
+      },
+      {
+        title: 'Quanto você recebe aparece antes de gerar a cobrança',
+        description: 'No formulário de nova cobrança, um resumo mostra o valor, a taxa, quanto entra na sua conta e, no cartão parcelado, o valor de cada parcela para o cliente e quando cada uma cai. Dá para simular a antecipação e comparar com o valor sem antecipar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cliente sem CPF ou CNPJ resolve na hora',
+        description: 'Antes você preenchia a cobrança inteira e só descobria no final que faltava o documento do cliente. Agora o aviso aparece assim que você escolhe o cliente, com um botão que abre o cadastro ali mesmo. Ao salvar, você volta para a cobrança com tudo que já tinha preenchido. O mesmo acontece na emissão de nota fiscal.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Conta que recebe o dinheiro agora é obrigatória',
+        description: 'Sem escolher a conta de destino, a cobrança paga não entrava no seu Financeiro. A tela passa a avisar enquanto a conta não estiver definida e pede a escolha na hora de salvar. Se você ainda não tem nenhuma conta cadastrada, aparece um caminho direto para criar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'CNPJ preenche o endereço sozinho nas configurações fiscais',
+        description: 'Digite o CNPJ da sua empresa e a razão social e o endereço vêm preenchidos, incluindo o código do município que a prefeitura exige e que não aparece na tela. Campos já preenchidos por você não são sobrescritos. O CNPJ e o CEP também passam a aparecer formatados, aqui e no cadastro de clientes.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O percentual do Simples fica salvo e não precisa ser digitado toda vez',
+        description: 'O percentual de tributos do Simples Nacional passou a ficar em Configurações fiscais, na aba de tributação. Toda nota nova já nasce com ele preenchido, e você ainda pode mudar o valor em uma nota específica quando precisar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criar cliente sem sair da tela em que você está',
+        description: 'Todo campo de cliente do sistema ganhou um botão de mais do lado, para cadastrar na hora e já sair selecionado. Vale na ordem de serviço, no orçamento, no contrato, na agenda, nas contas, na cobrança, na assinatura, no equipamento e no lead.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tela de notas fiscais mais direta',
+        description: 'A listagem das notas virou a primeira aba e o relatório ficou em seguida. No computador o botão de nova nota deixou de ficar flutuando sobre a tela e virou um botão normal no topo. Baixar o PDF agora abre a nota em uma aba nova, e a tela de cadastro de serviço ficou mais larga, sem aquela rolagem para o lado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cores mais legíveis no tema claro',
+        description: 'As abas dos menus laterais e os botões de escolha, como o de quem paga a taxa do cartão, estavam com um tom lavado que parecia desabilitado. Agora ficam com a cor cheia e texto branco, deixando claro o que está selecionado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.23.0',
     date: '6 de setembro de 2026',
     type: 'minor',

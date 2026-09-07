@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
-import { landlineMask, mobileMask } from '@/utils/masks';
+import { landlineMask, mobileMask, cpfCnpjMask, cepMask } from '@/utils/masks';
 import { CnpjDocumentInput } from '@/components/customers/CnpjDocumentInput';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -134,7 +134,7 @@ export function CustomerFormDialog({
           customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
           company_name: (customer as any)?.company_name ?? '',
           nome_fantasia: (customer as any)?.nome_fantasia ?? '',
-          document: customer?.document ?? '',
+          document: cpfCnpjMask(customer?.document ?? ''),
           email: customer?.email ?? '',
           phone: customer?.phone ?? '',
           celular: (customer as any)?.celular ?? '',
@@ -145,7 +145,7 @@ export function CustomerFormDialog({
           neighborhood: (customer as any)?.neighborhood ?? '',
           city: customer?.city ?? '',
           state: customer?.state ?? '',
-          zip_code: customer?.zip_code ?? '',
+          zip_code: cepMask(customer?.zip_code ?? ''),
           notes: customer?.notes ?? '',
           origin: (customer as any)?.origin ?? '',
           inscricao_municipal: (customer as any)?.inscricao_municipal ?? '',

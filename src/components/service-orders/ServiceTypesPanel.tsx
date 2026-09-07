@@ -507,6 +507,7 @@ export function ServiceTypesPanel({
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editingId ? t.modalTitleEdit : t.modalTitleCreate}
+        className="sm:max-w-[860px]"
         footer={
           <div className="space-y-2">
             {/* O erro pode estar na aba Fiscal enquanto o usuário olha a de
@@ -543,114 +544,111 @@ export function ServiceTypesPanel({
 
           {/* ---- Aba: Dados (uso do dia a dia) ---- */}
           <TabsContent value="dados" className="mt-0 space-y-4">
-          <div className="space-y-2">
-            <Label>{t.labelName}</Label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder={t.placeholderName}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t.labelColor}</Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={form.color}
-                onChange={(e) => setForm({ ...form, color: e.target.value })}
-                className="h-10 w-10 rounded cursor-pointer border-0"
-              />
+            <div className="space-y-2">
+              <Label>{t.labelName}</Label>
               <Input
-                value={form.color}
-                onChange={(e) => setForm({ ...form, color: e.target.value })}
-                className="flex-1"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder={t.placeholderName}
               />
             </div>
-          </div>
-
-          {/* Categoria de serviço */}
-          <div className="space-y-2">
-            <Label>{tCat.labelCategory}</Label>
-            <Select
-              value={form.category_id || '__none__'}
-              onValueChange={(v) => setForm({ ...form, category_id: v === '__none__' ? '' : v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={tCat.noCategory} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">{tCat.noCategory}</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="inline-block h-3 w-3 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.color ?? '#6B7280' }}
-                      />
-                      {cat.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t.labelDescription}</Label>
-            <Textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder={t.placeholderDescription}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t.labelPrefix}</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                value={form.number_prefix}
-                onChange={(e) => setForm({ ...form, number_prefix: e.target.value })}
-                placeholder={t.placeholderPrefix}
-                className="w-40"
-              />
-              <span className="text-sm font-mono text-muted-foreground whitespace-nowrap">
-                {`→ ${form.number_prefix || 'OS'}-2026-0001`}
-              </span>
+            <div className="space-y-2">
+              <Label>{t.labelColor}</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="h-10 w-10 rounded cursor-pointer border-0"
+                />
+                <Input
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="flex-1"
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={form.requires_equipment}
-              onCheckedChange={(checked) => setForm({ ...form, requires_equipment: checked })}
-            />
-            <Label>{t.labelEquipmentRequired}</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={form.is_active}
-              onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
-            />
-            <Label>{t.labelActive}</Label>
-          </div>
 
-          {/* -------------------------------------------------------------------
-           * Preço padrão: valor sugerido ao adicionar este serviço em um
-           * orçamento. Opcional. Tem menor precedência que a calculadora de
-           * custos (BDI), mas serve de atalho quando o custo não está
-           * configurado. Campo de dinheiro: type="number" step="0.01".
-           * ------------------------------------------------------------------- */}
-          <div className="space-y-2">
-            <Label>{t.labelDefaultPrice}</Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={form.default_price}
-              onChange={(e) => setForm({ ...form, default_price: e.target.value })}
-              placeholder={t.placeholderDefaultPrice}
-              className="sm:max-w-[200px]"
-            />
-            <p className="text-[11px] text-muted-foreground">{t.helperDefaultPrice}</p>
-          </div>
+            {/* Categoria de serviço */}
+            <div className="space-y-2">
+              <Label>{tCat.labelCategory}</Label>
+              <Select
+                value={form.category_id || '__none__'}
+                onValueChange={(v) => setForm({ ...form, category_id: v === '__none__' ? '' : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={tCat.noCategory} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{tCat.noCategory}</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="inline-block h-3 w-3 rounded-full shrink-0"
+                          style={{ backgroundColor: cat.color ?? '#6B7280' }}
+                        />
+                        {cat.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t.labelDescription}</Label>
+              <Textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder={t.placeholderDescription}
+              />
+            </div>
+
+            {/* Grid 2 colunas: Prefixo + Preço Padrão */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t.labelPrefix}</Label>
+                <Input
+                  value={form.number_prefix}
+                  onChange={(e) => setForm({ ...form, number_prefix: e.target.value })}
+                  placeholder={t.placeholderPrefix}
+                />
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {`→ ${form.number_prefix || 'OS'}-2026-0001`}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>{t.labelDefaultPrice}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.default_price}
+                  onChange={(e) => setForm({ ...form, default_price: e.target.value })}
+                  placeholder={t.placeholderDefaultPrice}
+                />
+                <p className="text-[11px] text-muted-foreground">{t.helperDefaultPrice}</p>
+              </div>
+            </div>
+
+            {/* Switches (Equipamento obrigatório + Ativo) */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.requires_equipment}
+                  onCheckedChange={(checked) => setForm({ ...form, requires_equipment: checked })}
+                />
+                <Label>{t.labelEquipmentRequired}</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.is_active}
+                  onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
+                />
+                <Label>{t.labelActive}</Label>
+              </div>
+            </div>
           </TabsContent>
 
           {/* -------------------------------------------------------------------
@@ -668,87 +666,90 @@ export function ServiceTypesPanel({
                 </p>
               </div>
 
-              {/* Grupo 1: classificação do serviço (código nacional + item da LC 116). */}
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">{t.labelCTribNac}</Label>
-                  <TaxCodeCombobox
-                    type="servico"
-                    value={form.codigo_servico}
-                    onSelect={(codigo, item) =>
-                      setForm((f) => ({
-                        ...f,
-                        codigo_servico: codigo,
-                        // Auto-preenche o item LC 116 quando o código traz a referência.
-                        item_lc116: item?.itemLc116 ? String(item.itemLc116) : f.item_lc116,
-                      }))
-                    }
-                    placeholder={t.placeholderTaxSearch}
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    {t.helperCTribNac}
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">{t.labelCTribMun}</Label>
-                  <Input
-                    value={form.codigo_tributacao_municipal}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        // Só dígitos, no máximo 3 (formato do cTribMun).
-                        codigo_tributacao_municipal: e.target.value.replace(/\D/g, '').slice(0, 3),
-                      })
-                    }
-                    placeholder={t.placeholderCTribMun}
-                    inputMode="numeric"
-                    maxLength={3}
-                    className="sm:max-w-[160px]"
-                  />
-                  {cTribMunInvalid && (
-                    <p className="text-sm text-destructive">{t.errorCTribMun}</p>
-                  )}
-                  <p className="text-[11px] text-muted-foreground">
-                    {t.helperCTribMun}
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">{t.labelLC116}</Label>
-                  <Input
-                    value={form.item_lc116}
-                    onChange={(e) => setForm({ ...form, item_lc116: e.target.value })}
-                    placeholder="14.01"
-                  />
-                </div>
-              </div>
-
-              {/* Grupo 2: NBS. */}
+              {/* Código do serviço (classificação nacional): ocupa largura total */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">{t.labelNBS}</Label>
+                <Label className="text-sm font-medium">{t.labelCTribNac}</Label>
                 <TaxCodeCombobox
-                  type="nbs"
-                  value={form.codigo_nbs}
-                  onSelect={(codigo) => setForm((f) => ({ ...f, codigo_nbs: codigo }))}
+                  type="servico"
+                  value={form.codigo_servico}
+                  onSelect={(codigo, item) =>
+                    setForm((f) => ({
+                      ...f,
+                      codigo_servico: codigo,
+                      // Auto-preenche o item LC 116 quando o código traz a referência.
+                      item_lc116: item?.itemLc116 ? String(item.itemLc116) : f.item_lc116,
+                    }))
+                  }
                   placeholder={t.placeholderTaxSearch}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  {t.helperNBS}
+                  {t.helperCTribNac}
                 </p>
               </div>
 
-              {/* Grupo 3: tributação (ISS). */}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">{t.labelISS}</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={form.iss_aliquota}
-                  onChange={(e) => setForm({ ...form, iss_aliquota: e.target.value })}
-                  placeholder="5"
-                  className="sm:max-w-[160px]"
-                />
+              {/* Grid 2 colunas para os campos restantes (desktop) */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Coluna 1: cTribMun + LC116 */}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">{t.labelCTribMun}</Label>
+                    <Input
+                      value={form.codigo_tributacao_municipal}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          // Só dígitos, no máximo 3 (formato do cTribMun).
+                          codigo_tributacao_municipal: e.target.value.replace(/\D/g, '').slice(0, 3),
+                        })
+                      }
+                      placeholder={t.placeholderCTribMun}
+                      inputMode="numeric"
+                      maxLength={3}
+                    />
+                    {cTribMunInvalid && (
+                      <p className="text-sm text-destructive">{t.errorCTribMun}</p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      {t.helperCTribMun}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">{t.labelLC116}</Label>
+                    <Input
+                      value={form.item_lc116}
+                      onChange={(e) => setForm({ ...form, item_lc116: e.target.value })}
+                      placeholder="14.01"
+                    />
+                  </div>
+                </div>
+
+                {/* Coluna 2: NBS + ISS */}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">{t.labelNBS}</Label>
+                    <TaxCodeCombobox
+                      type="nbs"
+                      value={form.codigo_nbs}
+                      onSelect={(codigo) => setForm((f) => ({ ...f, codigo_nbs: codigo }))}
+                      placeholder={t.placeholderTaxSearch}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {t.helperNBS}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">{t.labelISS}</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={form.iss_aliquota}
+                      onChange={(e) => setForm({ ...form, iss_aliquota: e.target.value })}
+                      placeholder="5"
+                    />
+                  </div>
+                </div>
               </div>
             </TabsContent>
           )}

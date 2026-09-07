@@ -18,9 +18,11 @@ import {
 } from 'lucide-react';
 import { Lock } from 'lucide-react';
 import { Wallet } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent';
+import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
 import { useWhatsappSettings } from '@/hooks/useWhatsappSettings';
 import { useWhatsappConnection } from '@/hooks/useWhatsappConnection';
 import { useWhatsappQuota } from '@/hooks/useWhatsappQuota';
@@ -31,7 +33,7 @@ import { cn } from '@/lib/utils';
 const WHATSAPP_COMING_SOON = true;
 
 // ─── Subabas das Integrações (extensível) ────────────────────────────────────
-type IntegrationSubTab = 'whatsapp' | 'asaas';
+type IntegrationSubTab = 'whatsapp' | 'asaas' | 'simulador';
 
 export function SettingsIntegrationContent() {
   const { locale } = useAppLocaleContext();
@@ -49,6 +51,13 @@ export function SettingsIntegrationContent() {
       value: 'asaas' as IntegrationSubTab,
       label: t.subTabs.asaas,
       icon: <Wallet className="h-4 w-4 shrink-0" />,
+    },
+    // Simulador de venda: NÃO é escondido quando a Asaas está desconectada —
+    // ele roda com a tabela de referência e é argumento de venda do add-on.
+    {
+      value: 'simulador' as IntegrationSubTab,
+      label: t.subTabs.simulador,
+      icon: <Calculator className="h-4 w-4 shrink-0" />,
     },
   ];
 
@@ -73,6 +82,7 @@ export function SettingsIntegrationContent() {
           WHATSAPP_COMING_SOON ? <WhatsappComingSoonCard /> : <WhatsappContent />
         )}
         {activeSubTab === 'asaas' && <SettingsAsaasContent />}
+        {activeSubTab === 'simulador' && <SettingsAsaasSimulator />}
       </div>
     </div>
   );

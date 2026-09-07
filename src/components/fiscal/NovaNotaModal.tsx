@@ -54,12 +54,29 @@ import type {
  * valorPis, valorCofins, valorCsll, percentualTribSn.
  * Campos OMITIDOS (não suportados): INSS, IRRF, deduções, descontos.
  *
+ * Tomador/intermediário: `customerId` (cadastrado) OU `tomadorAvulso`/
+ * `intermediarioAvulso` (digitado na hora, nunca os dois — migration
+ * 20260906210000). Endereço do avulso é tudo-ou-nada: incompleto vira 422
+ * `invalid_tomador` na emissão (validado no client em `pessoasErrors` antes
+ * de deixar emitir). Intermediário é aceito no RASCUNHO mas SEMPRE bloqueado
+ * na EMISSÃO (422 `intermediario_nao_suportado`) — o microserviço fiscal
+ * ainda não monta o grupo `interm` da DPS. Não é um "ainda não implementei
+ * a UI"; é limitação de backend deliberada até essa onda ser feita.
+ *
  * Edges usadas:
  *  - nfse-save-draft (rascunho — upsert por id)
  *  - nfse-emit (emissão — via emissionId ou body completo)
  */
 
 type StepKey = 'pessoas' | 'servico' | 'valores' | 'emitir';
+
+/** Códigos de erro da emissão que dizem respeito à etapa Pessoas (tomador/intermediário). */
+const PESSOAS_EMIT_ERROR_CODES = new Set([
+  'tomador_ambiguo',
+  'missing_customer',
+  'invalid_tomador',
+  'intermediario_nao_suportado',
+]);
 
 const STEPS: { key: StepKey }[] = [
   { key: 'pessoas' },
@@ -92,6 +109,62 @@ const emptyValores = (): NfseValoresState => ({
   valorCsll: 0,
   percentualTribSn: 0,
 });
+
+/**
+ * Campos do endereço avulso que o layout nacional exige QUANDO o bloco de
+ * endereço é enviado — espelha `ENDERECO_OBRIGATORIO` de
+ * `supabase/functions/_shared/nfse-handlers/common.ts` (mesma ordem, mesmos
+ * rótulos). Cliente valida ANTES de mandar pra edge: endereço pela metade só
+ * lá vira 422 `invalid_tomador` com uma mensagem tardia.
+ */
+const ENDERECO_AVULSO_CAMPOS: Array<[keyof NfseCustomer, string]> = [
+  ['address', 'logradouro'],
+  ['address_number', 'número'],
+  ['neighborhood', 'bairro'],
+  ['zip_code', 'CEP'],
+  ['ibge_municipality_code', 'código IBGE do município (preenchido pela busca do CEP)'],
+];
+
+/**
+ * `null` = endereço OK pra emitir (todo em branco OU todo preenchido).
+ * Array = endereço começado mas incompleto — rótulos PT-BR do que falta.
+ */
+function enderecoAvulsoIncompleto(party: NfseCustomer): string[] | null {
+  const val = (k: keyof NfseCustomer) => (party[k] as string | null | undefined)?.trim();
+  const preenchidos = ENDERECO_AVULSO_CAMPOS.filter(([k]) => val(k));
+  const faltando = ENDERECO_AVULSO_CAMPOS.filter(([k]) => !val(k));
+  const comecouEndereco = preenchidos.length > 0 || !!val('city') || !!val('state') || !!val('complement');
+  if (comecouEndereco && faltando.length > 0) {
+    return faltando.map(([, rotulo]) => rotulo);
+  }
+  return null;
+}
+
+/**
+ * Monta o objeto `tomadorAvulso`/`intermediarioAvulso` do body das edges a
+ * partir do `NfseCustomer` em modo manual. `null` quando a parte não está em
+ * modo manual (a edge trata `null` explícito como "limpar o avulso" — ver
+ * `resolverParte` em `nfse-save-draft`, que exige as DUAS colunas sempre
+ * juntas por causa do CHECK de exclusão mútua no banco).
+ */
+function buildPessoaAvulsoPayload(party: NfseCustomer | null): Record<string, unknown> | null {
+  if (!party || party.partyEntryMode !== 'manual') return null;
+  return {
+    nome: party.name || undefined,
+    documento: party.document || undefined,
+    email: party.email || undefined,
+    endereco: {
+      logradouro: party.address || undefined,
+      numero: party.address_number || undefined,
+      complemento: party.complement || undefined,
+      bairro: party.neighborhood || undefined,
+      cidade: party.city || undefined,
+      uf: party.state || undefined,
+      cep: party.zip_code || undefined,
+      ibge: party.ibge_municipality_code || undefined,
+    },
+  };
+}
 
 export interface NovaNotaModalProps {
   open: boolean;
@@ -185,6 +258,15 @@ export function NovaNotaModal({
         aliquotaIssqn: settings.iss_aliquota ?? 0,
       }));
     }
+    // Percentual de tributos do Simples Nacional: nasce do que o contador
+    // salvou em Configurações fiscais > Tributação, e segue editável nesta
+    // nota (não sobrescreve o que o usuário já digitou).
+    if (settings.percentual_trib_sn != null && !valores.percentualTribSn) {
+      setValores((prev) => ({
+        ...prev,
+        percentualTribSn: settings.percentual_trib_sn ?? 0,
+      }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, settings]);
 
@@ -237,8 +319,39 @@ export function NovaNotaModal({
     if (!dataCompetencia) e.push(s.pessoas.competencia.required);
     else if (dataCompetencia > todayISO()) e.push(s.pessoas.competencia.futureError);
     if (!tomador) e.push(s.pessoas.tomador.required);
+
+    const tomadorManual = tomador?.partyEntryMode === 'manual';
+
+    if (tomadorManual) {
+      if (!tomador?.name?.trim()) e.push(s.pessoas.tomador.manualNameRequired);
+      if (!tomador?.document?.trim()) e.push(s.pessoas.tomador.manualDocRequired);
+      const faltandoEndereco = enderecoAvulsoIncompleto(tomador);
+      if (faltandoEndereco) {
+        e.push(
+          s.pessoas.manual.enderecoIncompletoTomador.replace(
+            '{campos}',
+            faltandoEndereco.join(', '),
+          ),
+        );
+      }
+    } else if (tomador && !tomador.document?.trim()) {
+      // Promovido de aviso pra pendência bloqueante (Tarefa 2): deixar
+      // avançar aqui só adiava a quebra pra depois de preencher Serviço e
+      // Valores — a nota é recusada na emissão sem CPF/CNPJ do tomador.
+      e.push(s.pessoas.tomador.missingDoc);
+    }
+
+    // Intermediário: aceito no rascunho, SEMPRE bloqueado na emissão (backend
+    // 2026-09-06 — o microserviço fiscal ainda não monta o grupo `interm` da
+    // DPS). Não é validação de campo: é a própria presença do intermediário
+    // que impede emitir, então avisa aqui em vez de deixar o usuário só
+    // descobrir no clique de Emitir.
+    if (intermediario) {
+      e.push(s.pessoas.intermediario.naoSuportadoEmissao);
+    }
+
     return e;
-  }, [dataCompetencia, tomador, s]);
+  }, [dataCompetencia, tomador, intermediario, s]);
 
   const servicoErrors = useMemo(() => {
     const e: string[] = [];
@@ -376,8 +489,13 @@ export function NovaNotaModal({
   // ---- Montar body do rascunho ----
   const buildDraftBody = useCallback(() => ({
     ...(draftId ? { id: draftId } : {}),
-    customerId: tomador?.id ?? null,
-    intermediarioCustomerId: intermediario?.id ?? null,
+    // Tomador/intermediário: cadastrado (id) XOR avulso (digitado na hora) —
+    // manda as DUAS chaves sempre juntas (uma delas null) pra edge trocar de
+    // modo sem esbarrar no CHECK de exclusão mútua do banco.
+    customerId: tomador?.partyEntryMode === 'manual' ? null : (tomador?.id || null),
+    tomadorAvulso: buildPessoaAvulsoPayload(tomador),
+    intermediarioCustomerId: intermediario?.partyEntryMode === 'manual' ? null : (intermediario?.id || null),
+    intermediarioAvulso: buildPessoaAvulsoPayload(intermediario),
     dataCompetencia: dataCompetencia || null,
     regimeApuracao: isSimples ? regimeApuracao : null,
     servico: {
@@ -459,7 +577,9 @@ export function NovaNotaModal({
       const emitBody = emissionIdToUse
         ? { emissionId: emissionIdToUse }
         : {
-            customerId: tomador!.id,
+            ...(tomador?.partyEntryMode === 'manual'
+              ? { tomadorAvulso: buildPessoaAvulsoPayload(tomador) }
+              : { customerId: tomador!.id }),
             dataCompetencia: dataCompetencia || undefined,
             servico: {
               descricao: servico.discriminacao,
@@ -509,6 +629,12 @@ export function NovaNotaModal({
           setBlockOpen(true);
           return;
         }
+        // Erros sobre tomador/intermediário nascem na etapa Pessoas — manda o
+        // usuário de volta pra lá em vez de deixá-lo preso na etapa Emitir
+        // sem enxergar o campo problemático.
+        if (PESSOAS_EMIT_ERROR_CODES.has(emitRes.errorCode ?? '')) {
+          setActiveStep('pessoas');
+        }
         toast.error(emitRes.message ?? s.toasts.emitError);
         return;
       }
@@ -529,28 +655,6 @@ export function NovaNotaModal({
   const handleUpgraded = async () => {
     await handleEmit();
   };
-
-  // ---- Lista de customers como NfseCustomer (subconjunto) ----
-  const nfseCustomers = useMemo(
-    () =>
-      customers.map((c): NfseCustomer => ({
-        id: c.id,
-        name: c.name,
-        company_name: c.company_name,
-        nome_fantasia: c.nome_fantasia,
-        document: c.document,
-        address: c.address,
-        address_number: c.address_number,
-        complement: c.complement,
-        neighborhood: c.neighborhood,
-        city: c.city,
-        state: c.state,
-        zip_code: c.zip_code,
-        ibge_municipality_code: c.ibge_municipality_code,
-        inscricao_municipal: c.inscricao_municipal,
-      })),
-    [customers],
-  );
 
   // ---- Barra de resumo ----
   const summaryBar = (
@@ -635,7 +739,7 @@ export function NovaNotaModal({
 
       {activeStep === 'pessoas' && (
         <PessoasStep
-          customers={nfseCustomers}
+          customers={customers}
           isSimples={isSimples}
           dataCompetencia={dataCompetencia}
           onDataCompetencia={setDataCompetencia}

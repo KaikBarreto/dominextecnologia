@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -33,6 +33,8 @@ import {
   AlertTriangle,
   ShieldCheck,
   Info,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 import asaasLogo from '@/assets/logo-asaas.png';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -40,6 +42,9 @@ import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 // Collapsible removido: guia agora é sempre visível
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { useTenantFees } from '@/hooks/useTenantCardFees';
+import { AsaasFeesCard } from '@/components/settings/AsaasFeesCard';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,6 +79,12 @@ export function SettingsAsaasContent() {
 
   const { accounts: financialAccounts } = useFinancialAccounts();
 
+  // Taxas REAIS da conta Asaas do tenant (substituem o texto fixo antigo).
+  const tenantFees = useTenantFees();
+
+  // Âncora da seção "Lançamento no Financeiro" (CTA do alerta de pendência).
+  const financeSectionRef = useRef<HTMLDivElement>(null);
+
   const { categories: allCategories } = useFinancialCategories();
   const incomeCategories = allCategories.filter(
     (c) => c.type === 'income' && c.is_active,
@@ -81,6 +92,12 @@ export function SettingsAsaasContent() {
 
   const [apiKey, setApiKey] = useState('');
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+
+  // Erros INLINE em PT-BR (antes essas validações eram guard-clauses silenciosas:
+  // o clique em Salvar simplesmente não fazia nada).
+  const [chargePrefsError, setChargePrefsError] = useState<string | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [financeAccountError, setFinanceAccountError] = useState<string | null>(null);
 
   // Campos de multa/juros: string para permitir decimais ("2,5") sem forçar ponto.
   // Sincroniza com o valor do banco quando ele muda (ex: após salvar ou na carga inicial).
@@ -144,8 +161,17 @@ export function SettingsAsaasContent() {
   const handleSaveChargePrefs = async () => {
     const dueDays = parseInt10(dueDaysInput);
     const maxInstallments = parseInt10(maxInstallmentsInput);
-    if (isNaN(dueDays) || dueDays < 0) return;
-    if (cardEnabled && (isNaN(maxInstallments) || maxInstallments < 1)) return;
+    // Antes: `return` silencioso — o botão não fazia nada e o usuário não sabia
+    // por quê. Agora o motivo aparece embaixo do botão, em PT-BR.
+    if (isNaN(dueDays) || dueDays < 0) {
+      setChargePrefsError(t.activeState.dueDaysError);
+      return;
+    }
+    if (cardEnabled && (isNaN(maxInstallments) || maxInstallments < 1)) {
+      setChargePrefsError(t.activeState.maxInstallmentsError);
+      return;
+    }
+    setChargePrefsError(null);
     try {
       await setChargePreferences.mutateAsync({
         default_due_days: dueDays,
@@ -167,8 +193,15 @@ export function SettingsAsaasContent() {
       discountPercentInput.trim() === '' ? null : parsePercent(discountPercentInput);
     const discDays =
       discountDaysInput.trim() === '' ? null : parseInt10(discountDaysInput);
-    if (discPct !== null && (isNaN(discPct) || discPct < 0 || discPct > 100)) return;
-    if (discDays !== null && (isNaN(discDays) || discDays < 0)) return;
+    if (discPct !== null && (isNaN(discPct) || discPct < 0 || discPct > 100)) {
+      setDiscountError(t.activeState.discountPercentError);
+      return;
+    }
+    if (discDays !== null && (isNaN(discDays) || discDays < 0)) {
+      setDiscountError(t.activeState.discountDaysError);
+      return;
+    }
+    setDiscountError(null);
     try {
       await setChargePreferences.mutateAsync({
         default_discount_percent: discPct,
@@ -180,8 +213,31 @@ export function SettingsAsaasContent() {
     }
   };
 
+  // Contas bancárias elegíveis pra receber a receita da Asaas (cartão de crédito
+  // não recebe, é conta de fatura). Se a lista estiver vazia o tenant ainda não
+  // cadastrou conta nenhuma no Financeiro — aí não dá pra exigir, só orientar.
+  const eligibleFinanceAccounts = financialAccounts.filter(
+    (a) => a.is_active && a.type !== 'cartao',
+  );
+  const hasEligibleAccounts = eligibleFinanceAccounts.length > 0;
+
+  // Pendência: integração ligada, existe conta pra escolher, mas nenhuma salva.
+  // Vale pros tenants que já usavam a integração antes desta regra existir —
+  // eles NÃO ficam com a tela quebrada, veem um alerta com o caminho pronto.
+  const financeAccountPending =
+    isActive && hasEligibleAccounts && !defaultFinanceAccountId;
+
   // Salvar seção "Lançamento no Financeiro"
   const handleSaveFinanceConfig = async () => {
+    // Conta de destino é OBRIGATÓRIA: sem ela a baixa automática não sabe em que
+    // conta lançar a receita (a cobrança fica paga na Asaas e invisível no
+    // Financeiro). Só não exigimos quando não há NENHUMA conta pra escolher —
+    // nesse caso o bloco de orientação aparece no lugar do select.
+    if (hasEligibleAccounts && !financeAccountId) {
+      setFinanceAccountError(t.activeState.financeAccountRequiredError);
+      return;
+    }
+    setFinanceAccountError(null);
     try {
       await setChargePreferences.mutateAsync({
         default_finance_account_id: financeAccountId || null,
@@ -191,6 +247,21 @@ export function SettingsAsaasContent() {
       toast({ title: t.activeState.financeConfigToastOk });
     } catch {
       // toast de erro já é disparado pelo hook
+    }
+  };
+
+  /** Rola até a seção de Financeiro (CTA do alerta de pendência). */
+  const scrollToFinanceSection = () => {
+    financeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  /** Força rebuscar as taxas na Asaas (botão "Atualizar taxas"). */
+  const handleSyncFees = async () => {
+    try {
+      await tenantFees.sync.mutateAsync();
+      toast({ title: t.activeState.feesRefreshOk });
+    } catch {
+      toast({ variant: 'destructive', title: t.activeState.feesRefreshError });
     }
   };
 
@@ -404,18 +475,55 @@ export function SettingsAsaasContent() {
                 </div>
               )}
 
+              {/* Pendência bloqueante da baixa automática: sem conta de destino
+                  a receita da cobrança paga não entra no Financeiro. Não impede
+                  usar a integração — sinaliza e leva direto pra seção. */}
+              {financeAccountPending && (
+                <button
+                  type="button"
+                  onClick={scrollToFinanceSection}
+                  className="w-full text-left flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 transition-colors hover:bg-amber-500/15"
+                >
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight">
+                      {t.activeState.financeAccountPendingTitle}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t.activeState.financeAccountPendingDesc}
+                    </p>
+                    <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-500">
+                      {t.activeState.financeAccountPendingCta}
+                      <ArrowRight className="h-3 w-3" />
+                    </span>
+                  </div>
+                </button>
+              )}
+
               <Separator />
 
-              {/* Taxas informativas (cobradas pela Asaas, repasse puro) */}
-              <div className="space-y-2">
-                <p className="text-sm font-semibold">{t.activeState.feesTitle}</p>
-                <div className="rounded-lg border divide-y text-sm">
-                  <FeeRow label={t.activeState.feePix} value={t.activeState.feePixValue} />
-                  <FeeRow label={t.activeState.feeBoleto} value={t.activeState.feeBoletoValue} />
-                  <FeeRow label={t.activeState.feeCard} value={t.activeState.feeCardValue} />
-                </div>
-                <p className="text-xs text-muted-foreground">{t.activeState.feesNote}</p>
-              </div>
+              {/* Taxas REAIS da conta Asaas do tenant (cobradas pela Asaas,
+                  repasse puro). Antes eram strings fixas de i18n — e o Pix
+                  aparecia como "R$ 0,00", que é falso. */}
+              <AsaasFeesCard
+                data={
+                  tenantFees.card
+                    ? {
+                        card: tenantFees.card,
+                        pix: tenantFees.pix,
+                        bankSlip: tenantFees.bankSlip,
+                        anticipation: tenantFees.anticipation,
+                        settlementDays: tenantFees.settlementDays,
+                        source: tenantFees.source ?? 'fallback',
+                        extrasSource: tenantFees.extrasSource ?? 'fallback',
+                      }
+                    : null
+                }
+                syncedAt={tenantFees.syncedAt}
+                isLoading={tenantFees.isLoading}
+                isSyncing={tenantFees.sync.isPending}
+                onSync={handleSyncFees}
+              />
 
               <Separator />
 
@@ -655,6 +763,13 @@ export function SettingsAsaasContent() {
                   </div>
                 )}
 
+                {chargePrefsError && (
+                  <p className="flex items-start gap-1.5 text-xs text-destructive">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    {chargePrefsError}
+                  </p>
+                )}
+
                 <Button
                   size="sm"
                   onClick={handleSaveChargePrefs}
@@ -736,6 +851,13 @@ export function SettingsAsaasContent() {
                 </div>
                 <p className="text-xs text-muted-foreground">{t.activeState.discountHint}</p>
 
+                {discountError && (
+                  <p className="flex items-start gap-1.5 text-xs text-destructive">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    {discountError}
+                  </p>
+                )}
+
                 <Button
                   size="sm"
                   onClick={handleSaveDiscount}
@@ -756,34 +878,73 @@ export function SettingsAsaasContent() {
               <Separator />
 
               {/* ── Seção: Lançamento no Financeiro ────────────────────── */}
-              <div className="space-y-3">
+              <div className="space-y-3" ref={financeSectionRef}>
                 <div className="space-y-0.5">
                   <p className="text-sm font-semibold">{t.activeState.financeConfigTitle}</p>
                   <p className="text-xs text-muted-foreground">{t.activeState.financeConfigDesc}</p>
                 </div>
 
-                {/* Conta bancária onde a receita cai */}
+                {/* Conta bancária onde a receita cai — OBRIGATÓRIA.
+                    Sem ela a baixa automática não tem onde lançar a receita.
+                    A opção "Nenhuma" saiu de propósito. */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">{t.activeState.financeAccountLabel}</Label>
-                  <Select
-                    value={financeAccountId || '__none__'}
-                    onValueChange={(v) => setFinanceAccountId(v === '__none__' ? '' : v)}
-                    disabled={setChargePreferences.isPending}
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder={t.activeState.financeAccountNone} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">{t.activeState.financeAccountNone}</SelectItem>
-                      {financialAccounts
-                        .filter((a) => a.is_active && a.type !== 'cartao')
-                        .map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs font-medium">
+                    {t.activeState.financeAccountLabel}
+                    <span className="text-destructive ml-0.5">*</span>
+                  </Label>
+
+                  {hasEligibleAccounts ? (
+                    <>
+                      <Select
+                        value={financeAccountId || undefined}
+                        onValueChange={(v) => {
+                          setFinanceAccountId(v);
+                          setFinanceAccountError(null);
+                        }}
+                        disabled={setChargePreferences.isPending}
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            'h-9 text-sm',
+                            financeAccountError && 'border-destructive',
+                          )}
+                        >
+                          <SelectValue placeholder={t.activeState.financeAccountPlaceholder} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {eligibleFinanceAccounts.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {financeAccountError && (
+                        <p className="flex items-start gap-1.5 text-xs text-destructive">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                          {financeAccountError}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    /* Sem NENHUMA conta cadastrada o select ficaria vazio e o
+                       usuário travaria. Aqui a saída é explícita. */
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5">
+                      <p className="text-sm font-medium leading-tight">
+                        {t.activeState.financeAccountEmptyTitle}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.activeState.financeAccountEmptyDesc}
+                      </p>
+                      <Link
+                        to="/financeiro/movimentacoes"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-500 hover:underline"
+                      >
+                        {t.activeState.financeAccountEmptyCta}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 {/* Categoria da receita */}
@@ -890,15 +1051,6 @@ export function SettingsAsaasContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function FeeRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-3 py-2.5">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums">{value}</span>
     </div>
   );
 }

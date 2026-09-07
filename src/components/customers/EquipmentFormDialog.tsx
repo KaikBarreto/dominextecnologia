@@ -13,13 +13,12 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { buildStorageFilePath } from '@/utils/storagePath';
@@ -70,8 +69,6 @@ export function EquipmentFormDialog({
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<string[]>([]);
-  const [customerQuickOpen, setCustomerQuickOpen] = useState(false);
-  const [customerInitialName, setCustomerInitialName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initializedContextRef = useRef<string | null>(null);
 
@@ -287,16 +284,6 @@ export function EquipmentFormDialog({
       title={equipment ? tf.titleEdit : tf.titleNew}
       footer={footer}
     >
-      <QuickCustomerDialog
-        open={customerQuickOpen}
-        initialName={customerInitialName}
-        onOpenChange={setCustomerQuickOpen}
-        requireDocument={false}
-        onCreated={(id) => {
-          form.setValue('customer_id', id, { shouldValidate: true });
-          setCustomerQuickOpen(false);
-        }}
-      />
       <Form {...form}>
         <form id="equipment-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -341,18 +328,13 @@ export function EquipmentFormDialog({
                 <FormItem className="sm:col-span-2">
                   <FormLabel>{tf.fieldCustomer}</FormLabel>
                   <FormControl>
-                      <SearchableSelect
-                        options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
+                      <CustomerSelectField
+                        customers={customers}
                         value={field.value}
                         onValueChange={field.onChange}
                         placeholder={tf.customerPlaceholder}
                         searchPlaceholder={tf.customerSearch}
-                        onCreateOption={(query) => {
-                          setCustomerInitialName(query);
-                          setCustomerQuickOpen(true);
-                        }}
-                        createOptionLabel={tf.customerCreateLabel}
-                        createAlwaysLabel={tf.customerCreateAlwaysLabel}
+                        requireDocument={false}
                       />
                     </FormControl>
                     <FormMessage />

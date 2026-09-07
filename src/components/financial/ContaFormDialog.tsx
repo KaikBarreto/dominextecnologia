@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useFinancial, type TransactionInput } from '@/hooks/useFinancial';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { addMonths, addWeeks, addYears, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import type { TransactionType, FinancialTransaction } from '@/types/database';
@@ -113,7 +114,6 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   }));
 
   const activeCustomers = (customers || []).filter((c: any) => !c.is_deleted);
-  const customerOptions = activeCustomers.map((c: any) => ({ value: c.id, label: c.name }));
 
   const handleSubmit = async () => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
@@ -276,8 +276,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           {/* Customer selector */}
           <div className="space-y-1.5">
             <Label>{t.customerLabel}</Label>
-            <SearchableSelect
-              options={customerOptions}
+            <CustomerSelectField
+              customers={activeCustomers}
               value={customerId}
               onValueChange={setCustomerId}
               placeholder={t.customerPlaceholder}
