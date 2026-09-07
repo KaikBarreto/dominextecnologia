@@ -956,7 +956,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
             {/* QR do link de pagamento — o dono mostra a tela pro cliente escanear
                 e pagar na hora. Personalização (logo/estilo) vem do tenant via
                 useBrandedQrConfig (white-label). Serve tanto no caso normal quanto
-                órfão, pois ambos têm URL completa e funcional. */}
+                órfão, pois ambos têm URL completa e funcional.
+                allowPlatformLogoFallback=false: é artefato de PAGAMENTO — sem
+                logo do tenant, QR fica limpo (nunca a marca da plataforma). */}
             {displayUrl && (
               <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-white p-4">
                 <BrandedQRCode
@@ -966,6 +968,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   dotStyle={qrConfig.dotStyle}
                   cornerStyle={qrConfig.cornerStyle}
                   color={qrConfig.color}
+                  allowPlatformLogoFallback={false}
                 />
                 <p className="text-xs font-medium text-muted-foreground">{t.success.qrCaption}</p>
               </div>

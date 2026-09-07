@@ -220,6 +220,37 @@ export function useAsaasPayment() {
     }
   }, []);
 
+  /**
+   * Cancela UMA cobrança pendente na Asaas (edge `cancel-single-asaas-payment`).
+   *
+   * Usado quando o cliente troca de forma de pagamento no checkout: PIX/boleto já
+   * nascem como cobrança real na Asaas, e sem isso a anterior ficava órfã.
+   *
+   * SILENCIOSO POR CONTRATO: nunca lança, nunca mostra toast e nunca bloqueia o
+   * fluxo. Se a Asaas recusar ou a rede cair, o pior caso é a órfã que já existe
+   * hoje — a troca de método continua. Devolve true só quando o cancelamento (ou
+   * o no-op idempotente) foi confirmado pelo servidor.
+   */
+  const cancelPayment = useCallback(async (paymentId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("cancel-single-asaas-payment", {
+        body: { payment_id: paymentId },
+      });
+      if (error) {
+        console.warn(
+          "[checkout] cobrança anterior não pôde ser cancelada:",
+          await extractErrorMessage(error, data, "erro desconhecido"),
+        );
+        return false;
+      }
+      return data?.status === "cancelada" || data?.status === "ja_cancelada" ||
+        data?.status === "nao_encontrada";
+    } catch (err) {
+      console.warn("[checkout] falha ao cancelar cobrança anterior:", err);
+      return false;
+    }
+  }, []);
+
   const startPolling = useCallback(
     (paymentId: string, onPaid: () => void, intervalMs = 5000) => {
       if (pollingRef.current) clearInterval(pollingRef.current);
@@ -259,6 +290,7 @@ export function useAsaasPayment() {
     createBoletoPayment,
     createCardPayment,
     checkPaymentStatus,
+    cancelPayment,
     startPolling,
     stopPolling,
     reset,

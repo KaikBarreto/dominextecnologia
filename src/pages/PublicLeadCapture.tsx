@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { CepLookup } from '@/components/CepLookup';
+import { resolvePrimaryContrast } from '@/hooks/useWhiteLabel';
 import { cpfCnpjMask, phoneMask, cepMask } from '@/utils/masks';
 
 // -----------------------------------------------------------------------------
@@ -184,8 +185,12 @@ export default function PublicLeadCapture() {
     if (cs?.white_label_enabled && cs.white_label_primary_color) {
       const hsl = hexToHsl(cs.white_label_primary_color);
       if (hsl) {
-        root.setProperty('--primary', hsl);
-        root.setProperty('--ring', hsl);
+        // Texto (branco ou escuro-neutro) derivado da mesma cor do dono do
+        // link — sem isso o botão de envio cairia no branco fixo do :root.
+        const { primary: resolvedPrimary, foreground } = resolvePrimaryContrast(hsl);
+        root.setProperty('--primary', resolvedPrimary);
+        root.setProperty('--primary-foreground', foreground);
+        root.setProperty('--ring', resolvedPrimary);
       }
     }
   }, []);
@@ -220,6 +225,7 @@ export default function PublicLeadCapture() {
       const root = document.documentElement.style;
       try {
         const cached = localStorage.getItem('__wl_primary');
+        const cachedForeground = localStorage.getItem('__wl_primary_foreground');
         if (cached) {
           root.setProperty('--primary', cached);
           root.setProperty('--ring', cached);
@@ -227,9 +233,15 @@ export default function PublicLeadCapture() {
           root.removeProperty('--primary');
           root.removeProperty('--ring');
         }
+        if (cachedForeground) {
+          root.setProperty('--primary-foreground', cachedForeground);
+        } else {
+          root.removeProperty('--primary-foreground');
+        }
       } catch {
         root.removeProperty('--primary');
         root.removeProperty('--ring');
+        root.removeProperty('--primary-foreground');
       }
     };
   }, [shortCode, applyCompanyBrand]);

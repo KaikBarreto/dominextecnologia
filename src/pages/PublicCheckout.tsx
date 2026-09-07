@@ -653,13 +653,15 @@ function CheckoutInner({
                   {/* QR sempre em fundo branco fixo: lê em qualquer câmera.
                       O logo no centro é o do tenant quando existir — a edge só
                       manda `logo_url` com white-label ligado, então essa é a
-                      fonte da verdade (sem white-label o BrandedQRCode cai no
-                      ícone padrão da plataforma). */}
+                      fonte da verdade. Sem white-label, `allowPlatformLogoFallback=false`
+                      mantém o QR limpo (sem marca) — artefato de PAGAMENTO nunca
+                      leva a marca da plataforma no centro do QR de outro tenant. */}
                   <div className="mx-auto w-fit rounded-xl border border-border bg-white p-3">
                     <BrandedQRCode
                       value={charge.pix_copy_paste}
                       size={190}
                       logoUrl={company.logo_url}
+                      allowPlatformLogoFallback={false}
                     />
                   </div>
                   <div className="rounded-lg border border-border bg-muted/60 px-3 py-2.5 text-xs break-all font-mono text-muted-foreground max-h-20 overflow-y-auto">

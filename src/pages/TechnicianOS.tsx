@@ -48,6 +48,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { EditOsScopeDrawer, type EditOsScopeSeedItem, type AnsweredKey } from '@/components/service-orders/EditOsScopeDrawer';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
+import { resolvePrimaryContrast } from '@/hooks/useWhiteLabel';
 import { trackUsage } from '@/lib/trackUsage';
 import { DynamicFormQuestions, type FormValidationResult, type ContractVisibilityContext } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
@@ -1083,8 +1084,13 @@ function TechnicianOSInner() {
           }
         }
         const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-        document.documentElement.style.setProperty('--primary', hsl);
-        document.documentElement.style.setProperty('--ring', hsl);
+        // Texto (branco ou escuro-neutro) derivado da MESMA cor da OS visitada —
+        // sem isso o botão cairia no --primary-foreground herdado do :root
+        // (branco fixo), ilegível pra marcas claras do tenant exibido aqui.
+        const { primary: resolvedPrimary, foreground } = resolvePrimaryContrast(hsl);
+        document.documentElement.style.setProperty('--primary', resolvedPrimary);
+        document.documentElement.style.setProperty('--primary-foreground', foreground);
+        document.documentElement.style.setProperty('--ring', resolvedPrimary);
       }
     }
   }, []);
@@ -1337,6 +1343,7 @@ function TechnicianOSInner() {
       const root = document.documentElement.style;
       try {
         const cached = localStorage.getItem('__wl_primary');
+        const cachedForeground = localStorage.getItem('__wl_primary_foreground');
         if (cached) {
           root.setProperty('--primary', cached);
           root.setProperty('--ring', cached);
@@ -1344,10 +1351,16 @@ function TechnicianOSInner() {
           root.removeProperty('--primary');
           root.removeProperty('--ring');
         }
+        if (cachedForeground) {
+          root.setProperty('--primary-foreground', cachedForeground);
+        } else {
+          root.removeProperty('--primary-foreground');
+        }
       } catch (_) {
         // localStorage pode lançar em modo privado/iOS — cai no default.
         root.removeProperty('--primary');
         root.removeProperty('--ring');
+        root.removeProperty('--primary-foreground');
       }
     };
   }, [id, isAuthenticated, fetchPublicOS, fetchServiceOrder]);

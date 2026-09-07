@@ -223,7 +223,7 @@
          verde padrão da Dominex no reload/pull-to-refresh em tenant white-label.
          Não recomputa nada — só lê as chaves prontas gravadas por applyWhiteLabelTheme. -->
     <script>
-      (function(){try{var p=localStorage.getItem('__wl_primary');if(!p)return;var g=localStorage.getItem('__wl_gradient');var n=localStorage.getItem('__wl_nav_neon');var r=document.documentElement.style;r.setProperty('--primary',p);r.setProperty('--ring',p);r.setProperty('--sidebar-primary',p);r.setProperty('--sidebar-accent',p);r.setProperty('--sidebar-ring',p);if(g)r.setProperty('--gradient-brand',g);if(n)r.setProperty('--wl-nav-neon',n)}catch(e){}})();
+      (function(){try{var p=localStorage.getItem('__wl_primary');if(!p)return;var g=localStorage.getItem('__wl_gradient');var n=localStorage.getItem('__wl_nav_neon');var fg=localStorage.getItem('__wl_primary_foreground');var r=document.documentElement.style;r.setProperty('--primary',p);r.setProperty('--ring',p);r.setProperty('--sidebar-primary',p);r.setProperty('--sidebar-accent',p);r.setProperty('--sidebar-ring',p);if(g)r.setProperty('--gradient-brand',g);if(n)r.setProperty('--wl-nav-neon',n);if(fg)r.setProperty('--primary-foreground',fg)}catch(e){}})();
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

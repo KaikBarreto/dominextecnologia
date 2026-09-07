@@ -52,9 +52,14 @@ export const changelog: ChangelogEntry[] = [
         category: 'recurso',
       },
       {
-        title: 'Seu cliente paga com cartão sem sair da sua página',
-        description: 'Antes, ao escolher cartão, o cliente era levado para uma página de fora. Agora ele preenche os dados do cartão na sua própria página de pagamento, com a sua logo, a sua cor e selo de segurança. O pagamento continua sendo processado com a mesma segurança de sempre, e os dados do cartão nunca ficam guardados no sistema.',
+        title: 'Sua página de cobrança virou um checkout completo',
+        description: 'Antes, ao escolher cartão, o cliente era levado para uma página de fora. Agora ele paga na sua própria página, que ganhou cara de checkout: de um lado a sua marca, o valor e o vencimento, do outro as formas de pagamento e o formulário. O cartão é preenchido ali mesmo, com selo de segurança, e os dados nunca ficam guardados no sistema.',
         category: 'recurso',
+      },
+      {
+        title: 'Seu cliente vê quem está cobrando',
+        description: 'A página de cobrança agora mostra o telefone, o e-mail, o CNPJ e o endereço da sua empresa, logo abaixo do nome. Cada um desses dados só aparece se você deixar ligado em Configurações, nas mesmas opções que já valem para os documentos que você emite. É o mesmo cuidado de uma nota: quem recebe o link sabe exatamente para quem está pagando.',
+        category: 'melhoria',
       },
       {
         title: 'Nota fiscal para quem ainda não é seu cliente cadastrado',

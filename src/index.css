@@ -103,9 +103,15 @@ Design Premium com Verde da Marca #00C597
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    /* Primary - Cor da Marca #00C597 */
+    /* Primary - Cor da Marca #00C597. #00C597 puro com texto BRANCO mede
+       ~2,3:1 (reprova WCAG AA 4,5:1) — mas o MESMO fundo mede ~7,9:1 contra
+       um texto ESCURO neutro (0 0% 10%, o mesmo tom do --foreground acima).
+       Por isso --primary-foreground é ESCURO aqui, não branco: resolve o
+       contraste sem escurecer/alterar a cor da marca. Ver algoritmo completo
+       (resolvePrimaryContrast) em useWhiteLabel.ts — cobre também o caso
+       white-label, onde a cor muda por tenant. */
     --primary: 160 100% 39%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 0 0% 10%;
 
     /* Secondary - Preto Elegante */
     --secondary: 0 0% 8%;
@@ -167,7 +173,8 @@ Design Premium com Verde da Marca #00C597
     --popover-foreground: 0 0% 95%;
 
     --primary: 160 100% 39%;
-    --primary-foreground: 0 0% 100%;
+    /* Mesmo raciocínio do :root — ver comentário lá. */
+    --primary-foreground: 0 0% 10%;
 
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 95%;
@@ -221,6 +228,8 @@ Design Premium com Verde da Marca #00C597
     /* was: --primary: 160 100% 39%  (verde marca) */
     --primary: 0 0% 10%;
     /* was: --primary-foreground: 0 0% 100% */
+    /* Preto sobre branco já mede >17:1 — branco é mesmo o melhor foreground
+       aqui (resolvePrimaryContrast chegaria na mesma conclusão). */
     --primary-foreground: 0 0% 100%;
     /* was: --ring: 160 100% 39% */
     --ring: 0 0% 10%;
@@ -232,6 +241,8 @@ Design Premium com Verde da Marca #00C597
     /* was: --primary: 160 100% 39%  (verde marca) */
     --primary: 0 0% 88%;
     /* was: --primary-foreground: 0 0% 100% */
+    /* Quase-branco sobre quase-preto já mede ~14:1 contra escuro — escuro é
+       mesmo o melhor foreground aqui (resolvePrimaryContrast concordaria). */
     --primary-foreground: 0 0% 8%;
     /* was: --ring: 160 100% 39% */
     --ring: 0 0% 70%;
@@ -873,9 +884,10 @@ html {
     --popover-foreground: 0 0% 10%;
 
     /* Ação principal do checkout: verde padrão do tema claro (NÃO a cor do
-       tenant). É a cor universal de "pagar" e é estável entre tenants. */
+       tenant). É a cor universal de "pagar" e é estável entre tenants. Texto
+       ESCURO (não branco) — mesmo raciocínio de contraste do :root, ver lá. */
     --primary: 160 100% 39%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 0 0% 10%;
 
     --secondary: 0 0% 8%;
     --secondary-foreground: 0 0% 98%;

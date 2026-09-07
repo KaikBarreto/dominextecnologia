@@ -106,6 +106,7 @@ export default function Checkout() {
     createPixPayment,
     createBoletoPayment,
     createCardPayment,
+    cancelPayment,
     startPolling,
     stopPolling,
   } = useAsaasPayment();
@@ -404,6 +405,37 @@ export default function Checkout() {
     }
   };
 
+  // "Voltar" da tela de PIX/boleto/cartão: limpa o estado e, se uma cobrança já
+  // tinha sido gerada na Asaas (PIX e boleto nascem como cobrança REAL), pede o
+  // cancelamento dela — senão ela fica pendente e órfã na conta pra sempre.
+  //
+  // O cancelamento é DISPARADO E ESQUECIDO, sempre DEPOIS de limpar o estado: a
+  // troca de forma de pagamento não pode travar nem esperar a Asaas. Se falhar, o
+  // pior caso é a órfã que já acontece hoje (melhora sem regressão).
+  //
+  // Guarda de corrida: se o pagamento já confirmou (polling/retorno do cartão),
+  // não pedimos cancelamento. Essa checagem é só UX — a proteção de verdade é o
+  // servidor, que reconsulta o status na Asaas antes de cancelar e recusa cobrança
+  // paga.
+  const handleClearPayment = () => {
+    const pendingPaymentId = paymentData?.payment_id ?? null;
+    const looksPaid = paymentSuccess ||
+      paymentData?.status === "CONFIRMED" ||
+      paymentData?.status === "RECEIVED" ||
+      activatedRef.current;
+
+    setPaymentMethod(null);
+    setPaymentData(null);
+    setPixRecurring(true);
+    setCardErrorMessage(null);
+    setCardErrorSection(null);
+    stopPolling();
+
+    if (pendingPaymentId && !looksPaid) {
+      void cancelPayment(pendingPaymentId);
+    }
+  };
+
   const handlePixRecurringChange = (value: boolean) => {
     setPixRecurring(value);
     // Regenera o PIX com a nova preferência de recorrência (igual EcoSistema).
@@ -435,14 +467,7 @@ export default function Checkout() {
           isCreatingPayment={isCreatingPayment}
           onPaymentMethodSelect={setPaymentMethod}
           onCreatePayment={handleCreatePayment}
-          onClearPayment={() => {
-            setPaymentMethod(null);
-            setPaymentData(null);
-            setPixRecurring(true);
-            setCardErrorMessage(null);
-            setCardErrorSection(null);
-            stopPolling();
-          }}
+          onClearPayment={handleClearPayment}
           paymentSuccess={paymentSuccess}
           nextDueDate={nextDueDate}
           companyName={companyData?.name}

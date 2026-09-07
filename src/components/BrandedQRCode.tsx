@@ -7,7 +7,15 @@
 //
 // Marca no centro:
 //   - `logoUrl` presente  → logo do tenant (white-label).
-//   - `logoUrl` null/vazio → ícone Dominex padrão (asset quadrado da marca).
+//   - `logoUrl` null/vazio e `allowPlatformLogoFallback` (default true) →
+//     ícone Dominex padrão (asset quadrado da marca). Faz sentido em
+//     documentos que a PRÓPRIA plataforma emite (OS pública, PMOC, portal de
+//     equipamento/contrato): mostrar quem gerou o documento.
+//   - `logoUrl` null/vazio e `allowPlatformLogoFallback={false}` → SEM logo
+//     nenhum no centro (QR limpo). Uso obrigatório em artefato de PAGAMENTO
+//     (Pix/checkout): sem marca do tenant, nunca mostrar a marca da
+//     PLATAFORMA dentro do QR de cobrança de outra empresa — e QR sem logo
+//     também lê melhor em app de banco.
 //
 // LEGIBILIDADE É PRIORIDADE #1 (regras inegociáveis):
 //   - errorCorrectionLevel 'H' (30% de redundância, aguenta o logo no centro);
@@ -52,6 +60,12 @@ export interface BrandedQRCodeProps {
   color?: string;
   /** Classe extra no container (o container já é do tamanho do QR, centralizado). */
   className?: string;
+  /**
+   * Se `false`, NUNCA cai no ícone Dominex quando `logoUrl` está ausente —
+   * o QR fica sem logo nenhum. Default `true` (comportamento histórico).
+   * Usar `false` em artefato de PAGAMENTO (QR Pix/checkout).
+   */
+  allowPlatformLogoFallback?: boolean;
 }
 
 // ── Mapas de estilo (API do produto → API da lib) ───────────────────────────
@@ -102,12 +116,15 @@ export function BrandedQRCode({
   cornerStyle = 'square',
   color = '#000000',
   className,
+  allowPlatformLogoFallback = true,
 }: BrandedQRCodeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Logo do centro: tenant (white-label) → logo colorido; Dominex default → ícone PRETO.
-  // Ícone preto garante contraste sobre o fundo branco fixo do QR.
-  const image = logoUrl && logoUrl.trim() ? logoUrl : dominexIconBlack;
+  // Logo do centro: tenant (white-label) → logo colorido; sem tenant → ícone
+  // Dominex PRETO (contraste no fundo branco fixo) SÓ se allowPlatformLogoFallback;
+  // em artefato de pagamento sem logo do tenant, `image` fica undefined (QR limpo).
+  const hasTenantLogo = !!(logoUrl && logoUrl.trim());
+  const image = hasTenantLogo ? logoUrl : (allowPlatformLogoFallback ? dominexIconBlack : undefined);
   const moduleColor = useMemo(() => enforceReadableColor(color), [color]);
 
   const options = useMemo(
