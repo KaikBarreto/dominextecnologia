@@ -839,3 +839,71 @@ html {
 .dark [data-nav-surface] .nav-indicator > div {
   background-color: transparent !important;
 }
+
+/* ─── Painel de PAGAMENTO neutro — checkout público /pagar/:code ─────────────
+   Regra do CEO (2026-09-07): no checkout público, a coluna DIREITA (onde a
+   pessoa escolhe a forma de pagamento e digita o cartão) é SEMPRE tema CLARO e
+   NUNCA herda a marca do tenant. A coluna esquerda (resumo) continua branded —
+   é a identidade de quem cobra; a direita precisa ser previsível e igual pra
+   todo mundo (um tenant de marca roxa neon não pinta o formulário de cartão).
+
+   Por que redeclarar TODOS os tokens neste escopo:
+     • O white-label injeta --primary, --ring, --sidebar-primary e --gradient-brand INLINE
+       no <html> (useWhiteLabel → root.style.setProperty) e o script anti-FOUC do
+       index.html reaplica o cache `__wl_primary` de QUALQUER tenant já visitado
+       naquele navegador. Estilo inline vence qualquer seletor NO MESMO elemento,
+       mas custom property é HERDADA: redeclarando no container da direita, toda
+       a subárvore passa a ler o tema claro padrão. Sem !important, sem hack.
+     • As variantes `dark:` do Tailwind dependem da classe `.dark` no <html>, e
+       essa rota já força tema claro (useForceLightTheme local da página, mesmo
+       padrão do PublicPortalShell/PontoPublico) — então elas também não entram.
+
+   Valores = cópia literal do bloco `:root` (tema claro) deste arquivo. */
+@layer base {
+  .checkout-neutral-panel {
+    color-scheme: light;
+
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    /* Ação principal do checkout: verde padrão do tema claro (NÃO a cor do
+       tenant). É a cor universal de "pagar" e é estável entre tenants. */
+    --primary: 160 100% 39%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 65% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 200 85% 45%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 160 100% 39%;
+
+    --radius: 0.75rem;
+
+    --gradient-brand: linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%);
+  }
+}

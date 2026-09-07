@@ -84,7 +84,7 @@ export function CustomerSelectField({
     <>
       <div
         className={cn(
-          'flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+          'flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0',
           className,
         )}
       >

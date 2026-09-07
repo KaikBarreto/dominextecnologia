@@ -19,6 +19,17 @@ export interface CheckoutCompany {
   name: string;
   logo_url: string | null;
   primary_color: string | null;
+  /**
+   * Identificação do EMISSOR da cobrança (endereço, contato e documento do
+   * tenant). Cada campo vem do servidor JÁ FILTRADO pelos toggles
+   * `show_*_in_documents` da empresa: toggle desligado → o campo nem sai da edge
+   * (rota anônima, esconder no client não seria esconder). Opcionais porque a
+   * edge antiga não os enviava.
+   */
+  address_line?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  document?: string | null;
 }
 
 export interface CheckoutCharge {

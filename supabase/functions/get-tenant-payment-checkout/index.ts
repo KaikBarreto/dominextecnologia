@@ -7,16 +7,25 @@
 // resposta campo a campo. NUNCA expor net_value, source_id, customer_id cru,
 // externalReference, chaves, nem qualquer campo interno.
 //
-// White-label (regra-lei): a marca do tenant só aparece se white_label_enabled;
-// senão o checkout usa a marca Dominex fixa (verde padrão).
+// Identidade de quem cobra (regra-lei "a Dominex é a plataforma; quem aparece pro
+// cliente final é o tenant"): o NOME exibido é SEMPRE o do tenant. Logo e cor de
+// marca continuam condicionados a `white_label_enabled` — sem white-label a tela
+// mostra só o nome, sem logo nenhum e com o fundo escuro neutro.
+//
+// IDENTIFICAÇÃO DO EMISSOR (2026-09-07, autorizado pelo CEO): endereço, telefone,
+// e-mail e CNPJ do tenant entram no payload SÓ quando o toggle
+// `show_*_in_documents` correspondente permite. O filtro roda AQUI, no servidor —
+// campo escondido na UI mas presente no JSON seria vazamento numa rota anônima.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
-// DOMINEX_BRAND: sem white-label → primary_color NULL para que o shell
-// ative o degradê escuro sóbrio (REPORT_HEADER_DARK_GRADIENT) sem flash verde.
-// Com white-label → primary_color é a cor do tenant (abaixo).
-const DOMINEX_BRAND = { name: "Dominex", logo_url: null as string | null, primary_color: null as string | null };
+// Nome do EMISSOR: em cobrança, quem aparece é SEMPRE o tenant (decisão do CEO,
+// 2026-09-07). A Dominex é a PLATAFORMA — pode aparecer no rodapé/selo, nunca
+// como quem está cobrando: o pagador vendo "Dominex" com o CNPJ da Glacial
+// acharia que está pagando pra Dominex, e errar o credor não é estética, é risco.
+// Só usado se `company_settings.name` vier vazio (coluna é NOT NULL; é guarda).
+const FALLBACK_ISSUER_NAME = "Empresa emissora";
 
 function json(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -94,20 +103,74 @@ Deno.serve(async (req) => {
       payAccount?.status === "active" && payAccount?.allow_card !== false;
 
     // Marca do tenant (só se white_label_enabled) — senão Dominex fixo.
+    // Também trazemos os dados de IDENTIFICAÇÃO DO EMISSOR (endereço/telefone/
+    // e-mail/CNPJ) e os toggles `show_*_in_documents` que decidem se cada um
+    // pode ser exibido. Colunas listadas uma a uma (nunca `*`).
     const { data: settings } = await supabase
       .from("company_settings")
-      .select("name, white_label_enabled, white_label_logo_url, white_label_primary_color")
+      .select(
+        "name, white_label_enabled, white_label_logo_url, white_label_primary_color," +
+          " address, address_number, complement, neighborhood, city, state, zip_code," +
+          " phone, email, document," +
+          " show_address_in_documents, show_phone_in_documents, show_email_in_documents, show_cnpj_in_documents",
+      )
       .eq("company_id", charge.company_id)
       .maybeSingle();
 
-    const company = settings?.white_label_enabled
-      ? {
-          name: settings.name ?? DOMINEX_BRAND.name,
-          logo_url: settings.white_label_logo_url ?? null,
-          // Tenant com white-label mas sem cor configurada → null (topo escuro Dominex).
-          primary_color: settings.white_label_primary_color ?? null,
-        }
-      : DOMINEX_BRAND;
+    // NOME = sempre o do tenant (quem cobra), com ou sem white-label.
+    // LOGO e COR = só com white-label. Sem white-label NÃO mandamos o logo da
+    // plataforma: "logo da Dominex + nome do tenant" identificaria o credor
+    // errado (pior que o problema original). Sem white-label a coluna de resumo
+    // fica só com o nome bem tipografado + o escuro neutro (primary_color null).
+    const useWhiteLabel = settings?.white_label_enabled === true;
+    const brand = {
+      name: settings?.name?.trim() || FALLBACK_ISSUER_NAME,
+      logo_url: useWhiteLabel ? (settings?.white_label_logo_url ?? null) : null,
+      // Tenant com white-label mas sem cor configurada → null (fundo escuro neutro).
+      primary_color: useWhiteLabel ? (settings?.white_label_primary_color ?? null) : null,
+    };
+
+    // ── Identificação do emissor (endereço / contato / documento) ────────────
+    // O FILTRO É AQUI, NO SERVIDOR: campo com toggle desligado NÃO sai da edge.
+    // Esta é rota ANÔNIMA — mandar o dado e "esconder no client" seria vazar.
+    //
+    // Convenção dos toggles = `!== false` (exibir por padrão), espelhando o
+    // helper canônico do app `src/utils/companyDocumentHeader.ts` (buildDetails).
+    // Geradores antigos do repo usam `&&` (esconder por padrão) — o canônico é
+    // este; não trocar sem alinhar os dois lados.
+    // A composição da linha de endereço segue a MESMA ordem do buildDetails.
+    // Telefone e documento saem CRUS (sem máscara): quem formata é o front, com
+    // `phoneMask`/`cpfCnpjMask` de src/utils/masks.ts — máscara é apresentação,
+    // não exposição extra.
+    const issuer = {
+      address_line: null as string | null,
+      phone: null as string | null,
+      email: null as string | null,
+      document: null as string | null,
+    };
+    if (settings) {
+      if (settings.show_address_in_documents !== false && settings.address) {
+        let a = String(settings.address);
+        if (settings.address_number) a += `, ${settings.address_number}`;
+        if (settings.complement) a += ` ${settings.complement}`;
+        if (settings.neighborhood) a += ` - ${settings.neighborhood}`;
+        if (settings.city) a += ` - ${settings.city}`;
+        if (settings.state) a += `/${settings.state}`;
+        if (settings.zip_code) a += ` - CEP: ${settings.zip_code}`;
+        issuer.address_line = a;
+      }
+      if (settings.show_phone_in_documents !== false && settings.phone) {
+        issuer.phone = String(settings.phone);
+      }
+      if (settings.show_email_in_documents !== false && settings.email) {
+        issuer.email = String(settings.email);
+      }
+      if (settings.show_cnpj_in_documents !== false && settings.document) {
+        issuer.document = String(settings.document);
+      }
+    }
+
+    const company = { ...brand, ...issuer };
 
     // ALLOWLIST ESTRITA (montado campo a campo — nunca net_value/custo/margem/ids internos).
     return json(req, {

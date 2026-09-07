@@ -4,42 +4,58 @@
 // e devolve uma ALLOWLIST estrita (valor, descrição, marca, links de pagamento).
 // Nunca custo/margem/refs internas. Toda leitura passa pelo hook.
 //
-// Casca app-nativo compartilhada (PublicPortalShell, tema claro forçado).
-// Marca (regra-lei dos portais): a cor/logo/nome vêm do PAYLOAD (anti-FOUC) —
-// tenant sem white-label chega com primary_color=null → topo escuro sóbrio;
-// com white-label, a marca do tenant. A página não decide isso.
+// LAYOUT (redesenho 2026-09-07, pedido do CEO): checkout de 2 colunas, espelhando
+// o /checkout de assinatura (CheckoutLayout.tsx) — mesma hierarquia, mesmo respiro.
+//   • ESQUERDA (resumo): fundo escuro + MARCA DO TENANT (logo no tamanho natural,
+//     alinhado à esquerda, sem moldura circular; cor da marca só no brilho de
+//     fundo). É a identidade de quem está cobrando.
+//   • DIREITA (pagamento): SEMPRE tema claro e neutro — não herda `dark` do app
+//     nem a cor de white-label do tenant. É onde a pessoa digita o cartão, então
+//     tem que ser previsível. Ver `.checkout-neutral-panel` em src/index.css.
+// No mobile as colunas empilham (resumo em cima, pagamento embaixo).
 //
-// CARTÃO (checkout PRÓPRIO): o pagador informa o cartão AQUI, na marca do tenant,
-// e a edge `tenant-asaas-pay-charge-card` paga a cobrança já existente na Asaas.
-// Nada de cartão é guardado por nós (nem em estado global, nem em cache): os
-// dados vivem só no formulário e na chamada. O link hospedado da Asaas continua
-// existindo como FALLBACK — se a edge falhar, o pagador nunca fica sem caminho.
+// Marca (regra-lei dos portais): cor/logo/nome vêm do PAYLOAD (anti-FOUC) e
+// NUNCA do cache de white-label do navegador — a cobrança pode ser de um tenant
+// diferente do último que o visitante acessou.
+//
+// CARTÃO (checkout PRÓPRIO): o pagador informa o cartão AQUI, e a edge
+// `tenant-asaas-pay-charge-card` paga a cobrança já existente na Asaas. Nada de
+// cartão é guardado por nós (nem estado global, nem cache): os dados vivem só no
+// formulário e na chamada.
+//
+// SEM porta de saída pra outra marca: o link hospedado da Asaas (invoice_url)
+// NÃO é mais exibido (decisão do CEO — checkout fechado). Quando NENHUMA forma
+// de pagamento está liberada, mostramos uma mensagem clara em PT-BR (`noMethods`)
+// em vez de uma tela vazia.
 //
 // A confirmação NÃO é otimista: a baixa definitiva vem do webhook da Asaas, então
 // a tela faz polling do estado real da cobrança até virar "pago".
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import asaasLogo from '@/assets/logo-asaas.png';
-import { PublicPortalShell } from '@/components/portal/PublicPortalShell';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { CardPaymentForm } from '@/components/checkout/CardPaymentForm';
+import { PAYMENT_METHOD_COLORS } from '@/components/checkout/paymentMethodTheme';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Loader2, Copy, Check, QrCode, FileText, CreditCard,
+  Loader2, Copy, Check, QrCode, FileText, CreditCard, Calendar,
   CheckCircle2, AlertCircle, Clock, XCircle, Shield, Lock, ExternalLink,
 } from 'lucide-react';
 import {
   useTenantPaymentCheckout,
   usePayTenantChargeWithCard,
+  type CheckoutCompany,
   type CheckoutPayload,
   type CardPayResult,
 } from '@/hooks/useTenantPaymentCheckout';
 import { extractShortCode } from '@/utils/prettyLinks';
 import { formatMoney, formatDate } from '@/lib/format';
+import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 
 // Status que representam "pago" (baixa automática via webhook já ocorreu).
@@ -50,6 +66,9 @@ const OVERDUE_STATUSES = new Set(['overdue', 'OVERDUE']);
 const CANCELLED_STATUSES = new Set(['cancelled', 'canceled', 'CANCELLED', 'CANCELED']);
 // Status que indicam estorno.
 const REFUNDED_STATUSES = new Set(['refunded', 'REFUNDED', 'chargedback', 'CHARGEBACK']);
+
+/** Formas de pagamento que esta página sabe processar. */
+type PayMethod = 'pix' | 'boleto' | 'card';
 
 /** Shape que o CardPaymentForm entrega no onSubmit (installments/total ignorados
  *  aqui: quem manda no valor é a cobrança já criada na Asaas). */
@@ -73,6 +92,9 @@ const CONFIRM_POLL_MS = 4000;
 /** Depois disso paramos de insistir e explicamos que a confirmação pode demorar. */
 const CONFIRM_TIMEOUT_MS = 90_000;
 
+/** Classe que NEUTRALIZA tema/white-label (definida em src/index.css). */
+const NEUTRAL_PANEL = 'checkout-neutral-panel';
+
 // Erros amigáveis do cartão são mapeados pra seção do form (card/holder/address)
 // só por heurística de palavra-chave. MESMA regra do /checkout de assinatura
 // (Checkout.tsx) — a função de lá é local ao módulo, então repetimos aqui.
@@ -82,6 +104,38 @@ function detectCardErrorSection(message: string): 'card' | 'holder' | 'address' 
   if (m.includes('cpf') || m.includes('e-mail') || m.includes('email') || m.includes('telefone') || m.includes('titular')) return 'holder';
   if (m.includes('cartão') || m.includes('cartao') || m.includes('cvv') || m.includes('validade')) return 'card';
   return 'card';
+}
+
+// TEMA CLARO FORÇADO na rota inteira (mesmo padrão do PublicPortalShell /
+// PontoPublico): esta é uma rota standalone, fora do AppLayout, e o pagador não
+// tem preferência de tema aqui. Some com qualquer variante `dark:` de componente
+// reusado. A coluna esquerda é escura por DESIGN (classes explícitas), não por tema.
+// Restaura o estado anterior na desmontagem pra não vazar pro resto do app.
+function useForceLightTheme() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains('dark');
+    root.classList.remove('dark');
+    const prevColorScheme = root.style.colorScheme;
+    root.style.colorScheme = 'light';
+    return () => {
+      if (hadDark) root.classList.add('dark');
+      root.style.colorScheme = prevColorScheme;
+    };
+  }, []);
+}
+
+// Radix (Select do formulário de cartão) e sonner renderizam em PORTAL, direto no
+// <body> — fora da subárvore da coluna direita, então não herdam os tokens
+// neutralizados dela. Enquanto esta tela está montada, marcamos o próprio <body>
+// com a mesma classe: dropdowns e toasts saem no tema claro neutro, sem a cor do
+// white-label. Seguro porque a coluna esquerda não usa token de tema (usa cores
+// explícitas + a cor do payload inline).
+function useNeutralPortalTheme() {
+  useEffect(() => {
+    document.body.classList.add(NEUTRAL_PANEL);
+    return () => document.body.classList.remove(NEUTRAL_PANEL);
+  }, []);
 }
 
 export default function PublicCheckout() {
@@ -108,6 +162,132 @@ export default function PublicCheckout() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Casca do checkout: split 45/55 (empilha no mobile). A esquerda recebe o resumo
+// branded; os filhos vão na direita, sempre no tema claro neutro.
+// ─────────────────────────────────────────────────────────────────────────────
+function CheckoutFrame({ summary, children }: { summary: ReactNode; children: ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col lg:flex-row bg-gray-950">
+      <aside className="lg:w-[45%] shrink-0">{summary}</aside>
+      <main
+        className={cn(
+          NEUTRAL_PANEL,
+          'lg:w-[55%] flex-1 bg-background text-foreground',
+          'px-5 py-8 sm:px-8 lg:px-12 lg:py-12 flex flex-col justify-center',
+        )}
+      >
+        <div className="w-full max-w-lg mx-auto space-y-6">{children}</div>
+      </main>
+    </div>
+  );
+}
+
+/** Fundo da coluna de resumo: escuro sóbrio + brilho discreto na cor da marca
+ *  (vinda do PAYLOAD). Sem marca → só o escuro Dominex. */
+function summaryBackground(brandColor: string | null | undefined): CSSProperties {
+  if (!brandColor) {
+    return { background: 'linear-gradient(160deg, #18181b 0%, #0a0a0a 65%)' };
+  }
+  return {
+    background:
+      `radial-gradient(120% 85% at 0% 0%, color-mix(in srgb, ${brandColor}, #000 62%) 0%, rgba(0,0,0,0) 58%),` +
+      ' linear-gradient(160deg, #18181b 0%, #0a0a0a 70%)',
+  };
+}
+
+/**
+ * Identificação do EMISSOR (endereço, contato e documento do tenant), abaixo do
+ * nome da empresa — como no cabeçalho de documento do sistema.
+ *
+ * Os campos chegam do servidor JÁ FILTRADOS pelos toggles `show_*_in_documents`
+ * (a edge não envia o que o tenant desligou; é rota anônima). Aqui só formatamos
+ * com as máscaras canônicas do repo. Nenhum campo → o bloco não renderiza (nada
+ * de espaço vazio nem separador solto).
+ *
+ * Ordem espelha `src/utils/companyDocumentHeader.ts` (buildDetails):
+ * endereço → contato (Tel | e-mail) → CPF/CNPJ.
+ */
+function IssuerDetails({ company }: { company: CheckoutCompany }) {
+  const lines: string[] = [];
+
+  if (company.address_line) lines.push(company.address_line);
+
+  const contact: string[] = [];
+  if (company.phone) contact.push(`Tel: ${phoneMask(company.phone)}`);
+  if (company.email) contact.push(company.email);
+  if (contact.length) lines.push(contact.join(' | '));
+
+  if (company.document) {
+    const digits = company.document.replace(/\D/g, '');
+    lines.push(`${digits.length <= 11 ? 'CPF' : 'CNPJ'}: ${cpfCnpjMask(company.document)}`);
+  }
+
+  if (!lines.length) return null;
+
+  return (
+    <div className="space-y-0.5 -mt-5">
+      {lines.map((line) => (
+        <p key={line} className="text-xs leading-snug text-white/50">{line}</p>
+      ))}
+    </div>
+  );
+}
+
+/** Coluna esquerda: marca do tenant + o que está sendo pago. */
+function CheckoutSummary({
+  brandColor,
+  logoUrl,
+  companyName,
+  issuer,
+  children,
+}: {
+  brandColor?: string | null;
+  logoUrl?: string | null;
+  companyName?: string | null;
+  /** Empresa emissora (só no estado carregado) — alimenta o bloco de identificação. */
+  issuer?: CheckoutCompany | null;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      className="h-full text-white px-5 py-8 sm:px-8 lg:px-12 lg:py-12 flex flex-col justify-center"
+      style={summaryBackground(brandColor)}
+    >
+      <div className="w-full max-w-md mx-auto space-y-7">
+        {/* Logo do tenant no tamanho natural, alinhado à esquerda, object-contain
+            e SEM moldura (o círculo cortava marcas horizontais). Muitos logos de
+            white-label têm texto branco, por isso o fundo escuro é o certo. */}
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={companyName ?? 'Logo'}
+            className="h-12 lg:h-14 w-auto max-w-[240px] object-contain object-left"
+          />
+        ) : null}
+
+        {/* Sem logo (tenant sem white-label) o NOME é a identidade do credor:
+            entra maior e sozinho. A edge nunca manda o logo da plataforma aqui —
+            "logo da Dominex + nome do tenant" identificaria o credor errado. */}
+        {companyName && (
+          <p
+            className={cn(
+              'font-bold text-white',
+              logoUrl ? 'text-lg -mt-3' : 'text-2xl lg:text-3xl leading-tight',
+            )}
+          >
+            {companyName}
+          </p>
+        )}
+
+        {issuer && <IssuerDetails company={issuer} />}
+
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function CheckoutInner({
   payload,
   isLoading,
@@ -127,9 +307,11 @@ function CheckoutInner({
   const t = MESSAGES[locale].app.charges.checkout;
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  useForceLightTheme();
+  useNeutralPortalTheme();
 
   // ── Estado do cartão (nada disso guarda dado de cartão) ────────────────────
-  const [showCardForm, setShowCardForm] = useState(false);
+  const [method, setMethod] = useState<PayMethod | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardErrorSection, setCardErrorSection] = useState<'card' | 'holder' | 'address' | null>(null);
   const [payResult, setPayResult] = useState<CardPayResult | null>(null);
@@ -145,6 +327,29 @@ function CheckoutInner({
 
   const status = payload?.charge.status ?? '';
   const isPaid = PAID_STATUSES.has(status);
+
+  // Formas de pagamento REALMENTE disponíveis pra esta cobrança (o servidor
+  // decide: pix/boleto só existem se a Asaas devolveu o artefato; cartão só com
+  // `allow_card` — conta ativa + preferência do tenant).
+  const available = useMemo<PayMethod[]>(() => {
+    const charge = payload?.charge;
+    if (!charge) return [];
+    const list: PayMethod[] = [];
+    if (charge.pix_copy_paste) list.push('pix');
+    if (charge.boleto_url) list.push('boleto');
+    if (charge.allow_card === true) list.push('card');
+    return list;
+  }, [payload?.charge]);
+
+  const defaultMethod = available[0] ?? null;
+  useEffect(() => {
+    if (defaultMethod) setMethod((prev) => prev ?? defaultMethod);
+  }, [defaultMethod]);
+
+  // A página nunca abre "vazia": já vem com a primeira forma disponível
+  // selecionada (Pix > boleto > cartão) e o conteúdo dela pronto pra pagar. O
+  // pagador troca clicando em outro card; o "Voltar" do cartão devolve a escolha
+  // (o efeito não re-seleciona porque a lista de formas não mudou).
 
   // Para o polling assim que a cobrança consta paga de verdade.
   useEffect(() => {
@@ -197,7 +402,6 @@ function CheckoutInner({
           MESSAGES[locale].app.charges.checkout.card.genericError,
         );
         setPayResult(result);
-        setShowCardForm(false);
         // Confirmação REAL vem do webhook: liga o polling e desiste depois de
         // CONFIRM_TIMEOUT_MS, explicando que pode demorar (nunca mente pro pagador).
         onStartPolling();
@@ -207,6 +411,9 @@ function CheckoutInner({
           setConfirmSlow(true);
         }, CONFIRM_TIMEOUT_MS);
       } catch (err) {
+        // Falha da NOSSA edge (ou recusa da operadora): a mensagem PT-BR aparece
+        // dentro do formulário, na seção provável, e o form continua preenchido
+        // pra o pagador corrigir e tentar de novo. Sem beco sem saída.
         const message = err instanceof Error && err.message
           ? err.message
           : MESSAGES[locale].app.charges.checkout.card.genericError;
@@ -219,26 +426,26 @@ function CheckoutInner({
 
   if (isLoading) {
     return (
-      <PublicPortalShell title={t.subtitle} subtitle="">
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+      <CheckoutFrame summary={<CheckoutSummary />}>
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
           <span className="text-sm">{t.loading}</span>
         </div>
-      </PublicPortalShell>
+      </CheckoutFrame>
     );
   }
 
   if (isError || !payload) {
     return (
-      <PublicPortalShell title={t.subtitle} subtitle="">
-        <div className="flex flex-col items-center gap-3 py-14 text-center px-4">
+      <CheckoutFrame summary={<CheckoutSummary />}>
+        <div className="flex flex-col items-center gap-3 py-14 text-center">
           <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
             <AlertCircle className="h-7 w-7 text-destructive" />
           </div>
           <p className="text-base font-bold text-destructive">{t.notFound.title}</p>
           <p className="text-sm text-muted-foreground max-w-xs">{t.notFound.description}</p>
         </div>
-      </PublicPortalShell>
+      </CheckoutFrame>
     );
   }
 
@@ -246,10 +453,7 @@ function CheckoutInner({
   const isOverdue = OVERDUE_STATUSES.has(charge.status);
   const isCancelled = CANCELLED_STATUSES.has(charge.status);
   const isRefunded = REFUNDED_STATUSES.has(charge.status);
-
-  // Cartão no NOSSO checkout: só quando o servidor liberou (conta ativa +
-  // preferência do tenant). Sem isso, mantemos o link hospedado de sempre.
-  const cardInHouse = charge.allow_card === true;
+  const amountLabel = formatMoney(charge.value, currency, locale);
 
   const handleCopyPix = async () => {
     if (!charge.pix_copy_paste) return;
@@ -263,288 +467,393 @@ function CheckoutInner({
     }
   };
 
-  // Fallback: o link hospedado da Asaas nunca some. Se o nosso checkout falhar,
-  // o pagador ainda tem um caminho pra pagar.
-  const fallbackLink = charge.invoice_url ? (
-    <div className="rounded-lg border border-border bg-card px-4 py-3 space-y-1.5">
-      <p className="text-xs text-muted-foreground leading-relaxed">{t.card.fallbackNotice}</p>
-      <a
-        href={charge.invoice_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline underline-offset-2"
-      >
-        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-        {t.card.fallbackLink}
-      </a>
-    </div>
-  ) : null;
+  const selectMethod = (next: PayMethod) => {
+    setMethod(next);
+    setCardError(null);
+    setCardErrorSection(null);
+  };
 
-  return (
-    <PublicPortalShell
+  // ── Resumo (coluna esquerda) ──────────────────────────────────────────────
+  const summary = (
+    <CheckoutSummary
       brandColor={company.primary_color}
       logoUrl={company.logo_url}
-      title={company.name}
-      subtitle={t.subtitle}
+      companyName={company.name}
+      issuer={company}
     >
-      <div className="space-y-3 pb-2">
-        {/* ── Bloco de valor + descrição ── */}
-        <div className="rounded-lg border border-border bg-card px-5 py-5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">
-            {t.amountLabel}
-          </p>
-          <p className="text-4xl font-extrabold tabular-nums leading-none">
-            {formatMoney(charge.value, currency, locale)}
-          </p>
-          {charge.description && (
-            <p className="text-sm text-muted-foreground mt-2 leading-snug">{charge.description}</p>
-          )}
-          {charge.due_date && (
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {t.dueLabel}: <span className="font-medium text-foreground">{formatDate(charge.due_date, locale, timezone)}</span>
-            </p>
-          )}
-        </div>
+      <div className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-white/55">
+          {t.amountLabel}
+        </p>
+        <p className="text-4xl lg:text-5xl font-bold tabular-nums leading-none">{amountLabel}</p>
+        {charge.description && (
+          <p className="text-sm text-white/70 leading-snug pt-1">{charge.description}</p>
+        )}
+      </div>
 
-        {/* ── Estado pago ── */}
-        {isPaid ? (
-          <div className="rounded-lg border border-border bg-card px-5 py-8 flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-full bg-emerald-600 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-foreground">{t.status.paidTitle}</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{t.status.paidDescription}</p>
-            </div>
-          </div>
-        ) : payResult ? (
-          /* ── Tentativa no cartão concluída, aguardando a confirmação REAL ── */
-          <div ref={resultBlockRef} className="rounded-lg border border-border bg-card px-5 py-8 flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-full bg-emerald-600 flex items-center justify-center">
-              {payResult.status === 'processing' ? (
-                <Clock className="h-7 w-7 text-white" />
-              ) : (
-                <CheckCircle2 className="h-7 w-7 text-white" />
-              )}
-            </div>
-            <div>
-              <p className="text-base font-bold text-foreground">
-                {payResult.status === 'processing'
-                  ? t.card.processingTitle
-                  : payResult.status === 'already_paid'
-                    ? t.status.paidTitle
-                    : t.card.approvedTitle}
-              </p>
-              <p className="text-sm text-muted-foreground mt-0.5 max-w-xs">
-                {payResult.status === 'already_paid'
-                  ? t.status.paidDescription
-                  : confirmSlow
-                    ? t.card.slowDescription
-                    : payResult.status === 'processing'
-                      ? t.card.processingDescription
-                      : t.card.approvedDescription}
-              </p>
-            </div>
-            {!confirmSlow && payResult.status !== 'already_paid' && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>{t.card.slowTitle}</span>
-              </div>
-            )}
-          </div>
-        ) : isCancelled ? (
-          /* ── Cancelada ── */
-          <div className="rounded-lg border border-border bg-card px-5 py-8 flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-full bg-slate-600 flex items-center justify-center">
-              <XCircle className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-foreground">{t.status.cancelledTitle}</p>
-              <p className="text-sm text-muted-foreground mt-0.5 max-w-xs">{t.status.cancelledDescription}</p>
-            </div>
-          </div>
-        ) : isRefunded ? (
-          /* ── Estornada ── */
-          <div className="rounded-lg border border-border bg-card px-5 py-8 flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-full bg-slate-600 flex items-center justify-center">
-              <XCircle className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-foreground">{t.status.refundedTitle}</p>
-              <p className="text-sm text-muted-foreground mt-0.5 max-w-xs">{t.status.refundedDescription}</p>
-            </div>
-          </div>
-        ) : showCardForm ? (
-          /* ── Formulário de cartão NA NOSSA PÁGINA (marca do tenant) ── */
-          <div className="space-y-3">
-            <div ref={cardBlockRef} className="rounded-lg border border-border bg-card px-5 py-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                  <CreditCard className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <p className="text-sm font-semibold">{t.card.formTitle}</p>
-              </div>
-
-              {/* Selo de segurança em destaque, junto do formulário. */}
-              <div className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2.5 mb-3">
-                <Lock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground" />
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{t.card.secureBadge}</p>
-              </div>
-
-              <CardPaymentForm
-                amount={charge.value}
-                isLoading={isPaying}
-                onSubmit={handleCardSubmit}
-                onBack={() => {
-                  setShowCardForm(false);
-                  setCardError(null);
-                  setCardErrorSection(null);
-                }}
-                errorMessage={cardError}
-                errorSection={cardErrorSection}
-                // Parcelamento não se aplica: a Asaas paga a cobrança JÁ criada,
-                // e o endpoint de pagamento não aceita número de parcelas.
-                allowInstallments={false}
-                submitLabel={t.card.submit.replace(
-                  '{amount}',
-                  formatMoney(charge.value, currency, locale),
-                )}
-                billingNotice={t.card.notice}
-              />
-            </div>
-            {fallbackLink}
-          </div>
-        ) : (
-          /* ── Pendente ou vencida: mostra opções de pagamento disponíveis ── */
-          <div className="space-y-3">
-            {/* Banner de vencida — só quando overdue */}
-            {isOverdue && (
-              <div className="rounded-lg border border-border bg-card px-5 py-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
-                  <Clock className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{t.status.overdueTitle}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t.status.overdueDescription}</p>
-                </div>
-              </div>
-            )}
-
-            {/* ── Pix copia e cola ── */}
-            {charge.pix_copy_paste && (
-              <div className="rounded-lg border border-border bg-card px-5 py-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                    <QrCode className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <p className="text-sm font-semibold">{t.pix.title}</p>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{t.pix.instructions}</p>
-                {/* QR Code visual com logo no centro — fundo branco fixo, lê em qualquer tema.
-                    White-label (primary_color presente) → logo do tenant; senão → ícone Dominex. */}
-                <div className="mx-auto w-fit rounded-lg border border-border bg-white p-3">
-                  <BrandedQRCode
-                    value={charge.pix_copy_paste}
-                    size={180}
-                    logoUrl={company.primary_color ? company.logo_url : null}
-                  />
-                </div>
-                <div
-                  className={cn(
-                    'rounded-md border bg-muted/50 px-3 py-2.5 text-xs break-all font-mono text-muted-foreground',
-                    'max-h-20 overflow-y-auto',
-                  )}
-                >
-                  {charge.pix_copy_paste}
-                </div>
-                <Button
-                  onClick={handleCopyPix}
-                  className="w-full rounded-md h-10 font-semibold text-sm gap-2"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      {t.pix.copied}
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      {t.pix.copyCode}
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {/* ── Boleto — botão integrado ao fundo, sem card separado ── */}
-            {charge.boleto_url && (
-              <a
-                href={charge.boleto_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  'flex w-full items-center justify-center gap-2.5 rounded-md h-11',
-                  'border border-border bg-transparent text-foreground text-sm font-semibold',
-                  'transition-colors duration-150',
-                  'hover:bg-primary hover:text-primary-foreground hover:border-primary',
-                  'active:bg-primary active:text-primary-foreground active:border-primary',
-                )}
-              >
-                <FileText className="h-4 w-4 shrink-0" />
-                {t.boleto.open}
-              </a>
-            )}
-
-            {/* ── Cartão: checkout PRÓPRIO (form nesta página). Sem o cartão
-                 liberado server-side, cai no link hospedado de sempre. ── */}
-            {cardInHouse ? (
-              <button
-                type="button"
-                onClick={() => setShowCardForm(true)}
-                className={cn(
-                  'flex w-full items-center justify-center gap-2.5 rounded-md h-11',
-                  'border border-border bg-transparent text-foreground text-sm font-semibold',
-                  'transition-colors duration-150',
-                  'hover:bg-primary hover:text-primary-foreground hover:border-primary',
-                  'active:bg-primary active:text-primary-foreground active:border-primary',
-                )}
-              >
-                <CreditCard className="h-4 w-4 shrink-0" />
-                {t.card.open}
-              </button>
-            ) : charge.invoice_url ? (
-              <a
-                href={charge.invoice_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  'flex w-full items-center justify-center gap-2.5 rounded-md h-11',
-                  'border border-border bg-transparent text-foreground text-sm font-semibold',
-                  'transition-colors duration-150',
-                  'hover:bg-primary hover:text-primary-foreground hover:border-primary',
-                  'active:bg-primary active:text-primary-foreground active:border-primary',
-                )}
-              >
-                <CreditCard className="h-4 w-4 shrink-0" />
-                {t.card.open}
-              </a>
-            ) : null}
+      <div className="space-y-3">
+        {charge.due_date && (
+          <div className="flex items-center gap-2.5 text-sm bg-white/5 rounded-lg px-3 py-2.5">
+            <Calendar className="h-4 w-4 shrink-0 text-white/70" />
+            <span className="text-white/80">
+              {t.dueLabel}:{' '}
+              <span className="font-semibold text-white">
+                {formatDate(charge.due_date, locale, timezone)}
+              </span>
+            </span>
           </div>
         )}
 
-        {/* ── Rodapé de segurança ── */}
-        <div className="flex items-center justify-center gap-4 pt-1 pb-1">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Shield className="h-3.5 w-3.5 shrink-0" />
-            <span>{t.securityNote}</span>
-            <img src={asaasLogo} alt="Asaas" className="h-4 w-auto shrink-0" />
+        {isOverdue && !isPaid && (
+          <div className="flex items-start gap-2.5 rounded-lg bg-amber-500 px-3 py-2.5 text-white">
+            <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold leading-tight">{t.status.overdueTitle}</p>
+              <p className="text-xs leading-snug mt-0.5 text-white/90">{t.status.overdueDescription}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Lock className="h-3.5 w-3.5 shrink-0" />
-            <span>SSL</span>
-          </div>
-        </div>
+        )}
       </div>
-    </PublicPortalShell>
+
+      <div className="border-t border-white/10" />
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-white/55">
+        <span className="inline-flex items-center gap-1.5">
+          <Shield className="h-3.5 w-3.5 shrink-0" />
+          {t.sslLabel}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          SSL
+        </span>
+      </div>
+    </CheckoutSummary>
+  );
+
+  // ── Estados finais (pago / cancelada / estornada / confirmando) ────────────
+  const finalState = isPaid ? (
+    <StatusPanel
+      tone="success"
+      icon={<CheckCircle2 className="h-8 w-8 text-white" />}
+      title={t.status.paidTitle}
+      description={t.status.paidDescription}
+    />
+  ) : payResult ? (
+    <div ref={resultBlockRef}>
+      <StatusPanel
+        tone="success"
+        icon={payResult.status === 'processing'
+          ? <Clock className="h-8 w-8 text-white" />
+          : <CheckCircle2 className="h-8 w-8 text-white" />}
+        title={
+          payResult.status === 'processing'
+            ? t.card.processingTitle
+            : payResult.status === 'already_paid'
+              ? t.status.paidTitle
+              : t.card.approvedTitle
+        }
+        description={
+          payResult.status === 'already_paid'
+            ? t.status.paidDescription
+            : confirmSlow
+              ? t.card.slowDescription
+              : payResult.status === 'processing'
+                ? t.card.processingDescription
+                : t.card.approvedDescription
+        }
+        footer={
+          !confirmSlow && payResult.status !== 'already_paid' ? (
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>{t.card.slowTitle}</span>
+            </div>
+          ) : null
+        }
+      />
+    </div>
+  ) : isCancelled ? (
+    <StatusPanel
+      tone="neutral"
+      icon={<XCircle className="h-8 w-8 text-white" />}
+      title={t.status.cancelledTitle}
+      description={t.status.cancelledDescription}
+    />
+  ) : isRefunded ? (
+    <StatusPanel
+      tone="neutral"
+      icon={<XCircle className="h-8 w-8 text-white" />}
+      title={t.status.refundedTitle}
+      description={t.status.refundedDescription}
+    />
+  ) : null;
+
+  return (
+    <CheckoutFrame summary={summary}>
+      {finalState ?? (
+        <>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">{t.payTitle}</h1>
+            {available.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-0.5">{t.paySubtitle}</p>
+            )}
+          </div>
+
+          {/* ── Estado degradado: nenhuma forma de pagamento liberada ──
+               (sem pix, sem boleto e cartão bloqueado server-side). Nunca
+               deixamos a tela vazia nem mandamos o pagador pra fora da marca. */}
+          {available.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card px-5 py-8 flex flex-col items-center gap-3 text-center">
+              <div className="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-white" />
+              </div>
+              <p className="text-base font-bold text-foreground">{t.noMethods.title}</p>
+              <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                {t.noMethods.description}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* ── Cards de forma de pagamento (só as disponíveis) ──
+                   Aparecem mesmo quando há UMA só: o pagador precisa enxergar
+                   que aquela cobrança aceita só aquela forma (e não achar que a
+                   página deixou de oferecer as outras). */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-semibold text-foreground">{t.methodLabel}</p>
+                <div
+                  className={cn(
+                    'grid gap-3',
+                    available.length >= 3 ? 'grid-cols-3' : available.length === 2 ? 'grid-cols-2' : 'grid-cols-1',
+                  )}
+                >
+                  {available.map((m) => (
+                    <MethodCard
+                      key={m}
+                      method={m}
+                      selected={method === m}
+                      name={t.methodNames[m]}
+                      hint={t.methodHints[m]}
+                      // Forma única: card em linha (ícone à esquerda), pra não
+                      // virar um bloco alto e órfão ocupando a largura toda.
+                      row={available.length === 1}
+                      onSelect={() => selectMethod(m)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Pix ── */}
+              {method === 'pix' && charge.pix_copy_paste && (
+                <div className="rounded-xl border border-border bg-card px-5 py-5 space-y-4">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{t.pix.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      {t.pix.instructions}
+                    </p>
+                  </div>
+                  {/* QR sempre em fundo branco fixo: lê em qualquer câmera.
+                      O logo no centro é o do tenant quando existir — a edge só
+                      manda `logo_url` com white-label ligado, então essa é a
+                      fonte da verdade (sem white-label o BrandedQRCode cai no
+                      ícone padrão da plataforma). */}
+                  <div className="mx-auto w-fit rounded-xl border border-border bg-white p-3">
+                    <BrandedQRCode
+                      value={charge.pix_copy_paste}
+                      size={190}
+                      logoUrl={company.logo_url}
+                    />
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/60 px-3 py-2.5 text-xs break-all font-mono text-muted-foreground max-h-20 overflow-y-auto">
+                    {charge.pix_copy_paste}
+                  </div>
+                  <Button onClick={handleCopyPix} className="w-full h-12 font-bold text-sm gap-2">
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        {t.pix.copied}
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        {t.pix.copyCode}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* ── Boleto ── */}
+              {method === 'boleto' && charge.boleto_url && (
+                <div className="rounded-xl border border-border bg-card px-5 py-5 space-y-4">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{t.boleto.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      {t.boletoNotice}
+                    </p>
+                  </div>
+                  <a
+                    href={charge.boleto_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2.5 rounded-lg h-12',
+                      'bg-primary text-primary-foreground text-sm font-bold',
+                      'transition-opacity hover:opacity-90',
+                    )}
+                  >
+                    <ExternalLink className="h-4 w-4 shrink-0" />
+                    {t.boleto.open}
+                  </a>
+                </div>
+              )}
+
+              {/* ── Cartão: formulário NA NOSSA PÁGINA ── */}
+              {method === 'card' && (
+                <div ref={cardBlockRef} className="rounded-xl border border-border bg-card px-5 py-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    {/* Ícone de identidade do bloco segue a COR DO MEIO de
+                        pagamento (mesma paleta dos cards); o botão de ação
+                        continua no verde estável do painel. */}
+                    <div
+                      className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: PAYMENT_METHOD_COLORS.card }}
+                    >
+                      <CreditCard className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <p className="text-sm font-bold">{t.card.formTitle}</p>
+                  </div>
+
+                  <div className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2.5 mb-4">
+                    <Lock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {t.card.secureBadge}
+                    </p>
+                  </div>
+
+                  <CardPaymentForm
+                    amount={charge.value}
+                    isLoading={isPaying}
+                    onSubmit={handleCardSubmit}
+                    onBack={() => {
+                      // "Voltar" recolhe o formulário e devolve a escolha de
+                      // forma de pagamento (mesmo quando só existe uma).
+                      setMethod(null);
+                      setCardError(null);
+                      setCardErrorSection(null);
+                    }}
+                    errorMessage={cardError}
+                    errorSection={cardErrorSection}
+                    // Parcelamento não se aplica: a Asaas paga a cobrança JÁ criada,
+                    // e o endpoint de pagamento não aceita número de parcelas.
+                    allowInstallments={false}
+                    submitLabel={t.card.submit.replace('{amount}', amountLabel)}
+                    billingNotice={t.card.notice}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── Selo de processamento (informativo, NÃO é link pra fora) ── */}
+      <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
+        <Shield className="h-3.5 w-3.5 shrink-0" />
+        <span>{t.securityNote}</span>
+        <img src={asaasLogo} alt="Asaas" className="h-4 w-auto shrink-0" />
+      </div>
+    </CheckoutFrame>
+  );
+}
+
+/** Card de forma de pagamento. Selecionado = CARD CHEIO na cor do meio de
+ *  pagamento (paleta de paymentMethodTheme) com ícone/título/subtítulo brancos;
+ *  não selecionado = fundo claro com borda neutra. */
+function MethodCard({
+  method,
+  selected,
+  name,
+  hint,
+  row,
+  onSelect,
+}: {
+  method: PayMethod;
+  selected: boolean;
+  name: string;
+  hint: string;
+  row?: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = method === 'pix' ? QrCode : method === 'boleto' ? FileText : CreditCard;
+  const color = PAYMENT_METHOD_COLORS[method];
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      // Selecionado: fundo + borda na cor do meio de pagamento (valor literal,
+      // não token — o painel é neutro e não segue a marca do tenant).
+      style={selected ? { backgroundColor: color, borderColor: color } : undefined}
+      className={cn(
+        'group flex rounded-xl border-2 transition-all duration-150',
+        row
+          ? 'flex-row items-center gap-3 px-4 py-3 text-left'
+          : 'flex-col items-center justify-start gap-2 px-2 py-4 text-center',
+        selected
+          ? 'text-white shadow-sm'
+          : 'border-border bg-card hover:border-foreground/25 hover:bg-muted/40',
+      )}
+    >
+      <span
+        className={cn(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors',
+          // Régua de UI: no card saturado o ícone é BRANCO direto no fundo, sem
+          // círculo dessaturado atrás (a caixa some, o tamanho continua igual).
+          selected ? 'text-white' : 'bg-muted text-muted-foreground group-hover:text-foreground',
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className={cn('flex flex-col', row ? 'items-start gap-0.5' : 'items-center gap-1')}>
+        <span className={cn('text-sm font-bold leading-tight', selected ? 'text-white' : 'text-foreground')}>
+          {name}
+        </span>
+        <span className={cn('text-[11px] leading-tight', selected ? 'text-white' : 'text-muted-foreground')}>
+          {hint}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** Painel de estado final (pago / cancelada / estornada / confirmando). */
+function StatusPanel({
+  tone,
+  icon,
+  title,
+  description,
+  footer,
+}: {
+  tone: 'success' | 'neutral';
+  icon: ReactNode;
+  title: string;
+  description: string;
+  footer?: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card px-5 py-10 flex flex-col items-center gap-4 text-center">
+      <div
+        className={cn(
+          'w-16 h-16 rounded-full flex items-center justify-center',
+          tone === 'success' ? 'bg-emerald-600' : 'bg-slate-600',
+        )}
+      >
+        {icon}
+      </div>
+      <div>
+        <p className="text-lg font-bold text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground mt-1 max-w-sm leading-relaxed">{description}</p>
+      </div>
+      {footer}
+    </div>
   );
 }

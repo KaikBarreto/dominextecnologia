@@ -57,8 +57,12 @@ export function CepLookup({ value, onChange, onAddressFound }: CepLookupProps) {
 
   return (
     <div className="flex gap-2">
+      {/* Mascara na exibição, não só no onChange: CEP salvo no banco vem só
+          com dígitos, e sem isso o campo abre cru (21360430) num cadastro
+          que já existe. cepMask normaliza antes de formatar, então é
+          idempotente para o valor que o próprio onChange já mascarou. */}
       <Input
-        value={value}
+        value={cepMask(value)}
         onChange={handleChange}
         placeholder="00000-000"
         maxLength={9}
