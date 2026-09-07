@@ -144,7 +144,16 @@ export function ServiceOrderFormDialog({
   const [svcNeighborhood, setSvcNeighborhood] = useState('');
   const [svcCity, setSvcCity] = useState('');
   const [svcState, setSvcState] = useState('');
-  const { equipment } = useEquipment(selectedCustomerId);
+  const { equipment: rawEquipment } = useEquipment(selectedCustomerId);
+  // BUG 1.23.x — sem customerId, useEquipment devolve TODOS os equipamentos da
+  // empresa (comportamento correto pra outras telas, ex. página de Equipamentos,
+  // onde não mexemos). Aqui, sem cliente selecionado (ex. modo "Cliente avulso",
+  // onde o cliente ainda não existe), a lista efetiva TEM que ficar vazia —
+  // nunca mostrar/permitir marcar equipamento de outro cliente da empresa.
+  const equipment = useMemo(
+    () => (selectedCustomerId ? rawEquipment : []),
+    [selectedCustomerId, rawEquipment],
+  );
   const { toast: editToast } = useToast();
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
   const [recurrenceEditDialogOpen, setRecurrenceEditDialogOpen] = useState(false);
@@ -450,8 +459,13 @@ export function ServiceOrderFormDialog({
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
 
+    // Defesa extra (a lista de equipamentos já fica vazia na UI em modo avulso):
+    // cliente criado na hora nunca tem equipamento próprio ainda, então nunca
+    // manda equipment_id/equipment_items de outro cliente da empresa.
+    const effectiveEquipmentIds = customerMode === 'adhoc' ? [] : selectedEquipmentIds;
+
     const equipment_items = [
-      ...selectedEquipmentIds.flatMap(eqId => {
+      ...effectiveEquipmentIds.flatMap(eqId => {
         const templates = equipmentTemplateMap[eqId] || [];
         if (templates.length === 0) {
           return [{ equipment_id: eqId, form_template_id: undefined as string | undefined }];
@@ -464,7 +478,7 @@ export function ServiceOrderFormDialog({
       })),
     ];
 
-    const formTemplateId = equipmentTemplateMap[selectedEquipmentIds[0] || '']?.[0]
+    const formTemplateId = equipmentTemplateMap[effectiveEquipmentIds[0] || '']?.[0]
       || selectedStandaloneTemplateIds[0]
       || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined);
 
@@ -502,7 +516,7 @@ export function ServiceOrderFormDialog({
         duration_minutes: data.duration_minutes || 120,
         description: data.description || null,
         notes: data.notes || null,
-        equipment_id: selectedEquipmentIds[0] || null,
+        equipment_id: effectiveEquipmentIds[0] || null,
         form_template_id: formTemplateId || null,
         require_tech_signature: requireTechSignature,
         require_client_signature: requireClientSignature,
@@ -562,7 +576,7 @@ export function ServiceOrderFormDialog({
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
-      equipment_id: selectedEquipmentIds[0] || undefined,
+      equipment_id: effectiveEquipmentIds[0] || undefined,
       form_template_id: formTemplateId,
       require_tech_signature: requireTechSignature,
       require_client_signature: requireClientSignature,
@@ -744,6 +758,16 @@ export function ServiceOrderFormDialog({
     onOpenChange(false);
   };
 
+  // Troca de cliente (ou troca de modo cadastrado/avulso) invalida qualquer
+  // seleção de equipamentos/checklists feita para o cliente anterior — senão um
+  // equipamento marcado antes da troca segue no submit mesmo já não aparecendo
+  // mais na lista (vazamento do bug 1.23.x).
+  const resetEquipmentSelection = () => {
+    setSelectedEquipmentIds([]);
+    setEquipmentTemplateMap({});
+    setExpandedEquipmentIds([]);
+  };
+
   const toggleEquipment = (eqId: string) => {
     setSelectedEquipmentIds(prev =>
       prev.includes(eqId) ? prev.filter(id => id !== eqId) : [...prev, eqId]
@@ -784,7 +808,7 @@ export function ServiceOrderFormDialog({
   // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
   // da OS. Alavanca ligada revela campos estruturados (mesmo padrão do avulso).
   const serviceAddressSection = (
-    <div className="rounded-lg border p-3 space-y-3">
+    <div className="rounded-lg bg-muted/30 p-3 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <Label className="cursor-default flex items-center gap-1.5 text-sm">
           <MapPinned className="h-4 w-4 text-primary" />
@@ -931,7 +955,9 @@ export function ServiceOrderFormDialog({
             <p className="text-sm text-muted-foreground">{t.equipmentNone}</p>
           )}
           {!selectedCustomerId && (
-            <p className="text-sm text-muted-foreground">{t.equipmentSelectFirst}</p>
+            <p className="text-sm text-muted-foreground">
+              {customerMode === 'adhoc' ? t.equipmentAdhocNote : t.equipmentSelectFirst}
+            </p>
           )}
 
           <div className="space-y-2 max-h-[340px] overflow-y-auto">
@@ -944,8 +970,8 @@ export function ServiceOrderFormDialog({
                 <div
                   key={eq.id}
                   className={cn(
-                    'rounded-lg border transition-colors',
-                    checked && 'border-primary bg-primary/5'
+                    'rounded-lg transition-colors',
+                    checked ? 'border border-primary bg-primary/5' : 'bg-muted/30'
                   )}
                 >
                   {/* Linha do equipamento — seleção + expandir */}
@@ -1189,7 +1215,7 @@ export function ServiceOrderFormDialog({
                       <CustomerSelectField
                         customers={customers}
                         value={field.value}
-                        onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }}
+                        onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); resetEquipmentSelection(); }}
                         placeholder={t.placeholderSelectCustomer}
                         searchPlaceholder={t.placeholderSearchCustomer}
                         requireDocument={false}
@@ -1311,7 +1337,7 @@ export function ServiceOrderFormDialog({
                 {serviceOrder?.id && <OsMaterialsSection serviceOrderId={serviceOrder.id} />}
 
                 {/* Pesquisa de Satisfação (NPS) ao finalizar */}
-                <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 border-t pt-3">
                   <Label className="cursor-default flex items-center gap-1.5 text-sm">
                     <Star className="h-4 w-4 text-warning" />
                     {t.npsLabel}
@@ -1472,7 +1498,7 @@ export function ServiceOrderFormDialog({
                       setCustomerMode('adhoc');
                       form.setValue('customer_id', '');
                       setSelectedCustomerId(undefined);
-                      setSelectedEquipmentIds([]);
+                      resetEquipmentSelection();
                     }
                   }}
                   off={{ value: 'existing', label: t.customerRegistered }}
@@ -1489,7 +1515,7 @@ export function ServiceOrderFormDialog({
                       <CustomerSelectField
                         customers={customers}
                         value={field.value}
-                        onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
+                        onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); resetEquipmentSelection(); }}
                         placeholder={t.placeholderSelectCustomer}
                         searchPlaceholder={t.placeholderSearchCustomer}
                         onCreateFull={() => setQuickCreateCustomerOpen(true)}
@@ -1499,7 +1525,7 @@ export function ServiceOrderFormDialog({
                   </FormItem>
                 )} />
               ) : (
-                <div className="space-y-3 rounded-lg border p-3">
+                <div className="space-y-3 rounded-lg bg-muted/30 p-3">
                   <p className="text-xs text-muted-foreground">{t.adhocNote}</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="sm:col-span-2">
@@ -1651,7 +1677,7 @@ export function ServiceOrderFormDialog({
               )} />
 
               {/* Recurrence */}
-              <div className="rounded-lg border p-3 space-y-3">
+              <div className="rounded-lg bg-muted/30 p-3 space-y-3">
                 <div className="flex items-center gap-2">
                   <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
                   <Label className="cursor-pointer flex items-center gap-1.5">
@@ -1739,7 +1765,7 @@ export function ServiceOrderFormDialog({
               </div>
 
               {/* Pesquisa de Satisfação (NPS) ao finalizar */}
-              <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 border-t pt-3">
                 <Label className="cursor-default flex items-center gap-1.5 text-sm">
                   <Star className="h-4 w-4 text-warning" />
                   {t.npsLabel}
@@ -1788,7 +1814,7 @@ export function ServiceOrderFormDialog({
             const newId = (result as any).id;
             form.setValue('customer_id', newId);
             setSelectedCustomerId(newId);
-            setSelectedEquipmentIds([]);
+            resetEquipmentSelection();
           }
         }}
         isLoading={createCustomer.isPending}

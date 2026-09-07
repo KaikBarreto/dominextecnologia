@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils';
 import {
   User, UserPlus, Palette, Wrench, MapPin, Package,
   Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
-  ChevronLeft, ChevronRight, Check, Save, Loader2,
+  ChevronLeft, ChevronRight, Check, Save, Loader2, Inbox,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
@@ -915,7 +915,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </Badge>
       </div>
 
-      <div className="rounded-xl border bg-muted/20 p-4 space-y-4">
+      <div className="space-y-4">
         <div>
           <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">{tq.bdiTax} &amp; {tq.bdiProfit}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1094,7 +1094,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               <section className="space-y-3">
                 <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title={tq.servicesHeader} />
 
-                <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
+                <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/30 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <SearchableSelect
                       groups={serviceGroups}
@@ -1138,7 +1138,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               <section className="space-y-3">
                 <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title={tq.materialsHeader} />
 
-                <div className="flex flex-col gap-2 p-3 bg-muted/40 rounded-lg border">
+                <div className="flex flex-col gap-2 p-3 bg-muted/30 rounded-lg">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="flex-1 min-w-0">
                       <SearchableSelect
@@ -1488,7 +1488,8 @@ function BdiField({ label, value, onChange, suffix, prefix, step = 0.1, min = 0 
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border border-dashed rounded-lg p-5 text-center text-sm text-muted-foreground">
+    <div className="flex flex-col items-center gap-1.5 py-6 text-center text-sm text-muted-foreground">
+      <Inbox className="h-5 w-5 text-muted-foreground/50" />
       {children}
     </div>
   );

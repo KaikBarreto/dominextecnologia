@@ -250,7 +250,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       <div class="ficha"><div class="n">07</div><div class="l">Fases</div></div>
     </div>
     <div class="meta-doc">
-      <b>Versão do sistema</b> v1.22.5 &nbsp;·&nbsp; <b>Atualizado em</b> 06 de setembro de 2026
+      <b>Versão do sistema</b> v1.23.1 &nbsp;·&nbsp; <b>Atualizado em</b> 06 de setembro de 2026
     </div>
   </div>
 </header>
@@ -2718,7 +2718,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   </table>
 
   <div class="aviso">
-    "Cliente avulso" <b>não</b> quer dizer OS sem cliente. Ao salvar, o sistema cria a ficha do cliente com os dados que você digitou e vincula a OS a ela. Ou seja: aquele cliente passa a existir na sua base, com o nome que você escreveu. Se ele já existia com outro nome, você acabou de criar um duplicado. Na dúvida, use <span class="ui">Cliente cadastrado</span> e busque primeiro.
+    "Cliente avulso" <b>não</b> quer dizer OS sem cliente. Ao salvar, o sistema cria a ficha do cliente com os dados que você digitou e vincula a OS a ela. Ou seja: aquele cliente passa a existir na sua base, com o nome que você escreveu. Se ele já existia com outro nome, você acabou de criar um duplicado. Na dúvida, use <span class="ui">Cliente cadastrado</span> e busque primeiro. E como o cliente ainda não existe de fato na hora de montar a OS, a etapa <span class="ui">Equipamentos e Checklists</span> não tem como listar equipamento nenhum dele: veja o aviso na etapa 2.
   </div>
 
   <p>Ainda na etapa 1 fica o campo <span class="ui">Tipo de Serviço</span>, também com busca, mostrando a bolinha de cor de cada serviço e a categoria como subtítulo. A primeira opção da lista é <span class="ui">Nenhum</span>, que é válida. Ao lado, um botão de mais (+) para criar um tipo de serviço na hora.</p>
@@ -2726,13 +2726,13 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   <h3>Regras que o sistema aplica</h3>
   <ul>
     <li>O botão <span class="ui">Próximo</span> só libera quando há cliente escolhido (ou, no modo avulso, um nome preenchido).</li>
-    <li>Trocar o cliente limpa a seleção de equipamento, porque o equipamento pertence ao cliente.</li>
+    <li>Trocar o cliente, ou alternar entre <span class="ui">Cliente cadastrado</span> e <span class="ui">Cliente avulso</span>, limpa a seleção de equipamentos e os checklists já escolhidos por equipamento na etapa 2, porque tudo isso pertencia ao cliente anterior. Se isso acontecer no meio do preenchimento, é só marcar de novo.</li>
     <li>Trocar o tipo de serviço muda a lista de checklists disponíveis na etapa 2 e pode fazer o bloco de equipamentos aparecer ou sumir.</li>
     <li>Ao criar o cliente ou o tipo de serviço pelo botão de mais (+), o item recém-criado já vem selecionado.</li>
   </ul>
 
   <figure>
-    <img src="img/t5-nova-os-etapa1.jpg" alt="Janela Nova Ordem de Serviço na Etapa 1 de 3 (Cliente e Serviço), com a chave Cliente cadastrado/Cliente avulso, o campo Cliente com busca vazio, a chave Endereço de serviço (diferente do cliente) desligada e o campo Tipo de Serviço em Nenhum, botão Próximo desativado" loading="lazy" decoding="async" width="920" height="476">
+    <img src="img/t5-nova-os-etapa1.jpg" alt="Janela Nova Ordem de Serviço na Etapa 1 de 3 (Cliente e Serviço), com a chave Cliente cadastrado/Cliente avulso, o campo Cliente com busca vazio, a chave Endereço de serviço (diferente do cliente) desligada e o campo Tipo de Serviço em Nenhum, botão Próximo desativado" loading="lazy" decoding="async" width="920" height="474">
     <figcaption>Etapa 1 da Nova OS: escolha de cliente, endereço de serviço e tipo de serviço.</figcaption>
   </figure>
 
@@ -2750,7 +2750,9 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <h3>Bloco Equipamentos</h3>
 
-  <p>Aparece quando o tipo de serviço escolhido está marcado como <b>vinculado a equipamento</b> (o padrão de todo serviço novo) ou quando nenhum tipo de serviço foi escolhido. Ele lista os equipamentos daquele cliente com caixinha de seleção, foto, marca, modelo, local e identificador.</p>
+  <p>Aparece quando o tipo de serviço escolhido está marcado como <b>vinculado a equipamento</b> (o padrão de todo serviço novo) ou quando nenhum tipo de serviço foi escolhido. Com um cliente cadastrado já escolhido, ele lista os equipamentos daquele cliente com caixinha de seleção, foto, marca, modelo, local e identificador.</p>
+
+  <p>Sem cliente escolhido, a lista vem <b>vazia</b>, e o texto do aviso muda conforme o modo da etapa 1: no modo <span class="ui">Cliente avulso</span>, "Salve a OS para depois cadastrar equipamentos deste cliente."; no modo <span class="ui">Cliente cadastrado</span> ainda sem ninguém escolhido, "Selecione um cliente primeiro para ver equipamentos.". Isso vale mesmo que a empresa já tenha equipamentos cadastrados de outros clientes: eles não aparecem aqui, só os do cliente da própria OS.</p>
 
   <ul>
     <li>Com mais de um equipamento, aparecem os botões <span class="ui">Selecionar todos</span> e <span class="ui">Desmarcar todos</span>.</li>
@@ -2891,7 +2893,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>Passando o mouse sobre um cartão, aparecem dois botões no canto superior direito: o lápis, que abre a edição (laranja no hover), e a lixeira, que abre a exclusão (vermelha no hover). Cada botão só aparece para quem tem a permissão correspondente. No canto inferior direito do cartão aparece o avatar de quem criou a OS, com o nome no tooltip.</p>
 
-  <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Reabrir</span>, <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída.</p>
+  <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Reabrir</span>, <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o <span class="ui">Custo total</span> ao final (item ainda não baixado do estoque mostra o aviso <span class="ui">Ainda não baixado do estoque</span>).</p>
 
   <h3>O "+" no cabeçalho da coluna</h3>
 
@@ -2901,7 +2903,68 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     O botão de mais (+) <b>não aparece</b> nas colunas de <b>Concluída</b> e <b>Cancelada</b>. Criar uma OS já nascendo concluída seria uma armadilha: nunca teria check-in, checklist nem assinatura, e apareceria nos indicadores como serviço entregue. Se você precisa registrar um serviço já feito, crie normalmente e finalize em seguida.
   </div>
 
-  <h2>9. Configurar Status: criar status próprio, cor e ordem</h2>
+  <h2>9. Consumo de material dentro da OS (recurso opcional, ligado em Configurações)</h2>
+
+  <p>Existe um recurso opcional que liga o consumo de material dentro da própria Ordem de Serviço: o técnico anota o que usou durante o atendimento, e a baixa no estoque é confirmada num resumo editável na hora de finalizar. Este capítulo cobre o fluxo de ponta a ponta.</p>
+
+  <div class="regra">
+    O recurso vem <b>desligado por padrão</b>. Para ligar, vá em <span class="ui">Configurações</span> → aba <span class="ui">Usabilidade</span> → seção <span class="ui">Ordens de Serviço</span> → chave <span class="ui">Consumo de estoque na OS</span>, com a explicação "Permite que o técnico registre os materiais usados durante a ordem de serviço e dê baixa no estoque ao finalizar". Com a chave desligada, a OS funciona exatamente como antes: nenhum passo novo aparece para o técnico, e concluir a OS não mexe em estoque.
+  </div>
+
+  <h3>Dois tempos: anotar e confirmar</h3>
+
+  <p>O consumo acontece em dois momentos separados:</p>
+
+  <ol>
+    <li><b>Durante o atendimento</b>: com a OS aberta na tela de execução do técnico, o menu de mais ações ganha o item <span class="ui">Consumir do estoque</span>. Ele abre a janela de mesmo nome, com o aviso "Anote o que você usou. O estoque só baixa quando a OS for finalizada." Nesse momento, anotar um material <b>não</b> mexe em saldo nenhum.</li>
+    <li><b>Ao finalizar a OS</b>: se algum material foi anotado, em vez do "Finalizar OS?" de sempre aparece o resumo <span class="ui">Resumo do consumo</span>, com a explicação "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." É só nesse passo que o estoque baixa de verdade.</li>
+  </ol>
+
+  <h3>Anotando o material (janela "Consumir do estoque")</h3>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">De onde saiu</span></td>
+        <td>Sim (só aparece quando há mais de um local)</td>
+        <td>Com um único local de estoque na empresa, ele é usado sozinho, sem pergunta. Com mais de um, o campo pré-seleciona o último local usado por aquele técnico naquele aparelho, ou o local principal.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Material</span></td>
+        <td>Sim</td>
+        <td>Busca por nome ou código, já filtrada pelo local escolhido. Ao selecionar, aparece "Tem X Y neste estoque" (X = quantidade, Y = unidade) ou, sem saldo, "Sem saldo neste estoque".</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Quantidade</span></td>
+        <td>Sim</td>
+        <td>Maior que zero. Se passar do saldo disponível naquele local, aparece o aviso "Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo." <b>e o técnico consegue continuar mesmo assim</b> — o aviso não bloqueia.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Observação</span></td>
+        <td>Não</td>
+        <td>Texto livre, por exemplo "troca do capacitor da unidade externa".</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Cada item anotado entra na lista <span class="ui">Já registrado nesta OS</span>, com material, quantidade, unidade e local. Enquanto ainda não foi baixado, dá para <b>editar</b> ou <b>remover</b> o item livremente, com os ícones de lápis e lixeira. Um item já baixado (depois de uma finalização anterior) ganha o selo <span class="ui">Já baixado</span> e não pode mais ser editado ou removido por ali.</p>
+
+  <div class="aviso">
+    Se o aparelho estiver sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar." O item fica com o selo <span class="ui">Aguardando envio</span> até subir, o que acontece sozinho assim que a conexão volta, ou ao reabrir a janela de consumo, ou ao abrir o resumo de finalização.
+  </div>
+
+  <h3>O resumo na finalização</h3>
+
+  <p>Se a OS tiver pelo menos um material anotado, finalizar abre o <span class="ui">Resumo do consumo</span> em vez do confirm de sempre. Cada linha mostra o material, o local, um campo de quantidade editável e o resultado projetado: "Fica com X Y" em cinza, ou "Fica negativo em X Y" em vermelho quando a baixa levaria o saldo abaixo de zero. Dá para remover um item do resumo antes de confirmar: se ele ainda não tinha sido baixado, simplesmente não entra na baixa; se já tinha sido baixado numa finalização anterior, remover estorna a quantidade de volta para o estoque. Sem nenhum material sobrando na lista, a mensagem é "Você tirou todos os materiais da lista. Nada será baixado do estoque." O botão final é <span class="ui">Confirmar e finalizar</span>.</p>
+
+  <div class="regra">
+    <b>Estoque nunca impede finalizar a OS.</b> Confirmando o resumo, o sistema tenta dar baixa nos materiais e, dê certo ou não, a OS é finalizada em seguida. Se a baixa tiver sucesso, a confirmação é "Materiais baixados do estoque" (ou "Materiais baixados. Alguns ficaram com saldo negativo, vale conferir no Estoque." quando algum item passou do saldo). Se a baixa falhar por qualquer motivo (por exemplo, queda de conexão bem na hora de confirmar), aparece "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois." Nesse caso o material fica registrado na OS, sem o selo <span class="ui">Já baixado</span>, pronto para ser reconfirmado depois pela mesma janela.
+  </div>
+
+  <p>Sem nenhum material anotado naquela OS, o fluxo de finalizar é exatamente o de sempre: o resumo de consumo simplesmente não aparece, com o recurso ligado ou não.</p>
+
+  <h2>10. Configurar Status: criar status próprio, cor e ordem</h2>
 
   <p>O botão <span class="ui">Configurações</span> no topo da tela (no celular, dentro do painel de filtros, em <span class="ui">Gerenciar status de OS</span>) abre a janela <span class="ui">Configurações de OS</span>. É ali que vive a lista de status da sua empresa.</p>
 
@@ -2936,7 +2999,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <b>Nesta janela não existe configuração de campos obrigatórios por status, nem prazo de atendimento (SLA), nem prefixo geral da numeração.</b> A janela <span class="ui">Configurações de OS</span> hoje faz uma coisa só: gerenciar os status (criar, renomear, recolorir, reordenar e excluir). O prefixo de numeração de cada OS vem do <b>tipo de serviço</b>, na tela de Serviços.
   </div>
 
-  <h2>10. Filtros, busca e por que a busca ignora o filtro de período</h2>
+  <h2>11. Filtros, busca e por que a busca ignora o filtro de período</h2>
 
   <p>A tela tem três controles de recorte, e a ordem em que eles conversam é a principal fonte de dúvida do suporte:</p>
 
@@ -2959,7 +3022,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>A busca procura por: nome do cliente, código completo da OS (por exemplo MP-2026-000123), só o número, nome do tipo de serviço, título da tarefa e nome do equipamento. Ela tolera acento e diferença de maiúscula.</p>
 
-  <h2>11. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente</h2>
+  <h2>12. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente</h2>
 
   <p>Existe um único endereço de OS que serve para três públicos diferentes, e o que muda é <b>quem está olhando</b>:</p>
 
@@ -2993,7 +3056,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>Quando a OS pertence a um contrato PMOC, a janela de edição mostra uma faixa de identificação no topo e, no campo de descrição, um aviso amarelo: "Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade, escreva pensando em quem está do outro lado (cliente, fiscal sanitário)." <b>Isso não é erro.</b> É um lembrete de que aquele texto é público.</p>
 
-  <h2>12. Aba Relatório: leitura do dashboard de OS</h2>
+  <h2>13. Aba Relatório: leitura do dashboard de OS</h2>
 
   <p>A aba <span class="ui">Relatório</span> transforma as OS em números. Ela respeita o mesmo recorte de período da tela.</p>
 
@@ -3027,7 +3090,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>Onde não houver dado no período, o gráfico mostra "Sem dados". Isso quase sempre significa período muito estreito, não falta de informação.</p>
 
-  <h2>13. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator</h2>
+  <h2>14. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator</h2>
 
   <p>A aba <span class="ui">NPS e Satisfação</span> reúne o que os clientes responderam nas pesquisas geradas ao finalizar OS.</p>
 
@@ -3094,9 +3157,14 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
         <td>Explique com clareza: <b>não existe uma chave de "exigir assinatura" na tela de criar ou editar OS</b>. A exigência de assinatura do técnico é ligada automaticamente nas OS geradas por <b>contrato</b>. Para OS avulsa, a assinatura é colhida quando o checklist tem uma pergunta do tipo <span class="ui">Assinatura</span>.</td>
       </tr>
       <tr>
+        <td>"Criei a OS como Cliente avulso e não apareceu nenhum equipamento pra marcar"</td>
+        <td>Comportamento esperado</td>
+        <td>No modo <span class="ui">Cliente avulso</span> o cliente ainda não existe de fato enquanto você preenche a OS, então não há como listar equipamento dele. A tela avisa "Salve a OS para depois cadastrar equipamentos deste cliente." Cadastre os equipamentos depois, direto no cadastro do cliente recém-criado.</td>
+      </tr>
+      <tr>
         <td>"Concluí a OS e o estoque não baixou"</td>
-        <td>Comportamento correto do sistema</td>
-        <td>Concluir OS <b>não</b> mexe em saldo de estoque. A baixa acontece na conversão de um orçamento em OS (os materiais do orçamento saem do estoque) e nos ajustes e inventários da tela de Estoque.</td>
+        <td>Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço)</td>
+        <td>Com o recurso <b>desligado</b> (padrão), concluir OS realmente não mexe em saldo de estoque: a baixa acontece na conversão de um orçamento em OS, na saída manual e nos ajustes e inventários da tela de Estoque. Com o recurso <b>ligado</b>, a baixa acontece na hora de finalizar, mas só se o técnico anotou material naquela OS pelo <span class="ui">Consumir do estoque</span> do menu de mais ações: confira se ele anotou algo e se confirmou o <span class="ui">Resumo do consumo</span> que aparece antes de fechar a OS.</td>
       </tr>
       <tr>
         <td>"A coluna do kanban sumiu"</td>
@@ -3137,7 +3205,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <dd>Não existe uma chave de "exigir assinatura" na criação da OS. A exigência de assinatura do <b>técnico</b> é ligada sozinha nas OS geradas por contrato. Para pedir a assinatura do cliente numa OS avulsa, coloque uma pergunta do tipo <span class="ui">Assinatura</span> no checklist e marque como campo obrigatório: aí o técnico não fecha a OS sem colher.</dd>
 
     <dt>Concluir a OS dá baixa nos materiais usados?</dt>
-    <dd>Não. Concluir OS não mexe em estoque. A baixa acontece quando um orçamento com materiais é convertido em OS, e nos lançamentos manuais e inventários da tela de Estoque.</dd>
+    <dd>Por padrão não: concluir OS não mexe em estoque, e a baixa acontece quando um orçamento com materiais é convertido em OS, ou por lançamento manual e inventário na tela de Estoque. Existe um recurso opcional, desligado por padrão, chamado <span class="ui">Consumo de estoque na OS</span> (liga em Configurações → Usabilidade → Ordens de Serviço): com ele ligado, o técnico anota o material usado durante o atendimento pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa é confirmada num resumo editável na hora de finalizar a OS. Mesmo com o recurso ligado, uma OS sem nenhum material anotado finaliza sem mexer em estoque, e o estoque nunca impede a OS de ser finalizada.</dd>
 
     <dt>Posso colocar um técnico e uma equipe na mesma OS?</dt>
     <dd>Pode. O campo <span class="ui">Responsáveis</span> aceita técnicos individuais e equipes ao mesmo tempo, no mesmo seletor.</dd>
@@ -3217,6 +3285,15 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <li>No celular, nas visões Dia e Semana, você pode <b>deslizar o dedo</b> para os lados: para a esquerda avança, para a direita volta.</li>
     <li>A lupa abre a busca <span class="ui">Buscar OS / Tarefa</span>, que procura por número da OS, cliente, descrição e técnico. Ao escolher um resultado, o calendário navega até a data daquele compromisso e abre o resumo dele.</li>
   </ul>
+
+  <h3>O resumo do compromisso</h3>
+  <p>Clicando num cartão da Agenda (ou num resultado da busca, ou em <span class="ui">Ver detalhes</span> na janela <span class="ui">OS Pausadas</span>), abre o resumo daquele compromisso: no computador, um painel à direita da tela; no celular, um painel abaixo do calendário. Para uma OS, o resumo traz o cliente, o endereço, o equipamento (quando houver), os responsáveis, a descrição e a linha do tempo com os horários de início, pausa, retomada e conclusão.</p>
+
+  <p>Quando a OS já teve material lançado nela, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o <span class="ui">Custo total</span> ao final. Um material ainda não baixado do estoque aparece com o aviso <span class="ui">Ainda não baixado do estoque</span>. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.</p>
+
+  <div class="regra">
+    O bloco <span class="ui">Materiais utilizados</span> só aparece quando existe material lançado naquela OS. Sem lançamento nenhum, o bloco simplesmente não aparece. Ele também não existe no resumo de uma <b>Tarefa</b>, porque Tarefa é compromisso interno e não tem consumo de estoque.
+  </div>
 
   <h3>Filtros</h3>
   <p>O botão <span class="ui">Filtros</span> traz <span class="ui">Técnico</span>, <span class="ui">Cliente</span> e <span class="ui">Status</span>, todos com seleção múltipla. Sem nada marcado, mostra tudo.</p>
@@ -3853,7 +3930,41 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>Se o técnico tentar finalizar sem assinar, as mensagens são "Assinatura do técnico obrigatória" ou "Assinatura do cliente obrigatória".</p>
 
-  <h2>9. Finalizar (e o "finalizar parcialmente" em contrato PMOC)</h2>
+  <h2>9. Consumir material durante o atendimento (recurso opcional)</h2>
+
+  <p>Algumas empresas ligam um recurso opcional (desligado por padrão, em Configurações → Usabilidade → Ordens de Serviço → <span class="ui">Consumo de estoque na OS</span>) que deixa o técnico anotar, durante o próprio atendimento, o material que usou. Sem esse recurso ligado, a tela de execução não mostra passo nenhum de material, e este capítulo não se aplica.</p>
+
+  <p>Com o recurso ligado, o menu de mais ações (o botão de três traços no rodapé) ganha o item <span class="ui">Consumir do estoque</span>. Ele abre a janela de mesmo nome, com o aviso "Anote o que você usou. O estoque só baixa quando a OS for finalizada." — ou seja, anotar aqui <b>não mexe em saldo nenhum</b> ainda.</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">De onde saiu</span></td>
+        <td>Sim (só aparece com mais de um local)</td>
+        <td>Com um único local de estoque na empresa, ele é usado sozinho. Com mais de um, o campo já vem com o último local usado por aquele técnico naquele aparelho, ou o local principal.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Material</span></td>
+        <td>Sim</td>
+        <td>Busca por nome ou código, filtrada pelo local escolhido. Mostra "Tem X Y neste estoque" (X = quantidade, Y = unidade) ou "Sem saldo neste estoque".</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Quantidade</span></td>
+        <td>Sim</td>
+        <td>Maior que zero. Passando do saldo disponível, aparece "Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo." e o técnico <b>consegue continuar</b> mesmo assim.</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Observação</span></td>
+        <td>Não</td>
+        <td>Texto livre.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Cada item entra na lista <span class="ui">Já registrado nesta OS</span> e pode ser editado ou removido enquanto não foi baixado do estoque. Sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar.", com o selo <span class="ui">Aguardando envio</span> até subir sozinho.</p>
+
+  <h2>10. Finalizar (e o "finalizar parcialmente" em contrato PMOC)</h2>
 
   <p>No rodapé, o botão verde <span class="ui">Finalizar OS</span> encerra o atendimento. Antes de aceitar, o sistema confere uma sequência de coisas.</p>
 
@@ -3878,8 +3989,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <li>Mostra "OS finalizada com sucesso!" e a tela vira o relatório do serviço.</li>
   </ul>
 
-  <div class="perigo">
-    <b>Finalizar não dá baixa em material nenhum.</b> Não existe, na tela de execução, campo de material usado nem botão de consumo de estoque. Concluir a OS não altera saldo de estoque. A baixa acontece na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque.
+  <div class="regra">
+    <b>Estoque nunca impede a OS de ser finalizada.</b> Sem o recurso "Consumo de estoque na OS" ligado, ou com ele ligado mas sem nenhum material anotado nesta OS, finalizar não mexe em estoque nenhum: a baixa continua acontecendo só na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque. Com o recurso ligado <b>e</b> material anotado, ao tocar em <span class="ui">Finalizar OS</span> (depois de passar pela sequência de verificação acima) aparece, no lugar da confirmação de sempre, o <span class="ui">Resumo do consumo</span>: "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." Cada linha traz a quantidade (editável) e o saldo projetado, em cinza ("Fica com X") ou em vermelho quando ficaria negativo ("Fica negativo em X"). Dá para remover um item ali mesmo antes de confirmar: se ainda não tinha sido baixado, ele simplesmente não entra na baixa. O botão <span class="ui">Confirmar e finalizar</span> tenta dar a baixa e, dê certo ou não, finaliza a OS de qualquer forma: se a baixa falhar (por exemplo, a conexão cair na hora), o aviso é "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois."
   </div>
 
   <h3>Finalizar Parcial</h3>
@@ -3903,7 +4014,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <b>Finalizar Parcial está disponível em qualquer OS</b> com check-in feito, não apenas nas de contrato PMOC. Ele é a saída honesta para o serviço que ficou pela metade: o registro fica, o gestor vê na fila de pausadas e o cliente não recebe pesquisa de satisfação de um serviço que não terminou.
   </div>
 
-  <h2>10. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)</h2>
+  <h2>11. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)</h2>
 
   <div class="regra">
     <b>Área do Técnico™ não é a tela de executar OS.</b> São duas coisas diferentes com nomes parecidos. A execução da OS é o link da ordem de serviço. A Área do Técnico™ é uma caixa de ferramentas de cálculo e consulta, que existe independentemente de haver OS aberta.
@@ -3948,7 +4059,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <b>As ferramentas mudam conforme o segmento da empresa.</b> Empresa de elevadores não vê as calculadoras de refrigeração. Se o segmento da sua empresa ainda não tem ferramenta nenhuma no catálogo, o item <span class="ui">Área do Técnico™</span> não aparece no menu e o endereço redireciona para o início. O segmento é definido pela Dominex, não é editável pelo cliente.
   </div>
 
-  <h2>11. Usar a calculadora de dentro da OS, sem sair da tela</h2>
+  <h2>12. Usar a calculadora de dentro da OS, sem sair da tela</h2>
 
   <p>Durante a execução da OS, aparece um <b>botão flutuante</b> no canto inferior esquerdo, com o ícone da Área do Técnico™. Tocando nele, as ferramentas abrem <b>em cima da OS</b>, em tela cheia.</p>
 
@@ -3964,7 +4075,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   </div>
   
 
-  <h2>12. As ferramentas com cadeado: o que é do seu segmento e o que é de outro</h2>
+  <h2>13. As ferramentas com cadeado: o que é do seu segmento e o que é de outro</h2>
 
   <p>No topo da Área do Técnico™ existe um seletor de nicho. Ele permite espiar o conjunto de ferramentas de <b>outros segmentos</b>, e é aí que aparecem os cadeados.</p>
 
@@ -4025,8 +4136,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       </tr>
       <tr>
         <td>"Onde eu marco as peças que usei na OS?"</td>
-        <td>Esse campo não existe na execução</td>
-        <td>Não existe registro de material dentro da tela de execução, e concluir a OS não mexe em estoque. O consumo é lançado pelo orçamento convertido em OS, ou manualmente na tela de Estoque.</td>
+        <td>Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço)</td>
+        <td>Com o recurso desligado, esse campo não existe mesmo na tela de execução: nesse caso o consumo é lançado pelo orçamento convertido em OS, ou manualmente na tela de Estoque. Com o recurso ligado, o menu de mais ações ganha o item <span class="ui">Consumir do estoque</span>, onde o técnico anota material e quantidade durante o atendimento; a baixa é confirmada no resumo que aparece ao finalizar a OS.</td>
       </tr>
       <tr>
         <td>"Onde está o botão de exigir assinatura?"</td>
@@ -4119,6 +4230,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       <tr><td><span class="ui">Posição de Estoque</span></td><td>Qual era o saldo numa data passada. É o retrato do estoque para fechamento e para conferência com o contador.</td></tr>
     </tbody>
   </table>
+
+  <p>No celular, para caber na faixa de abas, três desses nomes aparecem encurtados: <span class="ui">Histórico de Materiais (Kardex)</span> vira só <span class="ui">Histórico</span>, <span class="ui">Compras de Material</span> vira <span class="ui">Compras</span> e <span class="ui">Posição de Estoque</span> vira <span class="ui">Posição</span>. <span class="ui">Estoque Atual</span> e <span class="ui">Inventários</span> continuam com o nome completo mesmo no celular. É a mesma tela e as mesmas colunas, só o rótulo da aba que muda de tamanho.</p>
 
   <figure>
     <img src="img/t8-estoque.jpg" alt="Tela Estoque da Dominex na aba Estoque Atual, com os indicadores de total de itens, valor investido, projeção de venda e estoque baixo, mais a tabela de materiais" loading="lazy" decoding="async" width="1180" height="1993">
@@ -4227,7 +4340,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>Validações, com o título "Confira os dados": "Selecione o local de origem.", "Selecione o local de destino.", "Origem e destino não podem ser o mesmo local de estoque.", "Informe uma quantidade maior que zero." e "Saldo insuficiente no local de origem."</p>
 
-  <p>Toda transferência aparece no Kardex como movimento do tipo <span class="ui">Transferência</span>, com origem e destino.</p>
+  <p>Toda transferência aparece no Kardex como movimento do tipo <span class="ui">Transferência</span>, com origem e destino: a coluna <span class="ui">Local</span> mostra o par completo no formato "origem → destino" (por exemplo, <span class="ui">Galpão → Van 01</span>).</p>
 
   <h2>4. Restrição de acesso por depósito — quem vê o quê</h2>
 
@@ -4253,10 +4366,10 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <h2>5. Aba Histórico (Kardex): lendo a movimentação item a item</h2>
 
-  <p>A aba <span class="ui">Histórico de Materiais (Kardex)</span> mostra o título <span class="ui">Histórico de Movimentações</span>. É o extrato do estoque: cada linha é um movimento, com o saldo antes e o saldo depois.</p>
+  <p>A aba <span class="ui">Histórico de Materiais (Kardex)</span> mostra o título <span class="ui">Histórico de Movimentações</span>. É o extrato do estoque: cada linha é um movimento, com o saldo antes e o saldo depois. No celular, essa aba aparece na faixa de abas com o nome curto <span class="ui">Histórico</span>.</p>
 
   <h3>Colunas</h3>
-  <p><span class="ui">Usuário</span>, <span class="ui">Data e Hora</span>, <span class="ui">Tipo</span>, <span class="ui">Origem</span>, <span class="ui">Material</span>, <span class="ui">Estoque inicial</span>, <span class="ui">Movimento</span> e <span class="ui">Estoque final</span>.</p>
+  <p><span class="ui">Usuário</span>, <span class="ui">Data e Hora</span>, <span class="ui">Tipo</span>, <span class="ui">Origem</span>, <span class="ui">Material</span>, <span class="ui">Local</span>, <span class="ui">Estoque inicial</span>, <span class="ui">Movimento</span> e <span class="ui">Estoque final</span>.</p>
 
   <h3>Tipos de movimento</h3>
   <table class="dados">
@@ -4264,22 +4377,28 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <tbody>
       <tr><td><span class="ui">Entrada</span></td><td>Cadastro inicial com quantidade, entrada manual, entrada de compra e importação de XML da NF-e.</td></tr>
       <tr><td><span class="ui">Saída</span></td><td>Saída manual e consumo de materiais de um orçamento convertido em OS.</td></tr>
+      <tr><td><span class="ui">Consumo</span></td><td>Material anotado pelo técnico dentro de uma Ordem de Serviço, quando a empresa liga o recurso opcional <span class="ui">Consumo de estoque na OS</span> (Configurações → Usabilidade → Ordens de Serviço). A baixa é confirmada no resumo que aparece ao finalizar a OS, não na conclusão em si.</td></tr>
       <tr><td><span class="ui">Ajuste</span></td><td>Mudança de quantidade na edição do material e ajuste gerado no fechamento de um inventário.</td></tr>
       <tr><td><span class="ui">Transferência</span></td><td>Movimentação entre dois locais de estoque.</td></tr>
-      <tr><td><span class="ui">Estorno</span></td><td>Reversão de um movimento anterior.</td></tr>
+      <tr><td><span class="ui">Estorno</span></td><td>Reversão de um movimento anterior, inclusive quando a quantidade de um material já baixado numa OS é reduzida ao reabrir e corrigir aquela OS.</td></tr>
     </tbody>
   </table>
+
+  <p>O custo unitário de um material consumido numa OS <b>fica congelado</b> no momento da primeira baixa daquela linha. Se a OS for reaberta depois e a quantidade for corrigida, o estorno usa o mesmo custo do consumo original, para a devolução valorizar exatamente igual ao que saiu.</p>
 
   <h3>A coluna Origem</h3>
   <p>É o que amarra o movimento ao seu motivo. Ela mostra <span class="ui">OS</span> com o número da ordem quando o consumo veio de uma OS, ou <span class="ui">Fornecedor: [nome]</span> quando o movimento veio de uma compra. Movimento feito por processo automático aparece como <span class="ui">Sistema</span>. Material apagado depois aparece como <span class="ui">Material removido</span>.</p>
 
+  <h3>A coluna Local</h3>
+  <p>Mostra o local de estoque onde o movimento aconteceu, como <span class="ui">Galpão</span> ou <span class="ui">Van 01</span>. Num movimento do tipo <span class="ui">Transferência</span>, ela mostra o par completo no formato "origem → destino" (por exemplo, <span class="ui">Galpão → Van 01</span>), montado a partir das duas pernas daquela transferência. Quando o sistema não consegue identificar um dos dois lados, aparece só o nome que se conhece; sem nenhum dos dois, aparece <span class="ui">—</span>.</p>
+
   <figure>
-    <img src="img/t8-kardex.jpg" alt="Aba Histórico de Materiais (Kardex) da conta de exemplo, sem nenhum movimento no período: ícone de relógio com seta, o texto Nenhuma movimentação encontrada e Tente outro período ou filtro, e o botão Filtros no canto superior direito" loading="lazy" decoding="async" width="1180" height="897">
-    <figcaption>Kardex sem movimentação no filtro atual. Com lançamentos, a tabela ganha as colunas Usuário, Data e Hora, Tipo, Origem, Material, Estoque inicial, Movimento e Estoque final.</figcaption>
+    <img src="img/t8-kardex.jpg" alt="Aba Histórico de Materiais (Kardex) da conta de exemplo, sem nenhum movimento no período: ícone de relógio com seta, o texto Nenhuma movimentação encontrada e Tente outro período ou filtro, e o botão Filtros no canto superior direito" loading="lazy" decoding="async" width="1180" height="709">
+    <figcaption>Kardex sem movimentação no filtro atual. Com lançamentos, a tabela ganha as colunas Usuário, Data e Hora, Tipo, Origem, Material, Local, Estoque inicial, Movimento e Estoque final.</figcaption>
   </figure>
 
   <h3>Filtros</h3>
-  <p><span class="ui">Período</span>, <span class="ui">Material</span> (com <span class="ui">Todos os materiais</span>) e <span class="ui">Tipo de movimento</span> (com <span class="ui">Todos os tipos</span>). Sem movimento: "Sem movimentações" e "As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."</p>
+  <p><span class="ui">Período</span>, <span class="ui">Material</span> (com <span class="ui">Todos os materiais</span>), <span class="ui">Tipo de movimento</span> (com <span class="ui">Todos os tipos</span>) e <span class="ui">Local</span> (com <span class="ui">Todos os locais</span>), dentro do botão <span class="ui">Filtros</span>. Sem movimento: "Sem movimentações" e "As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."</p>
 
   <div class="dica">
     O Kardex é a ferramenta para responder "cadê os 20 filtros que compramos mês passado". Filtre pelo material, ordene por data e leia a coluna de saldo: em algum ponto o número muda sem um movimento correspondente, e ali está a resposta.
@@ -4445,8 +4564,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <tbody>
       <tr>
         <td>"Concluí a OS e o estoque não baixou"</td>
-        <td>Comportamento correto do sistema</td>
-        <td>Concluir OS <b>não</b> dá baixa em estoque, e não existe campo de material na tela de execução do técnico. A baixa acontece: na <b>conversão de um orçamento em OS</b> (os materiais do orçamento saem do estoque, e o movimento aparece no Kardex com origem OS), na <b>saída manual</b> e no <b>ajuste do inventário</b>.</td>
+        <td>Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço)</td>
+        <td>Com o recurso <b>desligado</b> (padrão da empresa), concluir OS realmente não dá baixa em estoque: a baixa acontece na <b>conversão de um orçamento em OS</b> (os materiais do orçamento saem do estoque, movimento tipo <span class="ui">Saída</span> com origem OS no Kardex), na <b>saída manual</b> e no <b>ajuste do inventário</b>. Com o recurso <b>ligado</b>, o técnico anota o material usado direto na OS pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa (movimento tipo <span class="ui">Consumo</span> no Kardex) é confirmada no resumo editável que aparece ao finalizar. Sem material anotado naquela OS, nada muda, com o recurso ligado ou não.</td>
       </tr>
       <tr>
         <td>"O sistema não avisou que o material acabou"</td>
@@ -4491,7 +4610,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       <tr>
         <td>"Sumiu material e ninguém sabe explicar"</td>
         <td>Falta olhar o Kardex</td>
-        <td>Abra <span class="ui">Histórico de Materiais (Kardex)</span>, filtre pelo material e leia as colunas de saldo inicial e final. A coluna <span class="ui">Origem</span> mostra se a saída veio de OS ou de fornecedor, e a coluna <span class="ui">Usuário</span> mostra quem lançou.</td>
+        <td>Abra <span class="ui">Histórico de Materiais (Kardex)</span> (no celular, a aba <span class="ui">Histórico</span>), filtre pelo material e leia as colunas de saldo inicial e final. A coluna <span class="ui">Origem</span> mostra se a saída veio de OS ou de fornecedor, a coluna <span class="ui">Local</span> mostra de qual depósito saiu (em transferência, o par origem → destino), e a coluna <span class="ui">Usuário</span> mostra quem lançou.</td>
       </tr>
       <tr>
         <td>"Excluí um material sem querer"</td>
@@ -4504,7 +4623,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   <h2 class="suporte">Perguntas frequentes</h2>
   <dl class="qa">
     <dt>Concluir uma OS dá baixa nos materiais usados?</dt>
-    <dd>Não. Concluir OS não altera saldo de estoque, e a tela do técnico nem tem campo de material. A baixa acontece na conversão de orçamento em OS, na saída manual e no ajuste do inventário.</dd>
+    <dd>Por padrão não: a baixa acontece na conversão de orçamento em OS, na saída manual e no ajuste do inventário. Existe um recurso opcional, desligado por padrão (Configurações → Usabilidade → Ordens de Serviço → <span class="ui">Consumo de estoque na OS</span>), que liga o consumo de material dentro da própria OS: o técnico anota o que usou durante o atendimento e a baixa é confirmada num resumo editável ao finalizar. O movimento aparece no Kardex com o tipo <span class="ui">Consumo</span>, o número da OS na coluna Origem e o local de onde saiu na coluna Local.</dd>
 
     <dt>Qual a diferença entre Categoria e Grupo?</dt>
     <dd>Categoria é uma lista fixa igual para todos (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque, e serve para organizar do seu jeito.</dd>
@@ -4513,7 +4632,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <dd>Não. Quem tem um só trabalha no local principal e nem vê as pílulas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.</dd>
 
     <dt>Dá para o técnico dar baixa de material pelo celular?</dt>
-    <dd>Não pela tela de execução da OS, que não tem campo de material. A baixa é feita na tela de Estoque, por quem tem a permissão de gerenciar estoque e acesso ao local.</dd>
+    <dd>Pela tela de Estoque, só quem tem a permissão de gerenciar estoque e acesso ao local. Dentro da própria Ordem de Serviço, sim, quando a empresa liga o recurso <span class="ui">Consumo de estoque na OS</span> em Configurações → Usabilidade: o técnico anota o material usado durante o atendimento pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa é confirmada no resumo editável que aparece ao finalizar a OS. Com o recurso desligado, a tela de execução não mostra esse passo.</dd>
 
     <dt>Aceitar a cotação já compra o material?</dt>
     <dd>Não. Aceitar registra a decisão de qual fornecedor venceu. Quando a mercadoria chega, use <span class="ui">Registrar entrada no estoque</span> na cotação aceita, e aí sim o saldo sobe.</dd>
@@ -4931,7 +5050,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   </ul>
   <p>Ao terminar aparece <span class="ui">Orçamento convertido!</span> com <span class="ui">OS criada com sucesso.</span>, e o orçamento passa ao status Convertido.</p>
 
-  <div class="regra"><b>É aqui que o estoque baixa.</b> Na conversão, cada material escolhido <b>do estoque</b> gera uma saída na quantidade do orçamento, com a observação <span class="ui">Consumo do Orçamento #</span> seguida do número. Material digitado na mão não mexe em estoque. E o contrário, que é a dúvida número um do suporte: <b>concluir a OS não dá baixa em estoque</b>. A baixa acontece nesta conversão e nos ajustes e inventário da tela de Estoque.</div>
+  <div class="regra"><b>É aqui que o estoque baixa por causa do orçamento.</b> Na conversão, cada material escolhido <b>do estoque</b> gera uma saída na quantidade do orçamento, com a observação <span class="ui">Consumo do Orçamento #</span> seguida do número. Material digitado na mão não mexe em estoque. Por padrão, <b>concluir a OS não dá baixa em estoque</b>: fora desta conversão, a baixa só acontece nos ajustes e inventário da tela de Estoque. A exceção é quando a empresa liga, em Configurações → Usabilidade → Ordens de Serviço, o recurso opcional <span class="ui">Consumo de estoque na OS</span>: aí o técnico pode anotar material durante o atendimento e a baixa desse consumo é confirmada num resumo ao finalizar a OS, sem relação nenhuma com o material do orçamento.</div>
 
   <div class="aviso">A baixa não checa se há saldo. Se o material não tem estoque suficiente, o saldo daquele item fica negativo e a movimentação é registrada assim mesmo. Confira a Posição de Estoque depois de converter orçamentos grandes.</div>
 
@@ -4976,8 +5095,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       </tr>
       <tr>
         <td>"O estoque não baixou quando eu finalizei a OS"</td>
-        <td>Concluir OS nunca dá baixa em estoque.</td>
-        <td>A baixa acontece na conversão do orçamento em OS e nos ajustes e inventário da tela de Estoque. Material digitado na mão no orçamento nunca baixa.</td>
+        <td>Por padrão, concluir OS não dá baixa em estoque</td>
+        <td>Fora da conversão do orçamento em OS e dos ajustes e inventário da tela de Estoque, a baixa só acontece se a empresa tiver ligado o recurso opcional <span class="ui">Consumo de estoque na OS</span> (Configurações → Usabilidade → Ordens de Serviço) e o técnico tiver anotado material naquela OS pelo <span class="ui">Consumir do estoque</span>, confirmado no resumo de finalização. Material digitado na mão no orçamento nunca baixa, em nenhum dos dois casos.</td>
       </tr>
       <tr>
         <td>"O CNPJ e o endereço do cliente não saem na proposta"</td>
@@ -5051,7 +5170,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <dd>Sim, mas só quando alguém abre a tela de Orçamentos: um Enviado que passou da data em <span class="ui">Válido até</span> vira Expirado nesse momento. Sem validade preenchida, nunca expira. Não existe lembrete automático.</dd>
 
     <dt>Quando o estoque baixa, afinal?</dt>
-    <dd>Na conversão do orçamento em OS, e só para os materiais escolhidos do estoque. Concluir a OS não baixa estoque.</dd>
+    <dd>Na conversão do orçamento em OS, e só para os materiais escolhidos do estoque. Por padrão, concluir a OS não baixa estoque. Se a empresa ligar o recurso opcional <span class="ui">Consumo de estoque na OS</span> (Configurações → Usabilidade → Ordens de Serviço), o técnico também pode anotar material durante o atendimento e ter essa baixa confirmada ao finalizar a OS, à parte do que veio do orçamento.</dd>
 
     <dt>Aprovar por dentro do sistema lança quantos registros no financeiro?</dt>
     <dd>Até quatro, todos na mesma conta e já pagos: a receita em Vendas de Serviços, o custo de materiais em CMV - Materiais, a mão de obra em CMV - Mão de Obra Avulsa e a tarifa em Tarifas e Taxas, quando houver.</dd>
@@ -9096,7 +9215,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
 <a class="baixar" href="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/guia-tecnico/Guia-Tecnico-Dominex.pdf" download>
   <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-  Baixar o PDF <span class="peso">6.8 MB</span>
+  Baixar o PDF <span class="peso">6.9 MB</span>
 </a>
 
 <script>

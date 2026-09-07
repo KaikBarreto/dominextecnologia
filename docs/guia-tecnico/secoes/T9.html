@@ -378,7 +378,7 @@
   </ul>
   <p>Ao terminar aparece <span class="ui">Orçamento convertido!</span> com <span class="ui">OS criada com sucesso.</span>, e o orçamento passa ao status Convertido.</p>
 
-  <div class="regra"><b>É aqui que o estoque baixa.</b> Na conversão, cada material escolhido <b>do estoque</b> gera uma saída na quantidade do orçamento, com a observação <span class="ui">Consumo do Orçamento #</span> seguida do número. Material digitado na mão não mexe em estoque. E o contrário, que é a dúvida número um do suporte: <b>concluir a OS não dá baixa em estoque</b>. A baixa acontece nesta conversão e nos ajustes e inventário da tela de Estoque.</div>
+  <div class="regra"><b>É aqui que o estoque baixa por causa do orçamento.</b> Na conversão, cada material escolhido <b>do estoque</b> gera uma saída na quantidade do orçamento, com a observação <span class="ui">Consumo do Orçamento #</span> seguida do número. Material digitado na mão não mexe em estoque. Por padrão, <b>concluir a OS não dá baixa em estoque</b>: fora desta conversão, a baixa só acontece nos ajustes e inventário da tela de Estoque. A exceção é quando a empresa liga, em Configurações → Usabilidade → Ordens de Serviço, o recurso opcional <span class="ui">Consumo de estoque na OS</span>: aí o técnico pode anotar material durante o atendimento e a baixa desse consumo é confirmada num resumo ao finalizar a OS, sem relação nenhuma com o material do orçamento.</div>
 
   <div class="aviso">A baixa não checa se há saldo. Se o material não tem estoque suficiente, o saldo daquele item fica negativo e a movimentação é registrada assim mesmo. Confira a Posição de Estoque depois de converter orçamentos grandes.</div>
 
@@ -423,8 +423,8 @@
       </tr>
       <tr>
         <td>"O estoque não baixou quando eu finalizei a OS"</td>
-        <td>Concluir OS nunca dá baixa em estoque.</td>
-        <td>A baixa acontece na conversão do orçamento em OS e nos ajustes e inventário da tela de Estoque. Material digitado na mão no orçamento nunca baixa.</td>
+        <td>Por padrão, concluir OS não dá baixa em estoque</td>
+        <td>Fora da conversão do orçamento em OS e dos ajustes e inventário da tela de Estoque, a baixa só acontece se a empresa tiver ligado o recurso opcional <span class="ui">Consumo de estoque na OS</span> (Configurações → Usabilidade → Ordens de Serviço) e o técnico tiver anotado material naquela OS pelo <span class="ui">Consumir do estoque</span>, confirmado no resumo de finalização. Material digitado na mão no orçamento nunca baixa, em nenhum dos dois casos.</td>
       </tr>
       <tr>
         <td>"O CNPJ e o endereço do cliente não saem na proposta"</td>
@@ -498,7 +498,7 @@
     <dd>Sim, mas só quando alguém abre a tela de Orçamentos: um Enviado que passou da data em <span class="ui">Válido até</span> vira Expirado nesse momento. Sem validade preenchida, nunca expira. Não existe lembrete automático.</dd>
 
     <dt>Quando o estoque baixa, afinal?</dt>
-    <dd>Na conversão do orçamento em OS, e só para os materiais escolhidos do estoque. Concluir a OS não baixa estoque.</dd>
+    <dd>Na conversão do orçamento em OS, e só para os materiais escolhidos do estoque. Por padrão, concluir a OS não baixa estoque. Se a empresa ligar o recurso opcional <span class="ui">Consumo de estoque na OS</span> (Configurações → Usabilidade → Ordens de Serviço), o técnico também pode anotar material durante o atendimento e ter essa baixa confirmada ao finalizar a OS, à parte do que veio do orçamento.</dd>
 
     <dt>Aprovar por dentro do sistema lança quantos registros no financeiro?</dt>
     <dd>Até quatro, todos na mesma conta e já pagos: a receita em Vendas de Serviços, o custo de materiais em CMV - Materiais, a mão de obra em CMV - Mão de Obra Avulsa e a tarifa em Tarifas e Taxas, quando houver.</dd>

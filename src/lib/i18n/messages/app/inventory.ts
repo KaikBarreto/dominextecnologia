@@ -12,9 +12,12 @@ export const inventory = {
     tabs: {
       current: 'Estoque Atual',
       kardex: 'Histórico de Materiais (Kardex)',
+      kardexShort: 'Histórico',
       purchases: 'Compras de Material',
+      purchasesShort: 'Compras',
       inventories: 'Inventários',
       position: 'Posição de Estoque',
+      positionShort: 'Posição',
     },
     stats: {
       totalItems: 'Total de itens',
@@ -114,6 +117,8 @@ export const inventory = {
         materialEmpty: 'Todos os materiais',
         type: 'Tipo de movimento',
         typeEmpty: 'Todos os tipos',
+        stock: 'Local',
+        stockEmpty: 'Todos os locais',
       },
       table: {
         user: 'Usuário',
@@ -121,6 +126,7 @@ export const inventory = {
         type: 'Tipo',
         origin: 'Origem',
         material: 'Material',
+        stock: 'Local',
         stockBefore: 'Estoque inicial',
         movement: 'Movimento',
         stockAfter: 'Estoque final',
@@ -129,6 +135,8 @@ export const inventory = {
         os: 'OS',
         supplier: 'Fornecedor: {name}',
       },
+      stockTransfer: '{from} → {to}',
+      stockUnknown: '—',
       system: 'Sistema',
       materialRemoved: 'Material removido',
       movementTypes: {
@@ -831,9 +839,12 @@ export const inventory = {
     tabs: {
       current: 'Current Stock',
       kardex: 'Stock History (Kardex)',
+      kardexShort: 'History',
       purchases: 'Material Purchases',
+      purchasesShort: 'Purchases',
       inventories: 'Inventory Counts',
       position: 'Stock Position',
+      positionShort: 'Position',
     },
     stats: {
       totalItems: 'Total items',
@@ -933,6 +944,8 @@ export const inventory = {
         materialEmpty: 'All materials',
         type: 'Movement type',
         typeEmpty: 'All types',
+        stock: 'Location',
+        stockEmpty: 'All locations',
       },
       table: {
         user: 'User',
@@ -940,6 +953,7 @@ export const inventory = {
         type: 'Type',
         origin: 'Origin',
         material: 'Material',
+        stock: 'Location',
         stockBefore: 'Opening stock',
         movement: 'Movement',
         stockAfter: 'Closing stock',
@@ -948,6 +962,8 @@ export const inventory = {
         os: 'WO',
         supplier: 'Supplier: {name}',
       },
+      stockTransfer: '{from} → {to}',
+      stockUnknown: '—',
       system: 'System',
       materialRemoved: 'Removed material',
       movementTypes: {
@@ -1650,9 +1666,12 @@ export const inventory = {
     tabs: {
       current: 'Stock actual',
       kardex: 'Historial de materiales (Kardex)',
+      kardexShort: 'Historial',
       purchases: 'Compras de material',
+      purchasesShort: 'Compras',
       inventories: 'Conteos de inventario',
       position: 'Posición de inventario',
+      positionShort: 'Posición',
     },
     stats: {
       totalItems: 'Total de ítems',
@@ -1752,6 +1771,8 @@ export const inventory = {
         materialEmpty: 'Todos los materiales',
         type: 'Tipo de movimiento',
         typeEmpty: 'Todos los tipos',
+        stock: 'Ubicación',
+        stockEmpty: 'Todas las ubicaciones',
       },
       table: {
         user: 'Usuario',
@@ -1759,6 +1780,7 @@ export const inventory = {
         type: 'Tipo',
         origin: 'Origen',
         material: 'Material',
+        stock: 'Ubicación',
         stockBefore: 'Stock inicial',
         movement: 'Movimiento',
         stockAfter: 'Stock final',
@@ -1767,6 +1789,8 @@ export const inventory = {
         os: 'OT',
         supplier: 'Proveedor: {name}',
       },
+      stockTransfer: '{from} → {to}',
+      stockUnknown: '—',
       system: 'Sistema',
       materialRemoved: 'Material eliminado',
       movementTypes: {
@@ -2469,9 +2493,12 @@ export const inventory = {
     tabs: {
       current: 'Stock actuel',
       kardex: 'Historique des matériaux (Kardex)',
+      kardexShort: 'Historique',
       purchases: 'Achats de matériaux',
+      purchasesShort: 'Achats',
       inventories: 'Comptages de stock',
       position: 'Position de stock',
+      positionShort: 'Position',
     },
     stats: {
       totalItems: 'Total des articles',
@@ -2571,6 +2598,8 @@ export const inventory = {
         materialEmpty: 'Tous les matériaux',
         type: 'Type de mouvement',
         typeEmpty: 'Tous les types',
+        stock: 'Emplacement',
+        stockEmpty: 'Tous les emplacements',
       },
       table: {
         user: 'Utilisateur',
@@ -2578,6 +2607,7 @@ export const inventory = {
         type: 'Type',
         origin: 'Origine',
         material: 'Matériau',
+        stock: 'Emplacement',
         stockBefore: 'Stock initial',
         movement: 'Mouvement',
         stockAfter: 'Stock final',
@@ -2586,6 +2616,8 @@ export const inventory = {
         os: 'BT',
         supplier: 'Fournisseur : {name}',
       },
+      stockTransfer: '{from} → {to}',
+      stockUnknown: '—',
       system: 'Système',
       materialRemoved: 'Matériau supprimé',
       movementTypes: {

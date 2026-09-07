@@ -68,7 +68,6 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
-import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -365,6 +364,19 @@ export default function Inventory() {
     return min !== null && qty < min;
   }).length;
 
+  // O card de KPI mobile (StatCarousel) tem largura fixa (~112px) e imprime o
+  // valor em fonte grande sem truncar — "R$ 12.345,67" estoura a pílula. No
+  // mobile usamos notação compacta ("R$ 12 mil") só para esse valor; desktop
+  // (grid com mais espaço) mantém o formato completo.
+  const investedDisplay = isMobile
+    ? new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+        notation: 'compact',
+        maximumFractionDigits: 0,
+      }).format(activeStatTotalValue)
+    : formatMoney(activeStatTotalValue, currency, locale);
+
   const statItems = [
     {
       key: 'total',
@@ -377,7 +389,7 @@ export default function Inventory() {
       key: 'cost',
       label: t.stats.invested,
       count: activeStatTotalValue,
-      displayValue: formatMoney(activeStatTotalValue, currency, locale),
+      displayValue: investedDisplay,
       icon: <DollarSign className="h-4 w-4" />,
       accentColor: 'hsl(var(--info))',
     },
@@ -451,19 +463,20 @@ export default function Inventory() {
   // Há filtros disponíveis (inclui low-stock toggle)
   const hasAnyFilter = true;
 
+  // No mobile o MobilePillTabs (SettingsSidebarLayout) rola horizontalmente
+  // com fade nas bordas — rótulo longo ("Histórico de Materiais (Kardex)")
+  // aparece cortado no meio da palavra antes de sumir no fade. Só no mobile
+  // trocamos pelo rótulo curto (ex.: "Histórico"); desktop mantém o completo.
   const inventoryTabs: SettingsTab[] = [
     { value: 'estoque', label: t.tabs.current, icon: Boxes },
-    { value: 'historico', label: t.tabs.kardex, icon: History },
-    { value: 'compras', label: t.tabs.purchases, icon: ShoppingCart },
+    { value: 'historico', label: isMobile ? t.tabs.kardexShort : t.tabs.kardex, icon: History },
+    { value: 'compras', label: isMobile ? t.tabs.purchasesShort : t.tabs.purchases, icon: ShoppingCart },
     { value: 'inventarios', label: t.tabs.inventories, icon: ClipboardList },
-    { value: 'posicao', label: t.tabs.position, icon: BarChart3 },
+    { value: 'posicao', label: isMobile ? t.tabs.positionShort : t.tabs.position, icon: BarChart3 },
   ];
 
-  // Subabas dos depósitos dentro da aba Estoque Atual
-  const stockPillTabs = stocks.map((s) => ({
-    value: s.id,
-    label: s.name,
-  }));
+  // Subabas dos depósitos dentro da aba Estoque Atual — mobile renderiza pílulas
+  // próprias com flex-wrap (ver bloco isMobile abaixo); desktop usa abas underline.
 
   // Botões Importar XML e Configurações — ficam no canto superior direito do header (sempre)
   const headerRightButtons = (
@@ -511,12 +524,22 @@ export default function Inventory() {
   };
 
   return (
-    <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
+    <div
+      className={cn(
+        'space-y-6 min-w-0 w-full max-w-full overflow-x-hidden',
+        // FAB (só na aba "estoque") flutua a h-12 (48px) a partir de 96px do
+        // fundo — sem folga extra, ele cobre o nome do último material da
+        // lista. pb-40 (160px) garante que a última linha fique sempre visível
+        // acima do botão.
+        isMobile && (activeTab === 'estoque' ? 'pb-40' : 'pb-24'),
+      )}
+    >
       <MobilePageHeader
         title={t.header.title}
         subtitle={t.header.subtitle}
         icon={Package}
         actions={headerRightButtons}
+        compactOnMobile
       />
 
       <SettingsSidebarLayout
@@ -524,7 +547,11 @@ export default function Inventory() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       >
-        {activeTab !== 'compras' && activeTab !== 'inventarios' && activeTab !== 'posicao' && (
+        {/* No mobile o pill ativo já indica a aba selecionada (MobilePillTabs do
+            SettingsSidebarLayout) — repetir o rótulo aqui em cima duplicava o
+            texto (e ficava atrás do header compacto). Só desktop mantém o
+            título de contexto ao lado do sidebar de abas. */}
+        {!isMobile && activeTab !== 'compras' && activeTab !== 'inventarios' && activeTab !== 'posicao' && (
           <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
             {inventoryTabs.find((tab) => tab.value === activeTab)?.label}
           </h2>
@@ -540,28 +567,56 @@ export default function Inventory() {
             {stocks.length > 1 && (
               <>
                 {isMobile ? (
-                  <MobilePillTabs
-                    tabs={stockPillTabs}
-                    activeTab={resolvedStockId ?? ''}
-                    onTabChange={setActiveStockId}
-                    renderSuffix={(tab) => (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        aria-label={t.stockConfigurator.gearIconLabel}
-                        onClick={(e) => openConfigurator(tab.value, e)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            openConfigurator(tab.value, e);
-                          }
-                        }}
-                        className="flex items-center justify-center h-6 w-6 rounded-full cursor-pointer text-current opacity-60 hover:opacity-100 transition-opacity"
-                      >
-                        <Settings className="h-3.5 w-3.5" />
-                      </span>
-                    )}
-                  />
+                  // Pílulas de local QUEBRAM LINHA no mobile (flex-wrap) em vez de
+                  // rolar horizontalmente: nomes de local variam bastante em
+                  // tamanho e, com a engrenagem junto, ficavam apertados demais
+                  // dentro do carrossel de MobilePillTabs. Mesmo padrão
+                  // tab+gear-como-irmãos do desktop (evita button-in-button).
+                  <div className="flex flex-wrap gap-2">
+                    {stocks.map((s) => {
+                      const isActive = resolvedStockId === s.id;
+                      return (
+                        <div
+                          key={s.id}
+                          className={cn(
+                            'inline-flex items-center rounded-full text-sm font-medium transition-all',
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'bg-muted/50 text-muted-foreground',
+                          )}
+                        >
+                          <span
+                            role="tab"
+                            aria-selected={isActive}
+                            tabIndex={0}
+                            onClick={() => setActiveStockId(s.id)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
+                            className="flex items-center gap-1.5 h-9 pl-3.5 pr-1.5 cursor-pointer select-none active:scale-95"
+                          >
+                            {s.name}
+                            {s.is_default && (
+                              <Star className="h-3 w-3 text-warning fill-warning shrink-0" />
+                            )}
+                          </span>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            aria-label={t.stockConfigurator.gearIconLabel}
+                            onClick={(e) => openConfigurator(s.id, e)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                openConfigurator(s.id, e);
+                              }
+                            }}
+                            className="flex items-center justify-center h-8 w-8 mr-0.5 rounded-full cursor-pointer text-current opacity-70 hover:opacity-100 active:scale-90 transition-opacity"
+                          >
+                            <Settings className="h-3.5 w-3.5" />
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div className="flex gap-1 border-b">
                     {stocks.map((s) => (

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { EventCard, getStatusBadgeClass } from './EventCard';
 import { OrderTimeline } from './OrderTimeline';
+import { OsMaterialsSection } from '@/components/service-orders/OsMaterialsSection';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
@@ -325,6 +326,10 @@ function OrderDetail({
               <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
             </div>
           )}
+          {/* Consumo de estoque (v1.23.0) — bloco somente leitura, espelha o
+              que aparece na Ordem de Serviço. Some sozinho quando não há
+              material lançado nesta OS. */}
+          {!isTask && <OsMaterialsSection serviceOrderId={order.id} />}
           {!isTask && (
             <OrderTimeline
               startedAt={(order as any).started_at}

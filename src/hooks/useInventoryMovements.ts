@@ -28,6 +28,14 @@ export interface InventoryMovementWithRelations extends InventoryMovementRow {
   supplier: { name: string } | null;
   /** Nº da OS de origem (quando houver service_order_id). */
   orderNumber: number | null;
+  /** Local de estoque onde o movimento aconteceu (stock_id). */
+  stock: { name: string } | null;
+  /**
+   * Local da OUTRA perna do movimento, quando `movement_type === 'transferencia'`
+   * (amarrado por `related_movement_id`). `null` quando não é transferência ou
+   * quando a contraparte não é visível pelo RLS do usuário atual.
+   */
+  counterpartStock: { name: string } | null;
 }
 
 /**
@@ -37,8 +45,10 @@ export interface InventoryMovementWithRelations extends InventoryMovementRow {
  *
  * Os joins de criador e fornecedor são resolvidos em LOTE (não via PostgREST
  * embed): `created_by` aponta pra auth.users, então o perfil só sai com query
- * separada em profiles por user_id (regra-lei do projeto). Material, fornecedor
- * e nº da OS seguem o mesmo padrão de lookup leve.
+ * separada em profiles por user_id (regra-lei do projeto). Material, fornecedor,
+ * nº da OS e local de estoque (stock_id) seguem o mesmo padrão de lookup leve.
+ * Em transferências, a outra perna do movimento é resolvida via
+ * `related_movement_id` pra expor origem e destino.
  */
 export function useInventoryMovements() {
   const query = useQuery({
@@ -118,13 +128,54 @@ export function useInventoryMovements() {
         });
       }
 
-      return rows.map((m) => ({
-        ...m,
-        material: m.inventory_id ? materialMap.get(m.inventory_id) ?? null : null,
-        creator: m.created_by ? creatorMap.get(m.created_by) ?? null : null,
-        supplier: m.supplier_id ? supplierMap.get(m.supplier_id) ?? null : null,
-        orderNumber: m.service_order_id ? orderMap.get(m.service_order_id) ?? null : null,
-      })) as InventoryMovementWithRelations[];
+      // ----- Local (stocks) por stock_id -----
+      const stockMap = new Map<string, { name: string }>();
+      const stockIds = new Set(rows.map((m) => m.stock_id).filter((v): v is string => !!v));
+
+      // ----- Contraparte da transferência (outra perna) por related_movement_id -----
+      // A tabela amarra as duas pernas de uma transferência pelo related_movement_id
+      // (FK pra própria inventory_movements). Resolvemos em lote o stock_id da
+      // contraparte; se ela não estiver visível pelo RLS do usuário, o map fica
+      // sem a entrada e a contraparte cai pra null sem quebrar nada.
+      const relatedIds = [
+        ...new Set(rows.map((m) => m.related_movement_id).filter((v): v is string => !!v)),
+      ];
+      const relatedStockIdMap = new Map<string, string>();
+      if (relatedIds.length > 0) {
+        const { data: relatedMovements } = await supabase
+          .from('inventory_movements')
+          .select('id, stock_id')
+          .in('id', relatedIds);
+        (relatedMovements || []).forEach((r) => {
+          relatedStockIdMap.set(r.id, r.stock_id);
+          stockIds.add(r.stock_id);
+        });
+      }
+
+      if (stockIds.size > 0) {
+        const { data: stockRows } = await supabase
+          .from('stocks')
+          .select('id, name')
+          .in('id', [...stockIds]);
+        (stockRows || []).forEach((s) => {
+          stockMap.set(s.id, { name: s.name });
+        });
+      }
+
+      return rows.map((m) => {
+        const relatedStockId = m.related_movement_id
+          ? relatedStockIdMap.get(m.related_movement_id) ?? null
+          : null;
+        return {
+          ...m,
+          material: m.inventory_id ? materialMap.get(m.inventory_id) ?? null : null,
+          creator: m.created_by ? creatorMap.get(m.created_by) ?? null : null,
+          supplier: m.supplier_id ? supplierMap.get(m.supplier_id) ?? null : null,
+          orderNumber: m.service_order_id ? orderMap.get(m.service_order_id) ?? null : null,
+          stock: stockMap.get(m.stock_id) ?? null,
+          counterpartStock: relatedStockId ? stockMap.get(relatedStockId) ?? null : null,
+        };
+      }) as InventoryMovementWithRelations[];
     },
   });
 

@@ -109,6 +109,28 @@ function originLabel(
   return m.notes || '—';
 }
 
+/**
+ * Local de estoque do movimento. Em transferência, mostra o par
+ * origem → destino (quem tem quantidade negativa é a origem; positiva é o
+ * destino). Cai pro fallback quando um dos lados não é resolvível (ex.: a
+ * contraparte não é visível pelo RLS do usuário).
+ */
+function stockLabel(
+  m: InventoryMovementWithRelations,
+  t: { stockTransfer: string; stockUnknown: string },
+): string {
+  const own = m.stock?.name ?? null;
+  if (m.movement_type === 'transferencia') {
+    const counterpart = m.counterpartStock?.name ?? null;
+    if (own && counterpart) {
+      const [from, to] = m.quantity < 0 ? [own, counterpart] : [counterpart, own];
+      return t.stockTransfer.replace('{from}', from).replace('{to}', to);
+    }
+    return own ?? counterpart ?? t.stockUnknown;
+  }
+  return own ?? t.stockUnknown;
+}
+
 function fmtQty(q: number): string {
   // Mostra inteiro limpo; mantém casas só quando houver fração.
   return Number.isInteger(q) ? String(q) : q.toLocaleString('pt-BR');
@@ -155,29 +177,45 @@ export function InventoryKardexTab() {
     }));
   }, [movements, t.movementTypes]);
 
+  // Locais presentes nas movimentações já carregadas (sem query extra: o
+  // hook já resolve `stock` em lote junto do material/criador/fornecedor).
+  const stockOptions = useMemo(() => {
+    const present = new Map<string, string>();
+    movements.forEach((m) => {
+      if (m.stock?.name) present.set(m.stock_id, m.stock.name);
+    });
+    return [...present.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }, [movements]);
+
   const [materialFilter, setMaterialFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [stockFilter, setStockFilter] = useState<string[]>([]);
 
   const filtered = useMemo(() => {
     const byDate = filterByDate(movements, 'created_at');
     return byDate.filter((m) => {
       const matchesMaterial = materialFilter.length === 0 || materialFilter.includes(m.inventory_id);
       const matchesType = typeFilter.length === 0 || typeFilter.includes(m.movement_type);
-      return matchesMaterial && matchesType;
+      const matchesStock = stockFilter.length === 0 || stockFilter.includes(m.stock_id);
+      return matchesMaterial && matchesType && matchesStock;
     });
-  }, [movements, filterByDate, materialFilter, typeFilter]);
+  }, [movements, filterByDate, materialFilter, typeFilter, stockFilter]);
 
   const pagination = useDataPagination(filtered);
 
   const activeFilterCount =
     (preset !== 'this_month' ? 1 : 0) +
     (materialFilter.length > 0 ? 1 : 0) +
-    (typeFilter.length > 0 ? 1 : 0);
+    (typeFilter.length > 0 ? 1 : 0) +
+    (stockFilter.length > 0 ? 1 : 0);
 
   const clearFilters = () => {
     setPreset('this_month');
     setMaterialFilter([]);
     setTypeFilter([]);
+    setStockFilter([]);
   };
 
   const filterControls = (
@@ -207,6 +245,15 @@ export function InventoryKardexTab() {
           selected={typeFilter}
           onChange={setTypeFilter}
           emptyLabel={t.filters.typeEmpty}
+        />
+      )}
+      {stockOptions.length > 0 && (
+        <FilterCheckboxGroup
+          label={t.filters.stock}
+          options={stockOptions}
+          selected={stockFilter}
+          onChange={setStockFilter}
+          emptyLabel={t.filters.stockEmpty}
         />
       )}
     </div>
@@ -280,6 +327,7 @@ export function InventoryKardexTab() {
                     <p className="font-mono text-[11px] text-muted-foreground">{m.material.sku}</p>
                   )}
                   <p className="text-xs text-muted-foreground truncate">{originLabel(m, t.origin)}</p>
+                  <p className="text-xs text-muted-foreground truncate">{stockLabel(m, t)}</p>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm tabular-nums">
                   <span className="text-muted-foreground">{fmtQty(m.stock_before ?? 0)}</span>
@@ -337,6 +385,7 @@ export function InventoryKardexTab() {
                     <TableHead>{t.table.type}</TableHead>
                     <TableHead>{t.table.origin}</TableHead>
                     <TableHead>{t.table.material}</TableHead>
+                    <TableHead>{t.table.stock}</TableHead>
                     <TableHead className="text-right">{t.table.stockBefore}</TableHead>
                     <TableHead className="text-right">{t.table.movement}</TableHead>
                     <TableHead className="text-right">{t.table.stockAfter}</TableHead>
@@ -381,6 +430,9 @@ export function InventoryKardexTab() {
                             </span>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground max-w-[220px] truncate">
+                        {stockLabel(m, t)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {fmtQty(m.stock_before ?? 0)}

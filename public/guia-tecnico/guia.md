@@ -2049,7 +2049,7 @@ A primeira decisão é uma chave centralizada no topo, com dois lados:
 | Cliente cadastrado | Cliente que já está na sua base | Um campo de busca Cliente * que procura por nome e mostra o documento ou e-mail como apoio. Ao lado, um botão de mais (+) para Criar cliente na hora, sem sair do formulário. |
 | Cliente avulso | Chamado de quem ainda não é cliente: emergência, indicação, primeira visita | Campos diretos: Nome *, Telefone, CEP, Endereço, Bairro e UF / Cidade. O aviso na tela é: "O cliente será criado automaticamente com os dados abaixo." |
 
- "Cliente avulso" não quer dizer OS sem cliente. Ao salvar, o sistema cria a ficha do cliente com os dados que você digitou e vincula a OS a ela. Ou seja: aquele cliente passa a existir na sua base, com o nome que você escreveu. Se ele já existia com outro nome, você acabou de criar um duplicado. Na dúvida, use Cliente cadastrado e busque primeiro.
+ "Cliente avulso" não quer dizer OS sem cliente. Ao salvar, o sistema cria a ficha do cliente com os dados que você digitou e vincula a OS a ela. Ou seja: aquele cliente passa a existir na sua base, com o nome que você escreveu. Se ele já existia com outro nome, você acabou de criar um duplicado. Na dúvida, use Cliente cadastrado e busque primeiro. E como o cliente ainda não existe de fato na hora de montar a OS, a etapa Equipamentos e Checklists não tem como listar equipamento nenhum dele: veja o aviso na etapa 2.
 
 Ainda na etapa 1 fica o campo Tipo de Serviço, também com busca, mostrando a bolinha de cor de cada serviço e a categoria como subtítulo. A primeira opção da lista é Nenhum, que é válida. Ao lado, um botão de mais (+) para criar um tipo de serviço na hora.
 
@@ -2057,7 +2057,7 @@ Ainda na etapa 1 fica o campo Tipo de Serviço, também com busca, mostrando a b
 
 - O botão Próximo só libera quando há cliente escolhido (ou, no modo avulso, um nome preenchido).
 
-- Trocar o cliente limpa a seleção de equipamento, porque o equipamento pertence ao cliente.
+- Trocar o cliente, ou alternar entre Cliente cadastrado e Cliente avulso, limpa a seleção de equipamentos e os checklists já escolhidos por equipamento na etapa 2, porque tudo isso pertencia ao cliente anterior. Se isso acontecer no meio do preenchimento, é só marcar de novo.
 
 - Trocar o tipo de serviço muda a lista de checklists disponíveis na etapa 2 e pode fazer o bloco de equipamentos aparecer ou sumir.
 
@@ -2079,7 +2079,9 @@ A etapa 2 se chama Equipamentos e Checklists e tem dois blocos.
 
 #### Bloco Equipamentos
 
-Aparece quando o tipo de serviço escolhido está marcado como vinculado a equipamento (o padrão de todo serviço novo) ou quando nenhum tipo de serviço foi escolhido. Ele lista os equipamentos daquele cliente com caixinha de seleção, foto, marca, modelo, local e identificador.
+Aparece quando o tipo de serviço escolhido está marcado como vinculado a equipamento (o padrão de todo serviço novo) ou quando nenhum tipo de serviço foi escolhido. Com um cliente cadastrado já escolhido, ele lista os equipamentos daquele cliente com caixinha de seleção, foto, marca, modelo, local e identificador.
+
+Sem cliente escolhido, a lista vem vazia, e o texto do aviso muda conforme o modo da etapa 1: no modo Cliente avulso, "Salve a OS para depois cadastrar equipamentos deste cliente."; no modo Cliente cadastrado ainda sem ninguém escolhido, "Selecione um cliente primeiro para ver equipamentos.". Isso vale mesmo que a empresa já tenha equipamentos cadastrados de outros clientes: eles não aparecem aqui, só os do cliente da própria OS.
 
 - Com mais de um equipamento, aparecem os botões Selecionar todos e Desmarcar todos.
 
@@ -2176,7 +2178,7 @@ No kanban, cada coluna é um status. Para mudar o status de uma OS, arraste o ca
 
 Passando o mouse sobre um cartão, aparecem dois botões no canto superior direito: o lápis, que abre a edição (laranja no hover), e a lixeira, que abre a exclusão (vermelha no hover). Cada botão só aparece para quem tem a permissão correspondente. No canto inferior direito do cartão aparece o avatar de quem criou a OS, com o nome no tooltip.
 
-Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: Retomar, Pausar, Finalizar, Reabrir, Editar, Excluir e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: Preencher OS em OS aberta, Relatório de Serviço em OS concluída.
+Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: Retomar, Pausar, Finalizar, Reabrir, Editar, Excluir e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: Preencher OS em OS aberta, Relatório de Serviço em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco Materiais utilizados, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o Custo total ao final (item ainda não baixado do estoque mostra o aviso Ainda não baixado do estoque).
 
 #### O "+" no cabeçalho da coluna
 
@@ -2184,7 +2186,41 @@ Cada coluna do kanban tem, ao lado da contagem, um botão de mais (+). Ele abre 
 
  O botão de mais (+) não aparece nas colunas de Concluída e Cancelada. Criar uma OS já nascendo concluída seria uma armadilha: nunca teria check-in, checklist nem assinatura, e apareceria nos indicadores como serviço entregue. Se você precisa registrar um serviço já feito, crie normalmente e finalize em seguida.
 
-### 9. Configurar Status: criar status próprio, cor e ordem
+### 9. Consumo de material dentro da OS (recurso opcional, ligado em Configurações)
+
+Existe um recurso opcional que liga o consumo de material dentro da própria Ordem de Serviço: o técnico anota o que usou durante o atendimento, e a baixa no estoque é confirmada num resumo editável na hora de finalizar. Este capítulo cobre o fluxo de ponta a ponta.
+
+ O recurso vem desligado por padrão. Para ligar, vá em Configurações → aba Usabilidade → seção Ordens de Serviço → chave Consumo de estoque na OS, com a explicação "Permite que o técnico registre os materiais usados durante a ordem de serviço e dê baixa no estoque ao finalizar". Com a chave desligada, a OS funciona exatamente como antes: nenhum passo novo aparece para o técnico, e concluir a OS não mexe em estoque.
+
+#### Dois tempos: anotar e confirmar
+
+O consumo acontece em dois momentos separados:
+
+- Durante o atendimento: com a OS aberta na tela de execução do técnico, o menu de mais ações ganha o item Consumir do estoque. Ele abre a janela de mesmo nome, com o aviso "Anote o que você usou. O estoque só baixa quando a OS for finalizada." Nesse momento, anotar um material não mexe em saldo nenhum.
+
+- Ao finalizar a OS: se algum material foi anotado, em vez do "Finalizar OS?" de sempre aparece o resumo Resumo do consumo, com a explicação "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." É só nesse passo que o estoque baixa de verdade.
+
+#### Anotando o material (janela "Consumir do estoque")
+
+| Campo | Obrigatório | Detalhe |
+| De onde saiu | Sim (só aparece quando há mais de um local) | Com um único local de estoque na empresa, ele é usado sozinho, sem pergunta. Com mais de um, o campo pré-seleciona o último local usado por aquele técnico naquele aparelho, ou o local principal. |
+| Material | Sim | Busca por nome ou código, já filtrada pelo local escolhido. Ao selecionar, aparece "Tem X Y neste estoque" (X = quantidade, Y = unidade) ou, sem saldo, "Sem saldo neste estoque". |
+| Quantidade | Sim | Maior que zero. Se passar do saldo disponível naquele local, aparece o aviso "Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo." e o técnico consegue continuar mesmo assim — o aviso não bloqueia. |
+| Observação | Não | Texto livre, por exemplo "troca do capacitor da unidade externa". |
+
+Cada item anotado entra na lista Já registrado nesta OS, com material, quantidade, unidade e local. Enquanto ainda não foi baixado, dá para editar ou remover o item livremente, com os ícones de lápis e lixeira. Um item já baixado (depois de uma finalização anterior) ganha o selo Já baixado e não pode mais ser editado ou removido por ali.
+
+ Se o aparelho estiver sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar." O item fica com o selo Aguardando envio até subir, o que acontece sozinho assim que a conexão volta, ou ao reabrir a janela de consumo, ou ao abrir o resumo de finalização.
+
+#### O resumo na finalização
+
+Se a OS tiver pelo menos um material anotado, finalizar abre o Resumo do consumo em vez do confirm de sempre. Cada linha mostra o material, o local, um campo de quantidade editável e o resultado projetado: "Fica com X Y" em cinza, ou "Fica negativo em X Y" em vermelho quando a baixa levaria o saldo abaixo de zero. Dá para remover um item do resumo antes de confirmar: se ele ainda não tinha sido baixado, simplesmente não entra na baixa; se já tinha sido baixado numa finalização anterior, remover estorna a quantidade de volta para o estoque. Sem nenhum material sobrando na lista, a mensagem é "Você tirou todos os materiais da lista. Nada será baixado do estoque." O botão final é Confirmar e finalizar.
+
+Estoque nunca impede finalizar a OS. Confirmando o resumo, o sistema tenta dar baixa nos materiais e, dê certo ou não, a OS é finalizada em seguida. Se a baixa tiver sucesso, a confirmação é "Materiais baixados do estoque" (ou "Materiais baixados. Alguns ficaram com saldo negativo, vale conferir no Estoque." quando algum item passou do saldo). Se a baixa falhar por qualquer motivo (por exemplo, queda de conexão bem na hora de confirmar), aparece "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois." Nesse caso o material fica registrado na OS, sem o selo Já baixado, pronto para ser reconfirmado depois pela mesma janela.
+
+Sem nenhum material anotado naquela OS, o fluxo de finalizar é exatamente o de sempre: o resumo de consumo simplesmente não aparece, com o recurso ligado ou não.
+
+### 10. Configurar Status: criar status próprio, cor e ordem
 
 O botão Configurações no topo da tela (no celular, dentro do painel de filtros, em Gerenciar status de OS) abre a janela Configurações de OS. É ali que vive a lista de status da sua empresa.
 
@@ -2220,7 +2256,7 @@ Configurações de OS: os sete status de reserva, com a chave interna à direita
 
 Nesta janela não existe configuração de campos obrigatórios por status, nem prazo de atendimento (SLA), nem prefixo geral da numeração. A janela Configurações de OS hoje faz uma coisa só: gerenciar os status (criar, renomear, recolorir, reordenar e excluir). O prefixo de numeração de cada OS vem do tipo de serviço, na tela de Serviços.
 
-### 10. Filtros, busca e por que a busca ignora o filtro de período
+### 11. Filtros, busca e por que a busca ignora o filtro de período
 
 A tela tem três controles de recorte, e a ordem em que eles conversam é a principal fonte de dúvida do suporte:
 
@@ -2237,7 +2273,7 @@ Assim que você digita qualquer coisa na busca, aparece embaixo do campo a frase
 
 A busca procura por: nome do cliente, código completo da OS (por exemplo MP-2026-000123), só o número, nome do tipo de serviço, título da tarefa e nome do equipamento. Ela tolera acento e diferença de maiúscula.
 
-### 11. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente
+### 12. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente
 
 Existe um único endereço de OS que serve para três públicos diferentes, e o que muda é quem está olhando:
 
@@ -2266,7 +2302,7 @@ O link não tem senha e não expira: quem tiver o endereço vê aquela OS. Ele m
 
 Quando a OS pertence a um contrato PMOC, a janela de edição mostra uma faixa de identificação no topo e, no campo de descrição, um aviso amarelo: "Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade, escreva pensando em quem está do outro lado (cliente, fiscal sanitário)." Isso não é erro. É um lembrete de que aquele texto é público.
 
-### 12. Aba Relatório: leitura do dashboard de OS
+### 13. Aba Relatório: leitura do dashboard de OS
 
 A aba Relatório transforma as OS em números. Ela respeita o mesmo recorte de período da tela.
 
@@ -2304,7 +2340,7 @@ Aba Relatório: indicadores e gráficos do período escolhido no topo.
 
 Onde não houver dado no período, o gráfico mostra "Sem dados". Isso quase sempre significa período muito estreito, não falta de informação.
 
-### 13. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator
+### 14. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator
 
 A aba NPS e Satisfação reúne o que os clientes responderam nas pesquisas geradas ao finalizar OS.
 
@@ -2347,7 +2383,8 @@ O botão Configurações dentro da aba abre Configurações de NPS, onde você d
 | "Liguei recorrência semanal e veio uma OS só" | Campo Até vazio | Sem data limite, a série não é gerada e nenhum aviso aparece. Peça para editar a OS, ligar a recorrência de novo com o "Até" preenchido, ou criar novamente. |
 | "Perdi tudo que eu tinha digitado na OS" | Fechou a janela de edição sem salvar | O rascunho automático só existe na criação de OS nova. Na edição, fechar sem salvar descarta. Ao criar, ao reabrir Nova OS o sistema pergunta se quer retomar o rascunho. |
 | "Não acho o botão de exigir assinatura na OS" | Esse botão não existe na criação de OS | Explique com clareza: não existe uma chave de "exigir assinatura" na tela de criar ou editar OS. A exigência de assinatura do técnico é ligada automaticamente nas OS geradas por contrato. Para OS avulsa, a assinatura é colhida quando o checklist tem uma pergunta do tipo Assinatura. |
-| "Concluí a OS e o estoque não baixou" | Comportamento correto do sistema | Concluir OS não mexe em saldo de estoque. A baixa acontece na conversão de um orçamento em OS (os materiais do orçamento saem do estoque) e nos ajustes e inventários da tela de Estoque. |
+| "Criei a OS como Cliente avulso e não apareceu nenhum equipamento pra marcar" | Comportamento esperado | No modo Cliente avulso o cliente ainda não existe de fato enquanto você preenche a OS, então não há como listar equipamento dele. A tela avisa "Salve a OS para depois cadastrar equipamentos deste cliente." Cadastre os equipamentos depois, direto no cadastro do cliente recém-criado. |
+| "Concluí a OS e o estoque não baixou" | Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço) | Com o recurso desligado (padrão), concluir OS realmente não mexe em saldo de estoque: a baixa acontece na conversão de um orçamento em OS, na saída manual e nos ajustes e inventários da tela de Estoque. Com o recurso ligado, a baixa acontece na hora de finalizar, mas só se o técnico anotou material naquela OS pelo Consumir do estoque do menu de mais ações: confira se ele anotou algo e se confirmou o Resumo do consumo que aparece antes de fechar a OS. |
 | "A coluna do kanban sumiu" | O status foi excluído em Configurações de OS | Recrie o status com a mesma chave, ou mova as OS afetadas para um status existente pela lista. |
 | "Não consigo criar OS, o botão não aparece" | Falta a permissão Criar OS | Sem essa permissão, o botão Nova OS, o botão flutuante e o mais (+) das colunas ficam ocultos. Ajuste em Configurações → Usuários e Permissões. |
 | "Mandei o link para o cliente e deu página não encontrada" | Link copiado pelo caminho errado | Use o link do relatório da OS, o Copiar link do cliente de dentro da OS aberta, ou o Copiar link de acompanhamento do cliente do resumo na Agenda. O endereço certo tem o formato dominex.app/os-tecnico/...?modo=cliente. |
@@ -2361,7 +2398,7 @@ O botão Configurações dentro da aba abre Configurações de NPS, onde você d
 **R:** Não existe uma chave de "exigir assinatura" na criação da OS. A exigência de assinatura do técnico é ligada sozinha nas OS geradas por contrato. Para pedir a assinatura do cliente numa OS avulsa, coloque uma pergunta do tipo Assinatura no checklist e marque como campo obrigatório: aí o técnico não fecha a OS sem colher.
 
 **P:** Concluir a OS dá baixa nos materiais usados?
-**R:** Não. Concluir OS não mexe em estoque. A baixa acontece quando um orçamento com materiais é convertido em OS, e nos lançamentos manuais e inventários da tela de Estoque.
+**R:** Por padrão não: concluir OS não mexe em estoque, e a baixa acontece quando um orçamento com materiais é convertido em OS, ou por lançamento manual e inventário na tela de Estoque. Existe um recurso opcional, desligado por padrão, chamado Consumo de estoque na OS (liga em Configurações → Usabilidade → Ordens de Serviço): com ele ligado, o técnico anota o material usado durante o atendimento pelo Consumir do estoque do menu de mais ações, e a baixa é confirmada num resumo editável na hora de finalizar a OS. Mesmo com o recurso ligado, uma OS sem nenhum material anotado finaliza sem mexer em estoque, e o estoque nunca impede a OS de ser finalizada.
 
 **P:** Posso colocar um técnico e uma equipe na mesma OS?
 **R:** Pode. O campo Responsáveis aceita técnicos individuais e equipes ao mesmo tempo, no mesmo seletor.
@@ -2439,6 +2476,14 @@ No celular, a visão que abre é Dia. O motivo é prático: numa tela de celular
 - No celular, nas visões Dia e Semana, você pode deslizar o dedo para os lados: para a esquerda avança, para a direita volta.
 
 - A lupa abre a busca Buscar OS / Tarefa, que procura por número da OS, cliente, descrição e técnico. Ao escolher um resultado, o calendário navega até a data daquele compromisso e abre o resumo dele.
+
+#### O resumo do compromisso
+
+Clicando num cartão da Agenda (ou num resultado da busca, ou em Ver detalhes na janela OS Pausadas), abre o resumo daquele compromisso: no computador, um painel à direita da tela; no celular, um painel abaixo do calendário. Para uma OS, o resumo traz o cliente, o endereço, o equipamento (quando houver), os responsáveis, a descrição e a linha do tempo com os horários de início, pausa, retomada e conclusão.
+
+Quando a OS já teve material lançado nela, o resumo também mostra o bloco Materiais utilizados: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o Custo total ao final. Um material ainda não baixado do estoque aparece com o aviso Ainda não baixado do estoque. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.
+
+ O bloco Materiais utilizados só aparece quando existe material lançado naquela OS. Sem lançamento nenhum, o bloco simplesmente não aparece. Ele também não existe no resumo de uma Tarefa, porque Tarefa é compromisso interno e não tem consumo de estoque.
 
 #### Filtros
 
@@ -2956,7 +3001,21 @@ Limpar a assinatura apaga também o carimbo de hora e de lugar dela.
 
 Se o técnico tentar finalizar sem assinar, as mensagens são "Assinatura do técnico obrigatória" ou "Assinatura do cliente obrigatória".
 
-### 9. Finalizar (e o "finalizar parcialmente" em contrato PMOC)
+### 9. Consumir material durante o atendimento (recurso opcional)
+
+Algumas empresas ligam um recurso opcional (desligado por padrão, em Configurações → Usabilidade → Ordens de Serviço → Consumo de estoque na OS) que deixa o técnico anotar, durante o próprio atendimento, o material que usou. Sem esse recurso ligado, a tela de execução não mostra passo nenhum de material, e este capítulo não se aplica.
+
+Com o recurso ligado, o menu de mais ações (o botão de três traços no rodapé) ganha o item Consumir do estoque. Ele abre a janela de mesmo nome, com o aviso "Anote o que você usou. O estoque só baixa quando a OS for finalizada." — ou seja, anotar aqui não mexe em saldo nenhum ainda.
+
+| Campo | Obrigatório | Detalhe |
+| De onde saiu | Sim (só aparece com mais de um local) | Com um único local de estoque na empresa, ele é usado sozinho. Com mais de um, o campo já vem com o último local usado por aquele técnico naquele aparelho, ou o local principal. |
+| Material | Sim | Busca por nome ou código, filtrada pelo local escolhido. Mostra "Tem X Y neste estoque" (X = quantidade, Y = unidade) ou "Sem saldo neste estoque". |
+| Quantidade | Sim | Maior que zero. Passando do saldo disponível, aparece "Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo." e o técnico consegue continuar mesmo assim. |
+| Observação | Não | Texto livre. |
+
+Cada item entra na lista Já registrado nesta OS e pode ser editado ou removido enquanto não foi baixado do estoque. Sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar.", com o selo Aguardando envio até subir sozinho.
+
+### 10. Finalizar (e o "finalizar parcialmente" em contrato PMOC)
 
 No rodapé, o botão verde Finalizar OS encerra o atendimento. Antes de aceitar, o sistema confere uma sequência de coisas.
 
@@ -2986,7 +3045,7 @@ No rodapé, o botão verde Finalizar OS encerra o atendimento. Antes de aceitar,
 
 - Mostra "OS finalizada com sucesso!" e a tela vira o relatório do serviço.
 
-Finalizar não dá baixa em material nenhum. Não existe, na tela de execução, campo de material usado nem botão de consumo de estoque. Concluir a OS não altera saldo de estoque. A baixa acontece na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque.
+Estoque nunca impede a OS de ser finalizada. Sem o recurso "Consumo de estoque na OS" ligado, ou com ele ligado mas sem nenhum material anotado nesta OS, finalizar não mexe em estoque nenhum: a baixa continua acontecendo só na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque. Com o recurso ligado e material anotado, ao tocar em Finalizar OS (depois de passar pela sequência de verificação acima) aparece, no lugar da confirmação de sempre, o Resumo do consumo: "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." Cada linha traz a quantidade (editável) e o saldo projetado, em cinza ("Fica com X") ou em vermelho quando ficaria negativo ("Fica negativo em X"). Dá para remover um item ali mesmo antes de confirmar: se ainda não tinha sido baixado, ele simplesmente não entra na baixa. O botão Confirmar e finalizar tenta dar a baixa e, dê certo ou não, finaliza a OS de qualquer forma: se a baixa falhar (por exemplo, a conexão cair na hora), o aviso é "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois."
 
 #### Finalizar Parcial
 
@@ -3003,7 +3062,7 @@ Confirmando, aparece "OS finalizada parcialmente" e o técnico volta para a tela
 
 Finalizar Parcial está disponível em qualquer OS com check-in feito, não apenas nas de contrato PMOC. Ele é a saída honesta para o serviço que ficou pela metade: o registro fica, o gestor vê na fila de pausadas e o cliente não recebe pesquisa de satisfação de um serviço que não terminou.
 
-### 10. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)
+### 11. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)
 
 Área do Técnico™ não é a tela de executar OS. São duas coisas diferentes com nomes parecidos. A execução da OS é o link da ordem de serviço. A Área do Técnico™ é uma caixa de ferramentas de cálculo e consulta, que existe independentemente de haver OS aberta.
 
@@ -3037,7 +3096,7 @@ Para TI e assistência técnica, as ferramentas são Calculadora de Fonte (PSU) 
 
 As ferramentas mudam conforme o segmento da empresa. Empresa de elevadores não vê as calculadoras de refrigeração. Se o segmento da sua empresa ainda não tem ferramenta nenhuma no catálogo, o item Área do Técnico™ não aparece no menu e o endereço redireciona para o início. O segmento é definido pela Dominex, não é editável pelo cliente.
 
-### 11. Usar a calculadora de dentro da OS, sem sair da tela
+### 12. Usar a calculadora de dentro da OS, sem sair da tela
 
 Durante a execução da OS, aparece um botão flutuante no canto inferior esquerdo, com o ícone da Área do Técnico™. Tocando nele, as ferramentas abrem em cima da OS, em tela cheia.
 
@@ -3051,7 +3110,7 @@ Durante a execução da OS, aparece um botão flutuante no canto inferior esquer
 
  Hoje o botão flutuante da Área do Técnico™ dentro da OS aparece apenas para empresas do segmento de refrigeração e climatização. Nos demais segmentos que têm ferramentas, elas continuam acessíveis pelo menu, na tela própria da Área do Técnico™.
 
-### 12. As ferramentas com cadeado: o que é do seu segmento e o que é de outro
+### 13. As ferramentas com cadeado: o que é do seu segmento e o que é de outro
 
 No topo da Área do Técnico™ existe um seletor de nicho. Ele permite espiar o conjunto de ferramentas de outros segmentos, e é aí que aparecem os cadeados.
 
@@ -3077,7 +3136,7 @@ Seletor de nicho em Instalações Elétricas: as ferramentas daquele segmento ap
 | "O técnico só consegue anexar foto da galeria, não abre a câmera" | Está tocando no botão errado | São dois botões separados: Tirar Foto abre a câmera, Galeria abre as fotos do aparelho. Se só aparece um botão de câmera, é porque a pergunta foi configurada com Exigir foto da câmera. |
 | "A foto do iPhone não sobe" | Quase sempre é conexão, não formato | Fotos HEIC do iPhone são convertidas automaticamente. Se aparece "Erro ao enviar foto", o problema é sinal. Peça para tentar de novo em local com internet. |
 | "Não consigo finalizar a OS" | Pendência de checklist, assinatura ou classificação PMOC | Leia a mensagem exibida. "Campos obrigatórios pendentes" lista as perguntas em falta. "Assinatura do técnico obrigatória" ou "Assinatura do cliente obrigatória" pedem a assinatura. "Classificação PMOC obrigatória" pede escolher conforme, parcial ou não-conforme. |
-| "Onde eu marco as peças que usei na OS?" | Esse campo não existe na execução | Não existe registro de material dentro da tela de execução, e concluir a OS não mexe em estoque. O consumo é lançado pelo orçamento convertido em OS, ou manualmente na tela de Estoque. |
+| "Onde eu marco as peças que usei na OS?" | Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço) | Com o recurso desligado, esse campo não existe mesmo na tela de execução: nesse caso o consumo é lançado pelo orçamento convertido em OS, ou manualmente na tela de Estoque. Com o recurso ligado, o menu de mais ações ganha o item Consumir do estoque, onde o técnico anota material e quantidade durante o atendimento; a baixa é confirmada no resumo que aparece ao finalizar a OS. |
 | "Onde está o botão de exigir assinatura?" | Esse botão não existe na criação da OS | Nas OS de contrato, a assinatura do técnico já é exigida sozinha. Para OS avulsa, coloque uma pergunta do tipo Assinatura no checklist marcada como obrigatória. |
 | "O técnico ficou sem a Área do Técnico™" | Segmento da empresa sem ferramentas, ou tela sem permissão | As ferramentas existem por segmento. Se o segmento não tem ferramenta cadastrada, o item não aparece no menu. Confira também se a tela Área do Técnico™ está liberada para o cargo dele. |
 | "Aparece cadeado nas calculadoras" | Ele trocou o nicho no seletor do topo | Ferramentas com cadeado são de outro ramo. Peça para voltar o seletor para o segmento da empresa e tudo abre. |
@@ -3148,6 +3207,8 @@ A tela se chama Estoque, com o subtítulo "Controle de peças e materiais". Ela 
 | Compras de Material | Requisições de compra, fornecedores e cotações. |
 | Inventários | Contagem física: você conta, o sistema compara com o esperado e ajusta a diferença. |
 | Posição de Estoque | Qual era o saldo numa data passada. É o retrato do estoque para fechamento e para conferência com o contador. |
+
+No celular, para caber na faixa de abas, três desses nomes aparecem encurtados: Histórico de Materiais (Kardex) vira só Histórico, Compras de Material vira Compras e Posição de Estoque vira Posição. Estoque Atual e Inventários continuam com o nome completo mesmo no celular. É a mesma tela e as mesmas colunas, só o rótulo da aba que muda de tamanho.
 
 [Print da tela: Tela Estoque da Dominex na aba Estoque Atual, com os indicadores de total de itens, valor investido, projeção de venda e estoque baixo, mais a tabela de materiais]
 
@@ -3250,7 +3311,7 @@ No menu de ações do material existe Transferir. A janela Transferir entre loca
 
 Validações, com o título "Confira os dados": "Selecione o local de origem.", "Selecione o local de destino.", "Origem e destino não podem ser o mesmo local de estoque.", "Informe uma quantidade maior que zero." e "Saldo insuficiente no local de origem."
 
-Toda transferência aparece no Kardex como movimento do tipo Transferência, com origem e destino.
+Toda transferência aparece no Kardex como movimento do tipo Transferência, com origem e destino: a coluna Local mostra o par completo no formato "origem → destino" (por exemplo, Galpão → Van 01).
 
 ### 4. Restrição de acesso por depósito — quem vê o quê
 
@@ -3268,32 +3329,39 @@ Escolhendo Restrito, aparece a lista de usuários para marcar quem tem acesso. A
 
 ### 5. Aba Histórico (Kardex): lendo a movimentação item a item
 
-A aba Histórico de Materiais (Kardex) mostra o título Histórico de Movimentações. É o extrato do estoque: cada linha é um movimento, com o saldo antes e o saldo depois.
+A aba Histórico de Materiais (Kardex) mostra o título Histórico de Movimentações. É o extrato do estoque: cada linha é um movimento, com o saldo antes e o saldo depois. No celular, essa aba aparece na faixa de abas com o nome curto Histórico.
 
 #### Colunas
 
-Usuário, Data e Hora, Tipo, Origem, Material, Estoque inicial, Movimento e Estoque final.
+Usuário, Data e Hora, Tipo, Origem, Material, Local, Estoque inicial, Movimento e Estoque final.
 
 #### Tipos de movimento
 
 | Tipo | De onde vem |
 | Entrada | Cadastro inicial com quantidade, entrada manual, entrada de compra e importação de XML da NF-e. |
 | Saída | Saída manual e consumo de materiais de um orçamento convertido em OS. |
+| Consumo | Material anotado pelo técnico dentro de uma Ordem de Serviço, quando a empresa liga o recurso opcional Consumo de estoque na OS (Configurações → Usabilidade → Ordens de Serviço). A baixa é confirmada no resumo que aparece ao finalizar a OS, não na conclusão em si. |
 | Ajuste | Mudança de quantidade na edição do material e ajuste gerado no fechamento de um inventário. |
 | Transferência | Movimentação entre dois locais de estoque. |
-| Estorno | Reversão de um movimento anterior. |
+| Estorno | Reversão de um movimento anterior, inclusive quando a quantidade de um material já baixado numa OS é reduzida ao reabrir e corrigir aquela OS. |
+
+O custo unitário de um material consumido numa OS fica congelado no momento da primeira baixa daquela linha. Se a OS for reaberta depois e a quantidade for corrigida, o estorno usa o mesmo custo do consumo original, para a devolução valorizar exatamente igual ao que saiu.
 
 #### A coluna Origem
 
 É o que amarra o movimento ao seu motivo. Ela mostra OS com o número da ordem quando o consumo veio de uma OS, ou Fornecedor: [nome] quando o movimento veio de uma compra. Movimento feito por processo automático aparece como Sistema. Material apagado depois aparece como Material removido.
 
+#### A coluna Local
+
+Mostra o local de estoque onde o movimento aconteceu, como Galpão ou Van 01. Num movimento do tipo Transferência, ela mostra o par completo no formato "origem → destino" (por exemplo, Galpão → Van 01), montado a partir das duas pernas daquela transferência. Quando o sistema não consegue identificar um dos dois lados, aparece só o nome que se conhece; sem nenhum dos dois, aparece —.
+
 [Print da tela: Aba Histórico de Materiais (Kardex) da conta de exemplo, sem nenhum movimento no período: ícone de relógio com seta, o texto Nenhuma movimentação encontrada e Tente outro período ou filtro, e o botão Filtros no canto superior direito]
 
-Kardex sem movimentação no filtro atual. Com lançamentos, a tabela ganha as colunas Usuário, Data e Hora, Tipo, Origem, Material, Estoque inicial, Movimento e Estoque final.
+Kardex sem movimentação no filtro atual. Com lançamentos, a tabela ganha as colunas Usuário, Data e Hora, Tipo, Origem, Material, Local, Estoque inicial, Movimento e Estoque final.
 
 #### Filtros
 
-Período, Material (com Todos os materiais) e Tipo de movimento (com Todos os tipos). Sem movimento: "Sem movimentações" e "As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."
+Período, Material (com Todos os materiais), Tipo de movimento (com Todos os tipos) e Local (com Todos os locais), dentro do botão Filtros. Sem movimento: "Sem movimentações" e "As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."
 
  O Kardex é a ferramenta para responder "cadê os 20 filtros que compramos mês passado". Filtre pelo material, ordene por data e leia a coluna de saldo: em algum ponto o número muda sem um movimento correspondente, e ali está a resposta.
 
@@ -3458,7 +3526,7 @@ Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, c
 ### Suporte: problemas comuns
 
 | O cliente diz | Causa provável | O que responder / fazer |
-| "Concluí a OS e o estoque não baixou" | Comportamento correto do sistema | Concluir OS não dá baixa em estoque, e não existe campo de material na tela de execução do técnico. A baixa acontece: na conversão de um orçamento em OS (os materiais do orçamento saem do estoque, e o movimento aparece no Kardex com origem OS), na saída manual e no ajuste do inventário. |
+| "Concluí a OS e o estoque não baixou" | Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço) | Com o recurso desligado (padrão da empresa), concluir OS realmente não dá baixa em estoque: a baixa acontece na conversão de um orçamento em OS (os materiais do orçamento saem do estoque, movimento tipo Saída com origem OS no Kardex), na saída manual e no ajuste do inventário. Com o recurso ligado, o técnico anota o material usado direto na OS pelo Consumir do estoque do menu de mais ações, e a baixa (movimento tipo Consumo no Kardex) é confirmada no resumo editável que aparece ao finalizar. Sem material anotado naquela OS, nada muda, com o recurso ligado ou não. |
 | "O sistema não avisou que o material acabou" | Estoque mínimo não preenchido | O alerta depende do mínimo definido por local, dentro do cadastro do material, no bloco Locais deste material. Sem mínimo, não há alerta e o material não entra no indicador Estoque baixo. |
 | "Meu funcionário vê menos itens que eu no estoque" | Restrição de acesso por local | É permissão, não bug. Na configuração do local, a aba Acesso pode estar em Restrito. Quem não está marcado não vê aquele depósito nem os movimentos dele. |
 | "Não consigo tirar um material do local" | Ainda há saldo naquele local | A mensagem é "Ainda há saldo neste local. Transfira ou dê baixa antes." Use Transferir saldo ou registre a saída e depois desmarque. |
@@ -3467,13 +3535,13 @@ Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, c
 | "Finalizei o inventário com número errado" | Fechamento é definitivo | Não dá para desfazer nem cancelar inventário finalizado. O caminho é criar um novo inventário com a contagem correta, ou lançar um ajuste manual editando a quantidade do material. Tudo fica registrado no Kardex. |
 | "O valor investido está diferente do que eu esperava" | Preço de custo desatualizado ou local filtrado | O valor usa o preço de custo cadastrado. Confira também qual depósito está selecionado nas pílulas: o indicador reflete o local ativo. |
 | "Consigo importar meus materiais de uma planilha?" | Não existe importação em massa por planilha | Não existe importação de materiais por CSV ou Excel. O caminho mais próximo é o Importar XML (NF-e), que cria os itens a partir da nota do fornecedor e já registra a entrada. |
-| "Sumiu material e ninguém sabe explicar" | Falta olhar o Kardex | Abra Histórico de Materiais (Kardex), filtre pelo material e leia as colunas de saldo inicial e final. A coluna Origem mostra se a saída veio de OS ou de fornecedor, e a coluna Usuário mostra quem lançou. |
+| "Sumiu material e ninguém sabe explicar" | Falta olhar o Kardex | Abra Histórico de Materiais (Kardex) (no celular, a aba Histórico), filtre pelo material e leia as colunas de saldo inicial e final. A coluna Origem mostra se a saída veio de OS ou de fornecedor, a coluna Local mostra de qual depósito saiu (em transferência, o par origem → destino), e a coluna Usuário mostra quem lançou. |
 | "Excluí um material sem querer" | Exclusão remove o histórico dele | Excluir material remove também as movimentações dele e desvincula das listas de orçamento e de serviço. Não tem como desfazer. Para tirar de circulação sem perder histórico, zere o saldo e deixe o cadastro parado. |
 
 ### Perguntas frequentes
 
 **P:** Concluir uma OS dá baixa nos materiais usados?
-**R:** Não. Concluir OS não altera saldo de estoque, e a tela do técnico nem tem campo de material. A baixa acontece na conversão de orçamento em OS, na saída manual e no ajuste do inventário.
+**R:** Por padrão não: a baixa acontece na conversão de orçamento em OS, na saída manual e no ajuste do inventário. Existe um recurso opcional, desligado por padrão (Configurações → Usabilidade → Ordens de Serviço → Consumo de estoque na OS), que liga o consumo de material dentro da própria OS: o técnico anota o que usou durante o atendimento e a baixa é confirmada num resumo editável ao finalizar. O movimento aparece no Kardex com o tipo Consumo, o número da OS na coluna Origem e o local de onde saiu na coluna Local.
 
 **P:** Qual a diferença entre Categoria e Grupo?
 **R:** Categoria é uma lista fixa igual para todos (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque, e serve para organizar do seu jeito.
@@ -3482,7 +3550,7 @@ Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, c
 **R:** Não. Quem tem um só trabalha no local principal e nem vê as pílulas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.
 
 **P:** Dá para o técnico dar baixa de material pelo celular?
-**R:** Não pela tela de execução da OS, que não tem campo de material. A baixa é feita na tela de Estoque, por quem tem a permissão de gerenciar estoque e acesso ao local.
+**R:** Pela tela de Estoque, só quem tem a permissão de gerenciar estoque e acesso ao local. Dentro da própria Ordem de Serviço, sim, quando a empresa liga o recurso Consumo de estoque na OS em Configurações → Usabilidade: o técnico anota o material usado durante o atendimento pelo Consumir do estoque do menu de mais ações, e a baixa é confirmada no resumo editável que aparece ao finalizar a OS. Com o recurso desligado, a tela de execução não mostra esse passo.
 
 **P:** Aceitar a cotação já compra o material?
 **R:** Não. Aceitar registra a decisão de qual fornecedor venceu. Quando a mercadoria chega, use Registrar entrada no estoque na cotação aceita, e aí sim o saldo sobe.
@@ -3950,7 +4018,7 @@ A ação Converter em OS só aparece em orçamento Aprovado ainda não convertid
 
 Ao terminar aparece Orçamento convertido! com OS criada com sucesso., e o orçamento passa ao status Convertido.
 
-É aqui que o estoque baixa. Na conversão, cada material escolhido do estoque gera uma saída na quantidade do orçamento, com a observação Consumo do Orçamento # seguida do número. Material digitado na mão não mexe em estoque. E o contrário, que é a dúvida número um do suporte: concluir a OS não dá baixa em estoque. A baixa acontece nesta conversão e nos ajustes e inventário da tela de Estoque.
+É aqui que o estoque baixa por causa do orçamento. Na conversão, cada material escolhido do estoque gera uma saída na quantidade do orçamento, com a observação Consumo do Orçamento # seguida do número. Material digitado na mão não mexe em estoque. Por padrão, concluir a OS não dá baixa em estoque: fora desta conversão, a baixa só acontece nos ajustes e inventário da tela de Estoque. A exceção é quando a empresa liga, em Configurações → Usabilidade → Ordens de Serviço, o recurso opcional Consumo de estoque na OS: aí o técnico pode anotar material durante o atendimento e a baixa desse consumo é confirmada num resumo ao finalizar a OS, sem relação nenhuma com o material do orçamento.
 
 A baixa não checa se há saldo. Se o material não tem estoque suficiente, o saldo daquele item fica negativo e a movimentação é registrada assim mesmo. Confira a Posição de Estoque depois de converter orçamentos grandes.
 
@@ -3969,7 +4037,7 @@ Não existe conversão de orçamento em contrato (contrato é sempre montado do 
 | "Onde eu transformo o orçamento aprovado em contrato?" | Essa função não existe. | Não há botão de orçamento para contrato. Aprove o orçamento e monte o contrato do zero na tela de Contratos, copiando os valores. Vale o mesmo para PMOC. |
 | "O cliente aprovou a proposta e não entrou nada no financeiro" | A aprovação do cliente muda só o status; o lançamento é feito por dentro. | É o comportamento correto. Use Aprovar (registrar recebimento) antes de o cliente responder, ou lance o recebimento direto no Financeiro depois. |
 | "Tentei aprovar de novo e deu erro" | O orçamento já gerou os lançamentos financeiros. | A mensagem é Lançamentos financeiros já foram gerados para este orçamento. A aprovação com lançamento é única; ajuste direto no Financeiro. |
-| "O estoque não baixou quando eu finalizei a OS" | Concluir OS nunca dá baixa em estoque. | A baixa acontece na conversão do orçamento em OS e nos ajustes e inventário da tela de Estoque. Material digitado na mão no orçamento nunca baixa. |
+| "O estoque não baixou quando eu finalizei a OS" | Por padrão, concluir OS não dá baixa em estoque | Fora da conversão do orçamento em OS e dos ajustes e inventário da tela de Estoque, a baixa só acontece se a empresa tiver ligado o recurso opcional Consumo de estoque na OS (Configurações → Usabilidade → Ordens de Serviço) e o técnico tiver anotado material naquela OS pelo Consumir do estoque, confirmado no resumo de finalização. Material digitado na mão no orçamento nunca baixa, em nenhum dos dois casos. |
 | "O CNPJ e o endereço do cliente não saem na proposta" | O cadastro do cliente está sem documento ou sem endereço, ou o orçamento foi feito como prospecto avulso. | Preencha documento e endereço na ficha do cliente em Clientes e gere o documento de novo. Orçamento de prospecto mostra só nome, telefone e e-mail. |
 | "O preço do serviço entrou zerado no orçamento" | O tipo de serviço não tem custos configurados nem preço padrão no catálogo. | Digite o preço na mão ali mesmo, ou configure na aba Custos dos Serviços para o preço passar a entrar sozinho nos próximos orçamentos. |
 | "Mudei o BDI e o preço de um item não mudou" | O item foi precificado na mão ou veio do preço padrão do catálogo, e por isso está travado. | Remova o item e adicione de novo para voltar a ser calculado pelo BDI, ou ajuste o preço na mão. |
@@ -4004,7 +4072,7 @@ Não existe conversão de orçamento em contrato (contrato é sempre montado do 
 **R:** Sim, mas só quando alguém abre a tela de Orçamentos: um Enviado que passou da data em Válido até vira Expirado nesse momento. Sem validade preenchida, nunca expira. Não existe lembrete automático.
 
 **P:** Quando o estoque baixa, afinal?
-**R:** Na conversão do orçamento em OS, e só para os materiais escolhidos do estoque. Concluir a OS não baixa estoque.
+**R:** Na conversão do orçamento em OS, e só para os materiais escolhidos do estoque. Por padrão, concluir a OS não baixa estoque. Se a empresa ligar o recurso opcional Consumo de estoque na OS (Configurações → Usabilidade → Ordens de Serviço), o técnico também pode anotar material durante o atendimento e ter essa baixa confirmada ao finalizar a OS, à parte do que veio do orçamento.
 
 **P:** Aprovar por dentro do sistema lança quantos registros no financeiro?
 **R:** Até quatro, todos na mesma conta e já pagos: a receita em Vendas de Serviços, o custo de materiais em CMV - Materiais, a mão de obra em CMV - Mão de Obra Avulsa e a tarifa em Tarifas e Taxas, quando houver.
