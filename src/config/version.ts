@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.1";
+export const APP_VERSION = "1.24.2";
 
-export const VERSION_NOTES = "Ao simular a antecipação de uma cobrança parcelada, o resumo agora deixa claro que você recebe tudo de uma vez, e mostra quanto o seu cliente paga por mês em vez da lista de parcelas com datas repetidas.";
+export const VERSION_NOTES = "As Movimentações Financeiras agora mostram o saldo da conta depois de cada lançamento e separam a lista por dia, com o saldo de fechamento de cada dia, igual ao extrato do seu banco.";

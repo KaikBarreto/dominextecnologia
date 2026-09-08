@@ -62,6 +62,23 @@ function formatDate(dateStr: string) {
   return parseLocalDate(dateStr).toLocaleDateString('pt-BR');
 }
 
+/**
+ * Rótulo do divisor de dia: "28 de julho" (ano corrente) ou "28 de julho de
+ * 2025" (ano diferente). `locale` (pt-br/en/es/fr) já é aceito CRU pelo
+ * `Intl.DateTimeFormat` neste repo — mesmo padrão do Schedule.tsx, sem mapear
+ * pra tag BCP47 (a especificação é case-insensitive). SEMPRE `parseLocalDate`,
+ * nunca `new Date(str)` cru — vira UTC e joga o dia pro anterior no fuso de SP.
+ */
+function formatDayDividerLabel(dateKey: string, locale: string) {
+  const date = parseLocalDate(dateKey);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    ...(sameYear ? {} : { year: 'numeric' as const }),
+  }).format(date);
+}
+
 interface TransactionListPanelProps {
   title: string;
   type?: TransactionType | 'all';
@@ -81,18 +98,46 @@ interface TransactionListPanelProps {
    */
   hideAccountColumn?: boolean;
   /**
-   * Mapa id-da-transação → saldo da conta DEPOIS daquela movimentação.
-   * Quando fornecido (só na conta bancária/caixa específica), exibe a coluna
-   * "Saldo Após" logo após "Valor". Ausente no ALL_TAB e no cartão.
+   * Mapa id-da-transação → saldo DEPOIS daquela movimentação. Quando fornecido
+   * (conta bancária/caixa específica OU Visão Geral consolidada), exibe a
+   * coluna "Saldo Após" logo após "Valor". Ausente no cartão.
    */
   balanceAfterById?: Map<string, number>;
+  /**
+   * Rótulo da coluna de saldo (desktop). Default: `fin.transactionList.table.balanceAfter`
+   * ("Saldo Após"). A Visão Geral passa "Saldo Total Após" — o mapa ali é
+   * CONSOLIDADO (soma de todas as contas), rótulo "Saldo Após" sozinho
+   * sugeriria erroneamente o extrato de uma única conta.
+   */
+  balanceAfterLabel?: string;
+  /**
+   * Rótulo curto do saldo (mobile, trailing do MobileListItem). Default:
+   * `fin.transactionList.balance` ("Saldo").
+   */
+  balanceAfterShortLabel?: string;
+  /**
+   * Agrupa as linhas por dia com uma faixa divisória mostrando o saldo de
+   * fechamento do dia (estilo extrato Mercado Pago). Só ligado em
+   * Movimentações — NÃO ligar em telas de Contas a Pagar/Receber (lista por
+   * vencimento, saldo de dia não faz sentido lá).
+   */
+  groupByDay?: boolean;
+  /**
+   * dateKey ('YYYY-MM-DD') → saldo de fechamento daquele dia. Sem isso, o
+   * divisor mostra só a data (sem valor). A dateKey tem que bater com a data
+   * que a LINHA exibe (`credit_card_bill_date ?? transaction_date`), a mesma
+   * regra de `renderTransactionDate` — senão o divisor briga com a data
+   * mostrada na linha logo abaixo dele.
+   */
+  dayClosingBalance?: Map<string, number>;
 }
 
 export function TransactionListPanel({
   title, type = 'all', transactions, isLoading,
   onNew, onEdit, onDelete, buttonColor,
   initialAccountFilter, onClearAccountFilter, hideAccountColumn,
-  balanceAfterById,
+  balanceAfterById, balanceAfterLabel, balanceAfterShortLabel,
+  groupByDay, dayClosingBalance,
 }: TransactionListPanelProps) {
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -121,6 +166,11 @@ export function TransactionListPanel({
   const { locale, currency } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
+  // Rótulos de saldo resolvidos: o caller (FinanceMovimentacoes) só passa
+  // `balanceAfterLabel`/`balanceAfterShortLabel` na Visão Geral consolidada;
+  // na conta selecionada cai no default ("Saldo Após" / "Saldo").
+  const resolvedBalanceAfterLabel = balanceAfterLabel ?? fin.transactionList.table.balanceAfter;
+  const resolvedBalanceAfterShortLabel = balanceAfterShortLabel ?? fin.transactionList.balance;
   const { accounts: allAccounts } = useFinancialAccounts();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
@@ -173,6 +223,60 @@ export function TransactionListPanel({
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
   const pagination = useDataPagination(sortedItems);
+
+  // Divisor de dia só faz sentido em ordem cronológica: agrupar por dia numa
+  // lista ordenada por valor/descrição/categoria/conta seria mentira (o "dia"
+  // deixaria de corresponder a um bloco contíguo de linhas). `sortConfig.key
+  // === ''` é o default (sem clique manual do usuário) — a ordem então vem do
+  // hook (`transaction_date desc`), também cronológica.
+  const canGroupByDay = groupByDay === true
+    && (sortConfig.key === '' || sortConfig.key === 'transaction_date');
+
+  type PagedTxn = (typeof pagination.paginatedItems)[number];
+  type DayOrRow = { kind: 'day'; dateKey: string } | { kind: 'row'; txn: PagedTxn };
+
+  // Intercala divisores de dia com as linhas da PÁGINA ATUAL — única fonte de
+  // verdade da regra de agrupamento; os dois renders (mobile e desktop)
+  // percorrem esta MESMA lista, então nunca dessincronizam entre si. Se um dia
+  // é cortado entre páginas, o divisor reaparece no topo da página seguinte
+  // (comportamento aceito, não é bug).
+  const rowsWithDayDividers: DayOrRow[] = useMemo(() => {
+    if (!canGroupByDay) {
+      return pagination.paginatedItems.map((txn) => ({ kind: 'row' as const, txn }));
+    }
+    const out: DayOrRow[] = [];
+    let lastKey: string | null = null;
+    for (const txn of pagination.paginatedItems) {
+      // Mesma regra de `renderTransactionDate`: parcela de cartão mostra a
+      // data da FATURA, não a da compra — o divisor tem que bater com o que a
+      // linha exibe, senão brigam entre si.
+      const dateKey = String((txn as any).credit_card_bill_date ?? txn.transaction_date);
+      if (dateKey !== lastKey) {
+        out.push({ kind: 'day', dateKey });
+        lastKey = dateKey;
+      }
+      out.push({ kind: 'row', txn });
+    }
+    return out;
+  }, [canGroupByDay, pagination.paginatedItems]);
+
+  // Nº de colunas de fato renderizadas na tabela desktop — MESMAS flags que
+  // montam o <TableHeader> abaixo. Const única usada nos dois lugares pra
+  // nunca dessincronizar o colSpan do divisor de dia do cabeçalho real.
+  // NOTA: usa `type === 'all'` cru (não a const `showTypeColumn`, que só é
+  // declarada mais abaixo, perto do JSX) pra não criar dependência de ordem
+  // de declaração — ambas resolvem pro mesmo valor.
+  const visibleColumnCount =
+    (type !== 'all' && canDeleteFinance ? 1 : 0) // checkbox
+    + 1 // data
+    + 1 // usuário
+    + (type === 'all' ? 1 : 0) // tipo (== showTypeColumn)
+    + 1 // descrição
+    + 1 // categoria (hidden md:table-cell — some visualmente, mas a coluna existe)
+    + (!hideAccountColumn ? 1 : 0) // conta (hidden lg:table-cell)
+    + 1 // valor
+    + (balanceAfterById ? 1 : 0) // saldo após
+    + 1; // ações
 
   const requestDelete = async (id: string) => {
     const txn = transactions.find((t) => t.id === id);
@@ -478,7 +582,38 @@ export function TransactionListPanel({
             </div>
           )}
           <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
-            {pagination.paginatedItems.map((t) => {
+            {rowsWithDayDividers.map((item) => {
+              if (item.kind === 'day') {
+                // Faixa dentro do MESMO card branco (não é um card à parte) —
+                // pattern do extrato Mercado Pago. `min-w-0 truncate` na data
+                // + `shrink-0` no valor pra não estourar em 320px (rede de
+                // segurança: `gap-2` some antes de quebrar layout).
+                const closing = dayClosingBalance?.get(item.dateKey);
+                return (
+                  <div
+                    key={`day-${item.dateKey}`}
+                    className="flex items-center justify-between gap-2 bg-muted/40 px-4 py-2 border-y"
+                  >
+                    <span className="text-xs font-semibold truncate min-w-0">
+                      {formatDayDividerLabel(item.dateKey, locale)}
+                    </span>
+                    {closing !== undefined && (
+                      <span className={cn(
+                        'text-xs text-muted-foreground tabular-nums shrink-0',
+                        closing < 0 && 'text-destructive',
+                      )}>
+                        {/* Rótulo curto ("Saldo") em vez de "Saldo do dia": em
+                            320px o par rótulo+valor não cabe numa linha só
+                            com a data à esquerda sem quebrar/truncar o valor
+                            (que é o dado mais importante aqui). */}
+                        {fin.transactionList.dayDivider.titleShort} {fmt(closing)}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+
+              const t = item.txn;
               const isEntrada = t.transaction_type === 'entrada';
               const itemActions: ItemAction[] = [
                 {
@@ -544,7 +679,7 @@ export function TransactionListPanel({
                           'text-[11px] whitespace-nowrap tabular-nums text-muted-foreground',
                           (balanceAfterById.get(t.id) ?? 0) < 0 && 'text-destructive',
                         )}>
-                          {fin.transactionList.balance}: {fmt(balanceAfterById.get(t.id) ?? 0)}
+                          {resolvedBalanceAfterShortLabel}: {fmt(balanceAfterById.get(t.id) ?? 0)}
                         </span>
                       )}
                     </div>
@@ -581,13 +716,44 @@ export function TransactionListPanel({
                     )}
                     <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.amount}</SortableTableHead>
                     {balanceAfterById && (
-                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">{fin.transactionList.table.balanceAfter}</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">{resolvedBalanceAfterLabel}</SortableTableHead>
                     )}
                     <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">{fin.transactionList.table.actions}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagination.paginatedItems.map((t) => (
+                  {rowsWithDayDividers.map((item) => {
+                    if (item.kind === 'day') {
+                      // Uma única célula cobrindo TODAS as colunas visíveis —
+                      // `visibleColumnCount` é a MESMA const que conta os
+                      // <SortableTableHead> acima, nunca dessincroniza. Sem
+                      // `position: sticky` (a tabela vive num `overflow-x-auto`,
+                      // sticky quebra dentro dele). Sem hover: não é uma linha
+                      // clicável.
+                      const closing = dayClosingBalance?.get(item.dateKey);
+                      return (
+                        <TableRow key={`day-${item.dateKey}`} className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell colSpan={visibleColumnCount} className="py-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-foreground">
+                                {formatDayDividerLabel(item.dateKey, locale)}
+                              </span>
+                              {closing !== undefined && (
+                                <span className={cn(
+                                  'text-xs text-muted-foreground tabular-nums',
+                                  closing < 0 && 'text-destructive',
+                                )}>
+                                  {fin.transactionList.dayDivider.title} {fmt(closing)}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+
+                    const t = item.txn;
+                    return (
                     <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
                       {type !== 'all' && canDeleteFinance && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
                       <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
@@ -655,7 +821,8 @@ export function TransactionListPanel({
                         />
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.2',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Movimentações Financeiras agora mostram o saldo depois de cada lançamento',
+        description: 'A lista de movimentações ganhou uma coluna com o saldo da conta logo depois de cada entrada ou saída, do jeito que o extrato do seu banco mostra. Antes isso só aparecia quando você abria uma conta específica no menu da esquerda; agora aparece também na Visão Geral, onde o valor é o total somado de todas as suas contas e caixas. Assim dá para conferir linha por linha com o extrato do banco sem precisar ir somando na mão.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Lista separada por dia, com o saldo de fechamento de cada dia',
+        description: 'As movimentações passam a ficar agrupadas por data, com uma faixa entre um dia e outro mostrando o dia e quanto sobrou na conta no fim daquele dia. Funciona tanto no computador quanto no celular. Se você reordenar a lista por valor ou por descrição, as faixas somem, porque nesse caso a divisão por dia deixaria de fazer sentido.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.1',
     date: '8 de setembro de 2026',
     type: 'patch',

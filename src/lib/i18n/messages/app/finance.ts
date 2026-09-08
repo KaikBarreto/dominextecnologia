@@ -331,6 +331,10 @@ export const finance = {
         account: 'Conta',
         amount: 'Valor',
         balanceAfter: 'Saldo Após',
+        // Visão Geral (consolidado): "Saldo Após" não faz sentido sozinho —
+        // não é o saldo DE UMA conta, é a soma de todas. Rótulo próprio pra
+        // não sugerir que é o extrato de uma conta específica.
+        balanceTotalAfter: 'Saldo Total Após',
         actions: 'Ações',
       },
       badges: {
@@ -342,6 +346,16 @@ export const finance = {
         invoiceDueDate: 'Data exibida: vencimento da fatura',
       },
       balance: 'Saldo',
+      balanceTotal: 'Saldo total',
+      // Divisor de dia (extrato tipo Mercado Pago): "28 de julho ... Saldo do
+      // dia R$ X". `titleShort` é o rótulo enxuto pro mobile (320px é apertado
+      // pra "Saldo do dia" + valor tabular no mesmo flex row) — chave própria
+      // em vez de reusar `balance` porque o texto de `balance` pode mudar de
+      // contexto amanhã sem que o divisor de dia deva acompanhar.
+      dayDivider: {
+        title: 'Saldo do dia',
+        titleShort: 'Saldo',
+      },
       empty: {
         notFoundTitle: 'Nenhuma movimentação encontrada',
         notFoundDescription: 'Tente ajustar a busca ou os filtros.',
@@ -1261,6 +1275,7 @@ export const finance = {
         account: 'Account',
         amount: 'Amount',
         balanceAfter: 'Balance After',
+        balanceTotalAfter: 'Total Balance After',
         actions: 'Actions',
       },
       badges: {
@@ -1272,6 +1287,11 @@ export const finance = {
         invoiceDueDate: 'Displayed date: bill due date',
       },
       balance: 'Balance',
+      balanceTotal: 'Total balance',
+      dayDivider: {
+        title: 'Daily balance',
+        titleShort: 'Balance',
+      },
       empty: {
         notFoundTitle: 'No transactions found',
         notFoundDescription: 'Try adjusting your search or filters.',
@@ -2168,6 +2188,7 @@ export const finance = {
         account: 'Cuenta',
         amount: 'Importe',
         balanceAfter: 'Saldo Tras',
+        balanceTotalAfter: 'Saldo Total Después',
         actions: 'Acciones',
       },
       badges: {
@@ -2179,6 +2200,11 @@ export const finance = {
         invoiceDueDate: 'Fecha mostrada: vencimiento de factura',
       },
       balance: 'Saldo',
+      balanceTotal: 'Saldo total',
+      dayDivider: {
+        title: 'Saldo del día',
+        titleShort: 'Saldo',
+      },
       empty: {
         notFoundTitle: 'Ningún movimiento encontrado',
         notFoundDescription: 'Intente ajustar la búsqueda o los filtros.',
@@ -3075,6 +3101,7 @@ export const finance = {
         account: 'Compte',
         amount: 'Montant',
         balanceAfter: 'Solde Après',
+        balanceTotalAfter: 'Solde Total Après',
         actions: 'Actions',
       },
       badges: {
@@ -3086,6 +3113,11 @@ export const finance = {
         invoiceDueDate: 'Date affichée : échéance de facture',
       },
       balance: 'Solde',
+      balanceTotal: 'Solde total',
+      dayDivider: {
+        title: 'Solde du jour',
+        titleShort: 'Solde',
+      },
       empty: {
         notFoundTitle: 'Aucun mouvement trouvé',
         notFoundDescription: 'Essayez d\'ajuster la recherche ou les filtres.',
