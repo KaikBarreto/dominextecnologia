@@ -835,13 +835,32 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                           {isAnticipated
                             ? simulation.settlementDays <= 0
                               ? t.net.settlementAnticipatedNow
-                              : t.net.settlementAnticipatedTotal(simulation.settlementDays)
+                              : t.net.settlementAnticipatedTotal(
+                                  simulation.settlementDays,
+                                  formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
+                                )
                             : simulation.installments > 1
-                              ? t.net.settlementFirstInstallment(simulation.settlementDays)
+                              ? t.net.settlementFirstInstallment(
+                                  simulation.settlementDays,
+                                  formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
+                                )
                               : simulation.settlementDays <= 0
                                 ? t.net.settlementToday
-                                : t.net.settlementDays(simulation.settlementDays)}
+                                : t.net.settlementDays(
+                                    simulation.settlementDays,
+                                    formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
+                                  )}
                         </p>
+
+                        {/* Regra de dia útil, sempre visível quando o prazo não
+                            é "na hora": o cliente pediu que a regra apareça
+                            escrita, não só quando calha de rolar por fim de
+                            semana/feriado. */}
+                        {simulation.settlementDays > 0 && (
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            {t.net.settlementBusinessDayNote}
+                          </p>
+                        )}
 
                         {/* Sem antecipação: quando cada parcela cai na conta da
                             empresa. Com antecipação, a empresa recebe tudo numa

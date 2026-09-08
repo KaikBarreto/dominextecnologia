@@ -164,12 +164,19 @@ export const charges = {
         netAtOnce: 'Você recebe de uma vez',
         installmentLine: (n: number, value: string) => `Em ${n}x de ${value} no cartão do cliente`,
         settlementToday: 'O dinheiro cai na conta na hora',
-        settlementDays: (d: number) => `O dinheiro cai na conta em cerca de ${d} ${d === 1 ? 'dia' : 'dias'}`,
-        settlementFirstInstallment: (d: number) =>
-          `A 1ª parcela cai em cerca de ${d} ${d === 1 ? 'dia' : 'dias'}, e as seguintes a cada 30 dias`,
-        settlementAnticipatedTotal: (d: number) =>
-          `O valor total cai na conta em cerca de ${d} ${d === 1 ? 'dia' : 'dias'}`,
+        settlementDays: (d: number, date: string) =>
+          d === 1
+            ? `O dinheiro cai na conta em 1 dia útil — previsto para ${date}`
+            : `O dinheiro cai na conta em cerca de ${d} dias — previsto para ${date}`,
+        settlementFirstInstallment: (d: number, date: string) =>
+          d === 1
+            ? `A 1ª parcela cai na conta em 1 dia útil — previsto para ${date}`
+            : `A 1ª parcela cai na conta em cerca de ${d} dias — previsto para ${date}. As seguintes vêm a cada 30 dias.`,
+        settlementAnticipatedTotal: (_d: number, date: string) =>
+          `Com a antecipação, o valor total cai na conta em 1 dia útil — previsto para ${date}`,
         settlementAnticipatedNow: 'O valor total cai na conta na hora',
+        settlementBusinessDayNote:
+          'Fim de semana e feriado não contam: se a data cair em sábado, domingo ou feriado, o crédito vai para o próximo dia útil.',
         scheduleShow: 'Ver quando cada parcela cai',
         scheduleHide: 'Esconder as datas',
         scheduleItem: (n: number, date: string) => `${n}ª parcela, ${date}`,
@@ -177,7 +184,7 @@ export const charges = {
         customerScheduleHide: 'Esconder',
         customerScheduleItem: (n: number, date: string) => `${n}ª parcela, ${date}`,
         anticipateLabel: 'Simular antecipação',
-        anticipateHint: 'Mostra quanto sobra se você receber tudo em cerca de 1 dia. A antecipação é contratada dentro da Asaas.',
+        anticipateHint: 'Mostra quanto sobra se você receber tudo em 1 dia útil. A antecipação é contratada dentro da Asaas.',
         chooseTitle: 'O cliente escolhe como pagar. Veja quanto sobra em cada forma:',
         chooseCardLabel: 'Cartão à vista',
         estimate: 'Estimativa. O valor exato é confirmado pela Asaas na hora de gerar a cobrança.',
@@ -600,12 +607,19 @@ export const charges = {
         netAtOnce: 'You receive it all at once',
         installmentLine: (n: number, value: string) => `In ${n}x of ${value} on the customer card`,
         settlementToday: 'The money lands in your account instantly',
-        settlementDays: (d: number) => `The money lands in your account in about ${d} ${d === 1 ? 'day' : 'days'}`,
-        settlementFirstInstallment: (d: number) =>
-          `The 1st installment lands in about ${d} ${d === 1 ? 'day' : 'days'}, the next ones every 30 days`,
-        settlementAnticipatedTotal: (d: number) =>
-          `The total amount lands in your account in about ${d} ${d === 1 ? 'day' : 'days'}`,
+        settlementDays: (d: number, date: string) =>
+          d === 1
+            ? `The money lands in your account in 1 business day — expected on ${date}`
+            : `The money lands in your account in about ${d} days — expected on ${date}`,
+        settlementFirstInstallment: (d: number, date: string) =>
+          d === 1
+            ? `The 1st installment lands in your account in 1 business day — expected on ${date}`
+            : `The 1st installment lands in your account in about ${d} days — expected on ${date}. The next ones come every 30 days.`,
+        settlementAnticipatedTotal: (_d: number, date: string) =>
+          `With early payout, the total amount lands in your account in 1 business day — expected on ${date}`,
         settlementAnticipatedNow: 'The total amount lands in your account instantly',
+        settlementBusinessDayNote:
+          "Weekends and holidays don't count: if the date falls on a Saturday, Sunday, or holiday, the money lands on the next business day.",
         scheduleShow: 'See when each installment lands',
         scheduleHide: 'Hide the dates',
         scheduleItem: (n: number, date: string) => `Installment ${n}, ${date}`,
@@ -613,7 +627,7 @@ export const charges = {
         customerScheduleHide: 'Hide',
         customerScheduleItem: (n: number, date: string) => `Installment ${n}, ${date}`,
         anticipateLabel: 'Simulate early payout',
-        anticipateHint: 'Shows what is left if you receive everything in about 1 day. Early payout is enabled inside Asaas.',
+        anticipateHint: 'Shows what is left if you receive everything in 1 business day. Early payout is enabled inside Asaas.',
         chooseTitle: 'The customer picks how to pay. See what is left with each option:',
         chooseCardLabel: 'Card in full',
         estimate: 'Estimate. The exact amount is confirmed by Asaas when the charge is created.',
@@ -1024,12 +1038,19 @@ export const charges = {
         netAtOnce: 'Recibes todo de una vez',
         installmentLine: (n: number, value: string) => `En ${n}x de ${value} en la tarjeta del cliente`,
         settlementToday: 'El dinero entra en la cuenta al instante',
-        settlementDays: (d: number) => `El dinero entra en la cuenta en unos ${d} ${d === 1 ? 'día' : 'días'}`,
-        settlementFirstInstallment: (d: number) =>
-          `La 1ª cuota entra en unos ${d} ${d === 1 ? 'día' : 'días'}, y las siguientes cada 30 días`,
-        settlementAnticipatedTotal: (d: number) =>
-          `El importe total entra en la cuenta en unos ${d} ${d === 1 ? 'día' : 'días'}`,
+        settlementDays: (d: number, date: string) =>
+          d === 1
+            ? `El dinero entra en la cuenta en 1 día hábil — previsto para ${date}`
+            : `El dinero entra en la cuenta en unos ${d} días — previsto para ${date}`,
+        settlementFirstInstallment: (d: number, date: string) =>
+          d === 1
+            ? `La 1ª cuota entra en la cuenta en 1 día hábil — previsto para ${date}`
+            : `La 1ª cuota entra en la cuenta en unos ${d} días — previsto para ${date}. Las siguientes llegan cada 30 días.`,
+        settlementAnticipatedTotal: (_d: number, date: string) =>
+          `Con el adelanto, el importe total entra en la cuenta en 1 día hábil — previsto para ${date}`,
         settlementAnticipatedNow: 'El importe total entra en la cuenta al instante',
+        settlementBusinessDayNote:
+          'Los fines de semana y feriados no cuentan: si la fecha cae en sábado, domingo o feriado, el dinero entra el siguiente día hábil.',
         scheduleShow: 'Ver cuándo entra cada cuota',
         scheduleHide: 'Ocultar las fechas',
         scheduleItem: (n: number, date: string) => `Cuota ${n}, ${date}`,
@@ -1037,7 +1058,7 @@ export const charges = {
         customerScheduleHide: 'Ocultar',
         customerScheduleItem: (n: number, date: string) => `Cuota ${n}, ${date}`,
         anticipateLabel: 'Simular adelanto',
-        anticipateHint: 'Muestra cuánto queda si recibes todo en aproximadamente 1 día. El adelanto se contrata dentro de Asaas.',
+        anticipateHint: 'Muestra cuánto queda si recibes todo en 1 día hábil. El adelanto se contrata dentro de Asaas.',
         chooseTitle: 'El cliente elige cómo pagar. Mira cuánto queda con cada forma:',
         chooseCardLabel: 'Tarjeta en un pago',
         estimate: 'Estimación. El importe exacto lo confirma Asaas al generar el cobro.',
@@ -1448,12 +1469,19 @@ export const charges = {
         netAtOnce: 'Vous recevez tout en une fois',
         installmentLine: (n: number, value: string) => `En ${n}x de ${value} sur la carte du client`,
         settlementToday: `L'argent arrive sur le compte tout de suite`,
-        settlementDays: (d: number) => `L'argent arrive sur le compte dans environ ${d} ${d === 1 ? 'jour' : 'jours'}`,
-        settlementFirstInstallment: (d: number) =>
-          `La 1re échéance arrive dans environ ${d} ${d === 1 ? 'jour' : 'jours'}, les suivantes tous les 30 jours`,
-        settlementAnticipatedTotal: (d: number) =>
-          `Le montant total arrive sur le compte dans environ ${d} ${d === 1 ? 'jour' : 'jours'}`,
+        settlementDays: (d: number, date: string) =>
+          d === 1
+            ? `L'argent arrive sur le compte en 1 jour ouvré — prévu le ${date}`
+            : `L'argent arrive sur le compte dans environ ${d} jours — prévu le ${date}`,
+        settlementFirstInstallment: (d: number, date: string) =>
+          d === 1
+            ? `La 1re échéance arrive sur le compte en 1 jour ouvré — prévu le ${date}`
+            : `La 1re échéance arrive sur le compte dans environ ${d} jours — prévu le ${date}. Les suivantes tous les 30 jours.`,
+        settlementAnticipatedTotal: (_d: number, date: string) =>
+          `Avec l'avance, le montant total arrive sur le compte en 1 jour ouvré — prévu le ${date}`,
         settlementAnticipatedNow: `Le montant total arrive sur le compte tout de suite`,
+        settlementBusinessDayNote:
+          `Les week-ends et jours fériés ne comptent pas : si la date tombe un samedi, un dimanche ou un jour férié, l'argent arrive le jour ouvré suivant.`,
         scheduleShow: 'Voir quand chaque échéance arrive',
         scheduleHide: 'Masquer les dates',
         scheduleItem: (n: number, date: string) => `Échéance ${n}, ${date}`,
@@ -1461,7 +1489,7 @@ export const charges = {
         customerScheduleHide: 'Masquer',
         customerScheduleItem: (n: number, date: string) => `Échéance ${n}, ${date}`,
         anticipateLabel: 'Simuler l\'avance',
-        anticipateHint: `Montre ce qu'il reste si vous recevez tout en environ 1 jour. L'avance se souscrit dans Asaas.`,
+        anticipateHint: `Montre ce qu'il reste si vous recevez tout en 1 jour ouvré. L'avance se souscrit dans Asaas.`,
         chooseTitle: 'Le client choisit comment payer. Voyez ce qu\'il reste avec chaque moyen :',
         chooseCardLabel: 'Carte en une fois',
         estimate: 'Estimation. Le montant exact est confirmé par Asaas au moment de créer la facture.',

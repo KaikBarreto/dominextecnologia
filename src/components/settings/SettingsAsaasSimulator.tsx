@@ -28,6 +28,7 @@ import {
   type FeePayer,
   type SimulatorFees,
 } from '@/lib/asaasFeeSimulator';
+import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ function parseMoney(raw: string): number {
 }
 
 export function SettingsAsaasSimulator() {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.integrations.simulator;
 
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
@@ -133,10 +134,17 @@ export function SettingsAsaasSimulator() {
   const isCard = method === 'card';
   const showSchedule = result.schedule.length > 1 || isCard;
 
-  const dayLabel = (n: number): string => {
+  // Formata a data de crédito no padrão "seg, 14/09" (dia da semana curto + dia/mês,
+  // sem ano) respeitando o idioma/fuso da empresa.
+  const shortCreditDate = (iso: string): string =>
+    formatDate(iso, locale, timezone, { weekday: 'short', year: undefined });
+
+  const dayLabel = (n: number, settlementDate: string): string => {
     if (n <= 0) return t.settlementSameDay;
-    if (n === 1) return t.settlementInDay;
-    return t.settlementInDays.replace('{count}', String(n));
+    if (n === 1) return t.settlementInDay.replace('{date}', shortCreditDate(settlementDate));
+    return t.settlementInDays
+      .replace('{count}', String(n))
+      .replace('{date}', shortCreditDate(settlementDate));
   };
 
   const methodOptions: { value: PaymentMethod; label: string }[] = [
@@ -322,7 +330,7 @@ export function SettingsAsaasSimulator() {
                 <ResultRow
                   label={anticipate ? t.resultNetAnticipated : t.resultNet}
                   value={formatBRL(result.netAfterAnticipation)}
-                  hint={dayLabel(result.settlementDays)}
+                  hint={dayLabel(result.settlementDays, result.settlementDate)}
                   tone="positive"
                   strong
                 />
@@ -339,6 +347,15 @@ export function SettingsAsaasSimulator() {
                 />
               </div>
 
+              {/* Regra do dia útil: fixa sempre que há prazo (a Asaas só credita em
+                  dia de expediente bancário — fim de semana/feriado empurra a data). */}
+              {result.settlementDays > 0 && (
+                <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 shrink-0 mt-0.5" />
+                  {t.settlementBusinessDayNote}
+                </p>
+              )}
+
               {/* Comparação lado a lado: só faz sentido com antecipação ligada. */}
               {anticipate && result.anticipationCost != null && (
                 <div className="space-y-2">
@@ -347,12 +364,12 @@ export function SettingsAsaasSimulator() {
                     <CompareBox
                       label={t.compareWithout}
                       value={formatBRL(resultPlain.netAfterAnticipation)}
-                      when={`${t.compareWhen}: ${dayLabel(resultPlain.settlementDays)}`}
+                      when={`${t.compareWhen}: ${dayLabel(resultPlain.settlementDays, resultPlain.settlementDate)}`}
                     />
                     <CompareBox
                       label={t.compareWith}
                       value={formatBRL(result.netAfterAnticipation)}
-                      when={`${t.compareWhen}: ${dayLabel(result.settlementDays)}`}
+                      when={`${t.compareWhen}: ${dayLabel(result.settlementDays, result.settlementDate)}`}
                       highlight
                     />
                   </div>
@@ -376,7 +393,7 @@ export function SettingsAsaasSimulator() {
                         </span>
                         <span className="flex items-center gap-2 shrink-0">
                           <span className="text-xs text-muted-foreground tabular-nums">
-                            {new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR')}
+                            {formatDate(item.date, locale, timezone, { weekday: 'short' })}
                           </span>
                           <span className="font-medium tabular-nums">{formatBRL(item.amount)}</span>
                         </span>

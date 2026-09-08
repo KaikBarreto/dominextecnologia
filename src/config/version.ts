@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.1";
+export const APP_VERSION = "1.24.2";
 
-export const VERSION_NOTES = "Ao simular a antecipação de uma cobrança parcelada, o resumo agora deixa claro que você recebe tudo de uma vez, e mostra quanto o seu cliente paga por mês em vez da lista de parcelas com datas repetidas.";
+export const VERSION_NOTES = "A geração de cobrança e o simulador de venda passam a mostrar a data prevista em que o dinheiro cai na conta, já pulando fim de semana e feriado, e explicam essa regra na tela.";

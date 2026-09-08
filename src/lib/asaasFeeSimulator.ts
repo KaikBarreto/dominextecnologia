@@ -30,7 +30,15 @@
 //
 // 3) A Asaas NÃO expõe `daysToReceive` para Pix (só boleto = 1 e cartão = 32).
 //    Por isso o prazo de Pix cai na constante nomeada abaixo.
+//
+// 4) DATA de crédito x CUSTO: o prazo (D+1, D+32) é contado em dias CORRIDOS,
+//    mas o dinheiro só entra na conta em dia útil bancário. Por isso as datas
+//    exibidas passam por `addCalendarDaysToBankingDay` (rolam pra frente em
+//    fim de semana/feriado nacional), enquanto o CUSTO da antecipação continua
+//    pro-rata sobre os dias corridos originais. Rolar a data NÃO muda centavo.
 // ─────────────────────────────────────────────────────────────────────────────
+
+import { addCalendarDaysToBankingDay } from '@/lib/bankingDays';
 
 // ── Tipos de taxa (espelham _shared/asaas-card-fees.ts no edge) ──────────────
 
@@ -255,6 +263,10 @@ export interface ScheduleItem {
   installmentNumber: number;
   /** Esse crédito foi antecipado? */
   anticipated: boolean;
+  /** Data CORRIDA, antes do ajuste pro dia útil bancário (YYYY-MM-DD). */
+  rawDate: string;
+  /** A data foi empurrada por fim de semana/feriado? (date !== rawDate) */
+  shifted: boolean;
 }
 
 export interface FeeBreakdown {
@@ -279,8 +291,13 @@ export interface SimulationResult {
   schedule: { date: string; amount: number }[];
   /** Custo da antecipação em R$ (null quando não antecipa ou falta a taxa). */
   anticipationCost: number | null;
-  /** Dias até o PRIMEIRO crédito cair na conta. */
+  /** Dias CORRIDOS até o PRIMEIRO crédito cair na conta (é o número da copy
+   *  "em N dias"). Não é afetado pelo ajuste de dia útil. */
   settlementDays: number;
+  /** Data do 1º crédito na conta da empresa, JÁ ajustada pro dia útil bancário. */
+  settlementDate: string;
+  /** O 1º crédito foi empurrado por fim de semana/feriado? */
+  settlementShifted: boolean;
 
   // ── Extras (aditivos — a assinatura acima é o contrato mínimo) ─────────────
   /** Cronograma detalhado (com nº da parcela e flag de antecipação). */
@@ -305,11 +322,28 @@ export interface SimulationResult {
   customerSchedule: ScheduleItem[];
 }
 
-/** Soma N dias a uma data e devolve ISO curto (YYYY-MM-DD), sem fuso. */
-function addDaysIso(base: Date, days: number): string {
+/** Soma N dias CORRIDOS a uma data e devolve ISO curto (YYYY-MM-DD), sem fuso. */
+function addCalendarDaysIso(base: Date, days: number): string {
   const d = new Date(Date.UTC(base.getFullYear(), base.getMonth(), base.getDate()));
   d.setUTCDate(d.getUTCDate() + Math.round(days));
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Data em que o crédito REALMENTE cai: soma os dias corridos e, se cair em
+ * sábado, domingo ou feriado nacional, rola pro próximo dia útil bancário.
+ *
+ * Devolve também a data corrida (`rawDate`) e se houve empurrão (`shifted`),
+ * pra UI conseguir explicar "sexta → segunda" pro cliente.
+ *
+ * ⚠️ Só a DATA rola. O custo da antecipação continua calculado sobre os dias
+ * corridos originais (ver item 4 do cabeçalho) — nenhum valor muda aqui.
+ */
+function addDaysIso(base: Date, days: number): { date: string; rawDate: string; shifted: boolean } {
+  const baseIso = addCalendarDaysIso(base, 0);
+  const rawDate = addCalendarDaysIso(base, days);
+  const date = addCalendarDaysToBankingDay(baseIso, days);
+  return { date, rawDate, shifted: date !== rawDate };
 }
 
 /**
@@ -448,15 +482,20 @@ export function simulateNetAmount(input: SimulateInput): SimulationResult {
     ? splitCents(finalNetCents, installments)
     : parts;
 
-  const scheduleDetailed: ScheduleItem[] = finalParts.map((cents, i) => ({
-    date: addDaysIso(
+  const scheduleDetailed: ScheduleItem[] = finalParts.map((cents, i) => {
+    const credit = addDaysIso(
       startDate,
       anticipate && anticipationCostCents != null ? ANTICIPATED_SETTLEMENT_DAYS : originalDays[i],
-    ),
-    amount: fromCents(cents),
-    installmentNumber: i + 1,
-    anticipated: anticipate && anticipationCostCents != null,
-  }));
+    );
+    return {
+      date: credit.date,
+      amount: fromCents(cents),
+      installmentNumber: i + 1,
+      anticipated: anticipate && anticipationCostCents != null,
+      rawDate: credit.rawDate,
+      shifted: credit.shifted,
+    };
+  });
 
   const firstSettlementDays = anticipate && anticipationCostCents != null
     ? ANTICIPATED_SETTLEMENT_DAYS
@@ -467,13 +506,24 @@ export function simulateNetAmount(input: SimulateInput): SimulationResult {
     : 0;
 
   // ── 6. Cronograma do CLIENTE (o que ele paga, nunca muda com antecipação) ──
+  //
+  // Decisão do Tech Lead (2026-09-08): este cronograma NÃO rola pro dia útil.
+  // Vencimento é vencimento — se cair num sábado o cliente paga do mesmo jeito
+  // (Pix e cartão não têm expediente bancário) e a Asaas mantém a data de
+  // vencimento como está. Rolar aqui mentiria sobre quando o cliente é cobrado.
+  // Só o CRÉDITO na conta da empresa (bloco 4) depende de dia útil.
   const customerParts = splitCents(grossCents, installments);
-  const customerSchedule: ScheduleItem[] = customerParts.map((cents, i) => ({
-    date: addDaysIso(startDate, dueDays + i * INSTALLMENT_INTERVAL_DAYS),
-    amount: fromCents(cents),
-    installmentNumber: i + 1,
-    anticipated: false,
-  }));
+  const customerSchedule: ScheduleItem[] = customerParts.map((cents, i) => {
+    const dueIso = addCalendarDaysIso(startDate, dueDays + i * INSTALLMENT_INTERVAL_DAYS);
+    return {
+      date: dueIso,
+      amount: fromCents(cents),
+      installmentNumber: i + 1,
+      anticipated: false,
+      rawDate: dueIso,
+      shifted: false,
+    };
+  });
 
   return {
     gross: fromCents(grossCents),
@@ -483,6 +533,8 @@ export function simulateNetAmount(input: SimulateInput): SimulationResult {
     schedule: scheduleDetailed.map((s) => ({ date: s.date, amount: s.amount })),
     anticipationCost: anticipationCostCents != null ? fromCents(anticipationCostCents) : null,
     settlementDays: firstSettlementDays,
+    settlementDate: scheduleDetailed[0]?.date ?? addDaysIso(startDate, firstSettlementDays).date,
+    settlementShifted: scheduleDetailed[0]?.shifted ?? false,
 
     scheduleDetailed,
     feeBreakdown: { percent, percentAmount: fromCents(percentCents), fixed },
