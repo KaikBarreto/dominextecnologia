@@ -81,4 +81,69 @@ describe('getEffectiveTransactionMonthRange', () => {
     expect(getEffectiveTransactionMonthRange(txn, 'caixa')).toBeNull();
     expect(getEffectiveTransactionMonthRange({}, 'pagar')).toBeNull();
   });
+
+  /**
+   * Bug reproduzido em QA: com a máquina num fuso à frente do fuso do app
+   * (ex: Europe/Lisbon rodando, app formatando em America/Sao_Paulo), o rótulo
+   * do deep-link `?txn=` de um lançamento de 31/07 mostrava "30/06 - 31/07" —
+   * como se o período começasse em junho. A causa era `startOfMonth` ancorar
+   * em meia-noite da MÁQUINA; convertido pro fuso do app, meia-noite do dia 1
+   * podia cair no dia 30 do mês anterior. As bordas agora ficam ao meio-dia,
+   * que fica bem longe da virada do dia (00:00) nos dois lados — os fusos
+   * reais usados por máquina/app (todos entre UTC-12 e UTC+14) não têm
+   * diferença suficiente pra empurrar meio-dia até 00:00 do dia seguinte
+   * nem até 23:59:59 do dia anterior. Os asserts abaixo provam isso batendo
+   * contra os dois extremos plausíveis: America/Sao_Paulo (fuso do app) e UTC.
+   */
+  describe('bordas do range não escorregam de mês quando formatadas em outro fuso', () => {
+    function formatDay(d: Date, timeZone: string): number {
+      return Number(
+        new Intl.DateTimeFormat('en-CA', { timeZone, day: '2-digit' }).format(d)
+      );
+    }
+    function formatMonth(d: Date, timeZone: string): number {
+      return Number(
+        new Intl.DateTimeFormat('en-CA', { timeZone, month: '2-digit' }).format(d)
+      );
+    }
+
+    it('último dia de julho (31/07): from=01/07 e to=31/07 em America/Sao_Paulo e em UTC', () => {
+      const txn = { transaction_date: '2026-07-31', is_paid: true };
+      const range = expectInvariante(txn, 'caixa');
+      if (!range) return;
+
+      for (const timeZone of ['America/Sao_Paulo', 'UTC']) {
+        expect(formatMonth(range.from, timeZone)).toBe(7); // julho
+        expect(formatDay(range.from, timeZone)).toBe(1);
+        expect(formatMonth(range.to, timeZone)).toBe(7);
+        expect(formatDay(range.to, timeZone)).toBe(31);
+      }
+    });
+
+    it('primeiro dia de julho (01/07): from=01/07 e to=31/07 em America/Sao_Paulo e em UTC', () => {
+      const txn = { transaction_date: '2026-07-01', is_paid: true };
+      const range = expectInvariante(txn, 'caixa');
+      if (!range) return;
+
+      for (const timeZone of ['America/Sao_Paulo', 'UTC']) {
+        expect(formatMonth(range.from, timeZone)).toBe(7);
+        expect(formatDay(range.from, timeZone)).toBe(1);
+        expect(formatMonth(range.to, timeZone)).toBe(7);
+        expect(formatDay(range.to, timeZone)).toBe(31);
+      }
+    });
+
+    it('fevereiro (mês de 28 dias) em ano não-bissexto: to cai em 28/02, não em 01/03', () => {
+      const txn = { transaction_date: '2026-02-15', is_paid: true };
+      const range = expectInvariante(txn, 'caixa');
+      if (!range) return;
+
+      for (const timeZone of ['America/Sao_Paulo', 'UTC']) {
+        expect(formatMonth(range.from, timeZone)).toBe(2);
+        expect(formatDay(range.from, timeZone)).toBe(1);
+        expect(formatMonth(range.to, timeZone)).toBe(2);
+        expect(formatDay(range.to, timeZone)).toBe(28);
+      }
+    });
+  });
 });
