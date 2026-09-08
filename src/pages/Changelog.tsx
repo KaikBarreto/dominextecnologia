@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.2',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Orçamento não fica mais preso como recebido',
+        description: 'Ao excluir o lançamento financeiro que nasceu da aprovação de um orçamento, ele podia ficar num estado sem saída: parava de mostrar o selo de recebido, mas também não deixava lançar de novo. Agora o orçamento volta sozinho para "Enviado" e pode ser aprovado outra vez, com a data certa. Os orçamentos que já estavam nessa situação foram liberados.',
+        category: 'correcao',
+      },
+      {
+        title: 'Do orçamento direto para o lançamento no financeiro',
+        description: 'Quando o orçamento já tem um recebimento lançado, o menu dele ganha duas opções. "Ver lançamento no financeiro" abre as movimentações já no mês certo, com a linha destacada, então você não precisa mais caçar o período para corrigir uma data. E "Desfazer recebimento" apaga os lançamentos daquela aprovação e devolve o orçamento para "Enviado", caso prefira refazer do zero. A opção de desfazer aparece apenas para quem tem permissão de excluir no financeiro.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.1',
     date: '8 de setembro de 2026',
     type: 'patch',

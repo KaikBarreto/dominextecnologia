@@ -1,3 +1,5 @@
+import { endOfMonth, startOfMonth } from 'date-fns';
+
 /**
  * Utilitários de data para o módulo Financeiro.
  *
@@ -101,4 +103,27 @@ export function isTransactionInDateRange(
   if (range.from && d < range.from) return false;
   if (range.to && d > range.to) return false;
   return true;
+}
+
+/**
+ * Range do MÊS em que a transação aparece nas telas de período.
+ *
+ * Existe pro deep-link `?txn=` do Financeiro: a tela abre em "este mês" e um
+ * recebimento de julho é invisível em setembro. Pra levar o usuário até a
+ * linha certa, o range precisa ser calculado com a MESMA data efetiva que o
+ * filtro usa (`isTransactionInDateRange`) — senão o deep-link erra justamente
+ * nas compras de cartão, onde a data que manda é `credit_card_bill_date` e não
+ * `transaction_date`.
+ *
+ * Retorna `null` quando a transação não tem data utilizável no escopo.
+ */
+export function getEffectiveTransactionMonthRange(
+  txn: TxnLike,
+  scope: FinanceDateScope = 'caixa'
+): { from: Date; to: Date } | null {
+  const raw = getEffectiveTransactionDate(txn, scope);
+  if (!raw) return null;
+  const d = parseDateForCompare(String(raw));
+  if (isNaN(d.getTime())) return null;
+  return { from: startOfMonth(d), to: endOfMonth(d) };
 }

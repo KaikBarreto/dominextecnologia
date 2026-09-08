@@ -91,6 +91,11 @@ interface FinanceMovimentacoesProps {
   initialAccountId?: string | null;
   /** Chamado após consumir o deep-link (limpa o param na URL). */
   onConsumeInitialAccount?: () => void;
+  /**
+   * Deep-link `?txn=ID` — a movimentação que o usuário veio ver (ex: vindo do
+   * orçamento que gerou o recebimento). Destaca e rola até a linha.
+   */
+  highlightTransactionId?: string | null;
 }
 
 /**
@@ -101,7 +106,7 @@ interface FinanceMovimentacoesProps {
  */
 export function FinanceMovimentacoes({
   transactions, allTransactions, isLoading, onNew, onEdit, onDelete,
-  initialAccountId, onConsumeInitialAccount,
+  initialAccountId, onConsumeInitialAccount, highlightTransactionId,
 }: FinanceMovimentacoesProps) {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
@@ -131,6 +136,15 @@ export function FinanceMovimentacoes({
       : transactions.filter((t) => !t.credit_card_bill_date)),
     [transactions, includeCardPurchases],
   );
+
+  // Compra no cartão fica FORA da Visão Geral por padrão (switch acima). Se o
+  // deep-link aponta justamente pra uma delas, o destaque cairia numa linha que
+  // não está na tela — então liga o switch uma vez, só nesse caso.
+  useEffect(() => {
+    if (!highlightTransactionId) return;
+    const target = transactions.find((t) => t.id === highlightTransactionId);
+    if (target?.credit_card_bill_date) setIncludeCardPurchases(true);
+  }, [highlightTransactionId, transactions]);
 
   // Consome o deep-link `?account=ID` uma vez: seleciona a aba da conta e
   // limpa o param na URL (senão o sidebar fica "preso" naquela conta).
@@ -658,6 +672,7 @@ export function FinanceMovimentacoes({
               onNew={onNew}
               onEdit={onEdit}
               onDelete={onDelete}
+              highlightTransactionId={highlightTransactionId}
             />
           </div>
         ) : selectedAccount ? (
@@ -684,6 +699,7 @@ export function FinanceMovimentacoes({
                 initialAccountFilter={selectedAccount.id}
                 hideAccountColumn
                 balanceAfterById={balanceAfterById}
+                highlightTransactionId={highlightTransactionId}
               />
             </div>
           )
@@ -696,6 +712,7 @@ export function FinanceMovimentacoes({
             onNew={onNew}
             onEdit={onEdit}
             onDelete={onDelete}
+            highlightTransactionId={highlightTransactionId}
           />
         )}
       </SettingsSidebarLayout>
