@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.3',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criar uma origem na hora, sem sair do cadastro, agora funciona de verdade',
+        description: 'No campo Origem da nova oportunidade do CRM e do cadastro de cliente, a opção de criar uma origem nova ficava no fim da lista e não fazia nada quando você clicava nela sem ter digitado um nome antes: não criava, não avisava, não dava erro. Agora o campo tem um botão de mais na ponta direita, igual ao campo Cliente, que abre uma janelinha para você dar o nome, escolher a cor e o ícone da origem. Depois de salvar, ela já vem selecionada no formulário.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.2',
     date: '8 de setembro de 2026',
     type: 'patch',
