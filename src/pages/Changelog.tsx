@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.24.2',
+    version: '1.24.4',
     date: '8 de setembro de 2026',
     type: 'patch',
     changes: [
@@ -54,6 +54,35 @@ export const changelog: ChangelogEntry[] = [
       {
         title: 'Do orçamento direto para o lançamento no financeiro',
         description: 'Quando o orçamento já tem um recebimento lançado, o menu dele ganha duas opções. "Ver lançamento no financeiro" abre as movimentações já no mês certo, com a linha destacada, então você não precisa mais caçar o período para corrigir uma data. E "Desfazer recebimento" apaga os lançamentos daquela aprovação e devolve o orçamento para "Enviado", caso prefira refazer do zero. A opção de desfazer aparece apenas para quem tem permissão de excluir no financeiro.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.3',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criar uma origem na hora, sem sair do cadastro, agora funciona de verdade',
+        description: 'No campo Origem da nova oportunidade do CRM e do cadastro de cliente, a opção de criar uma origem nova ficava no fim da lista e não fazia nada quando você clicava nela sem ter digitado um nome antes: não criava, não avisava, não dava erro. Agora o campo tem um botão de mais na ponta direita, igual ao campo Cliente, que abre uma janelinha para você dar o nome, escolher a cor e o ícone da origem. Depois de salvar, ela já vem selecionada no formulário.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.2',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Movimentações Financeiras agora mostram o saldo depois de cada lançamento',
+        description: 'A lista de movimentações ganhou uma coluna com o saldo da conta logo depois de cada entrada ou saída, do jeito que o extrato do seu banco mostra. Antes isso só aparecia quando você abria uma conta específica no menu da esquerda; agora aparece também na Visão Geral, onde o valor é o total somado de todas as suas contas e caixas. Assim dá para conferir linha por linha com o extrato do banco sem precisar ir somando na mão.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Lista separada por dia, com o saldo de fechamento de cada dia',
+        description: 'As movimentações passam a ficar agrupadas por data, com uma faixa entre um dia e outro mostrando o dia e quanto sobrou na conta no fim daquele dia. Funciona tanto no computador quanto no celular. Se você reordenar a lista por valor ou por descrição, as faixas somem, porque nesse caso a divisão por dia deixaria de fazer sentido.',
         category: 'melhoria',
       },
     ],

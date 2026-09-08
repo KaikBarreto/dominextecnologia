@@ -17,13 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { OriginSelectField } from '@/components/customers/OriginSelectField';
 import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
-import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -36,12 +35,12 @@ interface LeadFormDialogProps {
 export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
+  const tOrigins = MESSAGES[locale].app.equipment.origins;
 
   const { createLead, updateLead } = useLeads();
   const { customers } = useCustomers();
   const { users } = useUsers();
   const { stages } = useCrmStages();
-  const { activeOrigins, createOrigin } = useCustomerOrigins();
   const isEditing = !!lead;
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
@@ -168,36 +167,23 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="source">{t.form.origin}</Label>
-              <SearchableSelect
-                options={[
-                  { value: 'none', label: t.form.originNone },
-                  ...activeOrigins.map((origin) => ({
-                    value: origin.name,
-                    label: origin.name,
-                    icon: (
-                      <span
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: origin.color }}
-                      />
-                    ),
-                  })),
-                  // Preserva o valor salvo mesmo se a origem não estiver mais no catálogo ativo.
-                  ...(formData.source && !activeOrigins.some((o) => o.name === formData.source)
-                    ? [{ value: formData.source, label: formData.source }]
-                    : []),
-                ]}
+              <OriginSelectField
+                id="source"
                 value={formData.source || 'none'}
                 onValueChange={(value) => handleChange('source', value === 'none' ? '' : value)}
                 placeholder={t.form.originPlaceholder}
                 searchPlaceholder={t.form.originSearch}
-                onCreateOption={async (query) => {
-                  const name = query.trim();
-                  if (!name) return;
-                  await createOrigin.mutateAsync({ name });
-                  handleChange('source', name);
-                }}
-                createOptionLabel={t.form.originCreate}
-                createAlwaysLabel={t.form.originCreateAlways}
+                allowNone
+                noneValue="none"
+                noneLabel={t.form.originNone}
+                createDialogTitle={tOrigins.quickCreateTitle}
+                createNameLabel={tOrigins.quickCreateNameLabel}
+                createNamePlaceholder={tOrigins.quickCreateNamePlaceholder}
+                createColorLabel={tOrigins.quickCreateColorLabel}
+                createIconLabel={tOrigins.quickCreateIconLabel}
+                createSubmitLabel={tOrigins.quickCreateSubmit}
+                createCancelLabel={tOrigins.quickCreateCancel}
+                createAriaLabel={tOrigins.createAriaLabel}
               />
             </div>
 

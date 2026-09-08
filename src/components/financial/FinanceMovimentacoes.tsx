@@ -32,6 +32,7 @@ import type { FinancialTransaction } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { walkAccountBalance } from '@/lib/finance-balance';
 
 const ALL_TAB = '__all__';
 
@@ -356,33 +357,35 @@ export function FinanceMovimentacoes({
     ? null
     : accounts.find(a => a.id === activeTab) ?? null;
 
-  // "Saldo Após" por movimentação — só faz sentido na conta bancária/caixa
-  // específica (não na Visão Geral, não em cartão). Calculado de trás pra frente
-  // a partir do saldo ATUAL da conta (balances[id]), usando o conjunto COMPLETO
-  // de transações pagas daquela conta (todos os períodos), não o filtrado.
-  // A movimentação mais recente exibe o saldo atual; as anteriores, o retroativo.
-  const balanceAfterById = useMemo(() => {
-    if (!selectedAccount || selectedAccount.type === 'cartao') return undefined;
-    const source = allTransactions ?? transactions;
-    const accountTxns = source
-      .filter((t) => (t as any).account_id === selectedAccount.id && t.is_paid)
-      // Mais recente primeiro: data desc, desempate por created_at desc.
-      .sort((a, b) => {
-        const dateCmp = String((b as any).transaction_date).localeCompare(String((a as any).transaction_date));
-        if (dateCmp !== 0) return dateCmp;
-        return String((b as any).created_at ?? '').localeCompare(String((a as any).created_at ?? ''));
-      });
+  // ids de conta caixa/banco — o universo que `walkAccountBalance` aceita.
+  // NUNCA usar `(t as any).account` (objeto embutido na transação) pra decidir
+  // isso: confiar na lista real `accounts` é o que impede uma perna de cartão
+  // (account_id = conta do CARTÃO) de vazar pro cálculo de saldo de caixa.
+  const cashBankAccountIds = useMemo(
+    () => new Set(cashBankAccounts.map((a) => a.id)),
+    [cashBankAccounts],
+  );
 
-    const map = new Map<string, number>();
-    let running = balances[selectedAccount.id] ?? Number(selectedAccount.initial_balance ?? 0);
-    for (const t of accountTxns) {
-      // Saldo APÓS esta movimentação = saldo corrente acumulado.
-      map.set(t.id, running);
-      // Recua: o saldo ANTES dela (= saldo após a próxima mais antiga) desfaz o efeito.
-      running -= t.transaction_type === 'entrada' ? Number(t.amount) : -Number(t.amount);
-    }
-    return map;
-  }, [selectedAccount, allTransactions, transactions, balances]);
+  // "Saldo Após" + divisor de dia da conta bancária/caixa SELECIONADA —
+  // âncora = saldo ATUAL da própria conta (balances[id]). Usa o conjunto
+  // COMPLETO de transações (todos os períodos), não o filtrado por período.
+  const selectedAccountWalk = useMemo(() => {
+    if (!selectedAccount || selectedAccount.type === 'cartao') return undefined;
+    const anchor = balances[selectedAccount.id] ?? Number(selectedAccount.initial_balance ?? 0);
+    return walkAccountBalance(allTransactions ?? transactions, anchor, selectedAccount.id, cashBankAccountIds);
+  }, [selectedAccount, allTransactions, transactions, cashBankAccountIds, balances]);
+  const balanceAfterById = selectedAccountWalk?.balanceById;
+  const dayClosingBalanceForAccount = selectedAccountWalk?.dayClosingBalance;
+
+  // "Saldo Total Após" + divisor de dia da Visão Geral — âncora = `totalBalance`
+  // (soma dos saldos de TODAS as contas caixa/banco, já calculado acima).
+  // `accountId` undefined = caminhada CONSOLIDADA, não de uma conta só.
+  const overviewWalk = useMemo(
+    () => walkAccountBalance(allTransactions ?? transactions, totalBalance, undefined, cashBankAccountIds),
+    [allTransactions, transactions, totalBalance, cashBankAccountIds],
+  );
+  const overviewBalanceAfterById = overviewWalk.balanceById;
+  const overviewDayClosingBalance = overviewWalk.dayClosingBalance;
 
   // Header da conta selecionada — card-herói colorido (estilo EcoSistema).
   // Regra de fundo dirigida pelo saldo: positivo = cor da conta; zero = degradê
@@ -672,6 +675,13 @@ export function FinanceMovimentacoes({
               onNew={onNew}
               onEdit={onEdit}
               onDelete={onDelete}
+              // Consolidado (soma de todas as contas), não o extrato de uma
+              // conta só — rótulo "Saldo Total Após" evita a leitura errada.
+              balanceAfterById={overviewBalanceAfterById}
+              balanceAfterLabel={fin.transactionList.table.balanceTotalAfter}
+              balanceAfterShortLabel={fin.transactionList.balanceTotal}
+              groupByDay
+              dayClosingBalance={overviewDayClosingBalance}
               highlightTransactionId={highlightTransactionId}
             />
           </div>
@@ -699,6 +709,8 @@ export function FinanceMovimentacoes({
                 initialAccountFilter={selectedAccount.id}
                 hideAccountColumn
                 balanceAfterById={balanceAfterById}
+                groupByDay
+                dayClosingBalance={dayClosingBalanceForAccount}
                 highlightTransactionId={highlightTransactionId}
               />
             </div>
