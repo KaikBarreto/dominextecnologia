@@ -316,6 +316,13 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     });
   }, [simulatorMethod, tenantFees, amount, installmentCount, feePayer, anticipate, dueDays]);
 
+  // Antecipação efetivamente aplicada nesta simulação (toggle ligado E o
+  // simulador conseguiu calcular um custo). Muda o rótulo/prazo/expander do
+  // resumo: com antecipação a empresa recebe tudo numa data só, então o
+  // cronograma que faz sentido mostrar é o que o CLIENTE paga, não o crédito
+  // (que virou 1 linha).
+  const isAnticipated = anticipate && simulation?.anticipationCost != null;
+
   // "Cliente escolhe": não dá para saber a taxa antes, então mostramos quanto
   // sobra em cada meio habilitado (cartão sempre à vista aqui).
   const multiSimulation = useMemo(() => {
@@ -809,7 +816,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                           )}
 
                           <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-                            <dt className="font-semibold text-foreground">{t.net.net}</dt>
+                            <dt className="font-semibold text-foreground">
+                              {isAnticipated ? t.net.netAtOnce : t.net.net}
+                            </dt>
                             <dd className="text-base font-bold tabular-nums text-success">
                               {money(simulation.netAfterAnticipation)}
                             </dd>
@@ -823,50 +832,64 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                         )}
 
                         <p className="text-xs text-muted-foreground">
-                          {simulation.installments > 1
-                            ? t.net.settlementFirstInstallment(simulation.settlementDays)
-                            : simulation.settlementDays <= 0
-                              ? t.net.settlementToday
-                              : t.net.settlementDays(simulation.settlementDays)}
+                          {isAnticipated
+                            ? simulation.settlementDays <= 0
+                              ? t.net.settlementAnticipatedNow
+                              : t.net.settlementAnticipatedTotal(simulation.settlementDays)
+                            : simulation.installments > 1
+                              ? t.net.settlementFirstInstallment(simulation.settlementDays)
+                              : simulation.settlementDays <= 0
+                                ? t.net.settlementToday
+                                : t.net.settlementDays(simulation.settlementDays)}
                         </p>
 
-                        {/* Quando cada parcela cai na conta da empresa. */}
-                        {simulation.scheduleDetailed.length > 1 && (
-                          <div>
-                            <button
-                              type="button"
-                              className="flex items-center gap-1 text-xs font-medium text-primary"
-                              onClick={() => setShowSchedule((v) => !v)}
-                            >
-                              {showSchedule ? t.net.scheduleHide : t.net.scheduleShow}
-                              {showSchedule ? (
-                                <ChevronUp className="h-3.5 w-3.5" />
-                              ) : (
-                                <ChevronDown className="h-3.5 w-3.5" />
+                        {/* Sem antecipação: quando cada parcela cai na conta da
+                            empresa. Com antecipação, a empresa recebe tudo numa
+                            data só — o que faz sentido detalhar é o que o
+                            CLIENTE paga por mês. */}
+                        {(() => {
+                          const scheduleList = isAnticipated ? simulation.customerSchedule : simulation.scheduleDetailed;
+                          if (scheduleList.length <= 1) return null;
+                          const showLabel = isAnticipated ? t.net.customerScheduleShow : t.net.scheduleShow;
+                          const hideLabel = isAnticipated ? t.net.customerScheduleHide : t.net.scheduleHide;
+                          const itemLabel = isAnticipated ? t.net.customerScheduleItem : t.net.scheduleItem;
+                          return (
+                            <div>
+                              <button
+                                type="button"
+                                className="flex items-center gap-1 text-xs font-medium text-primary"
+                                onClick={() => setShowSchedule((v) => !v)}
+                              >
+                                {showSchedule ? hideLabel : showLabel}
+                                {showSchedule ? (
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                              {showSchedule && (
+                                <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto rounded-md bg-background p-2">
+                                  {scheduleList.map((item) => (
+                                    <li
+                                      key={item.installmentNumber}
+                                      className="flex items-baseline justify-between gap-3 text-xs"
+                                    >
+                                      <span className="text-muted-foreground">
+                                        {itemLabel(
+                                          item.installmentNumber,
+                                          formatDate(item.date, locale, timezone),
+                                        )}
+                                      </span>
+                                      <span className="font-medium tabular-nums text-foreground">
+                                        {money(item.amount)}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
                               )}
-                            </button>
-                            {showSchedule && (
-                              <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto rounded-md bg-background p-2">
-                                {simulation.scheduleDetailed.map((item) => (
-                                  <li
-                                    key={item.installmentNumber}
-                                    className="flex items-baseline justify-between gap-3 text-xs"
-                                  >
-                                    <span className="text-muted-foreground">
-                                      {t.net.scheduleItem(
-                                        item.installmentNumber,
-                                        formatDate(item.date, locale, timezone),
-                                      )}
-                                    </span>
-                                    <span className="font-medium tabular-nums text-foreground">
-                                      {money(item.amount)}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Antecipação: SIMULAÇÃO. Nada é enviado ao Asaas por
                             aqui, a antecipação é contratada lá dentro. */}

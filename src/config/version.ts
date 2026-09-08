@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.0";
+export const APP_VERSION = "1.24.1";
 
-export const VERSION_NOTES = "Agora dá para simular uma venda e ver quanto sobra depois das taxas, e o cliente paga com cartão na sua própria página. Na nota fiscal, os códigos de serviço voltaram a aparecer na busca, o CNPJ preenche o endereço sozinho e dá para digitar o tomador na hora.";
+export const VERSION_NOTES = "Ao simular a antecipação de uma cobrança parcelada, o resumo agora deixa claro que você recebe tudo de uma vez, e mostra quanto o seu cliente paga por mês em vez da lista de parcelas com datas repetidas.";

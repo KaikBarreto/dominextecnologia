@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.1',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Antecipação na cobrança: agora fica claro que o dinheiro cai de uma vez',
+        description: 'Ao ligar a simulação de antecipação numa cobrança parcelada, o resumo mostrava a lista de parcelas repetindo a mesma data, o que dava a impressão de que você continuaria recebendo picado. Agora o resumo diz que você recebe de uma vez, informa em quantos dias o valor total entra na conta e, no lugar da lista antiga, mostra quanto o seu cliente paga por mês e em quais datas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.0',
     date: '7 de setembro de 2026',
     type: 'minor',

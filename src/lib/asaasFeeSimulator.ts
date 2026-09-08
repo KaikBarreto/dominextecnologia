@@ -299,6 +299,10 @@ export interface SimulationResult {
   usedReferenceFees: boolean;
   /** Nº de parcelas efetivamente usado. */
   installments: number;
+  /** Cronograma do que o CLIENTE paga (parcelas do cartão), com as datas de
+   *  vencimento dele. Independe de antecipação — antecipar muda quando a EMPRESA
+   *  recebe, nunca quando o cliente paga. */
+  customerSchedule: ScheduleItem[];
 }
 
 /** Soma N dias a uma data e devolve ISO curto (YYYY-MM-DD), sem fuso. */
@@ -462,6 +466,15 @@ export function simulateNetAmount(input: SimulateInput): SimulationResult {
     ? ((feeCents + (anticipationCostCents ?? 0)) / grossCents) * 100
     : 0;
 
+  // ── 6. Cronograma do CLIENTE (o que ele paga, nunca muda com antecipação) ──
+  const customerParts = splitCents(grossCents, installments);
+  const customerSchedule: ScheduleItem[] = customerParts.map((cents, i) => ({
+    date: addDaysIso(startDate, dueDays + i * INSTALLMENT_INTERVAL_DAYS),
+    amount: fromCents(cents),
+    installmentNumber: i + 1,
+    anticipated: false,
+  }));
+
   return {
     gross: fromCents(grossCents),
     feeTotal: fromCents(feeCents),
@@ -479,5 +492,6 @@ export function simulateNetAmount(input: SimulateInput): SimulationResult {
     settlementDaysFromAsaas,
     usedReferenceFees,
     installments,
+    customerSchedule,
   };
 }
