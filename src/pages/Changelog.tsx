@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.3',
+    date: '9 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O custo do orçamento não desconta mais do saldo da conta',
+        description: 'Ao aprovar um orçamento, o sistema lançava o custo dos materiais e da mão de obra avulsa descontando do saldo da conta bancária escolhida. Isso estava errado: esse dinheiro já tinha saído da conta quando você comprou o material e registrou a compra. O saldo acabava descontado duas vezes e o extrato do sistema nunca fechava com o do seu banco. A partir de agora esses lançamentos continuam registrados e ligados ao orçamento, mas sem mexer no saldo da conta. As contas que já tinham sido afetadas foram ajustadas automaticamente, sem precisar refazer nada. Lançamentos de custo que você criou à mão não foram alterados.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.2',
     date: '8 de setembro de 2026',
     type: 'patch',

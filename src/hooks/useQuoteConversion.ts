@@ -145,13 +145,47 @@ export function useQuoteConversion() {
       const expensesToInsert: any[] = [];
 
       if (materialsTotal > 0) {
+        // `account_id: null` é DE PROPÓSITO — não é campo esquecido.
+        //
+        // CMV é o custo do material CONSUMIDO neste orçamento, não uma saída de
+        // caixa. O dinheiro saiu do banco lá atrás, quando o material foi
+        // COMPRADO, e essa compra o usuário lança à parte (com conta, como
+        // qualquer despesa). Se o CMV também nascesse com conta, o mesmo real
+        // sairia duas vezes do saldo e o extrato do Dominex nunca fecharia com
+        // o extrato do banco.
+        //
+        // `account_id` nulo é o marcador ESTRUTURAL de "esta linha não mexe em
+        // saldo de conta nenhuma": tanto `useFinancialAccounts.balancesQuery`
+        // quanto `walkAccountBalance` (saldo corrente das Movimentações)
+        // descartam transação sem conta.
+        //
+        // ⚠️ ATENÇÃO ao mexer aqui: esta linha JÁ NÃO CHEGA no DRE hoje, e isso
+        // NÃO é efeito de `account_id` — é o `.is('parent_transaction_id', null)`
+        // da query de `useFinancial`, que esconde toda linha filha. Como o CMV
+        // nasce com `parent_transaction_id` = id da receita, ele é filtrado
+        // antes. Quem sustenta o custo no DRE hoje é a COMPRA do material,
+        // lançada à mão pelo usuário e classificada como CMV pela heurística de
+        // categoria em `FinanceDRE.classifyCategory`. Ou seja: para quem lança a
+        // compra (o fluxo normal), o DRE está certo; para quem NÃO lança, o
+        // custo fica invisível no DRE. Essa lacuna é anterior a esta correção e
+        // está mapeada — não a resolva de raspão mudando `account_id`.
+        //
+        // Provado contra extrato bancário real (cliente VS PROJECT, Mercado
+        // Pago, jul/2026): só com os lançamentos manuais, 8 de 8 fechamentos
+        // diários batiam ao centavo; somando estas linhas de CMV, a diferença
+        // era exatamente o total delas.
+        //
+        // A RECEITA (item 1) e a TARIFA do recebimento (item 4) CONTINUAM com
+        // `payment.account_id`, porque essas duas são movimento de caixa de
+        // verdade: o cliente pagou naquela conta e o adquirente debitou a taxa
+        // naquela mesma conta.
         expensesToInsert.push(normalizeOptionalForeignKeys({
           transaction_type: 'saida',
           amount: materialsTotal,
           description: `CMV Materiais — Orçamento #${quote.quote_number}`,
           category: 'CMV - Materiais',
           customer_id: quote.customer_id,
-          account_id: payment.account_id,
+          account_id: null,
           transaction_date: payment.paid_date,
           paid_date: payment.paid_date,
           is_paid: true,
@@ -174,13 +208,29 @@ export function useQuoteConversion() {
         }, 0);
 
       if (avulseLaborTotal > 0) {
+        // Mesma razão do CMV de materiais acima: `account_id: null` é
+        // intencional. Esta linha é o CUSTO da mão de obra apropriado ao
+        // orçamento, não o pagamento da diária. O pagamento (o dinheiro que
+        // realmente sai do banco pro freelancer) é lançado à parte pelo
+        // usuário, com conta. Dar conta às duas debitaria o saldo em dobro.
+        //
+        // Sem conta, a linha fica fora do saldo de caixa/banco
+        // (`useFinancialAccounts.balancesQuery` e `walkAccountBalance` só somam
+        // transação com `account_id`). Vale a mesma ressalva do bloco de
+        // materiais acima: ela também não chega no DRE, por ser linha filha
+        // (`parent_transaction_id`), e não por causa da conta.
+        //
+        // Conferido contra extrato real (VS PROJECT, jul/2026): tirando estas
+        // linhas do saldo, os 8 fechamentos diários do período bateram ao
+        // centavo com o banco. Receita e tarifa seguem com conta — essas são
+        // caixa de verdade.
         expensesToInsert.push(normalizeOptionalForeignKeys({
           transaction_type: 'saida',
           amount: avulseLaborTotal,
           description: `Mão de obra avulsa — Orçamento #${quote.quote_number}`,
           category: 'CMV - Mão de Obra Avulsa',
           customer_id: quote.customer_id,
-          account_id: payment.account_id,
+          account_id: null,
           transaction_date: payment.paid_date,
           paid_date: payment.paid_date,
           is_paid: true,
