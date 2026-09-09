@@ -48,7 +48,7 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Aprovar orçamento não lança mais o custo no financeiro',
-        description: 'O custo que você monta dentro do orçamento serve para calcular a sua margem na hora de precificar, ele não é uma saída de dinheiro. Quem tira dinheiro da conta é a compra do material, que você registra como despesa no dia em que paga. Por isso, ao aprovar um orçamento o sistema passa a lançar só a receita e, quando houver, a tarifa da maquininha. Os lançamentos de custo que tinham sido criados automaticamente pelos orçamentos foram removidos, e o saldo das contas não mudou com isso. As despesas de custo que você criou à mão continuam intactas.',
+        description: 'O custo que você monta dentro do orçamento serve para calcular a sua margem na hora de precificar, ele não é uma saída de dinheiro. Quem tira dinheiro da conta é a compra do material, que você registra como despesa no dia em que paga. Por isso, ao aprovar um orçamento o sistema passa a lançar só a receita e, quando houver, a tarifa da maquininha. Os lançamentos de custo que tinham sido criados automaticamente pelos orçamentos foram removidos. Onde algum deles ainda estava descontando da conta, o saldo foi corrigido para cima, porque esse dinheiro nunca tinha saído de verdade. As despesas de custo que você criou à mão continuam intactas.',
         category: 'melhoria',
       },
     ],
