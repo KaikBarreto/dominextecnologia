@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.7',
+    date: '9 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aprovar orçamento não lança mais o custo no financeiro',
+        description: 'O custo que você monta dentro do orçamento serve para calcular a sua margem na hora de precificar, ele não é uma saída de dinheiro. Quem tira dinheiro da conta é a compra do material, que você registra como despesa no dia em que paga. Por isso, ao aprovar um orçamento o sistema passa a lançar só a receita e, quando houver, a tarifa da maquininha. Os lançamentos de custo que tinham sido criados automaticamente pelos orçamentos foram removidos, e o saldo das contas não mudou com isso. As despesas de custo que você criou à mão continuam intactas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.6',
     date: '9 de setembro de 2026',
     type: 'patch',

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.6";
+export const APP_VERSION = "1.24.7";
 
-export const VERSION_NOTES = "A geração de cobrança e o simulador de venda passam a mostrar a data prevista em que o dinheiro cai na conta, já pulando fim de semana e feriado. As parcelas do cartão também passam a seguir o mês do calendário, sempre no mesmo dia.";
+export const VERSION_NOTES = "Aprovar um orçamento não gera mais lançamento de custo no financeiro. O custo do orçamento serve para calcular sua margem na hora de precificar, e o custo de verdade entra quando você registra a compra do material.";

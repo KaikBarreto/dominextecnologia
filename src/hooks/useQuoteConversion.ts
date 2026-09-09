@@ -91,8 +91,11 @@ export function useQuoteConversion() {
   });
 
   /**
-   * Approves a quote: creates revenue, CMV expenses (materials in 1 lump-sum, avulse labor),
-   * fee expense, and updates the quote status.
+   * Aprova o orçamento: cria a receita, a despesa da tarifa do recebimento
+   * (quando houver) e atualiza o status do orçamento.
+   *
+   * Não gera lançamento de custo (CMV de material / mão de obra avulsa): o custo
+   * do orçamento é demonstrativo. Ver comentário no item 2 abaixo.
    */
   const approveQuoteFinancial = useMutation({
     mutationFn: async ({ quote, payment }: ApproveQuoteParams) => {
@@ -105,7 +108,6 @@ export function useQuoteConversion() {
       const company_id = await getCurrentUserCompanyId();
 
       const grossAmount = Number(quote.final_price ?? quote.total_value ?? 0);
-      const items = quote.quote_items || [];
 
       // 1. Revenue (entrada)
       const revenuePayload = normalizeOptionalForeignKeys(
@@ -134,114 +136,31 @@ export function useQuoteConversion() {
         .single();
       if (revErr) throw revErr;
 
-      // 2. Materials CMV — single lump-sum entry
-      const materialsTotal = items
-        .filter(i => i.item_type === 'material')
-        .reduce((s, i) => {
-          const cost = Number(i.unit_total_cost ?? 0) || Number(i.unit_price ?? 0);
-          return s + cost * Number(i.quantity);
-        }, 0);
-
+      // 2. Custo do orçamento NÃO vira lançamento financeiro.
+      //
+      // Regra de produto (CEO, set/2026): o custo que aparece no orçamento é
+      // DEMONSTRATIVO: serve pra calcular margem/BDI na hora de precificar, e
+      // não é fato financeiro. O fato financeiro é a COMPRA do material (ou o
+      // pagamento da diária), que o usuário lança à mão como despesa normal,
+      // com conta, no momento em que o dinheiro realmente sai do banco.
+      //
+      // Por isso a aprovação não gera mais CMV de materiais nem mão de obra
+      // avulsa. Antes elas nasciam como linha filha da receita e, desde a
+      // 1.24.5, já vinham com `account_id: null` pra não debitar o saldo duas
+      // vezes (provado contra extrato real do Mercado Pago: 8 de 8 fechamentos
+      // diários batendo ao centavo sem elas). Inertes desse jeito, só apareciam
+      // no diálogo de transações relacionadas e confundiam quem ia excluir a
+      // receita.
+      //
+      // A margem/lucratividade do orçamento NÃO depende destas linhas: ela sai
+      // de `quote_items` (`unit_total_cost` / `unit_labor_cost`) em
+      // `QuoteFormDialog` via `useBDICalculator`. Não reintroduza sem o PM.
+      //
+      // A RECEITA (item 1) e a TARIFA do recebimento (item 3) continuam com
+      // `payment.account_id`: essas duas são movimento de caixa de verdade.
       const expensesToInsert: any[] = [];
 
-      if (materialsTotal > 0) {
-        // `account_id: null` é DE PROPÓSITO — não é campo esquecido.
-        //
-        // CMV é o custo do material CONSUMIDO neste orçamento, não uma saída de
-        // caixa. O dinheiro saiu do banco lá atrás, quando o material foi
-        // COMPRADO, e essa compra o usuário lança à parte (com conta, como
-        // qualquer despesa). Se o CMV também nascesse com conta, o mesmo real
-        // sairia duas vezes do saldo e o extrato do Dominex nunca fecharia com
-        // o extrato do banco.
-        //
-        // `account_id` nulo é o marcador ESTRUTURAL de "esta linha não mexe em
-        // saldo de conta nenhuma": tanto `useFinancialAccounts.balancesQuery`
-        // quanto `walkAccountBalance` (saldo corrente das Movimentações)
-        // descartam transação sem conta.
-        //
-        // ⚠️ ATENÇÃO ao mexer aqui: esta linha JÁ NÃO CHEGA no DRE hoje, e isso
-        // NÃO é efeito de `account_id` — é o `.is('parent_transaction_id', null)`
-        // da query de `useFinancial`, que esconde toda linha filha. Como o CMV
-        // nasce com `parent_transaction_id` = id da receita, ele é filtrado
-        // antes. Quem sustenta o custo no DRE hoje é a COMPRA do material,
-        // lançada à mão pelo usuário e classificada como CMV pela heurística de
-        // categoria em `FinanceDRE.classifyCategory`. Ou seja: para quem lança a
-        // compra (o fluxo normal), o DRE está certo; para quem NÃO lança, o
-        // custo fica invisível no DRE. Essa lacuna é anterior a esta correção e
-        // está mapeada — não a resolva de raspão mudando `account_id`.
-        //
-        // Provado contra extrato bancário real (cliente VS PROJECT, Mercado
-        // Pago, jul/2026): só com os lançamentos manuais, 8 de 8 fechamentos
-        // diários batiam ao centavo; somando estas linhas de CMV, a diferença
-        // era exatamente o total delas.
-        //
-        // A RECEITA (item 1) e a TARIFA do recebimento (item 4) CONTINUAM com
-        // `payment.account_id`, porque essas duas são movimento de caixa de
-        // verdade: o cliente pagou naquela conta e o adquirente debitou a taxa
-        // naquela mesma conta.
-        expensesToInsert.push(normalizeOptionalForeignKeys({
-          transaction_type: 'saida',
-          amount: materialsTotal,
-          description: `CMV Materiais — Orçamento #${quote.quote_number}`,
-          category: 'CMV - Materiais',
-          customer_id: quote.customer_id,
-          account_id: null,
-          transaction_date: payment.paid_date,
-          paid_date: payment.paid_date,
-          is_paid: true,
-          notes: `Custo de materiais do orçamento #${quote.quote_number}`,
-          created_by: user.id,
-          company_id,
-          parent_transaction_id: revenue.id,
-        } as any, ['customer_id', 'account_id']));
-      }
-
-      // 3. Avulse labor CMV — only labor that is NOT from a registered employee
-      // Heuristic: services with unit_labor_cost > 0 AND no linked employee/team.
-      // Since quote_items don't carry employee linkage, we treat any explicit
-      // unit_labor_cost as avulse (diária/free-lance).
-      const avulseLaborTotal = items
-        .filter(i => i.item_type === 'servico')
-        .reduce((s, i) => {
-          const cost = Number(i.unit_labor_cost ?? 0);
-          return s + cost * Number(i.quantity);
-        }, 0);
-
-      if (avulseLaborTotal > 0) {
-        // Mesma razão do CMV de materiais acima: `account_id: null` é
-        // intencional. Esta linha é o CUSTO da mão de obra apropriado ao
-        // orçamento, não o pagamento da diária. O pagamento (o dinheiro que
-        // realmente sai do banco pro freelancer) é lançado à parte pelo
-        // usuário, com conta. Dar conta às duas debitaria o saldo em dobro.
-        //
-        // Sem conta, a linha fica fora do saldo de caixa/banco
-        // (`useFinancialAccounts.balancesQuery` e `walkAccountBalance` só somam
-        // transação com `account_id`). Vale a mesma ressalva do bloco de
-        // materiais acima: ela também não chega no DRE, por ser linha filha
-        // (`parent_transaction_id`), e não por causa da conta.
-        //
-        // Conferido contra extrato real (VS PROJECT, jul/2026): tirando estas
-        // linhas do saldo, os 8 fechamentos diários do período bateram ao
-        // centavo com o banco. Receita e tarifa seguem com conta — essas são
-        // caixa de verdade.
-        expensesToInsert.push(normalizeOptionalForeignKeys({
-          transaction_type: 'saida',
-          amount: avulseLaborTotal,
-          description: `Mão de obra avulsa — Orçamento #${quote.quote_number}`,
-          category: 'CMV - Mão de Obra Avulsa',
-          customer_id: quote.customer_id,
-          account_id: null,
-          transaction_date: payment.paid_date,
-          paid_date: payment.paid_date,
-          is_paid: true,
-          notes: `Diárias / valor avulso do orçamento #${quote.quote_number}`,
-          created_by: user.id,
-          company_id,
-          parent_transaction_id: revenue.id,
-        } as any, ['customer_id', 'account_id']));
-      }
-
-      // 4. Fee (Tarifas e Taxas)
+      // 3. Tarifa do recebimento (Tarifas e Taxas)
       if (payment.fee_amount > 0) {
         expensesToInsert.push(normalizeOptionalForeignKeys({
           transaction_type: 'saida',
@@ -267,7 +186,7 @@ export function useQuoteConversion() {
         if (expErr) throw expErr;
       }
 
-      // 5. Update quote status + link
+      // 4. Update quote status + link
       const { error: qErr } = await supabase
         .from('quotes')
         .update({
@@ -282,7 +201,7 @@ export function useQuoteConversion() {
     },
     onSuccess: () => {
       invalidateAll();
-      toast({ title: 'Orçamento aprovado!', description: 'Receita e custos lançados no financeiro.' });
+      toast({ title: 'Orçamento aprovado!', description: 'Receita lançada no financeiro.' });
     },
     onError: (e: any) => {
       toast({ variant: 'destructive', title: 'Erro ao aprovar', description: getErrorMessage(e) });
