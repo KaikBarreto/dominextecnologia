@@ -36,6 +36,16 @@
 //    exibidas passam por `addCalendarDaysToBankingDay` (rolam pra frente em
 //    fim de semana/feriado nacional), enquanto o CUSTO da antecipação continua
 //    pro-rata sobre os dias corridos originais. Rolar a data NÃO muda centavo.
+//
+// 5) PARCELA REPETE POR MÊS DE CALENDÁRIO, nunca a cada 30 dias corridos. A
+//    Asaas ancora o vencimento no MESMO DIA do mês seguinte (venda de 08/09
+//    parcelada em 10x vence 08/09, 08/10, 08/11 … 08/06), com clamp no último
+//    dia do mês quando o dia não existe (31/01 vira 28/02 e volta pra 31/03).
+//    Somar 30 dias fazia a data derrapar um dia por mês e errar quase duas
+//    semanas no fim de um parcelamento de 21x. Provado contra a conta de
+//    produção da Glacial Cold (R$ 550 em 10x, todas as parcelas no dia 08).
+//    O prazo de liquidação (D+32) é contado a partir de CADA vencimento, e o
+//    custo de antecipação continua pro-rata sobre os dias corridos reais.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { addCalendarDaysToBankingDay } from '@/lib/bankingDays';
@@ -151,9 +161,6 @@ export const SETTLEMENT_DAYS_FALLBACK: Readonly<Record<PaymentMethod, number>> =
 
 /** Dias até o dinheiro cair quando a venda é antecipada (Asaas credita em D+1). */
 export const ANTICIPATED_SETTLEMENT_DAYS = 1;
-
-/** Intervalo (em dias) entre os vencimentos das parcelas do cartão. */
-export const INSTALLMENT_INTERVAL_DAYS = 30;
 
 /** Teto de parcelas aceito pela Asaas. */
 export const MAX_INSTALLMENTS = 21;
@@ -330,6 +337,48 @@ function addCalendarDaysIso(base: Date, days: number): string {
 }
 
 /**
+ * Soma N MESES DE CALENDÁRIO a um ISO curto, preservando a âncora do dia e
+ * fazendo clamp no último dia do mês quando aquele dia não existe
+ * (31/01 + 1 mês = 28/02; 31/01 + 2 meses = 31/03).
+ *
+ * Mesma semântica do `addMonths` (date-fns) e do `interval '1 month'` do
+ * Postgres, mas em UTC puro pra não introduzir drift de fuso; o resto do
+ * arquivo já opera assim de propósito.
+ */
+function addCalendarMonthsIso(iso: string, months: number): string {
+  const year = Number(iso.slice(0, 4));
+  const monthIndex = Number(iso.slice(5, 7)) - 1;
+  const day = Number(iso.slice(8, 10));
+  const target = new Date(Date.UTC(year, monthIndex + Math.round(months), 1));
+  // Dia 0 do mês seguinte = último dia do mês alvo.
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return target.toISOString().slice(0, 10);
+}
+
+/** Soma N dias CORRIDOS a um ISO curto (YYYY-MM-DD), em UTC. */
+function shiftIsoDays(iso: string, days: number): string {
+  const d = new Date(
+    Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))),
+  );
+  d.setUTCDate(d.getUTCDate() + Math.round(days));
+  return d.toISOString().slice(0, 10);
+}
+
+/** Quantos dias CORRIDOS separam dois ISO curtos (to − from), em UTC. */
+function diffCalendarDaysIso(fromIso: string, toIso: string): number {
+  const from = Date.UTC(
+    Number(fromIso.slice(0, 4)), Number(fromIso.slice(5, 7)) - 1, Number(fromIso.slice(8, 10)),
+  );
+  const to = Date.UTC(
+    Number(toIso.slice(0, 4)), Number(toIso.slice(5, 7)) - 1, Number(toIso.slice(8, 10)),
+  );
+  return Math.round((to - from) / 86_400_000);
+}
+
+/**
  * Data em que o crédito REALMENTE cai: soma os dias corridos e, se cair em
  * sábado, domingo ou feriado nacional, rola pro próximo dia útil bancário.
  *
@@ -450,8 +499,25 @@ export function simulateNetAmount(input: SimulateInput): SimulationResult {
     : SETTLEMENT_DAYS_FALLBACK[method];
 
   const parts = splitCents(netCents, installments);
-  /** Dias (a partir de hoje) até o crédito ORIGINAL de cada parcela. */
-  const originalDays = parts.map((_, i) => dueDays + baseSettlementDays + i * INSTALLMENT_INTERVAL_DAYS);
+
+  /**
+   * Vencimento de cada parcela pro CLIENTE: a 1ª em `startDate + dueDays` e as
+   * demais UM MÊS DE CALENDÁRIO depois da anterior (item 5 do cabeçalho).
+   * O bloco 6 reusa exatamente estas datas.
+   */
+  const startIso = addCalendarDaysIso(startDate, 0);
+  const firstDueIso = addCalendarDaysIso(startDate, dueDays);
+  const dueIsos = parts.map((_, i) => addCalendarMonthsIso(firstDueIso, i));
+
+  /**
+   * Dias CORRIDOS (a partir de hoje) até o crédito ORIGINAL de cada parcela:
+   * cada vencimento + o prazo de liquidação da conta (D+32 no cartão), medido
+   * sobre a data CORRIDA, antes de rolar pro dia útil. É esse número que
+   * alimenta o pro-rata da antecipação: só a DATA rola, o CUSTO não.
+   */
+  const originalDays = dueIsos.map((dueIso) =>
+    diffCalendarDaysIso(startIso, shiftIsoDays(dueIso, baseSettlementDays)),
+  );
 
   // ── 5. Antecipação ────────────────────────────────────────────────────────
   const anticipate = input.anticipate === true;
@@ -514,7 +580,7 @@ export function simulateNetAmount(input: SimulateInput): SimulationResult {
   // Só o CRÉDITO na conta da empresa (bloco 4) depende de dia útil.
   const customerParts = splitCents(grossCents, installments);
   const customerSchedule: ScheduleItem[] = customerParts.map((cents, i) => {
-    const dueIso = addCalendarDaysIso(startDate, dueDays + i * INSTALLMENT_INTERVAL_DAYS);
+    const dueIso = dueIsos[i];
     return {
       date: dueIso,
       amount: fromCents(cents),

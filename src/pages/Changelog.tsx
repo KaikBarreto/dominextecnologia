@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.6',
+    date: '9 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobrança e simulador agora mostram a data certa em que o dinheiro cai',
+        description: 'As telas diziam que o valor entrava na conta "em cerca de 1 dia", sem informar a data e sem considerar que o banco não credita em fim de semana nem em feriado. Uma cobrança gerada numa sexta apontava crédito no sábado, o que não acontece. Agora a geração de cobrança e o simulador de venda mostram a data prevista com o dia da semana, já pulando sábado, domingo e feriado nacional, e explicam a regra na própria tela. Os valores de taxa continuam exatamente os mesmos.',
+        category: 'correcao',
+      },
+      {
+        title: 'As parcelas do cartão agora caem no mesmo dia de cada mês',
+        description: 'Ao gerar uma cobrança parcelada no cartão ou simular uma venda, o sistema montava as datas somando 30 dias de uma parcela para a outra. Como quase todo mês tem mais de 30 dias, as parcelas iam se adiantando aos poucos, e num parcelamento longo a última chegava a errar quase duas semanas. Agora elas seguem o mês do calendário, sempre no mesmo dia, igual ao que aparece na sua conta de cobrança. Quando o dia não existe no mês seguinte, como o dia 31 em fevereiro, a parcela vai para o último dia daquele mês. O valor da parcela e a taxa não mudaram, e a estimativa de antecipação ficou mais próxima do valor real, porque agora conta o prazo certo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.5',
     date: '9 de setembro de 2026',
     type: 'patch',

@@ -171,7 +171,7 @@ export const charges = {
         settlementFirstInstallment: (d: number, date: string) =>
           d === 1
             ? `A 1ª parcela cai na conta em 1 dia útil — previsto para ${date}`
-            : `A 1ª parcela cai na conta em cerca de ${d} dias — previsto para ${date}. As seguintes vêm a cada 30 dias.`,
+            : `A 1ª parcela cai na conta em cerca de ${d} dias — previsto para ${date}. As seguintes vêm todo mês.`,
         settlementAnticipatedTotal: (_d: number, date: string) =>
           `Com a antecipação, o valor total cai na conta em 1 dia útil — previsto para ${date}`,
         settlementAnticipatedNow: 'O valor total cai na conta na hora',
@@ -614,7 +614,7 @@ export const charges = {
         settlementFirstInstallment: (d: number, date: string) =>
           d === 1
             ? `The 1st installment lands in your account in 1 business day — expected on ${date}`
-            : `The 1st installment lands in your account in about ${d} days — expected on ${date}. The next ones come every 30 days.`,
+            : `The 1st installment lands in your account in about ${d} days — expected on ${date}. The next ones come every month.`,
         settlementAnticipatedTotal: (_d: number, date: string) =>
           `With early payout, the total amount lands in your account in 1 business day — expected on ${date}`,
         settlementAnticipatedNow: 'The total amount lands in your account instantly',
@@ -1045,7 +1045,7 @@ export const charges = {
         settlementFirstInstallment: (d: number, date: string) =>
           d === 1
             ? `La 1ª cuota entra en la cuenta en 1 día hábil — previsto para ${date}`
-            : `La 1ª cuota entra en la cuenta en unos ${d} días — previsto para ${date}. Las siguientes llegan cada 30 días.`,
+            : `La 1ª cuota entra en la cuenta en unos ${d} días — previsto para ${date}. Las siguientes llegan cada mes.`,
         settlementAnticipatedTotal: (_d: number, date: string) =>
           `Con el adelanto, el importe total entra en la cuenta en 1 día hábil — previsto para ${date}`,
         settlementAnticipatedNow: 'El importe total entra en la cuenta al instante',
@@ -1476,7 +1476,7 @@ export const charges = {
         settlementFirstInstallment: (d: number, date: string) =>
           d === 1
             ? `La 1re échéance arrive sur le compte en 1 jour ouvré — prévu le ${date}`
-            : `La 1re échéance arrive sur le compte dans environ ${d} jours — prévu le ${date}. Les suivantes tous les 30 jours.`,
+            : `La 1re échéance arrive sur le compte dans environ ${d} jours — prévu le ${date}. Les suivantes tous les mois.`,
         settlementAnticipatedTotal: (_d: number, date: string) =>
           `Avec l'avance, le montant total arrive sur le compte en 1 jour ouvré — prévu le ${date}`,
         settlementAnticipatedNow: `Le montant total arrive sur le compte tout de suite`,
