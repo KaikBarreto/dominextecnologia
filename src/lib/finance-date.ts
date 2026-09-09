@@ -102,3 +102,39 @@ export function isTransactionInDateRange(
   if (range.to && d > range.to) return false;
   return true;
 }
+
+/**
+ * Range do MÊS em que a transação aparece nas telas de período.
+ *
+ * Existe pro deep-link `?txn=` do Financeiro: a tela abre em "este mês" e um
+ * recebimento de julho é invisível em setembro. Pra levar o usuário até a
+ * linha certa, o range precisa ser calculado com a MESMA data efetiva que o
+ * filtro usa (`isTransactionInDateRange`) — senão o deep-link erra justamente
+ * nas compras de cartão, onde a data que manda é `credit_card_bill_date` e não
+ * `transaction_date`.
+ *
+ * Retorna `null` quando a transação não tem data utilizável no escopo.
+ */
+export function getEffectiveTransactionMonthRange(
+  txn: TxnLike,
+  scope: FinanceDateScope = 'caixa'
+): { from: Date; to: Date } | null {
+  const raw = getEffectiveTransactionDate(txn, scope);
+  if (!raw) return null;
+  const d = parseDateForCompare(String(raw));
+  if (isNaN(d.getTime())) return null;
+  // `startOfMonth`/`endOfMonth` do date-fns ancoram em 00:00:00/23:59:59.999
+  // no fuso da MÁQUINA. O rótulo do range (`DateRangeFilter`) formata essas
+  // bordas convertendo pro fuso CONFIGURADO do app (`formatDate` →
+  // `Intl.DateTimeFormat` com `timeZone`). Se a máquina estiver num fuso à
+  // frente do fuso do app, meia-noite do dia 1 vira 23h do dia 30 no fuso do
+  // app — o rótulo do deep-link `?txn=` passa a dizer "mês anterior" mesmo a
+  // transação sendo do mês certo. Por isso ancoramos ao MEIO-DIA local, igual
+  // `parseDateForCompare` já faz pra `raw`: meio-dia sobrevive a qualquer
+  // conversão de fuso do planeta sem atravessar a virada do dia.
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const from = new Date(year, month, 1, 12, 0, 0);
+  const to = new Date(year, month + 1, 0, 12, 0, 0);
+  return { from, to };
+}

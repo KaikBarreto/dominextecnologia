@@ -1,13 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES, type Messages } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
   ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp,
   Wallet, BarChart3, FileEdit, Send, Clock, Boxes, Link2, CreditCard,
+  Undo2, Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +56,11 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { buildProposalShareLink } from '@/utils/shareLinks';
 import { useToast } from '@/hooks/use-toast';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
+import { deleteTransactionCascade, findRelatedTransactions } from '@/hooks/useRelatedTransactions';
+// Mensagem do servidor já vem em PT-BR quando o erro é de RPC (SQLSTATE P0001).
+import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
+import type { FinancialTransaction } from '@/types/database';
 
 // Tabs are built dynamically using i18n inside the Quotes component.
 const ALL_SIDEBAR_TAB_KEYS = [
@@ -146,9 +155,18 @@ function QuotesList() {
   const hasCobrancas = hasModule('cobrancas');
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
   const showChargeAction = hasCobrancas && isPaymentActive;
+  const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
+  // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
+  // contendo a permissão (ou o curinga '*'). O fallback legado do
+  // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
+  // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
+  const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
   const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Gera o link público amigável da proposta e copia no ato (régua-lei: todo
   // fluxo que gera link já copia + toast "Link gerado e copiado!"). O token já
@@ -187,6 +205,66 @@ function QuotesList() {
   const [configOpen, setConfigOpen] = useState(false);
   const [approvingQuote, setApprovingQuote] = useState<Quote | null>(null);
   const [chargeQuote, setChargeQuote] = useState<Quote | null>(null);
+  // Desfazer recebimento: orçamento em confirmação + prévia dos lançamentos.
+  const [undoQuote, setUndoQuote] = useState<Quote | null>(null);
+  const [undoPreview, setUndoPreview] = useState<{ txns: FinancialTransaction[]; orphan: boolean } | null>(null);
+  const [isUndoing, setIsUndoing] = useState(false);
+
+  // Ação A — leva o usuário direto ao lançamento gerado na aprovação. A tela de
+  // Movimentações se vira com o ?txn (ajusta o período, destaca a linha e limpa
+  // o param); aqui só montamos o deep-link já no idioma do usuário.
+  const openFinancialTransaction = (q: Quote) => {
+    if (!q.financial_transaction_id) return;
+    navigate(`${localizeAppPath('/financeiro/movimentacoes', locale)}?txn=${q.financial_transaction_id}`);
+  };
+
+  // Prévia do que será apagado: a receita (root) + as filhas de CMV/Tarifas.
+  // Best-effort: se falhar, o dialog segue com a confirmação genérica.
+  useEffect(() => {
+    const txnId = undoQuote?.financial_transaction_id;
+    if (!txnId) { setUndoPreview(null); return; }
+    let cancelled = false;
+    setUndoPreview(null);
+    findRelatedTransactions(txnId)
+      .then(({ root, related }) => {
+        if (cancelled) return;
+        const txns = root ? [root, ...related] : related;
+        setUndoPreview({ txns, orphan: !root });
+      })
+      .catch(() => { if (!cancelled) setUndoPreview({ txns: [], orphan: false }); });
+    return () => { cancelled = true; };
+  }, [undoQuote?.id, undoQuote?.financial_transaction_id]);
+
+  // Ação B — apaga a receita e TODAS as filhas geradas na aprovação (CMV de
+  // materiais, mão de obra avulsa, tarifas). O próprio helper limpa
+  // financial_transaction_id/financial_generated_at e devolve status 'enviado'.
+  // Quando o lançamento já não existe mais (órfão), o ramo `false` é o que
+  // consegue destravar o orçamento: ele limpa a quote pelo próprio campo.
+  const confirmUndoReceipt = async () => {
+    const q = undoQuote;
+    if (!q?.financial_transaction_id) return;
+    setIsUndoing(true);
+    try {
+      await deleteTransactionCascade(q.financial_transaction_id, !undoPreview?.orphan);
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+      toast({
+        title: tq.undoReceiptSuccessTitle,
+        description: tq.undoReceiptSuccessDesc.replace('{number}', String(q.quote_number)),
+      });
+      setUndoQuote(null);
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: tq.undoReceiptErrorTitle,
+        description: getRpcErrorMessage(e),
+      });
+    } finally {
+      setIsUndoing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     let list = quotes;
@@ -384,6 +462,33 @@ function QuotesList() {
         icon: <ArrowRight className="h-4 w-4" />,
         onClick: () => convertToServiceOrder.mutate(q),
       });
+    }
+
+    if (q.financial_transaction_id) {
+      actions.push({
+        key: 'view-transaction',
+        label: tq.actionViewTransactionMobile,
+        icon: <Wallet className="h-4 w-4" />,
+        onClick: () => openFinancialTransaction(q),
+      });
+      // Gateado por canDeleteFinance: a RLS de DELETE em financial_transactions
+      // (public.can_delete_finance) apaga silenciosamente (0 linhas, sem erro)
+      // quando o usuário não tem a permissão. Sem esse gate, o orçamento
+      // destravaria (volta pra 'enviado') com o lançamento ainda vivo, e uma
+      // nova aprovação duplicaria a receita no financeiro do cliente.
+      if (canDeleteFinance) {
+        actions.push({
+          // Sem `variant` de propósito: variant colorida entra no rail de swipe
+          // do MobileListItem, e aí "Desfazer recebimento" ficaria vermelho,
+          // colado no "Excluir" (que apaga o orçamento inteiro), com 80px de
+          // largura pra um rótulo longo. Aqui vive só no menu ⋮; o peso
+          // destrutivo fica no dialog de confirmação.
+          key: 'undo-receipt',
+          label: tq.actionUndoReceiptMobile,
+          icon: <Undo2 className="h-4 w-4" />,
+          onClick: () => setUndoQuote(q),
+        });
+      }
     }
 
     if (showChargeAction && q.customer_id) {
@@ -676,6 +781,21 @@ function QuotesList() {
                             hidden: !(q.status === 'aprovado' && !q.converted_to_os_id),
                           },
                           {
+                            label: tq.actionViewTransaction,
+                            icon: Wallet,
+                            onClick: () => openFinancialTransaction(q),
+                            hidden: !q.financial_transaction_id,
+                          },
+                          {
+                            label: tq.actionUndoReceipt,
+                            icon: Undo2,
+                            variant: 'delete',
+                            onClick: () => setUndoQuote(q),
+                            // Espelha o gate mobile: some pra quem a RLS de
+                            // DELETE em financial_transactions recusaria.
+                            hidden: !q.financial_transaction_id || !canDeleteFinance,
+                          },
+                          {
                             label: tq.actionGenerateCharge,
                             icon: CreditCard,
                             onClick: () => setChargeQuote(q),
@@ -767,6 +887,63 @@ function QuotesList() {
             >
               {tq.deleteConfirm}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Desfazer recebimento — confirmação explícita antes de apagar lançamento */}
+      <AlertDialog
+        open={!!undoQuote}
+        onOpenChange={(v) => { if (!v && !isUndoing) { setUndoQuote(null); setUndoPreview(null); } }}
+      >
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tq.undoReceiptTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tq.undoReceiptDesc.replace('{number}', String(undoQuote?.quote_number ?? ''))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {/* Fora do Description: Description vira <p> e não pode conter <div>. */}
+          <div className="space-y-2">
+            {undoPreview === null ? (
+              <p className="text-xs text-muted-foreground">{tq.undoReceiptLoading}</p>
+            ) : undoPreview.orphan ? (
+              <p className="text-xs text-warning bg-warning/10 rounded p-2">{tq.undoReceiptOrphanNote}</p>
+            ) : undoPreview.txns.length > 0 ? (
+              <>
+                <p className="text-sm font-medium">
+                  {undoPreview.txns.length === 1
+                    ? tq.undoReceiptCountOne
+                    : tq.undoReceiptCountMany.replace('{count}', String(undoPreview.txns.length))}
+                </p>
+                <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-2 space-y-1.5">
+                  {undoPreview.txns.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between gap-2 text-xs">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <Receipt className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{t.description}</span>
+                        {t.category && (
+                          <Badge variant="outline" className="shrink-0 text-[9px]">{t.category}</Badge>
+                        )}
+                      </div>
+                      <span className={cn('shrink-0 font-medium', t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive')}>
+                        {t.transaction_type === 'entrada' ? '+' : '-'} {formatMoney(Number(t.amount), currency, locale)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUndoing}>{tq.undoReceiptCancel}</AlertDialogCancel>
+            {/* Button (não AlertDialogAction): o Action fecha o dialog no clique e
+                atropelaria o estado de "processando". */}
+            <Button variant="destructive" onClick={confirmUndoReceipt} disabled={isUndoing}>
+              {isUndoing ? tq.undoReceiptProcessing : tq.undoReceiptConfirm}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

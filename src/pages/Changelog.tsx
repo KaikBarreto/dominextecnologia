@@ -42,13 +42,42 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.24.3',
+    version: '1.24.5',
     date: '9 de setembro de 2026',
     type: 'patch',
     changes: [
       {
         title: 'O custo do orçamento não desconta mais do saldo da conta',
         description: 'Ao aprovar um orçamento, o sistema lançava o custo dos materiais e da mão de obra avulsa descontando do saldo da conta bancária escolhida. Isso estava errado: esse dinheiro já tinha saído da conta quando você comprou o material e registrou a compra. O saldo acabava descontado duas vezes e o extrato do sistema nunca fechava com o do seu banco. A partir de agora esses lançamentos continuam registrados e ligados ao orçamento, mas sem mexer no saldo da conta. As contas que já tinham sido afetadas foram ajustadas automaticamente, sem precisar refazer nada. Lançamentos de custo que você criou à mão não foram alterados.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.4',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Orçamento não fica mais preso como recebido',
+        description: 'Ao excluir o lançamento financeiro que nasceu da aprovação de um orçamento, ele podia ficar num estado sem saída: parava de mostrar o selo de recebido, mas também não deixava lançar de novo. Agora o orçamento volta sozinho para "Enviado" e pode ser aprovado outra vez, com a data certa. Os orçamentos que já estavam nessa situação foram liberados.',
+        category: 'correcao',
+      },
+      {
+        title: 'Do orçamento direto para o lançamento no financeiro',
+        description: 'Quando o orçamento já tem um recebimento lançado, o menu dele ganha duas opções. "Ver lançamento no financeiro" abre as movimentações já no mês certo, com a linha destacada, então você não precisa mais caçar o período para corrigir uma data. E "Desfazer recebimento" apaga os lançamentos daquela aprovação e devolve o orçamento para "Enviado", caso prefira refazer do zero. A opção de desfazer aparece apenas para quem tem permissão de excluir no financeiro.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.3',
+    date: '8 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criar uma origem na hora, sem sair do cadastro, agora funciona de verdade',
+        description: 'No campo Origem da nova oportunidade do CRM e do cadastro de cliente, a opção de criar uma origem nova ficava no fim da lista e não fazia nada quando você clicava nela sem ter digitado um nome antes: não criava, não avisava, não dava erro. Agora o campo tem um botão de mais na ponta direita, igual ao campo Cliente, que abre uma janelinha para você dar o nome, escolher a cor e o ícone da origem. Depois de salvar, ela já vem selecionada no formulário.',
         category: 'correcao',
       },
     ],

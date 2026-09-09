@@ -13,9 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { OriginSelectField } from '@/components/customers/OriginSelectField';
 import { Loader2, Upload, Users, User, FileText } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
@@ -24,7 +23,6 @@ import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { landlineMask, mobileMask, cpfCnpjMask, cepMask } from '@/utils/masks';
 import { CnpjDocumentInput } from '@/components/customers/CnpjDocumentInput';
-import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -89,7 +87,7 @@ export function CustomerFormDialog({
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.form;
-  const { activeOrigins, createOrigin } = useCustomerOrigins();
+  const tOrigins = MESSAGES[locale].app.equipment.origins;
 
   const isEditing = !!customer;
   const draft = useFormDraft<CustomerFormData>({ key: 'customer-form', isOpen: open, isEditing });
@@ -348,38 +346,22 @@ export function CustomerFormDialog({
                   <FormItem>
                     <FormLabel>{t.origin}</FormLabel>
                     <FormControl>
-                      <SearchableSelect
-                        options={[
-                          { value: '__none__', label: t.originNone },
-                          ...activeOrigins.map((o) => {
-                            const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
-                            return {
-                              value: o.name,
-                              label: o.name,
-                              icon: LucideIcon ? (
-                                <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: o.color }}>
-                                  <LucideIcon className="h-2.5 w-2.5 text-white" />
-                                </div>
-                              ) : undefined,
-                            };
-                          }),
-                          // Preserva o valor salvo caso a origem não esteja mais no catálogo ativo.
-                          ...(field.value && !activeOrigins.some((o) => o.name === field.value)
-                            ? [{ value: field.value as string, label: field.value as string }]
-                            : []),
-                        ]}
+                      <OriginSelectField
                         value={field.value || '__none__'}
                         onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
                         placeholder={t.originPlaceholder}
                         searchPlaceholder={t.originSearch}
-                        onCreateOption={async (query) => {
-                          const name = query.trim();
-                          if (!name) return;
-                          await createOrigin.mutateAsync({ name });
-                          field.onChange(name);
-                        }}
-                        createOptionLabel={t.originCreate}
-                        createAlwaysLabel={t.originCreateAlways}
+                        allowNone
+                        noneValue="__none__"
+                        noneLabel={t.originNone}
+                        createDialogTitle={tOrigins.quickCreateTitle}
+                        createNameLabel={tOrigins.quickCreateNameLabel}
+                        createNamePlaceholder={tOrigins.quickCreateNamePlaceholder}
+                        createColorLabel={tOrigins.quickCreateColorLabel}
+                        createIconLabel={tOrigins.quickCreateIconLabel}
+                        createSubmitLabel={tOrigins.quickCreateSubmit}
+                        createCancelLabel={tOrigins.quickCreateCancel}
+                        createAriaLabel={tOrigins.createAriaLabel}
                       />
                     </FormControl>
                     <FormMessage />

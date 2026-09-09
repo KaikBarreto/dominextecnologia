@@ -134,15 +134,37 @@ export async function deleteTransactionCascade(
   if (await revertCreditCardBillPaymentIfNeeded(transactionId)) return;
 
   if (!deleteAllRelated) {
+    // A pista do orçamento tem que ser capturada ANTES do DELETE. A FK
+    // `quotes_financial_transaction_id_fkey` é ON DELETE SET NULL: no instante
+    // em que a transação some, o Postgres já zera `quotes.financial_transaction_id`.
+    // Procurar depois casaria 0 linhas, sem erro nenhum, e o orçamento ficaria
+    // com `financial_generated_at` preenchido e `status = 'aprovado'` pra sempre:
+    // travado, sem conseguir relançar o financeiro (o gate do
+    // `approveQuoteFinancial`) nem reaprovar (a ação só aparece em
+    // rascunho/enviado). Foi o bug provado em produção.
+    //
+    // A busca é pela transação PEDIDA, nunca pelo root da árvore: excluir uma
+    // linha filha (CMV de material, mão de obra avulsa, tarifa) não pode
+    // destravar o orçamento, que segue apontando pra receita-mãe viva.
+    const { data: linkedQuotes } = await supabase
+      .from('quotes')
+      .select('id')
+      .eq('financial_transaction_id', transactionId);
+
     // Just delete this one. Children get parent set to null automatically.
     const { error } = await supabase.from('financial_transactions').delete().eq('id', transactionId);
+    // DELETE falhou: nada foi apagado e o orçamento continua intacto, então sai sem
+    // tocar em `quotes`.
     if (error) throw error;
 
     // If this was a root referenced by a quote, clear the link
-    await supabase
-      .from('quotes')
-      .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
-      .eq('financial_transaction_id', transactionId);
+    const quoteIds = (linkedQuotes || []).map((q) => q.id);
+    if (quoteIds.length > 0) {
+      await supabase
+        .from('quotes')
+        .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
+        .in('id', quoteIds);
+    }
     return;
   }
 

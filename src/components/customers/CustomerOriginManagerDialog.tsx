@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Plus, Trash2, Pencil, Check, X, Tag } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,14 +10,7 @@ import { useCustomerOrigins, type CustomerOrigin } from '@/hooks/useCustomerOrig
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-
-const ICON_OPTIONS = ['Globe', 'UserPlus', 'Megaphone', 'Handshake', 'Phone', 'Mail', 'MapPin', 'Star', 'Heart', 'Target', 'Zap', 'TrendingUp', 'Share2', 'Users', 'MessageCircle', 'Search', 'Instagram', 'Facebook', 'CalendarDays', 'Tag'];
-
-function IconPreview({ name, className }: { name: string; className?: string }) {
-  const LucideIcon = (LucideIcons as any)[name];
-  if (!LucideIcon) return null;
-  return <LucideIcon className={className || 'h-4 w-4'} />;
-}
+import { ICON_OPTIONS, IconPreview } from '@/components/customers/originIcons';
 
 interface Props {
   open: boolean;

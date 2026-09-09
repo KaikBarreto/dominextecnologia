@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ArrowLeftRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -130,6 +130,11 @@ interface TransactionListPanelProps {
    * mostrada na linha logo abaixo dele.
    */
   dayClosingBalance?: Map<string, number>;
+  /**
+   * Deep-link `?txn=ID` (Finance.tsx): destaca a linha e rola até ela, pulando
+   * pra página da paginação onde ela está. `null`/ausente = comportamento normal.
+   */
+  highlightTransactionId?: string | null;
 }
 
 export function TransactionListPanel({
@@ -137,7 +142,7 @@ export function TransactionListPanel({
   onNew, onEdit, onDelete, buttonColor,
   initialAccountFilter, onClearAccountFilter, hideAccountColumn,
   balanceAfterById, balanceAfterLabel, balanceAfterShortLabel,
-  groupByDay, dayClosingBalance,
+  groupByDay, dayClosingBalance, highlightTransactionId,
 }: TransactionListPanelProps) {
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -277,6 +282,48 @@ export function TransactionListPanel({
     + 1 // valor
     + (balanceAfterById ? 1 : 0) // saldo após
     + 1; // ações
+
+  // ── Deep-link `?txn=ID`: leva o usuário até a linha ───────────────────────
+  //
+  // Dois refs, um por layout. O painel renderiza mobile OU desktop (`isMobile`),
+  // mas ref ÚNICO compartilhado entre layouts responsivos já quebrou rolagem
+  // neste repo: o layout escondido sobrescreve o ref e o `scrollIntoView` roda
+  // num elemento `display:none` (no-op silencioso, só no celular). Por isso
+  // guardamos os dois e rolamos no que estiver de fato visível (`offsetParent`).
+  const highlightMobileRef = useRef<HTMLDivElement | null>(null);
+  const highlightDesktopRef = useRef<HTMLTableRowElement | null>(null);
+  // Marca o id já atendido: sem isso o efeito (que roda a cada render, porque
+  // `sortedItems`/`pagination` são recriados) desfaria a troca de página feita
+  // pelo próprio usuário depois de chegar na linha.
+  const scrolledToHighlightRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!highlightTransactionId) {
+      scrolledToHighlightRef.current = null;
+      return;
+    }
+    if (scrolledToHighlightRef.current === highlightTransactionId) return;
+
+    // A lista é paginada: destacar sem trocar de página não adianta nada, a
+    // linha simplesmente não está montada. Acha o índice no conjunto ORDENADO
+    // (o mesmo que a paginação fatia) e vai pra página dela.
+    const index = sortedItems.findIndex((t) => t.id === highlightTransactionId);
+    if (index < 0) return; // ainda carregando / fora do filtro: tenta no próximo render
+    const size = pagination.pageSize === 'all'
+      ? Math.max(sortedItems.length, 1)
+      : pagination.pageSize;
+    const targetPage = Math.floor(index / size) + 1;
+    if (targetPage !== pagination.page) {
+      pagination.setPage(targetPage);
+      return; // a linha ainda não existe no DOM; rola no render seguinte
+    }
+
+    const node = [highlightMobileRef.current, highlightDesktopRef.current]
+      .find((n): n is HTMLDivElement | HTMLTableRowElement => !!n && n.offsetParent !== null);
+    if (!node) return;
+    scrolledToHighlightRef.current = highlightTransactionId;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 
   const requestDelete = async (id: string) => {
     const txn = transactions.find((t) => t.id === id);
@@ -615,6 +662,7 @@ export function TransactionListPanel({
 
               const t = item.txn;
               const isEntrada = t.transaction_type === 'entrada';
+              const isHighlighted = t.id === highlightTransactionId;
               const itemActions: ItemAction[] = [
                 {
                   key: 'edit',
@@ -631,13 +679,14 @@ export function TransactionListPanel({
                   onClick: () => requestDelete(t.id),
                 }] : []),
               ];
-              return (
+              const listItem = (
                 <MobileListItem
                   key={t.id}
                   actions={itemActions}
                   className={cn(
                     'transition-transform active:scale-[0.98]',
                     selectedIds.has(t.id) && 'bg-primary/5',
+                    isHighlighted && 'bg-primary/10 ring-2 ring-inset ring-primary',
                   )}
                   leading={
                     <div
@@ -685,6 +734,18 @@ export function TransactionListPanel({
                     </div>
                   }
                 />
+              );
+
+              // A linha do deep-link ganha um wrapper só pra carregar o ref
+              // (MobileListItem não repassa ref). O divisor migra pro wrapper:
+              // dentro dele o `last:border-b-0` do item passa a valer sempre e a
+              // linha perderia a borda de baixo. O realce (ring) fica no item, não
+              // aqui: `ring-inset` do pai seria coberto pelo fundo do filho.
+              if (!isHighlighted) return listItem;
+              return (
+                <div key={t.id} ref={highlightMobileRef} className="border-b border-border/60 last:border-b-0">
+                  {listItem}
+                </div>
               );
             })}
           </div>
@@ -754,7 +815,14 @@ export function TransactionListPanel({
 
                     const t = item.txn;
                     return (
-                    <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
+                    <TableRow
+                      key={t.id}
+                      ref={t.id === highlightTransactionId ? highlightDesktopRef : undefined}
+                      className={cn(
+                        selectedIds.has(t.id) && 'bg-primary/5',
+                        t.id === highlightTransactionId && 'bg-primary/10 outline outline-2 -outline-offset-2 outline-primary',
+                      )}
+                    >
                       {type !== 'all' && canDeleteFinance && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
                       <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
                       <TableCell className="text-center"><div className="flex justify-center">{renderCreatorAvatar(t)}</div></TableCell>

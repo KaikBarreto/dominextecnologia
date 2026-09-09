@@ -12,7 +12,7 @@ import { FinanceRelatorio } from '@/components/financial/FinanceRelatorio';
 import { FinanceMovimentacoes } from '@/components/financial/FinanceMovimentacoes';
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
-import { isTransactionInDateRange } from '@/lib/finance-date';
+import { getEffectiveTransactionMonthRange, isTransactionInDateRange } from '@/lib/finance-date';
 import { DollarSign } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -73,10 +73,25 @@ export default function Finance() {
     setSearchParams(next, { replace: true });
   };
 
+  // Deep-link `?txn=ID` → abre "Movimentações Financeiras" já no MÊS daquela
+  // movimentação e com a linha destacada. Existe porque a tela nasce em "este
+  // mês": um recebimento lançado em julho é invisível em setembro e o usuário
+  // não tinha como chegar nele a partir do orçamento que o gerou.
+  // Mesmo padrão do `?account=`: consome uma vez e limpa o param da URL.
+  const focusTransactionParam = searchParams.get('txn');
+  const clearFocusTransactionParam = () => {
+    if (!searchParams.get('txn')) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('txn');
+    setSearchParams(next, { replace: true });
+  };
+
   const [formOpen, setFormOpen] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
+  // Linha a destacar na lista (vem do `?txn=`). Fica até o usuário sair da tela.
+  const [highlightTransactionId, setHighlightTransactionId] = useState<string | null>(null);
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
   const { toast } = useToast();
   const { hasModule } = useCompanyModules();
@@ -102,6 +117,28 @@ export default function Finance() {
     transactions, isLoading,
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
+
+  // Consome o `?txn=ID`: acha a movimentação na lista que o hook já trouxe
+  // (todos os períodos, com RLS aplicada), joga o filtro de período pro mês
+  // dela e marca a linha pra destacar. O mês vem de
+  // `getEffectiveTransactionMonthRange`, a MESMA regra do filtro logo abaixo:
+  // em compra de cartão a data que vale é a da fatura, não a da compra.
+  // Id inexistente, sem permissão (RLS) ou linha filha (o hook só lista raízes)
+  // cai no caminho silencioso: limpa o param e segue a vida, sem erro nem toast.
+  useEffect(() => {
+    if (!focusTransactionParam || screen !== 'movimentacoes' || isLoading) return;
+    const target = transactions.find((t) => t.id === focusTransactionParam);
+    if (target) {
+      const monthRange = getEffectiveTransactionMonthRange(target, 'caixa');
+      if (monthRange) {
+        setPreset('custom');
+        setRange(monthRange);
+      }
+      setHighlightTransactionId(target.id);
+    }
+    clearFocusTransactionParam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTransactionParam, screen, isLoading, transactions]);
 
   // Para transações de cartão de crédito (com `credit_card_bill_date` preenchido),
   // o filtro de período deve usar o mês da fatura, não a data da compra/parcela.
@@ -364,6 +401,7 @@ export default function Finance() {
             onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
             initialAccountId={accountFilterParam}
             onConsumeInitialAccount={clearAccountFilterParam}
+            highlightTransactionId={highlightTransactionId}
           />
         )}
 
