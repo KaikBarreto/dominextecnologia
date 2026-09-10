@@ -217,7 +217,7 @@ export default function CustomerDetail() {
       customers.map((c) => ({
         value: c.id,
         label: c.name,
-        sublabel: c.document || c.phone || undefined,
+        sublabel: c.document || c.phone || c.celular || undefined,
       })),
     [customers]
   );

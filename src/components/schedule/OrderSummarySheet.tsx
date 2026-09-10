@@ -152,10 +152,10 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
             </div>
           )}
 
-          {order.customer?.phone && (
+          {(order.customer?.phone || order.customer?.celular) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground pl-6">
               <Phone className="h-3.5 w-3.5 shrink-0" />
-              <a href={`tel:${order.customer.phone}`} className="hover:underline">{order.customer.phone}</a>
+              <a href={`tel:${order.customer.phone || order.customer.celular}`} className="hover:underline">{order.customer.phone || order.customer.celular}</a>
             </div>
           )}
 

@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.8',
+    date: '10 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O telefone do cliente volta a aparecer quando você cadastrou só o celular',
+        description: 'A ficha do cliente tem dois campos de telefone, Telefone e Celular. Quem preencheu apenas o Celular ficava sem contato nenhum na lista de clientes, na agenda, na ordem de serviço, no aplicativo do técnico em campo e no relatório em PDF que vai para o cliente final. Agora, quando não existe telefone fixo, o sistema mostra o celular no lugar. Se você tem os dois preenchidos, continua aparecendo o Telefone, como antes. O botão de WhatsApp passa a preferir o celular, que é o número que de fato tem WhatsApp.',
+        category: 'correcao',
+      },
+      {
+        title: 'O campo Telefone parou de cortar um dígito quando você cola o número',
+        description: 'O campo Telefone só aceitava números de oito dígitos. Ao colar um celular, que tem nove, ele descartava o último dígito em silêncio e salvava o número errado, sem avisar nada. Quem digitava à mão não era afetado, só quem copiava e colava. Agora o campo aceita fixo e celular sem perder nada. De quebra, número fixo passa a ser formatado corretamente em todo o sistema, e não mais como se fosse celular. Se você montou sua base copiando e colando telefones, vale dar uma conferida nos contatos cadastrados, porque números salvos antes desta correção podem ter ficado incompletos.',
+        category: 'correcao',
+      },
+      {
+        title: 'A tela de categorias parou de pedir uma informação que não vale para receita',
+        description: 'Ao criar uma categoria do tipo Receita, a tela pedia um grupo do DRE e só oferecia opções de despesa, o que deixava dúvida sobre o que escolher. Esse campo nunca teve efeito sobre a receita: tudo que você lança como entrada já é somado na receita do seu resultado automaticamente. Agora o campo só aparece quando a categoria é de despesa. Quando ela serve para os dois lados, o campo continua aparecendo com um aviso de que vale só para as saídas.',
+        category: 'correcao',
+      },
+      {
+        title: 'No CRM, o botão de editar não cobre mais o de fechar',
+        description: 'Ao abrir uma oportunidade do funil, o botão de editar ficava por cima do botão de fechar, no canto superior direito, e atrapalhava sair da tela. Corrigido no computador e no celular, inclusive quando o título da oportunidade é longo e ocupa duas linhas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.7',
     date: '9 de setembro de 2026',
     type: 'patch',

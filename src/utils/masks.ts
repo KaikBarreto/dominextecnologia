@@ -1,20 +1,18 @@
+/**
+ * Máscara de TELEFONE adaptativa: aceita fixo (10 dígitos, DDD + 8) e celular
+ * (11 dígitos, DDD + 9) no mesmo campo, sem descartar dígito nenhum ao colar.
+ * Até 10 dígitos totais: agrupamento 4+4 (fixo) — ex. (11) 3333-4444.
+ * Com 11 dígitos: agrupamento 5+4 (celular) — ex. (11) 93333-4444.
+ * Enquanto o usuário digita (<=10 dígitos) assume o agrupamento de fixo; ao
+ * digitar o 11º dígito, o hífen desloca uma casa pro padrão de celular — é o
+ * comportamento padrão desse tipo de máscara dupla no Brasil.
+ */
 export function phoneMask(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 11);
   if (digits.length <= 2) return digits.length ? `(${digits}` : '';
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-/**
- * Máscara de TELEFONE FIXO: (00) 0000-0000 — 10 dígitos (DDD + 8).
- * Best-effort: formata os dígitos disponíveis sem lançar erro nem descartar
- * de forma destrutiva. Se vier um valor legado com mais dígitos, capa em 10.
- */
-export function landlineMask(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
 /**

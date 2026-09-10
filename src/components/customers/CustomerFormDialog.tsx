@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
-import { landlineMask, mobileMask, cpfCnpjMask, cepMask } from '@/utils/masks';
+import { phoneMask, mobileMask, cpfCnpjMask, cepMask } from '@/utils/masks';
 import { CnpjDocumentInput } from '@/components/customers/CnpjDocumentInput';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
@@ -309,7 +309,7 @@ export function CustomerFormDialog({
                       <Input
                         placeholder="(00) 0000-0000"
                         value={field.value || ''}
-                        onChange={(e) => field.onChange(landlineMask(e.target.value))}
+                        onChange={(e) => field.onChange(phoneMask(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -410,7 +410,7 @@ export function CustomerFormDialog({
                           if (d.razaoSocial) form.setValue('company_name', d.razaoSocial);
                           if (d.nomeFantasia) form.setValue('nome_fantasia', d.nomeFantasia);
                           if (d.email) form.setValue('email', d.email);
-                          if (d.phone) form.setValue('phone', landlineMask(d.phone));
+                          if (d.phone) form.setValue('phone', phoneMask(d.phone));
                           if (d.zipCode) {
                             const c = d.zipCode.replace(/\D/g, '');
                             form.setValue('zip_code', c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c);

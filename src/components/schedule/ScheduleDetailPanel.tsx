@@ -188,10 +188,10 @@ function OrderDetail({
                 <User className="h-4 w-4 text-primary" />
                 {order.customer.name}
               </div>
-              {order.customer.phone && (
+              {(order.customer.phone || order.customer.celular) && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Phone className="h-3.5 w-3.5" />
-                  {order.customer.phone}
+                  {order.customer.phone || order.customer.celular}
                 </div>
               )}
             </div>
@@ -202,10 +202,10 @@ function OrderDetail({
               <User className="h-4 w-4 text-primary" />
               {order.customer?.name || t.noCustomer}
             </div>
-            {order.customer?.phone && (
+            {(order.customer?.phone || order.customer?.celular) && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Phone className="h-3.5 w-3.5" />
-                {order.customer.phone}
+                {order.customer.phone || order.customer.celular}
               </div>
             )}
             {order.customer?.address && (

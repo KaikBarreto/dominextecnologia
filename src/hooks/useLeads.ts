@@ -98,7 +98,7 @@ export function useLeads() {
         .from('leads')
         .select(`
           *,
-          customers (id, name, phone, email),
+          customers (id, name, phone, celular, email),
           crm_stages (id, name, color)
         `)
         .order('updated_at', { ascending: false });

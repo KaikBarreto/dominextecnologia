@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -73,6 +73,17 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   }, [open, category?.id, initialName, initialType]);
 
   const selectedColor = form.watch('color');
+  const selectedType = form.watch('type');
+  const showDreGroup = selectedType === 'saida' || selectedType === 'ambos';
+
+  // Grupo DRE só se aplica a despesa (classifyCategory só roda no ramo de saída).
+  // Se o campo some da tela, reseta o valor pra não gravar lixo herdado de uma escolha anterior.
+  useEffect(() => {
+    if (!showDreGroup) {
+      form.setValue('dre_group', 'opex', { shouldDirty: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDreGroup]);
 
   const handleSubmit = async (data: FormData) => {
     await onSubmit(data);
@@ -121,20 +132,23 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
             </FormItem>
           )} />
 
-          <FormField control={form.control} name="dre_group" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t.dreGroupLabel}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                <SelectContent>
-                  <SelectItem value="impostos">{t.dreGroups.impostos}</SelectItem>
-                  <SelectItem value="cmv">{t.dreGroups.cmv}</SelectItem>
-                  <SelectItem value="opex">{t.dreGroups.opex}</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
+          {showDreGroup && (
+            <FormField control={form.control} name="dre_group" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t.dreGroupLabel}</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="impostos">{t.dreGroups.impostos}</SelectItem>
+                    <SelectItem value="cmv">{t.dreGroups.cmv}</SelectItem>
+                    <SelectItem value="opex">{t.dreGroups.opex}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {selectedType === 'ambos' && <FormDescription>{t.dreGroupHint}</FormDescription>}
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
 
           <FormField control={form.control} name="color" render={({ field }) => (
             <FormItem>

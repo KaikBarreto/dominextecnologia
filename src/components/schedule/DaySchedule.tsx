@@ -125,10 +125,10 @@ export function DaySchedule({ date, orders, onOrderSelect }: DayScheduleProps) {
                       <span>{order.customer?.name || 'Cliente não informado'}</span>
                     </div>
 
-                    {order.customer?.phone && (
+                    {(order.customer?.phone || order.customer?.celular) && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Phone className="h-3.5 w-3.5" />
-                        <span>{order.customer.phone}</span>
+                        <span>{order.customer.phone || order.customer.celular}</span>
                       </div>
                     )}
 

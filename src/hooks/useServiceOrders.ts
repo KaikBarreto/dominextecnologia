@@ -82,7 +82,7 @@ export function useServiceOrders() {
           .from('service_orders')
           .select(`
             *,
-            customer:customers(id, name, phone, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
+            customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
             equipment:equipment(id, name, brand, model),
             form_template:form_templates(id, name),
             service_type:service_types(id, name, color, number_prefix),
@@ -285,7 +285,7 @@ export function useServiceOrders() {
             .from('service_orders')
             .select(`
               *,
-              customer:customers(id, name, phone, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
+              customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
               equipment:equipment(id, name, brand, model, serial_number, location, capacity),
               form_template:form_templates(id, name),
               service_type:service_types(id, name, color, number_prefix)

@@ -669,6 +669,7 @@ export const finance = {
         ambos: 'Ambos',
       },
       dreGroupLabel: 'Grupo DRE',
+      dreGroupHint: 'Vale apenas para os lançamentos de saída.',
       dreGroups: {
         impostos: 'Impostos e Deduções',
         cmv: 'CMV (Custo do Serviço)',
@@ -1596,6 +1597,7 @@ export const finance = {
         ambos: 'Both',
       },
       dreGroupLabel: 'P&L Group',
+      dreGroupHint: 'Applies only to expense entries.',
       dreGroups: {
         impostos: 'Taxes & Deductions',
         cmv: 'COGS (Cost of Service)',
@@ -2509,6 +2511,7 @@ export const finance = {
         ambos: 'Ambos',
       },
       dreGroupLabel: 'Grupo DRE',
+      dreGroupHint: 'Aplica solo a los movimientos de egreso.',
       dreGroups: {
         impostos: 'Impuestos y Deducciones',
         cmv: 'Costo de los Servicios (CMV)',
@@ -3422,6 +3425,7 @@ export const finance = {
         ambos: 'Les deux',
       },
       dreGroupLabel: 'Groupe du compte de résultat',
+      dreGroupHint: 'Vaut uniquement pour les lignes de dépense.',
       dreGroups: {
         impostos: 'Impôts et déductions',
         cmv: 'Coût des services (CMV)',

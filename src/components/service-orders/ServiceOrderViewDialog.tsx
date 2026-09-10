@@ -125,7 +125,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     try {
       const { data: osData, error: osError } = await supabase
         .from('service_orders')
-        .select(`*, customer:customers(id, name, phone, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name), service_type:service_types(id, name, color)`)
+        .select(`*, customer:customers(id, name, phone, celular, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name), service_type:service_types(id, name, color)`)
         .eq('id', serviceOrderId).single();
       if (osError) throw osError;
       // Use snapshot as fallback when live joins return null (e.g. deleted customer/equipment)
@@ -300,7 +300,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4" /> {tv.sectionCustomer}</CardTitle></CardHeader>
         <CardContent className="pt-0 text-sm">
           <p className="font-medium">{serviceOrder.customer?.name}</p>
-          {serviceOrder.customer?.phone && <p className="text-muted-foreground">{serviceOrder.customer.phone}</p>}
+          {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && <p className="text-muted-foreground">{serviceOrder.customer.phone || serviceOrder.customer.celular}</p>}
           {serviceOrder.customer?.address && <p className="text-muted-foreground">{serviceOrder.customer.address}{serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}</p>}
         </CardContent>
       </Card>
