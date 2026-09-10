@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.24.9',
+    version: '1.24.10',
     date: '10 de setembro de 2026',
     type: 'patch',
     changes: [
@@ -50,6 +50,18 @@ export const changelog: ChangelogEntry[] = [
         title: 'Suas categorias de despesa agora aparecem separadas por grupo',
         description: 'Quem tem muitas categorias de despesa via uma lista corrida, difícil de ler. Agora elas aparecem divididas por grupo do resultado, na mesma ordem em que entram no seu DRE: primeiro Impostos e Deduções, depois o Custo do Serviço, depois as Despesas Operacionais. Cada divisória mostra o nome do grupo e quantas categorias tem dentro. Transferência entre contas e pagamento de fatura ficam num bloco separado no fim, porque são movimentação interna e não despesa. Você continua podendo reordenar arrastando, só que agora dentro do próprio grupo, para não trocar a classificação de uma categoria sem querer. Se todas as suas categorias estiverem no mesmo grupo, a lista continua como era antes, sem divisória nenhuma.',
         category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.9',
+    date: '10 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Baixe todos os seus dados em uma planilha do Excel',
+        description: 'Em Configurações, na aba Empresa, apareceu o botão Exportar meus dados. Você escolhe o que quer levar e baixa um único arquivo do Excel com uma aba para cada coisa: clientes, equipamentos, ordens de serviço, orçamentos, contratos, financeiro, contas bancárias, estoque, funcionários e CRM. A primeira aba é um resumo que mostra quantos registros vieram de cada tipo, para você conferir que não faltou nada. Os valores em dinheiro vêm como número, então dá para somar e filtrar dentro do Excel normalmente. Duas seções que costumam ser bem grandes, movimentações de estoque e ponto, já vêm desmarcadas, e basta marcar se você também precisar delas. Serve como backup e também para quando alguém pede seus dados em planilha, como o contador. Como o arquivo traz informações sensíveis, como financeiro e salário, apenas administradores conseguem exportar. Fotos, anexos e assinaturas não entram na planilha, porque imagem não cabe em célula.',
+        category: 'recurso',
       },
     ],
   },

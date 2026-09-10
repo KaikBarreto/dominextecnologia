@@ -39,6 +39,7 @@ import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from '@/components/technician/ReportHeader';
 import { Slider } from '@/components/ui/slider';
 import { DangerZoneCard } from '@/components/settings/DangerZoneCard';
+import { DataExportCard } from '@/components/settings/DataExportCard';
 import { SettingsIntegrationContent } from '@/components/settings/SettingsWhatsappContent';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
@@ -1147,6 +1148,12 @@ export default function Settings() {
             onOpenChange={setTermsModalOpen}
             readOnly
           />
+
+          {/* Exportar meus dados — apenas admin do tenant OR super_admin Auctus.
+              Arquivo contém dado sensível (salário, financeiro); mesmo gate do Zerar Sistema. */}
+          {canResetSystem && (
+            <DataExportCard companyId={companyId ?? ''} />
+          )}
 
           {/* Zona de Perigo — apenas admin do tenant OR super_admin Auctus.
               Backend rechecka via RPC SECURITY DEFINER. */}
