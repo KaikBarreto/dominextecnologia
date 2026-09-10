@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.8";
+export const APP_VERSION = "1.24.9";
 
-export const VERSION_NOTES = "O telefone do cliente volta a aparecer em todas as telas quando você cadastrou só o celular, e o campo Telefone parou de cortar um dígito quando você cola o número.";
+export const VERSION_NOTES = "Agora você pode baixar todos os seus dados em uma planilha do Excel, direto das Configurações. Serve como backup e para levar suas informações para onde quiser.";

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.9',
+    date: '10 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Baixe todos os seus dados em uma planilha do Excel',
+        description: 'Em Configurações, na aba Empresa, apareceu o botão Exportar meus dados. Você escolhe o que quer levar e baixa um único arquivo do Excel com uma aba para cada coisa: clientes, equipamentos, ordens de serviço, orçamentos, contratos, financeiro, contas bancárias, estoque, funcionários e CRM. A primeira aba é um resumo que mostra quantos registros vieram de cada tipo, para você conferir que não faltou nada. Os valores em dinheiro vêm como número, então dá para somar e filtrar dentro do Excel normalmente. Duas seções que costumam ser bem grandes, movimentações de estoque e ponto, já vêm desmarcadas, e basta marcar se você também precisar delas. Serve como backup e também para quando alguém pede seus dados em planilha, como o contador. Como o arquivo traz informações sensíveis, como financeiro e salário, apenas administradores conseguem exportar. Fotos, anexos e assinaturas não entram na planilha, porque imagem não cabe em célula.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.24.8',
     date: '10 de setembro de 2026',
     type: 'patch',
