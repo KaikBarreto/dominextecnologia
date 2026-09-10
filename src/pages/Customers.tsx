@@ -67,7 +67,7 @@ interface CustomerGridCardProps {
 }
 
 function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEdit, onDelete, t }: CustomerGridCardProps) {
-  const subtitleParts = [customer.phone, customer.city].filter(Boolean);
+  const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
   const subtitle = subtitleParts.length > 0
     ? subtitleParts.join(' • ')
     : (customer.company_name || customer.email || '—');
@@ -353,7 +353,7 @@ export default function Customers() {
                       : []),
                   ];
 
-                  const subtitleParts = [customer.phone, customer.city].filter(Boolean);
+                  const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
 
                   return (
                     <MobileListItem
@@ -485,9 +485,9 @@ export default function Customers() {
                               </TableCell>
                               <TableCell className="hidden sm:table-cell">
                                 <div className="space-y-1">
-                                  {customer.phone && (
+                                  {(customer.phone || customer.celular) && (
                                     <div className="flex items-center gap-1 text-sm">
-                                      <Phone className="h-3 w-3" />{customer.phone}
+                                      <Phone className="h-3 w-3" />{customer.phone || customer.celular}
                                     </div>
                                   )}
                                   {customer.email && (

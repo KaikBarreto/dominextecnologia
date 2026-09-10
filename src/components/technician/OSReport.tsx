@@ -1037,8 +1037,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   {serviceOrder.customer?.document && (
                     <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
                   )}
-                  {serviceOrder.customer?.phone && (
-                    <p className="text-sm text-slate-600">{serviceOrder.customer.phone}</p>
+                  {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
+                    <p className="text-sm text-slate-600">{serviceOrder.customer.phone || serviceOrder.customer.celular}</p>
                   )}
                   {serviceOrder.customer?.address && (
                     <p className="text-sm text-slate-500 mt-1">

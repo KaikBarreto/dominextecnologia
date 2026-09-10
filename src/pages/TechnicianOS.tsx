@@ -1267,7 +1267,7 @@ function TechnicianOSInner() {
         .select(`
           *,
           public_short_code,
-          customer:customers(id, name, phone, address, city, state, document, photo_url, latitude, longitude),
+          customer:customers(id, name, phone, celular, address, city, state, document, photo_url, latitude, longitude),
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name),
           service_type:service_types(id, name, color),
@@ -2736,8 +2736,8 @@ function TechnicianOSInner() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
-                  {serviceOrder.customer?.phone && (
-                    <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone}</p>
+                  {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone || serviceOrder.customer.celular}</p>
                   )}
                 </div>
               </div>
@@ -3403,10 +3403,10 @@ function TechnicianOSInner() {
           <span className="text-xs uppercase tracking-wide text-muted-foreground">{tFlow.sidebarSectionClient}</span>
         </div>
         <p className="font-semibold text-sm break-words">{serviceOrder.customer?.name}</p>
-        {serviceOrder.customer?.phone && (
-          <a href={`tel:${serviceOrder.customer.phone}`} className="flex items-center gap-1.5 text-xs text-primary mt-1">
+        {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
+          <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-xs text-primary mt-1">
             <Phone className="h-3 w-3 shrink-0" />
-            {serviceOrder.customer.phone}
+            {serviceOrder.customer.phone || serviceOrder.customer.celular}
           </a>
         )}
         {(isServiceAddress && destAddress ? destAddress : serviceOrder.customer?.address) && (
@@ -3797,10 +3797,10 @@ function TechnicianOSInner() {
             {serviceOrder.customer?.document && (
               <p className="text-xs text-muted-foreground mt-0.5">{serviceOrder.customer.document}</p>
             )}
-            {serviceOrder.customer?.phone && (
-              <a href={`tel:${serviceOrder.customer.phone}`} className="flex items-center gap-1.5 text-sm text-primary mt-1">
+            {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
+              <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-sm text-primary mt-1">
                 <Phone className="h-3 w-3 shrink-0" />
-                {serviceOrder.customer.phone}
+                {serviceOrder.customer.phone || serviceOrder.customer.celular}
               </a>
             )}
             {serviceOrder.customer?.address && (

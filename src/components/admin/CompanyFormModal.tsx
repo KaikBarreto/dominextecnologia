@@ -1004,8 +1004,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           onPointerDownOutside={(e) => { if (!isEditing) e.preventDefault(); }}
           onEscapeKeyDown={(e) => { if (!isEditing) e.preventDefault(); }}
         >
-          <DialogHeader className="flex flex-row items-center justify-between gap-4 pr-8">
-            <DialogTitle>{title}</DialogTitle>
+          {/* pr-28 (não pr-8) reserva espaço pro botão "FECHAR" absoluto
+              (right-4/top-4 em dialog.tsx) — com HeaderActions ("Gerar Link")
+              presente, pr-8 deixava os dois botões se sobrepondo. */}
+          <DialogHeader className="flex flex-row items-center justify-between gap-4 pr-28">
+            <DialogTitle className="min-w-0 truncate">{title}</DialogTitle>
             {HeaderActions}
           </DialogHeader>
           <div className="flex-1 min-h-0 flex flex-col">

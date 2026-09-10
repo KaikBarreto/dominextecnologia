@@ -108,8 +108,13 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+          {/* pr-28 reserva espaço pro botão "FECHAR" (absolute, ModalCloseButton em
+              dialog.tsx) que fica sobreposto no canto superior direito em ambos os
+              modos (dialog desktop: right-4/top-4; drawer mobile: right-3/top-3).
+              Sem essa reserva, o grupo Editar/Excluir (e, com título de 2 linhas,
+              a própria 1ª linha do título) renderiza por baixo do FECHAR. */}
+          <div className="flex items-start justify-between gap-4 pr-28">
+            <div className="flex-1 min-w-0">
               <DialogTitle className="text-xl font-bold">{lead.title}</DialogTitle>
               {lead.customers && (
                 <p className="text-muted-foreground flex items-center gap-1.5 mt-1">
@@ -206,31 +211,37 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                   {t.detail.customerContact}
                 </h4>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {lead.customers.phone && (
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`tel:${lead.customers.phone}`}
-                        className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                      >
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        {lead.customers.phone}
-                      </a>
-                      {buildWhatsAppLink(lead.customers.phone) && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="h-7 gap-1.5 px-2 text-white hover:opacity-90"
-                          style={{ backgroundColor: '#25D366' }}
-                          onClick={() =>
-                            window.open(buildWhatsAppLink(lead.customers!.phone)!, '_blank')
-                          }
+                  {(() => {
+                    // Exibição: prioriza fixo (phone), cai pro celular se não tiver.
+                    // WhatsApp: prioriza celular (é o número que tem WhatsApp de fato).
+                    const displayPhone = lead.customers?.phone || lead.customers?.celular;
+                    const whatsappSource = lead.customers?.celular || lead.customers?.phone;
+                    const whatsappLink = whatsappSource ? buildWhatsAppLink(whatsappSource) : null;
+                    if (!displayPhone) return null;
+                    return (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`tel:${displayPhone}`}
+                          className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
                         >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          WhatsApp
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          {displayPhone}
+                        </a>
+                        {whatsappLink && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-7 gap-1.5 px-2 text-white hover:opacity-90"
+                            style={{ backgroundColor: '#25D366' }}
+                            onClick={() => window.open(whatsappLink, '_blank')}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            WhatsApp
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {lead.customers.email && (
                     <a 
                       href={`mailto:${lead.customers.email}`}
