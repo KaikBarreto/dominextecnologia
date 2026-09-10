@@ -24,6 +24,24 @@ import { MESSAGES } from '@/lib/i18n/messages';
 
 type CategoryGroup = 'receitas' | 'despesas';
 
+// Grupos do DRE, na ordem em que aparecem na demonstração de resultado.
+// `dre_group` é `text` livre no banco (sem enum/check) — qualquer valor
+// fora dos 3 conhecidos (ou NULL) cai no bucket final "outros".
+type DreGroupKey = 'impostos' | 'cmv' | 'opex' | 'outros';
+const DRE_GROUP_ORDER: DreGroupKey[] = ['impostos', 'cmv', 'opex', 'outros'];
+
+function getDreGroupKey(cat: FinancialCategory): DreGroupKey {
+  return cat.dre_group === 'impostos' || cat.dre_group === 'cmv' || cat.dre_group === 'opex'
+    ? cat.dre_group
+    : 'outros';
+}
+
+interface DespesaGroup {
+  key: DreGroupKey;
+  label: string;
+  items: FinancialCategory[];
+}
+
 export function FinanceCategorias() {
   const { categories, isLoading, createCategory, updateCategory, deleteCategory, reorderCategories } = useFinancialCategories();
   const isMobile = useIsMobile();
@@ -36,10 +54,34 @@ export function FinanceCategorias() {
   const [defaultType, setDefaultType] = useState<string>('entrada');
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  // Grupo (chave DRE, ou 'flat' quando a lista não está agrupada) de onde o
+  // drag começou/está passando por cima — usado só pra travar drop cross-grupo.
+  const [dragGroupKey, setDragGroupKey] = useState<string | null>(null);
+  const [dragOverGroupKey, setDragOverGroupKey] = useState<string | null>(null);
   const [mobileGroup, setMobileGroup] = useState<CategoryGroup>('receitas');
 
   const receitas = categories.filter((c) => c.type === 'entrada' || c.type === 'ambos');
   const despesas = categories.filter((c) => c.type === 'saida' || c.type === 'ambos');
+
+  // Despesas agrupadas por dre_group, na ordem do DRE. Só grupos com pelo
+  // menos 1 item entram — evita divisória fantasma de grupo vazio.
+  const despesaGroups: DespesaGroup[] = (() => {
+    const buckets: Record<DreGroupKey, FinancialCategory[]> = { impostos: [], cmv: [], opex: [], outros: [] };
+    despesas.forEach((cat) => buckets[getDreGroupKey(cat)].push(cat));
+    const labels: Record<DreGroupKey, string> = {
+      impostos: fin.categoryForm.dreGroups.impostos,
+      cmv: fin.categoryForm.dreGroups.cmv,
+      opex: fin.categoryForm.dreGroups.opex,
+      outros: fin.categoryForm.dreGroups.outros,
+    };
+    return DRE_GROUP_ORDER
+      .map((key) => ({ key, label: labels[key], items: buckets[key] }))
+      .filter((g) => g.items.length > 0);
+  })();
+
+  // Requisito 3: só desenha divisória quando há 2+ grupos com item. Empresa
+  // que nunca classificou (quase tudo em 'opex') continua vendo lista plana.
+  const shouldGroupDespesas = despesaGroups.length >= 2;
 
   const handleSubmit = async (data: any) => {
     if (editing) {
@@ -81,61 +123,94 @@ export function FinanceCategorias() {
     }
   };
 
-  const handleDragStart = useCallback((idx: number) => {
+  const handleDragStart = useCallback((idx: number, groupKey: string) => {
     setDragIdx(idx);
+    setDragGroupKey(groupKey);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, idx: number) => {
+  const handleDragOver = useCallback((e: React.DragEvent, idx: number, groupKey: string) => {
     e.preventDefault();
     setDragOverIdx(idx);
+    setDragOverGroupKey(groupKey);
   }, []);
 
-  const handleDrop = useCallback((items: FinancialCategory[], idx: number) => {
-    if (dragIdx === null || dragIdx === idx) {
-      setDragIdx(null);
-      setDragOverIdx(null);
-      return;
-    }
-    const reordered = [...items];
-    const [moved] = reordered.splice(dragIdx, 1);
-    reordered.splice(idx, 0, moved);
-    const updates = reordered.map((c, i) => ({ id: c.id, sort_order: i }));
-    reorderCategories.mutate(updates);
+  /**
+   * `fullList` é a fonte da verdade do sort_order (todas as despesas, ou
+   * todas as receitas — nunca só o grupo). `groupItems` é o subconjunto
+   * visualmente arrastado (um grupo do DRE, ou a lista inteira quando não
+   * está agrupada, quando `groupItems === fullList`).
+   *
+   * Exemplo: fullList = [A(impostos), B(cmv), C(cmv), D(cmv), E(opex)],
+   * grupo cmv = [B, C, D] ocupando as posições globais 1,2,3. Arrastar D
+   * (idx local 2) pra idx local 0 dá [D, B, C]; reinserido nas MESMAS
+   * posições globais 1,2,3 → fullList vira [A, D, B, C, E]. Só então
+   * renumeramos sort_order 0..4. A(0) e E(4) nunca se movem.
+   */
+  const handleDrop = useCallback((fullList: FinancialCategory[], groupItems: FinancialCategory[], idx: number, groupKey: string) => {
+    const originIdx = dragIdx;
+    const originGroup = dragGroupKey;
     setDragIdx(null);
     setDragOverIdx(null);
-  }, [dragIdx, reorderCategories]);
+    setDragGroupKey(null);
+    setDragOverGroupKey(null);
+    // Bloqueia reordenar entre grupos diferentes: não reclassifica a categoria.
+    if (originIdx === null || originGroup !== groupKey || originIdx === idx) return;
+
+    const reorderedGroup = [...groupItems];
+    const [moved] = reorderedGroup.splice(originIdx, 1);
+    reorderedGroup.splice(idx, 0, moved);
+
+    const groupIds = new Set(groupItems.map((c) => c.id));
+    let cursor = 0;
+    const fullReordered = fullList.map((cat) => (groupIds.has(cat.id) ? reorderedGroup[cursor++] : cat));
+
+    const updates = fullReordered.map((c, i) => ({ id: c.id, sort_order: i }));
+    reorderCategories.mutate(updates);
+  }, [dragIdx, dragGroupKey, reorderCategories]);
 
   const handleDragEnd = useCallback(() => {
     setDragIdx(null);
     setDragOverIdx(null);
+    setDragGroupKey(null);
+    setDragOverGroupKey(null);
   }, []);
 
-  // Reorder via setas (mobile) — substitui drag-drop.
-  const moveCategory = useCallback((items: FinancialCategory[], idx: number, direction: -1 | 1) => {
+  // Reorder via setas (mobile) — substitui drag-drop. Mesma regra: só reordena
+  // dentro do grupo (groupItems), renumerando sempre o array completo (fullList).
+  const moveCategory = useCallback((fullList: FinancialCategory[], groupItems: FinancialCategory[], idx: number, direction: -1 | 1) => {
     const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= items.length) return;
-    const reordered = [...items];
-    const [moved] = reordered.splice(idx, 1);
-    reordered.splice(targetIdx, 0, moved);
-    const updates = reordered.map((c, i) => ({ id: c.id, sort_order: i }));
+    if (targetIdx < 0 || targetIdx >= groupItems.length) return;
+
+    const reorderedGroup = [...groupItems];
+    const [moved] = reorderedGroup.splice(idx, 1);
+    reorderedGroup.splice(targetIdx, 0, moved);
+
+    const groupIds = new Set(groupItems.map((c) => c.id));
+    let cursor = 0;
+    const fullReordered = fullList.map((cat) => (groupIds.has(cat.id) ? reorderedGroup[cursor++] : cat));
+
+    const updates = fullReordered.map((c, i) => ({ id: c.id, sort_order: i }));
     reorderCategories.mutate(updates);
   }, [reorderCategories]);
 
-  // ─── DESKTOP: lista com drag-drop (mantida intacta) ───────────────────────
-  const renderCategoryList = (items: FinancialCategory[]) => (
+  // ─── DESKTOP: lista com drag-drop, escopado a um grupo ─────────────────────
+  // `fullList` é a lista completa (todas despesas, ou todas receitas) usada
+  // como fonte de verdade do sort_order. `groupItems` é o que é renderizado
+  // aqui (um grupo do DRE, ou a lista inteira quando `groupKey === 'flat'`).
+  const renderCategoryList = (fullList: FinancialCategory[], groupItems: FinancialCategory[], groupKey: string) => (
     <div className="space-y-1.5">
-      {items.map((cat, idx) => {
+      {groupItems.map((cat, idx) => {
         const Icon = getCategoryIcon(cat.icon);
         const isSystem = cat.is_system;
-        const isDragging = dragIdx === idx;
-        const isDragOver = dragOverIdx === idx;
+        const isDragging = dragIdx === idx && dragGroupKey === groupKey;
+        const isDragOver = dragOverIdx === idx && dragOverGroupKey === groupKey && dragGroupKey === groupKey;
         return (
           <div
             key={cat.id}
             draggable={!isSystem}
-            onDragStart={() => handleDragStart(idx)}
-            onDragOver={(e) => handleDragOver(e, idx)}
-            onDrop={() => handleDrop(items, idx)}
+            onDragStart={() => handleDragStart(idx, groupKey)}
+            onDragOver={(e) => handleDragOver(e, idx, groupKey)}
+            onDrop={() => handleDrop(fullList, groupItems, idx, groupKey)}
             onDragEnd={handleDragEnd}
             className={cn(
               'group flex items-center justify-between rounded-xl border border-border px-4 py-3 transition-all duration-200',
@@ -183,9 +258,87 @@ export function FinanceCategorias() {
     </div>
   );
 
-  // ─── MOBILE: lista com MobileListItem + setas ↑↓ ───────────────────────────
-  const renderMobileList = (items: FinancialCategory[]) => {
-    if (items.length === 0) {
+  // ─── MOBILE: item com MobileListItem + setas ↑↓ ────────────────────────────
+  // `fullList` é a fonte de verdade do sort_order; `groupItems` é o grupo em
+  // que o item está renderizado (um grupo do DRE, ou a lista inteira quando
+  // não agrupada). Primeiro/último item do GRUPO não pode sair dele.
+  const renderMobileItem = (cat: FinancialCategory, idx: number, groupItems: FinancialCategory[], fullList: FinancialCategory[]) => {
+    const Icon = getCategoryIcon(cat.icon);
+    const isSystem = cat.is_system;
+    const isFirst = idx === 0;
+    const isLast = idx === groupItems.length - 1;
+
+    const actions: ItemAction[] = [];
+    if (!isSystem && !isFirst) {
+      actions.push({
+        key: 'move-up',
+        label: fin.categories.actions.moveUp,
+        icon: <ChevronUp className="h-4 w-4" />,
+        onClick: () => moveCategory(fullList, groupItems, idx, -1),
+      });
+    }
+    if (!isSystem && !isLast) {
+      actions.push({
+        key: 'move-down',
+        label: fin.categories.actions.moveDown,
+        icon: <ChevronDown className="h-4 w-4" />,
+        onClick: () => moveCategory(fullList, groupItems, idx, 1),
+      });
+    }
+    actions.push({
+      key: 'edit',
+      label: fin.categories.actions.edit,
+      icon: <Pencil className="h-4 w-4" />,
+      variant: 'edit' as const,
+      onClick: () => handleEdit(cat),
+    });
+    actions.push({
+      key: 'delete',
+      label: fin.categories.actions.delete,
+      icon: <Trash2 className="h-4 w-4" />,
+      variant: 'destructive' as const,
+      onClick: () => handleAskDelete(cat),
+    });
+
+    return (
+      <MobileListItem
+        key={cat.id}
+        actions={actions}
+        leading={
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 shadow-sm"
+            style={{ backgroundColor: cat.color }}
+          >
+            <Icon className="h-5 w-5 text-white" />
+          </div>
+        }
+        title={cat.name}
+        subtitle={
+          isSystem ? (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+              <Lock className="h-2.5 w-2.5" />
+              {fin.categories.system}
+            </Badge>
+          ) : undefined
+        }
+      />
+    );
+  };
+
+  // Divisória discreta reutilizada no desktop e no mobile: nome do grupo do
+  // DRE + contagem, sem card, sem travessão.
+  const renderGroupDivider = (label: string, count: number) => (
+    <div className="flex items-center gap-2 px-0.5 pb-1.5 pt-3 first:pt-0">
+      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+        {label} <span className="normal-case font-normal text-muted-foreground/70">({count})</span>
+      </span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+
+  // ─── MOBILE: lista completa, plana ou agrupada por DRE ─────────────────────
+  const renderMobileList = (fullList: FinancialCategory[], groups: DespesaGroup[] | null) => {
+    if (fullList.length === 0) {
       return (
         <EmptyState
           size="compact"
@@ -199,70 +352,25 @@ export function FinanceCategorias() {
         />
       );
     }
+
+    if (!groups) {
+      return (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          {fullList.map((cat, idx) => renderMobileItem(cat, idx, fullList, fullList))}
+        </div>
+      );
+    }
+
     return (
-      <div className="rounded-xl border bg-card overflow-hidden">
-        {items.map((cat, idx) => {
-          const Icon = getCategoryIcon(cat.icon);
-          const isSystem = cat.is_system;
-          const isFirst = idx === 0;
-          const isLast = idx === items.length - 1;
-
-          const actions: ItemAction[] = [];
-          if (!isSystem && !isFirst) {
-            actions.push({
-              key: 'move-up',
-              label: fin.categories.actions.moveUp,
-              icon: <ChevronUp className="h-4 w-4" />,
-              onClick: () => moveCategory(items, idx, -1),
-            });
-          }
-          if (!isSystem && !isLast) {
-            actions.push({
-              key: 'move-down',
-              label: fin.categories.actions.moveDown,
-              icon: <ChevronDown className="h-4 w-4" />,
-              onClick: () => moveCategory(items, idx, 1),
-            });
-          }
-          actions.push({
-            key: 'edit',
-            label: fin.categories.actions.edit,
-            icon: <Pencil className="h-4 w-4" />,
-            variant: 'edit' as const,
-            onClick: () => handleEdit(cat),
-          });
-          actions.push({
-            key: 'delete',
-            label: fin.categories.actions.delete,
-            icon: <Trash2 className="h-4 w-4" />,
-            variant: 'destructive' as const,
-            onClick: () => handleAskDelete(cat),
-          });
-
-          return (
-            <MobileListItem
-              key={cat.id}
-              actions={actions}
-              leading={
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 shadow-sm"
-                  style={{ backgroundColor: cat.color }}
-                >
-                  <Icon className="h-5 w-5 text-white" />
-                </div>
-              }
-              title={cat.name}
-              subtitle={
-                isSystem ? (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                    <Lock className="h-2.5 w-2.5" />
-                    {fin.categories.system}
-                  </Badge>
-                ) : undefined
-              }
-            />
-          );
-        })}
+      <div>
+        {groups.map((g) => (
+          <div key={g.key}>
+            {renderGroupDivider(g.label, g.items.length)}
+            <div className="rounded-xl border bg-card overflow-hidden">
+              {g.items.map((cat, idx) => renderMobileItem(cat, idx, g.items, fullList))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
@@ -300,7 +408,7 @@ export function FinanceCategorias() {
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
           </div>
         ) : (
-          renderMobileList(activeItems)
+          renderMobileList(activeItems, mobileGroup === 'despesas' && shouldGroupDespesas ? despesaGroups : null)
         )}
 
         <FABButton
@@ -371,7 +479,7 @@ export function FinanceCategorias() {
                 description={fin.categories.empty.noRevenueDescription}
                 action={{ label: fin.categories.actions.new, onClick: () => handleNew('entrada') }}
               />
-            ) : renderCategoryList(receitas)}
+            ) : renderCategoryList(receitas, receitas, 'flat')}
           </div>
 
           <div className="space-y-4">
@@ -398,7 +506,16 @@ export function FinanceCategorias() {
                 description={fin.categories.empty.noExpenseDescription}
                 action={{ label: fin.categories.actions.new, onClick: () => handleNew('saida') }}
               />
-            ) : renderCategoryList(despesas)}
+            ) : shouldGroupDespesas ? (
+              <div>
+                {despesaGroups.map((g) => (
+                  <div key={g.key}>
+                    {renderGroupDivider(g.label, g.items.length)}
+                    {renderCategoryList(despesas, g.items, g.key)}
+                  </div>
+                ))}
+              </div>
+            ) : renderCategoryList(despesas, despesas, 'flat')}
           </div>
         </div>
       )}

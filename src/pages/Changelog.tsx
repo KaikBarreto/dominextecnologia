@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.9',
+    date: '10 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Suas categorias de despesa agora aparecem separadas por grupo',
+        description: 'Quem tem muitas categorias de despesa via uma lista corrida, difícil de ler. Agora elas aparecem divididas por grupo do resultado, na mesma ordem em que entram no seu DRE: primeiro Impostos e Deduções, depois o Custo do Serviço, depois as Despesas Operacionais. Cada divisória mostra o nome do grupo e quantas categorias tem dentro. Transferência entre contas e pagamento de fatura ficam num bloco separado no fim, porque são movimentação interna e não despesa. Você continua podendo reordenar arrastando, só que agora dentro do próprio grupo, para não trocar a classificação de uma categoria sem querer. Se todas as suas categorias estiverem no mesmo grupo, a lista continua como era antes, sem divisória nenhuma.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.8',
     date: '10 de setembro de 2026',
     type: 'patch',

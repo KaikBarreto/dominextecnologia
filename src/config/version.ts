@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.8";
+export const APP_VERSION = "1.24.9";
 
-export const VERSION_NOTES = "O telefone do cliente volta a aparecer em todas as telas quando você cadastrou só o celular, e o campo Telefone parou de cortar um dígito quando você cola o número.";
+export const VERSION_NOTES = "Suas categorias de despesa agora aparecem separadas por grupo do resultado, com divisória entre elas, na mesma ordem em que entram no seu DRE.";
