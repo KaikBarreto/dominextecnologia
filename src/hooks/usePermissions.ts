@@ -80,6 +80,7 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:view_finance_totals', label: 'Ver Totais Financeiros', description: 'Visualizar saldos, totais e projeções', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:manage_users', label: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:users' },
   { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
+  { key: 'fn:export_company_data', label: 'Exportar Dados da Empresa', description: 'Baixar em planilha todos os dados da empresa, incluindo financeiro e salários dos funcionários', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
   { key: 'fn:manage_crm', label: 'Gerenciar CRM', description: 'Gerenciar leads e pipeline comercial', group: 'Comercial', category: 'comercial', relatedScreen: 'screen:crm' },
   { key: 'fn:manage_contracts', label: 'Gerenciar Contratos', description: 'Gerenciar contratos recorrentes e manutenções', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:contracts' },
   { key: 'fn:view_financial_schedule', label: 'Ver Contas na Agenda', description: 'Visualizar contas a pagar e receber na agenda como avisos', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:schedule' },

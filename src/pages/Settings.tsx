@@ -106,12 +106,19 @@ export default function Settings() {
     { value: 'integracoes', label: t.page.tabs.integracoes, icon: Plug },
   ];
 
-  const { hasScreenAccess, hasRole } = useAuth();
+  const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord } = useAuth();
   const { hasModule } = useCompanyModules();
   const { companyId } = useUserCompany();
   // Gate da Zona de Perigo: admin do tenant OR super_admin Auctus.
   // Backend rechecka via RPC SECURITY DEFINER (regra-lei #1 — filtro client é UX).
   const canResetSystem = hasRole('admin') || hasRole('super_admin' as AppRole);
+  // Exportar dados: admin/super_admin OU quem o admin marcou com a permissão
+  // dedicada `fn:export_company_data` na tela de Usuários.
+  // O `hasPermissionRecord` NÃO é redundante: sem registro em `user_permissions`,
+  // `hasPermission` cai no fallback legado `roles.length > 0` e devolve true pra
+  // QUALQUER key, entregando a exportação sozinha a quem ninguém autorizou.
+  const canExportData =
+    canResetSystem || (hasPermissionRecord && hasPermission('fn:export_company_data'));
   const [wlGateOpen, setWlGateOpen] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [originManagerOpen, setOriginManagerOpen] = useState(false);
@@ -1168,9 +1175,11 @@ export default function Settings() {
             readOnly
           />
 
-          {/* Exportar meus dados — apenas admin do tenant OR super_admin Auctus.
-              Arquivo contém dado sensível (salário, financeiro); mesmo gate do Zerar Sistema. */}
-          {canResetSystem && (
+          {/* Exportar meus dados — admin do tenant, super_admin Auctus OU usuário com a
+              permissão `fn:export_company_data` explicitamente marcada. Arquivo contém dado
+              sensível (salário, financeiro), por isso é permissão dedicada e não segue o gate
+              do Zerar Sistema; ver `canExportData` (exige registro em `user_permissions`). */}
+          {canExportData && (
             <DataExportCard companyId={companyId ?? ''} />
           )}
 

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.12',
+    date: '11 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Você já pode liberar o download dos dados da empresa para outras pessoas',
+        description: 'O botão para baixar a planilha com os dados da sua empresa aparecia só para o administrador. Agora existe uma permissão chamada Exportar Dados da Empresa, que você marca em cada usuário na tela de Usuários. Quem for marcado passa a ver o botão dentro de Configurações, na aba Empresa, e consegue gerar a planilha sozinho, sem precisar virar administrador. A opção de apagar todos os dados continua trancada só para o administrador, ela não vai junto. Vale lembrar que a planilha traz a empresa inteira, incluindo financeiro e os salários dos funcionários, então marque essa permissão apenas para quem pode ver essas informações.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.11',
     date: '11 de setembro de 2026',
     type: 'patch',
