@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.14',
+    date: '11 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mudar o estágio do lead pela tela de detalhes agora move o card no funil',
+        description: 'Ao abrir um lead do CRM e trocar o campo de status, o card ficava parado na mesma coluna do funil e o sistema não perguntava o motivo quando o negócio era dado como perdido. Aquele campo era antigo e não tinha ligação com as colunas que você criou. Agora a tela de detalhes do lead mostra o Estágio de verdade, o mesmo das colunas do seu funil: escolheu ali, o card muda de coluna na hora. Se o estágio escolhido for de negócio perdido, o sistema pede o motivo, igual já fazia quando você arrasta o card. O motivo da perda também passa a ser somado às observações do lead, em vez de apagar o que já estava escrito.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.13',
     date: '11 de setembro de 2026',
     type: 'patch',
