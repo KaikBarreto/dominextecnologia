@@ -229,6 +229,19 @@ export const settings = {
         },
       },
 
+      // Card de Financeiro / Orçamento (decisões da EMPRESA, salvas no servidor)
+      quoteFinance: {
+        cardTitle: 'Orçamento e financeiro',
+        cardDescription: 'Como a aprovação de um orçamento vira lançamento no financeiro',
+        modeTitle: 'Ao aprovar um orçamento',
+        modeDescription: 'Define o que já vem marcado no modal de aprovação. Dá pra trocar em cada orçamento.',
+        modeReceived: 'Já recebi',
+        modeReceivable: 'Vou receber depois',
+        modeReceivedHint: 'Lança como receita recebida e entra no saldo da conta na hora.',
+        modeReceivableHint: 'Gera conta a receber pendente. O saldo só muda quando você der a baixa.',
+        publicApprovalTitle: 'Aprovação pelo link da proposta já gera conta a receber',
+        publicApprovalDescription: 'Desligado, aprovar pelo link só muda o status do orçamento, nada entra no financeiro. Ligado, a conta a receber é criada automaticamente.',
+      },
       // Card de Origens
       origins: {
         cardTitle: 'Origens',
@@ -1841,6 +1854,18 @@ export const settings = {
         },
       },
 
+      quoteFinance: {
+        cardTitle: 'Quotes and finance',
+        cardDescription: 'How approving a quote turns into a finance entry',
+        modeTitle: 'When approving a quote',
+        modeDescription: 'Sets what comes pre-selected in the approval modal. You can change it per quote.',
+        modeReceived: 'Already received',
+        modeReceivable: 'Will receive later',
+        modeReceivedHint: 'Posts as received revenue and goes into the account balance right away.',
+        modeReceivableHint: 'Creates a pending receivable. The balance only changes when you settle it.',
+        publicApprovalTitle: 'Approval via proposal link already creates a receivable',
+        publicApprovalDescription: 'Off, approving via the link only changes the quote status and nothing reaches Finance. On, the receivable is created automatically.',
+      },
       origins: {
         cardTitle: 'Sources',
         cardDescription: 'Source list used in customer registration and CRM opportunities',
@@ -3393,6 +3418,18 @@ export const settings = {
         },
       },
 
+      quoteFinance: {
+        cardTitle: 'Presupuestos y finanzas',
+        cardDescription: 'Cómo la aprobación de un presupuesto se convierte en un registro financiero',
+        modeTitle: 'Al aprobar un presupuesto',
+        modeDescription: 'Define lo que viene preseleccionado en el modal de aprobación. Se puede cambiar en cada presupuesto.',
+        modeReceived: 'Ya lo recibí',
+        modeReceivable: 'Lo recibiré después',
+        modeReceivedHint: 'Se registra como ingreso recibido y entra en el saldo de la cuenta de inmediato.',
+        modeReceivableHint: 'Genera una cuenta por cobrar pendiente. El saldo solo cambia cuando la das de baja.',
+        publicApprovalTitle: 'La aprobación por el enlace de la propuesta ya genera cuenta por cobrar',
+        publicApprovalDescription: 'Apagado, aprobar por el enlace solo cambia el estado del presupuesto y nada llega a Finanzas. Encendido, la cuenta por cobrar se crea automáticamente.',
+      },
       origins: {
         cardTitle: 'Orígenes',
         cardDescription: 'Lista de orígenes usada en el registro de clientes y las oportunidades del CRM',
@@ -4945,6 +4982,18 @@ export const settings = {
         },
       },
 
+      quoteFinance: {
+        cardTitle: 'Devis et finances',
+        cardDescription: `Comment l'approbation d'un devis devient une écriture financière`,
+        modeTitle: `À l'approbation d'un devis`,
+        modeDescription: `Définit ce qui est présélectionné dans la fenêtre d'approbation. Modifiable sur chaque devis.`,
+        modeReceived: 'Déjà encaissé',
+        modeReceivable: 'À encaisser plus tard',
+        modeReceivedHint: 'Enregistré comme recette encaissée et ajouté tout de suite au solde du compte.',
+        modeReceivableHint: `Crée une créance en attente. Le solde ne change qu'au moment du lettrage.`,
+        publicApprovalTitle: `L'approbation via le lien de la proposition crée déjà une créance`,
+        publicApprovalDescription: `Désactivé, approuver via le lien change seulement le statut du devis, rien n'arrive dans Finances. Activé, la créance est créée automatiquement.`,
+      },
       origins: {
         cardTitle: 'Sources',
         cardDescription: 'Liste de sources utilisée dans l’inscription des clients et les opportunités CRM',

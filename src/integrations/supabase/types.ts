@@ -1056,6 +1056,8 @@ export type Database = {
           os_stock_consumption_enabled: boolean
           phone: string | null
           proposal_customization: Json | null
+          quote_approval_revenue_mode: string
+          quote_public_approval_creates_receivable: boolean
           report_header_bg_color: string | null
           report_header_logo_bg_color: string | null
           report_header_logo_size: number | null
@@ -1101,6 +1103,8 @@ export type Database = {
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
+          quote_approval_revenue_mode?: string
+          quote_public_approval_creates_receivable?: boolean
           report_header_bg_color?: string | null
           report_header_logo_bg_color?: string | null
           report_header_logo_size?: number | null
@@ -1146,6 +1150,8 @@ export type Database = {
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
+          quote_approval_revenue_mode?: string
+          quote_public_approval_creates_receivable?: boolean
           report_header_bg_color?: string | null
           report_header_logo_bg_color?: string | null
           report_header_logo_size?: number | null
@@ -6422,6 +6428,8 @@ export type Database = {
           prospect_name: string | null
           prospect_phone: string | null
           quote_number: number
+          receivable_first_due_date: string | null
+          receivable_installments: number
           status: string
           subtotal: number | null
           tax_rate: number
@@ -6462,6 +6470,8 @@ export type Database = {
           prospect_name?: string | null
           prospect_phone?: string | null
           quote_number?: number
+          receivable_first_due_date?: string | null
+          receivable_installments?: number
           status?: string
           subtotal?: number | null
           tax_rate?: number
@@ -6502,6 +6512,8 @@ export type Database = {
           prospect_name?: string | null
           prospect_phone?: string | null
           quote_number?: number
+          receivable_first_due_date?: string | null
+          receivable_installments?: number
           status?: string
           subtotal?: number | null
           tax_rate?: number
@@ -9972,6 +9984,8 @@ export type Database = {
           prospect_name: string | null
           prospect_phone: string | null
           quote_number: number
+          receivable_first_due_date: string | null
+          receivable_installments: number
           status: string
           subtotal: number | null
           tax_rate: number

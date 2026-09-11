@@ -20,6 +20,7 @@ import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -90,12 +91,22 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     }
   }, [open, defaultType, editingTransaction]);
 
-  // Filter categories based on type
-  const filteredCategories = (categories || []).filter(
-    (c) => c.type === 'ambos' || (tipo === 'entrada' ? c.type === 'receita' : c.type === 'despesa')
-  );
+  // Filter categories based on type. Vocabulário do DB é entrada|saida|ambos — 'receita'/'despesa' nunca existiu.
+  // `filterCategoriesForSelect` mantém na lista a categoria JÁ selecionada mesmo
+  // que ela tenha sido desativada: sem isso, editar uma conta antiga fazia o
+  // SearchableSelect cair no placeholder e o campo parecia vazio.
+  const filteredCategories = filterCategoriesForSelect(categories, tipo, category);
 
-  const categoryOptions = filteredCategories.map((c) => ({ value: c.name, label: c.name }));
+  const categoryOptions = filteredCategories.map((c) => ({
+    value: c.name,
+    label: c.name,
+    sublabel: c.is_active ? undefined : t.categoryInactiveSuffix,
+  }));
+  // Categoria apagada da tabela (não só desativada): sintetiza a opção pra o
+  // valor gravado continuar visível em vez de sumir no placeholder.
+  if (category && !categoryOptions.some((o) => o.value === category)) {
+    categoryOptions.push({ value: category, label: category, sublabel: t.categoryInactiveSuffix });
+  }
 
   // Show employee selector for salary-related categories
   const isSalaryCategory = category.toLowerCase().includes('salário') || category.toLowerCase().includes('salario');

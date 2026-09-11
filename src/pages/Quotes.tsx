@@ -28,9 +28,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
 import { useQuotes, STATUS_LABELS, type Quote } from '@/hooks/useQuotes';
 import { useQuoteConversion } from '@/hooks/useQuoteConversion';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
-import { ReceivePaymentModal } from '@/components/financial/ReceivePaymentModal';
+import { ApproveQuoteModal } from '@/components/financial/ApproveQuoteModal';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
@@ -164,6 +165,7 @@ function QuotesList() {
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
   const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
+  const { settings: companySettings } = useCompanySettings();
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -437,7 +439,7 @@ function QuotesList() {
       },
     ];
 
-    if (q.status === 'enviado' || q.status === 'rascunho') {
+    if ((q.status === 'enviado' || q.status === 'rascunho') && !q.financial_generated_at) {
       actions.push({
         key: 'approve',
         label: tq.actionApprove,
@@ -491,7 +493,7 @@ function QuotesList() {
       }
     }
 
-    if (showChargeAction && q.customer_id) {
+    if (showChargeAction && q.customer_id && !q.financial_generated_at) {
       actions.push({
         key: 'charge',
         label: tq.actionGenerateChargeMobile,
@@ -751,9 +753,13 @@ function QuotesList() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
+                      {/* O selo marca que o orçamento JÁ GEROU lançamento — não que o
+                          dinheiro entrou. Desde que a aprovação passou a ter o modo
+                          "vou receber depois", dizer "Recebido" aqui era mentira: as
+                          parcelas podem estar todas pendentes em Contas a Receber. */}
                       {q.financial_transaction_id && (
                         <Badge variant="outline" className="h-7 gap-1 text-success border-success/40" title="Lançamento financeiro gerado">
-                          <DollarSign className="h-3 w-3" /> {tq.received}
+                          <DollarSign className="h-3 w-3" /> {tq.financialPosted}
                         </Badge>
                       )}
                       <RowActionsMenu
@@ -765,7 +771,7 @@ function QuotesList() {
                             label: tq.actionApprove,
                             icon: CheckCircle2,
                             onClick: () => setApprovingQuote(q),
-                            hidden: q.status !== 'enviado' && q.status !== 'rascunho',
+                            hidden: (q.status !== 'enviado' && q.status !== 'rascunho') || !!q.financial_generated_at,
                           },
                           {
                             label: tq.actionReject,
@@ -799,7 +805,7 @@ function QuotesList() {
                             label: tq.actionGenerateCharge,
                             icon: CreditCard,
                             onClick: () => setChargeQuote(q),
-                            hidden: !(showChargeAction && !!q.customer_id),
+                            hidden: !(showChargeAction && !!q.customer_id) || !!q.financial_generated_at,
                           },
                           {
                             label: tq.actionEdit,
@@ -859,16 +865,18 @@ function QuotesList() {
       )}
       <ProposalConfigDialog open={configOpen} onOpenChange={setConfigOpen} />
 
-      <ReceivePaymentModal
+      <ApproveQuoteModal
         open={!!approvingQuote}
         onOpenChange={(v) => { if (!v) setApprovingQuote(null); }}
+        quoteNumber={approvingQuote?.quote_number ?? null}
         amount={Number(approvingQuote?.final_price ?? approvingQuote?.total_value ?? 0)}
-        title={tq.approveTitle.replace('{number}', String(approvingQuote?.quote_number ?? ''))}
-        description={tq.approveDesc}
+        defaultMode={companySettings?.quote_approval_revenue_mode ?? 'a_receber'}
+        defaultInstallments={approvingQuote?.receivable_installments ?? undefined}
+        defaultFirstDueDate={approvingQuote?.receivable_first_due_date ?? null}
         isSubmitting={isApproving}
-        onConfirm={async (payment) => {
+        onConfirm={async (approval) => {
           if (!approvingQuote) return;
-          await approveQuoteFinancial.mutateAsync({ quote: approvingQuote, payment });
+          await approveQuoteFinancial.mutateAsync({ quote: approvingQuote, approval });
           setApprovingQuote(null);
         }}
       />

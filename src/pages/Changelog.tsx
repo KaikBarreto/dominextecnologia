@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.11',
+    date: '11 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aprovar um orçamento não conta mais como dinheiro recebido',
+        description: 'Antes, aprovar um orçamento lançava o valor cheio como receita já recebida, no mesmo dia. Agora, na hora de aprovar, você escolhe entre Já recebi, quando o dinheiro caiu na conta na hora, e Vou receber depois, que gera a conta a receber pendente. Escolhendo receber depois, dá para dividir em até 12 vezes e informar a data do primeiro vencimento: o sistema cria uma conta a receber por parcela e você dá a baixa em cada uma conforme o valor entra, podendo receber só uma parte. Enquanto a parcela está pendente ela aparece em A Receber, não entra no seu faturamento e não mexe no saldo das contas. O orçamento também passou a guardar a condição de recebimento, e nas Configurações você define qual das duas opções vem marcada por padrão e se a aprovação feita pelo cliente no link da proposta já gera a conta a receber sozinha. Os orçamentos aprovados antes desta atualização continuam como estão.',
+        category: 'recurso',
+      },
+      {
+        title: 'As categorias voltaram a aparecer ao criar uma conta a pagar ou a receber',
+        description: 'Ao criar uma conta a pagar ou a receber, a lista de categorias vinha quase vazia, deixando de fora justamente as categorias de receita e de despesa. Agora ela mostra todas as categorias do tipo certo, e categorias que você desativou deixam de aparecer como opção. Se você estiver editando um lançamento antigo cuja categoria foi desativada, ela continua visível, marcada como inativa, para o campo não ficar em branco.',
+        category: 'correcao',
+      },
+      {
+        title: 'Parcelas que começam no fim do mês agora vencem na data certa',
+        description: 'Quando a primeira parcela caía nos dias 29, 30 ou 31, as parcelas seguintes pulavam para o mês errado. Um parcelamento começando em 31 de janeiro, por exemplo, vencia em 3 de março em vez de 28 de fevereiro. Agora cada parcela vence no mesmo dia do mês seguinte e, quando esse dia não existe, no último dia daquele mês. A prévia que você vê antes de salvar mostra exatamente as mesmas datas que ficam gravadas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.10',
     date: '10 de setembro de 2026',
     type: 'patch',

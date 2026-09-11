@@ -7,6 +7,7 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import { buildInstallmentPlan } from '@/lib/finance-installments';
 
 export interface TransactionCreator {
   full_name: string | null;
@@ -161,8 +162,11 @@ export function useFinancial() {
 
       if (n > 1) {
         const groupId = crypto.randomUUID();
-        const perInstallment = Math.round((rest.amount / n) * 100) / 100;
-        const baseDate = new Date(rest.transaction_date + 'T12:00:00');
+        // Plano de parcelamento (datas com clamp de fim de mês + rateio com
+        // sobra na última) vem do motor puro compartilhado com o preview do
+        // TransactionFormDialog e com a aprovação de orçamento — as três
+        // superfícies precisam concordar. Ver src/lib/finance-installments.ts.
+        const plan = buildInstallmentPlan(rest.transaction_date, rest.amount, n);
         const rows = [];
 
         // For card accounts, compute the bill date per installment from its due date
@@ -181,9 +185,7 @@ export function useFinancial() {
         const billMonthsToCreate = new Set<string>();
 
         for (let i = 0; i < n; i++) {
-          const dueDate = new Date(baseDate);
-          dueDate.setMonth(dueDate.getMonth() + i);
-          const dueDateStr = dueDate.toISOString().split('T')[0];
+          const dueDateStr = plan[i].date;
 
           // Each installment belongs to its own bill month based on its own due date
           const installmentBillDate = cardAccount
@@ -200,7 +202,7 @@ export function useFinancial() {
           const sanitized = normalizeOptionalForeignKeys(
             {
               ...rest,
-              amount: i === n - 1 ? Math.round((rest.amount - perInstallment * (n - 1)) * 100) / 100 : perInstallment,
+              amount: plan[i].amount,
               description: `${rest.description} (${i + 1}/${n})`,
               transaction_date: dueDateStr,
               due_date: dueDateStr,

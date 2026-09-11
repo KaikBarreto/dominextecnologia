@@ -72,6 +72,15 @@ export interface CompanySettings {
   // aparelho, por isso mora aqui e não em localStorage. Default false no
   // banco. Ver Settings.tsx (aba Usabilidade → Ordens de Serviço).
   os_stock_consumption_enabled?: boolean;
+  // Aprovação de orçamento → financeiro. `quote_approval_revenue_mode` só
+  // escolhe a opção PRE-MARCADA no modal interno ('recebido' = entra paga,
+  // comportamento antigo; 'a_receber' = entra pendente, com vencimento) — o
+  // operador troca em 1 clique. `quote_public_approval_creates_receivable`
+  // liga a geração automática do a receber quando quem aprova é o CLIENTE
+  // FINAL pelo link público da proposta; default false preserva o
+  // comportamento de hoje (aprovar pelo link só muda o status).
+  quote_approval_revenue_mode?: 'recebido' | 'a_receber' | null;
+  quote_public_approval_creates_receivable?: boolean | null;
   created_at: string;
   updated_at: string;
 }

@@ -5,17 +5,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Quote } from '@/hooks/useQuotes';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
-import type { ReceivePaymentResult } from '@/components/financial/ReceivePaymentModal';
+import type { ApproveQuoteResult } from '@/components/financial/ApproveQuoteModal';
+import { buildInstallmentPlan } from '@/lib/finance-installments';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface ApproveQuoteParams {
   quote: Quote;
-  payment: ReceivePaymentResult;
+  approval: ApproveQuoteResult;
+}
+
+/** Devolvido pela mutation pra o toast saber o que dizer. */
+interface ApproveQuoteOutcome {
+  mode: ApproveQuoteResult['mode'];
+  /** Quantas linhas de receita foram criadas (1 no modo 'recebido'). */
+  count: number;
+  /** Id da linha-âncora (a receita, ou a 1a parcela). */
+  primaryId: string;
 }
 
 export function useQuoteConversion() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { locale } = useAppLocaleContext();
+  const tq = MESSAGES[locale].app.finance.approveQuote.toast;
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['quotes'] });
@@ -91,14 +105,24 @@ export function useQuoteConversion() {
   });
 
   /**
-   * Aprova o orçamento: cria a receita, a despesa da tarifa do recebimento
-   * (quando houver) e atualiza o status do orçamento.
+   * Aprova o orçamento em UM de dois modos (o padrão vem de
+   * `company_settings.quote_approval_revenue_mode`):
    *
-   * Não gera lançamento de custo (CMV de material / mão de obra avulsa): o custo
-   * do orçamento é demonstrativo. Ver comentário no item 2 abaixo.
+   * - `recebido`  — comportamento histórico: receita já PAGA (entra no saldo da
+   *                 conta na hora) + a despesa da tarifa do recebimento como
+   *                 linha filha.
+   * - `a_receber` — gera N parcelas PENDENTES em Contas a Receber. O cliente dá
+   *                 a baixa conforme o dinheiro entra. NENHUMA tarifa aqui:
+   *                 tarifa é fato do RECEBIMENTO e é informada na baixa de cada
+   *                 parcela (o ReceivePaymentModal de Contas a Receber já tem o
+   *                 campo). Cobrar a tarifa na aprovação debitaria a conta por
+   *                 um dinheiro que ainda nem entrou.
+   *
+   * Em nenhum dos modos gera lançamento de custo (CMV de material / mão de obra
+   * avulsa): o custo do orçamento é demonstrativo. Ver comentário no item 2.
    */
   const approveQuoteFinancial = useMutation({
-    mutationFn: async ({ quote, payment }: ApproveQuoteParams) => {
+    mutationFn: async ({ quote, approval }: ApproveQuoteParams): Promise<ApproveQuoteOutcome> => {
       if (!user?.id) throw new Error('Usuário não autenticado');
       if (quote.financial_generated_at) {
         throw new Error('Lançamentos financeiros já foram gerados para este orçamento');
@@ -109,6 +133,78 @@ export function useQuoteConversion() {
 
       const grossAmount = Number(quote.final_price ?? quote.total_value ?? 0);
 
+      // ═══════════════════════ MODO "VOU RECEBER DEPOIS" ═══════════════════════
+      if (approval.mode === 'a_receber') {
+        const installments = Math.min(60, Math.max(1, Math.floor(approval.installments ?? 1)));
+        const firstDueDate = approval.first_due_date;
+        if (!firstDueDate) throw new Error('Informe o primeiro vencimento');
+
+        // Datas com clamp de fim de mês + rateio com a sobra na última parcela.
+        // Mesmo motor do preview do modal e do parcelamento manual — as três
+        // superfícies precisam mostrar/gravar exatamente os mesmos números.
+        const plan = buildInstallmentPlan(firstDueDate, grossAmount, installments);
+        const isParcelado = plan.length > 1;
+        // Só parcelado ganha grupo. À vista, os três campos ficam NULL — é como
+        // o lançamento manual nasce, e o badge "x/y" da listagem só aparece
+        // quando `installment_number` existe: um "1/1" denunciaria a origem.
+        const groupId = isParcelado ? crypto.randomUUID() : null;
+
+        const rows = plan.map(({ number, date, amount }) => normalizeOptionalForeignKeys(
+          {
+            transaction_type: 'entrada',
+            amount,
+            description: isParcelado
+              ? `Orçamento #${quote.quote_number} (${number}/${plan.length})`
+              : `Orçamento #${quote.quote_number}`,
+            category: 'Vendas de Serviços',
+            customer_id: quote.customer_id,
+            // Conta PREVISTA do recebimento. Inofensiva enquanto pendente:
+            // saldo de conta só soma linha paga (useFinancialAccounts).
+            account_id: approval.expected_account_id ?? null,
+            // `transaction_date` = mês em que o caixa VAI mover, nunca a data da
+            // geração (bug histórico das mensalidades de contrato).
+            transaction_date: date,
+            due_date: date,
+            paid_date: null,
+            is_paid: false,
+            notes: approval.notes,
+            created_by: user.id,
+            company_id,
+            installment_group_id: groupId,
+            installment_number: isParcelado ? number : null,
+            installment_total: isParcelado ? plan.length : null,
+          } as any,
+          ['customer_id', 'account_id']
+        ));
+
+        const { data: inserted, error: insErr } = await supabase
+          .from('financial_transactions')
+          .insert(rows as any)
+          .select('id, installment_number');
+        if (insErr) throw insErr;
+
+        const ordered = ((inserted ?? []) as Array<{ id: string; installment_number: number | null }>)
+          .slice()
+          .sort((a, b) => (a.installment_number ?? 0) - (b.installment_number ?? 0));
+        const primaryId = ordered[0]?.id;
+        if (!primaryId) throw new Error('Nenhuma parcela foi criada');
+
+        const { error: qErr } = await supabase
+          .from('quotes')
+          .update({
+            status: 'aprovado',
+            financial_generated_at: new Date().toISOString(),
+            financial_transaction_id: primaryId,
+            receivable_installments: plan.length,
+            receivable_first_due_date: firstDueDate,
+          } as any)
+          .eq('id', quote.id);
+        if (qErr) throw qErr;
+
+        return { mode: 'a_receber', count: plan.length, primaryId };
+      }
+
+      // ═══════════════════════════ MODO "JÁ RECEBI" ════════════════════════════
       // 1. Revenue (entrada)
       const revenuePayload = normalizeOptionalForeignKeys(
         {
@@ -117,12 +213,12 @@ export function useQuoteConversion() {
           description: `Orçamento #${quote.quote_number}`,
           category: 'Vendas de Serviços',
           customer_id: quote.customer_id,
-          account_id: payment.account_id,
-          payment_method: payment.payment_method,
-          transaction_date: payment.paid_date,
-          paid_date: payment.paid_date,
+          account_id: approval.account_id,
+          payment_method: approval.payment_method,
+          transaction_date: approval.paid_date,
+          paid_date: approval.paid_date,
           is_paid: true,
-          notes: payment.notes,
+          notes: approval.notes,
           created_by: user.id,
           company_id,
         } as any,
@@ -157,21 +253,21 @@ export function useQuoteConversion() {
       // `QuoteFormDialog` via `useBDICalculator`. Não reintroduza sem o PM.
       //
       // A RECEITA (item 1) e a TARIFA do recebimento (item 3) continuam com
-      // `payment.account_id`: essas duas são movimento de caixa de verdade.
+      // `approval.account_id`: essas duas são movimento de caixa de verdade.
       const expensesToInsert: any[] = [];
 
       // 3. Tarifa do recebimento (Tarifas e Taxas)
-      if (payment.fee_amount > 0) {
+      if ((approval.fee_amount ?? 0) > 0) {
         expensesToInsert.push(normalizeOptionalForeignKeys({
           transaction_type: 'saida',
-          amount: payment.fee_amount,
+          amount: approval.fee_amount,
           description: `Tarifa do recebimento — Orçamento #${quote.quote_number}`,
           category: 'Tarifas e Taxas',
           customer_id: quote.customer_id,
-          account_id: payment.account_id,
-          payment_method: payment.payment_method,
-          transaction_date: payment.paid_date,
-          paid_date: payment.paid_date,
+          account_id: approval.account_id,
+          payment_method: approval.payment_method,
+          transaction_date: approval.paid_date,
+          paid_date: approval.paid_date,
           is_paid: true,
           created_by: user.id,
           company_id,
@@ -197,14 +293,19 @@ export function useQuoteConversion() {
         .eq('id', quote.id);
       if (qErr) throw qErr;
 
-      return revenue;
+      return { mode: 'recebido', count: 1, primaryId: revenue.id };
     },
-    onSuccess: () => {
+    onSuccess: (outcome) => {
       invalidateAll();
-      toast({ title: 'Orçamento aprovado!', description: 'Receita lançada no financeiro.' });
+      const description = outcome.mode === 'recebido'
+        ? tq.revenuePosted
+        : outcome.count > 1
+          ? tq.receivableMulti.replace('{count}', String(outcome.count))
+          : tq.receivableSingle;
+      toast({ title: tq.approvedTitle, description });
     },
     onError: (e: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao aprovar', description: getErrorMessage(e) });
+      toast({ variant: 'destructive', title: tq.errorTitle, description: getErrorMessage(e) });
     },
   });
 

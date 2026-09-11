@@ -275,6 +275,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [validUntil, setValidUntil] = useState('');
   const [proposalTemplateId, setProposalTemplateId] = useState('');
 
+  // ── Condição de recebimento (usada pela aprovação, seja pelo operador seja
+  // pelo cliente final no link público, onde não há ninguém pra perguntar) ──
+  const [receivableInstallments, setReceivableInstallments] = useState(1);
+  const [receivableFirstDueDate, setReceivableFirstDueDate] = useState('');
+
   // ── Notes / Terms ──
   const [notes, setNotes] = useState('');
   const [terms, setTerms] = useState('');
@@ -299,6 +304,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     customerMode: string; customerId: string; prospectName: string; prospectPhone: string; prospectEmail: string;
     distanceKm: number; discountType: string; discountValue: number; includeGifts: boolean;
     validUntil: string; notes: string; terms: string; proposalTemplateId: string;
+    receivableInstallments: number; receivableFirstDueDate: string;
   };
   const draft = useFormDraft<QuoteDraft>({ key: 'quote-form', isOpen: open, isEditing });
 
@@ -311,9 +317,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         customerMode, customerId, prospectName, prospectPhone, prospectEmail,
         distanceKm, discountType, discountValue, includeGifts,
         validUntil, notes, terms, proposalTemplateId,
+        receivableInstallments, receivableFirstDueDate,
       });
     }
-  }, [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, open, isEditing, draftQuoteId, draft.showResumePrompt]);
+  }, [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, receivableInstallments, receivableFirstDueDate, open, isEditing, draftQuoteId, draft.showResumePrompt]);
 
   const applyQuoteDraft = (d: QuoteDraft) => {
     setCustomerMode(d.customerMode as any || 'existing');
@@ -329,6 +336,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setNotes(d.notes || '');
     setTerms(d.terms || '');
     setProposalTemplateId(d.proposalTemplateId || '');
+    setReceivableInstallments(d.receivableInstallments || 1);
+    setReceivableFirstDueDate(d.receivableFirstDueDate || '');
     // O rascunho leve (sessionStorage) NÃO guarda itens de propósito. Ao retomar,
     // zeramos os itens pra não herdar os da sessão anterior que sobreviveram.
     setItems([]);
@@ -347,6 +356,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setValidUntil('');
     setNotes('');
     setTerms('');
+    setReceivableInstallments(1);
+    setReceivableFirstDueDate('');
     setItems([]);
     // Novos orçamentos nascem no template "Clean" (branco/enxuto). Os demais
     // seguem selecionáveis no seletor de template. Fallback: 1º da lista.
@@ -433,6 +444,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setProposalTemplateId(quote.proposal_template_id ?? '');
       setNotes(quote.notes ?? '');
       setTerms(quote.terms ?? '');
+      setReceivableInstallments(Number(quote.receivable_installments ?? 1));
+      setReceivableFirstDueDate(quote.receivable_first_due_date ?? '');
       setItems(
         (quote.quote_items ?? []).map(qi => ({
           id: qi.id,
@@ -723,6 +736,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     total_cost: bdi.totalCost,
     total_price: bdi.finalPrice,
     valid_until: validUntil || undefined,
+    receivable_installments: receivableInstallments,
+    // null (não undefined/''): precisa chegar explicitamente no UPDATE pra
+    // limpar a data quando o usuário apaga o campo (voltando ao default
+    // "vence na aprovação"). Coluna date do Postgres rejeita string vazia.
+    receivable_first_due_date: receivableFirstDueDate || null,
     discount_type: discountType,
     discount_value: discountValue,
     subtotal: totalItemsPrice,
@@ -1352,6 +1370,25 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{tq.receivableInstallmentsLabel}</Label>
+                  <Select value={String(receivableInstallments)} onValueChange={v => setReceivableInstallments(Number(v) || 1)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">{tq.receivableInstallmentsCash}</SelectItem>
+                      {Array.from({ length: 11 }, (_, i) => i + 2).map(n => (
+                        <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{tq.receivableFirstDueDateLabel}</Label>
+                  <Input type="date" value={receivableFirstDueDate} onChange={e => setReceivableFirstDueDate(e.target.value)} />
+                  <p className="text-[11px] text-muted-foreground">{tq.receivableFirstDueDateHint}</p>
                 </div>
               </section>
 

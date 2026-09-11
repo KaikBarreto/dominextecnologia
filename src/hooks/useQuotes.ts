@@ -39,6 +39,11 @@ export interface QuoteInput {
   prospect_email?: string;
   status?: string;
   valid_until?: string;
+  // Condição de recebimento (nº de parcelas + 1º vencimento). É o que a
+  // aprovação usa — inclusive a feita pelo cliente final no link público,
+  // onde não há operador pra perguntar como ele vai pagar.
+  receivable_installments?: number;
+  receivable_first_due_date?: string | null;
   discount_type?: string;
   discount_value?: number;
   subtotal?: number;
@@ -75,6 +80,8 @@ export interface Quote {
   prospect_email: string | null;
   status: string;
   valid_until: string | null;
+  receivable_installments?: number | null;
+  receivable_first_due_date?: string | null;
   discount_type: string | null;
   discount_value: number | null;
   subtotal: number | null;
@@ -358,29 +365,6 @@ export function useQuotes() {
     },
   });
 
-  const createFinancialFromQuote = useMutation({
-    mutationFn: async (q: Quote) => {
-      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
-      const company_id = await getCurrentUserCompanyId();
-      const { error } = await supabase.from('financial_transactions').insert({
-        transaction_type: 'receita' as any,
-        amount: q.total_value ?? 0,
-        description: `Orçamento #${q.quote_number}`,
-        customer_id: q.customer_id,
-        is_paid: false,
-        created_by: user?.id,
-        company_id,
-      } as any);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'Conta a receber gerada!' });
-    },
-    onError: (err) => {
-      toast({ title: 'Erro ao gerar financeiro', description: getErrorMessage(err), variant: 'destructive' });
-    },
-  });
-
   const fetchQuoteByToken = async (token: string) => {
     const { data, error } = await supabase
       .from('quotes')
@@ -442,7 +426,6 @@ export function useQuotes() {
     updateStatus,
     deleteQuote,
     duplicateQuote,
-    createFinancialFromQuote,
     fetchQuoteByToken,
     respondByToken,
     kpis: { totalOpen, conversionRate, avgTicket, total: quotes.length, avgMarginPct, totalCostSum },

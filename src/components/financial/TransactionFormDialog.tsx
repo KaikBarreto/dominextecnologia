@@ -27,6 +27,8 @@ import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { computeBillDate } from '@/hooks/useCreditCardBills';
 import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
+import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
+import { buildInstallmentPlan } from '@/lib/finance-installments';
 import {
   useTransactionAttachments,
   useUploadTransactionAttachment,
@@ -99,21 +101,15 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
     ? format(parseISO(billDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR })
     : null;
 
-  const perInstallment = installmentCount > 1 && totalAmount > 0
-    ? Math.round((totalAmount / installmentCount) * 100) / 100
-    : 0;
-
+  // Preview usa o MESMO motor da gravação (buildInstallmentPlan): datas com
+  // clamp de fim de mês (31/01 → 28/02, nunca 03/03) e rateio com sobra na
+  // última parcela. Antes o preview repetia a conta com `setMonth` nativo —
+  // ambos erravam igual, então o bug passava despercebido.
   const installmentBreakdown = installmentCount > 1 && account && transactionDate
-    ? Array.from({ length: installmentCount }, (_, i) => {
-        const d = new Date(transactionDate + 'T12:00:00');
-        d.setMonth(d.getMonth() + i);
-        const dueDateStr = d.toISOString().split('T')[0];
-        const bDate = computeBillDate(account, dueDateStr);
+    ? buildInstallmentPlan(transactionDate, totalAmount, installmentCount).map(({ number, date, amount }) => {
+        const bDate = computeBillDate(account, date);
         const bLabel = format(parseISO(bDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
-        const amt = i === installmentCount - 1
-          ? Math.round((totalAmount - perInstallment * (installmentCount - 1)) * 100) / 100
-          : perInstallment;
-        return { label: bLabel, amount: amt, num: i + 1 };
+        return { label: bLabel, amount, num: number };
       })
     : null;
 
@@ -436,8 +432,11 @@ export function TransactionFormDialog({
   const [accountInitialName, setAccountInitialName] = useState('');
   const uploadSharedMutation = useUploadTransactionAttachmentShared();
 
-  const getCategoriesForType = (type: 'entrada' | 'saida') => {
-    const fromDb = dbCategories.filter((c) => c.is_active && (c.type === type || c.type === 'ambos'));
+  // `selectedName` mantém na lista a categoria JÁ escolhida mesmo que ela tenha
+  // sido desativada — sem isso, editar um lançamento antigo fazia o
+  // SearchableSelect cair no placeholder e o campo parecia vazio.
+  const getCategoriesForType = (type: 'entrada' | 'saida', selectedName?: string | null) => {
+    const fromDb = filterCategoriesForSelect(dbCategories, type, selectedName);
     return fromDb.length > 0 ? fromDb : null;
   };
 
@@ -630,29 +629,37 @@ export function TransactionFormDialog({
   };
 
   const isEntrada = transactionType === 'entrada';
-  const dbCats = getCategoriesForType(transactionType);
+  const selectedCategory = form.watch('category');
+  const dbCats = getCategoriesForType(transactionType, selectedCategory);
   const busy = isLoading || submitting;
 
   // Opções do SearchableSelect de categoria — filtradas pelo tipo da transação
   // (o filtro já vem de getCategoriesForType). O `value` continua sendo o NOME
   // da categoria (contrato pré-existente do form). Ícone colorido no item.
   const categoryOptions = useMemo(() => {
-    if (dbCats) {
-      return dbCats.map((cat) => {
-        const Icon = getCategoryIcon(cat.icon);
-        return {
-          value: cat.name,
-          label: cat.name,
-          icon: (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
-              <Icon className="h-3 w-3 text-white" />
-            </span>
-          ),
-        };
-      });
+    const opts = dbCats
+      ? dbCats.map((cat) => {
+          const Icon = getCategoryIcon(cat.icon);
+          return {
+            value: cat.name,
+            label: cat.name,
+            sublabel: cat.is_active ? undefined : tf.categoryInactiveSuffix,
+            icon: (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
+                <Icon className="h-3 w-3 text-white" />
+              </span>
+            ),
+          };
+        })
+      : fallbackCategories[transactionType].map((cat) => ({ value: cat, label: cat, sublabel: undefined as string | undefined }));
+
+    // Categoria apagada da tabela (não só desativada): sintetiza a opção pra o
+    // valor gravado continuar visível em vez de sumir no placeholder.
+    if (selectedCategory && !opts.some((o) => o.value === selectedCategory)) {
+      opts.push({ value: selectedCategory, label: selectedCategory, sublabel: tf.categoryInactiveSuffix });
     }
-    return fallbackCategories[transactionType].map((cat) => ({ value: cat, label: cat }));
-  }, [dbCats, transactionType]);
+    return opts;
+  }, [dbCats, transactionType, selectedCategory, tf.categoryInactiveSuffix]);
 
   // Opções do SearchableSelect de conta bancária / caixa.
   const accountOptions = useMemo(

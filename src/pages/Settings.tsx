@@ -4,7 +4,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug, Receipt } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { BrandedQRCode, type QRDotStyle, type QRCornerStyle } from '@/components/BrandedQRCode';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getSegment } from '@/utils/companySegments';
@@ -491,6 +492,24 @@ export default function Settings() {
   const handleToggleStockConsumption = (checked: boolean) => {
     updateSettings.mutate(
       { os_stock_consumption_enabled: checked },
+      { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
+    );
+  };
+
+  // Mesmo padrão do os_stock_consumption_enabled acima: decisão da EMPRESA, no
+  // servidor. O Switch/LabeledSwitch é controlado por `settings?.<campo>` (não
+  // por estado local) porque o optimistic update do useCompanySettings já
+  // reverte o cache sozinho no erro. Não duplicar tratamento de erro aqui.
+  const handleChangeQuoteApprovalMode = (mode: 'recebido' | 'a_receber') => {
+    updateSettings.mutate(
+      { quote_approval_revenue_mode: mode } as any,
+      { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
+    );
+  };
+
+  const handleTogglePublicApprovalReceivable = (checked: boolean) => {
+    updateSettings.mutate(
+      { quote_public_approval_creates_receivable: checked } as any,
       { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
     );
   };
@@ -1232,6 +1251,63 @@ export default function Settings() {
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+
+          {/* Orçamento → Financeiro (decisão da EMPRESA, salva no servidor) */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-primary" />
+                <CardTitle>{t.usability.quoteFinance.cardTitle}</CardTitle>
+              </div>
+              <CardDescription>{t.usability.quoteFinance.cardDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-0.5 sm:pr-4">
+                  <Label className="text-sm font-medium">{t.usability.quoteFinance.modeTitle}</Label>
+                  <p className="text-xs text-muted-foreground">{t.usability.quoteFinance.modeDescription}</p>
+                </div>
+                {isLoading ? (
+                  // Valor vem do servidor — spinner até a query resolver, pra o
+                  // controle nunca mentir sobre o estado real.
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                ) : (
+                  <LabeledSwitch<'recebido' | 'a_receber'>
+                    className="shrink-0 self-start sm:self-auto"
+                    value={settings?.quote_approval_revenue_mode === 'recebido' ? 'recebido' : 'a_receber'}
+                    onChange={handleChangeQuoteApprovalMode}
+                    off={{ value: 'recebido', label: t.usability.quoteFinance.modeReceived }}
+                    on={{ value: 'a_receber', label: t.usability.quoteFinance.modeReceivable }}
+                    disabled={!canSave || updateSettings.isPending}
+                    aria-label={t.usability.quoteFinance.modeTitle}
+                  />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground pb-1">
+                {settings?.quote_approval_revenue_mode === 'recebido'
+                  ? t.usability.quoteFinance.modeReceivedHint
+                  : t.usability.quoteFinance.modeReceivableHint}
+              </p>
+
+              <Separator className="opacity-50" />
+
+              <div className="flex items-center justify-between py-3">
+                <div className="space-y-0.5 pr-4">
+                  <Label className="text-sm font-medium">{t.usability.quoteFinance.publicApprovalTitle}</Label>
+                  <p className="text-xs text-muted-foreground">{t.usability.quoteFinance.publicApprovalDescription}</p>
+                </div>
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                ) : (
+                  <Switch
+                    checked={!!settings?.quote_public_approval_creates_receivable}
+                    disabled={!canSave || updateSettings.isPending}
+                    onCheckedChange={handleTogglePublicApprovalReceivable}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
 
