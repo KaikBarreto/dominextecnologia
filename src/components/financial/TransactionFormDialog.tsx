@@ -28,6 +28,9 @@ import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { computeBillDate } from '@/hooks/useCreditCardBills';
 import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
 import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
+import { CostCenterSelect } from './CostCenterSelect';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useCostCenters } from '@/hooks/useCostCenters';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
 import {
   useTransactionAttachments,
@@ -64,6 +67,8 @@ function makeTransactionSchema(v: { descriptionRequired: string; amountPositive:
     payment_method: z.string().optional(),
     installment_count: z.coerce.number().min(1).default(1),
     account_id: z.string().min(1, v.accountRequired),
+    // Centro de custo é SEMPRE opcional — nenhum lançamento passa a exigir.
+    cost_center_id: z.string().nullable().optional(),
     credit_card_bill_date: z.string().optional(),
   });
 }
@@ -413,7 +418,12 @@ export function TransactionFormDialog({
   const tf = fin.transactionForm;
   const { categories: dbCategories, createCategory } = useFinancialCategories();
   const { accounts } = useFinancialAccounts();
+  const { activeCostCenters } = useCostCenters();
   const { toast } = useToast();
+  // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
+  // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
+  // explicação. Mesmo critério do CostCenterSelect.
+  const canManageFinanceSettings = useCanManageFinanceSettings();
   const isEditing = !!transaction;
   const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
@@ -461,6 +471,7 @@ export function TransactionFormDialog({
       : lastPaymentMethod,
     installment_count: (transaction as any)?.installment_total ?? 1,
     account_id: (transaction as any)?.account_id ?? lastAccountId,
+    cost_center_id: transaction?.cost_center_id ?? null,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [transaction, defaultType]);
 
@@ -566,6 +577,7 @@ export function TransactionFormDialog({
         paid_date: isPaidFinal ? data.transaction_date : undefined,
         payment_method: data.payment_method || null,
         account_id: data.account_id || null,
+        cost_center_id: data.cost_center_id || null,
         credit_card_bill_date: data.credit_card_bill_date || null,
       };
       if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
@@ -630,6 +642,9 @@ export function TransactionFormDialog({
 
   const isEntrada = transactionType === 'entrada';
   const selectedCategory = form.watch('category');
+  // Campo de centro de custo só entra na tela pra quem usa centro de custo —
+  // ou quando o lançamento em edição já carrega um (mesmo que desativado).
+  const showCostCenter = activeCostCenters.length > 0 || !!form.watch('cost_center_id');
   const dbCats = getCategoriesForType(transactionType, selectedCategory);
   const busy = isLoading || submitting;
 
@@ -755,16 +770,34 @@ export function TransactionFormDialog({
                 onValueChange={field.onChange}
                 placeholder={tf.categoryPlaceholder}
                 searchPlaceholder={tf.categorySearchPlaceholder}
-                onCreateOption={(query) => {
+                onCreateOption={canManageFinanceSettings ? (query) => {
                   setCategoryInitialName(query);
                   setCategoryFormOpen(true);
-                }}
+                } : undefined}
                 createOptionLabel={tf.categoryCreateLabel}
                 createAlwaysLabel={tf.categoryCreateAlwaysLabel}
               />
               <FormMessage />
             </FormItem>
           )} />
+
+          {/* Centro de custo — SEMPRE opcional. Só aparece pra quem usa: sem
+              nenhum centro ativo cadastrado, o campo nem é renderizado (não
+              poluir o form de quem não organiza por obra/projeto). A exceção é
+              editar um lançamento que JÁ tem centro: aí ele aparece mesmo que o
+              centro tenha sido desativado depois. */}
+          {showCostCenter && (
+            <FormField control={form.control} name="cost_center_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{fin.costCenters.fieldLabel}</FormLabel>
+                <CostCenterSelect
+                  value={field.value ?? null}
+                  onValueChange={(v) => field.onChange(v)}
+                />
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
 
           {/* Amount */}
           <FormField control={form.control} name="amount" render={({ field }) => {
@@ -805,10 +838,10 @@ export function TransactionFormDialog({
                   onValueChange={field.onChange}
                   placeholder={tf.accountPlaceholder}
                   searchPlaceholder={tf.accountSearchPlaceholder}
-                  onCreateOption={(query) => {
+                  onCreateOption={canManageFinanceSettings ? (query) => {
                     setAccountInitialName(query);
                     setAccountFormOpen(true);
-                  }}
+                  } : undefined}
                   createOptionLabel={tf.accountCreateLabel}
                   createAlwaysLabel={tf.accountCreateAlwaysLabel}
                 />

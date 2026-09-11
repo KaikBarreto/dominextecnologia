@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { AccountFormDialog } from './AccountFormDialog';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,10 @@ interface CreditCardBillPanelProps {
  */
 export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: CreditCardBillPanelProps) {
   const isMobile = useIsMobile();
+  // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
+  // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
+  // explicação. Mesmo critério do CostCenterSelect.
+  const canManageFinanceSettings = useCanManageFinanceSettings();
   const { locale, currency } = useAppLocaleContext();
   const cc = MESSAGES[locale].app.finance.creditCard;
   const fmt = (v: number) => formatMoney(v, currency, locale);
@@ -599,10 +604,10 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                 onValueChange={setPayAccountId}
                 placeholder={cc.payWithPlaceholder}
                 searchPlaceholder={cc.payWithSearchPlaceholder}
-                onCreateOption={(query) => {
+                onCreateOption={canManageFinanceSettings ? (query) => {
                   setAccountInitialName(query);
                   setAccountFormOpen(true);
-                }}
+                } : undefined}
                 createAlwaysLabel={cc.payWithNewAccount}
               />
               {cashBankAccounts.length === 0 && (

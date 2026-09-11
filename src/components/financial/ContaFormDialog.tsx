@@ -21,6 +21,8 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
+import { CostCenterSelect } from './CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -35,7 +37,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const { createTransaction, updateTransaction } = useFinancial();
   const { categories } = useFinancialCategories();
   const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.finance.contaForm;
+  const fin = MESSAGES[locale].app.finance;
+  const t = fin.contaForm;
+  const { activeCostCenters } = useCostCenters();
   const { employees } = useEmployees();
   const { contracts } = useContracts();
   const { customers } = useCustomers();
@@ -53,6 +57,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [contractId, setContractId] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [accountId, setAccountId] = useState('');
+  // Centro de custo é SEMPRE opcional: `null` = nenhum.
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!editingTransaction;
@@ -70,6 +76,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setContractId(editingTransaction.contract_id || '');
         setCustomerId(editingTransaction.customer_id || '');
         setAccountId((editingTransaction as any).account_id || '');
+        setCostCenterId(editingTransaction.cost_center_id ?? null);
         setRecurrence('unica');
         setOccurrences('12');
         const empMatch = editingTransaction.notes?.match(/\[funcionario:([^\]]+)\]/);
@@ -87,6 +94,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setContractId('');
         setCustomerId('');
         setAccountId(localStorage.getItem('fin_last_account_id') || '');
+        setCostCenterId(null);
       }
     }
   }, [open, defaultType, editingTransaction]);
@@ -151,6 +159,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           contract_id: contractId && showContractSelector ? contractId : undefined,
           customer_id: customerId || undefined,
           account_id: accountId,
+          cost_center_id: costCenterId,
         } as any;
         await updateTransaction.mutateAsync(input);
       } else {
@@ -182,6 +191,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             contract_id: contractId && showContractSelector ? contractId : undefined,
             customer_id: customerId || undefined,
             account_id: accountId,
+            // Recorrência: TODA ocorrência leva o mesmo centro de custo.
+            cost_center_id: costCenterId,
           } as any;
 
           await createTransaction.mutateAsync(input);
@@ -257,6 +268,15 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               placeholder={t.categoryPlaceholder}
             />
           </div>
+
+          {/* Centro de custo — opcional. Só renderiza pra quem tem centro ativo
+              cadastrado (ou quando a conta em edição já carrega um). */}
+          {(activeCostCenters.length > 0 || costCenterId) && (
+            <div className="space-y-1.5">
+              <Label>{fin.costCenters.fieldLabel}</Label>
+              <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
+            </div>
+          )}
 
           {/* Employee selector for salary categories */}
           {isSalaryCategory && tipo === 'saida' && (

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -85,6 +86,10 @@ export function ReceivePaymentModal({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.receivePayment;
   const { accounts } = useFinancialAccounts();
+  // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
+  // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
+  // explicação. Mesmo critério do CostCenterSelect.
+  const canManageFinanceSettings = useCanManageFinanceSettings();
   const activeAccounts = useMemo(() => accounts.filter(a => a.is_active), [accounts]);
 
   // Opções do SearchableSelect de conta (busca por nome + ícone por tipo).
@@ -267,10 +272,10 @@ export function ReceivePaymentModal({
             onValueChange={setAccountId}
             placeholder={t.accountPlaceholder}
             searchPlaceholder={t.accountSearchPlaceholder}
-            onCreateOption={(query) => {
+            onCreateOption={canManageFinanceSettings ? (query) => {
               setAccountInitialName(query);
               setAccountFormOpen(true);
-            }}
+            } : undefined}
             createOptionLabel={t.accountCreateLabel}
             createAlwaysLabel={t.accountCreateAlwaysLabel}
           />

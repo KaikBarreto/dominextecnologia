@@ -161,6 +161,9 @@ export function useQuoteConversion() {
             // Conta PREVISTA do recebimento. Inofensiva enquanto pendente:
             // saldo de conta só soma linha paga (useFinancialAccounts).
             account_id: approval.expected_account_id ?? null,
+            // TODAS as parcelas levam o mesmo centro de custo — parcela sem ele
+            // fura a quebra por centro de custo em silêncio.
+            cost_center_id: approval.cost_center_id ?? null,
             // `transaction_date` = mês em que o caixa VAI mover, nunca a data da
             // geração (bug histórico das mensalidades de contrato).
             transaction_date: date,
@@ -174,7 +177,7 @@ export function useQuoteConversion() {
             installment_number: isParcelado ? number : null,
             installment_total: isParcelado ? plan.length : null,
           } as any,
-          ['customer_id', 'account_id']
+          ['customer_id', 'account_id', 'cost_center_id']
         ));
 
         const { data: inserted, error: insErr } = await supabase
@@ -214,6 +217,7 @@ export function useQuoteConversion() {
           category: 'Vendas de Serviços',
           customer_id: quote.customer_id,
           account_id: approval.account_id,
+          cost_center_id: approval.cost_center_id ?? null,
           payment_method: approval.payment_method,
           transaction_date: approval.paid_date,
           paid_date: approval.paid_date,
@@ -222,7 +226,7 @@ export function useQuoteConversion() {
           created_by: user.id,
           company_id,
         } as any,
-        ['customer_id', 'account_id']
+        ['customer_id', 'account_id', 'cost_center_id']
       );
 
       const { data: revenue, error: revErr } = await supabase
@@ -265,6 +269,8 @@ export function useQuoteConversion() {
           category: 'Tarifas e Taxas',
           customer_id: quote.customer_id,
           account_id: approval.account_id,
+          // A tarifa é despesa do MESMO fato: segue o centro de custo da receita.
+          cost_center_id: approval.cost_center_id ?? null,
           payment_method: approval.payment_method,
           transaction_date: approval.paid_date,
           paid_date: approval.paid_date,
@@ -272,7 +278,7 @@ export function useQuoteConversion() {
           created_by: user.id,
           company_id,
           parent_transaction_id: revenue.id,
-        } as any, ['customer_id', 'account_id']));
+        } as any, ['customer_id', 'account_id', 'cost_center_id']));
       }
 
       if (expensesToInsert.length > 0) {

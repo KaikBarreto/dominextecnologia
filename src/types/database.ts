@@ -258,6 +258,8 @@ export interface FinancialTransaction {
   installment_number?: number;
   installment_total?: number;
   account_id?: string | null;
+  /** Centro de custo (obra/projeto/setor). SEMPRE opcional — nenhum form exige. */
+  cost_center_id?: string | null;
   transfer_pair_id?: string | null;
   parent_transaction_id?: string | null;
   credit_card_bill_date?: string | null;

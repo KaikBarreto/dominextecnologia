@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AccountFormDialog } from './AccountFormDialog';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { Loader2, ArrowRight } from 'lucide-react';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -22,6 +23,10 @@ interface TransferFormDialogProps {
 export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isLoading }: TransferFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.transferForm;
+  // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
+  // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
+  // explicação. Mesmo critério do CostCenterSelect.
+  const canManageFinanceSettings = useCanManageFinanceSettings();
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
   const [amount, setAmount] = useState(0);
@@ -84,11 +89,11 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
               onValueChange={setFromId}
               placeholder={t.originPlaceholder}
               searchPlaceholder={t.accountSearchPlaceholder}
-              onCreateOption={(query) => {
+              onCreateOption={canManageFinanceSettings ? (query) => {
                 setAccountTarget('from');
                 setAccountInitialName(query);
                 setAccountFormOpen(true);
-              }}
+              } : undefined}
               createOptionLabel={t.accountCreateLabel}
               createAlwaysLabel={t.accountCreateAlwaysLabel}
             />
@@ -102,11 +107,11 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
               onValueChange={setToId}
               placeholder={t.destPlaceholder}
               searchPlaceholder={t.accountSearchPlaceholder}
-              onCreateOption={(query) => {
+              onCreateOption={canManageFinanceSettings ? (query) => {
                 setAccountTarget('to');
                 setAccountInitialName(query);
                 setAccountFormOpen(true);
-              }}
+              } : undefined}
               createOptionLabel={t.accountCreateLabel}
               createAlwaysLabel={t.accountCreateAlwaysLabel}
             />

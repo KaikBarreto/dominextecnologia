@@ -32,9 +32,12 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { isTransactionInDateRange } from '@/lib/finance-date';
+import { useCostCenters } from '@/hooks/useCostCenters';
+import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
@@ -84,6 +87,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
   // Filtro multi-select: vazio = todas as categorias. Pattern FilterCheckboxGroup.
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  // Filtro multi-select de centro de custo, espelhando o de categoria. Vazio =
+  // todos; o balde `NO_COST_CENTER` mostra as contas SEM centro (sem ele, elas
+  // sumiriam sem explicação ao filtrar).
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   // Busca textual UNIVERSAL: quando há texto, procura no dataset inteiro do subTab
   // (pagar OU receber) IGNORANDO status/categoria/período. Pattern tela de OS (v1.9.40).
   const [search, setSearch] = useState('');
@@ -106,6 +113,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const { deleteTransaction } = useFinancial();
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
+  // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
+  // explicação. Mesmo critério do CostCenterSelect.
+  const canManageFinanceSettings = useCanManageFinanceSettings();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
   // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
   // contendo a permissão (ou o curinga '*'). O fallback legado do
@@ -113,6 +124,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const { accounts: allAccounts } = useFinancialAccounts();
+  const { costCenters } = useCostCenters();
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
   // Opções do SearchableSelect — só contas não-cartão e ativas.
   const cashBankAccountOptions = useMemo(
@@ -280,7 +292,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     if (searchActive) {
       return searchBase.filter(matchesSearch);
     }
-    return baseFiltered.filter((t) => {
+    const byStatusAndCategory = baseFiltered.filter((t) => {
       if (filter === 'todas') { /* pass */ }
       else if (filter === 'pagas') { if (!t.is_paid) return false; }
       else if (filter === 'pendentes') { if (t.is_paid) return false; }
@@ -293,8 +305,11 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       }
       return true;
     });
+    // Centro de custo pelo motor puro compartilhado (mesma semântica de balde
+    // "sem centro" usada em Movimentações e na DRE).
+    return filterByCostCenters(byStatusAndCategory, costCenterFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseFiltered, searchBase, filter, today, categoryFilter, searchActive, search]);
+  }, [baseFiltered, searchBase, filter, today, categoryFilter, costCenterFilter, searchActive, search]);
 
   // Summary: somar TODAS as fontes (txns + faturas) pra refletir "movimento total"
   // — pendente/vencido/7dias/pago. Caso contrário o card "Pago" zeraria pra clientes
@@ -312,7 +327,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     // categorias, não cabe em "uma" categoria — por isso também some da lista (ver
     // bloco "Faturas de Cartão" abaixo). Sem isso os totais do topo continuavam
     // somando a fatura escondida e o dono achava que ela tinha sido paga.
-    const billUniverse = subTab === 'pagar' && categoryFilter.length === 0
+    // Com filtro de categoria OU de centro de custo ativo, a fatura NÃO entra:
+    // ela junta despesas de várias categorias e de vários centros, não cabe em
+    // "um" deles (mesmo motivo pelo qual some da lista abaixo).
+    const billUniverse = subTab === 'pagar' && categoryFilter.length === 0 && costCenterFilter.length === 0
       ? allBills.filter((b) => {
           if (!cardAccountMap[b.account_id]) return false;
           const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
@@ -375,7 +393,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       prox7: prox7Txn + prox7Bill,
       pago: pagoTxn + pagoBill,
     };
-  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange, categoryFilter]);
+  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange, categoryFilter, costCenterFilter]);
 
   // Lista de categorias presentes nas transações atuais (baseFiltered, antes do
   // filtro de categoria) pra popular o <Select> de filtro. Ordena alfabeticamente.
@@ -403,6 +421,28 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
     return { total, count: filtered.length };
   }, [filtered, categoryFilter]);
+
+  // Centros ofertados: ativos + qualquer um já usado nas contas da tela (mesmo
+  // desativado depois) — senão a conta antiga ficaria sem como ser filtrada.
+  const availableCostCenters = useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    costCenters.filter((c) => c.is_active).forEach((c) => map.set(c.id, { name: c.name, color: c.color }));
+    for (const t of baseFiltered) {
+      const id = t.cost_center_id;
+      if (!id || map.has(id)) continue;
+      const known = costCenters.find((c) => c.id === id);
+      if (!known) continue;
+      map.set(id, { name: `${known.name} (${fin.costCenters.inactiveSuffix})`, color: known.color });
+    }
+    return Array.from(map.entries()).map(([value, c]) => ({ value, label: c.name, color: c.color }));
+  }, [costCenters, baseFiltered, fin.costCenters.inactiveSuffix]);
+
+  // Resumo do centro de custo ativo: total + quantidade (espelha o de categoria).
+  const costCenterSummary = useMemo(() => {
+    if (costCenterFilter.length === 0) return null;
+    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
+    return { total, count: filtered.length };
+  }, [filtered, costCenterFilter]);
 
   // Pré-calcula campos derivados pra ordenação na table desktop. O hook
   // useTableSort entende números (amount, due_date_ts) e strings (status).
@@ -634,17 +674,35 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         </div>
       )}
 
-      {/* Filtro de categoria — dropdown (Popover) com checkboxes. Vazio = todas;
-          marcar 1+ filtra. Escondido durante a busca textual (busca é universal). */}
-      {!searchActive && availableCategories.length > 0 && (
+      {/* Filtros de categoria e de centro de custo — dropdowns (Popover) com
+          checkboxes. Vazio = todos; marcar 1+ filtra. Escondidos durante a busca
+          textual (busca é universal). Cada um tem seu cartão de resumo (total +
+          contagem) logo abaixo. */}
+      {!searchActive && (availableCategories.length > 0 || availableCostCenters.length > 0) && (
         <div className="flex flex-col gap-2">
-          <FilterCheckboxDropdown
-            label={fin.accounts.categoryFilter.label}
-            selected={categoryFilter}
-            onChange={setCategoryFilter}
-            emptyLabel={fin.accounts.categoryFilter.emptyLabel}
-            options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
-          />
+          <div className="flex flex-wrap gap-2">
+            {availableCategories.length > 0 && (
+              <FilterCheckboxDropdown
+                label={fin.accounts.categoryFilter.label}
+                selected={categoryFilter}
+                onChange={setCategoryFilter}
+                emptyLabel={fin.accounts.categoryFilter.emptyLabel}
+                options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
+              />
+            )}
+            {availableCostCenters.length > 0 && (
+              <FilterCheckboxDropdown
+                label={fin.costCenters.filterLabel}
+                selected={costCenterFilter}
+                onChange={setCostCenterFilter}
+                emptyLabel={fin.costCenters.filterEmptyLabel}
+                options={[
+                  ...availableCostCenters,
+                  { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter },
+                ]}
+              />
+            )}
+          </div>
 
           {/* Resumo das categorias ativas */}
           {categorySummary && (
@@ -660,6 +718,25 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               </span>
             </div>
           )}
+
+          {/* Resumo dos centros de custo ativos — mesmo formato do de categoria. */}
+          {costCenterSummary && (
+            <div className="flex items-center gap-3 rounded-lg bg-muted p-3 text-sm flex-wrap">
+              <Badge variant="outline" className="shrink-0">
+                {costCenterFilter.length === 1
+                  ? (costCenterFilter[0] === NO_COST_CENTER
+                      ? fin.costCenters.dreNoCenter
+                      : availableCostCenters.find((c) => c.value === costCenterFilter[0])?.label ?? fin.costCenters.filterLabel)
+                  : `${costCenterFilter.length} ${fin.costCenters.filterCountSuffix}`}
+              </Badge>
+              <span className="text-muted-foreground">
+                {fin.accounts.categoryFilter.totalLabel}: <span className="font-semibold text-foreground tabular-nums">{fmt(costCenterSummary.total)}</span>
+              </span>
+              <span className="text-muted-foreground">
+                {costCenterSummary.count} {costCenterSummary.count === 1 ? fin.accounts.categoryFilter.entry : fin.accounts.categoryFilter.entries}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -672,7 +749,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           uma linha explica o motivo. `summary` já exclui o valor da fatura dos totais
           nesse caso (ver useMemo acima). */}
       {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && !searchActive && (
-        categoryFilter.length === 0 ? (
+        categoryFilter.length === 0 && costCenterFilter.length === 0 ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
@@ -701,7 +778,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         ) : (
           <div className="flex items-start gap-2 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/40 p-3 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            <span>{fin.accounts.cardInvoices.hiddenByCategoryFilter}</span>
+            <span>{categoryFilter.length > 0
+              ? fin.accounts.cardInvoices.hiddenByCategoryFilter
+              : fin.accounts.cardInvoices.hiddenByCostCenterFilter}</span>
           </div>
         )
       )}
@@ -711,8 +790,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
         </div>
-      ) : filtered.length === 0 && (searchActive || cardInvoices.length === 0 || categoryFilter.length > 0) ? (
-        (searchActive || categoryFilter.length > 0 || filter !== 'pendentes') ? (
+      ) : filtered.length === 0 && (searchActive || cardInvoices.length === 0 || categoryFilter.length > 0 || costCenterFilter.length > 0) ? (
+        (searchActive || categoryFilter.length > 0 || costCenterFilter.length > 0 || filter !== 'pendentes') ? (
           <EmptyState
             size="compact"
             icon={<DollarSign className="h-10 w-10" />}
@@ -1062,10 +1141,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               onValueChange={setPayDespAccountId}
               placeholder={fin.accounts.payExpenseModal.selectAccount}
               searchPlaceholder={fin.accounts.payExpenseModal.searchAccount}
-              onCreateOption={(query) => {
+              onCreateOption={canManageFinanceSettings ? (query) => {
                 setPayDespAccountInitialName(query);
                 setPayDespAccountFormOpen(true);
-              }}
+              } : undefined}
               createAlwaysLabel={fin.accounts.payExpenseModal.newAccount}
             />
             {cashBankAccounts.length === 0 && (

@@ -39,7 +39,192 @@ export interface TransactionInput {
   receipt_url?: string;
   installment_count?: number;
   account_id?: string | null;
+  /**
+   * Centro de custo (obra/projeto/setor). SEMPRE opcional. Em parcelamento,
+   * TODAS as parcelas herdam o mesmo centro — parcela que nasce sem ele fura
+   * o relatório por centro de custo em silêncio.
+   */
+  cost_center_id?: string | null;
   credit_card_bill_date?: string | null;
+}
+
+/**
+ * Monta as linhas de um PARCELAMENTO. Puro de propósito (sem Supabase, sem
+ * React): é o ponto onde uma parcela pode nascer diferente das irmãs, e isso
+ * precisa ser testável.
+ *
+ * Invariantes que este builder garante:
+ * - TODAS as parcelas herdam os mesmos campos da mãe (`...rest`) — inclusive
+ *   `cost_center_id`. Parcela sem o centro fura o relatório em silêncio.
+ * - Parcela de cartão NUNCA nasce paga (quem fica paga é a FATURA). Em
+ *   parcelamento não-cartão, só a 1a pode estar paga (comportamento legado).
+ * - `transaction_date` = `due_date` = data da parcela (mês em que o caixa move).
+ */
+type InstallmentRowDraft = Omit<TransactionInput, 'installment_count'> & {
+  created_by?: string;
+  company_id: string;
+  installment_group_id: string;
+  installment_number: number;
+  installment_total: number;
+};
+
+export function buildInstallmentRows(args: {
+  /** Input da transação sem `installment_count`. */
+  rest: Omit<TransactionInput, 'installment_count'>;
+  plan: Array<{ date: string; amount: number }>;
+  groupId: string;
+  companyId: string;
+  createdBy?: string;
+  /** Despesa lançada num cartão: nenhuma parcela nasce paga. */
+  isCardInstallment: boolean;
+  /** Mês de fatura da parcela, a partir do vencimento dela. */
+  billDateFor: (dueDate: string) => string | null | undefined;
+}): { rows: InstallmentRowDraft[]; billMonths: string[] } {
+  const { rest, plan, groupId, companyId, createdBy, isCardInstallment, billDateFor } = args;
+  const n = plan.length;
+  const rows: InstallmentRowDraft[] = [];
+  const billMonths = new Set<string>();
+
+  for (let i = 0; i < n; i++) {
+    const dueDateStr = plan[i].date;
+    // Cada parcela pertence à fatura do PRÓPRIO vencimento dela.
+    const installmentBillDate = billDateFor(dueDateStr);
+    if (installmentBillDate) billMonths.add(installmentBillDate);
+
+    const parcelIsPaid = isCardInstallment ? false : (i === 0 ? rest.is_paid : false);
+    rows.push(normalizeOptionalForeignKeys(
+      {
+        ...rest,
+        amount: plan[i].amount,
+        description: `${rest.description} (${i + 1}/${n})`,
+        transaction_date: dueDateStr,
+        due_date: dueDateStr,
+        is_paid: parcelIsPaid,
+        paid_date: parcelIsPaid ? dueDateStr : undefined,
+        credit_card_bill_date: installmentBillDate ?? null,
+        created_by: createdBy,
+        company_id: companyId,
+        installment_group_id: groupId,
+        installment_number: i + 1,
+        installment_total: n,
+      } as InstallmentRowDraft,
+      // `cost_center_id` entra na lista de FKs opcionais: string vazia vinda do
+      // form viraria erro de FK. O VALOR vem de `rest`, então todas as parcelas
+      // carregam o mesmo centro de custo.
+      ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+    ));
+  }
+
+  return { rows, billMonths: Array.from(billMonths) };
+}
+
+/**
+ * Campos da MÃE necessários pra montar as linhas filhas da baixa
+ * (`markAsPaid`). Precisam vir no `.select(...)` que busca a mãe — campo que
+ * não é pedido no select chega `undefined` e a herança vira no-op SILENCIOSO
+ * (sem erro, sem log, só o relatório errado depois).
+ */
+export interface MarkAsPaidParentRow {
+  id: string;
+  company_id: string;
+  description?: string | null;
+  due_date?: string | null;
+  customer_id?: string | null;
+  cost_center_id?: string | null;
+}
+
+/** Parte do input da baixa que as filhas copiam. */
+export interface MarkAsPaidChildConfig {
+  customer_id?: string | null;
+  account_id?: string | null;
+  payment_method?: string;
+  notes?: string;
+}
+
+/**
+ * Linha filha "Recebimento parcial". Puro de propósito (sem Supabase, sem
+ * React): é aqui que a filha pode nascer sem o centro de custo da mãe e furar
+ * a quebra por centro em silêncio.
+ *
+ * Invariantes:
+ * - herda `cost_center_id` da mãe; mãe sem centro produz `null` (nunca
+ *   `undefined`, nunca `''` — string vazia é erro de FK no banco);
+ * - `transaction_date` = data do pagamento (mês em que o caixa moveu);
+ * - a filha nasce PAGA (é o dinheiro que entrou agora), a mãe segue em aberto.
+ */
+export function buildPartialReceiptRow(args: {
+  parent: MarkAsPaidParentRow;
+  cfg: MarkAsPaidChildConfig & { amountReceived?: number };
+  paidDate: string;
+  createdBy?: string;
+}): Record<string, any> {
+  const { parent, cfg, paidDate, createdBy } = args;
+  return normalizeOptionalForeignKeys(
+    {
+      transaction_type: 'entrada',
+      amount: cfg.amountReceived,
+      description: `Recebimento parcial — ${parent.description || 'transação'}`,
+      category: 'Recebimento parcial',
+      customer_id: cfg.customer_id ?? parent.customer_id ?? null,
+      account_id: cfg.account_id,
+      cost_center_id: parent.cost_center_id ?? null,
+      payment_method: cfg.payment_method,
+      transaction_date: paidDate,
+      due_date: parent.due_date ?? paidDate,
+      paid_date: paidDate,
+      is_paid: true,
+      notes: cfg.notes,
+      created_by: createdBy,
+      company_id: parent.company_id,
+      parent_transaction_id: parent.id,
+    } as any,
+    ['customer_id', 'account_id', 'cost_center_id']
+  );
+}
+
+/**
+ * Linha filha "Tarifa do recebimento". Puro de propósito.
+ *
+ * `sourceRow` é a linha que ORIGINOU a tarifa: em recebimento parcial é a
+ * própria filha parcial (a tarifa é neta da mãe), em quitação total é a mãe
+ * atualizada. Por isso o centro de custo herda de `sourceRow` com fallback na
+ * mãe — o par tarifa/recebimento tem que cair no MESMO centro, senão a receita
+ * entra numa obra e o custo dela em nenhuma.
+ */
+export function buildReceiptFeeRow(args: {
+  parent: MarkAsPaidParentRow;
+  sourceRow: {
+    id: string;
+    description?: string | null;
+    customer_id?: string | null;
+    cost_center_id?: string | null;
+  };
+  cfg: MarkAsPaidChildConfig & { fee_amount?: number };
+  paidDate: string;
+  companyId: string;
+  createdBy?: string;
+}): Record<string, any> {
+  const { parent, sourceRow, cfg, paidDate, companyId, createdBy } = args;
+  return normalizeOptionalForeignKeys(
+    {
+      transaction_type: 'saida',
+      amount: cfg.fee_amount,
+      description: `Tarifa do recebimento — ${sourceRow.description || parent.description || 'transação'}`,
+      category: 'Tarifas e Taxas',
+      customer_id: cfg.customer_id ?? sourceRow.customer_id ?? parent.customer_id ?? null,
+      account_id: cfg.account_id,
+      cost_center_id: sourceRow.cost_center_id ?? parent.cost_center_id ?? null,
+      payment_method: cfg.payment_method,
+      transaction_date: paidDate,
+      paid_date: paidDate,
+      is_paid: true,
+      notes: cfg.notes,
+      created_by: createdBy,
+      company_id: companyId,
+      parent_transaction_id: sourceRow.id,
+    } as any,
+    ['customer_id', 'account_id', 'cost_center_id']
+  );
 }
 
 export function useFinancial() {
@@ -167,7 +352,6 @@ export function useFinancial() {
         // TransactionFormDialog e com a aprovação de orçamento — as três
         // superfícies precisam concordar. Ver src/lib/finance-installments.ts.
         const plan = buildInstallmentPlan(rest.transaction_date, rest.amount, n);
-        const rows = [];
 
         // For card accounts, compute the bill date per installment from its due date
         const isCardInstallment = !!rest.credit_card_bill_date && rest.transaction_type === 'saida';
@@ -182,43 +366,18 @@ export function useFinancial() {
         }
 
         const { computeBillDate, computeBillDates } = await import('@/hooks/useCreditCardBills');
-        const billMonthsToCreate = new Set<string>();
 
-        for (let i = 0; i < n; i++) {
-          const dueDateStr = plan[i].date;
-
-          // Each installment belongs to its own bill month based on its own due date
-          const installmentBillDate = cardAccount
-            ? computeBillDate(cardAccount, dueDateStr)
-            : rest.credit_card_bill_date ?? undefined;
-
-          if (installmentBillDate) billMonthsToCreate.add(installmentBillDate);
-
-          // Parcelas de cartão: NENHUMA entra paga (quem fica paga é a FATURA).
-          // Parcelas não-cartão (boleto, etc.): comportamento legado — só a 1ª
-          // pode estar paga se o usuário marcou no form. Fix p/ bug do (1/6)
-          // sumir do filtro Pendentes em Contas a Pagar. v1.9.15.
-          const parcelIsPaid = isCardInstallment ? false : (i === 0 ? rest.is_paid : false);
-          const sanitized = normalizeOptionalForeignKeys(
-            {
-              ...rest,
-              amount: plan[i].amount,
-              description: `${rest.description} (${i + 1}/${n})`,
-              transaction_date: dueDateStr,
-              due_date: dueDateStr,
-              is_paid: parcelIsPaid,
-              paid_date: parcelIsPaid ? dueDateStr : undefined,
-              credit_card_bill_date: installmentBillDate ?? null,
-              created_by: user?.id,
-              company_id,
-              installment_group_id: groupId,
-              installment_number: i + 1,
-              installment_total: n,
-            },
-            ['customer_id', 'service_order_id', 'contract_id', 'account_id']
-          );
-          rows.push(sanitized);
-        }
+        const { rows, billMonths } = buildInstallmentRows({
+          rest,
+          plan,
+          groupId,
+          companyId: company_id,
+          createdBy: user?.id,
+          isCardInstallment,
+          billDateFor: (dueDate) =>
+            cardAccount ? computeBillDate(cardAccount, dueDate) : rest.credit_card_bill_date ?? undefined,
+        });
+        const billMonthsToCreate = new Set<string>(billMonths);
 
         // Insert + retorna as rows criadas pra termos os IDs (em ordem de installment_number).
         const { data: insertedRows, error } = await supabase
@@ -253,7 +412,7 @@ export function useFinancial() {
 
       const sanitized = normalizeOptionalForeignKeys(
         { ...rest, created_by: user?.id, company_id },
-        ['customer_id', 'service_order_id', 'contract_id', 'account_id']
+        ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
       );
 
       const { data, error } = await supabase
@@ -303,7 +462,7 @@ export function useFinancial() {
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
       const { installment_count, ...rest } = input;
-      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id', 'account_id']);
+      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']);
 
       // Detect transition paid -> unpaid: also unmark linked children (tarifas, CMV)
       const { data: existing } = await supabase
@@ -468,7 +627,10 @@ export function useFinancial() {
       // Buscar a mãe pra calcular se é parcial e usar dados (company_id, due_date, customer_id, amount).
       const { data: parent, error: parentErr } = await supabase
         .from('financial_transactions')
-        .select('id, company_id, amount, amount_received, due_date, description, customer_id, transaction_type')
+        // `cost_center_id` PRECISA vir aqui: as filhas (recebimento parcial e
+        // tarifa) herdam dele. Campo fora do select chega `undefined` e a
+        // herança falha em silêncio, sem erro nenhum.
+        .select('id, company_id, amount, amount_received, due_date, description, customer_id, transaction_type, cost_center_id')
         .eq('id', cfg.id)
         .single();
       if (parentErr) throw parentErr;
@@ -487,23 +649,12 @@ export function useFinancial() {
       if (isPartial) {
         // === FLUXO PARCIAL ===
         // 1) Insere filha 'Recebimento parcial' (entrada, is_paid=true).
-        const childPayload = normalizeOptionalForeignKeys({
-          transaction_type: 'entrada',
-          amount: cfg.amountReceived,
-          description: `Recebimento parcial — ${parent.description || 'transação'}`,
-          category: 'Recebimento parcial',
-          customer_id: cfg.customer_id ?? parent.customer_id ?? null,
-          account_id: cfg.account_id,
-          payment_method: cfg.payment_method,
-          transaction_date: paidDate,
-          due_date: parent.due_date ?? paidDate,
-          paid_date: paidDate,
-          is_paid: true,
-          notes: cfg.notes,
-          created_by: user?.id,
-          company_id: parent.company_id,
-          parent_transaction_id: parent.id,
-        } as any, ['customer_id', 'account_id']);
+        const childPayload = buildPartialReceiptRow({
+          parent: parent as any,
+          cfg,
+          paidDate,
+          createdBy: user?.id,
+        });
         const { data: child, error: childErr } = await supabase
           .from('financial_transactions')
           .insert(childPayload as any)
@@ -544,22 +695,17 @@ export function useFinancial() {
       if (cfg.fee_amount && cfg.fee_amount > 0) {
         const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
         const company_id = await getCurrentUserCompanyId();
-        const feePayload = normalizeOptionalForeignKeys({
-          transaction_type: 'saida',
-          amount: cfg.fee_amount,
-          description: `Tarifa do recebimento — ${dataRow.description || parent.description || 'transação'}`,
-          category: 'Tarifas e Taxas',
-          customer_id: cfg.customer_id ?? (dataRow as any).customer_id ?? parent.customer_id ?? null,
-          account_id: cfg.account_id,
-          payment_method: cfg.payment_method,
-          transaction_date: paidDate,
-          paid_date: paidDate,
-          is_paid: true,
-          notes: cfg.notes,
-          created_by: user?.id,
-          company_id,
-          parent_transaction_id: dataRow.id,
-        } as any, ['customer_id', 'account_id']);
+        // Em recebimento parcial `dataRow` é a FILHA parcial (que já carrega o
+        // centro de custo da mãe); em quitação total é a própria mãe. O fallback
+        // em `parent` cobre a linha antiga que ainda não tinha centro.
+        const feePayload = buildReceiptFeeRow({
+          parent: parent as any,
+          sourceRow: dataRow as any,
+          cfg,
+          paidDate,
+          companyId: company_id,
+          createdBy: user?.id,
+        });
         const { error: feeErr } = await supabase.from('financial_transactions').insert(feePayload as any);
         if (feeErr) throw feeErr;
       }

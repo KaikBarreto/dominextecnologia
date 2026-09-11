@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { LayoutDashboard, FileBarChart, Tags, RefreshCw, Wallet } from 'lucide-react';
+import { LayoutDashboard, FileBarChart, Tags, RefreshCw, Wallet, Layers } from 'lucide-react';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { FinanceOverview } from './FinanceOverview';
 import { FinanceDRE } from './FinanceDRE';
 import { FinanceCategorias } from './FinanceCategorias';
+import { FinanceCostCenters } from './FinanceCostCenters';
 import { FinanceAssinaturas } from './FinanceAssinaturas';
 import { FinanceCobrancas } from './FinanceCobrancas';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -74,6 +75,7 @@ export function FinanceRelatorio({
       ? [{ value: 'dre', label: fin.report.tabs.incomeStatement, icon: FileBarChart } as SettingsTab]
       : []),
     { value: 'categorias', label: fin.report.tabs.categories, icon: Tags },
+    { value: 'centro-de-custo', label: fin.report.tabs.costCenters, icon: Layers },
     ...(showChargesTab
       ? [{ value: 'cobrancas', label: centralT.tabLabel, icon: Wallet } as SettingsTab]
       : []),
@@ -106,6 +108,8 @@ export function FinanceRelatorio({
         <FinanceDRE transactions={allTransactions} range={dateRange} />
       ) : safeTab === 'categorias' ? (
         <FinanceCategorias />
+      ) : safeTab === 'centro-de-custo' ? (
+        <FinanceCostCenters />
       ) : safeTab === 'cobrancas' ? (
         <FinanceCobrancas />
       ) : safeTab === 'assinaturas' ? (

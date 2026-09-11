@@ -22,6 +22,8 @@ import { SignedLink } from '@/components/ui/SignedLink';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useCostCenters } from '@/hooks/useCostCenters';
+import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { getErrorMessage } from '@/utils/errorMessages';
 // Estorno de pagamento de fatura é feito por RPC, que devolve mensagem já em PT-BR
 // no SQLSTATE P0001. `getRpcErrorMessage` entrega essa mensagem limpa (o
@@ -165,6 +167,10 @@ export function TransactionListPanel({
     if (initialAccountFilter) setAccountFilter([initialAccountFilter]);
   }, [initialAccountFilter]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  // 4o filtro: centro de custo. Mesma semântica dos outros (vazio = todos), com
+  // um balde explícito pra lançamento SEM centro — sem ele, filtrar esconderia
+  // esses lançamentos e ninguém entenderia por que a lista encolheu.
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
@@ -177,6 +183,7 @@ export function TransactionListPanel({
   const resolvedBalanceAfterLabel = balanceAfterLabel ?? fin.transactionList.table.balanceAfter;
   const resolvedBalanceAfterShortLabel = balanceAfterShortLabel ?? fin.transactionList.balance;
   const { accounts: allAccounts } = useFinancialAccounts();
+  const { costCenters } = useCostCenters();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const queryClient = useQueryClient();
@@ -201,20 +208,43 @@ export function TransactionListPanel({
     return map;
   }, [transactions, allAccounts]);
 
+  // Centros ofertados no filtro: todos os ativos + qualquer um já usado nas
+  // transações da tela (mesmo desativado depois) — senão o lançamento antigo
+  // ficaria impossível de filtrar.
+  const costCenterOptions = useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    costCenters.filter((c) => c.is_active).forEach((c) => map.set(c.id, { name: c.name, color: c.color }));
+    transactions.forEach((t) => {
+      const id = t.cost_center_id;
+      if (!id || map.has(id)) return;
+      const known = costCenters.find((c) => c.id === id);
+      // Id que não está na lista da empresa (ou lista ainda carregando) não vira
+      // opção: um rótulo genérico seria pior que não oferecer o filtro.
+      if (!known) return;
+      map.set(id, { name: `${known.name} (${fin.costCenters.inactiveSuffix})`, color: known.color });
+    });
+    return Array.from(map.entries()).map(([value, c]) => ({ value, label: c.name, color: c.color }));
+  }, [costCenters, transactions, fin.costCenters.inactiveSuffix]);
+
   const activeFiltersCount = [
     categoryFilter.length > 0,
     accountFilter.length > 0,
+    costCenterFilter.length > 0,
     type === 'all' && typeFilter.length > 0,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     setCategoryFilter([]);
     setAccountFilter([]);
+    setCostCenterFilter([]);
     setTypeFilter([]);
     onClearAccountFilter?.();
   };
 
-  const filtered = transactions
+  // `filterByCostCenters` (motor puro, com teste) aplica a semântica do balde
+  // "Sem centro de custo" — a mesma usada pela DRE, pra as duas telas nunca
+  // discordarem sobre o que é "sem centro".
+  const filtered = filterByCostCenters(transactions, costCenterFilter)
     .filter((t) => (type === 'all'
       ? (typeFilter.length === 0 || typeFilter.includes(t.transaction_type))
       : t.transaction_type === type))
@@ -598,6 +628,18 @@ export function TransactionListPanel({
               color: acc.color,
             }))}
           />
+          {costCenterOptions.length > 0 && (
+            <FilterCheckboxGroup
+              label={fin.costCenters.filterLabel}
+              selected={costCenterFilter}
+              onChange={setCostCenterFilter}
+              emptyLabel={fin.costCenters.filterEmptyLabel}
+              options={[
+                ...costCenterOptions,
+                { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter },
+              ]}
+            />
+          )}
         </FilterButton>
       </div>
 

@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.13',
+    date: '11 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Centro de custo: separe receitas e despesas por obra, projeto ou setor',
+        description: 'Agora você pode cadastrar centros de custo e marcar em cada lançamento a qual deles ele pertence. O cadastro fica no Financeiro, na aba Centro de Custo, onde você dá um nome, escolhe uma cor e pode desativar um centro que não usa mais sem perder o histórico. O campo aparece em Nova Receita, Nova Despesa, Nova Conta a Pagar ou a Receber e também na aprovação de orçamento, e é sempre opcional: se você não usa centro de custo, nada muda na sua tela. Nas listas de movimentações e de contas dá para filtrar por centro, com um resumo de quanto cada um representa. No seu resultado entrou uma seção Por Centro de Custo mostrando receita, despesa e resultado de cada um, mais uma linha para o que ficou sem centro, e a soma sempre bate com o total. Um centro que já está em uso não pode ser excluído por engano: o sistema avisa e sugere desativar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Baixa parcial e tarifa agora ficam no mesmo centro de custo da conta',
+        description: 'Quando você recebia uma conta em partes, ou informava a tarifa da maquininha na baixa, esses lançamentos nasciam sem centro de custo mesmo que a conta original tivesse um. Agora eles herdam o centro da conta, então o relatório por centro não perde mais esses valores.',
+        category: 'correcao',
+      },
+      {
+        title: 'O atalho de criar conta ou categoria não aparece mais para quem não pode usá-lo',
+        description: 'Nos campos de conta bancária e de categoria existe um atalho para cadastrar na hora, sem sair da tela. Ele era mostrado para todo mundo, mas só funciona para quem tem permissão de mexer nas configurações, então quem não tinha clicava e recebia um erro. Agora o atalho só aparece para quem realmente pode criar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.12',
     date: '11 de setembro de 2026',
     type: 'patch',

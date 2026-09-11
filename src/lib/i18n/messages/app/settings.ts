@@ -828,7 +828,7 @@ export const settings = {
           },
           delete_financial_categories: {
             title: 'Categorias financeiras',
-            description: 'Remove as categorias financeiras personalizadas (as padrões são mantidas)',
+            description: 'Remove as categorias financeiras personalizadas e os centros de custo (as categorias padrão são mantidas)',
           },
         },
         rh_inventario: {
@@ -2438,7 +2438,7 @@ export const settings = {
           },
           delete_financial_categories: {
             title: 'Financial categories',
-            description: 'Removes custom financial categories (default ones are kept)',
+            description: 'Removes custom financial categories and cost centers (default categories are kept)',
           },
         },
         rh_inventario: {
@@ -4002,7 +4002,7 @@ export const settings = {
           },
           delete_financial_categories: {
             title: 'Categorías financieras',
-            description: 'Elimina las categorías financieras personalizadas (las predeterminadas se mantienen)',
+            description: 'Elimina las categorías financieras personalizadas y los centros de costo (las categorías predeterminadas se mantienen)',
           },
         },
         rh_inventario: {
@@ -5566,7 +5566,7 @@ export const settings = {
           },
           delete_financial_categories: {
             title: 'Catégories financières',
-            description: 'Supprime les catégories financières personnalisées (les catégories par défaut sont conservées)',
+            description: 'Supprime les catégories financières personnalisées et les centres de coûts (les catégories par défaut sont conservées)',
           },
         },
         rh_inventario: {

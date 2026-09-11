@@ -27,6 +27,15 @@ interface CompanyData {
   logo_url?: string;
 }
 
+/** Linha da quebra por centro de custo (a última pode ser "sem centro"). */
+interface CostCenterLine {
+  name: string;
+  color: string;
+  revenue: number;
+  expense: number;
+  result: number;
+}
+
 interface DreReportData {
   company: CompanyData;
   period: string;
@@ -41,6 +50,11 @@ interface DreReportData {
   opexCategories: ExpenseCategory[];
   resultadoLiquido: number;
   margem: number;
+  /**
+   * Quebra por centro de custo do MESMO conjunto que gerou os totais acima.
+   * Some do documento quando a empresa não usa centro de custo.
+   */
+  costCenters?: CostCenterLine[];
   /**
    * Regime usado pra montar os números ('caixa' = data do pagamento,
    * 'competencia' = data do fato gerador). Carimbado no cabeçalho do
@@ -73,6 +87,24 @@ export const generateDreHtml = (data: DreReportData) => {
         ${escapeHtml(c.name)}
       </span>
       <span class="negative">-${formatCurrencyBR(c.value)}</span>
+    </div>
+  `).join('');
+
+  // Quebra por centro de custo: 3 valores por linha (receita, despesa,
+  // resultado). A soma das linhas fecha com a Receita Bruta e com o total de
+  // despesas impressos acima — vem do mesmo conjunto de lançamentos.
+  const costCenterLines = data.costCenters ?? [];
+  const renderCostCenters = () => costCenterLines.map(c => `
+    <div class="row">
+      <span class="row-label">
+        <span class="color-dot" style="background: ${escapeHtml(c.color)}"></span>
+        ${escapeHtml(c.name)}
+      </span>
+      <span class="cc-values">
+        <span class="positive">${formatCurrencyBR(c.revenue)}</span>
+        <span class="negative">-${formatCurrencyBR(c.expense)}</span>
+        <span class="${c.result >= 0 ? 'positive' : 'negative'}"><strong>${formatCurrencyBR(c.result)}</strong></span>
+      </span>
     </div>
   `).join('');
 
@@ -114,6 +146,9 @@ export const generateDreHtml = (data: DreReportData) => {
     .row.result { padding: 16px; font-size: 16px; font-weight: 700; color: white; }
     .row-label { display: flex; align-items: center; gap: 8px; }
     .color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cc-values { display: flex; gap: 16px; align-items: center; }
+    .cc-values > span { min-width: 90px; text-align: right; }
+    .cc-head { padding: 8px 16px 8px 32px; font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; border-bottom: 1px solid #f3f4f6; }
     .positive { color: #16a34a; font-weight: 500; }
     .negative { color: #dc2626; font-weight: 500; }
     .result-label { display: flex; flex-direction: column; }
@@ -201,6 +236,21 @@ export const generateDreHtml = (data: DreReportData) => {
         <span>${data.resultadoLiquido < 0 ? '-' : ''}${formatCurrencyBR(Math.abs(data.resultadoLiquido))}</span>
       </div>
     </div>
+
+    ${costCenterLines.length > 0 ? `
+      <div class="dre-container">
+        <div class="section-header">${escapeHtml(t.sectionCostCenters)}</div>
+        <div class="cc-head">
+          <span></span>
+          <span class="cc-values">
+            <span>${escapeHtml(t.colRevenue)}</span>
+            <span>${escapeHtml(t.colExpense)}</span>
+            <span>${escapeHtml(t.colResult)}</span>
+          </span>
+        </div>
+        ${renderCostCenters()}
+      </div>
+    ` : ''}
 
     <div class="footer">
       <div class="footer-text">${escapeHtml(t.generatedBySystem)}</div>

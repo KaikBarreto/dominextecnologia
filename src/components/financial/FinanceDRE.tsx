@@ -19,6 +19,9 @@ import { cn } from '@/lib/utils';
 import { generateDreHtml } from '@/utils/dreHtmlGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { useCostCenters } from '@/hooks/useCostCenters';
+import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
+import { buildCostCenterBreakdown, filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -114,6 +117,7 @@ interface CategoryBreakdown {
 export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREProps) {
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
+  const { costCenters } = useCostCenters();
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
@@ -129,6 +133,11 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   // configuração da empresa.
   const [regime, setRegime] = useState<DreRegime>('caixa');
 
+  // Filtro de centro de custo — multisseleção, vazio = todos, com o balde
+  // `NO_COST_CENTER` pros lançamentos sem centro. Ele corta o CONJUNTO antes do
+  // cálculo (abaixo); nenhuma linha da conta do DRE muda por causa dele.
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
+
   // Filter out inter-account transfers, credit card bill payments AND balance
   // adjustments from DRE. Transfers/bill payments são itens de balanço (não
   // P&L); o "Ajuste de saldo" é conciliação de caixa (neutro) — entra no
@@ -137,7 +146,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   // O que muda por regime: Caixa exige `is_paid` (Competência ignora) e a data
   // que define o mês (ver getDreEffectiveDate).
   // Se dreStartDate estiver preenchida, filtra só transações a partir dessa data.
-  const transactions = useMemo(
+  const transactionsInPeriod = useMemo(
     () => rawTransactions.filter(t => {
       if (t.transfer_pair_id) return false;
       if (regime === 'caixa' && !t.is_paid) return false;
@@ -157,10 +166,19 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     }),
     [rawTransactions, dreStartDate, regime, range]
   );
+
+  // Corte por centro de custo APLICADO POR CIMA do conjunto acima — e antes de
+  // qualquer soma. Assim tudo o que vem depois (totais, gráfico, quebra por
+  // centro e export) enxerga exatamente o mesmo conjunto, no mesmo regime.
+  const transactions = useMemo(
+    () => filterByCostCenters(transactionsInPeriod, costCenterFilter),
+    [transactionsInPeriod, costCenterFilter]
+  );
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
   const [showOpex, setShowOpex] = useState(false);
   const [showReceita, setShowReceita] = useState(false);
+  const [showCostCenters, setShowCostCenters] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   // Build a map from category name to dre_group using the DB field
@@ -261,6 +279,55 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     return isMobile ? all.slice(-6) : all;
   }, [transactions, isMobile, regime]);
 
+  // ── Quebra por centro de custo ────────────────────────────────────────────
+  //
+  // 🚨 Integridade: é calculada a partir de `transactions` — EXATAMENTE o mesmo
+  // conjunto já filtrado e já cortado pelo regime que alimenta `dre` acima. Por
+  // isso a soma dos centros + o balde "sem centro" bate ao centavo com a Receita
+  // Bruta e com o total de despesas (impostos + CMV + OPEX) mostrados na tabela.
+  // Qualquer outro caminho de cálculo (refazer o corte, reler `rawTransactions`)
+  // faz os números divergirem sem ninguém perceber. A aritmética em centavos
+  // inteiros vive em `src/lib/cost-center-breakdown.ts` (motor puro com teste).
+  const costCenterMeta = useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    costCenters.forEach((c) => map.set(c.id, {
+      name: c.is_active ? c.name : `${c.name} (${fin.costCenters.inactiveSuffix})`,
+      color: c.color,
+    }));
+    return map;
+  }, [costCenters, fin.costCenters.inactiveSuffix]);
+
+  const costCenterBreakdown = useMemo(
+    () => buildCostCenterBreakdown(
+      transactions,
+      // Ordem alfabética dos centros cadastrados; o balde sem centro cai no fim.
+      costCenters.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map((c) => c.id),
+    ),
+    [transactions, costCenters]
+  );
+
+  /** Rótulo de uma linha da quebra (`null` = balde sem centro). */
+  const costCenterLabel = (id: string | null) =>
+    id === null ? fin.costCenters.dreNoCenter : costCenterMeta.get(id)?.name ?? fin.costCenters.dreNoCenter;
+  // Cinza literal (não token CSS): a mesma cor vai pro HTML do export, onde
+  // `hsl(var(--muted-foreground))` não resolveria.
+  const costCenterColor = (id: string | null) =>
+    (id === null ? undefined : costCenterMeta.get(id)?.color) ?? '#6b7280';
+
+  // Opções do filtro: centros ativos + qualquer um já usado no período (mesmo
+  // desativado depois), pra não existir lançamento impossível de filtrar.
+  const costCenterFilterOptions = useMemo(() => {
+    const ids = new Set<string>();
+    costCenters.filter((c) => c.is_active).forEach((c) => ids.add(c.id));
+    transactionsInPeriod.forEach((t) => {
+      const id = t.cost_center_id;
+      if (id && costCenterMeta.has(id)) ids.add(id);
+    });
+    return Array.from(ids)
+      .map((id) => ({ value: id, label: costCenterMeta.get(id)!.name, color: costCenterMeta.get(id)!.color }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }, [costCenters, transactionsInPeriod, costCenterMeta]);
+
   const handleExport = () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -291,6 +358,15 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
         opexCategories,
         resultadoLiquido: dre.resultadoLiquido,
         margem: dre.margem,
+        // Quebra por centro de custo do MESMO conjunto: o documento impresso
+        // fecha com os totais impressos logo acima dele.
+        costCenters: costCenterBreakdown.rows.map((r) => ({
+          name: costCenterLabel(r.id),
+          color: costCenterColor(r.id),
+          revenue: r.revenue,
+          expense: r.expense,
+          result: r.result,
+        })),
         locale,
       });
     } finally {
@@ -381,6 +457,24 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
 
   return (
     <div className="space-y-5 sm:space-y-6">
+      {/* Filtro por centro de custo — corta o conjunto ANTES de qualquer soma,
+          então KPIs, gráfico, tabela e quebra por centro respondem todos a ele.
+          Só aparece pra quem usa centro de custo. */}
+      {costCenterFilterOptions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <FilterCheckboxDropdown
+            label={fin.costCenters.filterLabel}
+            selected={costCenterFilter}
+            onChange={setCostCenterFilter}
+            emptyLabel={fin.costCenters.filterEmptyLabel}
+            options={[
+              ...costCenterFilterOptions,
+              { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter },
+            ]}
+          />
+        </div>
+      )}
+
       {/* KPI Cards — mobile: 3 colunas compactas pra caber tudo na primeira tela. */}
       <div className="grid gap-2 sm:gap-4 grid-cols-3">
         <Card className={cn('border-0', dre.margem >= 0 ? 'bg-success' : 'bg-destructive')}>
@@ -599,6 +693,76 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
           </div>
         </CardContent>
       </Card>
+
+      {/* Por centro de custo — bloco de LEITURA, fora da cadeia de contas do DRE
+          (não entra em receita líquida / lucro bruto / EBITDA). A soma das
+          linhas + o balde "sem centro" bate com a Receita Bruta e com o total de
+          despesas da tabela acima: mesmo conjunto, mesmo período, mesmo regime. */}
+      {costCenterBreakdown.rows.length > 0 && (
+        <Card className="border shadow-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowCostCenters(!showCostCenters)}
+            className="w-full px-3 sm:px-4 py-3 bg-muted/30 flex items-center justify-between hover:bg-muted/50 transition-colors"
+          >
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {fin.costCenters.dreSectionTitle}
+            </span>
+            {showCostCenters
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          {showCostCenters && (
+            <div className="divide-y divide-border/30">
+              {costCenterBreakdown.rows.map((r) => (
+                <div key={r.id ?? '__none__'} className="px-3 sm:px-4 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: costCenterColor(r.id) }}
+                      />
+                      <span className="text-sm text-foreground truncate">{costCenterLabel(r.id)}</span>
+                    </span>
+                    <span className={cn(
+                      'text-sm font-semibold tabular-nums shrink-0',
+                      r.result >= 0 ? 'text-success' : 'text-destructive',
+                    )}>
+                      {fmt(r.result)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-4 mt-0.5 text-[11px] tabular-nums">
+                    <span className="text-success">
+                      {fin.dre.chart.revenue}: {fmt(r.revenue)}
+                    </span>
+                    <span className="text-destructive">
+                      {fin.dre.chart.expenses}: {fmt(r.expense)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Total da quebra — é a prova visual de que fecha com a tabela. */}
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 border-t border-border/30">
+            <span className="text-sm text-foreground/80 font-medium shrink-0">{fin.dre.table.total}</span>
+            {/* `flex-wrap` + `justify-end`: em 390px os três valores quebram pra
+                segunda linha em vez de estourar a largura do card. */}
+            <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-0.5 text-xs tabular-nums">
+              <span className="text-success">{fmt(costCenterBreakdown.totals.revenue)}</span>
+              <span className="text-destructive">-{fmt(costCenterBreakdown.totals.expense)}</span>
+              <span className={cn(
+                'text-sm font-semibold',
+                costCenterBreakdown.totals.result >= 0 ? 'text-success' : 'text-destructive',
+              )}>
+                {fmt(costCenterBreakdown.totals.result)}
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <p className="text-xs text-muted-foreground text-center">
         {regime === 'caixa' ? fin.dre.regime.footnoteCash : fin.dre.regime.footnoteAccrual}{' '}

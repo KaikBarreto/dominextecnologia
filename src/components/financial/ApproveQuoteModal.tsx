@@ -15,6 +15,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
+import { CostCenterSelect } from './CostCenterSelect';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useCostCenters } from '@/hooks/useCostCenters';
 
 /**
  * Modal de APROVAÇÃO de orçamento.
@@ -46,6 +49,12 @@ export interface ApproveQuoteResult {
   first_due_date?: string;    // YYYY-MM-DD
   /** conta prevista do recebimento, opcional; NÃO mexe em saldo enquanto pendente */
   expected_account_id?: string | null;
+  /**
+   * Centro de custo da receita gerada. SEMPRE opcional, vale nos DOIS modos: no
+   * 'recebido' vai na receita (e na tarifa filha); no 'a_receber' vai em TODAS
+   * as parcelas.
+   */
+  cost_center_id?: string | null;
   notes?: string;
 }
 
@@ -110,7 +119,12 @@ export function ApproveQuoteModal({
   const tp = fin.receivePayment.paymentMethods;
 
   const { accounts } = useFinancialAccounts();
+  // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
+  // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
+  // explicação. Mesmo critério do CostCenterSelect.
+  const canManageFinanceSettings = useCanManageFinanceSettings();
   const activeAccounts = useMemo(() => accounts.filter((a) => a.is_active), [accounts]);
+  const { activeCostCenters } = useCostCenters();
 
   const accountOptions = useMemo(
     () => activeAccounts.map((a) => {
@@ -162,6 +176,8 @@ export function ApproveQuoteModal({
   const [firstDueDate, setFirstDueDate] = useState(todayLocalISO);
   const [expectedAccountId, setExpectedAccountId] = useState(NO_ACCOUNT);
 
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
+
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -174,6 +190,7 @@ export function ApproveQuoteModal({
     setInstallments(Math.min(60, Math.max(1, Math.floor(defaultInstallments || 1))));
     setFirstDueDate(defaultFirstDueDate || todayLocalISO());
     setExpectedAccountId(NO_ACCOUNT);
+    setCostCenterId(null);
     if (activeAccounts[0]) setAccountId((prev) => prev || activeAccounts[0].id);
   }, [open, defaultMode, defaultInstallments, defaultFirstDueDate]); // eslint-disable-line
 
@@ -214,6 +231,7 @@ export function ApproveQuoteModal({
         installments,
         first_due_date: firstDueDate,
         expected_account_id: expectedAccountId === NO_ACCOUNT ? null : expectedAccountId,
+        cost_center_id: costCenterId,
         notes: notes.trim() || undefined,
       });
       return;
@@ -224,6 +242,7 @@ export function ApproveQuoteModal({
       payment_method: method,
       paid_date: paidDate,
       fee_amount: fee,
+      cost_center_id: costCenterId,
       notes: notes.trim() || undefined,
     });
   };
@@ -310,11 +329,11 @@ export function ApproveQuoteModal({
                   onValueChange={setAccountId}
                   placeholder={t.accountPlaceholder}
                   searchPlaceholder={t.accountSearchPlaceholder}
-                  onCreateOption={(query) => {
+                  onCreateOption={canManageFinanceSettings ? (query) => {
                     setAccountFormTarget('paid');
                     setAccountInitialName(query);
                     setAccountFormOpen(true);
-                  }}
+                  } : undefined}
                   createOptionLabel={t.accountCreateLabel}
                   createAlwaysLabel={t.accountCreateAlwaysLabel}
                 />
@@ -389,11 +408,11 @@ export function ApproveQuoteModal({
                   onValueChange={setExpectedAccountId}
                   placeholder={t.expectedAccountPlaceholder}
                   searchPlaceholder={t.accountSearchPlaceholder}
-                  onCreateOption={(query) => {
+                  onCreateOption={canManageFinanceSettings ? (query) => {
                     setAccountFormTarget('expected');
                     setAccountInitialName(query);
                     setAccountFormOpen(true);
-                  }}
+                  } : undefined}
                   createOptionLabel={t.accountCreateLabel}
                   createAlwaysLabel={t.accountCreateAlwaysLabel}
                 />
@@ -428,6 +447,16 @@ export function ApproveQuoteModal({
                 {t.noFeeHint}
               </p>
             </>
+          )}
+
+          {/* Centro de custo — vale nos DOIS modos (já recebi / vou receber
+              depois), por isso fica fora dos blocos. Sempre opcional; some da
+              tela quando a empresa não usa centro de custo. */}
+          {activeCostCenters.length > 0 && (
+            <div>
+              <Label>{fin.costCenters.fieldLabel}</Label>
+              <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
+            </div>
           )}
 
           <div>

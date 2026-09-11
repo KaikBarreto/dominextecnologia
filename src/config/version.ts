@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.12";
+export const APP_VERSION = "1.24.13";
 
-export const VERSION_NOTES = "Agora você pode liberar o download dos dados da empresa para usuários específicos, sem precisar transformá-los em administradores.";
+export const VERSION_NOTES = "Agora dá para organizar receitas e despesas por centro de custo, separando obra, projeto ou setor, com filtro nas listas e uma quebra por centro dentro do seu resultado.";

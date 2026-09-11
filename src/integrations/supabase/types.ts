@@ -2029,6 +2029,47 @@ export type Database = {
           },
         ]
       }
+      cost_centers: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_centers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_resource_items: {
         Row: {
           annual_value: number | null
@@ -3869,6 +3910,7 @@ export type Database = {
           category: string | null
           company_id: string
           contract_id: string | null
+          cost_center_id: string | null
           created_at: string
           created_by: string | null
           credit_card_bill_date: string | null
@@ -3907,6 +3949,7 @@ export type Database = {
           category?: string | null
           company_id: string
           contract_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_card_bill_date?: string | null
@@ -3945,6 +3988,7 @@ export type Database = {
           category?: string | null
           company_id?: string
           contract_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_card_bill_date?: string | null
@@ -4005,6 +4049,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {
