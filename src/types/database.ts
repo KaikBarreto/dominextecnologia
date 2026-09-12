@@ -244,6 +244,12 @@ export interface FinancialTransaction {
   amount: number;
   /** Soma das filhas de recebimento parcial (mantida por trigger no banco). 0 quando nada foi recebido ainda. */
   amount_received?: number;
+  /**
+   * Valor de COMPETENCIA da folha (bruto do ciclo, antes do abatimento de vales).
+   * Só a folha preenche. NULL = usar `amount`. `amount` continua sendo o CAIXA.
+   * Existe porque vale + folha pendente contavam em dobro no regime de competência.
+   */
+  accrual_amount?: number | null;
   transaction_date: string;
   due_date?: string;
   paid_date?: string;

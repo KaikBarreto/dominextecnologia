@@ -26,6 +26,7 @@ import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { todayInBrazil } from '@/lib/today-brazil';
 
 const BILL_STATUS_COLORS: Record<string, { color: string; icon: React.ElementType }> = {
   open: { color: 'text-blue-600', icon: Clock },
@@ -53,7 +54,9 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const [detailOpen, setDetailOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [payAccountId, setPayAccountId] = useState('');
-  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  // Data de pagamento da fatura no fuso do Brasil. `toISOString()` grava
+  // AMANHÃ a partir das 21h locais (UTC-3) e a baixa cai no mês errado.
+  const [payDate, setPayDate] = useState(todayInBrazil());
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
 
@@ -90,7 +93,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const openPay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     setPayAmount(remaining);
-    setPayDate(new Date().toISOString().split('T')[0]);
+    setPayDate(todayInBrazil());
     setPayAccountId(cashBankAccounts[0]?.id ?? '');
     setPayNotes('');
     setPayOpen(true);

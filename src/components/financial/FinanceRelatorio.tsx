@@ -18,9 +18,14 @@ interface FinanceRelatorioProps {
   /** Transações filtradas pelo período selecionado no parent. */
   transactions: (FinancialTransaction & { customer?: any })[];
   /**
-   * Lista CRUA (sem corte de período) + o range, exclusivos da DRE: ela aplica
+   * Lista CRUA (sem corte de período) + o range, EXCLUSIVOS da DRE: ela aplica
    * o corte com a própria data efetiva, que muda conforme o regime
-   * Caixa/Competência. Ver `FinanceDRE.isInDreRange`.
+   * Caixa/Competência. Ver `@/lib/dre-regime`.
+   *
+   * Inclui as linhas FILHAS (tarifa do recebimento, recebimento parcial) — por
+   * isso não serve pra listagem nenhuma. O DRE precisa delas pra fechar o
+   * resultado; a tarifa da maquininha é despesa real que não existe em nenhuma
+   * outra linha.
    */
   allTransactions: (FinancialTransaction & { customer?: any })[];
   dateRange: DateRange;

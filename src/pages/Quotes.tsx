@@ -28,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
 import { useQuotes, STATUS_LABELS, type Quote } from '@/hooks/useQuotes';
 import { useQuoteConversion } from '@/hooks/useQuoteConversion';
+import { useQuoteChargedIds } from '@/hooks/useQuoteChargedIds';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
@@ -166,6 +167,14 @@ function QuotesList() {
   const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
   const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
   const { settings: companySettings } = useCompanySettings();
+  // Guarda contra contar a mesma venda duas vezes (cobrar → aprovar). Metade
+  // de INTERFACE: some/desabilita "Aprovar" quando já existe cobrança Asaas
+  // pro orçamento. Quando a empresa nunca usou cobrança nenhuma, o set vem
+  // vazio e não atrapalha o fluxo normal de aprovação — não precisa gate de
+  // módulo aqui. A trava DEFINITIVA fica pendente no banco: ver nota abaixo.
+  const { chargedQuoteIds } = useQuoteChargedIds();
+  const hasChargeBlockingApproval = (q: Quote) =>
+    !q.financial_generated_at && chargedQuoteIds.has(q.id);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -439,7 +448,11 @@ function QuotesList() {
       },
     ];
 
-    if ((q.status === 'enviado' || q.status === 'rascunho') && !q.financial_generated_at) {
+    if (
+      (q.status === 'enviado' || q.status === 'rascunho') &&
+      !q.financial_generated_at &&
+      !hasChargeBlockingApproval(q)
+    ) {
       actions.push({
         key: 'approve',
         label: tq.actionApprove,
@@ -661,6 +674,17 @@ function QuotesList() {
                       <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: DATE_FNS_LOCALES[locale] })}</span>
                       <span>•</span>
                       <QuoteViewsIndicator quote={q} locale={locale} tq={tq} />
+                      {hasChargeBlockingApproval(q) && (
+                        <>
+                          <span>•</span>
+                          <span
+                            className="text-warning font-medium"
+                            title={tq.chargeGeneratedApproveBlockedTitle}
+                          >
+                            {tq.chargeGeneratedBadge}
+                          </span>
+                        </>
+                      )}
                     </div>
                   }
                   trailing={
@@ -762,6 +786,14 @@ function QuotesList() {
                           <DollarSign className="h-3 w-3" /> {tq.financialPosted}
                         </Badge>
                       )}
+                      {/* Guarda contra contar a mesma venda duas vezes: já existe cobrança
+                          Asaas pra este orçamento (tenant_charges), então "Aprovar" some da
+                          lista abaixo. Selo saturado (fundo + texto branco), nunca outline. */}
+                      {hasChargeBlockingApproval(q) && (
+                        <Badge variant="warning" className="h-7 gap-1" title={tq.chargeGeneratedApproveBlockedTitle}>
+                          <CreditCard className="h-3 w-3" /> {tq.chargeGeneratedBadge}
+                        </Badge>
+                      )}
                       <RowActionsMenu
                         actions={[
                           { label: tq.actionView, icon: Eye, onClick: () => setViewQuote(q) },
@@ -771,7 +803,10 @@ function QuotesList() {
                             label: tq.actionApprove,
                             icon: CheckCircle2,
                             onClick: () => setApprovingQuote(q),
-                            hidden: (q.status !== 'enviado' && q.status !== 'rascunho') || !!q.financial_generated_at,
+                            hidden:
+                              (q.status !== 'enviado' && q.status !== 'rascunho') ||
+                              !!q.financial_generated_at ||
+                              hasChargeBlockingApproval(q),
                           },
                           {
                             label: tq.actionReject,

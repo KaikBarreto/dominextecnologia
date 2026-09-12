@@ -62,6 +62,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { todayInBrazil } from '@/lib/today-brazil';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -155,7 +156,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       setReceivingTxn(t);
     } else {
       setPayingDespesaTxn(t);
-      setPayDespDate(new Date().toISOString().split('T')[0]);
+      // Fuso do Brasil: `toISOString()` grava a data de AMANHÃ a partir das
+      // 21h locais (UTC-3) e joga a despesa pro mês seguinte.
+      setPayDespDate(todayInBrazil());
       setPayDespAccountId(cashBankAccounts[0]?.id ?? '');
       setPayDespMethod('pix');
       setPayDespNotes('');
@@ -172,7 +175,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     const { error } = await supabase.rpc('pay_payroll_transaction', {
       p_transaction_id: payrollTxn.id,
       p_account_id: payload.accountId,
-      p_paid_date: new Date().toISOString().split('T')[0],
+      // Idem: `paid_date` da folha define o mês da despesa no regime de Caixa.
+      p_paid_date: todayInBrazil(),
       p_vale_discount: payload.valeDiscount,
       p_net_amount: netAmount,
       p_notes: payload.description ?? null,

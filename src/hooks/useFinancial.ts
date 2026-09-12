@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
@@ -8,6 +9,8 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
+import { todayInBrazil } from '@/lib/today-brazil';
+import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
 
 export interface TransactionCreator {
   full_name: string | null;
@@ -164,7 +167,7 @@ export function buildPartialReceiptRow(args: {
       transaction_type: 'entrada',
       amount: cfg.amountReceived,
       description: `Recebimento parcial — ${parent.description || 'transação'}`,
-      category: 'Recebimento parcial',
+      category: PARTIAL_RECEIPT_CATEGORY,
       customer_id: cfg.customer_id ?? parent.customer_id ?? null,
       account_id: cfg.account_id,
       cost_center_id: parent.cost_center_id ?? null,
@@ -227,6 +230,13 @@ export function buildReceiptFeeRow(args: {
   );
 }
 
+/**
+ * Referência estável pra lista vazia. `?? []` criaria um array novo a cada
+ * render enquanto a query não resolve, invalidando o `useMemo` que deriva as
+ * raízes sem necessidade.
+ */
+const EMPTY_TRANSACTIONS: TransactionWithRelations[] = [];
+
 export function useFinancial() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -252,9 +262,14 @@ export function useFinancial() {
             account:financial_accounts(id, name, type, color),
             employee:employees(id, name, salary, photo_url)
           `)
-          // Esconde linhas filhas (tarifas de máquina, recebimentos parciais, CMV).
-          // Elas aparecem dentro do detalhe da mãe — não como linha solta na listagem.
-          .is('parent_transaction_id', null)
+          // 🚨 NÃO volte a filtrar `parent_transaction_id` AQUI.
+          // A query traz TUDO (mães e filhas). Esconder a filha é regra de
+          // APRESENTAÇÃO da listagem, não de busca: quando o corte era feito na
+          // query, o DRE — que bebe da mesma fonte — parava de somar a "Tarifa
+          // do recebimento" e o lucro aparecia inflado em toda venda com tarifa
+          // de maquininha. Quem precisa só das raízes usa `transactions`
+          // (filtrado logo abaixo); quem precisa do resultado contábil completo
+          // usa `transactionsWithChildren`.
           .order('transaction_date', { ascending: false })
       );
 
@@ -622,7 +637,11 @@ export function useFinancial() {
   const markAsPaid = useMutation({
     mutationFn: async (params: string | MarkAsPaidParams) => {
       const cfg: MarkAsPaidParams = typeof params === 'string' ? { id: params } : params;
-      const paidDate = cfg.paid_date || new Date().toISOString().split('T')[0];
+      // `todayInBrazil()` e NUNCA `toISOString()`: este `paid_date` é o que
+      // define o MÊS da movimentação no regime de Caixa. Baixa feita às 21h30
+      // do dia 31 gravava dia 1º do mês seguinte (UTC-3) e jogava a receita
+      // pro mês errado.
+      const paidDate = cfg.paid_date || todayInBrazil();
 
       // Buscar a mãe pra calcular se é parcial e usar dados (company_id, due_date, customer_id, amount).
       const { data: parent, error: parentErr } = await supabase
@@ -721,8 +740,31 @@ export function useFinancial() {
     },
   });
 
+  // Tudo o que a query trouxe: mães E filhas (tarifa do recebimento,
+  // recebimento parcial, CMV legado). É o conjunto que o DRE precisa pra fechar
+  // o resultado — a tarifa da maquininha é despesa de verdade e não existe em
+  // nenhuma outra linha.
+  const transactionsWithChildren = transactionsQuery.data ?? EMPTY_TRANSACTIONS;
+
+  // Padrão das LISTAGENS: só as raízes. A filha aparece dentro do detalhe da
+  // mãe (diálogo de transações relacionadas), nunca como linha solta. Este é o
+  // corte de APRESENTAÇÃO que antes vivia — erradamente — dentro da query.
+  // Mantém `transactions` com exatamente a mesma semântica de sempre, pra
+  // nenhuma tela que já consome o hook mudar de comportamento.
+  const rootTransactions = useMemo(
+    () => transactionsWithChildren.filter((t) => !(t as any).parent_transaction_id),
+    [transactionsWithChildren]
+  );
+
   return {
-    transactions: transactionsQuery.data ?? [],
+    transactions: rootTransactions,
+    /**
+     * Mães + filhas. Use SÓ onde o número precisa fechar contabilmente (DRE).
+     * Em listagem isso duplica informação: a filha já é mostrada no detalhe da
+     * mãe. Em soma de "a receber", pior — a filha de recebimento parcial é
+     * evento de caixa da mãe, que segue no banco com o valor cheio.
+     */
+    transactionsWithChildren,
     summary: summaryQuery.data ?? { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
     isLoading: transactionsQuery.isLoading || summaryQuery.isLoading,
     error: transactionsQuery.error || summaryQuery.error,
