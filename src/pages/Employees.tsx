@@ -77,6 +77,58 @@ function buildHoleriteIdentity(
   };
 }
 
+// TODO: trocar pelo helper canônico de data do Brasil quando ele existir (outro dev
+// está criando, provavelmente `src/lib/today-brazil.ts` exportando `todayInBrazil()`).
+// Ainda não existe no repo no momento desta correção — implementado inline aqui.
+// `new Date().toISOString().split('T')[0]` devolve a data em UTC: no Brasil (UTC-3),
+// qualquer ação a partir das 21h local grava a data de AMANHÃ. Mesmo padrão de
+// `todayInSaoPaulo()` em src/hooks/useCreditCardBills.ts.
+function todayInBrazil(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+/**
+ * O PostgREST rejeita o payload inteiro quando ele cita uma coluna que ainda
+ * não está no schema cache (`PGRST204`). `accrual_amount` (valor de competência
+ * da folha) é campo ACESSÓRIO: perder ele degrada só a DRE em Competência, mas
+ * perder o pagamento de salário inteiro por causa dele seria inaceitável — a
+ * folha é dinheiro de gente real. Estas duas funções fazem o write cair de
+ * volta no payload sem o campo se a migration ainda não estiver naquele
+ * ambiente.
+ *
+ * Pode ser removido depois que a migration de `accrual_amount` estiver aplicada
+ * em todos os ambientes.
+ */
+function isMissingAccrualColumn(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST204' || /accrual_amount/i.test(error.message ?? '');
+}
+
+async function insertTransactionTolerant(payload: Record<string, any>) {
+  const { error } = await supabase.from('financial_transactions').insert(payload as any);
+  if (error && 'accrual_amount' in payload && isMissingAccrualColumn(error)) {
+    console.warn('[folha] accrual_amount ausente no schema — gravando sem o valor de competência.');
+    const { accrual_amount: _drop, ...rest } = payload;
+    return await supabase.from('financial_transactions').insert(rest as any);
+  }
+  return { error };
+}
+
+async function updateTransactionTolerant(id: string, payload: Record<string, any>) {
+  const { error } = await supabase.from('financial_transactions').update(payload as any).eq('id', id);
+  if (error && 'accrual_amount' in payload && isMissingAccrualColumn(error)) {
+    console.warn('[folha] accrual_amount ausente no schema — quitando sem o valor de competência.');
+    const { accrual_amount: _drop, ...rest } = payload;
+    return await supabase.from('financial_transactions').update(rest as any).eq('id', id);
+  }
+  return { error };
+}
+
 export default function Employees() {
   // Deep-links registrados como a MESMA tela Employees (ver App.tsx), todos com
   // o segmento `:param`:
@@ -457,12 +509,14 @@ export default function Employees() {
     accountId?: string;
     employeeId?: string;
     payrollKind?: 'salary' | 'vale' | 'bonus' | 'rescission';
+    /** Bruto do ciclo (antes do abatimento de vales) — só folha preenche. */
+    accrualAmount?: number;
   }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInBrazil();
     try {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { error } = await supabase.from('financial_transactions').insert({
+      const { error } = await insertTransactionTolerant({
         transaction_type: input.type,
         amount: input.amount,
         description: input.description,
@@ -476,7 +530,8 @@ export default function Employees() {
         company_id,
         employee_id: input.employeeId ?? null,
         payroll_kind: input.payrollKind ?? null,
-      } as any);
+        ...(typeof input.accrualAmount === 'number' ? { accrual_amount: input.accrualAmount } : {}),
+      });
 
       if (error) {
         console.error('Erro ao registrar despesa de funcionário:', error);
@@ -566,6 +621,19 @@ export default function Employees() {
     const toPay = payload.amount;
     const remainingVales = activeBalance.totalVales - payload.valeDiscount;
 
+    // Valor de COMPETÊNCIA do ciclo: o que o funcionário custou, ANTES de
+    // abater o que ele já levou em vale. `toPay` é caixa (o que sai da conta
+    // agora); somar de volta o vale descontado devolve o custo do ciclo.
+    //   informal → salário + bônus − faltas
+    //   CLT      → líquido do holerite antes do desconto de vales
+    // Sem isso a folha paga entra na DRE em Competência pelo líquido e o custo
+    // do mês some junto com o vale (que a DRE exclui em Competência, porque lá
+    // ele não é fato gerador — é adiantamento).
+    // ⚠️ Limite conhecido (NÃO é regressão, é o comportamento de hoje): no CLT
+    // a competência fica no LÍQUIDO, não no bruto — INSS/IRRF/VT retidos não
+    // têm lançamento próprio em lugar nenhum do sistema ainda.
+    const accrualAmount = Number((toPay + payload.valeDiscount).toFixed(2));
+
     // Identidade congelada no momento do pagamento (empresa + funcionário).
     // Gravada junto ao payment_details para que o holerite CLT seja 100%
     // reproduzível ao ser reaberto pelo extrato, mesmo que cargo/CBO/matrícula
@@ -647,17 +715,18 @@ export default function Employees() {
 
           if (pendingPayroll?.id) {
             // Atualiza a folha pendente em vez de criar nova linha (evita duplicar despesa)
-            const today = new Date().toISOString().split('T')[0];
-            const { error: payErr } = await supabase
-              .from('financial_transactions')
-              .update({
-                is_paid: true,
-                paid_date: today,
-                account_id: payload.accountId,
-                amount: toPay,
-                notes: payload.description,
-              } as any)
-              .eq('id', pendingPayroll.id);
+            const today = todayInBrazil();
+            // `amount` continua sendo o CAIXA (o que sai da conta) — é o que o
+            // saldo bancário, o extrato e a DRE em Caixa leem. O bruto do ciclo
+            // vai pra `accrual_amount`, que é o que a Competência lê.
+            const { error: payErr } = await updateTransactionTolerant(pendingPayroll.id, {
+              is_paid: true,
+              paid_date: today,
+              account_id: payload.accountId,
+              amount: toPay,
+              accrual_amount: accrualAmount,
+              notes: payload.description,
+            });
             if (payErr) {
               console.error('Erro ao quitar folha pendente:', payErr);
             }
@@ -673,6 +742,9 @@ export default function Employees() {
               accountId: payload.accountId,
               employeeId: emp.id,
               payrollKind: 'salary',
+              // Caminho sem folha pendente: a linha já NASCE líquida, então sem
+              // `accrual_amount` a Competência perderia o vale do ciclo.
+              accrualAmount,
             });
           }
         } catch (err) {

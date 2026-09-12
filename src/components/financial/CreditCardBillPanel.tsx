@@ -30,6 +30,7 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { todayInBrazil } from '@/lib/today-brazil';
 
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
@@ -89,7 +90,9 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const [detailBill, setDetailBill] = useState<CreditCardBillWithTransactions | null>(null);
   const [payingBill, setPayingBill] = useState<CreditCardBillWithTransactions | null>(null);
   const [payAccountId, setPayAccountId] = useState('');
-  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  // Data de pagamento da fatura no fuso do Brasil. `toISOString()` grava
+  // AMANHÃ a partir das 21h locais (UTC-3) e a baixa cai no mês errado.
+  const [payDate, setPayDate] = useState(todayInBrazil());
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -119,7 +122,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
     const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
     setPayingBill(bill);
     setPayAmount(remaining);
-    setPayDate(new Date().toISOString().split('T')[0]);
+    setPayDate(todayInBrazil());
     setPayAccountId(cashBankAccounts[0]?.id ?? '');
     setPayNotes('');
   };

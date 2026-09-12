@@ -47,6 +47,7 @@ import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { todayInBrazil } from '@/lib/today-brazil';
 
 
 // Billing months: 1 month back to 4 months ahead (covers all realistic card use cases)
@@ -63,6 +64,13 @@ function makeTransactionSchema(v: { descriptionRequired: string; amountPositive:
     amount: z.coerce.number().positive(v.amountPositive),
     transaction_date: z.string().min(1, v.dateRequired),
     is_paid: z.boolean().default(true),
+    /**
+     * Data em que o dinheiro REALMENTE se moveu. Só é usada quando `is_paid`
+     * está ligado. Antes o form carimbava `transaction_date` aqui: conta
+     * lançada em 10/01 e paga em 05/03 caía em JANEIRO — mês já fechado
+     * mudando depois de fechado.
+     */
+    paid_date: z.string().optional(),
     notes: z.string().optional(),
     payment_method: z.string().optional(),
     installment_count: z.coerce.number().min(1).default(1),
@@ -463,8 +471,18 @@ export function TransactionFormDialog({
     category: transaction?.category ?? '',
     description: transaction?.description ?? '',
     amount: transaction?.amount ?? 0,
-    transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
+    transaction_date: transaction?.transaction_date ?? todayInBrazil(),
     is_paid: transaction?.is_paid ?? true,
+    // Regra da data de pagamento:
+    // - transação JÁ paga: preserva a data real. Editar a descrição não pode
+    //   recarimbar o mês em que o dinheiro se moveu.
+    // - EDITANDO uma conta em aberto (o caso do bug): padrão é HOJE, porque
+    //   quem liga "pago" agora está dando baixa agora. Antes vinha
+    //   `transaction_date` e a baixa de março voltava pra janeiro.
+    // - CRIANDO: espelha `transaction_date` (ver efeito de espelho abaixo), que
+    //   é o comportamento de sempre pra lançamento retroativo já pago.
+    paid_date: (transaction as any)?.paid_date
+      ?? (transaction ? todayInBrazil() : (transaction as any)?.transaction_date ?? todayInBrazil()),
     notes: (transaction as any)?.notes ?? '',
     payment_method: (transaction as any)?.payment_method
       ? (normalizePaymentMethod((transaction as any).payment_method) ?? (transaction as any).payment_method)
@@ -506,6 +524,22 @@ export function TransactionFormDialog({
   const isPaid = form.watch('is_paid');
   const watchedAccountId = form.watch('account_id');
   const watchedDate = form.watch('transaction_date');
+
+  // Espelho data do lançamento → data do pagamento, SÓ na criação e SÓ enquanto
+  // o usuário não mexeu no campo. Lançar uma despesa retroativa de 05/01 já
+  // paga continua gravando pagamento em 05/01, como sempre foi. Na EDIÇÃO não
+  // há espelho: lá o padrão é hoje, porque ligar "pago" numa conta em aberto é
+  // dar baixa agora — era exatamente isso que jogava a despesa pro mês do
+  // lançamento.
+  const paidDateTouched = useRef(false);
+  useEffect(() => {
+    if (!open) paidDateTouched.current = false;
+  }, [open]);
+  useEffect(() => {
+    if (!open || isEditing || paidDateTouched.current || !watchedDate) return;
+    form.setValue('paid_date', watchedDate);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedDate, open, isEditing]);
 
   const selectedAccount = accounts.find(a => a.id === watchedAccountId);
   const isCardAccount = selectedAccount?.type === 'cartao';
@@ -571,10 +605,16 @@ export function TransactionFormDialog({
       // pra evitar o bug do (1/6) sumir do filtro Pendentes.
       const isCardSaida = isCardAccount && data.transaction_type === 'saida';
       const isPaidFinal = isCardSaida ? false : data.is_paid;
+      // QUANDO o dinheiro se moveu ≠ QUANDO o fato aconteceu.
+      // Antes daqui saía `paid_date: data.transaction_date`: conta lançada em
+      // 10/01 e baixada pelo Editar em 05/03 gravava pagamento em JANEIRO — um
+      // mês já fechado mudava depois de fechado. Agora o form pergunta a data
+      // (campo que aparece junto do switch) e o padrão é hoje no fuso do Brasil.
+      // `undefined` quando não está pago: o backend limpa/ignora o campo.
       const payload = {
         ...data,
         is_paid: isPaidFinal,
-        paid_date: isPaidFinal ? data.transaction_date : undefined,
+        paid_date: isPaidFinal ? (data.paid_date || data.transaction_date) : undefined,
         payment_method: data.payment_method || null,
         account_id: data.account_id || null,
         cost_center_id: data.cost_center_id || null,
@@ -997,22 +1037,49 @@ export function TransactionFormDialog({
 
           {/* Is Paid toggle — hidden for credit card expenses (always committed) */}
           {!(isCardAccount && transactionType === 'saida') && (
-            <FormField control={form.control} name="is_paid" render={({ field }) => (
-              <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div>
-                  <FormLabel className="!mt-0 font-medium">
-                    {isEntrada ? tf.isPaidLabelRevenue : tf.isPaidLabelExpense}
-                  </FormLabel>
-                  <p className="text-xs text-muted-foreground">
-                    {field.value
-                      ? (isEntrada ? tf.isPaidDescReceivedTrue : tf.isPaidDescPaidTrue)
-                      : (isEntrada ? tf.isPaidDescReceivedFalse : tf.isPaidDescPaidFalse)
-                    }
-                  </p>
-                </div>
-                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-              </FormItem>
-            )} />
+            <div className="rounded-lg border border-border divide-y divide-border">
+              <FormField control={form.control} name="is_paid" render={({ field }) => (
+                <FormItem className="flex items-center justify-between p-3">
+                  <div>
+                    <FormLabel className="!mt-0 font-medium">
+                      {isEntrada ? tf.isPaidLabelRevenue : tf.isPaidLabelExpense}
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      {field.value
+                        ? (isEntrada ? tf.isPaidDescReceivedTrue : tf.isPaidDescPaidTrue)
+                        : (isEntrada ? tf.isPaidDescReceivedFalse : tf.isPaidDescPaidFalse)
+                      }
+                    </p>
+                  </div>
+                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                </FormItem>
+              )} />
+
+              {/* Data do pagamento — só com o switch ligado.
+                  O mês em que o dinheiro se move é o que manda no regime de
+                  Caixa da DRE. Sem perguntar, uma conta de janeiro baixada em
+                  março voltava pra janeiro e mexia num mês já fechado. */}
+              {isPaid && (
+                <FormField control={form.control} name="paid_date" render={({ field }) => (
+                  <FormItem className="p-3">
+                    <FormLabel>{isEntrada ? tf.paidDateLabelRevenue : tf.paidDateLabelExpense}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          paidDateTouched.current = true;
+                          field.onChange(e);
+                        }}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">{tf.paidDateHint}</p>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+            </div>
           )}
 
         </form>

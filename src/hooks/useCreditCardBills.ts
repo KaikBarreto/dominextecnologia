@@ -9,6 +9,7 @@ import { formatMoney } from '@/lib/format';
 import type { CreditCardBill } from '@/types/database';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { format, addDays, setDate, addMonths, startOfMonth, getDaysInMonth } from 'date-fns';
+import { todayInBrazil } from '@/lib/today-brazil';
 
 export type { CreditCardBill };
 
@@ -108,21 +109,6 @@ export function computeBillDates(
 }
 
 /**
- * "Hoje" em America/Sao_Paulo (UTC-3), como string YYYY-MM-DD. Comparar datas de
- * fechamento/vencimento (que são date puro, sem hora) sempre no fuso do Brasil —
- * usar `new Date()` direto pegaria o fuso do dispositivo/UTC e erraria a virada
- * do dia (régua de timezone do Dominex).
- */
-function todayInSaoPaulo(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
-
-/**
  * Status EXIBIDO da fatura. No banco a fatura nasce `open` e só muda quando é
  * paga (`partial`/`paid`) — não existe transição automática pra `closed`. Logo,
  * uma fatura cujo dia de fechamento já passou continuaria gravada como `open`.
@@ -143,7 +129,7 @@ export function effectiveBillStatus(bill: Pick<CreditCardBill, 'status' | 'closi
   if (bill.status !== 'open') return bill.status;
   if (!bill.closing_date) return bill.status;
   // closing_date e "hoje" são ambos YYYY-MM-DD no fuso do Brasil → compara lexical.
-  return todayInSaoPaulo() >= bill.closing_date ? 'closed' : 'open';
+  return todayInBrazil() >= bill.closing_date ? 'closed' : 'open';
 }
 
 /**

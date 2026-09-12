@@ -114,7 +114,12 @@ export default function Finance() {
   }, [screen, hasModule, navigate, locale]);
 
   const {
-    transactions, isLoading,
+    // `transactions` = só as RAÍZES. É o que toda listagem desta tela consome.
+    // `transactionsWithChildren` = raízes + filhas (tarifa do recebimento,
+    // recebimento parcial). Vai SÓ pro DRE, que precisa fechar o resultado
+    // contábil: a tarifa da maquininha é despesa real e não aparece em nenhuma
+    // outra linha — sem ela o lucro saía inflado em toda venda com tarifa.
+    transactions, transactionsWithChildren, isLoading,
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
 
@@ -379,7 +384,7 @@ export default function Finance() {
         {screen === 'relatorio' && (
           <FinanceRelatorio
             transactions={filteredTransactions}
-            allTransactions={transactions}
+            allTransactions={transactionsWithChildren}
             dateRange={range}
             summary={summary}
             activeTab={relatorioTab}
@@ -393,7 +398,12 @@ export default function Finance() {
         {screen === 'movimentacoes' && (
           <FinanceMovimentacoes
             transactions={movimentacoesTransactions}
-            allTransactions={transactions}
+            // Saldo corrente do extrato precisa das linhas FILHAS (tarifa de
+            // maquina, recebimento parcial): a ancora vem de useFinancialAccounts,
+            // que sempre somou todas as linhas pagas. Alimentar a caminhada com a
+            // lista so-raizes deslocava o "Saldo Apos" de cada linha pelo valor das
+            // tarifas. Quem vira LINHA na tela continua sendo `transactions`.
+            allTransactions={transactionsWithChildren}
             isLoading={isLoading}
             onNew={() => handleNew('entrada')}
             onEdit={handleEdit}

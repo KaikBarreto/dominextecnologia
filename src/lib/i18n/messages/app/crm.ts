@@ -284,6 +284,10 @@ export const crm = {
       prospectSuffix: '(prospecto)',
       notViewed: 'Não visualizada',
       viewedAgo: 'visto {rel}',
+      // Guarda contra contar a mesma venda duas vezes: cobrar (Asaas) e depois
+      // aprovar o mesmo orçamento geraria duas receitas pro mesmo dinheiro.
+      chargeGeneratedBadge: 'Cobrança gerada',
+      chargeGeneratedApproveBlockedTitle: 'Este orçamento já tem uma cobrança gerada. Aprovar agora criaria a receita duas vezes.',
 
       // Ações do menu de linha
       actionView: 'Visualizar',
@@ -1266,6 +1270,8 @@ export const crm = {
       prospectSuffix: '(prospect)',
       notViewed: 'Not viewed',
       viewedAgo: 'seen {rel}',
+      chargeGeneratedBadge: 'Charge generated',
+      chargeGeneratedApproveBlockedTitle: 'This quote already has a charge generated. Approving now would post the revenue twice.',
 
       actionView: 'View',
       actionOpenProposal: 'Open proposal in new tab',
@@ -2199,6 +2205,8 @@ export const crm = {
       prospectSuffix: '(prospecto)',
       notViewed: 'No visualizado',
       viewedAgo: 'visto {rel}',
+      chargeGeneratedBadge: 'Cobro generado',
+      chargeGeneratedApproveBlockedTitle: 'Este presupuesto ya tiene un cobro generado. Aprobarlo ahora duplicaría el ingreso.',
 
       actionView: 'Ver',
       actionOpenProposal: 'Abrir propuesta en nueva pestaña',
@@ -3132,6 +3140,8 @@ export const crm = {
       prospectSuffix: '(prospect)',
       notViewed: 'Non consulté',
       viewedAgo: 'vu {rel}',
+      chargeGeneratedBadge: 'Facture générée',
+      chargeGeneratedApproveBlockedTitle: `Ce devis a déjà une facture générée. L'approuver maintenant créerait la recette en double.`,
 
       actionView: 'Voir',
       actionOpenProposal: 'Ouvrir la proposition dans un nouvel onglet',

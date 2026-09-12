@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { todayInBrazil } from '@/lib/today-brazil';
 
 export interface ReceivePaymentResult {
   account_id: string;
@@ -55,9 +56,15 @@ function fmt(v: number) {
 
 /** Soma N dias a uma data YYYY-MM-DD e devolve YYYY-MM-DD (sem deslocar timezone). */
 function addDaysISO(dateStr: string | undefined, days: number): string {
-  const base = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
+  // Sem data de origem, a base é HOJE no fuso do Brasil: `new Date()` cru
+  // levava o `toISOString()` abaixo a virar o dia depois das 21h locais.
+  const base = new Date((dateStr || todayInBrazil()) + 'T12:00:00');
   base.setDate(base.getDate() + days);
-  return base.toISOString().split('T')[0];
+  // Remonta a partir dos componentes LOCAIS: `toISOString()` aqui converteria
+  // pra UTC e poderia devolver o dia anterior em máquinas à frente do Brasil.
+  const mm = String(base.getMonth() + 1).padStart(2, '0');
+  const dd = String(base.getDate()).padStart(2, '0');
+  return `${base.getFullYear()}-${mm}-${dd}`;
 }
 
 function parseDecimal(v: string): number {
@@ -138,7 +145,9 @@ export function ReceivePaymentModal({
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountInitialName, setAccountInitialName] = useState('');
   const [method, setMethod] = useState(defaultMethod);
-  const [paidDate, setPaidDate] = useState(new Date().toISOString().split('T')[0]);
+  // Fuso do Brasil: `paid_date` define o mês da movimentação no regime de
+  // Caixa. `toISOString()` gravava amanhã a partir das 21h locais (UTC-3).
+  const [paidDate, setPaidDate] = useState(todayInBrazil());
   const [feeAmount, setFeeAmount] = useState('');
   const [notes, setNotes] = useState('');
   // Valor recebido (string pra deixar o input livre — convertido no submit/validação).
@@ -149,7 +158,7 @@ export function ReceivePaymentModal({
   useEffect(() => {
     if (open) {
       setMethod(defaultMethod);
-      setPaidDate(new Date().toISOString().split('T')[0]);
+      setPaidDate(todayInBrazil());
       setFeeAmount('');
       setNotes('');
       // Default = o que falta receber (formatado pt-BR).

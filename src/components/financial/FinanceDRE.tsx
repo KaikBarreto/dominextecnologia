@@ -24,6 +24,14 @@ import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
 import { buildCostCenterBreakdown, filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
+import {
+  getDreEffectiveDate,
+  isInDreRange,
+  getDreAmount,
+  isPartialReceiptChild,
+  isPayrollAdvance,
+  type DreRegime,
+} from '@/lib/dre-regime';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
@@ -40,73 +48,20 @@ interface FinanceDREProps {
 }
 
 /**
- * Regime da DRE:
- * - 'caixa'       — o mês é o mês em que o dinheiro saiu/entrou (paid_date).
- *                   Só entra o que já foi pago/recebido.
- * - 'competencia' — o mês é o mês do fato gerador (transaction_date). Entra
- *                   pago ou não.
+ * O motor de regime (datas, corte de período e valor por regime) vive em
+ * `@/lib/dre-regime`, puro e com teste. Ele saiu daqui de dentro porque é o
+ * coração do relatório e estava sem nenhuma rede de proteção.
  *
- * Antes deste toggle a DRE era um híbrido: filtrava por `is_paid` mas agrupava
- * por `transaction_date`. Compra em janeiro paga em março não aparecia em
- * janeiro/fevereiro e, ao ser paga, mudava o resultado de janeiro PARA TRÁS —
+ * Antes do toggle de regime a DRE era um híbrido: filtrava por `is_paid` mas
+ * agrupava por `transaction_date`. Compra em janeiro paga em março não aparecia
+ * em janeiro/fevereiro e, ao ser paga, mudava o resultado de janeiro PARA TRÁS —
  * ou seja, mês fechado mudava depois de fechado. Nenhum dos dois regimes faz
  * isso.
+ *
+ * ⚠️ `@/lib/dre-regime` NÃO é `@/lib/finance-date`, e isso é de propósito: o
+ * helper genérico joga compra de cartão no mês da FATURA, que não é nem o mês
+ * da compra (Competência) nem o do pagamento (Caixa). Não unifique.
  */
-type DreRegime = 'caixa' | 'competencia';
-
-/**
- * Data que define em qual mês o lançamento entra na DRE.
- *
- * Usada nos TRÊS pontos que dependem de data (corte por `dre_start_date`,
- * filtro do período e agrupamento mensal do gráfico) — se o agrupamento usasse
- * outra data que o filtro, o gráfico discordaria da tabela no mesmo período.
- *
- * No regime Caixa cai pra `transaction_date` quando `paid_date` está vazio:
- * hoje toda transação paga tem `paid_date`, mas o fallback impede que uma linha
- * suma da DRE caso algum caminho futuro esqueça de gravar a data.
- */
-function getDreEffectiveDate(
-  t: Pick<FinancialTransaction, 'transaction_date' | 'paid_date'>,
-  regime: DreRegime
-): string | null {
-  if (regime === 'caixa') return t.paid_date || t.transaction_date || null;
-  return t.transaction_date || null;
-}
-
-/**
- * Parse local ao meio-dia pra `YYYY-MM-DD` não sofrer shift de fuso (compra do
- * dia 02 virar 01). Mesmo cuidado do `finance-date.ts`.
- */
-function parseDreDate(raw: string): Date {
-  return raw.length === 10 ? new Date(raw + 'T12:00:00') : new Date(raw);
-}
-
-/**
- * Corte de período da DRE.
- *
- * ⚠️ NÃO usa `isTransactionInDateRange`/`getEffectiveTransactionDate` de
- * `@/lib/finance-date` DE PROPÓSITO: aquelas funções começam com
- * `if (txn.credit_card_bill_date) return txn.credit_card_bill_date;`, ou seja,
- * jogam toda compra de cartão no mês da FATURA — uma terceira data, que não é
- * nem a da compra (Competência) nem a do pagamento (Caixa).
- *
- * Exemplo do estrago, cartão que fecha dia 20: compra em 25/08 entra na fatura
- * de setembro e é paga em 15/09. O filtro genérico diz "setembro"; a DRE em
- * Competência precisa de "agosto". Com o filtro genérico a compra sumia ou
- * aparecia no mês errado — e isso vale pra TODA compra feita depois do dia de
- * fechamento.
- *
- * Range vazio (preset "Todos os tempos") passa tudo, igual ao helper genérico.
- */
-function isInDreRange(effective: string | null, range?: DateRange): boolean {
-  if (!range?.from && !range?.to) return true;
-  if (!effective) return false;
-  const d = parseDreDate(effective);
-  if (isNaN(d.getTime())) return false;
-  if (range?.from && d < range.from) return false;
-  if (range?.to && d > range.to) return false;
-  return true;
-}
 
 interface CategoryBreakdown {
   name: string;
@@ -147,23 +102,59 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   // que define o mês (ver getDreEffectiveDate).
   // Se dreStartDate estiver preenchida, filtra só transações a partir dessa data.
   const transactionsInPeriod = useMemo(
-    () => rawTransactions.filter(t => {
-      if (t.transfer_pair_id) return false;
-      if (regime === 'caixa' && !t.is_paid) return false;
-      if (t.category === 'Pagamento de Fatura') return false;
-      if (t.category === ADJUSTMENT_CATEGORY) return false;
-      // Uma data efetiva só, usada no corte de período, no corte por
-      // dre_start_date e no agrupamento do gráfico. Se qualquer um deles usasse
-      // outra data, tabela e gráfico discordariam no mesmo período.
-      const effective = getDreEffectiveDate(t, regime);
-      if (!isInDreRange(effective, range)) return false;
-      if (!dreStartDate) return true;
-      // Corte por data efetiva (e não por transaction_date sempre): no regime
-      // Caixa o que importa é quando o dinheiro se moveu — senão um lançamento
-      // antigo pago depois do corte seria excluído mesmo tendo saído do caixa
-      // dentro do período contabilizado.
-      return effective ? parseISO(effective) >= parseISO(dreStartDate) : false;
-    }),
+    () => {
+      const out: (FinancialTransaction & { customer?: any })[] = [];
+      for (const t of rawTransactions) {
+        // Lançamento CANCELADO não é resultado. Quando um funcionário é
+        // desativado, o gatilho do banco marca as folhas futuras com
+        // `cancelled_at` e DEIXA a linha viva (pra não sumir com o histórico).
+        // Sem este corte, salário que nunca vai ser pago continuava pesando
+        // como despesa no DRE. As outras telas já respeitam (Employees filtra
+        // `cancelled_at IS NULL`); aqui faltava. Vale nos DOIS regimes.
+        if ((t as any).cancelled_at) continue;
+        if (t.transfer_pair_id) continue;
+        if (regime === 'caixa' && !t.is_paid) continue;
+        if (t.category === 'Pagamento de Fatura') continue;
+        if (t.category === ADJUSTMENT_CATEGORY) continue;
+        // Filha "Recebimento parcial" é EVENTO DE CAIXA da mãe, não fato novo.
+        // Em Competência o fato gerador já está na mãe (com o valor cheio):
+        // contar as duas dobraria a receita. Em Caixa a filha É o dinheiro que
+        // entrou, então ela fica — e a mãe é descontada em `getDreAmount`.
+        if (regime === 'competencia' && isPartialReceiptChild(t)) continue;
+        // VALE é o mesmo caso, do lado da saída: adiantamento de salário é
+        // caixa contra a folha do ciclo, não custo novo. Em Competência o custo
+        // inteiro já está na folha (que vale o BRUTO via `accrual_amount`);
+        // contar o vale também dobraria a parte adiantada. Em Caixa ele fica —
+        // é dinheiro que saiu da conta no mês dele.
+        if (regime === 'competencia' && isPayrollAdvance(t)) continue;
+        // Uma data efetiva só, usada no corte de período, no corte por
+        // dre_start_date e no agrupamento do gráfico. Se qualquer um deles usasse
+        // outra data, tabela e gráfico discordariam no mesmo período.
+        const effective = getDreEffectiveDate(t, regime);
+        if (!isInDreRange(effective, range)) continue;
+        // Corte por data efetiva (e não por transaction_date sempre): no regime
+        // Caixa o que importa é quando o dinheiro se moveu — senão um lançamento
+        // antigo pago depois do corte seria excluído mesmo tendo saído do caixa
+        // dentro do período contabilizado.
+        if (dreStartDate) {
+          if (!effective) continue;
+          if (parseISO(effective) < parseISO(dreStartDate)) continue;
+        }
+        // Valor por regime. Só difere de `t.amount` na MÃE de um recebimento
+        // parcial no regime Caixa (desconta o que já entrou pelas filhas). Pra
+        // todo o resto o objeto original passa intacto — e assim tudo o que vem
+        // depois (totais, gráfico, quebra por centro e export) lê o mesmo
+        // número, sem refazer a conta em lugar nenhum.
+        const rawAmount = Number(t.amount);
+        const dreAmount = getDreAmount(t, regime);
+        if (dreAmount === rawAmount) {
+          out.push(t);
+        } else if (dreAmount > 0) {
+          out.push({ ...t, amount: dreAmount });
+        }
+      }
+      return out;
+    },
     [rawTransactions, dreStartDate, regime, range]
   );
 

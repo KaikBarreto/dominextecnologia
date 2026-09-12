@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.24.15',
+    version: '1.24.16',
     date: '12 de setembro de 2026',
     type: 'patch',
     changes: [
@@ -55,6 +55,68 @@ export const changelog: ChangelogEntry[] = [
         title: 'Escolheu a forma de pagamento, a tela fica só com o que importa',
         description: 'Antes, depois de escolher entre cartão, Pix e boleto, os três quadros de escolha continuavam ocupando o topo da tela e empurravam o formulário para baixo. Agora eles somem assim que você escolhe, e fica só o pagamento daquela forma — no cartão, o formulário inteiro passa a caber na tela sem rolar. Para trocar de forma é só clicar em Voltar, que agora existe também no Pix e no boleto. Na tela de pagamento que você envia para o seu cliente, o link agora abre mostrando as formas disponíveis em vez de já escolher uma sozinha, para ele enxergar todas as opções antes de decidir. Quando a cobrança aceita uma forma só, nada muda: ela continua abrindo direto no pagamento.',
         category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.15',
+    date: '12 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Funcionário desligado não gera mais despesa que nunca vai acontecer',
+        description: 'Quando você desativava um funcionário, as folhas futuras dele eram canceladas, mas continuavam pesando como despesa no seu resultado. Quem desligou alguém com três folhas pela frente via milhares de reais de custo que não existiam, e pior: o valor aparecia numa aba do resultado e não na outra, sem explicação. Agora folha cancelada sai do resultado nas duas visões.',
+        category: 'correcao',
+      },
+      {
+        title: 'A taxa da maquininha voltou a contar no seu resultado',
+        description: 'Quando você recebia uma venda com taxa de maquininha ou de antecipação, essa taxa deixava de aparecer no seu resultado. O efeito era o lucro parecer maior do que realmente foi, em toda venda com taxa. A taxa continua sem poluir a lista de contas, como você já estava acostumado, mas voltou a ser descontada no resultado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Conta recebida em partes agora aparece no seu resultado',
+        description: 'Se o cliente pagava só uma parte de uma conta, o valor recebido não entrava no resultado pelo regime de caixa enquanto a conta não fosse quitada por inteiro. Uma conta de dez mil reais com metade paga mostrava zero de receita. Agora entra o que realmente entrou, no mês em que entrou.',
+        category: 'correcao',
+      },
+      {
+        title: 'Lançamento feito à noite não vai mais para o dia seguinte',
+        description: 'Dar baixa numa conta, pagar fatura de cartão, receber um pagamento ou fechar folha depois das nove da noite gravava a data do dia seguinte. Quem fechava o mês no fim do dia 31 via o valor cair no mês seguinte, e o mês já conferido mudava sozinho. Agora a data segue o horário de Brasília em todas essas telas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Marcar uma conta como paga pela edição agora pergunta a data do pagamento',
+        description: 'Ao abrir uma conta para editar e ligar a opção de já foi pago, o sistema assumia que o pagamento aconteceu na data do lançamento. Uma conta lançada em janeiro e paga em março ia para janeiro, mexendo num mês já fechado. Agora aparece um campo perguntando quando o dinheiro se moveu, já preenchido com hoje. Se você só está editando outra coisa numa conta já paga, a data original é preservada.',
+        category: 'correcao',
+      },
+      {
+        title: 'O saldo ao lado de cada linha do extrato voltou a bater com o saldo da conta',
+        description: 'No extrato, o saldo que aparece ao lado de cada lançamento estava deslocado pelo valor das taxas de recebimento. O saldo total da conta sempre esteve certo, mas o número linha a linha não fechava com ele. Agora os dois batem.',
+        category: 'correcao',
+      },
+      {
+        title: 'Vale de funcionário não conta mais duas vezes no seu resultado',
+        description: 'Quando você adiantava um vale e a folha do mês ainda estava em aberto, os dois apareciam somados no resultado por competência, inflando o custo daquele funcionário. E quando a folha era paga, o mês anterior mudava sozinho. Agora o custo aparece uma vez só, pelo valor cheio do período, e para de mudar depois de fechado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Fatura de cartão paga em partes aparece no resultado conforme você paga',
+        description: 'Se você pagava a fatura do cartão em duas vezes, nenhuma das compras aparecia no seu resultado pelo regime de caixa até a fatura ser quitada por completo, e aí tudo caía de uma vez no último mês. Agora as compras vão sendo reconhecidas conforme o dinheiro sai, e o sistema nunca reconhece mais do que saiu de fato da sua conta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O sistema avisa quando a taxa digitada é maior que a venda',
+        description: 'No momento de aprovar um orçamento informando a taxa do recebimento, o campo aceitava qualquer valor. Era possível digitar uma taxa maior que a própria venda por engano de vírgula e o sistema não reclamava. Agora ele bloqueia quando a taxa passa do valor da venda e avisa quando ela está alta mas ainda possível.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Orçamento que já tem cobrança gerada não pode mais ser aprovado por cima',
+        description: 'Se você gerava um link de cobrança para um orçamento e depois usava a opção de aprovar e gerar o financeiro, a mesma venda entrava duas vezes como receita. O caminho contrário já era protegido, esse não era. Agora o orçamento com cobrança gerada mostra um aviso e a opção de aprovar fica indisponível.',
+        category: 'correcao',
+      },
+      {
+        title: 'Reforçamos o acesso às funções internas do sistema',
+        description: 'Algumas rotinas internas podiam ser acionadas de fora sem nenhuma sessão aberta. Revisamos todas elas e agora exigem login, exceto as que precisam mesmo ser públicas. Nenhuma tela sua muda, e as páginas que seus clientes acessam sem login, como o portal, o link de orçamento, a avaliação de serviço e o formulário de cadastro, continuam funcionando normalmente.',
+        category: 'seguranca',
       },
     ],
   },

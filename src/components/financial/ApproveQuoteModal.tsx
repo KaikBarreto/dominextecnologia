@@ -9,12 +9,13 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Card } from '@/components/ui/card';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
-import { Wallet, Landmark, CreditCard, Info } from 'lucide-react';
+import { Wallet, Landmark, CreditCard, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
+import { evaluateFeeSanity } from '@/lib/fee-sanity';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCostCenters } from '@/hooks/useCostCenters';
@@ -211,6 +212,14 @@ export function ApproveQuoteModal({
 
   const isReceivable = mode === 'a_receber';
 
+  // Sanidade da tarifa contra o valor da venda — achado real de produção:
+  // uma tarifa de R$ 6.600,00 sobre venda de R$ 795,24 (830%) foi aceita sem
+  // aviso porque nada comparava os dois valores. Só se aplica no modo "Já
+  // recebi" (único que tem tarifa nesta tela).
+  const feeSanity = useMemo(() => evaluateFeeSanity(fee, amount), [fee, amount]);
+  const feeBlocked = !isReceivable && feeSanity.level === 'bloqueia';
+  const feeWarning = !isReceivable && feeSanity.level === 'alerta';
+
   // Preview das parcelas — MESMO motor da gravação (datas com clamp de fim de
   // mês, sobra do rateio na última). O que o cliente vê aqui é exatamente o
   // que vai pro banco.
@@ -221,7 +230,7 @@ export function ApproveQuoteModal({
 
   const canSubmit = isReceivable
     ? !!firstDueDate && installments >= 1
-    : !!accountId;
+    : !!accountId && !feeBlocked;
 
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting) return;
@@ -352,6 +361,19 @@ export function ApproveQuoteModal({
                   onChange={(e) => setFeeAmount(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">{t.feeHint}</p>
+                {(feeBlocked || feeWarning) && (
+                  <p
+                    className={cn(
+                      'text-xs mt-1.5 flex items-start gap-1.5 font-medium',
+                      feeBlocked ? 'text-destructive' : 'text-warning',
+                    )}
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    {(feeBlocked ? t.feeBlockedMessage : t.feeWarningMessage)
+                      .replace('{fee}', fmt(fee))
+                      .replace('{sale}', fmt(amount))}
+                  </p>
+                )}
               </div>
 
               {fee > 0 && (
