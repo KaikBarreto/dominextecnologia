@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useTenantSubscriptions — fronteira do Supabase para as ASSINATURAS recorrentes
@@ -179,6 +181,8 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
   const queryClient = useQueryClient();
   const { companyId } = useUserCompany();
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.charges.subscriptions;
   const { customerId, sourceType, sourceId } = options ?? {};
 
   const listKey = sourceType && sourceId
@@ -341,18 +345,56 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
     },
     onSuccess: (_, vars) => {
       invalidate();
-      const msg =
-        vars.action === 'cancel'
-          ? 'Assinatura cancelada com sucesso.'
-          : 'Assinatura atualizada com sucesso.';
-      toast({ title: vars.action === 'cancel' ? 'Assinatura cancelada' : 'Assinatura atualizada', description: msg });
+      if (vars.action === 'cancel') {
+        toast({ title: t.toast.cancelSuccessTitle, description: t.toast.cancelSuccessDescription });
+      } else {
+        toast({ title: t.toast.updateSuccessTitle, description: t.toast.updateSuccessDescription });
+      }
     },
     onError: (err, vars) => {
       toast({
         variant: 'destructive',
-        title: vars.action === 'cancel' ? 'Erro ao cancelar' : 'Erro ao atualizar',
-        description: err instanceof Error ? err.message : 'Tente novamente.',
+        title: vars.action === 'cancel' ? t.toast.cancelErrorTitle : t.toast.updateErrorTitle,
+        description: err instanceof Error ? err.message : t.toast.genericError,
       });
+    },
+  });
+
+  // ── bulkCancel: cancela várias assinaturas de uma vez (seleção múltipla). ────
+  // Chama a mesma edge (uma requisição por assinatura, em paralelo) e devolve
+  // um resumo. NÃO usa manageSubscription.mutateAsync diretamente pra não
+  // disparar N toasts individuais — só o toast-resumo no final.
+  const bulkCancel = useMutation({
+    mutationFn: async (subscriptionIds: string[]): Promise<{ ok: number; fail: number }> => {
+      const results = await Promise.allSettled(
+        subscriptionIds.map((subscription_id) =>
+          supabase.functions.invoke('tenant-asaas-manage-subscription', {
+            body: { subscription_id, action: 'cancel' },
+          }).then(({ data, error }) => {
+            if (error || (data && typeof data === 'object' && 'error' in data && (data as EdgeErrorBody).error)) {
+              throw new Error('cancel failed');
+            }
+          }),
+        ),
+      );
+      const ok = results.filter((r) => r.status === 'fulfilled').length;
+      const fail = results.length - ok;
+      return { ok, fail };
+    },
+    onSuccess: ({ ok, fail }) => {
+      invalidate();
+      if (fail === 0) {
+        toast({ title: t.toast.bulkCancelSuccessTitle, description: t.toast.bulkCancelSuccessDescription(ok) });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: t.toast.bulkCancelPartialTitle,
+          description: t.toast.bulkCancelPartialDescription(ok, fail),
+        });
+      }
+    },
+    onError: () => {
+      toast({ variant: 'destructive', title: t.toast.cancelErrorTitle, description: t.toast.genericError });
     },
   });
 
@@ -363,5 +405,6 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
     createSubscription,
     manageSubscription,
     authorizePixAuto,
+    bulkCancel,
   };
 }

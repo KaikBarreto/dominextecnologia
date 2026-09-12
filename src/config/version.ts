@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.18";
+export const APP_VERSION = "1.24.19";
 
-export const VERSION_NOTES = "Quando o seu cliente parcela no cartão, o sistema agora pergunta se você recebe tudo de uma vez ou conforme ele paga, e o Contas a Receber deixa de ser fatiado. As cobranças também voltaram a lançar no financeiro sozinhas, e avisam quando algo dá errado.";
+export const VERSION_NOTES = "Corrigimos um erro sério: editar uma parcela e trocar a forma de pagamento apagava as outras parcelas e refazia tudo com valor errado. Junto vieram seleção múltipla nas parcelas do contrato, editar assinatura e ações direto na ficha do cliente.";

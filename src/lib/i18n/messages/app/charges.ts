@@ -343,6 +343,7 @@ export const charges = {
         cycle: 'Frequência',
         billing_type: 'Forma de pagamento',
         first_due_date: '1º vencimento',
+        next_due_date: 'Próximo vencimento',
         description: 'Descrição',
         descriptionPlaceholder: 'Ex.: Contrato de manutenção mensal',
         category: 'Categoria',
@@ -441,9 +442,44 @@ export const charges = {
       },
       cancelDialog: {
         title: 'Cancelar assinatura',
-        description: 'Tem certeza que deseja cancelar esta assinatura? Esta ação não pode ser desfeita.',
+        description: 'Ao cancelar, as próximas cobranças desta assinatura deixam de ser geradas na Asaas. O histórico de cobranças já realizadas continua disponível no Financeiro. Esta ação não pode ser desfeita.',
         confirm: 'Cancelar assinatura',
         cancel: 'Voltar',
+      },
+      // ── Editar assinatura (valor, frequência, próximo vencimento, descrição) ──
+      editDialog: {
+        title: 'Editar assinatura',
+        description: 'As alterações são aplicadas na Asaas e no cadastro local.',
+        submit: 'Salvar alterações',
+        submitting: 'Salvando…',
+      },
+      // ── Seleção múltipla (cancelamento em massa) ──────────────────────────────
+      selection: {
+        selectAllAria: 'Selecionar todas as assinaturas',
+      },
+      bulkCancel: 'Cancelar selecionadas',
+      bulkCancelDialog: {
+        titlePrefix: 'Cancelar',
+        titleSuffix: 'assinaturas?',
+        descriptionPrefix: 'Ao cancelar, as próximas cobranças destas',
+        descriptionSuffix: 'assinaturas deixam de ser geradas na Asaas. O histórico de cobranças já realizadas continua disponível. Esta ação não pode ser desfeita.',
+        confirm: 'Cancelar',
+        cancel: 'Voltar',
+      },
+      toast: {
+        cancelSuccessTitle: 'Assinatura cancelada',
+        cancelSuccessDescription: 'A assinatura foi cancelada. As próximas cobranças não serão mais geradas.',
+        updateSuccessTitle: 'Assinatura atualizada',
+        updateSuccessDescription: 'A assinatura foi atualizada com sucesso.',
+        cancelErrorTitle: 'Erro ao cancelar',
+        updateErrorTitle: 'Erro ao atualizar',
+        genericError: 'Tente novamente.',
+        bulkCancelSuccessTitle: 'Assinaturas canceladas',
+        bulkCancelSuccessDescription: (n: number) =>
+          `${n} assinatura${n !== 1 ? 's' : ''} cancelada${n !== 1 ? 's' : ''} com sucesso.`,
+        bulkCancelPartialTitle: 'Cancelamento parcial',
+        bulkCancelPartialDescription: (ok: number, fail: number) =>
+          `${ok} cancelada(s) com sucesso, ${fail} não puderam ser canceladas. Tente novamente.`,
       },
       empty: {
         title: 'Nenhuma assinatura',
@@ -792,6 +828,7 @@ export const charges = {
         cycle: 'Frequency',
         billing_type: 'Payment method',
         first_due_date: 'First due date',
+        next_due_date: 'Next due date',
         description: 'Description',
         descriptionPlaceholder: 'E.g.: Monthly maintenance contract',
         category: 'Category',
@@ -888,9 +925,42 @@ export const charges = {
       },
       cancelDialog: {
         title: 'Cancel subscription',
-        description: 'Are you sure you want to cancel this subscription? This action cannot be undone.',
+        description: 'Cancelling stops future charges for this subscription on Asaas. The billing history already generated stays available in your finances. This action cannot be undone.',
         confirm: 'Cancel subscription',
         cancel: 'Go back',
+      },
+      editDialog: {
+        title: 'Edit subscription',
+        description: 'Changes are applied on Asaas and in the local record.',
+        submit: 'Save changes',
+        submitting: 'Saving…',
+      },
+      selection: {
+        selectAllAria: 'Select all subscriptions',
+      },
+      bulkCancel: 'Cancel selected',
+      bulkCancelDialog: {
+        titlePrefix: 'Cancel',
+        titleSuffix: 'subscriptions?',
+        descriptionPrefix: 'Cancelling these',
+        descriptionSuffix: 'subscriptions stops future charges on Asaas. The billing history is kept. This action cannot be undone.',
+        confirm: 'Cancel',
+        cancel: 'Go back',
+      },
+      toast: {
+        cancelSuccessTitle: 'Subscription cancelled',
+        cancelSuccessDescription: 'The subscription was cancelled. Future charges will no longer be generated.',
+        updateSuccessTitle: 'Subscription updated',
+        updateSuccessDescription: 'The subscription was updated successfully.',
+        cancelErrorTitle: 'Error cancelling',
+        updateErrorTitle: 'Error updating',
+        genericError: 'Please try again.',
+        bulkCancelSuccessTitle: 'Subscriptions cancelled',
+        bulkCancelSuccessDescription: (n: number) =>
+          `${n} subscription${n !== 1 ? 's' : ''} cancelled successfully.`,
+        bulkCancelPartialTitle: 'Partial cancellation',
+        bulkCancelPartialDescription: (ok: number, fail: number) =>
+          `${ok} cancelled successfully, ${fail} could not be cancelled. Please try again.`,
       },
       empty: {
         title: 'No subscriptions',
@@ -1239,6 +1309,7 @@ export const charges = {
         cycle: 'Frecuencia',
         billing_type: 'Forma de pago',
         first_due_date: 'Primer vencimiento',
+        next_due_date: 'Próximo vencimiento',
         description: 'Descripción',
         descriptionPlaceholder: 'Ej.: Contrato de mantenimiento mensual',
         category: 'Categoría',
@@ -1335,9 +1406,42 @@ export const charges = {
       },
       cancelDialog: {
         title: 'Cancelar suscripción',
-        description: '¿Estás seguro de que deseas cancelar esta suscripción? Esta acción no puede deshacerse.',
+        description: 'Al cancelar, los próximos cobros de esta suscripción dejarán de generarse en Asaas. El historial de cobros ya realizados sigue disponible en tus finanzas. Esta acción no se puede deshacer.',
         confirm: 'Cancelar suscripción',
         cancel: 'Volver',
+      },
+      editDialog: {
+        title: 'Editar suscripción',
+        description: 'Los cambios se aplican en Asaas y en el registro local.',
+        submit: 'Guardar cambios',
+        submitting: 'Guardando…',
+      },
+      selection: {
+        selectAllAria: 'Seleccionar todas las suscripciones',
+      },
+      bulkCancel: 'Cancelar seleccionadas',
+      bulkCancelDialog: {
+        titlePrefix: '¿Cancelar',
+        titleSuffix: 'suscripciones?',
+        descriptionPrefix: 'Al cancelar, los próximos cobros de estas',
+        descriptionSuffix: 'suscripciones dejarán de generarse en Asaas. El historial de cobros ya realizados sigue disponible. Esta acción no se puede deshacer.',
+        confirm: 'Cancelar',
+        cancel: 'Volver',
+      },
+      toast: {
+        cancelSuccessTitle: 'Suscripción cancelada',
+        cancelSuccessDescription: 'La suscripción fue cancelada. Los próximos cobros ya no se generarán.',
+        updateSuccessTitle: 'Suscripción actualizada',
+        updateSuccessDescription: 'La suscripción fue actualizada correctamente.',
+        cancelErrorTitle: 'Error al cancelar',
+        updateErrorTitle: 'Error al actualizar',
+        genericError: 'Inténtalo de nuevo.',
+        bulkCancelSuccessTitle: 'Suscripciones canceladas',
+        bulkCancelSuccessDescription: (n: number) =>
+          `${n} suscripción${n !== 1 ? 'es' : ''} cancelada${n !== 1 ? 's' : ''} correctamente.`,
+        bulkCancelPartialTitle: 'Cancelación parcial',
+        bulkCancelPartialDescription: (ok: number, fail: number) =>
+          `${ok} cancelada(s) correctamente, ${fail} no se pudieron cancelar. Inténtalo de nuevo.`,
       },
       empty: {
         title: 'Sin suscripciones',
@@ -1687,6 +1791,7 @@ export const charges = {
         cycle: 'Fréquence',
         billing_type: 'Mode de paiement',
         first_due_date: `Première échéance`,
+        next_due_date: `Prochaine échéance`,
         description: 'Description',
         descriptionPlaceholder: `Ex. : Contrat de maintenance mensuel`,
         category: 'Catégorie',
@@ -1783,9 +1888,42 @@ export const charges = {
       },
       cancelDialog: {
         title: `Résilier l'abonnement`,
-        description: `Êtes-vous sûr de vouloir résilier cet abonnement ? Cette action ne peut pas être annulée.`,
+        description: `En résiliant, les prochains prélèvements de cet abonnement ne seront plus générés sur Asaas. L'historique des prélèvements déjà effectués reste disponible dans vos finances. Cette action ne peut pas être annulée.`,
         confirm: 'Résilier',
         cancel: 'Annuler',
+      },
+      editDialog: {
+        title: `Modifier l'abonnement`,
+        description: `Les modifications sont appliquées sur Asaas et dans l'enregistrement local.`,
+        submit: 'Enregistrer les modifications',
+        submitting: 'Enregistrement…',
+      },
+      selection: {
+        selectAllAria: `Sélectionner tous les abonnements`,
+      },
+      bulkCancel: 'Résilier la sélection',
+      bulkCancelDialog: {
+        titlePrefix: 'Résilier',
+        titleSuffix: 'abonnements ?',
+        descriptionPrefix: 'En résiliant, les prochains prélèvements de ces',
+        descriptionSuffix: `abonnements ne seront plus générés sur Asaas. L'historique des prélèvements déjà effectués reste disponible. Cette action ne peut pas être annulée.`,
+        confirm: 'Résilier',
+        cancel: 'Annuler',
+      },
+      toast: {
+        cancelSuccessTitle: 'Abonnement résilié',
+        cancelSuccessDescription: `L'abonnement a été résilié. Les prochains prélèvements ne seront plus générés.`,
+        updateSuccessTitle: 'Abonnement modifié',
+        updateSuccessDescription: `L'abonnement a été modifié avec succès.`,
+        cancelErrorTitle: `Erreur lors de la résiliation`,
+        updateErrorTitle: `Erreur lors de la modification`,
+        genericError: `Veuillez réessayer.`,
+        bulkCancelSuccessTitle: `Abonnements résiliés`,
+        bulkCancelSuccessDescription: (n: number) =>
+          `${n} abonnement${n !== 1 ? 's' : ''} résilié${n !== 1 ? 's' : ''} avec succès.`,
+        bulkCancelPartialTitle: `Résiliation partielle`,
+        bulkCancelPartialDescription: (ok: number, fail: number) =>
+          `${ok} résilié(s) avec succès, ${fail} n'ont pas pu être résiliés. Veuillez réessayer.`,
       },
       empty: {
         title: 'Aucun abonnement',

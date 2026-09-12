@@ -38,6 +38,15 @@ import {
   receivableInstallmentCount,
   type CardReceiptMode,
 } from '@/lib/finance-installments';
+import {
+  planTransactionEdit,
+  belongsToInstallmentGroup,
+  type TransactionEditPlan,
+} from '@/lib/finance-edit-plan';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useTenantFees } from '@/hooks/useTenantCardFees';
 import { simulateNetAmount, REFERENCE_CARD_FEES, type SimulatorFees } from '@/lib/asaasFeeSimulator';
 import {
@@ -742,7 +751,11 @@ export function TransactionFormDialog({
     payment_method: (transaction as any)?.payment_method
       ? (normalizePaymentMethod((transaction as any).payment_method) ?? (transaction as any).payment_method)
       : lastPaymentMethod,
-    installment_count: (transaction as any)?.installment_total ?? 1,
+    // NUNCA semear com `installment_total`. O `amount` de uma parcela é a
+    // FATIA, não o total: semear 10 aqui fazia o motor dividir R$ 100 em 10 e
+    // a venda de R$ 1.000 voltava como R$ 100. Edição de parcela nasce em 1 e
+    // `planTransactionEdit` impede que ela vire parcelamento novo.
+    installment_count: 1,
     account_id: (transaction as any)?.account_id ?? lastAccountId,
     cost_center_id: transaction?.cost_center_id ?? null,
     // Decisão do CEO: nunca nasce marcado. Sem padrão, sem preferência salva.
@@ -753,7 +766,7 @@ export function TransactionFormDialog({
   // Editando uma parcela de um grupo JÁ criado, o campo de parcelas vira badge
   // read-only e a pergunta do crédito parcelado não é feita. A validação segue
   // o mesmo flag pra nunca travar o salvar num campo que não está na tela.
-  const isEditingInstallmentGroup = ((transaction as any)?.installment_total ?? 1) > 1;
+  const isEditingInstallmentGroup = !!transaction && belongsToInstallmentGroup(transaction as any);
   const canAskCardReceiptMode = !isEditingInstallmentGroup;
 
   const localizedSchema = useMemo(
@@ -850,54 +863,73 @@ export function TransactionFormDialog({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCardAccount, watchedDate, watchedAccountId, open]);
 
+  /**
+   * Crédito parcelado em receita: o cliente parcela em N, mas o Contas a
+   * Receber só recebe N linhas se a empresa NÃO antecipar. Antecipando, é uma
+   * linha só com o valor cheio. O modo é campo de TELA, nunca vai pro banco.
+   * Precisa ser calculado antes da confirmação E na gravação — se divergirem,
+   * o aviso na tela promete um número de linhas e o banco grava outro.
+   */
+  const resolveReceipt = (data: TransactionFormData) => {
+    const receiptMode: CardReceiptMode | null =
+      canAskCardReceiptMode && needsCardReceiptChoice(data) ? (data.card_receipt_mode ?? null) : null;
+    return {
+      receiptMode,
+      effectiveInstallmentCount: receivableInstallmentCount({
+        installmentCount: data.installment_count ?? 1,
+        mode: receiptMode,
+      }),
+    };
+  };
+
+  /**
+   * Aviso de "refazer o lançamento", segurando os dados do formulário até o
+   * usuário decidir. Substituiu o `window.confirm` (ação destrutiva usa o
+   * diálogo do design system, que vira drawer no mobile).
+   */
+  const [replaceConfirm, setReplaceConfirm] = useState<
+    { data: TransactionFormData; plan: TransactionEditPlan } | null
+  >(null);
+
+  /**
+   * Porta de entrada do "Salvar". Só decide SE precisa de confirmação; quem
+   * grava é `runSubmit`.
+   *
+   * A decisão vem do motor puro `planTransactionEdit`, o mesmo que o
+   * `Finance.tsx` usa pra executar. Enquanto eram duas contas separadas, a tela
+   * avisava "a transação original será removida" (singular) e o banco apagava
+   * as 10 parcelas do grupo.
+   */
   const handleSubmit = async (data: TransactionFormData) => {
+    if (submitGuard.current) return;
+
+    if (isEditing && transaction) {
+      const { effectiveInstallmentCount } = resolveReceipt(data);
+      const plan = planTransactionEdit({
+        original: transaction as any,
+        intent: {
+          payment_method: data.payment_method,
+          installment_count: effectiveInstallmentCount,
+        },
+      });
+      // `replace` = a linha atual sai e outra(s) entra(m). UMA linha, sempre:
+      // parcela de grupo nunca chega aqui (o plano devolve `update`).
+      if (plan.action === 'replace') {
+        setReplaceConfirm({ data, plan });
+        return;
+      }
+    }
+
+    await runSubmit(data);
+  };
+
+  const runSubmit = async (data: TransactionFormData) => {
     // Trava de reentrância: se já há um submit em andamento, ignora o 2º disparo.
     // Cobre duplo-clique e o retry do react-hook-form, evitando dois inserts.
     if (submitGuard.current) return;
     submitGuard.current = true;
 
-    // Transição "à vista → parcelada" OU mudança de forma de pagamento em edição:
-    // Finance.tsx vai deletar a original (ou o grupo inteiro de parcelas) e
-    // recriar do zero, porque o backend só faz UPDATE plano e não consegue
-    // reescrever a estrutura (parcelas, cartão vs PIX, etc.). Confirma com o
-    // usuário antes pra evitar surpresa.
-    const originalInstallmentTotal = (transaction as any)?.installment_total;
-    const originalPaymentMethod = (transaction as any)?.payment_method;
-    const wasOnePayment = isEditing && (!originalInstallmentTotal || originalInstallmentTotal <= 1);
-    const paymentMethodChanged = isEditing && originalPaymentMethod !== data.payment_method;
-
-    // Crédito parcelado em receita: o cliente parcela em N, mas o Contas a
-    // Receber só recebe N linhas se a empresa NÃO antecipar. Antecipando, é uma
-    // linha só com o valor cheio (`receivableInstallmentCount` decide). O modo
-    // é campo de TELA, nunca vai pro banco.
-    const receiptMode: CardReceiptMode | null =
-      canAskCardReceiptMode && needsCardReceiptChoice(data) ? (data.card_receipt_mode ?? null) : null;
-    const effectiveInstallmentCount = receivableInstallmentCount({
-      installmentCount: data.installment_count ?? 1,
-      mode: receiptMode,
-    });
-    const willBeMultiple = effectiveInstallmentCount > 1;
-
-    if (paymentMethodChanged) {
-      const parcelasInfo = effectiveInstallmentCount > 1
-        ? `${effectiveInstallmentCount} parcelas`
-        : 'à vista';
-      const grupoInfo = (originalInstallmentTotal ?? 1) > 1
-        ? `Todas as ${originalInstallmentTotal} parcelas originais serão removidas`
-        : 'A transação original será removida';
-      const ok = window.confirm(
-        tf.changeMethodConfirm
-          .replace('{groupInfo}', grupoInfo)
-          .replace('{parcelas}', parcelasInfo)
-      );
-      if (!ok) { submitGuard.current = false; return; }
-    } else if (wasOnePayment && willBeMultiple) {
-      const ok = window.confirm(
-        tf.changeInstallmentConfirm
-          .replace(/\{count\}/g, String(effectiveInstallmentCount))
-      );
-      if (!ok) { submitGuard.current = false; return; }
-    }
+    const { effectiveInstallmentCount } = resolveReceipt(data);
 
     setSubmitting(true);
     try {
@@ -1235,16 +1267,12 @@ export function TransactionFormDialog({
 
           {/* Credit card bill info */}
           {isCardAccount && transactionType === 'saida' && (() => {
-            const originalInstallmentTotal = (transaction as any)?.installment_total;
-            const originalPaymentMethod = (transaction as any)?.payment_method;
-            const currentPaymentMethod = form.watch('payment_method');
-            const paymentMethodChanged = isEditing && originalPaymentMethod !== currentPaymentMethod;
-            // Se trocou método, vai recriar como nova despesa → trata como "novo".
-            const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1 && !paymentMethodChanged;
-            // Editando parcela individual de despesa já parcelada: mostrar só o
-            // mês desta parcela (breakdown sairia errado, calculado a partir
-            // desta data específica). Nos outros casos (novo OU à vista virando
-            // parcelada OU método mudou), refletir a escolha atual do form.
+            // Editando parcela de um grupo: mostrar só o mês DESTA parcela. O
+            // breakdown das N sairia errado (seria calculado a partir da data
+            // desta parcela e do valor dela, que é fatia). Trocar a forma de
+            // pagamento NÃO liberta esse bloco: a edição de uma parcela nunca
+            // refaz o grupo. Ver src/lib/finance-edit-plan.ts.
+            const wasAlreadyMultiple = isEditingInstallmentGroup;
             return (
               <CreditCardBillSection
                 form={form}
@@ -1278,27 +1306,25 @@ export function TransactionFormDialog({
 
             {(() => {
               const originalInstallmentTotal = (transaction as any)?.installment_total;
-              const originalPaymentMethod = (transaction as any)?.payment_method;
-              const currentPaymentMethod = form.watch('payment_method');
-              const paymentMethodChanged = isEditing && originalPaymentMethod !== currentPaymentMethod;
-              // Se o usuário trocou o método de pagamento na edição, vamos
-              // recriar a despesa do zero (delete + create) — então libera o
-              // select de parcelas como se fosse criação nova.
-              const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1 && !paymentMethodChanged;
-              // Edição de transação JÁ parcelada: badge read-only — alterar
-              // quantidade ali exigiria reescrever TODAS as parcelas (fora de escopo).
-              // Edição de transação à vista (ou nova): Select normal. Se o usuário
-              // escolher N>1, Finance.tsx recria como parcelas (delete + create).
-              if (wasAlreadyMultiple) {
+              // Edição de PARCELA: selo read-only, sempre. Trocar a forma de
+              // pagamento não libera o select — o valor desta linha é a fatia,
+              // e deixar escolher "10x" aqui era exatamente o que redividia a
+              // fatia e derrubava a venda de R$ 1.000 para R$ 100.
+              // Refazer o parcelamento inteiro é outra operação: excluir as
+              // parcelas e lançar de novo.
+              // Edição de lançamento avulso (ou criação): Select normal. Se o
+              // usuário escolher N>1, Finance.tsx recria como parcelas.
+              if (isEditingInstallmentGroup) {
                 return (
                   <FormItem>
                     <FormLabel>{tf.installmentsLabel}</FormLabel>
                     <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
                       <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span>
-                        {tf.installmentBadgePrefix} {(transaction as any)?.installment_number ?? '?'}/{originalInstallmentTotal}
+                        {tf.installmentBadgePrefix} {(transaction as any)?.installment_number ?? '?'}/{originalInstallmentTotal ?? '?'}
                       </span>
                     </div>
+                    <p className="text-xs text-muted-foreground">{tf.installmentScopeHint}</p>
                   </FormItem>
                 );
               }
@@ -1325,7 +1351,7 @@ export function TransactionFormDialog({
           {/* Installment info — shown for non-card transactions only (card gets breakdown above).
               Vale também na edição "à vista → parcelada" (transação JÁ parcelada nunca chega aqui
               porque o campo vira badge read-only). */}
-          {!((transaction as any)?.installment_total > 1) && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (
+          {!isEditingInstallmentGroup && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (
             <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
               {tf.installmentInfo
                 .replace('{count}', String(form.watch('installment_count')))
@@ -1430,6 +1456,41 @@ export function TransactionFormDialog({
       onSubmit={handleCreateCategoryInline}
       isLoading={createCategory.isPending}
     />
+
+    {/* Refazer o lançamento: a linha atual sai e outra(s) entra(m). Substituiu
+        o `window.confirm` (ação destrutiva usa o diálogo do design system, que
+        vira drawer no mobile). O texto diz exatamente quantas linhas nascem e
+        que UMA sai — antes falava em remover "a transação original" enquanto o
+        banco apagava as 10 parcelas do grupo. */}
+    <AlertDialog
+      open={!!replaceConfirm}
+      onOpenChange={(o) => { if (!o) setReplaceConfirm(null); }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{tf.replaceDialog.title}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {replaceConfirm?.plan.reason === 'became_installments'
+              ? tf.replaceDialog.descriptionInstallments
+                  .replace(/\{count\}/g, String(replaceConfirm?.plan.installmentCount ?? 1))
+              : tf.replaceDialog.descriptionPaymentMethod}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{tf.replaceDialog.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              const pending = replaceConfirm;
+              setReplaceConfirm(null);
+              if (pending) void runSubmit(pending.data);
+            }}
+          >
+            {tf.replaceDialog.confirm}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Quick-create de conta bancária / caixa — auto-seleciona a nova conta no form. */}
     <AccountFormDialog

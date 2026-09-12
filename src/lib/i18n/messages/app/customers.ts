@@ -165,6 +165,7 @@ export const customers = {
       chargeRefundCancel: 'Cancelar',
       chargeRefundSuccess: 'Estorno solicitado. A cobrança será atualizada em instantes.',
       chargeRefundError: 'Não foi possível estornar a cobrança.',
+      chargeNoDescription: 'Cobrança sem descrição',
 
       // Aba Geral — seção Informações
       sectionInfo: 'Informações',
@@ -285,6 +286,8 @@ export const customers = {
       colTxnActions: 'Ações',
       txnPaid: 'Pago',
       txnPending: 'Pendente',
+      viewDetails: 'Ver detalhes',
+      financeChargeBadge: 'Cobrança',
 
       // Switcher de cliente
       switcherSearch: 'Buscar cliente...',
@@ -606,6 +609,7 @@ export const customers = {
       chargeRefundCancel: 'Cancel',
       chargeRefundSuccess: 'Refund requested. The charge will be updated shortly.',
       chargeRefundError: 'Could not refund the charge.',
+      chargeNoDescription: 'Charge with no description',
 
       sectionInfo: 'Information',
       fieldOrigin: 'Origin',
@@ -716,6 +720,8 @@ export const customers = {
       colTxnActions: 'Actions',
       txnPaid: 'Paid',
       txnPending: 'Pending',
+      viewDetails: 'View details',
+      financeChargeBadge: 'Charge',
 
       switcherSearch: 'Search customer...',
       switcherEmpty: 'No customers found.',
@@ -1015,6 +1021,7 @@ export const customers = {
       chargeRefundCancel: 'Cancelar',
       chargeRefundSuccess: 'Reembolso solicitado. El cobro se actualizará en breve.',
       chargeRefundError: 'No fue posible reembolsar el cobro.',
+      chargeNoDescription: 'Cobro sin descripción',
 
       sectionInfo: 'Información',
       fieldOrigin: 'Origen',
@@ -1125,6 +1132,8 @@ export const customers = {
       colTxnActions: 'Acciones',
       txnPaid: 'Pagado',
       txnPending: 'Pendiente',
+      viewDetails: 'Ver detalles',
+      financeChargeBadge: 'Cobro',
 
       switcherSearch: 'Buscar cliente...',
       switcherEmpty: 'Ningún cliente encontrado.',
@@ -1424,6 +1433,7 @@ export const customers = {
       chargeRefundCancel: 'Annuler',
       chargeRefundSuccess: `Remboursement demandé. La facture sera mise à jour dans quelques instants.`,
       chargeRefundError: `Impossible de rembourser la facture.`,
+      chargeNoDescription: `Facture sans description`,
 
       sectionInfo: 'Informations',
       fieldOrigin: 'Origine',
@@ -1534,6 +1544,8 @@ export const customers = {
       colTxnActions: 'Actions',
       txnPaid: 'Payé',
       txnPending: 'En attente',
+      viewDetails: `Voir les détails`,
+      financeChargeBadge: `Facture`,
 
       switcherSearch: 'Rechercher un client...',
       switcherEmpty: 'Aucun client trouvé.',

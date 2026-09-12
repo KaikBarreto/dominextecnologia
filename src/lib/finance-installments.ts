@@ -155,3 +155,52 @@ export function buildCardReceivablePlan(args: {
   const count = receivableInstallmentCount({ installmentCount, mode });
   return buildInstallmentPlan(firstDate, total, count);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPETIÇÃO ≠ PARCELAMENTO
+//
+// São dois conceitos que o financeiro trata de formas opostas e que o texto
+// "(2/48)" na descrição confundia:
+//
+//   • PARCELAMENTO: um TOTAL dividido em N (R$ 1.000 em 10x de R$ 100). A soma
+//     das linhas é o total. É o que `buildInstallmentPlan` faz.
+//   • REPETIÇÃO: o MESMO valor cobrado N vezes (48 mensalidades de R$ 180, que
+//     somam R$ 8.640). É o que um contrato PMOC gera. Nada é dividido.
+//
+// Passar uma mensalidade de contrato por `buildInstallmentPlan` esmigalharia os
+// R$ 180 em 48 pedacinhos de R$ 3,75 — por isso a repetição tem motor próprio.
+// O que os dois compartilham é o passo mensal com clamp de fim de mês
+// (`addMonthsISO`): mês é MÊS DE CALENDÁRIO, nunca 30 dias corridos.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Plano de REPETIÇÃO: `count` lançamentos do MESMO `amount`, espaçados de
+ * `intervalMonths` meses (1 = mensal, 3 = trimestral, 12 = anual).
+ *
+ * `intervalMonths: 0` (frequência "única") devolve todas as ocorrências na
+ * mesma data — na prática só é usado com `count: 1`.
+ */
+export function buildRepetitionPlan(args: {
+  firstDate: string;
+  amount: number;
+  count: number;
+  intervalMonths: number;
+}): InstallmentPlanRow[] {
+  const n = Math.max(1, Math.floor(Number(args.count) || 1));
+  const step = Math.max(0, Math.floor(Number(args.intervalMonths) || 0));
+  const amount = round2(Number(args.amount) || 0);
+  return Array.from({ length: n }, (_, i) => ({
+    number: i + 1,
+    date: addMonthsISO(args.firstDate, i * step),
+    amount,
+  }));
+}
+
+/**
+ * Quanto o plano de repetição soma no fim (valor x ocorrências). Serve pro
+ * preview deixar explícito que 48x R$ 180 é R$ 8.640 e NÃO R$ 180 fatiados.
+ */
+export function repetitionTotal(amount: number, count: number): number {
+  const n = Math.max(1, Math.floor(Number(count) || 1));
+  return round2((Number(amount) || 0) * n);
+}

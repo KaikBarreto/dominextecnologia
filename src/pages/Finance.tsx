@@ -1,8 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinancial } from '@/hooks/useFinancial';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { Button } from '@/components/ui/button';
@@ -13,6 +11,7 @@ import { FinanceMovimentacoes } from '@/components/financial/FinanceMovimentacoe
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { getEffectiveTransactionMonthRange, isTransactionInDateRange } from '@/lib/finance-date';
+import { useTransactionEditSubmit } from '@/hooks/useTransactionEditSubmit';
 import { DollarSign } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -93,7 +92,6 @@ export default function Finance() {
   // Linha a destacar na lista (vem do `?txn=`). Fica até o usuário sair da tela.
   const [highlightTransactionId, setHighlightTransactionId] = useState<string | null>(null);
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
-  const { toast } = useToast();
   const { hasModule } = useCompanyModules();
   // Cobrança avulsa (recebimento do cliente final via Asaas): o botão "Cobrar"
   // só aparece com o add-on `cobrancas` contratado E a conta de recebimentos
@@ -219,101 +217,21 @@ export default function Finance() {
     );
   };
 
-  // Duplica linhas de `financial_transaction_attachments` da transação original
-  // pra cada nova parcela, apontando pro MESMO `storage_path` (arquivo físico
-  // único, várias rows referenciando). Não copia o arquivo no Storage —
-  // alinhado ao padrão usado em `useUploadTransactionAttachmentShared`.
-  const relinkAttachments = async (oldTransactionId: string, newIds: string[]) => {
-    if (newIds.length === 0) return;
-    const { data: existing, error: selErr } = await supabase
-      .from('financial_transaction_attachments')
-      .select('storage_path, file_name, mime_type, size_bytes, uploaded_by')
-      .eq('transaction_id', oldTransactionId);
-    if (selErr) throw selErr;
-    if (!existing || existing.length === 0) return;
-
-    const rows = newIds.flatMap((newId) =>
-      existing.map((att) => ({
-        transaction_id: newId,
-        storage_path: att.storage_path,
-        file_name: att.file_name,
-        mime_type: att.mime_type,
-        size_bytes: att.size_bytes,
-        uploaded_by: att.uploaded_by,
-      }))
-    );
-    const { error: insErr } = await supabase
-      .from('financial_transaction_attachments')
-      .insert(rows);
-    if (insErr) throw insErr;
-  };
+  /**
+   * "Salvar" do formulário. Toda a regra (UPDATE x recriar, relink de anexos,
+   * delete de UMA linha só, fatura do cartão, toasts de falha parcial) vive em
+   * `useTransactionEditSubmit`, compartilhada com a aba Financeiro da ficha do
+   * cliente. Antes cada tela tinha a sua cópia e só esta estava corrigida: a da
+   * ficha do cliente continuava apagando o grupo de parcelas inteiro.
+   */
+  const submitTransaction = useTransactionEditSubmit({
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+  });
 
   const handleSubmit = async (data: any) => {
-    let result: any = null;
-    if (editingTransaction) {
-      const wasOnePayment =
-        !editingTransaction.installment_total || editingTransaction.installment_total <= 1;
-      const willBeMultiple = (data.installment_count ?? 1) > 1;
-      const originalPaymentMethod = editingTransaction.payment_method;
-      const paymentMethodChanged = originalPaymentMethod !== data.payment_method;
-
-      // Caminho "recriar": precisamos reescrever a despesa do zero quando
-      //  (a) à vista virou parcelada (estrutura muda) OU
-      //  (b) método de pagamento mudou (ex: PIX → Cartão, vira lançamento de fatura).
-      // Em ambos os casos o UPDATE plano do hook não dá conta.
-      const needsReplace = (wasOnePayment && willBeMultiple) || paymentMethodChanged;
-
-      if (needsReplace) {
-        // 1. Cria a(s) nova(s) transação(ões) primeiro pra não perder dados se falhar.
-        const created = await createTransaction.mutateAsync(data);
-
-        // 2. Relink dos anexos: precisa rodar antes do delete, senão perdem o
-        //    storage_path referenciado pela transação original.
-        try {
-          await relinkAttachments(editingTransaction.id, created.ids);
-        } catch (e) {
-          toast({
-            variant: 'destructive',
-            title: 'Anexos não foram preservados',
-            description: 'A nova despesa foi criada, mas os comprovantes da original não puderam ser vinculados. Reanexe manualmente.',
-          });
-        }
-
-        // 3. Delete da original. Se ela faz parte de um grupo de parcelas
-        //    (installment_group_id), tem que apagar TODAS as parcelas do grupo,
-        //    senão sobram irmãs órfãs que confundem extrato e cartão.
-        const installmentGroupId = editingTransaction.installment_group_id;
-        try {
-          if (installmentGroupId) {
-            // Apaga todas as parcelas do grupo de uma vez. Não usa
-            // deleteTransaction.mutateAsync (que processa uma por uma + cascata
-            // de quote/fatura) porque queremos a operação atômica e mais barata.
-            const { error: delErr } = await supabase
-              .from('financial_transactions')
-              .delete()
-              .eq('installment_group_id', installmentGroupId);
-            if (delErr) throw delErr;
-          } else {
-            await deleteTransaction.mutateAsync(editingTransaction.id);
-          }
-        } catch (e: any) {
-          toast({
-            variant: 'destructive',
-            title: 'Transação original não foi removida',
-            description: 'A nova despesa foi criada, mas a original ainda está na lista. Remova manualmente.',
-          });
-        }
-        result = created;
-      } else {
-        // Caminho normal: update simples. Embrulha pra manter o contrato
-        // { ids, primary } que o form espera.
-        const updated = await updateTransaction.mutateAsync({ ...data, id: editingTransaction.id });
-        result = { ids: [editingTransaction.id], primary: updated };
-      }
-    } else {
-      // Create: já retorna { ids: string[]; primary } — funciona pra à vista E parcelado.
-      result = await createTransaction.mutateAsync(data);
-    }
+    const result = await submitTransaction(data, editingTransaction);
     setEditingTransaction(null);
     return result;
   };

@@ -474,6 +474,170 @@ export function useFinancial() {
     },
   });
 
+  /**
+   * CRIAÇÃO EM LOTE de uma SÉRIE DE REPETIÇÃO (ex.: as 48 mensalidades de um
+   * contrato). Um `insert` só com N linhas, no lugar do laço que chamava
+   * `createTransaction` uma vez por parcela — eram 48 idas ao servidor, 48
+   * toasts e um estado meio-gravado se a 30a falhasse. Agora é atômico: ou
+   * nascem as 48, ou nenhuma.
+   *
+   * NÃO faz parcelamento (nada é dividido) e NÃO trata cartão de crédito:
+   * série de repetição é receita/despesa simples em conta. Por isso o input
+   * exclui `installment_count` e `credit_card_bill_date` — quem precisa desses
+   * usa `createTransaction`.
+   *
+   * Silencioso de propósito (sem toast): quem chama sabe o contexto e escreve
+   * a mensagem no idioma do usuário.
+   */
+  const createTransactionsBatch = useMutation({
+    mutationFn: async (
+      rows: Array<Omit<TransactionInput, 'installment_count' | 'credit_card_bill_date'>>
+    ): Promise<string[]> => {
+      if (rows.length === 0) return [];
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+
+      const payload = rows.map((row) =>
+        normalizeOptionalForeignKeys(
+          { ...row, created_by: user?.id, company_id } as any,
+          ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+        )
+      );
+
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .insert(payload as any)
+        .select('id');
+      if (error) throw error;
+      return ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+  });
+
+  /**
+   * EDIÇÃO EM LOTE dos lançamentos selecionados. Um `update` só com `.in(id)`.
+   *
+   * Só campos "planilha" (valor, conta, categoria): mexer em `is_paid` /
+   * `paid_date` em massa recarimbaria o mês em que o caixa moveu, e isso tem
+   * que continuar passando pela baixa individual.
+   *
+   * Campo ausente em `changes` = não altera (não vira `null`).
+   * O `.eq('company_id')` é cinto e suspensório: a RLS já isola, isto só evita
+   * que uma lista montada errada no client toque em linha de outra empresa.
+   */
+  const updateTransactionsBatch = useMutation({
+    mutationFn: async (params: {
+      ids: string[];
+      changes: { amount?: number; account_id?: string | null; category?: string | null };
+    }) => {
+      const { ids, changes } = params;
+      if (ids.length === 0) return 0;
+
+      const patch: Record<string, any> = {};
+      if (typeof changes.amount === 'number' && !Number.isNaN(changes.amount)) patch.amount = changes.amount;
+      if (changes.account_id !== undefined) patch.account_id = changes.account_id || null;
+      if (changes.category !== undefined) patch.category = changes.category || null;
+      if (Object.keys(patch).length === 0) return 0;
+
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update(patch as any)
+        .eq('company_id', company_id)
+        .in('id', ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+  });
+
+  /**
+   * EXCLUSÃO EM MASSA dos lançamentos selecionados.
+   *
+   * Repete, em lote, as MESMAS cascatas do `deleteTransaction` individual:
+   *   1. pagamento de fatura de cartão (par de lançamentos) tem que ir pela RPC
+   *      de estorno, uma por uma — apagar cru deixa a perna irmã órfã e o
+   *      limite do cartão errado;
+   *   2. filhas (recebimento parcial, tarifa do recebimento) saem junto;
+   *   3. orçamento que apontava pro lançamento volta pra 'enviado'.
+   * Só depois disso as linhas são apagadas — num `delete` só.
+   */
+  const deleteTransactionsBatch = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return 0;
+
+      // 1. Pagamento de fatura: estorno via RPC, individualmente. Raro nesta
+      //    superfície (parcela de contrato nunca é isso), mas o lote não pode
+      //    ser um caminho que corrompe o cartão em silêncio.
+      const { data: rows, error: fetchErr } = await supabase
+        .from('financial_transactions')
+        .select('id, category, transfer_pair_id')
+        .in('id', ids);
+      if (fetchErr) throw fetchErr;
+
+      const fetched = (rows ?? []) as Array<{ id: string; category: string | null; transfer_pair_id: string | null }>;
+
+      // Pagamento de fatura ANTIGO (uma perna só, de antes da RPC) precisa do
+      // caminho legado que recalcula `amount_paid` da fatura à mão. Ele não
+      // cabe num lote, e apagar cru deixaria a fatura com saldo errado — então
+      // o lote se recusa em vez de corromper em silêncio. Não acontece na lista
+      // de parcelas de contrato (é sempre receita), é guarda pra outros usos.
+      const legacyBillPayment = fetched.find(
+        (r) => r.category === 'Pagamento de Fatura' && !r.transfer_pair_id
+      );
+      if (legacyBillPayment) {
+        throw new Error(
+          'Há um pagamento de fatura antigo na seleção. Exclua esse lançamento individualmente.'
+        );
+      }
+
+      const billPaymentIds = fetched
+        .filter((r) => r.category === 'Pagamento de Fatura' && r.transfer_pair_id)
+        .map((r) => r.id);
+
+      for (const billId of billPaymentIds) {
+        const { error: revertErr } = await supabase.rpc('revert_credit_card_bill_payment' as any, {
+          p_transaction_id: billId,
+        });
+        if (revertErr) throw revertErr;
+      }
+
+      const remaining = ids.filter((id) => !billPaymentIds.includes(id));
+      if (remaining.length === 0) return ids.length;
+
+      // 2. Filhas primeiro (senão sobram órfãs apontando pra mãe inexistente).
+      const { error: childErr } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .in('parent_transaction_id', remaining);
+      if (childErr) throw childErr;
+
+      // 3. Orçamento vinculado volta a 'enviado'.
+      await supabase
+        .from('quotes')
+        .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
+        .in('financial_transaction_id', remaining);
+
+      const { error } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .in('id', remaining);
+      if (error) throw error;
+
+      return ids.length;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
+    },
+  });
+
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
       const { installment_count, ...rest } = input;
@@ -769,8 +933,14 @@ export function useFinancial() {
     isLoading: transactionsQuery.isLoading || summaryQuery.isLoading,
     error: transactionsQuery.error || summaryQuery.error,
     createTransaction,
+    /** Série de REPETIÇÃO (N lançamentos do mesmo valor) num insert só. */
+    createTransactionsBatch,
     updateTransaction,
+    /** Edição em massa (valor / conta / categoria) dos ids selecionados. */
+    updateTransactionsBatch,
     deleteTransaction,
+    /** Exclusão em massa dos ids selecionados, com as cascatas do delete individual. */
+    deleteTransactionsBatch,
     markAsPaid,
   };
 }

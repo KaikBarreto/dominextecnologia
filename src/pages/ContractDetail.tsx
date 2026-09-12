@@ -54,10 +54,12 @@ import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { format, isBefore, parseISO, addMonths, addDays } from 'date-fns';
+import { format, isBefore, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
+import { buildRepetitionPlan, repetitionTotal } from '@/lib/finance-installments';
+import { todayInBrazil } from '@/lib/today-brazil';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -127,7 +129,7 @@ export default function ContractDetail() {
   const navigate = useNavigate();
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
   const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
-  const { createTransaction } = useFinancial();
+  const { createTransactionsBatch } = useFinancial();
   const { accounts } = useFinancialAccounts();
   const { settings: companySettings } = useCompanySettings();
   const qrConfig = useBrandedQrConfig();
@@ -178,6 +180,19 @@ export default function ContractDetail() {
   const [showBulkEditPrompt, setShowBulkEditPrompt] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<any>(null);
   const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
+  // ── Seleção múltipla das parcelas (excluir / editar em massa) ──
+  // Guarda IDS, nunca índices: a seleção precisa sobreviver à paginação (o
+  // contrato de 48 parcelas não cabe numa página) e a qualquer reordenação.
+  const [selectedRecIds, setSelectedRecIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteRec, setShowBulkDeleteRec] = useState(false);
+  // Aceite explícito exigido quando a seleção tem parcela JÁ RECEBIDA.
+  const [bulkDeletePaidAck, setBulkDeletePaidAck] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [showBulkEditRec, setShowBulkEditRec] = useState(false);
+  const [bulkEditAmount, setBulkEditAmount] = useState('');
+  const [bulkEditAccountId, setBulkEditAccountId] = useState('');
+  const [bulkEditCategory, setBulkEditCategory] = useState('');
+  const [bulkEditSaving, setBulkEditSaving] = useState(false);
   // OS (visita) que o gestor pediu pra cancelar via botão "Pular".
   // Guarda o id da OS até a confirmação no AlertDialog.
   const [cancelingOsId, setCancelingOsId] = useState<string | null>(null);
@@ -388,7 +403,89 @@ export default function ContractDetail() {
   );
   const { activitiesByOrderId } = useServiceOrderActivities(occVisibleOsIds);
 
-  const { markAsPaid: markTxPaid, deleteTransaction, updateTransaction } = useFinancial();
+  const { markAsPaid: markTxPaid, deleteTransaction, updateTransaction, updateTransactionsBatch, deleteTransactionsBatch } = useFinancial();
+
+  // Seleção resolvida contra a lista viva: id de parcela já excluída some
+  // sozinho da contagem, sem deixar "3 selecionadas" fantasma na barra.
+  const selectedRecTransactions = useMemo(
+    () => (linkedTransactions || []).filter((t) => selectedRecIds.has(t.id)),
+    [linkedTransactions, selectedRecIds],
+  );
+  const selectedRecCount = selectedRecTransactions.length;
+  // Parcela paga é dinheiro que JÁ entrou no caixa. Excluir em massa sem avisar
+  // apagaria o recebimento junto, então a contagem alimenta o aviso do dialog.
+  const selectedPaidCount = selectedRecTransactions.filter((t) => t.is_paid).length;
+  const allRecSelected =
+    (linkedTransactions || []).length > 0 && selectedRecCount === (linkedTransactions || []).length;
+
+  const toggleRecSelected = (txId: string) => {
+    setSelectedRecIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(txId)) next.delete(txId); else next.add(txId);
+      return next;
+    });
+  };
+
+  // "Selecionar todas" pega TODAS as parcelas do contrato, não só a página
+  // visível: o pedido do cliente é justamente apagar as 48 de uma vez.
+  const toggleAllRecSelected = () => {
+    setSelectedRecIds(allRecSelected ? new Set() : new Set((linkedTransactions || []).map((t) => t.id)));
+  };
+
+  const clearRecSelection = () => setSelectedRecIds(new Set());
+
+  const handleBulkDeleteRec = async () => {
+    if (selectedRecCount === 0) return;
+    setBulkDeleting(true);
+    try {
+      const ids = selectedRecTransactions.map((t) => t.id);
+      await deleteTransactionsBatch.mutateAsync(ids);
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      toast({
+        title: ids.length === 1
+          ? td.financial.selection.toastDeletedSingle
+          : td.financial.selection.toastDeleted.replace('{n}', String(ids.length)),
+      });
+      clearRecSelection();
+      setShowBulkDeleteRec(false);
+      setBulkDeletePaidAck(false);
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleBulkEditRec = async () => {
+    if (selectedRecCount === 0) return;
+    const parsedAmount = bulkEditAmount ? parseFloat(bulkEditAmount.replace(',', '.')) : undefined;
+    const changes: { amount?: number; account_id?: string; category?: string } = {};
+    if (typeof parsedAmount === 'number' && !Number.isNaN(parsedAmount) && parsedAmount > 0) changes.amount = parsedAmount;
+    if (bulkEditAccountId) changes.account_id = bulkEditAccountId;
+    if (bulkEditCategory) changes.category = bulkEditCategory;
+    if (Object.keys(changes).length === 0) return;
+
+    setBulkEditSaving(true);
+    try {
+      const ids = selectedRecTransactions.map((t) => t.id);
+      await updateTransactionsBatch.mutateAsync({ ids, changes });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      toast({
+        title: ids.length === 1
+          ? td.financial.selection.toastUpdatedSingle
+          : td.financial.selection.toastUpdated.replace('{n}', String(ids.length)),
+      });
+      setShowBulkEditRec(false);
+      setBulkEditAmount('');
+      setBulkEditAccountId('');
+      setBulkEditCategory('');
+      clearRecSelection();
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
+    } finally {
+      setBulkEditSaving(false);
+    }
+  };
 
   const handleOpenEditRec = (t: any) => {
     setEditRecDescription(t.description);
@@ -442,37 +539,70 @@ export default function ContractDetail() {
     [accounts],
   );
 
+  // Plano da série (data + valor de cada lançamento). MESMA fonte pro preview
+  // do modal e pra gravação: quando as duas contas divergiam, o cliente via um
+  // número na tela e outro no extrato.
+  const recReceivablePlan = useMemo(() => {
+    const amount = parseFloat(recAmount);
+    if (!recAmount || Number.isNaN(amount)) return [];
+    const freqOption = FREQUENCY_OPTIONS.find((f) => f.value === recFrequency);
+    const count = recFrequency === 'unica' ? 1 : Math.max(1, parseInt(recInstallments) || 1);
+    return buildRepetitionPlan({
+      // Sem data escolhida, a 1a vence HOJE no fuso do Brasil (`new Date()` às
+      // 21h gravava amanhã).
+      firstDate: recDueDate || todayInBrazil(),
+      amount,
+      count,
+      intervalMonths: freqOption?.months || 0,
+    });
+  }, [recAmount, recDueDate, recFrequency, recInstallments, FREQUENCY_OPTIONS]);
+
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
     setRecSaving(true);
     try {
-      const freqOption = FREQUENCY_OPTIONS.find(f => f.value === recFrequency);
-      const numInstallments = recFrequency === 'unica' ? 1 : Math.max(1, parseInt(recInstallments) || 1);
-      const amount = parseFloat(recAmount);
-      const baseDate = recDueDate ? parseISO(recDueDate) : new Date();
+      // REPETIÇÃO, não parcelamento. 48 mensalidades de R$ 180 são 48
+      // lançamentos de R$ 180 (R$ 8.640 no total) — o motor de parcelamento
+      // fatiaria os R$ 180 em 48 pedaços de R$ 3,75. O passo de mês vem do
+      // mesmo utilitário com clamp de fim de mês (31/01 → 28/02, nunca 03/03).
+      const plan = recReceivablePlan;
+      if (plan.length === 0) return;
 
-      for (let i = 0; i < numInstallments; i++) {
-        const dueDate = addMonths(baseDate, i * (freqOption?.months || 0));
-        const suffix = numInstallments > 1 ? ` (${i + 1}/${numInstallments})` : '';
-        const monthLabel = numInstallments > 1 ? ` - ${format(dueDate, 'MMM/yyyy', { locale: ptBR })}` : '';
+      // UM insert só pras N linhas. Antes era um `await` por parcela dentro do
+      // laço: 48 idas ao servidor em série, 48 toasts, e falha na 30a deixava o
+      // contrato com metade das parcelas gravadas.
+      await createTransactionsBatch.mutateAsync(
+        plan.map((row) => {
+          const suffix = plan.length > 1 ? ` (${row.number}/${plan.length})` : '';
+          const monthLabel = plan.length > 1
+            ? ` - ${format(parseLocalDate(row.date), 'MMM/yyyy', { locale: ptBR })}`
+            : '';
+          // Grava conta + categoria em TODAS as parcelas (além de
+          // cliente/contrato), pra já sair validado no financeiro.
+          return {
+            transaction_type: 'entrada' as const,
+            description: `${recDescription}${monthLabel}${suffix}`,
+            amount: row.amount,
+            // transaction_date = mês da parcela (não a data da geração), pra a
+            // receita realizada cair no mês certo em Movimentações.
+            transaction_date: row.date,
+            due_date: row.date,
+            is_paid: false,
+            customer_id: contract.customer_id,
+            account_id: recAccountId || null,
+            category: recCategory || undefined,
+            notes: `Vinculado ao contrato: ${contract.name}`,
+            contract_id: id,
+          };
+        })
+      );
 
-        // Grava conta + categoria em TODAS as parcelas (além de cliente/contrato),
-        // pra já sair validado no financeiro sem editar parcela a parcela.
-        await createTransaction.mutateAsync({
-          transaction_type: 'entrada',
-          description: `${recDescription}${monthLabel}${suffix}`,
-          amount,
-          // transaction_date = mês da parcela (não a data da geração), pra a receita realizada cair no mês certo em Movimentações
-          transaction_date: format(dueDate, 'yyyy-MM-dd'),
-          due_date: format(dueDate, 'yyyy-MM-dd'),
-          is_paid: false,
-          customer_id: contract.customer_id,
-          account_id: recAccountId || null,
-          category: recCategory || undefined,
-          notes: `Vinculado ao contrato: ${contract.name}`,
-          contract_id: id,
-        } as any);
-      }
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      toast({
+        title: plan.length > 1
+          ? td.financial.toastCreated.replace('{n}', String(plan.length))
+          : td.financial.toastCreatedSingle,
+      });
 
       setShowReceivableModal(false);
       setRecDescription('');
@@ -481,6 +611,8 @@ export default function ContractDetail() {
       setRecFrequency('unica');
       setRecInstallments('1');
       // Conta/categoria escolhidas ficam memorizadas pro próximo lançamento.
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     } finally {
       setRecSaving(false);
     }
@@ -1410,7 +1542,7 @@ export default function ContractDetail() {
                       {td.financial.scheduleToggleLabel}
                     </Label>
                   </div>
-                  {(linkedTransactions || []).length > 0 && (
+                  {(linkedTransactions || []).length > 0 && selectedRecCount === 0 && (
                     <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => {
                       setApplyAccountId('');
                       setApplyCategory('');
@@ -1432,6 +1564,69 @@ export default function ContractDetail() {
                   <p className="py-4 text-center text-sm text-muted-foreground">{td.financial.noTransactions}</p>
                 ) : (
                   <div className="space-y-2 min-w-0">
+                    {/* Barra de seleção em massa. "Selecionar todas" abrange as
+                        parcelas do contrato INTEIRO (não só a página visível) —
+                        é o pedido: apagar as 48 de uma vez, com uma confirmação
+                        só. As ações só aparecem com algo selecionado. */}
+                    <div className="flex flex-col gap-2 rounded-xl border bg-muted/40 p-2 sm:flex-row sm:items-center sm:justify-between">
+                      {/* Checkbox e Label são IRMÃOS (htmlFor), nunca aninhados:
+                          label envolvendo controle dispara o toque duas vezes no
+                          mobile e a seleção "não pega". */}
+                      <div className="flex min-h-11 items-center gap-2 text-sm sm:min-h-0">
+                        <Checkbox
+                          id="rec-select-all"
+                          className="h-5 w-5 sm:h-4 sm:w-4"
+                          checked={allRecSelected}
+                          onCheckedChange={toggleAllRecSelected}
+                        />
+                        <Label htmlFor="rec-select-all" className="cursor-pointer font-medium">
+                          {td.financial.selection.selectAll}
+                        </Label>
+                        {selectedRecCount > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {selectedRecCount === 1
+                              ? td.financial.selection.selectedSingle
+                              : td.financial.selection.selected.replace('{n}', String(selectedRecCount))}
+                          </span>
+                        )}
+                      </div>
+                      {selectedRecCount > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="min-h-11 sm:min-h-9 rounded-xl active:scale-[0.98] transition-transform"
+                            onClick={clearRecSelection}
+                          >
+                            {td.financial.selection.clear}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="min-h-11 sm:min-h-9 rounded-xl bg-warning text-warning-foreground hover:bg-warning/90 active:scale-[0.98] transition-transform"
+                            onClick={() => {
+                              setBulkEditAmount('');
+                              setBulkEditAccountId('');
+                              setBulkEditCategory('');
+                              setShowBulkEditRec(true);
+                            }}
+                          >
+                            <Pencil className="mr-1 h-4 w-4" />
+                            {td.financial.selection.editBtn} ({selectedRecCount})
+                          </Button>
+                          {canDeleteFinance && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="min-h-11 sm:min-h-9 rounded-xl active:scale-[0.98] transition-transform"
+                              onClick={() => { setBulkDeletePaidAck(false); setShowBulkDeleteRec(true); }}
+                            >
+                              <Trash2 className="mr-1 h-4 w-4" />
+                              {td.financial.selection.deleteBtn} ({selectedRecCount})
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {recPagination.paginatedItems.map(t => {
                       // Status da parcela: pago (verde) > atrasado (vermelho) > pendente (neutro).
                       const isOverdue = !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal);
@@ -1439,8 +1634,15 @@ export default function ContractDetail() {
                       <div key={t.id} className={cn(
                         'space-y-2 rounded-xl border p-3 text-sm min-w-0',
                         isOverdue && 'border-destructive/40 bg-destructive/5',
+                        selectedRecIds.has(t.id) && 'border-primary bg-primary/5',
                       )}>
                         <div className="flex min-w-0 items-start justify-between gap-2">
+                          <Checkbox
+                            className="mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4"
+                            checked={selectedRecIds.has(t.id)}
+                            onCheckedChange={() => toggleRecSelected(t.id)}
+                            aria-label={t.description}
+                          />
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{t.description}</p>
                             <p className={cn('break-words text-xs', isOverdue ? 'text-destructive' : 'text-muted-foreground')}>
@@ -1591,6 +1793,16 @@ export default function ContractDetail() {
             <div>
               <Label>{td.financial.installmentsLabel}</Label>
               <NumericInput value={recInstallments} onValueChange={setRecInstallments} placeholder="12" />
+            </div>
+          )}
+          {/* Preview da SÉRIE: deixa explícito que 48x R$ 180 são R$ 8.640 no
+              total, e não R$ 180 fatiados em 48. Mesma fonte da gravação. */}
+          {recReceivablePlan.length > 1 && (
+            <div className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
+              {td.financial.repetitionSummary
+                .replace('{count}', String(recReceivablePlan.length))
+                .replace('{amount}', `R$ ${formatBRL(recReceivablePlan[0].amount)}`)
+                .replace('{total}', `R$ ${formatBRL(repetitionTotal(recReceivablePlan[0].amount, recReceivablePlan.length))}`)}
             </div>
           )}
           <Button className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
@@ -1837,6 +2049,123 @@ export default function ContractDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Exclusão EM MASSA das parcelas selecionadas. Uma confirmação só, com a
+          quantidade na cara. Parcela JÁ RECEBIDA é dinheiro que entrou no caixa:
+          quando há alguma na seleção, o botão só libera com aceite explícito. */}
+      <AlertDialog
+        open={showBulkDeleteRec}
+        onOpenChange={(open) => { setShowBulkDeleteRec(open); if (!open) setBulkDeletePaidAck(false); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedRecCount === 1
+                ? td.financial.selection.deleteTitleSingle
+                : td.financial.selection.deleteTitle.replace('{n}', String(selectedRecCount))}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  {selectedRecCount === 1
+                    ? td.financial.selection.deleteDescSingle
+                    : td.financial.selection.deleteDesc.replace('{n}', String(selectedRecCount))}
+                </p>
+                {selectedPaidCount > 0 && (
+                  <div className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
+                    <p className="text-sm font-medium text-warning">{td.financial.selection.paidWarnTitle}</p>
+                    <p className="text-sm">
+                      {td.financial.selection.paidWarnDesc.replace('{n}', String(selectedPaidCount))}
+                    </p>
+                    <div className="flex items-start gap-2 pt-1">
+                      <Checkbox
+                        id="bulk-delete-paid-ack"
+                        className="mt-0.5"
+                        checked={bulkDeletePaidAck}
+                        onCheckedChange={(v) => setBulkDeletePaidAck(!!v)}
+                      />
+                      <Label htmlFor="bulk-delete-paid-ack" className="cursor-pointer text-sm leading-snug">
+                        {td.financial.selection.paidAck.replace('{n}', String(selectedPaidCount))}
+                      </Label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>{td.deleteDialog.cancelBtn}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleBulkDeleteRec(); }}
+              disabled={bulkDeleting || selectedRecCount === 0 || (selectedPaidCount > 0 && !bulkDeletePaidAck)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {td.financial.selection.deleteConfirm.replace('{n}', String(selectedRecCount))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edição EM MASSA das parcelas selecionadas (valor / conta / categoria).
+          Campo em branco NÃO altera nada — não vira null. */}
+      <ResponsiveModal
+        open={showBulkEditRec}
+        onOpenChange={setShowBulkEditRec}
+        title={selectedRecCount === 1
+          ? td.financial.selection.editTitleSingle
+          : td.financial.selection.editTitle.replace('{n}', String(selectedRecCount))}
+      >
+        <div className="space-y-4 p-1">
+          <p className="text-sm text-muted-foreground">{td.financial.selection.editDesc}</p>
+          {selectedPaidCount > 0 && (
+            <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
+              {td.financial.selection.editPaidWarn.replace('{n}', String(selectedPaidCount))}
+            </div>
+          )}
+          <div>
+            <Label>{td.financial.amountLabel}</Label>
+            {/* Dinheiro tem formatação própria: NÃO usa NumericInput. */}
+            <Input
+              type="number"
+              step="0.01"
+              value={bulkEditAmount}
+              onChange={(e) => setBulkEditAmount(e.target.value)}
+              placeholder="0,00"
+            />
+          </div>
+          <div>
+            <Label>{td.financial.accountLabel}</Label>
+            <SearchableSelect
+              options={accountOptions}
+              value={bulkEditAccountId}
+              onValueChange={setBulkEditAccountId}
+              placeholder={td.financial.applyAccountPlaceholder}
+              searchPlaceholder={td.financial.accountSearch}
+            />
+          </div>
+          <div>
+            <Label>{td.financial.categoryLabel}</Label>
+            <CategorySelectField
+              type="entrada"
+              value={bulkEditCategory}
+              onValueChange={setBulkEditCategory}
+              placeholder={td.financial.categoryPlaceholder}
+              searchPlaceholder={td.financial.categorySearch}
+            />
+          </div>
+          <Button
+            className="w-full min-h-11 rounded-xl bg-warning text-warning-foreground hover:bg-warning/90 active:scale-[0.98] transition-transform"
+            onClick={handleBulkEditRec}
+            disabled={bulkEditSaving || (!bulkEditAmount && !bulkEditAccountId && !bulkEditCategory)}
+          >
+            {bulkEditSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pencil className="h-4 w-4 mr-2" />}
+            {selectedRecCount === 1
+              ? td.financial.selection.editApplySingle
+              : td.financial.selection.editApply.replace('{n}', String(selectedRecCount))}
+          </Button>
+        </div>
+      </ResponsiveModal>
 
       {/* Documento "Plano de Manutenção" — overlay de impressão (contrato comum). */}
       {showMaintenancePlan && contract && (

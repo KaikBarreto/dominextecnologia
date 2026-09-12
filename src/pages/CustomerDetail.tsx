@@ -52,18 +52,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { CustomerTransactionDetailModal } from '@/components/financial/CustomerTransactionDetailModal';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
+import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
+import { RelatedTransactionsDialog } from '@/components/financial/RelatedTransactionsDialog';
+import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRelatedTransactions';
+import { useTransactionEditSubmit } from '@/hooks/useTransactionEditSubmit';
+import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { parseISO } from 'date-fns';
 import type { FinancialTransaction } from '@/types/database';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { useTenantCharges, buildCheckoutUrl } from '@/hooks/useTenantCharges';
+import { useTenantCharges, buildCheckoutUrl, type TenantCharge } from '@/hooks/useTenantCharges';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { formatBRL } from '@/utils/currency';
 import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 import { formatOSNumber } from '@/lib/osNumber';
+import type { LucideIcon } from 'lucide-react';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas';
 
@@ -90,9 +96,16 @@ export default function CustomerDetail() {
   const { locale } = useAppLocaleContext();
   const tCustomers = MESSAGES[locale].app.customers;
   const t = tCustomers.detail;
+  // Toasts de exclusão de lançamento reaproveitam o texto do Financeiro geral
+  // (TransactionListPanel) — mesma ação, mesma copy, sem duplicar chave de i18n.
+  const finTxn = MESSAGES[locale].app.finance.transactionList;
   const isMobile = useIsMobile();
-  const { isAdminOrGestor, hasPermission } = useAuth();
+  const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
   const canViewCustomerFinancial = isAdminOrGestor() || hasPermission('fn:view_customer_financial');
+  // Mesma regra do Financeiro geral (TransactionListPanel): só admin/gestor ou
+  // quem tem a permissão explícita pode excluir lançamento. Editar não tem
+  // trava própria — quem já vê a aba pode editar, igual à tela geral.
+  const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const { hasModule } = useCompanyModules();
   const hasPortal = hasModule('customer_portal');
   const hasCobrancas = hasModule('cobrancas');
@@ -117,7 +130,7 @@ export default function CustomerDetail() {
 
   const { serviceOrders, createServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { submitTask } = useTaskSubmit();
-  const { transactions } = useFinancial();
+  const { transactions, createTransaction, updateTransaction, deleteTransaction } = useFinancial();
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
   const { categories } = useEquipmentCategories();
   const { contracts } = useContracts();
@@ -147,6 +160,15 @@ export default function CustomerDetail() {
   const [financeSubTab, setFinanceSubTab] = useState<FinanceSubTab>('tudo');
   const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
   const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
+  // Edição de lançamento manual (aba Financeiro) — mesmo formulário do Financeiro geral.
+  const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
+  const [txnFormOpen, setTxnFormOpen] = useState(false);
+  // Exclusão de lançamento — mesma checagem de "tem relacionados" (parcelas,
+  // orçamento vinculado) do Financeiro geral, via RelatedTransactionsDialog.
+  const [pendingDeleteTxn, setPendingDeleteTxn] = useState<FinancialTransaction | null>(null);
+  const [pendingDeleteRelated, setPendingDeleteRelated] = useState<FinancialTransaction[]>([]);
+  const [pendingDeleteQuote, setPendingDeleteQuote] = useState<{ id: string; quote_number: number } | null>(null);
+  const [isDeletingTxn, setIsDeletingTxn] = useState(false);
   const { toast } = useToast();
 
   const handleConfirmRefund = async () => {
@@ -224,17 +246,28 @@ export default function CustomerDetail() {
   const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
   const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
   const customerTransactions = transactions.filter(t => t.customer_id === id);
+  // Uma cobrança que é lançada automaticamente no Financeiro grava
+  // `tenant_charge_id` na transação espelho (ver `financial_transactions`).
+  // Sem filtrar essa transação da lista "manual", o MESMO dinheiro apareceria
+  // duas vezes na aba Financeiro: uma vez como lançamento, outra como cobrança
+  // (mais abaixo). Só filtramos quando a aba Cobranças existe de fato — sem o
+  // módulo `cobrancas` nenhuma transação tem esse vínculo, e a aba Financeiro
+  // continua mostrando tudo como sempre mostrou (regra do módulo, item 5).
+  const manualCustomerTransactions = useMemo(
+    () => (showCobrancasTab ? customerTransactions.filter(t => !(t as any).tenant_charge_id) : customerTransactions),
+    [customerTransactions, showCobrancasTab],
+  );
   // Subaba do Financeiro: Tudo / A vencer (pendentes com vencimento >= hoje) / Pagas.
   const filteredCustomerTransactions = useMemo(() => {
-    if (financeSubTab === 'tudo') return customerTransactions;
-    if (financeSubTab === 'pagas') return customerTransactions.filter(t => t.is_paid);
+    if (financeSubTab === 'tudo') return manualCustomerTransactions;
+    if (financeSubTab === 'pagas') return manualCustomerTransactions.filter(t => t.is_paid);
     // A vencer
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return customerTransactions.filter(
+    return manualCustomerTransactions.filter(
       t => !t.is_paid && t.due_date && parseLocalFinanceDate(t.due_date) >= today,
     );
-  }, [customerTransactions, financeSubTab]);
+  }, [manualCustomerTransactions, financeSubTab]);
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
   // Cobranças do cliente (hook só faz a query quando showCobrancasTab e id disponíveis).
@@ -255,6 +288,145 @@ export default function CustomerDetail() {
     return { open, received };
   }, [customerCharges]);
 
+  // Mesma subaba (Tudo / A vencer / Pagas) aplicada às cobranças, pra elas
+  // entrarem na listagem única da aba Financeiro sem duplicar o dinheiro que
+  // já é mostrado como lançamento. Só existe quando a aba Cobranças existe.
+  const filteredCustomerCharges = useMemo<TenantCharge[]>(() => {
+    if (!showCobrancasTab) return [];
+    if (financeSubTab === 'tudo') return customerCharges;
+    if (financeSubTab === 'pagas') return customerCharges.filter(c => classifyTenantChargeStatus(c.status) === 'paid');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return customerCharges.filter((c) => {
+      const cls = classifyTenantChargeStatus(c.status);
+      return cls !== 'paid' && cls !== 'refunded' && !!c.due_date && parseLocalFinanceDate(c.due_date) >= today;
+    });
+  }, [customerCharges, financeSubTab, showCobrancasTab]);
+
+  // Cobrança antiga sem descrição (antes da integração passar a preencher
+  // "Cobrança de <cliente>" automaticamente) não pode virar um traço mudo na
+  // tela — mostramos que é uma cobrança avulsa sem inventar um texto que o
+  // cliente nunca digitou.
+  const getChargeDescription = (charge: Pick<TenantCharge, 'description'>) =>
+    charge.description?.trim() ? charge.description : t.chargeNoDescription;
+
+  // Mapeia status Asaas (MAIÚSCULO) → label i18n + cor do badge (bg saturado +
+  // texto branco). Usado tanto na aba Cobranças quanto nas linhas de cobrança
+  // dentro da aba Financeiro (lista única).
+  const chargeStatusLabel = (status: string): string => {
+    const cls = classifyTenantChargeStatus(status);
+    if (cls === 'paid') return t.chargeStatusReceived;
+    if (cls === 'overdue') return t.chargeStatusOverdue;
+    if (cls === 'refunded') return t.chargeStatusRefunded;
+    if (cls === 'pending') return t.chargeStatusPending;
+    return t.chargeStatusOther;
+  };
+  const chargeStatusClass = (status: string): string => {
+    const cls = classifyTenantChargeStatus(status);
+    if (cls === 'paid') return 'bg-emerald-600 text-white';
+    if (cls === 'overdue') return 'bg-red-600 text-white';
+    if (cls === 'refunded') return 'bg-slate-500 text-white';
+    if (cls === 'pending') return 'bg-amber-500 text-white';
+    return 'bg-slate-400 text-white'; // other (status nao reconhecido)
+  };
+
+  // Linha única da aba Financeiro: lançamento manual OU cobrança (nunca as
+  // duas juntas pro mesmo dinheiro — ver filtro de `tenant_charge_id` acima).
+  type FinanceRow = {
+    id: string;
+    kind: 'transaction' | 'charge';
+    description: string;
+    amount: number;
+    transaction_type: 'entrada' | 'saida';
+    transaction_date: string;
+    is_paid: boolean;
+    txn?: FinancialTransaction;
+    charge?: TenantCharge;
+  };
+  const financeRows = useMemo<FinanceRow[]>(() => {
+    const txnRows: FinanceRow[] = filteredCustomerTransactions.map((tx) => ({
+      id: tx.id,
+      kind: 'transaction',
+      description: tx.description,
+      amount: tx.amount,
+      transaction_type: tx.transaction_type,
+      transaction_date: tx.transaction_date,
+      is_paid: tx.is_paid,
+      txn: tx,
+    }));
+    const chargeRows: FinanceRow[] = filteredCustomerCharges.map((c) => ({
+      id: `charge:${c.id}`,
+      kind: 'charge',
+      description: getChargeDescription(c),
+      amount: c.value,
+      transaction_type: 'entrada',
+      transaction_date: c.due_date ?? c.created_at,
+      is_paid: classifyTenantChargeStatus(c.status) === 'paid',
+      charge: c,
+    }));
+    return [...txnRows, ...chargeRows].sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredCustomerTransactions, filteredCustomerCharges]);
+
+  /**
+   * "Salvar" do lançamento editado aqui dentro. Usa o MESMO motor do Financeiro
+   * geral (`useTransactionEditSubmit`) — esta tela não decide mais nada sobre
+   * UPDATE x recriar.
+   *
+   * Até esta entrega havia aqui uma cópia da regra, e ela ficou pra trás: um
+   * `needsReplace` próprio e um `.delete().eq('installment_group_id', ...)`.
+   * Resultado: corrigir a forma de pagamento da parcela 3/10 pela ficha do
+   * cliente criava UMA linha de R$ 100 e apagava as DEZ de R$ 100 — a venda de
+   * R$ 1.000 virava R$ 100, sem erro e sem alerta. Agora a decisão é do motor
+   * puro `planTransactionEdit` e o delete atinge no máximo a própria linha.
+   *
+   * `fallbackCustomerId` é o único tempero desta tela: lançamento antigo sem
+   * cliente, editado dentro da ficha de um, adota aquele cliente.
+   */
+  const submitTransaction = useTransactionEditSubmit({
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+    fallbackCustomerId: id,
+  });
+
+  const handleTxnSubmit = async (data: any) => {
+    // Esta tela só EDITA; criar lançamento avulso continua no Financeiro geral.
+    if (!editingTransaction) return null;
+    const result = await submitTransaction(data, editingTransaction);
+    setEditingTransaction(null);
+    return result;
+  };
+
+  // Excluir um lançamento passa pela MESMA checagem de "tem relacionados"
+  // (parcelas, pagamento de fatura em par, orçamento vinculado) do Financeiro
+  // geral, via os mesmos helpers que o TransactionListPanel usa.
+  const requestDeleteTxn = async (txn: FinancialTransaction) => {
+    const { related, linkedQuote } = await findRelatedTransactions(txn.id);
+    setPendingDeleteTxn(txn);
+    setPendingDeleteRelated(related);
+    setPendingDeleteQuote(linkedQuote);
+  };
+  const confirmDeleteTxn = async (deleteAllRelated: boolean) => {
+    if (!pendingDeleteTxn) return;
+    setIsDeletingTxn(true);
+    try {
+      await deleteTransactionCascade(pendingDeleteTxn.id, deleteAllRelated);
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast({ title: deleteAllRelated ? finTxn.toastDeletedPlural : finTxn.toastDeleted });
+      setPendingDeleteTxn(null);
+      setPendingDeleteRelated([]);
+      setPendingDeleteQuote(null);
+    } catch (err) {
+      toast({ variant: 'destructive', title: finTxn.toastDeleteError, description: getRpcErrorMessage(err) });
+    } finally {
+      setIsDeletingTxn(false);
+    }
+  };
+
   // Portal tickets (origin = 'portal')
   const portalTickets = customerOrders.filter(os => (os as any).origin === 'portal');
 
@@ -262,7 +434,7 @@ export default function CustomerDetail() {
   const ordersPagination = useDataPagination(sortedOrders);
   const { sortedItems: sortedTasks, sortConfig: taskSortConfig, handleSort: handleTaskSort } = useTableSort(customerTasks);
   const tasksPagination = useDataPagination(sortedTasks);
-  const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(filteredCustomerTransactions);
+  const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(financeRows);
   const transactionsPagination = useDataPagination(sortedTransactions);
   const { sortedItems: sortedTickets, sortConfig: ticketSortConfig, handleSort: handleTicketSort } = useTableSort(portalTickets);
   const ticketsPagination = useDataPagination(sortedTickets);
@@ -1191,7 +1363,15 @@ export default function CustomerDetail() {
 
       {activeTab === 'financeiro' && (
         <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.financialHeading}</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.financialHeading}</h2>
+            {showCobrancasTab && (
+              <Button className="hidden lg:flex" onClick={() => setChargeDialogOpen(true)}>
+                <Wallet className="mr-2 h-4 w-4" />
+                {t.chargeNewButton}
+              </Button>
+            )}
+          </div>
 
           {/* Subabas: Tudo / A vencer / Pagas — mobile usa pills scrolláveis, desktop botões */}
           {isMobile ? (
@@ -1223,7 +1403,7 @@ export default function CustomerDetail() {
             </div>
           )}
 
-          {filteredCustomerTransactions.length === 0 ? (
+          {financeRows.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<DollarSign className="h-10 w-10" />}
@@ -1256,63 +1436,107 @@ export default function CustomerDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactionsPagination.paginatedItems.map((txn) => (
-                      <TableRow key={txn.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
-                        <TableCell><p className="font-medium leading-tight">{txn.description}</p></TableCell>
-                        <TableCell>
-                          <span className={txn.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}>
-                            {txn.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(txn.amount)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          {format(new Date(txn.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={txn.is_paid ? 'default' : 'secondary'}>
-                            {txn.is_paid ? t.txnPaid : t.txnPending}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="min-h-[44px] min-w-[44px]"
-                            onClick={() => setViewingTxn(txn)}
-                            title="Ver detalhes"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {transactionsPagination.paginatedItems.map((row) => {
+                      const checkoutUrl = row.charge
+                        ? (row.charge.public_short_code ? buildCheckoutUrl(row.charge.public_short_code) : row.charge.invoice_url ?? '')
+                        : '';
+                      const whatsappMsg = row.charge
+                        ? t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(row.charge.value)}`)
+                        : '';
+                      const phone = customer.celular || customer.phone || '';
+                      const whatsappLink = row.charge ? buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`) : null;
+                      const isChargePaid = row.charge ? classifyTenantChargeStatus(row.charge.status) === 'paid' : false;
+                      return (
+                        <TableRow key={row.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
+                          <TableCell>
+                            <p className="font-medium leading-tight">{row.description}</p>
+                            {row.kind === 'charge' && (
+                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{t.financeChargeBadge}</p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className={row.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}>
+                              {row.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(row.amount)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {format(new Date(row.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
+                          </TableCell>
+                          <TableCell>
+                            {row.kind === 'charge' ? (
+                              <span className={cn('inline-flex items-center text-xs px-2 py-0.5 rounded-full font-semibold', chargeStatusClass(row.charge!.status))}>
+                                {chargeStatusLabel(row.charge!.status)}
+                              </span>
+                            ) : (
+                              <Badge variant={row.is_paid ? 'default' : 'secondary'}>
+                                {row.is_paid ? t.txnPaid : t.txnPending}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {row.kind === 'transaction' ? (
+                              <RowActionsMenu
+                                actions={[
+                                  { label: t.viewDetails, icon: Eye, onClick: () => setViewingTxn(row.txn!) },
+                                  { label: tCustomers.edit, icon: Edit, variant: 'edit', onClick: () => { setEditingTransaction(row.txn!); setTxnFormOpen(true); } },
+                                  { label: tCustomers.delete, icon: Trash2, variant: 'delete', onClick: () => requestDeleteTxn(row.txn!), hidden: !canDeleteFinance },
+                                ]}
+                              />
+                            ) : (
+                              <RowActionsMenu
+                                actions={[
+                                  {
+                                    label: t.chargeCopyLink,
+                                    icon: Copy,
+                                    onClick: () => { if (checkoutUrl) { navigator.clipboard.writeText(checkoutUrl); toast({ title: t.chargeLinkCopied }); } },
+                                  },
+                                  {
+                                    label: t.chargeWhatsapp,
+                                    icon: WhatsAppIcon as unknown as LucideIcon,
+                                    onClick: () => {
+                                      const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
+                                      window.open(link, '_blank', 'noopener,noreferrer');
+                                    },
+                                  },
+                                  {
+                                    label: t.chargeOpenCheckout,
+                                    icon: ExternalLink,
+                                    onClick: () => checkoutUrl && window.open(checkoutUrl, '_blank', 'noopener,noreferrer'),
+                                  },
+                                  {
+                                    label: t.chargeRefundButton,
+                                    icon: RotateCcw,
+                                    variant: 'delete',
+                                    onClick: () => setRefundConfirmChargeId(row.charge!.id),
+                                    hidden: !isChargePaid,
+                                  },
+                                ]}
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
               <DataTablePagination page={transactionsPagination.page} totalPages={transactionsPagination.totalPages} totalItems={transactionsPagination.totalItems} from={transactionsPagination.from} to={transactionsPagination.to} pageSize={transactionsPagination.pageSize} onPageChange={transactionsPagination.setPage} onPageSizeChange={transactionsPagination.setPageSize} />
             </CardContent></Card>
           )}
+          {isMobile && showCobrancasTab && (
+            <FABButton
+              icon={<Wallet className="h-5 w-5" />}
+              label={t.chargeNewButton}
+              onClick={() => setChargeDialogOpen(true)}
+            />
+          )}
         </div>
       )}
 
       {activeTab === 'cobrancas' && showCobrancasTab && (() => {
-        // Mapeia status Asaas (MAIÚSCULO) → label i18n + cor do badge (bg saturado + texto branco).
-        function chargeStatusLabel(status: string): string {
-          const cls = classifyTenantChargeStatus(status);
-          if (cls === 'paid') return t.chargeStatusReceived;
-          if (cls === 'overdue') return t.chargeStatusOverdue;
-          if (cls === 'refunded') return t.chargeStatusRefunded;
-          if (cls === 'pending') return t.chargeStatusPending;
-          return t.chargeStatusOther;
-        }
-        function chargeStatusClass(status: string): string {
-          const cls = classifyTenantChargeStatus(status);
-          if (cls === 'paid') return 'bg-emerald-600 text-white';
-          if (cls === 'overdue') return 'bg-red-600 text-white';
-          if (cls === 'refunded') return 'bg-slate-500 text-white';
-          if (cls === 'pending') return 'bg-amber-500 text-white';
-          return 'bg-slate-400 text-white'; // other (status nao reconhecido)
-        }
-
+        // chargeStatusLabel/chargeStatusClass e getChargeDescription vivem no
+        // corpo do componente (acima) — reaproveitados aqui e na aba Financeiro,
+        // que agora também lista cobranças.
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1413,7 +1637,7 @@ export default function CustomerDetail() {
                       actions={itemActions}
                       title={
                         <span className="truncate">
-                          {charge.description || '-'}
+                          {getChargeDescription(charge)}
                         </span>
                       }
                       subtitle={
@@ -1460,7 +1684,7 @@ export default function CustomerDetail() {
                             <TableRow key={charge.id}>
                               <TableCell>
                                 <p className="text-sm font-medium truncate max-w-[180px] leading-tight">
-                                  {charge.description || '-'}
+                                  {getChargeDescription(charge)}
                                 </p>
                               </TableCell>
                               <TableCell>
@@ -1737,6 +1961,28 @@ export default function CustomerDetail() {
         open={!!viewingTxn}
         onOpenChange={(open) => { if (!open) setViewingTxn(null); }}
         transaction={viewingTxn}
+      />
+
+      {/* Editar lançamento — mesmo formulário do Financeiro geral (src/pages/Finance.tsx) */}
+      <TransactionFormDialog
+        open={txnFormOpen}
+        onOpenChange={(open) => { setTxnFormOpen(open); if (!open) setEditingTransaction(null); }}
+        transaction={editingTransaction}
+        onSubmit={handleTxnSubmit}
+        isLoading={createTransaction.isPending || updateTransaction.isPending || deleteTransaction.isPending}
+        defaultType={editingTransaction?.transaction_type ?? 'entrada'}
+      />
+
+      {/* Excluir lançamento — mesma checagem de relacionados do Financeiro geral */}
+      <RelatedTransactionsDialog
+        open={!!pendingDeleteTxn}
+        onOpenChange={(open) => { if (!open) { setPendingDeleteTxn(null); setPendingDeleteRelated([]); setPendingDeleteQuote(null); } }}
+        transaction={pendingDeleteTxn}
+        related={pendingDeleteRelated}
+        linkedQuote={pendingDeleteQuote}
+        mode="delete"
+        onConfirm={confirmDeleteTxn}
+        isProcessing={isDeletingTxn}
       />
 
       {showCobrancasTab && (

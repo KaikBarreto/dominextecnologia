@@ -1,8 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,9 +27,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { SubscriptionDialog } from '@/components/financial/SubscriptionDialog';
-import { useTenantSubscriptions, type TenantSubscription } from '@/hooks/useTenantSubscriptions';
+import {
+  useTenantSubscriptions,
+  type TenantSubscription,
+  type SubscriptionCycle,
+} from '@/hooks/useTenantSubscriptions';
 import { formatBRL } from '@/utils/currency';
-import { CalendarDays, Plus, RefreshCw, XCircle } from 'lucide-react';
+import { CalendarDays, Loader2, Pencil, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─── MRR: normaliza o valor de cada ciclo para mensal ────────────────────────
@@ -60,14 +76,182 @@ function fmtDate(iso: string | null, locale: string): string {
   });
 }
 
+const CYCLES: SubscriptionCycle[] = [
+  'WEEKLY',
+  'BIWEEKLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'SEMIANNUALLY',
+  'YEARLY',
+];
+
+/** Assinatura pode ser editada/cancelada só enquanto não estiver cancelada. */
+function isManageable(sub: TenantSubscription): boolean {
+  return sub.status !== 'cancelled';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EditSubscriptionModal — edita valor, frequência, próximo vencimento e
+// descrição de uma assinatura EXISTENTE via edge tenant-asaas-manage-subscription
+// (action: 'update'). Reflete na Asaas e no cadastro local — não é um form novo
+// de criação, por isso não reaproveita o SubscriptionDialog.
+// ─────────────────────────────────────────────────────────────────────────────
+function EditSubscriptionModal({
+  subscription,
+  onOpenChange,
+  onSave,
+  isPending,
+  t,
+}: {
+  subscription: TenantSubscription | null;
+  onOpenChange: (open: boolean) => void;
+  onSave: (input: { value: number; cycle: SubscriptionCycle; next_due_date: string; description: string }) => void;
+  isPending: boolean;
+  t: typeof MESSAGES['pt-br']['app']['charges']['subscriptions'];
+}) {
+  const [amount, setAmount] = useState(0);
+  const [cycle, setCycle] = useState<SubscriptionCycle>('MONTHLY');
+  const [nextDueDate, setNextDueDate] = useState('');
+  const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    if (subscription) {
+      setAmount(Number(subscription.value));
+      setCycle(subscription.cycle as SubscriptionCycle);
+      setNextDueDate(subscription.next_due_date ?? '');
+      setDescription(subscription.description ?? '');
+    }
+  }, [subscription]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setAmount(parseInt(raw || '0', 10) / 100);
+  };
+  const amountDisplay = amount
+    ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
+  const isValid = amount > 0 && !!nextDueDate;
+
+  return (
+    <ResponsiveModal
+      open={!!subscription}
+      onOpenChange={onOpenChange}
+      title={t.editDialog.title}
+      description={t.editDialog.description}
+    >
+      <div className="space-y-4 px-4 pb-4 sm:px-1">
+        {/* Valor (máscara de dinheiro — NÃO NumericInput) */}
+        <div className="space-y-2">
+          <Label htmlFor="edit-sub-amount" className="text-sm font-medium">
+            {t.fields.value}
+          </Label>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              R$
+            </span>
+            <Input
+              id="edit-sub-amount"
+              className="pl-9"
+              inputMode="numeric"
+              placeholder={t.fields.valuePlaceholder}
+              value={amountDisplay}
+              onChange={handleAmountChange}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">{t.fields.cycle}</Label>
+            <Select value={cycle} onValueChange={(v) => setCycle(v as SubscriptionCycle)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CYCLES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {t.cycles[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-sub-due" className="text-sm font-medium">
+              {t.fields.next_due_date}
+            </Label>
+            <Input
+              id="edit-sub-due"
+              type="date"
+              value={nextDueDate}
+              onChange={(e) => setNextDueDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-sub-desc" className="text-sm font-medium">
+            {t.fields.description}
+          </Label>
+          <Textarea
+            id="edit-sub-desc"
+            rows={2}
+            placeholder={t.fields.descriptionPlaceholder}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            {t.cancel}
+          </Button>
+          <Button
+            disabled={isPending || !isValid}
+            onClick={() => onSave({ value: amount, cycle, next_due_date: nextDueDate, description })}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t.editDialog.submitting}
+              </>
+            ) : (
+              t.editDialog.submit
+            )}
+          </Button>
+        </div>
+      </div>
+    </ResponsiveModal>
+  );
+}
+
 export function FinanceAssinaturas() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
 
-  const { subscriptions, isLoading, manageSubscription } = useTenantSubscriptions();
+  const { subscriptions, isLoading, manageSubscription, bulkCancel } = useTenantSubscriptions();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<TenantSubscription | null>(null);
+  const [editTarget, setEditTarget] = useState<TenantSubscription | null>(null);
+
+  // ── Seleção múltipla (cancelamento em massa) ──────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
+
+  const manageableSubs = useMemo(() => subscriptions.filter(isManageable), [subscriptions]);
+  const allSelected = manageableSubs.length > 0 && selectedIds.size === manageableSubs.length;
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(manageableSubs.map((s) => s.id)));
+  };
 
   // ── Resumo MRR ─────────────────────────────────────────────────────────────
   const { activeCount, mrr } = useMemo(() => {
@@ -83,6 +267,26 @@ export function FinanceAssinaturas() {
       action: 'cancel',
     });
     setCancelTarget(null);
+  };
+
+  const handleSaveEdit = async (input: { value: number; cycle: SubscriptionCycle; next_due_date: string; description: string }) => {
+    if (!editTarget) return;
+    await manageSubscription.mutateAsync({
+      subscription_id: editTarget.id,
+      action: 'update',
+      value: input.value,
+      cycle: input.cycle,
+      next_due_date: input.next_due_date,
+      description: input.description,
+    });
+    setEditTarget(null);
+  };
+
+  const handleConfirmBulkCancel = async () => {
+    const ids = Array.from(selectedIds);
+    await bulkCancel.mutateAsync(ids);
+    setSelectedIds(new Set());
+    setBulkCancelOpen(false);
   };
 
   return (
@@ -103,9 +307,21 @@ export function FinanceAssinaturas() {
         </div>
       )}
 
-      {/* ── Botão nova assinatura ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <span />
+      {/* ── Barra de ações ────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {selectedIds.size > 0 ? (
+          <Button
+            variant="destructive-ghost"
+            size="sm"
+            onClick={() => setBulkCancelOpen(true)}
+            disabled={bulkCancel.isPending}
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            {t.bulkCancel} ({selectedIds.size})
+          </Button>
+        ) : (
+          <span />
+        )}
         <Button size="sm" onClick={() => setDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           {t.newButton}
@@ -128,6 +344,15 @@ export function FinanceAssinaturas() {
           <table className="hidden w-full text-sm sm:table">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
+                <th className="w-10 px-4 py-3">
+                  {manageableSubs.length > 0 && (
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label={t.selection.selectAllAria}
+                    />
+                  )}
+                </th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">{t.table.customer}</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">{t.table.value}</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">{t.table.cycle}</th>
@@ -140,6 +365,14 @@ export function FinanceAssinaturas() {
             <tbody className="divide-y divide-border">
               {subscriptions.map((sub) => (
                 <tr key={sub.id} className="bg-card transition-colors hover:bg-muted/20">
+                  <td className="px-4 py-3">
+                    {isManageable(sub) && (
+                      <Checkbox
+                        checked={selectedIds.has(sub.id)}
+                        onCheckedChange={() => toggleSelect(sub.id)}
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-medium">
                     {sub.customers?.name ?? '—'}
                   </td>
@@ -164,16 +397,27 @@ export function FinanceAssinaturas() {
                     {statusBadge(sub.status, t.status)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {sub.status !== 'cancelled' && (
-                      <Button
-                        variant="destructive-ghost"
-                        size="sm"
-                        onClick={() => setCancelTarget(sub)}
-                        disabled={manageSubscription.isPending}
-                      >
-                        <XCircle className="mr-1 h-3.5 w-3.5" />
-                        {t.actions.cancel}
-                      </Button>
+                    {isManageable(sub) && (
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="edit-ghost"
+                          size="sm"
+                          onClick={() => setEditTarget(sub)}
+                          disabled={manageSubscription.isPending}
+                        >
+                          <Pencil className="mr-1 h-3.5 w-3.5" />
+                          {t.actions.edit}
+                        </Button>
+                        <Button
+                          variant="destructive-ghost"
+                          size="sm"
+                          onClick={() => setCancelTarget(sub)}
+                          disabled={manageSubscription.isPending}
+                        >
+                          <XCircle className="mr-1 h-3.5 w-3.5" />
+                          {t.actions.cancel}
+                        </Button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -186,37 +430,57 @@ export function FinanceAssinaturas() {
             {subscriptions.map((sub) => (
               <div key={sub.id} className="bg-card px-4 py-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground">
-                      {sub.customers?.name ?? '—'}
-                    </p>
-                    <p className="text-sm font-semibold text-foreground tabular-nums">
-                      {formatBRL(Number(sub.value))}
-                      <span className="ml-1 font-normal text-muted-foreground text-xs">
-                        / {t.cycles[sub.cycle as keyof typeof t.cycles] ?? sub.cycle}
-                      </span>
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                      <CalendarDays className="h-3 w-3 shrink-0" />
-                      {fmtDate(sub.next_due_date, locale)}
-                      <span className="mx-1">·</span>
-                      {sub.billing_type === 'UNDEFINED'
-                        ? t.billing_types.UNDEFINED
-                        : (t.billing_types[sub.billing_type as keyof typeof t.billing_types] ?? sub.billing_type)}
-                    </p>
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    {isManageable(sub) && (
+                      <Checkbox
+                        className="mt-1 shrink-0"
+                        checked={selectedIds.has(sub.id)}
+                        onCheckedChange={() => toggleSelect(sub.id)}
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-foreground">
+                        {sub.customers?.name ?? '—'}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">
+                        {formatBRL(Number(sub.value))}
+                        <span className="ml-1 font-normal text-muted-foreground text-xs">
+                          / {t.cycles[sub.cycle as keyof typeof t.cycles] ?? sub.cycle}
+                        </span>
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        <CalendarDays className="h-3 w-3 shrink-0" />
+                        {fmtDate(sub.next_due_date, locale)}
+                        <span className="mx-1">·</span>
+                        {sub.billing_type === 'UNDEFINED'
+                          ? t.billing_types.UNDEFINED
+                          : (t.billing_types[sub.billing_type as keyof typeof t.billing_types] ?? sub.billing_type)}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     {statusBadge(sub.status, t.status)}
-                    {sub.status !== 'cancelled' && (
-                      <Button
-                        variant="destructive-ghost"
-                        size="sm"
-                        className="h-7 px-2"
-                        onClick={() => setCancelTarget(sub)}
-                        disabled={manageSubscription.isPending}
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                      </Button>
+                    {isManageable(sub) && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="edit-ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => setEditTarget(sub)}
+                          disabled={manageSubscription.isPending}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="destructive-ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => setCancelTarget(sub)}
+                          disabled={manageSubscription.isPending}
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -228,6 +492,15 @@ export function FinanceAssinaturas() {
 
       {/* ── Dialog nova assinatura ──────────────────────────────────────────── */}
       <SubscriptionDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+
+      {/* ── Dialog editar assinatura ─────────────────────────────────────────── */}
+      <EditSubscriptionModal
+        subscription={editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        onSave={handleSaveEdit}
+        isPending={manageSubscription.isPending}
+        t={t}
+      />
 
       {/* ── Alert de confirmação de cancelamento ────────────────────────────── */}
       <AlertDialog open={!!cancelTarget} onOpenChange={(open) => !open && setCancelTarget(null)}>
@@ -248,6 +521,30 @@ export function FinanceAssinaturas() {
               disabled={manageSubscription.isPending}
             >
               {t.cancelDialog.confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Alert de confirmação de cancelamento em massa ───────────────────── */}
+      <AlertDialog open={bulkCancelOpen} onOpenChange={setBulkCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t.bulkCancelDialog.titlePrefix} {selectedIds.size} {t.bulkCancelDialog.titleSuffix}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.bulkCancelDialog.descriptionPrefix} {selectedIds.size} {t.bulkCancelDialog.descriptionSuffix}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.bulkCancelDialog.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={handleConfirmBulkCancel}
+              disabled={bulkCancel.isPending}
+            >
+              {t.bulkCancelDialog.confirm} {selectedIds.size}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -42,6 +42,48 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.19',
+    date: '12 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Editar uma parcela não apaga mais as outras nem muda o valor da venda',
+        description: 'Este é o mais importante desta atualização. Ao abrir uma parcela de uma venda parcelada e trocar a forma de pagamento, o sistema apagava todas as parcelas daquela venda e refazia com valor errado: uma venda de R$ 1.000,00 em 10 vezes voltava valendo R$ 100,00, sem erro e sem aviso. E a mensagem de confirmação falava de uma transação só, no singular, enquanto dez sumiam. Agora, editar uma parcela mexe apenas naquela parcela. As outras continuam intactas e o valor da venda não muda. Vale nas duas telas onde dá para editar, no Financeiro e dentro da ficha do cliente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Lançamento editado não perde mais o vínculo com o cliente',
+        description: 'Quando você editava um lançamento trocando a forma de pagamento, ele era refeito por dentro e perdia a ligação com o cliente, a ordem de serviço e o contrato. Na prática o lançamento sumia do financeiro daquele cliente, mesmo continuando no sistema. Agora essas ligações são preservadas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Selecione várias parcelas do contrato e edite ou exclua de uma vez',
+        description: 'No financeiro de um contrato com muitas mensalidades, você só conseguia apagar uma por vez, com uma confirmação em cada. Agora existe seleção múltipla, com selecionar todas, e as ações de excluir e editar em lote. A confirmação é uma só e diz quantas parcelas serão afetadas. Se houver parcela já recebida na seleção, o sistema avisa e pede um aceite antes de liberar. Funciona também nas parcelas que já estavam cadastradas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Criar as mensalidades de um contrato ficou mais rápido e mais seguro',
+        description: 'As mensalidades eram criadas uma a uma, e se desse algum problema no meio o contrato ficava com parte das parcelas gravadas. Agora todas são criadas de uma vez só: ou entram todas, ou nenhuma.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Editar uma assinatura e cancelar várias de uma vez',
+        description: 'A lista de assinaturas só permitia cancelar, uma por uma. Agora dá para editar valor, frequência, próximo vencimento e descrição sem precisar cancelar e criar tudo de novo. E dá para selecionar várias e cancelar de uma vez, com uma confirmação só.',
+        category: 'recurso',
+      },
+      {
+        title: 'Editar, excluir e cobrar direto da ficha do cliente',
+        description: 'Dentro de um cliente, a aba Financeiro só deixava olhar. Agora você edita, exclui e gera cobrança sem sair dali, com o cliente já preenchido. As cobranças também passaram a aparecer nessa aba, marcadas como cobrança, e sem duplicar o mesmo valor que já aparecia como lançamento. Cobrança antiga que estava sem descrição deixou de aparecer como um traço.',
+        category: 'recurso',
+      },
+      {
+        title: 'Reforçamos a proteção das cobranças e assinaturas',
+        description: 'As informações de cobranças e assinaturas só podiam ser alteradas pelo caminho que também atualiza o sistema de pagamento. Fechamos as outras portas, para não existir o risco de uma cobrança sumir do sistema e continuar valendo para o seu cliente.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.18',
     date: '12 de setembro de 2026',
     type: 'patch',

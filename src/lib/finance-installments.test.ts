@@ -6,6 +6,8 @@ import {
   buildInstallmentPlan,
   buildCardReceivablePlan,
   receivableInstallmentCount,
+  buildRepetitionPlan,
+  repetitionTotal,
 } from './finance-installments';
 
 /**
@@ -174,5 +176,90 @@ describe('receivableInstallmentCount — o que é gravado no banco', () => {
   it('nunca devolve menos que 1', () => {
     expect(receivableInstallmentCount({ installmentCount: 0, mode: null })).toBe(1);
     expect(receivableInstallmentCount({ installmentCount: -3, mode: 'as_customer_pays' })).toBe(1);
+  });
+});
+
+/**
+ * REPETIÇÃO ≠ PARCELAMENTO. O contrato PMOC de 48 mensalidades de R$ 180 gera
+ * 48 lançamentos de R$ 180 (total R$ 8.640). Se por engano ele passasse pelo
+ * motor de PARCELAMENTO, viraria 48 pedaços de R$ 3,75 (total R$ 180) — que é
+ * exatamente o estrago que estes testes existem pra travar.
+ */
+describe('buildRepetitionPlan — repetição não divide valor', () => {
+  it('48 mensalidades de R$ 180 continuam valendo R$ 180 cada', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-01-10', amount: 180, count: 48, intervalMonths: 1,
+    });
+    expect(plan).toHaveLength(48);
+    expect(plan.every((p) => p.amount === 180)).toBe(true);
+    expect(repetitionTotal(180, 48)).toBe(8640);
+  });
+
+  it('NÃO se comporta como parcelamento (contraste explícito)', () => {
+    const repeticao = buildRepetitionPlan({
+      firstDate: '2026-01-10', amount: 180, count: 48, intervalMonths: 1,
+    });
+    const parcelamento = buildInstallmentPlan('2026-01-10', 180, 48);
+    expect(repeticao[0].amount).toBe(180);
+    expect(parcelamento[0].amount).toBe(3.75);
+  });
+
+  it('numera de 1 a N', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-01-10', amount: 100, count: 3, intervalMonths: 1,
+    });
+    expect(plan.map((p) => p.number)).toEqual([1, 2, 3]);
+  });
+
+  it('passo mensal faz clamp de fim de mês (31/01 nunca vira 03/03)', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-01-31', amount: 180, count: 4, intervalMonths: 1,
+    });
+    expect(plan.map((p) => p.date)).toEqual([
+      '2026-01-31', '2026-02-28', '2026-03-31', '2026-04-30',
+    ]);
+  });
+
+  it('fevereiro de ano bissexto também faz clamp', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2028-01-31', amount: 180, count: 2, intervalMonths: 1,
+    });
+    expect(plan[1].date).toBe('2028-02-29');
+  });
+
+  it('trimestral anda de 3 em 3 meses', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-01-15', amount: 500, count: 4, intervalMonths: 3,
+    });
+    expect(plan.map((p) => p.date)).toEqual([
+      '2026-01-15', '2026-04-15', '2026-07-15', '2026-10-15',
+    ]);
+  });
+
+  it('anual vira o ano certo', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-02-28', amount: 1200, count: 2, intervalMonths: 12,
+    });
+    expect(plan[1].date).toBe('2027-02-28');
+  });
+
+  it('frequência única: 1 ocorrência, passo 0', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-05-10', amount: 180, count: 1, intervalMonths: 0,
+    });
+    expect(plan).toEqual([{ number: 1, date: '2026-05-10', amount: 180 }]);
+  });
+
+  it('nunca devolve menos de 1 ocorrência', () => {
+    expect(buildRepetitionPlan({ firstDate: '2026-05-10', amount: 180, count: 0, intervalMonths: 1 })).toHaveLength(1);
+    expect(buildRepetitionPlan({ firstDate: '2026-05-10', amount: 180, count: -5, intervalMonths: 1 })).toHaveLength(1);
+  });
+
+  it('arredonda o valor ao centavo, sem espalhar sobra (não há sobra em repetição)', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-01-10', amount: 180.005, count: 3, intervalMonths: 1,
+    });
+    expect(plan.map((p) => p.amount)).toEqual([180.01, 180.01, 180.01]);
+    expect(repetitionTotal(180.01, 3)).toBe(540.03);
   });
 });
