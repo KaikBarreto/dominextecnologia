@@ -291,6 +291,7 @@ export const charges = {
       payTitle: 'Pagamento',
       paySubtitle: 'Escolha a forma de pagamento para finalizar.',
       methodLabel: 'Forma de pagamento',
+      methodBack: 'Voltar',
       methodNames: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -726,6 +727,7 @@ export const charges = {
       payTitle: 'Payment',
       paySubtitle: 'Choose a payment method to finish.',
       methodLabel: 'Payment method',
+      methodBack: 'Back',
       methodNames: {
         pix: 'Pix',
         boleto: 'Bank slip',
@@ -1157,6 +1159,7 @@ export const charges = {
       payTitle: 'Pago',
       paySubtitle: 'Elige la forma de pago para finalizar.',
       methodLabel: 'Forma de pago',
+      methodBack: 'Volver',
       methodNames: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -1588,6 +1591,7 @@ export const charges = {
       payTitle: 'Paiement',
       paySubtitle: 'Choisissez le mode de paiement pour finaliser.',
       methodLabel: 'Mode de paiement',
+      methodBack: 'Retour',
       methodNames: {
         pix: 'Pix',
         boleto: 'Boleto',

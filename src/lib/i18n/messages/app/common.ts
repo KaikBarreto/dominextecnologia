@@ -123,6 +123,12 @@ export const common = {
       errorSectionCard: 'Verifique os dados do cartão acima.',
       errorSectionHolder: 'Verifique os dados do titular acima.',
       errorSectionAddress: 'Verifique o endereço de cobrança acima.',
+      // Preview visual do cartão (CreditCardPreview)
+      previewName: 'TITULAR',
+      previewNamePlaceholder: 'NOME NO CARTÃO',
+      previewValid: 'VALIDADE',
+      previewValidPlaceholder: 'MM/AA',
+      previewCvv: 'CVV',
     },
     // Seletor de estado/cidade do Brasil (StateCitySelector)
     stateCity: {
@@ -279,6 +285,12 @@ export const common = {
       errorSectionCard: 'Check the card details above.',
       errorSectionHolder: 'Check the cardholder details above.',
       errorSectionAddress: 'Check the billing address above.',
+      // Preview visual do cartão (CreditCardPreview)
+      previewName: 'CARDHOLDER',
+      previewNamePlaceholder: 'NAME ON CARD',
+      previewValid: 'VALID THRU',
+      previewValidPlaceholder: 'MM/YY',
+      previewCvv: 'CVV',
     },
     stateCity: {
       stateLabel: 'State',
@@ -429,6 +441,12 @@ export const common = {
       errorSectionCard: 'Verifica los datos de la tarjeta arriba.',
       errorSectionHolder: 'Verifica los datos del titular arriba.',
       errorSectionAddress: 'Verifica la dirección de cobro arriba.',
+      // Preview visual do cartão (CreditCardPreview)
+      previewName: 'TITULAR',
+      previewNamePlaceholder: 'NOMBRE EN TARJETA',
+      previewValid: 'VENCE',
+      previewValidPlaceholder: 'MM/AA',
+      previewCvv: 'CVV',
     },
     stateCity: {
       stateLabel: 'Estado',
@@ -579,6 +597,12 @@ export const common = {
       errorSectionCard: 'Verifiez les coordonnees de la carte ci-dessus.',
       errorSectionHolder: 'Verifiez les coordonnees du titulaire ci-dessus.',
       errorSectionAddress: 'Verifiez l\'adresse de facturation ci-dessus.',
+      // Preview visual do cartão (CreditCardPreview)
+      previewName: 'TITULAIRE',
+      previewNamePlaceholder: 'NOM SUR LA CARTE',
+      previewValid: 'EXPIRE FIN',
+      previewValidPlaceholder: 'MM/AA',
+      previewCvv: 'CVV',
     },
     stateCity: {
       stateLabel: 'Etat',

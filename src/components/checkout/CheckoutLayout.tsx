@@ -433,115 +433,119 @@ export function CheckoutLayout({
                   <p className="text-sm text-muted-foreground mt-0.5">{t.paymentSubtitle}</p>
                 </div>
 
-                {/* Seletor de forma de pagamento: continua montado DEPOIS da escolha
-                    (regra do CEO 2026-09-07) — o card escolhido fica preenchido na
-                    cor dele (SEM `disabled` nativo, que arrastaria opacity-50 do
-                    Button — trava por `aria-disabled` + ausência de handler), os
-                    outros dois ficam apagados e travados (`disabled` de verdade).
-                    Trocar de meio é só pelo "Voltar" que cada fluxo já tem
-                    (CardPaymentForm/PixPaymentView/BoletoPaymentView, todos
-                    ligados a `onClearPayment`) — nunca clicando direto em outro
-                    card. Clique direto no card errado é o risco de cobrança
-                    duplicada; o "Voltar" é a ação consciente do usuário, igual
-                    já era antes desta mudança. */}
-                <div className="space-y-5">
-                  <div>
-                    <Label className="text-sm font-semibold text-foreground">{t.labelCpfCnpj}</Label>
-                    <Input
-                      value={cpfCnpj}
-                      onChange={(e) => onCpfCnpjChange(cpfCnpjMask(e.target.value))}
-                      placeholder={t.placeholderCpfCnpj}
-                      maxLength={18}
-                      disabled={!!paymentMethod}
-                      className={cn("mt-1", cpfCnpjError && "border-destructive")}
-                    />
-                    {cpfCnpjError ? (
-                      <p className="text-xs text-destructive mt-1">{cpfCnpjError}</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">{t.cpfCnpjHint}</p>
-                    )}
-                  </div>
+                {/* Seletor de forma de pagamento: SOME depois da escolha, junto
+                    com o campo de CPF/CNPJ (regra do CEO 2026-09-12, que REVOGA
+                    a de 2026-09-07 — antes o seletor continuava montado com o
+                    card escolhido preenchido na cor e os outros dois travados).
+                    Escolheu a forma, a tela fica só com os dados daquele
+                    pagamento; espelha o checkout do EcoSistema.
 
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold text-foreground">{t.paymentMethodLabel}</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <Button
-                        variant="outline"
-                        style={{ "--pm-color": PAYMENT_METHOD_COLORS.card } as React.CSSProperties}
-                        className={cn(
-                          "group relative flex flex-row sm:flex-col items-center gap-3 sm:gap-2 h-auto py-3 sm:py-4 px-4 sm:px-2 justify-start sm:justify-center transition-all duration-200 border-2",
-                          isCardMethodSelected
-                            ? "bg-[var(--pm-color)] border-[var(--pm-color)] text-white shadow-lg cursor-default"
-                            : "border-primary/30 hover:bg-[var(--pm-color)] hover:border-[var(--pm-color)] hover:text-white hover:shadow-lg",
-                          paymentMethod && !isCardMethodSelected && "opacity-40 pointer-events-none",
-                          !paymentMethod && !isCpfCnpjValid && "opacity-50 cursor-not-allowed"
-                        )}
-                        disabled={!isCardMethodSelected && (!!paymentMethod || !isCpfCnpjValid || isCreatingPayment)}
-                        aria-disabled={isCardMethodSelected || undefined}
-                        onClick={paymentMethod ? undefined : () => onPaymentMethodSelect("card")}
-                      >
-                        <CreditCardIcon className="h-6 w-6" />
-                        <div className="flex flex-col items-start sm:items-center">
-                          <span className="text-sm font-bold">{t.methodCardTitle}</span>
-                          <span className={cn("text-xs transition-colors", isCardMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodCardSubtitle}</span>
-                        </div>
-                        <span className={cn(
-                          "absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none hidden sm:inline-flex",
-                          isCardMethodSelected ? "bg-white/90 text-slate-900 backdrop-blur-sm border border-white/70 shadow-sm" : "bg-primary text-primary-foreground"
-                        )}>
-                          {t.methodCardBadge}
-                        </span>
-                      </Button>
+                    A proteção contra cobrança duplicada não se perde: sem os
+                    cards na tela não existe clique no card errado. Trocar de
+                    meio continua sendo pelo "Voltar" que Cartão, Pix e Boleto
+                    já têm (todos ligados a `onClearPayment`), que é a ação
+                    consciente do usuário.
 
-                      <Button
-                        variant="outline"
-                        style={{ "--pm-color": PAYMENT_METHOD_COLORS.pix } as React.CSSProperties}
-                        className={cn(
-                          "group flex flex-row sm:flex-col items-center gap-3 sm:gap-2 h-auto py-3 sm:py-4 px-4 sm:px-2 justify-start sm:justify-center transition-all duration-200 border-2",
-                          isPixMethodSelected
-                            ? "bg-[var(--pm-color)] border-[var(--pm-color)] text-white shadow-lg cursor-default"
-                            : "hover:bg-[var(--pm-color)] hover:border-[var(--pm-color)] hover:text-white hover:shadow-lg",
-                          paymentMethod && !isPixMethodSelected && "opacity-40 pointer-events-none",
-                          !paymentMethod && !isCpfCnpjValid && "opacity-50 cursor-not-allowed"
-                        )}
-                        disabled={!isPixMethodSelected && (!!paymentMethod || !isCpfCnpjValid || isCreatingPayment)}
-                        aria-disabled={isPixMethodSelected || undefined}
-                        onClick={paymentMethod ? undefined : () => onCreatePayment("pix")}
-                      >
-                        {isCreatingPayment && paymentMethod === "pix" ? <Loader2 className="h-6 w-6 animate-spin" /> : <QrCode className="h-6 w-6" />}
-                        <div className="flex flex-col items-start sm:items-center">
-                          <span className="text-sm font-bold">{t.methodPixTitle}</span>
-                          <span className={cn("text-xs transition-colors", isPixMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodPixSubtitle}</span>
-                        </div>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        style={{ "--pm-color": PAYMENT_METHOD_COLORS.boleto } as React.CSSProperties}
-                        className={cn(
-                          "group flex flex-row sm:flex-col items-center gap-3 sm:gap-2 h-auto py-3 sm:py-4 px-4 sm:px-2 justify-start sm:justify-center transition-all duration-200 border-2",
-                          isBoletoMethodSelected
-                            ? "bg-[var(--pm-color)] border-[var(--pm-color)] text-white shadow-lg cursor-default"
-                            : "hover:bg-[var(--pm-color)] hover:border-[var(--pm-color)] hover:text-white hover:shadow-lg",
-                          paymentMethod && !isBoletoMethodSelected && "opacity-40 pointer-events-none",
-                          !paymentMethod && !isCpfCnpjValid && "opacity-50 cursor-not-allowed"
-                        )}
-                        disabled={!isBoletoMethodSelected && (!!paymentMethod || !isCpfCnpjValid || isCreatingPayment)}
-                        aria-disabled={isBoletoMethodSelected || undefined}
-                        onClick={paymentMethod ? undefined : () => onCreatePayment("boleto")}
-                      >
-                        {isCreatingPayment && paymentMethod === "boleto" ? <Loader2 className="h-6 w-6 animate-spin" /> : <FileText className="h-6 w-6" />}
-                        <div className="flex flex-col items-start sm:items-center">
-                          <span className="text-sm font-bold">{t.methodBoletoTitle}</span>
-                          <span className={cn("text-xs transition-colors", isBoletoMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodBoletoSubtitle}</span>
-                        </div>
-                      </Button>
+                    ⚠️ Isto só é seguro porque AQUI o usuário escolhe a forma
+                    (`paymentMethod` nasce null). NÃO copie para uma tela que
+                    auto-seleciona a forma ao abrir: lá esconder o seletor
+                    esconderia as outras formas antes de o pagador vê-las. */}
+                {!paymentMethod && (
+                  <div className="space-y-5">
+                    <div>
+                      <Label className="text-sm font-semibold text-foreground">{t.labelCpfCnpj}</Label>
+                      <Input
+                        value={cpfCnpj}
+                        onChange={(e) => onCpfCnpjChange(cpfCnpjMask(e.target.value))}
+                        placeholder={t.placeholderCpfCnpj}
+                        maxLength={18}
+                        className={cn("mt-1", cpfCnpjError && "border-destructive")}
+                      />
+                      {cpfCnpjError ? (
+                        <p className="text-xs text-destructive mt-1">{cpfCnpjError}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-1">{t.cpfCnpjHint}</p>
+                      )}
                     </div>
-                    {!paymentMethod && !isCpfCnpjValid && cpfCnpj.length > 0 && !cpfCnpjError && (
-                      <p className="text-xs text-muted-foreground">{t.cpfCnpjRequired}</p>
-                    )}
+
+                    <div className="space-y-3">
+                      <Label className="text-base font-semibold text-foreground">{t.paymentMethodLabel}</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <Button
+                          variant="outline"
+                          style={{ "--pm-color": PAYMENT_METHOD_COLORS.card } as React.CSSProperties}
+                          className={cn(
+                            "group relative flex flex-row sm:flex-col items-center gap-3 sm:gap-2 h-auto py-3 sm:py-4 px-4 sm:px-2 justify-start sm:justify-center transition-all duration-200 border-2",
+                            isCardMethodSelected
+                              ? "bg-[var(--pm-color)] border-[var(--pm-color)] text-white shadow-lg cursor-default"
+                              : "border-primary/30 hover:bg-[var(--pm-color)] hover:border-[var(--pm-color)] hover:text-white hover:shadow-lg",
+                            !isCpfCnpjValid && "opacity-50 cursor-not-allowed"
+                          )}
+                          disabled={!isCpfCnpjValid || isCreatingPayment}
+                          aria-disabled={isCardMethodSelected || undefined}
+                          onClick={() => onPaymentMethodSelect("card")}
+                        >
+                          <CreditCardIcon className="h-6 w-6" />
+                          <div className="flex flex-col items-start sm:items-center">
+                            <span className="text-sm font-bold">{t.methodCardTitle}</span>
+                            <span className={cn("text-xs transition-colors", isCardMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodCardSubtitle}</span>
+                          </div>
+                          <span className={cn(
+                            "absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none hidden sm:inline-flex",
+                            isCardMethodSelected ? "bg-white/90 text-slate-900 backdrop-blur-sm border border-white/70 shadow-sm" : "bg-primary text-primary-foreground"
+                          )}>
+                            {t.methodCardBadge}
+                          </span>
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          style={{ "--pm-color": PAYMENT_METHOD_COLORS.pix } as React.CSSProperties}
+                          className={cn(
+                            "group flex flex-row sm:flex-col items-center gap-3 sm:gap-2 h-auto py-3 sm:py-4 px-4 sm:px-2 justify-start sm:justify-center transition-all duration-200 border-2",
+                            isPixMethodSelected
+                              ? "bg-[var(--pm-color)] border-[var(--pm-color)] text-white shadow-lg cursor-default"
+                              : "hover:bg-[var(--pm-color)] hover:border-[var(--pm-color)] hover:text-white hover:shadow-lg",
+                            !isCpfCnpjValid && "opacity-50 cursor-not-allowed"
+                          )}
+                          disabled={!isCpfCnpjValid || isCreatingPayment}
+                          aria-disabled={isPixMethodSelected || undefined}
+                          onClick={() => onCreatePayment("pix")}
+                        >
+                          {isCreatingPayment && paymentMethod === "pix" ? <Loader2 className="h-6 w-6 animate-spin" /> : <QrCode className="h-6 w-6" />}
+                          <div className="flex flex-col items-start sm:items-center">
+                            <span className="text-sm font-bold">{t.methodPixTitle}</span>
+                            <span className={cn("text-xs transition-colors", isPixMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodPixSubtitle}</span>
+                          </div>
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          style={{ "--pm-color": PAYMENT_METHOD_COLORS.boleto } as React.CSSProperties}
+                          className={cn(
+                            "group flex flex-row sm:flex-col items-center gap-3 sm:gap-2 h-auto py-3 sm:py-4 px-4 sm:px-2 justify-start sm:justify-center transition-all duration-200 border-2",
+                            isBoletoMethodSelected
+                              ? "bg-[var(--pm-color)] border-[var(--pm-color)] text-white shadow-lg cursor-default"
+                              : "hover:bg-[var(--pm-color)] hover:border-[var(--pm-color)] hover:text-white hover:shadow-lg",
+                            !isCpfCnpjValid && "opacity-50 cursor-not-allowed"
+                          )}
+                          disabled={!isCpfCnpjValid || isCreatingPayment}
+                          aria-disabled={isBoletoMethodSelected || undefined}
+                          onClick={() => onCreatePayment("boleto")}
+                        >
+                          {isCreatingPayment && paymentMethod === "boleto" ? <Loader2 className="h-6 w-6 animate-spin" /> : <FileText className="h-6 w-6" />}
+                          <div className="flex flex-col items-start sm:items-center">
+                            <span className="text-sm font-bold">{t.methodBoletoTitle}</span>
+                            <span className={cn("text-xs transition-colors", isBoletoMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodBoletoSubtitle}</span>
+                          </div>
+                        </Button>
+                      </div>
+                      {!isCpfCnpjValid && cpfCnpj.length > 0 && !cpfCnpjError && (
+                        <p className="text-xs text-muted-foreground">{t.cpfCnpjRequired}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {paymentMethod === "pix" && !paymentData && isCreatingPayment && (
                   <div className="flex flex-col items-center justify-center py-12 gap-4">

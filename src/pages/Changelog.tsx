@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.15',
+    date: '12 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O cartão aparece desenhado na tela enquanto você digita os dados',
+        description: 'Na hora de pagar com cartão de crédito, seja a assinatura do sistema ou uma cobrança que você enviou para o seu cliente, agora aparece um cartão desenhado logo acima do formulário. Ele vai se preenchendo conforme você digita: o número, o nome e a validade aparecem no cartão, e a bandeira é reconhecida sozinha, incluindo Elo e Hipercard. Quando você clica no campo do código de segurança, o cartão gira e mostra o verso, que é onde esse código fica no cartão de verdade. No computador ele acompanha o movimento do mouse de leve; no celular fica parado para não atrapalhar o preenchimento. Nada mudou na forma de pagar nem nos dados que você precisa informar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Escolheu a forma de pagamento, a tela fica só com o que importa',
+        description: 'Antes, depois de escolher entre cartão, Pix e boleto, os três quadros de escolha continuavam ocupando o topo da tela e empurravam o formulário para baixo. Agora eles somem assim que você escolhe, e fica só o pagamento daquela forma — no cartão, o formulário inteiro passa a caber na tela sem rolar. Para trocar de forma é só clicar em Voltar, que agora existe também no Pix e no boleto. Na tela de pagamento que você envia para o seu cliente, o link agora abre mostrando as formas disponíveis em vez de já escolher uma sozinha, para ele enxergar todas as opções antes de decidir. Quando a cobrança aceita uma forma só, nada muda: ela continua abrindo direto no pagamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.14',
     date: '11 de setembro de 2026',
     type: 'patch',

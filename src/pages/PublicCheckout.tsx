@@ -44,7 +44,7 @@ import { PAYMENT_METHOD_COLORS } from '@/components/checkout/paymentMethodTheme'
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2, Copy, Check, QrCode, FileText, CreditCard, Calendar,
-  CheckCircle2, AlertCircle, Clock, XCircle, Shield, Lock, ExternalLink,
+  CheckCircle2, AlertCircle, Clock, XCircle, Shield, Lock, ExternalLink, ArrowLeft,
 } from 'lucide-react';
 import {
   useTenantPaymentCheckout,
@@ -341,15 +341,18 @@ function CheckoutInner({
     return list;
   }, [payload?.charge]);
 
-  const defaultMethod = available[0] ?? null;
+  // Pré-seleção SÓ quando existe UMA forma: com 2 ou 3, escolher sozinho
+  // esconderia as outras, porque o seletor some assim que o pagador escolhe
+  // (decisão do CEO, 2026-09-12). Abrir já no Pix faria o pagador nunca
+  // descobrir que dava pra pagar no cartão ou no boleto — venda perdida.
+  // Com forma única não há o que escolher, então obrigar um clique seria ruído:
+  // a página abre direto no conteúdo (e o card único continua visível como aviso).
+  const defaultMethod = available.length === 1 ? available[0] : null;
   useEffect(() => {
     if (defaultMethod) setMethod((prev) => prev ?? defaultMethod);
   }, [defaultMethod]);
-
-  // A página nunca abre "vazia": já vem com a primeira forma disponível
-  // selecionada (Pix > boleto > cartão) e o conteúdo dela pronto pra pagar. O
-  // pagador troca clicando em outro card; o "Voltar" do cartão devolve a escolha
-  // (o efeito não re-seleciona porque a lista de formas não mudou).
+  // O efeito NÃO re-seleciona depois de um "Voltar": `defaultMethod` não mudou,
+  // então ele não re-roda. E com 2+ formas ele é no-op (defaultMethod = null).
 
   // Para o polling assim que a cobrança consta paga de verdade.
   useEffect(() => {
@@ -472,6 +475,23 @@ function CheckoutInner({
     setCardError(null);
     setCardErrorSection(null);
   };
+
+  // "Voltar": devolve a escolha de forma de pagamento e zera o erro do cartão
+  // (senão o banner de erro reapareceria ao abrir o formulário de novo).
+  const clearMethod = () => {
+    setMethod(null);
+    setCardError(null);
+    setCardErrorSection(null);
+  };
+
+  // O seletor some assim que o pagador escolhe uma forma — a tela fica só com o
+  // conteúdo daquele pagamento. EXCEÇÃO: forma única, onde o card não é seletor
+  // e sim o AVISO de que esta cobrança aceita só aquela forma; esconder seria
+  // esconder informação. Por isso ele fica sempre visível nesse caso.
+  const showMethodPicker = !method || available.length === 1;
+  // Com forma única não há pra onde voltar, então o "Voltar" de Pix/boleto não
+  // aparece (o do cartão continua, pra recolher o formulário).
+  const showMethodBack = available.length > 1;
 
   // ── Resumo (coluna esquerda) ──────────────────────────────────────────────
   const summary = (
@@ -616,34 +636,44 @@ function CheckoutInner({
               {/* ── Cards de forma de pagamento (só as disponíveis) ──
                    Aparecem mesmo quando há UMA só: o pagador precisa enxergar
                    que aquela cobrança aceita só aquela forma (e não achar que a
-                   página deixou de oferecer as outras). */}
-              <div className="space-y-2.5">
-                <p className="text-sm font-semibold text-foreground">{t.methodLabel}</p>
-                <div
-                  className={cn(
-                    'grid gap-3',
-                    available.length >= 3 ? 'grid-cols-3' : available.length === 2 ? 'grid-cols-2' : 'grid-cols-1',
-                  )}
-                >
-                  {available.map((m) => (
-                    <MethodCard
-                      key={m}
-                      method={m}
-                      selected={method === m}
-                      name={t.methodNames[m]}
-                      hint={t.methodHints[m]}
-                      // Forma única: card em linha (ícone à esquerda), pra não
-                      // virar um bloco alto e órfão ocupando a largura toda.
-                      row={available.length === 1}
-                      onSelect={() => selectMethod(m)}
-                    />
-                  ))}
+                   página deixou de oferecer as outras). Com 2+ formas, somem
+                   depois da escolha (`showMethodPicker`) pra deixar a tela só
+                   com o conteúdo do pagamento — o "Voltar" traz de volta. */}
+              {showMethodPicker && (
+                <div className="space-y-2.5">
+                  <p className="text-sm font-semibold text-foreground">{t.methodLabel}</p>
+                  <div
+                    className={cn(
+                      'grid gap-3',
+                      available.length >= 3 ? 'grid-cols-3' : available.length === 2 ? 'grid-cols-2' : 'grid-cols-1',
+                    )}
+                  >
+                    {available.map((m) => (
+                      <MethodCard
+                        key={m}
+                        method={m}
+                        selected={method === m}
+                        name={t.methodNames[m]}
+                        hint={t.methodHints[m]}
+                        // Forma única: card em linha (ícone à esquerda), pra não
+                        // virar um bloco alto e órfão ocupando a largura toda.
+                        row={available.length === 1}
+                        onSelect={() => selectMethod(m)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* ── Pix ── */}
               {method === 'pix' && charge.pix_copy_paste && (
                 <div className="rounded-xl border border-border bg-card px-5 py-5 space-y-4">
+                  {showMethodBack && (
+                    <Button variant="outline" size="sm" onClick={clearMethod} className="mb-2">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      {t.methodBack}
+                    </Button>
+                  )}
                   <div>
                     <p className="text-sm font-bold text-foreground">{t.pix.title}</p>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -686,6 +716,12 @@ function CheckoutInner({
               {/* ── Boleto ── */}
               {method === 'boleto' && charge.boleto_url && (
                 <div className="rounded-xl border border-border bg-card px-5 py-5 space-y-4">
+                  {showMethodBack && (
+                    <Button variant="outline" size="sm" onClick={clearMethod} className="mb-2">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      {t.methodBack}
+                    </Button>
+                  )}
                   <div>
                     <p className="text-sm font-bold text-foreground">{t.boleto.title}</p>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -735,13 +771,9 @@ function CheckoutInner({
                     amount={charge.value}
                     isLoading={isPaying}
                     onSubmit={handleCardSubmit}
-                    onBack={() => {
-                      // "Voltar" recolhe o formulário e devolve a escolha de
-                      // forma de pagamento (mesmo quando só existe uma).
-                      setMethod(null);
-                      setCardError(null);
-                      setCardErrorSection(null);
-                    }}
+                    // "Voltar" recolhe o formulário e devolve a escolha de
+                    // forma de pagamento (mesmo quando só existe uma).
+                    onBack={clearMethod}
                     errorMessage={cardError}
                     errorSection={cardErrorSection}
                     // Parcelamento não se aplica: a Asaas paga a cobrança JÁ criada,

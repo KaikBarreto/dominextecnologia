@@ -17,6 +17,7 @@ import {
 import { ArrowLeft, Loader2, CreditCard, User, MapPin, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { CreditCardPreview } from "./CreditCardPreview";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
 
@@ -117,6 +118,8 @@ export function CardPaymentForm({
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  // Foco no CVV vira o preview pro verso (onde o CVV mora no cartão real).
+  const [cvvFocused, setCvvFocused] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["card"]));
 
   const toggleSection = (section: string) => {
@@ -194,11 +197,22 @@ export function CardPaymentForm({
     else if (field === "holderPhone") maskedValue = applyPhoneMask(value);
     else if (field === "holderPostalCode") maskedValue = applyCepMask(value);
     else if (field === "number") {
-      maskedValue = value
-        .replace(/\D/g, "")
+      // O AGRUPAMENTO segue em grupos de 4 mesmo no Amex (cujo canônico no
+      // plástico é 4-6-5): o valor daqui vai CRU (só `.trim()`) pro payload da
+      // Asaas em `tenant-asaas-create-subscription` e `tenant-asaas-pay-charge-card`,
+      // e não mexemos num formato já provado em produção sem poder testar contra
+      // a API. O CreditCardPreview espelha exatamente esta máscara.
+      //
+      // O que MUDA aqui é só o CAP: Amex (34/37) tem 15 dígitos, então cortamos
+      // em 15 — nenhum cartão Amex tem um 16º dígito, então isso não pode
+      // recusar número válido. Cuidado: `3841` é HIPERCARD (16 dígitos) e NÃO
+      // pode entrar nesse cap, por isso o teste é `^3[47]` e não `^38`.
+      const onlyDigits = value.replace(/\D/g, "");
+      const isAmex = /^3[47]/.test(onlyDigits);
+      maskedValue = onlyDigits
+        .slice(0, isAmex ? 15 : 16)
         .replace(/(\d{4})(?=\d)/g, "$1 ")
-        .trim()
-        .slice(0, 19);
+        .trim();
     } else if (field === "ccv") maskedValue = value.replace(/\D/g, "").slice(0, 4);
 
     setFormData((prev) => ({ ...prev, [field]: maskedValue }));
@@ -305,6 +319,16 @@ export function CardPaymentForm({
         </CollapsibleTrigger>
         <Separator />
         <CollapsibleContent className="space-y-2 pt-3 px-1 pb-1 data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+          <CreditCardPreview
+            className="mb-4"
+            number={formData.number}
+            holderName={formData.holderName}
+            expiryMonth={formData.expiryMonth}
+            expiryYear={formData.expiryYear}
+            ccv={formData.ccv}
+            flipped={cvvFocused}
+          />
+
           <Input
             id="cc-number"
             name="cc-number"
@@ -341,6 +365,8 @@ export function CardPaymentForm({
               placeholder={t.cvv}
               maxLength={4}
               value={formData.ccv}
+              onFocus={() => setCvvFocused(true)}
+              onBlur={() => setCvvFocused(false)}
               onChange={(e) => { handleChange("ccv", e.target.value); setValidationErrors((p) => ({ ...p, ccv: "" })); }}
               className={cn(validationErrors.ccv && "border-destructive")}
             />
