@@ -112,6 +112,11 @@ interface CreateChargeInput {
   // Categoria (nome) do recebível no Financeiro. Ausente → default da conta
   // (default_income_category).
   category?: string;
+  // Lançar (ou não) o recebível no Financeiro NESTA cobrança. Decisão do CEO:
+  // "nem toda cobrança tem que necessariamente já criar a conta a receber".
+  // Ausente (frontend antigo, sem o campo) → cai no default da conta
+  // (auto_post_to_finance), como sempre foi.
+  post_to_finance?: boolean;
 }
 
 /**
@@ -121,12 +126,19 @@ interface CreateChargeInput {
  * externalReference = customer.id (GET /v3/customers?externalReference=...); se existir,
  * reusamos; senão criamos. Idempotente na conta do tenant, sem coluna nova.
  */
+/** Resultado de `ensureAsaasCustomer`: o id na Asaas + o nome (usado no fallback
+ *  de descrição da cobrança, quando o usuário não digita uma). */
+interface EnsuredAsaasCustomer {
+  asaasCustomerId: string;
+  customerName: string;
+}
+
 async function ensureAsaasCustomer(
   supabase: any,
   asaas: ReturnType<typeof asaasFor>,
   companyId: string,
   customerId: string,
-): Promise<string> {
+): Promise<EnsuredAsaasCustomer> {
   const { data: customer, error } = await supabase
     .from("customers")
     .select("id, name, email, phone, celular, document")
@@ -155,13 +167,15 @@ async function ensureAsaasCustomer(
     );
   }
 
+  const customerName: string = customer.name ?? "cliente";
+
   // Dedupe no Asaas por externalReference.
   try {
     const existing = await asaas.get<any>(
       `/customers?externalReference=${encodeURIComponent(customer.id)}&limit=1`,
     );
     const found = Array.isArray(existing?.data) ? existing.data[0] : null;
-    if (found?.id) return found.id;
+    if (found?.id) return { asaasCustomerId: found.id, customerName };
   } catch {
     // Busca falhou (não-fatal): segue pra criação.
   }
@@ -177,7 +191,7 @@ async function ensureAsaasCustomer(
   if (!asaasCustomerId) {
     throw new AsaasApiError("Não foi possível cadastrar o cliente na Asaas.", 502);
   }
-  return asaasCustomerId;
+  return { asaasCustomerId, customerName };
 }
 
 Deno.serve(async (req) => {
@@ -331,19 +345,30 @@ async function handleRequest(req: Request): Promise<Response> {
     const asaas = asaasFor(apiKey);
 
     // 2) Cliente final no Asaas.
-    const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
+    const { asaasCustomerId, customerName } = await ensureAsaasCustomer(
+      supabase,
+      asaas,
+      companyId,
+      input.customer_id,
+    );
 
     // --- Resolve config efetiva (override do corpo → default da conta → fallback) ---
 
     // Vencimento: usa o do corpo (já validado) ou calcula hoje + default_due_days.
     const dueDate = rawDueDate ?? dueDateFromDays(Number(account.default_due_days ?? 0));
 
-    // Descrição: corpo → default da conta → nada.
+    // Descrição: corpo → default da conta → fallback com o nome do cliente.
+    // O campo é OPCIONAL pro usuário (não forçamos preenchimento), mas a RPC
+    // `create_tenant_charge_receivable` EXIGE p_description não vazio — sem
+    // esse fallback, toda cobrança sem descrição ficava sem lançamento no
+    // Financeiro (bug provado em produção: 6 de 6 cobranças sem descrição não
+    // geraram recebível). O fallback também vai pro Asaas (aparece no
+    // boleto/pix/extrato do cliente), por isso precisa ser reconhecível.
     const accountDescription =
       typeof account.default_description === "string" && account.default_description.trim()
         ? account.default_description.trim().slice(0, 500)
         : null;
-    const description = inputDescription ?? accountDescription;
+    const description = (inputDescription ?? accountDescription ?? `Cobrança de ${customerName}`).slice(0, 500);
 
     // Multa e juros por atraso (override por cobrança; senão default da conta).
     // Só envia quando > 0. Juros são clampados ao teto de 10% da Asaas.
@@ -484,11 +509,26 @@ async function handleRequest(req: Request): Promise<Response> {
     }
     const finalShortCode = saved?.public_short_code ?? shortCode;
 
+    // Lançar (ou não) no Financeiro é decisão POR COBRANÇA (pedido do CEO: "nem
+    // toda cobrança tem que necessariamente já criar a conta a receber"). O
+    // corpo manda um booleano explícito quando o front oferece a opção;
+    // ausência (frontend antigo, compatibilidade) cai no default histórico da
+    // conta (auto_post_to_finance, DEFAULT true).
+    const postToFinance =
+      typeof input.post_to_finance === "boolean"
+        ? input.post_to_finance
+        : account.auto_post_to_finance !== false;
+
+    // Aviso pro usuário quando o lançamento no Financeiro falhar. A falha NUNCA
+    // pode ser silenciosa (bug provado em produção: erro era só console.warn e
+    // o usuário nunca ficava sabendo que o financeiro não bateu).
+    let financeWarning: string | null = null;
+
     // 6) Lançamento automático no Financeiro (a receber), se habilitado.
     //    NÃO-FATAL: a cobrança já existe no Asaas e em tenant_charges — um erro
     //    aqui não pode invalidar nem desfazer o que foi gerado.
     //    A baixa automática (webhook PAYMENT_RECEIVED) quitará o lançamento.
-    if (account.auto_post_to_finance !== false && saved?.id) {
+    if (postToFinance && saved?.id) {
       try {
         const { error: rpcErr } = await supabase.rpc("create_tenant_charge_receivable", {
           p_company_id: companyId,
@@ -508,12 +548,16 @@ async function handleRequest(req: Request): Promise<Response> {
             "[create-charge] create_tenant_charge_receivable falhou (não-fatal):",
             rpcErr.message,
           );
+          financeWarning =
+            "A cobrança foi criada, mas não foi possível lançar no seu financeiro. Lance manualmente ou tente novamente.";
         }
       } catch (receivableErr) {
         console.warn(
           "[create-charge] create_tenant_charge_receivable exceção (não-fatal):",
           (receivableErr as Error)?.message ?? String(receivableErr),
         );
+        financeWarning =
+          "A cobrança foi criada, mas não foi possível lançar no seu financeiro. Lance manualmente ou tente novamente.";
       }
     }
 
@@ -529,6 +573,9 @@ async function handleRequest(req: Request): Promise<Response> {
         billing_type: billingType,
         status: payment?.status ?? "PENDING",
       },
+      // null = lançou certinho (ou nem era pra lançar). String = aviso pro
+      // front exibir; a cobrança em si já existe e é válida.
+      finance_warning: financeWarning,
     }, 200);
   } catch (e) {
     const status = e instanceof AsaasApiError ? e.status : 500;

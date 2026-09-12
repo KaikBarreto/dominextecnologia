@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.17";
+export const APP_VERSION = "1.24.18";
 
-export const VERSION_NOTES = "O campo de categoria voltou a funcionar nos lançamentos de contrato e agora existe também na cobrança e na assinatura, então o seu resultado separa por tipo de serviço. Cartão de crédito parou de aparecer como conta de recebimento, e o ícone do calendário voltou a ser visível no tema escuro.";
+export const VERSION_NOTES = "Quando o seu cliente parcela no cartão, o sistema agora pergunta se você recebe tudo de uma vez ou conforme ele paga, e o Contas a Receber deixa de ser fatiado. As cobranças também voltaram a lançar no financeiro sozinhas, e avisam quando algo dá errado.";

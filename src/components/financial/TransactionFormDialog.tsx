@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers, Calculator, AlertTriangle } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { AccountFormDialog } from './AccountFormDialog';
@@ -32,7 +32,14 @@ import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCostCenters } from '@/hooks/useCostCenters';
-import { buildInstallmentPlan } from '@/lib/finance-installments';
+import {
+  buildInstallmentPlan,
+  buildCardReceivablePlan,
+  receivableInstallmentCount,
+  type CardReceiptMode,
+} from '@/lib/finance-installments';
+import { useTenantFees } from '@/hooks/useTenantCardFees';
+import { simulateNetAmount, REFERENCE_CARD_FEES, type SimulatorFees } from '@/lib/asaasFeeSimulator';
 import {
   useTransactionAttachments,
   useUploadTransactionAttachment,
@@ -47,7 +54,7 @@ import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
 import { todayInBrazil } from '@/lib/today-brazil';
 
 
@@ -57,8 +64,31 @@ const CARD_BILL_MONTHS = Array.from({ length: 6 }, (_, i) => {
   return { value: format(d, 'yyyy-MM-dd'), label: format(d, 'MMMM yyyy', { locale: ptBR }) };
 });
 
-function makeTransactionSchema(v: { descriptionRequired: string; amountPositive: string; dateRequired: string; accountRequired: string }) {
-  return z.object({
+/**
+ * A pergunta "como o dinheiro entra na sua conta?" só existe em RECEITA paga no
+ * crédito PARCELADO. Em despesa as N parcelas estão certas (a empresa deve mês
+ * a mês) e nas outras formas de pagamento não há antecipação a decidir.
+ *
+ * Usada em dois lugares que precisam concordar: a validação (bloqueia o salvar
+ * enquanto não houver escolha) e a renderização do bloco. Se divergirem, o
+ * formulário trava num campo invisível.
+ */
+function needsCardReceiptChoice(d: {
+  transaction_type?: string;
+  payment_method?: string | null;
+  installment_count?: number;
+}): boolean {
+  const method = d.payment_method ? (normalizePaymentMethod(d.payment_method) ?? d.payment_method) : '';
+  return d.transaction_type === 'entrada'
+    && method === 'cartao_credito'
+    && (d.installment_count ?? 1) > 1;
+}
+
+function makeTransactionSchema(
+  v: { descriptionRequired: string; amountPositive: string; dateRequired: string; accountRequired: string; cardReceiptModeRequired: string },
+  opts?: { canAskCardReceiptMode?: boolean },
+) {
+  const base = z.object({
     transaction_type: z.enum(['entrada', 'saida']),
     category: z.string().optional(),
     description: z.string().min(1, v.descriptionRequired),
@@ -79,6 +109,27 @@ function makeTransactionSchema(v: { descriptionRequired: string; amountPositive:
     // Centro de custo é SEMPRE opcional — nenhum lançamento passa a exigir.
     cost_center_id: z.string().nullable().optional(),
     credit_card_bill_date: z.string().optional(),
+    /**
+     * Campo SÓ de tela (não é coluna): como o dinheiro do crédito parcelado
+     * entra na conta. Sem valor padrão de propósito, o formulário pergunta
+     * toda vez. É removido do payload antes de gravar.
+     */
+    card_receipt_mode: z.enum(['anticipated', 'as_customer_pays']).optional(),
+  });
+
+  // A trava só entra quando o bloco PODE aparecer na tela. Editando uma parcela
+  // de um grupo já criado o campo vira badge read-only e a pergunta não é feita
+  // — exigir a escolha ali bloquearia o salvar sem nada visível pra corrigir.
+  if (!opts?.canAskCardReceiptMode) return base;
+
+  return base.superRefine((data, ctx) => {
+    if (needsCardReceiptChoice(data) && !data.card_receipt_mode) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['card_receipt_mode'],
+        message: v.cardReceiptModeRequired,
+      });
+    }
   });
 }
 
@@ -88,6 +139,7 @@ const transactionSchema = makeTransactionSchema({
   amountPositive: 'Valor deve ser positivo',
   dateRequired: 'Data é obrigatória',
   accountRequired: 'Selecione uma conta ou caixa',
+  cardReceiptModeRequired: 'Escolha como o dinheiro entra na sua conta',
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -195,6 +247,208 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
         )} />
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// Crédito parcelado em RECEITA — como o dinheiro ENTRA na conta
+// ============================================================================
+//
+// O cliente parcelar em 10x é assunto dele com a operadora. O que entra no
+// Contas a Receber da empresa é QUANDO o dinheiro cai na conta dela: de uma vez
+// (se antecipar) ou mês a mês (se não antecipar). O sistema tratava as duas
+// coisas como uma só e jogava 10 recebíveis de R$ 78,90 numa venda de R$ 789,00.
+//
+// Decisão do CEO: pergunta toda vez, sem opção pré-marcada e sem configuração
+// salva. O valor líquido mostrado aqui é ESTIMATIVA: nenhuma taxa é lançada
+// agora. A tarifa real é informada na baixa, que é quando ela é conhecida
+// (mesma regra do ApproveQuoteModal e do ReceivePaymentModal).
+
+interface CardReceiptModeSectionProps {
+  form: ReturnType<typeof useForm<any>>;
+  installmentCount: number;
+  totalAmount: number;
+  transactionDate: string;
+}
+
+function CardReceiptModeSection({ form, installmentCount, totalAmount, transactionDate }: CardReceiptModeSectionProps) {
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.finance.transactionForm.cardReceipt;
+
+  const mode = form.watch('card_receipt_mode') as CardReceiptMode | undefined;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
+  const pct = (v: number) => {
+    try {
+      return `${v.toLocaleString(toBcp47(locale), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+    } catch {
+      return `${v.toFixed(2)}%`;
+    }
+  };
+
+  // Taxas da conta Asaas do tenant. Só busca quando este bloco está montado, e
+  // ele só é montado no crédito parcelado de receita.
+  const { card, pix, bankSlip, anticipation, settlementDays, source, extrasSource, isLoading } = useTenantFees();
+  // Sem a tabela da conta (integração ausente, edge fora do ar), usa a tabela
+  // pública de referência e AVISA. Some com o número seria pior: o usuário
+  // precisa de uma ordem de grandeza pra decidir antecipar ou não.
+  const feeTable = card ?? REFERENCE_CARD_FEES;
+
+  // Valor de cada parcela do CLIENTE: sai do mesmo motor que grava as linhas,
+  // pra tela e extrato nunca divergirem.
+  const perInstallment = useMemo(() => {
+    if (!transactionDate || totalAmount <= 0) return 0;
+    return buildCardReceivablePlan({
+      firstDate: transactionDate,
+      total: totalAmount,
+      installmentCount,
+      mode: 'as_customer_pays',
+    })[0]?.amount ?? 0;
+  }, [transactionDate, totalAmount, installmentCount]);
+
+  // Estimativa do líquido com antecipação. Fórmula única do front
+  // (src/lib/asaasFeeSimulator.ts), a mesma do modal de Nova cobrança.
+  const simulation = useMemo(() => {
+    if (mode !== 'anticipated' || totalAmount <= 0 || !transactionDate) return null;
+    const start = parseISO(`${transactionDate}T12:00:00`);
+    if (Number.isNaN(start.getTime())) return null;
+    const fees: SimulatorFees = { card: feeTable, pix, bankSlip, anticipation, settlementDays };
+    return simulateNetAmount({
+      amount: totalAmount,
+      method: 'card',
+      installments: installmentCount,
+      // A empresa absorve a taxa: o cliente paga o valor da venda, nada a mais.
+      feePayer: 'company',
+      fees,
+      anticipate: true,
+      startDate: start,
+      dueDays: 0,
+    });
+  }, [mode, feeTable, pix, bankSlip, anticipation, settlementDays, totalAmount, installmentCount, transactionDate]);
+
+  // Alguma taxa não veio da conta do tenant: o número é aproximado e a tela
+  // tem que dizer isso antes que alguém confie nele.
+  const feesAreReference =
+    !card || source === 'fallback' || extrasSource === 'fallback' || simulation?.usedReferenceFees === true;
+
+  const optionClass = (selected: boolean) =>
+    cn(
+      'w-full rounded-lg border-2 p-3 text-left transition-all',
+      selected
+        ? 'border-primary bg-primary text-primary-foreground'
+        : 'border-border bg-background hover:border-primary/50',
+    );
+
+  return (
+    <FormField control={form.control} name="card_receipt_mode" render={({ field }) => (
+      <FormItem className="rounded-lg border border-border bg-muted/40 p-3 space-y-3">
+        <div>
+          <FormLabel className="!mt-0 font-semibold">{t.title}</FormLabel>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t.subtitle.replace('{count}', String(installmentCount))}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => field.onChange('anticipated')}
+            className={optionClass(field.value === 'anticipated')}
+          >
+            <span className="block text-sm font-semibold">{t.lumpTitle}</span>
+            <span className={cn('block text-xs mt-0.5', field.value === 'anticipated' ? 'text-primary-foreground/85' : 'text-muted-foreground')}>
+              {t.lumpDesc.replace('{total}', fmt(totalAmount))}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => field.onChange('as_customer_pays')}
+            className={optionClass(field.value === 'as_customer_pays')}
+          >
+            <span className="block text-sm font-semibold">{t.scheduleTitle}</span>
+            <span className={cn('block text-xs mt-0.5', field.value === 'as_customer_pays' ? 'text-primary-foreground/85' : 'text-muted-foreground')}>
+              {t.scheduleDesc
+                .replace('{count}', String(installmentCount))
+                .replace('{amount}', fmt(perInstallment))}
+            </span>
+          </button>
+        </div>
+
+        <FormMessage />
+
+        {/* Líquido previsto — só na opção com antecipação. ESTIMATIVA: nada é
+            lançado agora, a tarifa real entra na baixa. */}
+        {field.value === 'anticipated' && totalAmount > 0 && (
+          <div className="rounded-md border border-border bg-background p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Calculator className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="text-sm font-semibold">{t.netTitle}</p>
+            </div>
+
+            {isLoading && !card ? (
+              <p className="text-xs text-muted-foreground">{t.netLoading}</p>
+            ) : !simulation ? null : (
+              <>
+                {feesAreReference && (
+                  <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <p className="text-xs leading-snug">{t.referenceWarning}</p>
+                  </div>
+                )}
+
+                <dl className="space-y-1.5 text-sm">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">{t.saleValue}</dt>
+                    <dd className="font-medium tabular-nums">{fmt(simulation.gross)}</dd>
+                  </div>
+
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">
+                      {t.fee}
+                      <span className="block text-[11px] leading-snug">
+                        {simulation.feeBreakdown.percent > 0
+                          ? t.feeComposition
+                              .replace('{percent}', pct(simulation.feeBreakdown.percent))
+                              .replace('{fixed}', fmt(simulation.feeBreakdown.fixed))
+                          : t.feeFixedOnly.replace('{fixed}', fmt(simulation.feeBreakdown.fixed))}
+                      </span>
+                    </dt>
+                    <dd className="font-medium tabular-nums text-destructive">- {fmt(simulation.feeTotal)}</dd>
+                  </div>
+
+                  {simulation.anticipationCost != null && simulation.anticipationCost > 0 && (
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-muted-foreground">{t.anticipationCost}</dt>
+                      <dd className="font-medium tabular-nums text-destructive">- {fmt(simulation.anticipationCost)}</dd>
+                    </div>
+                  )}
+
+                  <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                    <dt className="font-semibold">{t.netAtOnce}</dt>
+                    <dd className="text-base font-bold tabular-nums text-success">
+                      {fmt(simulation.netAfterAnticipation)}
+                    </dd>
+                  </div>
+                </dl>
+
+                <p className="text-xs text-muted-foreground">
+                  {simulation.settlementDays <= 0
+                    ? t.creditToday
+                    : t.creditDate.replace('{date}', formatDate(simulation.settlementDate, locale, timezone))}
+                </p>
+                {simulation.settlementDays > 0 && (
+                  <p className="text-[11px] leading-snug text-muted-foreground">{t.businessDayNote}</p>
+                )}
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  {t.revenueNote.replace('{total}', fmt(simulation.gross))}
+                </p>
+                <p className="text-[11px] leading-snug text-muted-foreground">{t.estimateNote}</p>
+              </>
+            )}
+          </div>
+        )}
+      </FormItem>
+    )} />
   );
 }
 
@@ -491,13 +745,21 @@ export function TransactionFormDialog({
     installment_count: (transaction as any)?.installment_total ?? 1,
     account_id: (transaction as any)?.account_id ?? lastAccountId,
     cost_center_id: transaction?.cost_center_id ?? null,
+    // Decisão do CEO: nunca nasce marcado. Sem padrão, sem preferência salva.
+    card_receipt_mode: undefined,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [transaction, defaultType]);
 
+  // Editando uma parcela de um grupo JÁ criado, o campo de parcelas vira badge
+  // read-only e a pergunta do crédito parcelado não é feita. A validação segue
+  // o mesmo flag pra nunca travar o salvar num campo que não está na tela.
+  const isEditingInstallmentGroup = ((transaction as any)?.installment_total ?? 1) > 1;
+  const canAskCardReceiptMode = !isEditingInstallmentGroup;
+
   const localizedSchema = useMemo(
-    () => makeTransactionSchema(tf.validations),
+    () => makeTransactionSchema(tf.validations, { canAskCardReceiptMode }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [locale],
+    [locale, canAskCardReceiptMode],
   );
 
   const form = useForm<TransactionFormData>({
@@ -525,6 +787,34 @@ export function TransactionFormDialog({
   const isPaid = form.watch('is_paid');
   const watchedAccountId = form.watch('account_id');
   const watchedDate = form.watch('transaction_date');
+  const watchedPaymentMethod = form.watch('payment_method');
+  const watchedInstallmentCount = form.watch('installment_count') ?? 1;
+
+  // A pergunta "como o dinheiro entra na sua conta?" está na tela?
+  const askCardReceiptMode = canAskCardReceiptMode && needsCardReceiptChoice({
+    transaction_type: transactionType,
+    payment_method: watchedPaymentMethod,
+    installment_count: watchedInstallmentCount,
+  });
+
+  // Quantas linhas vão MESMO nascer (o preview de anexos e os avisos usam este
+  // número, não o que o cliente parcelou).
+  const effectiveInstallmentCountUi = receivableInstallmentCount({
+    installmentCount: watchedInstallmentCount,
+    mode: askCardReceiptMode
+      ? ((form.watch('card_receipt_mode') as CardReceiptMode | undefined) ?? null)
+      : null,
+  });
+
+  // Saiu do crédito parcelado (trocou a forma de pagamento, voltou pra à vista,
+  // virou despesa): a escolha anterior morre junto com o bloco. Sem isso, um
+  // 'antecipado' esquecido colapsaria as parcelas de outro cenário em silêncio.
+  useEffect(() => {
+    if (!askCardReceiptMode && form.getValues('card_receipt_mode')) {
+      form.setValue('card_receipt_mode', undefined);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askCardReceiptMode]);
 
   // Espelho data do lançamento → data do pagamento, SÓ na criação e SÓ enquanto
   // o usuário não mexeu no campo. Lançar uma despesa retroativa de 05/01 já
@@ -574,12 +864,23 @@ export function TransactionFormDialog({
     const originalInstallmentTotal = (transaction as any)?.installment_total;
     const originalPaymentMethod = (transaction as any)?.payment_method;
     const wasOnePayment = isEditing && (!originalInstallmentTotal || originalInstallmentTotal <= 1);
-    const willBeMultiple = (data.installment_count ?? 1) > 1;
     const paymentMethodChanged = isEditing && originalPaymentMethod !== data.payment_method;
 
+    // Crédito parcelado em receita: o cliente parcela em N, mas o Contas a
+    // Receber só recebe N linhas se a empresa NÃO antecipar. Antecipando, é uma
+    // linha só com o valor cheio (`receivableInstallmentCount` decide). O modo
+    // é campo de TELA, nunca vai pro banco.
+    const receiptMode: CardReceiptMode | null =
+      canAskCardReceiptMode && needsCardReceiptChoice(data) ? (data.card_receipt_mode ?? null) : null;
+    const effectiveInstallmentCount = receivableInstallmentCount({
+      installmentCount: data.installment_count ?? 1,
+      mode: receiptMode,
+    });
+    const willBeMultiple = effectiveInstallmentCount > 1;
+
     if (paymentMethodChanged) {
-      const parcelasInfo = (data.installment_count ?? 1) > 1
-        ? `${data.installment_count} parcelas`
+      const parcelasInfo = effectiveInstallmentCount > 1
+        ? `${effectiveInstallmentCount} parcelas`
         : 'à vista';
       const grupoInfo = (originalInstallmentTotal ?? 1) > 1
         ? `Todas as ${originalInstallmentTotal} parcelas originais serão removidas`
@@ -593,7 +894,7 @@ export function TransactionFormDialog({
     } else if (wasOnePayment && willBeMultiple) {
       const ok = window.confirm(
         tf.changeInstallmentConfirm
-          .replace(/\{count\}/g, String(data.installment_count))
+          .replace(/\{count\}/g, String(effectiveInstallmentCount))
       );
       if (!ok) { submitGuard.current = false; return; }
     }
@@ -612,8 +913,22 @@ export function TransactionFormDialog({
       // mês já fechado mudava depois de fechado. Agora o form pergunta a data
       // (campo que aparece junto do switch) e o padrão é hoje no fuso do Brasil.
       // `undefined` quando não está pago: o backend limpa/ignora o campo.
+      // `card_receipt_mode` é campo de tela: não existe como coluna e o insert
+      // quebraria com ele no payload.
+      const { card_receipt_mode: _cardReceiptMode, ...dbData } = data;
+      // No modo ANTECIPADO grava-se 1 linha só, então `installment_total` não
+      // registra que o cliente parcelou (e não pode: a própria tela trata
+      // qualquer valor > 1 como parcela de grupo e vira selo read-only).
+      // `card_installments` guarda esse rastro, que a conciliação bancária vai
+      // precisar pra casar UMA entrada do extrato com uma venda parcelada.
+      const cardInstallments =
+        data.card_receipt_mode === 'anticipated' && (data.installment_count ?? 1) > 1
+          ? data.installment_count
+          : null;
       const payload = {
-        ...data,
+        ...dbData,
+        installment_count: effectiveInstallmentCount,
+        card_installments: cardInstallments,
         is_paid: isPaidFinal,
         paid_date: isPaidFinal ? (data.paid_date || data.transaction_date) : undefined,
         payment_method: data.payment_method || null,
@@ -1010,7 +1325,7 @@ export function TransactionFormDialog({
           {/* Installment info — shown for non-card transactions only (card gets breakdown above).
               Vale também na edição "à vista → parcelada" (transação JÁ parcelada nunca chega aqui
               porque o campo vira badge read-only). */}
-          {!((transaction as any)?.installment_total > 1) && (form.watch('installment_count') || 1) > 1 && !isCardAccount && (
+          {!((transaction as any)?.installment_total > 1) && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (
             <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
               {tf.installmentInfo
                 .replace('{count}', String(form.watch('installment_count')))
@@ -1020,6 +1335,18 @@ export function TransactionFormDialog({
                   locale,
                 ))}
             </p>
+          )}
+
+          {/* Crédito parcelado em RECEITA: como o cliente paga ≠ como o dinheiro
+              entra. Sem escolha, o salvar fica bloqueado (decisão do CEO: a
+              pergunta é feita toda vez, sem opção pré-marcada). */}
+          {askCardReceiptMode && (
+            <CardReceiptModeSection
+              form={form}
+              installmentCount={watchedInstallmentCount}
+              totalAmount={form.watch('amount') ?? 0}
+              transactionDate={form.watch('transaction_date') ?? ''}
+            />
           )}
 
           {/* Notes */}
@@ -1037,7 +1364,7 @@ export function TransactionFormDialog({
             transactionId={transaction?.id}
             pendingFiles={pendingFiles}
             setPendingFiles={setPendingFiles}
-            installmentCount={form.watch('installment_count') ?? 1}
+            installmentCount={effectiveInstallmentCountUi}
           />
 
           {/* Is Paid toggle — hidden for credit card expenses (always committed) */}

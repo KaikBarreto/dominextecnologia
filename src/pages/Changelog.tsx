@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.18',
+    date: '12 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cliente parcelou no cartão? Agora você escolhe como o dinheiro entra',
+        description: 'Ao lançar uma receita que o cliente paga parcelado no crédito, o sistema jogava uma linha por parcela no seu Contas a Receber. Uma venda de R$ 789,00 em 10 vezes virava dez linhas de R$ 78,90, como se você fosse receber aos pouquinhos mesmo antecipando. Agora o sistema pergunta, e nenhuma opção vem marcada: se você recebe tudo de uma vez, entra uma linha só com o valor cheio e a tela mostra quanto deve cair na conta depois das taxas e em que dia; se você recebe conforme o cliente paga, continuam as parcelas como antes. A forma como o seu cliente escolheu pagar parou de bagunçar o seu financeiro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cobrança sem descrição não some mais do seu financeiro',
+        description: 'Quando você gerava uma cobrança e deixava a descrição em branco, ela era criada normalmente e o link funcionava, mas o lançamento no seu Contas a Receber falhava sem avisar ninguém. Você só descobria conferindo. Agora, se você não escrever nada, o sistema preenche sozinho com o nome do cliente, e se algo der errado no lançamento aparece um aviso na tela que não some sozinho.',
+        category: 'correcao',
+      },
+      {
+        title: 'Você decide, em cada cobrança, se ela entra no financeiro',
+        description: 'Antes, ou toda cobrança gerava uma conta a receber, ou nenhuma gerava, e isso era uma configuração única da conta. Agora existe uma chave no próprio formulário de cobrança, que já vem do jeito que você configurou, mas pode ser virada caso a caso. Quando você desliga, o campo de categoria some, porque não faz sentido classificar o que não vai para o seu resultado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.17',
     date: '12 de setembro de 2026',
     type: 'patch',

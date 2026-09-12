@@ -4,6 +4,8 @@ import {
   buildInstallmentDates,
   splitInstallmentAmounts,
   buildInstallmentPlan,
+  buildCardReceivablePlan,
+  receivableInstallmentCount,
 } from './finance-installments';
 
 /**
@@ -97,5 +99,80 @@ describe('buildInstallmentPlan', () => {
       { number: 2, date: '2026-02-28', amount: 333.33 },
       { number: 3, date: '2026-03-31', amount: 333.34 },
     ]);
+  });
+});
+
+/**
+ * Bug relatado pelo sócio: receita de R$ 789,00 que o cliente paga em 10x no
+ * crédito virava 10 recebíveis de R$ 78,90 no Contas a Receber, mesmo quando a
+ * empresa antecipa e recebe tudo de uma vez.
+ *
+ * A trava mais importante aqui é a ÚLTIMA: nenhum dos dois modos pode somar
+ * mais (nem menos) que o valor da venda. Se algum dia alguém somar a linha
+ * cheia + as parcelas, a receita dobra.
+ */
+describe('crédito parcelado: como o cliente paga ≠ como o dinheiro entra', () => {
+  const VENDA = 789;
+  const DATA = '2026-09-12';
+
+  it('sem antecipação: 10 recebíveis de R$ 78,90 (comportamento de hoje)', () => {
+    const rows = buildCardReceivablePlan({
+      firstDate: DATA, total: VENDA, installmentCount: 10, mode: 'as_customer_pays',
+    });
+    expect(rows).toHaveLength(10);
+    expect(rows.every((r) => r.amount === 78.9)).toBe(true);
+    expect(rows[0].date).toBe('2026-09-12');
+    expect(rows[9].date).toBe('2027-06-12');
+  });
+
+  it('com antecipação: 1 recebível só, com o valor cheio da venda', () => {
+    const rows = buildCardReceivablePlan({
+      firstDate: DATA, total: VENDA, installmentCount: 10, mode: 'anticipated',
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({ number: 1, date: DATA, amount: 789 });
+  });
+
+  it('os dois modos somam exatamente o valor da venda, uma vez só', () => {
+    const soma = (mode: 'anticipated' | 'as_customer_pays') =>
+      buildCardReceivablePlan({ firstDate: DATA, total: VENDA, installmentCount: 10, mode })
+        .reduce((acc, r) => acc + r.amount, 0);
+    expect(soma('anticipated')).toBeCloseTo(789, 2);
+    expect(soma('as_customer_pays')).toBeCloseTo(789, 2);
+  });
+
+  it('antecipado ainda fecha ao centavo quando o rateio não divide redondo', () => {
+    const rows = buildCardReceivablePlan({
+      firstDate: DATA, total: 1000, installmentCount: 3, mode: 'anticipated',
+    });
+    expect(rows).toEqual([{ number: 1, date: DATA, amount: 1000 }]);
+  });
+
+  it('antecipado não empurra a data: o dinheiro entra na data do lançamento', () => {
+    const rows = buildCardReceivablePlan({
+      firstDate: '2026-01-31', total: 500, installmentCount: 12, mode: 'anticipated',
+    });
+    expect(rows[0].date).toBe('2026-01-31');
+  });
+});
+
+describe('receivableInstallmentCount — o que é gravado no banco', () => {
+  it('antecipado grava 1 parcela, não importa em quantas vezes o cliente pagou', () => {
+    expect(receivableInstallmentCount({ installmentCount: 10, mode: 'anticipated' })).toBe(1);
+    expect(receivableInstallmentCount({ installmentCount: 21, mode: 'anticipated' })).toBe(1);
+  });
+
+  it('sem antecipação grava as N parcelas', () => {
+    expect(receivableInstallmentCount({ installmentCount: 10, mode: 'as_customer_pays' })).toBe(10);
+  });
+
+  it('pergunta que não se aplica (mode null) não muda nada', () => {
+    expect(receivableInstallmentCount({ installmentCount: 10, mode: null })).toBe(10);
+    expect(receivableInstallmentCount({ installmentCount: 1, mode: null })).toBe(1);
+  });
+
+  it('nunca devolve menos que 1', () => {
+    expect(receivableInstallmentCount({ installmentCount: 0, mode: null })).toBe(1);
+    expect(receivableInstallmentCount({ installmentCount: -3, mode: 'as_customer_pays' })).toBe(1);
   });
 });

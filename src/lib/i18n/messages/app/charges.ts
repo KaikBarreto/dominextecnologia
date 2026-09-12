@@ -94,6 +94,15 @@ export const charges = {
         category: 'Categoria',
         categoryHint: 'Opcional. Se não escolher, usa a categoria padrão da conta de recebimento.',
       },
+      // Decisão por cobrança: gerar (ou não) o lançamento no Financeiro. O
+      // padrão inicial vem da configuração da conta de recebimento.
+      postToFinance: {
+        label: 'Lançar no financeiro',
+        yes: 'Sim',
+        no: 'Não',
+        hintOn: 'Ao gerar, esta cobrança já entra como uma conta a receber no seu financeiro.',
+        hintOff: 'A cobrança é criada normalmente, mas não entra no financeiro. Lance manualmente se precisar.',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -227,6 +236,12 @@ export const charges = {
       },
       copyFallback: 'Não foi possível copiar automaticamente. Selecione e copie o link manualmente.',
       error: 'Não foi possível gerar a cobrança. Tente novamente.',
+      // A cobrança foi criada, mas o lançamento automático no Financeiro falhou
+      // (não-fatal no edge). O aviso do servidor, quando vier, tem prioridade.
+      financeWarning: {
+        title: 'Cobrança criada, mas não lançada no financeiro',
+        description: 'A cobrança foi criada normalmente, mas não foi possível lançar no seu financeiro. Lance manualmente ou tente novamente.',
+      },
       orphan: {
         notice: 'Cobrança criada no Asaas. Use este link para receber o pagamento.',
         linkLabel: 'Link do Asaas',
@@ -544,6 +559,13 @@ export const charges = {
         category: 'Category',
         categoryHint: 'Optional. If left empty, uses the payment account\'s default category.',
       },
+      postToFinance: {
+        label: 'Post to your finances',
+        yes: 'Yes',
+        no: 'No',
+        hintOn: 'When generated, this charge is also created as a receivable in your finances.',
+        hintOff: 'The charge is created normally, but it will not appear in your finances. Post it manually if needed.',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Bank slip',
@@ -673,6 +695,10 @@ export const charges = {
       },
       copyFallback: 'Could not copy automatically. Please select and copy the link manually.',
       error: 'We could not generate the charge. Please try again.',
+      financeWarning: {
+        title: 'Charge created, but not posted to your finances',
+        description: 'The charge was created normally, but we could not post it to your finances. Post it manually or try again.',
+      },
       orphan: {
         notice: 'Charge created on Asaas. Use this link to collect the payment.',
         linkLabel: 'Asaas link',
@@ -980,6 +1006,13 @@ export const charges = {
         category: 'Categoría',
         categoryHint: 'Opcional. Si no eliges una, se usa la categoría predeterminada de la cuenta de cobro.',
       },
+      postToFinance: {
+        label: 'Registrar en tus finanzas',
+        yes: 'Sí',
+        no: 'No',
+        hintOn: 'Al generarse, este cobro también se registra como una cuenta por cobrar en tus finanzas.',
+        hintOff: 'El cobro se crea normalmente, pero no entra en tus finanzas. Regístralo manualmente si lo necesitas.',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -1109,6 +1142,10 @@ export const charges = {
       },
       copyFallback: 'No fue posible copiar automáticamente. Selecciona y copia el enlace manualmente.',
       error: 'No pudimos generar el cobro. Inténtalo de nuevo.',
+      financeWarning: {
+        title: 'Cobro creado, pero no registrado en tus finanzas',
+        description: 'El cobro se creó normalmente, pero no fue posible registrarlo en tus finanzas. Regístralo manualmente o inténtalo de nuevo.',
+      },
       orphan: {
         notice: 'Cobro creado en Asaas. Usa este enlace para recibir el pago.',
         linkLabel: 'Enlace de Asaas',
@@ -1416,6 +1453,13 @@ export const charges = {
         category: 'Catégorie',
         categoryHint: 'Facultatif. Si vous n`en choisissez pas, la catégorie par défaut du compte d`encaissement est utilisée.',
       },
+      postToFinance: {
+        label: 'Enregistrer dans vos finances',
+        yes: 'Oui',
+        no: 'Non',
+        hintOn: `Une fois générée, cette facture est aussi enregistrée comme une créance dans vos finances.`,
+        hintOff: `La facture est créée normalement, mais n'apparaît pas dans vos finances. Enregistrez-la manuellement si besoin.`,
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -1545,6 +1589,10 @@ export const charges = {
       },
       copyFallback: `Impossible de copier automatiquement. Sélectionnez et copiez le lien manuellement.`,
       error: `Nous n'avons pas pu générer la facture. Veuillez réessayer.`,
+      financeWarning: {
+        title: `Facture créée, mais non enregistrée dans vos finances`,
+        description: `La facture a été créée normalement, mais nous n'avons pas pu l'enregistrer dans vos finances. Enregistrez-la manuellement ou réessayez.`,
+      },
       orphan: {
         notice: `Facture créée sur Asaas. Utilisez ce lien pour encaisser le paiement.`,
         linkLabel: `Lien Asaas`,

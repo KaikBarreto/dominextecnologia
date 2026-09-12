@@ -54,6 +54,9 @@ export interface CreateChargeInput {
   /** Categoria (nome) do recebível gerado no Financeiro. Ausente/vazio → a edge
    *  usa a categoria padrão da conta de pagamento (default_income_category). */
   category?: string;
+  /** Lançar (ou não) o recebível no Financeiro NESTA cobrança. Ausente → a edge
+   *  usa o default da conta de pagamento (auto_post_to_finance). */
+  post_to_finance?: boolean;
 }
 
 /** Resultado do gerar cobrança — allowlist: nunca custo/margem interna. */
@@ -67,6 +70,9 @@ export interface CreatedCharge {
   value: number;
   due_date: string | null;
   status: string;
+  /** Cobrança foi criada, mas o lançamento automático no Financeiro falhou
+   *  (não-fatal no edge). Null = lançou certinho (ou nem era pra lançar). */
+  financeWarning: string | null;
 }
 
 /**
@@ -191,6 +197,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       // Categoria escolhida pelo usuário nesta cobrança — sobrescreve o default
       // da conta (default_income_category) só quando informada.
       if (input.category?.trim()) body.category = input.category.trim();
+      // Lançar (ou não) o recebível no Financeiro NESTA cobrança. Ausente →
+      // a edge usa o default da conta (compatibilidade com frontend antigo).
+      if (input.post_to_finance !== undefined) body.post_to_finance = input.post_to_finance;
       const { data, error } = await supabase.functions.invoke('tenant-asaas-create-charge', { body });
       if (error) throw new Error(await extractEdgeError(error, data, 'Não foi possível gerar a cobrança.'));
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
@@ -216,10 +225,12 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
         };
       }
 
-      // ── Caso NORMAL: edge devolve `{ charge: { ... } }` com short_code.
+      // ── Caso NORMAL: edge devolve `{ charge: { ... }, finance_warning }`.
       const charge = (responseBody as { charge?: CreatedCharge } | null)?.charge;
       if (!charge) throw new Error('Não foi possível gerar a cobrança.');
-      return { orphan: false, charge };
+      const financeWarning =
+        typeof responseBody?.finance_warning === 'string' ? responseBody.finance_warning : null;
+      return { orphan: false, charge: { ...charge, financeWarning } };
     },
     onSuccess: () => {
       // Invalida a listagem filtrada (por cliente, se aplicável) e a geral.

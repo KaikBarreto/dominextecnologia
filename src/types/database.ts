@@ -250,6 +250,12 @@ export interface FinancialTransaction {
    * Existe porque vale + folha pendente contavam em dobro no regime de competência.
    */
   accrual_amount?: number | null;
+  /**
+   * Em quantas vezes o CLIENTE FINAL parcelou no cartão. Preenchido só no modo
+   * antecipado (recebimento em 1 linha), onde `installment_total` não pode ser
+   * usado porque a tela o trata como parcela de grupo. NULL = não se aplica.
+   */
+  card_installments?: number | null;
   transaction_date: string;
   due_date?: string;
   paid_date?: string;

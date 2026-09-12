@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
@@ -118,6 +119,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     defaultDiscountDays,
     defaultDescription,
     defaultMaxInstallments,
+    autoPostToFinance,
   } = paymentAccount;
 
   // ── Opções de método disponíveis ───────────────────────────────────────────
@@ -144,6 +146,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [description, setDescription] = useState('');
   // Categoria do recebível gerado no Financeiro. Vazia = usa o default da conta.
   const [category, setCategory] = useState('');
+  // Lançar (ou não) esta cobrança no Financeiro. Decisão do CEO: é uma opção
+  // por cobrança, com o padrão vindo da configuração da conta de recebimento
+  // (auto_post_to_finance).
+  const [postToFinance, setPostToFinance] = useState(true);
   const [method, setMethod] = useState<BillingMethod>('UNDEFINED');
   const [installmentCount, setInstallmentCount] = useState(1);
   // Quem paga a taxa do cartão: 'company' (empresa absorve) ou 'customer'
@@ -199,6 +205,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
   // Helper derivado do resultado normalizado
   const isOrphan = result?.orphan === true;
+  // Cobrança criada normalmente, mas o lançamento no Financeiro falhou (edge
+  // não-fatal). Persiste na tela de sucesso — não é só um toast que some.
+  const financeWarning = (() => {
+    if (!result || result.orphan !== false) return null;
+    return result.charge.financeWarning;
+  })();
 
   const selectedCustomer = useMemo(
     () => customers.find((c) => c.id === customerId) ?? null,
@@ -216,11 +228,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       setDiscountDays(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
       setDescription(presetDescription ?? defaultDescription ?? '');
       setCategory('');
+      setPostToFinance(autoPostToFinance);
       if (presetAmount != null && presetAmount > 0) {
         setAmount(presetAmount);
       }
     }
-  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription, presetAmount, presetDescription]);
+  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription, autoPostToFinance, presetAmount, presetDescription]);
 
   // Sincroniza o cliente pré-selecionado quando o dialog abre com novo preset.
   useEffect(() => {
@@ -249,6 +262,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setDueDate(todayISO());
     setDescription(defaultDescription ?? '');
     setCategory('');
+    setPostToFinance(autoPostToFinance);
     setMethod(methodOptions[0]?.value ?? 'UNDEFINED');
     setInstallmentCount(1);
     setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
@@ -436,9 +450,21 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         // Origem da cobrança: ativa dedupe no edge quando source_type='quote'.
         source_type: source?.type,
         source_id: source?.id ?? null,
+        // Opção por cobrança (padrão vem da conta): lançar ou não no Financeiro.
+        post_to_finance: postToFinance,
       });
       setResult(chargeResult);
       toast({ title: t.success.title, description: t.success.description });
+      // Falha em dinheiro nunca pode ser silenciosa: se a cobrança foi criada
+      // mas o lançamento no Financeiro não, avisa com um toast à parte (some
+      // do drawer; o aviso persistente fica no bloco de sucesso abaixo).
+      if (chargeResult.orphan === false && chargeResult.charge.financeWarning) {
+        toast({
+          variant: 'destructive',
+          title: t.financeWarning.title,
+          description: chargeResult.charge.financeWarning || t.financeWarning.description,
+        });
+      }
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -667,20 +693,42 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
               />
             </div>
 
-            {/* Categoria do recebível no Financeiro — opcional, sobrescreve o
-                default da conta de recebimento quando escolhida. */}
-            <div className="space-y-2">
-              <Label htmlFor="charge-category" className="text-sm font-medium">
-                {t.fields.category}
-              </Label>
-              <CategorySelectField
-                id="charge-category"
-                type="entrada"
-                value={category}
-                onValueChange={setCategory}
-              />
-              <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+            {/* Lançar (ou não) esta cobrança no Financeiro — opção POR COBRANÇA
+                (pedido do CEO: nem toda cobrança precisa virar conta a
+                receber). O padrão vem da configuração da conta de recebimento. */}
+            <div className="space-y-1.5 rounded-md border border-border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm font-medium">{t.postToFinance.label}</Label>
+                <LabeledSwitch<'no' | 'yes'>
+                  value={postToFinance ? 'yes' : 'no'}
+                  onChange={(v) => setPostToFinance(v === 'yes')}
+                  off={{ value: 'no', label: t.postToFinance.no }}
+                  on={{ value: 'yes', label: t.postToFinance.yes }}
+                  aria-label={t.postToFinance.label}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {postToFinance ? t.postToFinance.hintOn : t.postToFinance.hintOff}
+              </p>
             </div>
+
+            {/* Categoria do recebível no Financeiro — só faz sentido quando a
+                cobrança vai gerar lançamento. Opcional, sobrescreve o default
+                da conta de recebimento quando escolhida. */}
+            {postToFinance && (
+              <div className="space-y-2">
+                <Label htmlFor="charge-category" className="text-sm font-medium">
+                  {t.fields.category}
+                </Label>
+                <CategorySelectField
+                  id="charge-category"
+                  type="entrada"
+                  value={category}
+                  onValueChange={setCategory}
+                />
+                <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+              </div>
+            )}
 
             {/* Opções avançadas (collapsible) */}
             <div className="rounded-md border border-border">
@@ -1014,6 +1062,19 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">{t.success.description}</p>
+            )}
+
+            {/* Aviso PERSISTENTE (não só toast): a cobrança foi criada mas o
+                lançamento automático no Financeiro falhou. Dinheiro não pode
+                ter falha silenciosa. */}
+            {financeWarning && (
+              <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning" />
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-foreground">{t.financeWarning.title}</p>
+                  <p className="text-xs text-muted-foreground">{financeWarning}</p>
+                </div>
+              </div>
             )}
 
             {/* QR do link de pagamento — o dono mostra a tela pro cliente escanear

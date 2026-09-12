@@ -3900,6 +3900,7 @@ export type Database = {
       financial_transactions: {
         Row: {
           account_id: string | null
+          accrual_amount: number | null
           amount: number
           amount_received: number
           bill_id: string | null
@@ -3907,6 +3908,7 @@ export type Database = {
           billing_reminder_resolved_by: string | null
           cancelled_at: string | null
           cancelled_reason: string | null
+          card_installments: number | null
           category: string | null
           company_id: string
           contract_id: string | null
@@ -3939,6 +3941,7 @@ export type Database = {
         }
         Insert: {
           account_id?: string | null
+          accrual_amount?: number | null
           amount: number
           amount_received?: number
           bill_id?: string | null
@@ -3946,6 +3949,7 @@ export type Database = {
           billing_reminder_resolved_by?: string | null
           cancelled_at?: string | null
           cancelled_reason?: string | null
+          card_installments?: number | null
           category?: string | null
           company_id: string
           contract_id?: string | null
@@ -3978,6 +3982,7 @@ export type Database = {
         }
         Update: {
           account_id?: string | null
+          accrual_amount?: number | null
           amount?: number
           amount_received?: number
           bill_id?: string | null
@@ -3985,6 +3990,7 @@ export type Database = {
           billing_reminder_resolved_by?: string | null
           cancelled_at?: string | null
           cancelled_reason?: string | null
+          card_installments?: number | null
           category?: string | null
           company_id?: string
           contract_id?: string | null

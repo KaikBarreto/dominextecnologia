@@ -94,3 +94,64 @@ export function buildInstallmentPlan(
 function round2(v: number): number {
   return Math.round(v * 100) / 100;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Crédito parcelado: COMO O CLIENTE PAGA ≠ COMO O DINHEIRO ENTRA
+//
+// São duas coisas diferentes que o sistema tratava como uma só:
+//
+//   • O cliente parcelar em 10x é assunto dele com a operadora do cartão.
+//   • O que entra no CONTAS A RECEBER da empresa é quando o dinheiro cai na
+//     conta dela, que só é mês a mês se ela NÃO antecipar.
+//
+// Uma venda de R$ 789,00 em 10x virava 10 recebíveis de R$ 78,90. Se a empresa
+// antecipa, isso é falso: ela recebe R$ 789,00 (menos taxa) de uma vez só.
+//
+// Decisão do CEO: NÃO existe padrão nem configuração salva. O formulário
+// pergunta toda vez, sem opção pré-marcada (`mode` só chega aqui já escolhido).
+//
+// Invariante que os dois modos respeitam: a soma das linhas é SEMPRE o valor
+// da venda, uma vez só. Nenhum modo pode somar duas vezes a mesma receita.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Como o dinheiro da venda no crédito parcelado entra na conta da empresa. */
+export type CardReceiptMode =
+  /** Antecipa: 1 recebível com o valor cheio. */
+  | 'anticipated'
+  /** Não antecipa: N recebíveis, um por parcela do cliente. */
+  | 'as_customer_pays';
+
+/**
+ * Quantas linhas o Contas a Receber recebe de verdade.
+ *
+ * `mode: null` = a pergunta não se aplica (despesa, à vista, outra forma de
+ * pagamento) e nada muda em relação ao comportamento histórico.
+ */
+export function receivableInstallmentCount(args: {
+  /** Em quantas vezes o CLIENTE parcelou. */
+  installmentCount: number;
+  mode: CardReceiptMode | null;
+}): number {
+  const n = Math.max(1, Math.floor(Number(args.installmentCount) || 1));
+  return args.mode === 'anticipated' ? 1 : n;
+}
+
+/**
+ * As linhas que vão cair no Contas a Receber. Mesma função no preview da tela
+ * e no que é enviado pra gravação (via `receivableInstallmentCount`), pra tela
+ * e extrato nunca divergirem.
+ *
+ * - `anticipated`: 1 linha com o valor cheio na data do lançamento.
+ * - `as_customer_pays`: N linhas mensais (com clamp de fim de mês e sobra na
+ *   última), exatamente o que `buildInstallmentPlan` já fazia.
+ */
+export function buildCardReceivablePlan(args: {
+  firstDate: string;
+  total: number;
+  installmentCount: number;
+  mode: CardReceiptMode;
+}): InstallmentPlanRow[] {
+  const { firstDate, total, installmentCount, mode } = args;
+  const count = receivableInstallmentCount({ installmentCount, mode });
+  return buildInstallmentPlan(firstDate, total, count);
+}
