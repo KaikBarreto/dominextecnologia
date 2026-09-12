@@ -81,8 +81,15 @@ export default function CRM() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  // Guardamos só o id do lead aberto no modal de detalhe e derivamos o objeto
+  // da lista viva (useLeads) — assim, após uma mutação (ex: troca de estágio),
+  // o modal reflete o estado novo sem precisar fechar/reabrir.
+  const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const detailLead = useMemo(
+    () => leads.find((l) => l.id === detailLeadId) ?? null,
+    [leads, detailLeadId],
+  );
 
   // Loss reason dialog
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
@@ -174,7 +181,7 @@ export default function CRM() {
   };
 
   const handleLeadClick = (lead: Lead) => {
-    setDetailLead(lead);
+    setDetailLeadId(lead.id);
     setDetailOpen(true);
   };
 
@@ -189,29 +196,47 @@ export default function CRM() {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = async (e: React.DragEvent, stageId: string) => {
-    e.preventDefault();
-    const leadId = e.dataTransfer.getData('leadId');
-    const leadTitle = e.dataTransfer.getData('leadTitle');
-    if (!leadId) return;
-
+  // Fonte única pra mudança de estágio — usada pelo drag-and-drop do kanban,
+  // pelo menu de ações mobile e pelo select do modal de detalhe. Se o estágio
+  // destino é de perda (is_lost), abre o LossReasonDialog em vez de gravar direto.
+  // `fromModal` fecha o modal de detalhe antes de abrir o LossReasonDialog pra
+  // evitar dois Dialogs Radix empilhados (histórico de bug de foco/pointer-events).
+  const requestStageChange = async (
+    lead: Lead,
+    stageId: string,
+    opts?: { fromModal?: boolean },
+  ) => {
     const targetStage = stages.find(s => s.id === stageId);
     if (targetStage?.is_lost) {
-      setPendingLossDrop({ leadId, stageId, leadTitle });
+      if (opts?.fromModal) setDetailOpen(false);
+      setPendingLossDrop({ leadId: lead.id, stageId, leadTitle: lead.title });
       setLossDialogOpen(true);
       return;
     }
+    await updateLead.mutateAsync({ id: lead.id, stage_id: stageId });
+  };
 
-    await updateLead.mutateAsync({ id: leadId, stage_id: stageId });
+  const handleDrop = async (e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    const leadId = e.dataTransfer.getData('leadId');
+    if (!leadId) return;
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+    await requestStageChange(lead, stageId);
   };
 
   const handleLossConfirm = async (reason: string, details: string) => {
     if (!pendingLossDrop) return;
-    const lossNotes = `${t.lossNotePrefix} ${reason}${details ? `\n${details}` : ''}`;
+    // Acrescenta o motivo às observações existentes em vez de sobrescrever —
+    // o usuário pode já ter escrito algo relevante no lead antes de marcá-lo como perdido.
+    const currentLead = leads.find(l => l.id === pendingLossDrop.leadId);
+    const reasonLine = `${t.lossNotePrefix} ${reason}${details ? `\n${details}` : ''}`;
+    const existingNotes = currentLead?.notes?.trim();
+    const notes = existingNotes ? `${existingNotes}\n\n${reasonLine}` : reasonLine;
     await updateLead.mutateAsync({
       id: pendingLossDrop.leadId,
       stage_id: pendingLossDrop.stageId,
-      notes: lossNotes,
+      notes,
     });
     setLossDialogOpen(false);
     setPendingLossDrop(null);
@@ -219,13 +244,13 @@ export default function CRM() {
 
   // Mobile-only: ao mudar de stage via menu de ações no MobileListItem.
   const handleMoveToStage = async (lead: Lead, stageId: string) => {
-    const targetStage = stages.find(s => s.id === stageId);
-    if (targetStage?.is_lost) {
-      setPendingLossDrop({ leadId: lead.id, stageId, leadTitle: lead.title });
-      setLossDialogOpen(true);
-      return;
-    }
-    await updateLead.mutateAsync({ id: lead.id, stage_id: stageId });
+    await requestStageChange(lead, stageId);
+  };
+
+  // Modal de detalhe: mudança de estágio via select. Fecha o modal antes de
+  // abrir o LossReasonDialog quando o estágio destino é de perda.
+  const handleModalStageChange = (lead: Lead, stageId: string) => {
+    requestStageChange(lead, stageId, { fromModal: true });
   };
 
   // Map stage color to style - supports both legacy named colors and hex
@@ -696,6 +721,7 @@ export default function CRM() {
             setDetailOpen(false);
             handleEdit(lead);
           }}
+          onStageChange={handleModalStageChange}
         />
         <LossReasonDialog
           open={lossDialogOpen}
@@ -900,6 +926,7 @@ export default function CRM() {
           setDetailOpen(false);
           handleEdit(lead);
         }}
+        onStageChange={handleModalStageChange}
       />
       <LossReasonDialog
         open={lossDialogOpen}

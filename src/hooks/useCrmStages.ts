@@ -59,11 +59,16 @@ const LEGACY_COLOR_MAP: Record<string, string> = {
   primary: '#00C597',
 };
 
+/** Referência estável pro estado vazio: `= []` no destructuring cria um array
+ *  novo a cada render enquanto a query não resolve, e quem usa `stages` como
+ *  dependência de useEffect entra em loop de render. */
+const NO_STAGES: CrmStage[] = [];
+
 export function useCrmStages() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: stages = [], isLoading, error } = useQuery({
+  const { data: stages = NO_STAGES, isLoading, error } = useQuery({
     queryKey: ['crm_stages'],
     queryFn: async () => {
       const { data, error } = await supabase

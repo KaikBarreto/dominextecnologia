@@ -83,7 +83,9 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         notes: '',
       });
     }
-  }, [lead, open, stages]);
+    // Depende do 1º estágio, não do array inteiro: o efeito só precisa rodar de
+    // novo quando o default muda, e assim não depende da identidade da lista.
+  }, [lead, open, stages[0]?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

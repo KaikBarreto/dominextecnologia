@@ -15,12 +15,10 @@ import {
 import {
   useLeadInteractions,
   type Lead,
-  type LeadStatus,
-  LEAD_STATUS_COLORS,
-  getLeadStatusLabels,
   getInteractionTypes,
   useLeads
 } from '@/hooks/useLeads';
+import { useCrmStages } from '@/hooks/useCrmStages';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
@@ -41,20 +39,18 @@ interface LeadDetailModalProps {
   onOpenChange: (open: boolean) => void;
   lead: Lead | null;
   onEdit: (lead: Lead) => void;
+  /** Centralizado no CRM.tsx (requestStageChange): decide se pede motivo de perda antes de gravar. */
+  onStageChange: (lead: Lead, stageId: string) => void;
 }
 
-export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetailModalProps) {
+export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChange }: LeadDetailModalProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const dfLocale = DATE_FNS_LOCALES[locale];
-  const leadStatusLabels = getLeadStatusLabels(locale);
   const interactionTypes = getInteractionTypes(locale);
-  const STATUSES = (Object.keys(leadStatusLabels) as LeadStatus[]).map((value) => ({
-    value,
-    label: leadStatusLabels[value],
-  }));
+  const { stages, getStageHex } = useCrmStages();
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
-  const { updateLead, deleteLead } = useLeads();
+  const { deleteLead } = useLeads();
   
   const [newInteraction, setNewInteraction] = useState({
     type: '',
@@ -68,8 +64,13 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
-  const handleStatusChange = async (newStatus: LeadStatus) => {
-    await updateLead.mutateAsync({ id: lead.id, status: newStatus });
+  // Lead sem stage_id pertence ao primeiro estágio da pipeline — mesma regra de
+  // fallback usada em leadsByStage (src/pages/CRM.tsx), pra não mostrar o select vazio.
+  const currentStageId = lead.stage_id || (stages.length > 0 ? stages[0].id : undefined);
+  const currentStage = stages.find((s) => s.id === currentStageId) || null;
+
+  const handleStageChange = (stageId: string) => {
+    onStageChange(lead, stageId);
   };
 
   const handleAddInteraction = async () => {
@@ -144,22 +145,29 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
           </TabsList>
 
           <TabsContent value="detalhes" className="flex-1 overflow-auto mt-4 space-y-6">
-            {/* Status */}
+            {/* Estágio (pipeline do kanban — crm_stages, por empresa) */}
             <div className="flex flex-wrap items-center gap-3">
-              <Label className="text-muted-foreground">{t.detail.statusLabel}</Label>
-              <Select value={lead.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
+              <Label className="text-muted-foreground">{t.detail.stageLabel}</Label>
+              <Select value={currentStageId} onValueChange={handleStageChange}>
+                {/* w-auto + min-w: nome de estágio customizado pode ser longo
+                    ("Fechado (Perdido)" já estoura 180px no drawer mobile). */}
+                <SelectTrigger className="w-auto min-w-[180px] max-w-full">
+                  <SelectValue placeholder={t.form.stagePlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUSES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Badge className={LEAD_STATUS_COLORS[lead.status]}>
-                {leadStatusLabels[lead.status]}
-              </Badge>
+              {currentStage && (
+                <Badge
+                  className="text-white border-0"
+                  style={{ backgroundColor: getStageHex(currentStage.color) }}
+                >
+                  {currentStage.name}
+                </Badge>
+              )}
             </div>
 
             {/* Info Cards */}
