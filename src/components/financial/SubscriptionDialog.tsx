@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { ChevronDown, ChevronUp, Copy, ExternalLink, Info, Loader2, Users } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
@@ -113,6 +114,8 @@ export function SubscriptionDialog({
   const [billingType, setBillingType] = useState<SubscriptionBillingType>('UNDEFINED');
   const [firstDueDate, setFirstDueDate] = useState(todayISO());
   const [description, setDescription] = useState(presetDescription ?? '');
+  // Categoria do recebível recorrente no Financeiro. Vazia = usa o default da conta.
+  const [category, setCategory] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [finePercent, setFinePercent] = useState('');
   const [interestPercent, setInterestPercent] = useState('');
@@ -198,6 +201,7 @@ export function SubscriptionDialog({
     setBillingType(billingOptions[0]?.value ?? 'UNDEFINED');
     setFirstDueDate(todayISO());
     setDescription(presetDescription ?? '');
+    setCategory('');
     setShowAdvanced(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
@@ -281,6 +285,7 @@ export function SubscriptionDialog({
           billing_type: 'CREDIT_CARD',
           next_due_date: firstDueDate || undefined,
           description: description.trim() || undefined,
+          category: category.trim() || undefined,
           fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
           interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
           source_type: source?.type,
@@ -322,6 +327,7 @@ export function SubscriptionDialog({
       billing_type: billingType,
       next_due_date: firstDueDate || undefined,
       description: description.trim() || undefined,
+      category: category.trim() || undefined,
       fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
       interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
       source_type: source?.type,
@@ -586,6 +592,25 @@ export function SubscriptionDialog({
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
+
+                {/* Categoria do recebível recorrente no Financeiro — opcional,
+                    sobrescreve o default da conta de recebimento quando escolhida.
+                    Oculto no Pix Automático: essa forma de pagamento grava a
+                    assinatura por um fluxo próprio que ainda não lê categoria. */}
+                {!isPixAuto && (
+                  <div className="space-y-2">
+                    <Label htmlFor="sub-category" className="text-sm font-medium">
+                      {t.fields.category}
+                    </Label>
+                    <CategorySelectField
+                      id="sub-category"
+                      type="entrada"
+                      value={category}
+                      onValueChange={setCategory}
+                    />
+                    <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+                  </div>
+                )}
 
                 {/* ── Campos de cartão recorrente (feature dormente) ────────
                     Só renderiza quando billing_type=CREDIT_CARD E cardRecurringEnabled=true.

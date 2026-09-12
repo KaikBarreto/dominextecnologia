@@ -250,14 +250,14 @@ async function ensureChargeForSubscriptionPayment(
   // pix_auto_authorization_id (aut_*). Tenta o primeiro; cai no segundo.
   let { data: sub } = await supabase
     .from("tenant_subscriptions")
-    .select("id, customer_id, description")
+    .select("id, customer_id, description, category")
     .eq("asaas_subscription_id", asaasSubId)
     .eq("company_id", companyId)
     .maybeSingle();
   if (!sub?.id) {
     const { data: pixSub } = await supabase
       .from("tenant_subscriptions")
-      .select("id, customer_id, description")
+      .select("id, customer_id, description, category")
       .eq("pix_auto_authorization_id", asaasSubId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -326,7 +326,10 @@ async function ensureChargeForSubscriptionPayment(
           p_due_date: dueDate,
           p_description: description,
           p_account_id: account?.default_finance_account_id ?? null,
-          p_category: account?.default_income_category ?? null,
+          // Categoria escolhida na assinatura (persistida em tenant_subscriptions.category)
+          // tem prioridade; ausente/null → default_income_category da conta (comportamento
+          // de hoje, cobre também assinaturas antigas sem a coluna preenchida).
+          p_category: sub?.category ?? account?.default_income_category ?? null,
         });
         if (rpcErr) {
           console.warn("[tenant-webhook] create_tenant_charge_receivable (assinatura) falhou (não-fatal):", rpcErr.message);

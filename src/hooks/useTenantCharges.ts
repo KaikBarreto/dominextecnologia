@@ -51,6 +51,9 @@ export interface CreateChargeInput {
   source_type?: 'avulso' | 'quote';
   /** UUID do orçamento quando source_type === 'quote'. */
   source_id?: string | null;
+  /** Categoria (nome) do recebível gerado no Financeiro. Ausente/vazio → a edge
+   *  usa a categoria padrão da conta de pagamento (default_income_category). */
+  category?: string;
 }
 
 /** Resultado do gerar cobrança — allowlist: nunca custo/margem interna. */
@@ -185,6 +188,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       // Default do edge é 'avulso'; 'quote' ativa o dedupe pelo source_id.
       if (input.source_type) body.source_type = input.source_type;
       if (input.source_id != null) body.source_id = input.source_id;
+      // Categoria escolhida pelo usuário nesta cobrança — sobrescreve o default
+      // da conta (default_income_category) só quando informada.
+      if (input.category?.trim()) body.category = input.category.trim();
       const { data, error } = await supabase.functions.invoke('tenant-asaas-create-charge', { body });
       if (error) throw new Error(await extractEdgeError(error, data, 'Não foi possível gerar a cobrança.'));
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {

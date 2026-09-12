@@ -91,6 +91,8 @@ export const charges = {
         description: 'Descrição',
         descriptionPlaceholder: 'Ex.: Manutenção do ar-condicionado',
         method: 'Forma de pagamento',
+        category: 'Categoria',
+        categoryHint: 'Opcional. Se não escolher, usa a categoria padrão da conta de recebimento.',
       },
       methods: {
         pix: 'Pix',
@@ -328,6 +330,8 @@ export const charges = {
         first_due_date: '1º vencimento',
         description: 'Descrição',
         descriptionPlaceholder: 'Ex.: Contrato de manutenção mensal',
+        category: 'Categoria',
+        categoryHint: 'Opcional. Se não escolher, usa a categoria padrão da conta de recebimento.',
       },
       cycles: {
         WEEKLY: 'Semanal',
@@ -537,6 +541,8 @@ export const charges = {
         description: 'Description',
         descriptionPlaceholder: 'E.g.: Air conditioning maintenance',
         method: 'Payment method',
+        category: 'Category',
+        categoryHint: 'Optional. If left empty, uses the payment account\'s default category.',
       },
       methods: {
         pix: 'Pix',
@@ -762,6 +768,8 @@ export const charges = {
         first_due_date: 'First due date',
         description: 'Description',
         descriptionPlaceholder: 'E.g.: Monthly maintenance contract',
+        category: 'Category',
+        categoryHint: 'Optional. If left empty, uses the payment account\'s default category.',
       },
       cycles: {
         WEEKLY: 'Weekly',
@@ -969,6 +977,8 @@ export const charges = {
         description: 'Descripción',
         descriptionPlaceholder: 'Ej.: Mantenimiento del aire acondicionado',
         method: 'Forma de pago',
+        category: 'Categoría',
+        categoryHint: 'Opcional. Si no eliges una, se usa la categoría predeterminada de la cuenta de cobro.',
       },
       methods: {
         pix: 'Pix',
@@ -1194,6 +1204,8 @@ export const charges = {
         first_due_date: 'Primer vencimiento',
         description: 'Descripción',
         descriptionPlaceholder: 'Ej.: Contrato de mantenimiento mensual',
+        category: 'Categoría',
+        categoryHint: 'Opcional. Si no eliges una, se usa la categoría predeterminada de la cuenta de cobro.',
       },
       cycles: {
         WEEKLY: 'Semanal',
@@ -1401,6 +1413,8 @@ export const charges = {
         description: 'Description',
         descriptionPlaceholder: 'Ex. : Entretien de la climatisation',
         method: 'Mode de paiement',
+        category: 'Catégorie',
+        categoryHint: 'Facultatif. Si vous n`en choisissez pas, la catégorie par défaut du compte d`encaissement est utilisée.',
       },
       methods: {
         pix: 'Pix',
@@ -1627,6 +1641,8 @@ export const charges = {
         first_due_date: `Première échéance`,
         description: 'Description',
         descriptionPlaceholder: `Ex. : Contrat de maintenance mensuel`,
+        category: 'Catégorie',
+        categoryHint: `Facultatif. Si vous n'en choisissez pas, la catégorie par défaut du compte d'encaissement est utilisée.`,
       },
       cycles: {
         WEEKLY: 'Hebdomadaire',

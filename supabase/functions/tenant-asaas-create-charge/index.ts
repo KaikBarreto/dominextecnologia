@@ -109,6 +109,9 @@ interface CreateChargeInput {
   installment_count?: number;
   // Quem paga a taxa do cartão. Ausente → default da conta (card_fee_payer).
   fee_payer?: CardFeePayer;
+  // Categoria (nome) do recebível no Financeiro. Ausente → default da conta
+  // (default_income_category).
+  category?: string;
 }
 
 /**
@@ -240,6 +243,12 @@ async function handleRequest(req: Request): Promise<Response> {
   const inputDescription =
     typeof input.description === "string" && input.description.trim()
       ? input.description.trim().slice(0, 500)
+      : null;
+  // Categoria escolhida nesta cobrança (opcional). Ausente → cai no default
+  // da conta (default_income_category), lido mais abaixo.
+  const inputCategory =
+    typeof input.category === "string" && input.category.trim()
+      ? input.category.trim().slice(0, 120)
       : null;
 
   // Origem da cobrança (Onda D). Ausente → 'avulso' (fluxo histórico, sem regressão).
@@ -490,7 +499,8 @@ async function handleRequest(req: Request): Promise<Response> {
           p_description: description,
           // Destino financeiro do recebível (ambos podem ser null → RPC decide default).
           p_account_id: account.default_finance_account_id ?? null,
-          p_category: account.default_income_category ?? null,
+          // Categoria escolhida NESTA cobrança sobrescreve o default da conta.
+          p_category: inputCategory ?? account.default_income_category ?? null,
         });
         if (rpcErr) {
           // Loga sem vazar segredo (só mensagem pública do Postgres).

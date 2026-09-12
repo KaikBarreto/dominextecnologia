@@ -42,6 +42,48 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.17',
+    date: '12 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O campo Categoria voltou a funcionar no financeiro do contrato',
+        description: 'Ao lançar uma receita dentro de um contrato, o campo Categoria abria vazio e dizia que não havia resultado, mesmo com categorias cadastradas. O sistema procurava por um tipo de categoria que não existe, então nunca encontrava nada. Agora as suas categorias de entrada aparecem normalmente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Dá para criar categoria na hora, sem sair do formulário',
+        description: 'Nos campos de categoria do financeiro faltava o atalho de cadastrar uma categoria nova sem abandonar o que você estava preenchendo. Agora o botão de adicionar fica colado ao campo, igual ao que já existe no campo de cliente. Ele só aparece para quem tem permissão de mexer nas configurações.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cartão de crédito não aparece mais como conta de recebimento',
+        description: 'Nos campos de conta bancária de uma receita, o cartão de crédito aparecia na lista como se o dinheiro do cliente pudesse cair nele. Cartão é conta de saída, é a fatura que a sua empresa paga. Agora, em recebimento, aparecem só contas corrente, poupança e caixa. Em despesa o cartão continua disponível normalmente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Escolha a categoria na hora de cobrar e de criar uma assinatura',
+        description: 'Os formulários de cobrança e de assinatura recorrente não tinham campo de categoria, então toda receita entrava com a categoria padrão da conta e o seu resultado não separava quanto veio de cada tipo de serviço. Agora você escolhe na hora, e o campo é opcional: se deixar em branco, continua usando a categoria padrão como antes.',
+        category: 'recurso',
+      },
+      {
+        title: 'O ícone do calendário voltou a aparecer no tema escuro',
+        description: 'Nos campos de data, o iconezinho que abre o calendário ficava preto sobre fundo preto e sumia. Agora ele aparece em todos os campos de data do sistema de uma vez.',
+        category: 'correcao',
+      },
+      {
+        title: 'A opção marcada no filtro de período voltou a ser legível no tema escuro',
+        description: 'Ao abrir o filtro de período, a opção selecionada ficava com texto claro sobre fundo claro e não dava para ler qual estava ativa. Agora ela aparece com contraste correto, e o item também responde ao passar o mouse.',
+        category: 'correcao',
+      },
+      {
+        title: 'O filtro de período usa o horário do Brasil, não o do aparelho',
+        description: 'Os atalhos de período, como Este mês, eram calculados pelo relógio do computador. Quem usasse o sistema com o aparelho em outro fuso, ou perto da meia-noite, via um mês diferente do esperado nos relatórios. Agora o período segue sempre o horário de Brasília.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.16',
     date: '12 de setembro de 2026',
     type: 'patch',

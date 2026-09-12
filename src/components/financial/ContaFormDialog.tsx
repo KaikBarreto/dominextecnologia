@@ -6,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useFinancial, type TransactionInput } from '@/hooks/useFinancial';
-import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { addMonths, addWeeks, addYears, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import type { TransactionType, FinancialTransaction } from '@/types/database';
@@ -20,7 +20,7 @@ import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
+import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
 
@@ -35,7 +35,6 @@ type Recurrence = 'unica' | 'mensal' | 'semanal' | 'anual';
 
 export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', editingTransaction }: ContaFormDialogProps) {
   const { createTransaction, updateTransaction } = useFinancial();
-  const { categories } = useFinancialCategories();
   const { locale } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const t = fin.contaForm;
@@ -99,22 +98,12 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     }
   }, [open, defaultType, editingTransaction]);
 
-  // Filter categories based on type. Vocabulário do DB é entrada|saida|ambos — 'receita'/'despesa' nunca existiu.
-  // `filterCategoriesForSelect` mantém na lista a categoria JÁ selecionada mesmo
-  // que ela tenha sido desativada: sem isso, editar uma conta antiga fazia o
-  // SearchableSelect cair no placeholder e o campo parecia vazio.
-  const filteredCategories = filterCategoriesForSelect(categories, tipo, category);
-
-  const categoryOptions = filteredCategories.map((c) => ({
-    value: c.name,
-    label: c.name,
-    sublabel: c.is_active ? undefined : t.categoryInactiveSuffix,
-  }));
-  // Categoria apagada da tabela (não só desativada): sintetiza a opção pra o
-  // valor gravado continuar visível em vez de sumir no placeholder.
-  if (category && !categoryOptions.some((o) => o.value === category)) {
-    categoryOptions.push({ value: category, label: category, sublabel: t.categoryInactiveSuffix });
-  }
+  // Contas elegíveis pro campo "Conta bancária / caixa". Em RECEBIMENTO
+  // (entrada) exclui cartão de crédito, que é conta de saída (fatura que a
+  // empresa paga), nunca destino de receita.
+  const accountsForTipo = tipo === 'entrada'
+    ? filterAccountsForReceivable(accounts)
+    : accounts.filter((a) => a.is_active !== false);
 
   // Show employee selector for salary-related categories
   const isSalaryCategory = category.toLowerCase().includes('salário') || category.toLowerCase().includes('salario');
@@ -261,11 +250,12 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
 
           <div className="space-y-1.5">
             <Label>{t.categoryLabel}</Label>
-            <SearchableSelect
-              options={categoryOptions}
+            <CategorySelectField
+              type={tipo}
               value={category}
               onValueChange={(v) => { setCategory(v); setEmployeeId(''); setContractId(''); }}
               placeholder={t.categoryPlaceholder}
+              searchPlaceholder={t.categorySearchPlaceholder}
             />
           </div>
 
@@ -315,8 +305,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             />
           </div>
 
-          {/* Account selector — required */}
-          {accounts.length === 0 ? (
+          {/* Account selector — required. Em recebimento (entrada), cartão de
+              crédito nunca aparece: é conta de saída, não destino de receita. */}
+          {accountsForTipo.length === 0 ? (
             <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
               <p className="font-medium text-amber-900 dark:text-amber-200">{t.noAccountTitle}</p>
               <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
@@ -330,7 +321,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger><SelectValue placeholder={t.accountPlaceholder} /></SelectTrigger>
                 <SelectContent>
-                  {accounts.filter(a => a.is_active).map(a => (
+                  {accountsForTipo.map(a => (
                     <SelectItem key={a.id} value={a.id}>
                       <span className="flex items-center gap-2">
                         <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />

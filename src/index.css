@@ -616,16 +616,18 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Dark mode: invert native date/time picker icon (Chromium fallback quando
-   color-scheme não basta — ícone fica preto em fundo escuro). Safari respeita
-   color-scheme: dark e não precisa, mas o filtro é idempotente. */
+/* Dark mode: NÃO inverter o ícone nativo do date/time picker. `color-scheme:
+   dark` (declarado em `.dark` acima) já faz o Chromium e o Safari desenharem
+   esse ícone em branco sozinhos, sem CSS extra. Um `filter: invert(1)` aqui
+   em cima inverte esse branco DE VOLTA pra preto sobre fundo preto — era
+   exatamente o bug reportado (2x, telas diferentes) pelo sócio do CEO.
+   Cobre app logado (`.dark[data-app]`, que herda `.dark`) e páginas públicas
+   (`.dark` puro), já que o seletor é só `.dark`. Mantém só o cursor. */
 .dark input[type="date"]::-webkit-calendar-picker-indicator,
 .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .dark input[type="time"]::-webkit-calendar-picker-indicator,
 .dark input[type="month"]::-webkit-calendar-picker-indicator,
 .dark input[type="week"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: 0.7;
   cursor: pointer;
 }
 

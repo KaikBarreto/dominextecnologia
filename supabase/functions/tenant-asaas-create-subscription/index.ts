@@ -127,6 +127,11 @@ interface CreateSubscriptionInput {
   // Origem opcional (avulso por padrão). source_id livre (fonte heterogênea).
   source_type?: "avulso" | "contract" | "quote";
   source_id?: string;
+  // Categoria (nome) do recebível no Financeiro, aplicada a CADA cobrança que esta
+  // assinatura gerar. Ausente/null → cai no default_income_category da conta
+  // (mesmo comportamento de hoje). Persistida em tenant_subscriptions.category;
+  // o webhook lê daqui na hora de materializar cada ciclo.
+  category?: string;
   // Só quando billing_type === 'CREDIT_CARD' (dados sensíveis, não persistidos).
   credit_card?: CreditCardInput;
   credit_card_holder_info?: CreditCardHolderInfoInput;
@@ -319,6 +324,14 @@ async function handleRequest(req: Request): Promise<Response> {
   const inputDescription =
     typeof input.description === "string" && input.description.trim()
       ? input.description.trim().slice(0, 500)
+      : null;
+
+  // Categoria escolhida nesta assinatura (opcional). Ausente → NULL na coluna,
+  // que significa "usa o default_income_category da conta" (lido no momento em
+  // que cada cobrança é materializada, no webhook).
+  const inputCategory =
+    typeof input.category === "string" && input.category.trim()
+      ? input.category.trim().slice(0, 120)
       : null;
 
   const sourceType =
@@ -543,6 +556,7 @@ async function handleRequest(req: Request): Promise<Response> {
       fine_percent: fineOverride,
       interest_percent: interestOverride,
       description,
+      category: inputCategory,
       created_by: userId,
       // Cartão: só referência do token (Vault) + last4/brand (exibição). Nunca PAN/CVV.
       ...(isCreditCard

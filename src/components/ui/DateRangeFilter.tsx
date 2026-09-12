@@ -11,6 +11,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { todayInBrazil } from '@/lib/today-brazil';
 
 export type DatePreset =
   | 'all'
@@ -42,7 +43,11 @@ interface DateRangeFilterProps {
 }
 
 export function getDateRangeFromPreset(preset: DatePreset): DateRange {
-  const now = new Date();
+  // Corte de período ancorado no fuso do Brasil, não no fuso do dispositivo
+  // (viajante ou máquina em UTC não pode fazer "Este mês" virar o mês errado).
+  // Meio-dia local evita qualquer sombra de DST/offset ao converter a
+  // string YYYY-MM-DD pra Date — mesmo padrão usado em filterByDate acima.
+  const now = new Date(`${todayInBrazil()}T12:00:00`);
   switch (preset) {
     case 'all':
       return { from: undefined, to: undefined };
@@ -159,7 +164,7 @@ export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }
               className={cn(
                 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
                 preset === p.key
-                  ? 'bg-primary text-white font-medium'
+                  ? 'bg-primary text-primary-foreground font-medium hover:bg-primary/90'
                   : 'text-foreground hover:bg-muted'
               )}
             >

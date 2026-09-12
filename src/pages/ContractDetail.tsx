@@ -44,7 +44,8 @@ import { osStatusLabels, type OsStatus } from '@/types/database';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
-import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { useTenantSubscriptions, type TenantSubscription } from '@/hooks/useTenantSubscriptions';
@@ -128,7 +129,6 @@ export default function ContractDetail() {
   const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
   const { accounts } = useFinancialAccounts();
-  const { categories } = useFinancialCategories();
   const { settings: companySettings } = useCompanySettings();
   const qrConfig = useBrandedQrConfig();
 
@@ -429,21 +429,17 @@ export default function ContractDetail() {
     }
   };
 
-  // Opções de conta bancária / caixa (todas ativas). SearchableSelect porque a
-  // lista de contas pode crescer.
+  // Opções de conta bancária / caixa de RECEBIMENTO. Exclui cartão de
+  // crédito: é conta de saída (fatura que a empresa paga), nunca destino de
+  // uma receita — senão o saldo fica como se o dinheiro do cliente tivesse
+  // caído dentro do cartão.
   const accountOptions = useMemo(
-    () => (accounts || [])
-      .filter((a: any) => a.is_active !== false)
-      .map((a: any) => ({ value: a.id, label: a.name, sublabel: a.bank_name || a.institution_name || undefined })),
+    () => filterAccountsForReceivable(accounts).map((a: any) => ({
+      value: a.id,
+      label: a.name,
+      sublabel: a.bank_name || a.institution_name || undefined,
+    })),
     [accounts],
-  );
-
-  // Categorias de RECEITA (contas a receber são entrada). Inclui as 'ambos'.
-  const receivableCategoryOptions = useMemo(
-    () => (categories || [])
-      .filter((c: any) => c.is_active !== false && (c.type === 'receita' || c.type === 'ambos'))
-      .map((c: any) => ({ value: c.name, label: c.name })),
-    [categories],
   );
 
   const handleCreateReceivable = async () => {
@@ -1566,8 +1562,8 @@ export default function ContractDetail() {
           </div>
           <div>
             <Label>{td.financial.categoryLabel}</Label>
-            <SearchableSelect
-              options={receivableCategoryOptions}
+            <CategorySelectField
+              type="entrada"
               value={recCategory}
               onValueChange={setRecCategory}
               placeholder={td.financial.categoryPlaceholder}
@@ -1625,8 +1621,8 @@ export default function ContractDetail() {
           </div>
           <div>
             <Label>{td.financial.categoryLabel}</Label>
-            <SearchableSelect
-              options={receivableCategoryOptions}
+            <CategorySelectField
+              type="entrada"
               value={applyCategory}
               onValueChange={setApplyCategory}
               placeholder={td.financial.categoryPlaceholder}

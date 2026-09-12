@@ -86,6 +86,9 @@ export interface CreateSubscriptionInput {
   billing_type: SubscriptionBillingType;
   next_due_date?: string;
   description?: string;
+  /** Categoria do recebível recorrente no Financeiro. Vazia/omitida = usa o
+   *  default da conta de recebimento (comportamento de hoje). */
+  category?: string;
   fine_percent?: number;
   interest_percent?: number;
   /** Origem da assinatura: 'avulso' (padrão) | 'contract' | 'quote'. */
@@ -226,6 +229,9 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       };
       if (input.next_due_date) body.next_due_date = input.next_due_date;
       if (input.description?.trim()) body.description = input.description.trim();
+      // Campo enviado só quando preenchido — a edge ainda pode ignorá-lo até a
+      // coluna `category` em tenant_subscriptions e o suporte no edge subirem.
+      if (input.category?.trim()) body.category = input.category.trim();
       if (input.fine_percent !== undefined) body.fine_percent = input.fine_percent;
       if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
       if (input.source_type) body.source_type = input.source_type;

@@ -27,6 +27,7 @@ import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { computeBillDate } from '@/hooks/useCreditCardBills';
 import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
+import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
@@ -717,8 +718,12 @@ export function TransactionFormDialog({
   }, [dbCats, transactionType, selectedCategory, tf.categoryInactiveSuffix]);
 
   // Opções do SearchableSelect de conta bancária / caixa.
+  // Em RECEITA o cartão sai da lista: cartão de crédito é conta de SAÍDA (a
+  // fatura que a empresa paga), nunca lugar onde entra dinheiro de cliente.
+  // Deixá-lo aqui fazia alguém selecionar por engano e o saldo ficar errado.
+  // Em despesa ele continua, que é onde faz sentido.
   const accountOptions = useMemo(
-    () => accounts.filter((a) => a.is_active).map((a) => ({
+    () => filterAccountsForReceivable(accounts, { includeCard: !isEntrada }).map((a) => ({
       value: a.id,
       label: a.type === 'caixa' ? `${a.name} ${tf.cashSuffix}` : a.name,
       icon: (

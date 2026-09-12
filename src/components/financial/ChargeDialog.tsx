@@ -18,6 +18,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Switch } from '@/components/ui/switch';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
@@ -141,6 +142,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [amount, setAmount] = useState(0); // em reais (número), máscara de centavos
   const [dueDate, setDueDate] = useState(todayISO());
   const [description, setDescription] = useState('');
+  // Categoria do recebível gerado no Financeiro. Vazia = usa o default da conta.
+  const [category, setCategory] = useState('');
   const [method, setMethod] = useState<BillingMethod>('UNDEFINED');
   const [installmentCount, setInstallmentCount] = useState(1);
   // Quem paga a taxa do cartão: 'company' (empresa absorve) ou 'customer'
@@ -212,6 +215,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
       setDiscountDays(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
       setDescription(presetDescription ?? defaultDescription ?? '');
+      setCategory('');
       if (presetAmount != null && presetAmount > 0) {
         setAmount(presetAmount);
       }
@@ -244,6 +248,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setAmount(0);
     setDueDate(todayISO());
     setDescription(defaultDescription ?? '');
+    setCategory('');
     setMethod(methodOptions[0]?.value ?? 'UNDEFINED');
     setInstallmentCount(1);
     setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
@@ -420,6 +425,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         due_date: dueDate,
         billing_type: method,
         description: description.trim() || undefined,
+        category: category.trim() || undefined,
         fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
         interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
         discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
@@ -659,6 +665,21 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+            </div>
+
+            {/* Categoria do recebível no Financeiro — opcional, sobrescreve o
+                default da conta de recebimento quando escolhida. */}
+            <div className="space-y-2">
+              <Label htmlFor="charge-category" className="text-sm font-medium">
+                {t.fields.category}
+              </Label>
+              <CategorySelectField
+                id="charge-category"
+                type="entrada"
+                value={category}
+                onValueChange={setCategory}
+              />
+              <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
             </div>
 
             {/* Opções avançadas (collapsible) */}
