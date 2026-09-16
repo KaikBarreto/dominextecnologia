@@ -9359,6 +9359,7 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          finance_movements_include_card_purchases: boolean
           language: string
           schedule_view_mode_desktop: string
           schedule_view_mode_mobile: string
@@ -9366,6 +9367,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          finance_movements_include_card_purchases?: boolean
           language?: string
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string
@@ -9373,6 +9375,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          finance_movements_include_card_purchases?: boolean
           language?: string
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string

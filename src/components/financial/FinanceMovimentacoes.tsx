@@ -8,10 +8,9 @@ import { TransferFormDialog } from './TransferFormDialog';
 import { BankLogo } from './BankInstitutionCombobox';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useRecalculateBills } from '@/hooks/useRecalculateBills';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -127,10 +126,14 @@ export function FinanceMovimentacoes({
   // (a compra + o pagamento da fatura). Critério ESTRUTURAL: `credit_card_bill_date`
   // preenchido = perna do cartão. Nunca por tipo de conta (olhar `accounts`)
   // nem por `category`, que é texto livre.
-  // O switch abaixo (desligado por padrão) reabre a lista completa pra quem
-  // quer ver todas as despesas num lugar só. Vale SÓ pra Visão Geral: o extrato
-  // de uma conta bancária e o painel de faturas do cartão não passam por aqui.
-  const [includeCardPurchases, setIncludeCardPurchases] = useState(false);
+  // A preferência abaixo (desligada por padrão) reabre a lista completa pra
+  // quem quer ver todas as despesas num lugar só. Vale SÓ pra Visão Geral: o
+  // extrato de uma conta bancária e o painel de faturas do cartão não passam
+  // por aqui. Movida pro card "Movimentações financeiras" em Configurações >
+  // Usabilidade (o CEO pediu pra não poluir esta tela) — por isso é
+  // preferência PESSOAL em `user_preferences` (segue o usuário entre
+  // aparelhos), não `useState` local nem `localStorage`. Ver useUserPreferences.
+  const { includeCardPurchasesInMovements: includeCardPurchases, setIncludeCardPurchasesInMovements: setIncludeCardPurchases } = useUserPreferences();
   const overviewTransactions = useMemo(
     () => (includeCardPurchases
       ? transactions
@@ -138,14 +141,16 @@ export function FinanceMovimentacoes({
     [transactions, includeCardPurchases],
   );
 
-  // Compra no cartão fica FORA da Visão Geral por padrão (switch acima). Se o
-  // deep-link aponta justamente pra uma delas, o destaque cairia numa linha que
-  // não está na tela — então liga o switch uma vez, só nesse caso.
+  // Compra no cartão fica FORA da Visão Geral por padrão (preferência acima).
+  // Se o deep-link aponta justamente pra uma delas, o destaque cairia numa
+  // linha que não está na tela — então liga a preferência uma vez, só nesse
+  // caso. Guard `!includeCardPurchases` evita disparar o upsert de novo a
+  // cada re-render (transactions muda de referência a cada refetch).
   useEffect(() => {
-    if (!highlightTransactionId) return;
+    if (!highlightTransactionId || includeCardPurchases) return;
     const target = transactions.find((t) => t.id === highlightTransactionId);
     if (target?.credit_card_bill_date) setIncludeCardPurchases(true);
-  }, [highlightTransactionId, transactions]);
+  }, [highlightTransactionId, transactions, includeCardPurchases]);
 
   // Consome o deep-link `?account=ID` uma vez: seleciona a aba da conta e
   // limpa o param na URL (senão o sidebar fica "preso" naquela conta).
@@ -644,29 +649,11 @@ export function FinanceMovimentacoes({
                 </div>
               );
             })()}
-            {/* Só faz sentido pra quem tem cartão cadastrado. Card BRANCO
-                (bg-card/border-border), sem tingimento dessaturado. */}
-            {hasCards && (
-              <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
-                <div className="min-w-0 space-y-0.5">
-                  <Label
-                    htmlFor="include-card-purchases"
-                    className="text-sm font-bold cursor-pointer"
-                  >
-                    {fin.movements.cardPurchases.toggleLabel}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {fin.movements.cardPurchases.toggleHint}
-                  </p>
-                </div>
-                <Switch
-                  id="include-card-purchases"
-                  className="shrink-0 mt-0.5"
-                  checked={includeCardPurchases}
-                  onCheckedChange={setIncludeCardPurchases}
-                />
-              </div>
-            )}
+            {/* Card "Incluir compras no cartão" mudou de endereço: agora vive
+                em Configurações > Usabilidade > Movimentações financeiras
+                (pedido do CEO pra não poluir esta tela). O estado
+                (includeCardPurchases) continua vivo aqui via useUserPreferences,
+                só a UI de alternar saiu daqui. */}
             <TransactionListPanel
               title={fin.movements.header.titleMobile}
               type="all"

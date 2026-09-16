@@ -14,14 +14,20 @@ interface ScheduleViewModePref {
 interface UserPreferencesData {
   schedule_view_mode_mobile: string | null;
   schedule_view_mode_desktop: string | null;
+  finance_movements_include_card_purchases: boolean | null;
 }
 
 /**
  * Preferências do usuário persistidas no banco (own-row via RLS auth.uid()).
  *
- * Hoje cobre só a visualização da Agenda (Dia/Semana/Mês), guardada SEPARADA por
+ * Cobre a visualização da Agenda (Dia/Semana/Mês), guardada SEPARADA por
  * aparelho — celular e computador têm slots independentes. `scheduleViewMode` vem
  * `null` no 1º acesso (sem linha em user_preferences), e a tela decide o default.
+ *
+ * Também cobre `includeCardPurchasesInMovements` (Movimentações Financeiras >
+ * Visão Geral): ao contrário do modo da Agenda, esta é a MESMA escolha em
+ * qualquer aparelho — o CEO decidiu que essa preferência segue a PESSOA, não
+ * o dispositivo. Por isso é uma coluna simples (sem sufixo mobile/desktop).
  */
 export function useUserPreferences() {
   const { user } = useAuth();
@@ -34,7 +40,7 @@ export function useUserPreferences() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_preferences')
-        .select('schedule_view_mode_mobile, schedule_view_mode_desktop')
+        .select('schedule_view_mode_mobile, schedule_view_mode_desktop, finance_movements_include_card_purchases')
         .eq('user_id', user!.id)
         .maybeSingle();
 
@@ -86,6 +92,8 @@ export function useUserPreferences() {
       queryClient.setQueryData<UserPreferencesData | null>(queryKey, (old) => ({
         schedule_view_mode_mobile: old?.schedule_view_mode_mobile ?? null,
         schedule_view_mode_desktop: old?.schedule_view_mode_desktop ?? null,
+        finance_movements_include_card_purchases:
+          old?.finance_movements_include_card_purchases ?? null,
         [column]: mode,
       }));
 
@@ -105,9 +113,57 @@ export function useUserPreferences() {
     scheduleViewModeMutation.mutate({ device, mode });
   };
 
+  // Preferência PESSOAL (não por aparelho, ver comentário do topo). `null` no
+  // 1º acesso (sem linha em user_preferences) é tratado como "desligado" —
+  // mesmo default que o antigo useState local da tela.
+  const includeCardPurchasesInMovements =
+    prefsQuery.data?.finance_movements_include_card_purchases ?? false;
+
+  const includeCardPurchasesMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      if (!user?.id) throw new Error('Usuário não autenticado.');
+      const { error } = await supabase.from('user_preferences').upsert(
+        {
+          user_id: user.id,
+          finance_movements_include_card_purchases: value,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      );
+
+      if (error) throw error;
+    },
+    onMutate: async (value) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<UserPreferencesData | null>(queryKey);
+
+      queryClient.setQueryData<UserPreferencesData | null>(queryKey, (old) => ({
+        schedule_view_mode_mobile: old?.schedule_view_mode_mobile ?? null,
+        schedule_view_mode_desktop: old?.schedule_view_mode_desktop ?? null,
+        finance_movements_include_card_purchases: value,
+      }));
+
+      return { previous };
+    },
+    onError: (_err, _value, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const setIncludeCardPurchasesInMovements = (value: boolean) => {
+    includeCardPurchasesMutation.mutate(value);
+  };
+
   return {
     scheduleViewMode,
     isLoading: prefsQuery.isLoading,
     setScheduleViewMode,
+    includeCardPurchasesInMovements,
+    setIncludeCardPurchasesInMovements,
   };
 }

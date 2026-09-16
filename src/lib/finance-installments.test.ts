@@ -8,6 +8,8 @@ import {
   receivableInstallmentCount,
   buildRepetitionPlan,
   repetitionTotal,
+  MAX_REPETITION_COUNT,
+  isTransactionYearInRange,
 } from './finance-installments';
 
 /**
@@ -261,5 +263,52 @@ describe('buildRepetitionPlan — repetição não divide valor', () => {
     });
     expect(plan.map((p) => p.amount)).toEqual([180.01, 180.01, 180.01]);
     expect(repetitionTotal(180.01, 3)).toBe(540.03);
+  });
+});
+
+/**
+ * Bug relatado pelo sócio: o botão de criar receita do contrato chegou a
+ * oferecer "Criar 14444 Parcelas" porque nada travava a quantidade digitada.
+ * A validação com mensagem boa mora no formulário, mas o motor precisa de uma
+ * rede de segurança própria — se algum caller esquecer de validar, ele não
+ * pode tentar desenhar milhares de linhas mesmo assim.
+ */
+describe('MAX_REPETITION_COUNT — rede de segurança contra quantidade absurda', () => {
+  it('buildRepetitionPlan nunca devolve mais que o teto, mesmo pedindo 14444', () => {
+    const plan = buildRepetitionPlan({
+      firstDate: '2026-01-10', amount: 100, count: 14444, intervalMonths: 1,
+    });
+    expect(plan).toHaveLength(MAX_REPETITION_COUNT);
+  });
+
+  it('buildInstallmentDates (e por tabela, buildInstallmentPlan) também respeita o teto', () => {
+    expect(buildInstallmentDates('2026-01-10', 14444)).toHaveLength(MAX_REPETITION_COUNT);
+    expect(buildInstallmentPlan('2026-01-10', 1000, 14444)).toHaveLength(MAX_REPETITION_COUNT);
+  });
+
+  it('não mexe em quantidades normais (≤120)', () => {
+    expect(buildRepetitionPlan({ firstDate: '2026-01-10', amount: 100, count: 48, intervalMonths: 1 })).toHaveLength(48);
+    expect(buildInstallmentDates('2026-01-10', 12)).toHaveLength(12);
+  });
+});
+
+describe('isTransactionYearInRange — faixa de ano aceitável pra data digitada', () => {
+  it('aceita o ano atual e datas dentro da janela de 10 anos à frente', () => {
+    expect(isTransactionYearInRange('2026-06-15', 2026)).toBe(true);
+    expect(isTransactionYearInRange('2036-06-15', 2026)).toBe(true);
+  });
+
+  it('rejeita 2123 (o bug relatado pelo sócio)', () => {
+    expect(isTransactionYearInRange('2123-02-01', 2026)).toBe(false);
+  });
+
+  it('rejeita ano muito antigo e aceita o piso', () => {
+    expect(isTransactionYearInRange('1999-12-31', 2026)).toBe(false);
+    expect(isTransactionYearInRange('2000-01-01', 2026)).toBe(true);
+  });
+
+  it('rejeita string inválida sem quebrar', () => {
+    expect(isTransactionYearInRange('', 2026)).toBe(false);
+    expect(isTransactionYearInRange('abcd-01-01', 2026)).toBe(false);
   });
 });

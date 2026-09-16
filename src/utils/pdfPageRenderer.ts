@@ -127,7 +127,11 @@ export async function renderElementToPdfBlob(
 
     // Enlarge inline thumbnails. Cap both width AND height so a portrait photo
     // doesn't fill an entire A4 page.
+    // `enlarged` guarda o cssText ORIGINAL de cada imagem ampliada — a rede de
+    // segurança logo abaixo (depois do layout resolver) pode precisar desfazer.
+    const enlarged = new Map<HTMLImageElement, string>();
     const enlargeThumb = (el: HTMLImageElement) => {
+      if (!enlarged.has(el)) enlarged.set(el, el.style.cssText);
       el.style.cssText += ';width:auto!important;max-width:480px!important;height:auto!important;max-height:340px!important;object-fit:contain!important;display:block!important;margin:8px auto!important;border-radius:6px!important;';
     };
     clone.querySelectorAll('img').forEach(img => {
@@ -148,6 +152,43 @@ export async function renderElementToPdfBlob(
     await waitForImages(clone);
     await new Promise(r => setTimeout(r, 150));
 
+    // ── Rede de segurança: ampliação que TRANSBORDA o pai é DESFEITA ─────────
+    // Incidente VS PROJECT (OS #7601, set/2026): a foto de resposta do checklist
+    // vivia num wrapper fixo de 80x80 com `overflow: visible`. O `enlargeThumb`
+    // esticava a <img> pra até 480x340 DENTRO desse wrapper — a imagem vazava e
+    // pintava por cima da pergunta seguinte, e ainda empurrava a quebra de
+    // página (meia página em branco), porque o snap mede a caixa INFLADA.
+    //
+    // A causa raiz foi resolvida no DOM (os tiles do relatório agora vivem sob
+    // [data-pdf-gallery], que esta função pula). Isto aqui é defesa em
+    // profundidade: garante que nenhum relatório futuro (DISC, contrato,
+    // documento PMOC…) volte a ter imagem pintando sobre texto, mesmo sem o
+    // marcador. Só desfaz quando a imagem REALMENTE invade o vizinho — se o pai
+    // recorta (overflow hidden/clip/auto/scroll), nada é tocado.
+    //
+    // Uma passada só: mede TUDO primeiro e escreve depois, pra não forçar
+    // reflow a cada iteração.
+    const OVERFLOW_TOL_PX = 2; // subpixel/arredondamento não conta como estouro
+    const toRevert: HTMLImageElement[] = [];
+    enlarged.forEach((_originalCss, img) => {
+      const parent = img.parentElement;
+      if (!parent) return;
+      const parentStyle = getComputedStyle(parent);
+      const parentRect = parent.getBoundingClientRect();
+      const imgRect = img.getBoundingClientRect();
+      if (!parentRect.height || !imgRect.height) return;
+      const spillsDown = imgRect.bottom > parentRect.bottom + OVERFLOW_TOL_PX;
+      const spillsRight = imgRect.right > parentRect.right + OVERFLOW_TOL_PX;
+      if ((spillsDown && parentStyle.overflowY === 'visible') || (spillsRight && parentStyle.overflowX === 'visible')) {
+        toRevert.push(img);
+      }
+    });
+    if (toRevert.length) {
+      toRevert.forEach(img => { img.style.cssText = enlarged.get(img) ?? ''; });
+      // Deixa o layout reassentar antes de capturar/medir as caixas atômicas.
+      await new Promise(r => setTimeout(r, 80));
+    }
+
     // Capture entire report as one canvas
     const fullCanvas = await html2canvas(clone, {
       scale: 2,
@@ -156,7 +197,32 @@ export async function renderElementToPdfBlob(
       backgroundColor: '#ffffff',
       logging: false,
       width: A4_WIDTH_PX,
-      windowWidth: A4_WIDTH_PX,
+      // ── windowWidth acompanha a JANELA quando ela é mais estreita que o A4 ──
+      // O html2canvas rasteriza dentro de um iframe de `windowWidth` px, e é ESSA
+      // largura que as media queries do Tailwind enxergam lá dentro. Mas as caixas
+      // atômicas (`toBox`/getBoundingClientRect, logo abaixo) são medidas no clone
+      // que está no documento REAL, onde as media queries avaliam contra a largura
+      // da JANELA. Fixando 794 aqui, gerar o PDF de uma janela estreita fazia os
+      // dois lados divergirem: dentro do iframe todo `sm:` do relatório VALIA
+      // (`p-3 sm:p-4` em ~9 cartões, `sm:p-6`, `sm:gap-4`, `sm:text-*` no
+      // ReportHeader...), no clone medido NÃO valia. A diferença de padding se
+      // acumula e as caixas medidas ficavam ~50px CSS acima de onde o conteúdo era
+      // realmente desenhado, então a quebra caía no lugar errado e FATIAVA a
+      // linha, mesmo com `data-pdf-keep`. Reproduzido na OS #7601 com a janela em
+      // 500px: pergunta 6 partida entre as páginas 1 e 2; a 1440px, quebras
+      // perfeitas.
+      //
+      // Escopo deliberadamente conservador: só entra em ação com janela < 794px.
+      // Em janela larga o valor continua `A4_WIDTH_PX` e o PDF sai idêntico ao de
+      // hoje, sem risco de regressão nos relatórios que já estão bons (DISC,
+      // contratos, PMOC).
+      //
+      // Ressalva conhecida e inofensiva: sobra uma divergência residual nas
+      // classes `lg:` do rodapé de ações da OS. Ele é `print:hidden`, então o
+      // renderer o REMOVE do clone e ele nem chega a ser medido ou desenhado.
+      windowWidth: typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < A4_WIDTH_PX
+        ? window.innerWidth
+        : A4_WIDTH_PX,
       height: clone.scrollHeight,
       windowHeight: clone.scrollHeight,
     });

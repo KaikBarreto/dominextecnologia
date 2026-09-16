@@ -244,6 +244,13 @@ export const settings = {
         osFinishRevenueTitle: 'Perguntar sobre receita ao finalizar OS',
         osFinishRevenueDescription: 'Ao concluir uma Ordem de Serviço, o sistema pergunta se houve receita e já abre o lançamento, sem precisar ir ao Financeiro depois. Só aparece para quem tem a permissão "Lançar Receita ao Finalizar OS".',
       },
+      // Card de Movimentações Financeiras (preferência PESSOAL, salva em
+      // user_preferences, segue o usuário entre aparelhos, diferente do
+      // localStorage usado pelas outras opções desta aba)
+      financeMovements: {
+        cardTitle: 'Movimentações financeiras',
+        cardDescription: 'Preferência pessoal, vale em qualquer aparelho que você usar',
+      },
       // Card de Origens
       origins: {
         cardTitle: 'Origens',
@@ -1870,6 +1877,10 @@ export const settings = {
         osFinishRevenueTitle: 'Ask about revenue when a work order is completed',
         osFinishRevenueDescription: 'When a work order is completed, the system asks whether there was any revenue and opens the entry right away, with no need to go to Finance afterwards. It only shows for users who have the "Log Revenue When Completing a Work Order" permission.',
       },
+      financeMovements: {
+        cardTitle: 'Financial movements',
+        cardDescription: 'Personal preference, applies on any device you use',
+      },
       origins: {
         cardTitle: 'Sources',
         cardDescription: 'Source list used in customer registration and CRM opportunities',
@@ -3436,6 +3447,10 @@ export const settings = {
         osFinishRevenueTitle: 'Preguntar por el ingreso al finalizar una orden de servicio',
         osFinishRevenueDescription: 'Al concluir una orden de servicio, el sistema pregunta si hubo ingreso y abre el registro enseguida, sin tener que ir a Finanzas después. Solo aparece para quien tiene el permiso "Registrar ingreso al finalizar la orden de servicio".',
       },
+      financeMovements: {
+        cardTitle: 'Movimientos financieros',
+        cardDescription: 'Preferencia personal, se aplica en cualquier dispositivo que uses',
+      },
       origins: {
         cardTitle: 'Orígenes',
         cardDescription: 'Lista de orígenes usada en el registro de clientes y las oportunidades del CRM',
@@ -5001,6 +5016,10 @@ export const settings = {
         publicApprovalDescription: `Désactivé, approuver via le lien change seulement le statut du devis, rien n'arrive dans Finances. Activé, la créance est créée automatiquement.`,
         osFinishRevenueTitle: `Demander s'il y a eu une recette à la clôture d'un ordre de service`,
         osFinishRevenueDescription: `À la clôture d'un ordre de service, le système demande s'il y a eu une recette et ouvre directement l'écriture, sans passer par Finances ensuite. Visible uniquement par les personnes ayant l'autorisation « Enregistrer la recette à la clôture d'un ordre de service ».`,
+      },
+      financeMovements: {
+        cardTitle: 'Mouvements financiers',
+        cardDescription: `Préférence personnelle, elle s'applique sur n'importe quel appareil que vous utilisez`,
       },
       origins: {
         cardTitle: 'Sources',

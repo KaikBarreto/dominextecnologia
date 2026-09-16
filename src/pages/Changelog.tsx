@@ -42,6 +42,70 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.22',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vincule uma receita ou despesa a um cliente',
+        description: 'No lançamento de uma movimentação faltava o campo de cliente, então não dava para saber de quem veio aquele dinheiro. O campo existia em Contas a Pagar, mas não ali. Agora ele está nos dois, é opcional, e o lançamento passa a aparecer no financeiro daquele cliente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Busque um cliente pelo telefone',
+        description: 'A busca da lista de clientes procurava por nome, empresa, email e documento, mas não por telefone. Agora procura, e não importa como você digita: com parênteses e traço ou só os números, acha do mesmo jeito.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Crie uma oportunidade no CRM direto do cliente',
+        description: 'Para abrir uma negociação com um cliente que já existe, era preciso ir ao CRM e digitar tudo de novo. Agora, no menu de ações do cliente, existe a opção de criar a oportunidade já vinculada a ele. A opção só aparece para quem tem o CRM contratado.',
+        category: 'recurso',
+      },
+      {
+        title: 'O formulário parou de aceitar valores fora da realidade',
+        description: 'Era possível pedir catorze mil parcelas ou digitar um vencimento no ano de 2123, e o sistema tentava criar tudo aquilo, travando a tela e sujando o seu financeiro. Agora existe um limite claro e uma mensagem explicando, em vez de deixar passar.',
+        category: 'correcao',
+      },
+      {
+        title: 'O aviso de compras no cartão saiu da tela de movimentações',
+        description: 'Aquele card no meio da tela de movimentações ocupava espaço e você via ele toda vez, mesmo sem usar. Ele virou uma opção em Configurações, na aba de usabilidade, e agora a sua escolha fica salva e acompanha você no computador e no celular. Se você abrir um link que aponta para uma compra no cartão, o sistema mostra assim mesmo, para o lançamento não sumir.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Reforçamos o isolamento entre empresas',
+        description: 'Revisamos as rotinas internas do sistema para garantir que nenhuma delas pudesse ser usada para alcançar dados de outra empresa. Corrigimos as que precisavam e conferimos todas as demais. Nada muda na sua tela.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.24.21',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'As fotos do checklist pararam de ficar por cima das perguntas no PDF da ordem de serviço',
+        description: 'Este é o mais importante desta atualização. Ao baixar o PDF de uma ordem de serviço, as fotos que o técnico anexou às respostas do checklist saíam esticadas por cima das perguntas seguintes, cada uma de um tamanho, deixando o documento embaralhado e difícil de entender. Agora toda foto sai no mesmo tamanho, inteira, sem cortar nada da imagem, e sempre logo abaixo da pergunta a que ela pertence. A pergunta e as fotos dela nunca se separam entre uma página e outra, e sobra bem menos espaço em branco no fim das páginas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Foto anexada a uma resposta de Conforme, Sim ou Não, ou a uma medição, voltou a aparecer',
+        description: 'Quando o técnico respondia Conforme, Não Conforme, Sim, Não ou registrava uma medição e anexava uma foto junto, a foto não aparecia no relatório nem no PDF. Ela ficava guardada, mas ninguém via. Agora aparece normalmente, na tela e no documento.',
+        category: 'correcao',
+      },
+      {
+        title: 'PDF gerado pelo celular agora sai com todas as fotos',
+        description: 'Quem baixava o PDF direto do celular recebia um documento sem nenhuma foto do checklist e com páginas quebradas no meio de uma resposta. Agora o PDF sai igual ao do computador, com todas as fotos e as quebras de página no lugar certo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Foto do técnico e do cliente saem enquadradas no PDF',
+        description: 'No topo do relatório, a foto redonda do técnico e a foto do cliente apareciam como um pedaço ampliado e irreconhecível da imagem. Agora saem enquadradas, do mesmo jeito que você vê na tela.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.20',
     date: '16 de setembro de 2026',
     type: 'patch',

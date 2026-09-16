@@ -18,6 +18,8 @@ import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileTex
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { AccountFormDialog } from './AccountFormDialog';
+import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { useCustomers } from '@/hooks/useCustomers';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -36,6 +38,9 @@ import {
   buildInstallmentPlan,
   buildCardReceivablePlan,
   receivableInstallmentCount,
+  isTransactionYearInRange,
+  MIN_TRANSACTION_YEAR,
+  MAX_TRANSACTION_YEAR_AHEAD,
   type CardReceiptMode,
 } from '@/lib/finance-installments';
 import {
@@ -93,16 +98,28 @@ function needsCardReceiptChoice(d: {
     && (d.installment_count ?? 1) > 1;
 }
 
+/**
+ * Ano fora da faixa [MIN_TRANSACTION_YEAR, ano atual + MAX_TRANSACTION_YEAR_AHEAD]
+ * é quase sempre dedo errado no calendário nativo, nunca uma data real (o
+ * print do sócio: campo de vencimento aceitando 01/02/2123). `currentYear` é
+ * calculado uma vez por render do schema, não a cada parse.
+ */
+function isYearInAcceptableRange(iso: string, currentYear: number): boolean {
+  return !iso || isTransactionYearInRange(iso, currentYear);
+}
+
 function makeTransactionSchema(
-  v: { descriptionRequired: string; amountPositive: string; dateRequired: string; accountRequired: string; cardReceiptModeRequired: string },
+  v: { descriptionRequired: string; amountPositive: string; dateRequired: string; accountRequired: string; cardReceiptModeRequired: string; dateYearRange: string },
   opts?: { canAskCardReceiptMode?: boolean },
 ) {
+  const currentYear = new Date().getFullYear();
   const base = z.object({
     transaction_type: z.enum(['entrada', 'saida']),
     category: z.string().optional(),
     description: z.string().min(1, v.descriptionRequired),
     amount: z.coerce.number().positive(v.amountPositive),
-    transaction_date: z.string().min(1, v.dateRequired),
+    transaction_date: z.string().min(1, v.dateRequired)
+      .refine((val) => isYearInAcceptableRange(val, currentYear), { message: v.dateYearRange }),
     is_paid: z.boolean().default(true),
     /**
      * Data em que o dinheiro REALMENTE se moveu. Só é usada quando `is_paid`
@@ -110,11 +127,14 @@ function makeTransactionSchema(
      * lançada em 10/01 e paga em 05/03 caía em JANEIRO — mês já fechado
      * mudando depois de fechado.
      */
-    paid_date: z.string().optional(),
+    paid_date: z.string().optional()
+      .refine((val) => isYearInAcceptableRange(val ?? '', currentYear), { message: v.dateYearRange }),
     notes: z.string().optional(),
     payment_method: z.string().optional(),
     installment_count: z.coerce.number().min(1).default(1),
     account_id: z.string().min(1, v.accountRequired),
+    // Cliente é SEMPRE opcional aqui: nem toda receita/despesa tem dono.
+    customer_id: z.string().optional(),
     // Centro de custo é SEMPRE opcional — nenhum lançamento passa a exigir.
     cost_center_id: z.string().nullable().optional(),
     credit_card_bill_date: z.string().optional(),
@@ -149,6 +169,7 @@ const transactionSchema = makeTransactionSchema({
   dateRequired: 'Data é obrigatória',
   accountRequired: 'Selecione uma conta ou caixa',
   cardReceiptModeRequired: 'Escolha como o dinheiro entra na sua conta',
+  dateYearRange: 'Use uma data entre 2000 e 2041.',
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -685,9 +706,10 @@ interface TransactionFormDialogProps {
    * `transaction`, que significa "estou editando este registro" e muda o plano
    * de parcelas, a regra de `paid_date` e o comportamento de anexos.
    *
-   * `service_order_id` e `customer_id` NÃO são campos do formulário (não estão
+   * `service_order_id` NÃO é campo do formulário (não está
    * no schema Zod, logo o parse os descartaria): eles são carimbados direto no
-   * payload em `runSubmit`. Ver o bloco "vínculos do prefill" lá.
+   * payload em `runSubmit`. Ver o bloco "vínculos do prefill" lá. Já
+   * `customer_id` É campo do formulário (desde 1.24.22) e flui por ele.
    *
    * Hoje só o fluxo "receita ao finalizar OS" usa.
    */
@@ -700,9 +722,17 @@ export function TransactionFormDialog({
   const { locale, currency } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const tf = fin.transactionForm;
+  // Faixa de ano aceita nos campos de data digitados à mão (`min`/`max` do
+  // `<input type="date">`). É só a dica visual do calendário nativo — quem
+  // barra de verdade um ano como 2123 é a validação do zod no schema.
+  const dateInputMin = `${MIN_TRANSACTION_YEAR}-01-01`;
+  const dateInputMax = `${new Date().getFullYear() + MAX_TRANSACTION_YEAR_AHEAD}-12-31`;
   const { categories: dbCategories, createCategory } = useFinancialCategories();
   const { accounts } = useFinancialAccounts();
   const { activeCostCenters } = useCostCenters();
+  // Mesmo filtro do ContaFormDialog: cliente excluído some da lista.
+  const { customers } = useCustomers();
+  const activeCustomers = useMemo(() => (customers || []).filter((c: any) => !c.is_deleted), [customers]);
   const { toast } = useToast();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
@@ -790,16 +820,19 @@ export function TransactionFormDialog({
       // `planTransactionEdit` impede que ela vire parcelamento novo.
       installment_count: 1,
       account_id: (transaction as any)?.account_id ?? lastAccountId,
+      customer_id: (transaction as any)?.customer_id ?? '',
       cost_center_id: transaction?.cost_center_id ?? null,
       // Decisão do CEO: nunca nasce marcado. Sem padrão, sem preferência salva.
       card_receipt_mode: undefined,
     };
 
     // Pré-preenchimento só existe em CRIAÇÃO. Editando, quem manda é o registro.
-    // `service_order_id` / `customer_id` ficam de fora: não são campos do form
-    // (o parse do Zod os descartaria) e entram direto no payload em `runSubmit`.
+    // Só `service_order_id` fica de fora: não é campo do form (o parse do Zod o
+    // descartaria) e entra direto no payload em `runSubmit`. `customer_id` VIRA
+    // campo do formulário (chegou em 1.24.22), então passa por aqui de propósito
+    // — assim o seletor de cliente aparece preenchido e o usuário pode trocar.
     if (transaction || !prefill) return base;
-    const { service_order_id: _prefillOsId, customer_id: _prefillCustomerId, ...prefillFields } = prefill;
+    const { service_order_id: _prefillOsId, ...prefillFields } = prefill;
     return { ...base, ...prefillFields };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transaction, defaultType, prefillKey]);
@@ -1006,17 +1039,22 @@ export function TransactionFormDialog({
         paid_date: isPaidFinal ? (data.paid_date || data.transaction_date) : undefined,
         payment_method: data.payment_method || null,
         account_id: data.account_id || null,
+        // Igual ao cost_center_id logo abaixo: opcional, vazio vira `null`. Se
+        // a edição virar "recriar" (troca de forma de pagamento), o valor daqui
+        // tem prioridade sobre o cliente da transação original — só quando
+        // este campo chega vazio é que `carryOverTransactionLinks`
+        // (src/lib/finance-edit-plan.ts) herda o cliente da linha anterior.
+        customer_id: data.customer_id || null,
         cost_center_id: data.cost_center_id || null,
         credit_card_bill_date: data.credit_card_bill_date || null,
         // ── vínculos do prefill ────────────────────────────────────────────
-        // `service_order_id` / `customer_id` não existem no schema Zod, então
-        // NÃO sobrevivem ao parse do react-hook-form: se dependessem do form,
-        // chegariam aqui como `undefined` e o vínculo da receita com a OS se
-        // perderia em silêncio. São carimbados direto no payload, por último,
+        // `service_order_id` não existe no schema Zod, então NÃO sobrevive ao
+        // parse do react-hook-form: se dependesse do form, chegaria aqui como
+        // `undefined` e o vínculo da receita com a OS se perderia em silêncio.
+        // É carimbado direto no payload, por último,
         // pra nada acima sobrescrever. Só em CRIAÇÃO: em edição o vínculo do
         // registro já existe e não é assunto deste formulário.
         ...(!isEditing && prefill?.service_order_id ? { service_order_id: prefill.service_order_id } : {}),
-        ...(!isEditing && prefill?.customer_id ? { customer_id: prefill.customer_id } : {}),
       };
       if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
       if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
@@ -1292,6 +1330,25 @@ export function TransactionFormDialog({
             )} />
           )}
 
+          {/* Cliente vinculado — SEMPRE opcional. Nem toda receita/despesa tem
+              dono, mas quando tem (ex: recebimento avulso fora de contrato/OS),
+              o financeiro do cliente precisava desse vínculo pra aparecer na
+              ficha dele. Mesmo componente do "Cliente vinculado" do
+              ContaFormDialog (Contas a Pagar/Receber): busca + "+" colado. */}
+          <FormField control={form.control} name="customer_id" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{tf.customerLabel}</FormLabel>
+              <CustomerSelectField
+                customers={activeCustomers}
+                value={field.value || ''}
+                onValueChange={field.onChange}
+                placeholder={tf.customerPlaceholder}
+                searchPlaceholder={tf.customerSearchPlaceholder}
+              />
+              <FormMessage />
+            </FormItem>
+          )} />
+
           {/* Forma de pagamento — visível em new e edit. Trocar o método em edição
               dispara em Finance.handleSubmit a recriação da despesa (delete da
               original + create no novo método). Isso é o que permite mover uma
@@ -1349,7 +1406,7 @@ export function TransactionFormDialog({
             <FormField control={form.control} name="transaction_date" render={({ field }) => (
               <FormItem>
                 <FormLabel>{tf.dateLabel}</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
+                <FormControl><Input type="date" min={dateInputMin} max={dateInputMax} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -1474,6 +1531,8 @@ export function TransactionFormDialog({
                     <FormControl>
                       <Input
                         type="date"
+                        min={dateInputMin}
+                        max={dateInputMax}
                         {...field}
                         value={field.value ?? ''}
                         onChange={(e) => {
