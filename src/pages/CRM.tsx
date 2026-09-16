@@ -16,6 +16,7 @@ import {
   User,
   Calendar,
   Pencil,
+  GripVertical,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -77,7 +78,7 @@ export default function CRM() {
   const dfLocale = DATE_FNS_LOCALES[locale];
   const { leads, isLoading, updateLead } = useLeads();
   const { users } = useUsers();
-  const { stages, isLoading: stagesLoading, seedDefaultStages } = useCrmStages();
+  const { stages, isLoading: stagesLoading, seedDefaultStages, reorderStages } = useCrmStages();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -191,9 +192,53 @@ export default function CRM() {
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  // Arrastar coluna do funil (cabeçalho do estágio) para reordenar — mesmo
+  // mecanismo nativo de drag-and-drop usado pra mover cards entre colunas
+  // (sem lib extra), só que a área "arrastável" fica restrita ao cabeçalho,
+  // então segurar no card continua movendo o card e nunca a coluna.
+  // Só habilitado fora do mobile: no board mobile o gesto de segurar e
+  // arrastar colide com o scroll horizontal por toque, e o HTML5 drag nativo
+  // não é confiável em touch mesmo — reordenar estágio ali fica pra tela de
+  // "Gerenciar estágios" (StageManagerDialog), que já tem essa opção.
+  const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+
+  const handleStageDragStart = (e: React.DragEvent, stageId: string) => {
+    e.stopPropagation();
+    setDraggedStageId(stageId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('stageId', stageId);
+  };
+
+  const handleStageDragEnd = () => {
+    setDraggedStageId(null);
+    setDragOverStageId(null);
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    if (draggedStageId && draggedStageId !== stageId) setDragOverStageId(stageId);
+  };
+
+  const handleColumnDrop = async (e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    const draggedFromEvent = e.dataTransfer.getData('stageId');
+    if (draggedFromEvent) {
+      setDragOverStageId(null);
+      setDraggedStageId(null);
+      if (draggedFromEvent === stageId) return;
+      const draggedIndex = stages.findIndex((s) => s.id === draggedFromEvent);
+      const targetIndex = stages.findIndex((s) => s.id === stageId);
+      if (draggedIndex === -1 || targetIndex === -1) return;
+      const newOrder = [...stages];
+      const [removed] = newOrder.splice(draggedIndex, 1);
+      newOrder.splice(targetIndex, 0, removed);
+      reorderStages.mutate(newOrder.map((s) => s.id));
+      return;
+    }
+    // Não era arrasto de coluna — trata como drop de card (fluxo já existente).
+    await handleDrop(e, stageId);
   };
 
   // Fonte única pra mudança de estágio — usada pelo drag-and-drop do kanban,
@@ -489,16 +534,30 @@ export default function CRM() {
             {stages.map((stage) => (
               <div
                 key={stage.id}
-                className="w-[260px] sm:w-[300px] flex-shrink-0"
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, stage.id)}
+                className={cn(
+                  'w-[260px] sm:w-[300px] flex-shrink-0 transition-opacity',
+                  draggedStageId === stage.id && 'opacity-50',
+                )}
+                onDragOver={(e) => handleColumnDragOver(e, stage.id)}
+                onDragLeave={() => setDragOverStageId((prev) => (prev === stage.id ? null : prev))}
+                onDrop={(e) => handleColumnDrop(e, stage.id)}
               >
                 <div
-                  className={cn('rounded-t-lg p-3 text-white', getStageHeaderStyle(stage.color).className)}
+                  className={cn(
+                    'rounded-t-lg p-3 text-white',
+                    !isMobile && 'cursor-grab active:cursor-grabbing',
+                    dragOverStageId === stage.id && 'ring-2 ring-inset ring-white',
+                    getStageHeaderStyle(stage.color).className,
+                  )}
                   style={getStageHeaderStyle(stage.color).style}
+                  draggable={!isMobile}
+                  onDragStart={(e) => handleStageDragStart(e, stage.id)}
+                  onDragEnd={handleStageDragEnd}
+                  title={!isMobile ? t.stages.dragHint : undefined}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
+                      {!isMobile && <GripVertical className="h-3.5 w-3.5 text-white/60 shrink-0" />}
                       <span className="font-semibold text-sm">{stage.name}</span>
                       <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full">
                         {leadsByStage[stage.id]?.length || 0}

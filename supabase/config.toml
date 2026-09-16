@@ -9,6 +9,13 @@ verify_jwt = false
 [functions.generate-pmoc-orders]
 verify_jwt = false
 
+# extend-recurring-tasks: protegido por CRON_SECRET no header Authorization
+# Estica a janela rolante de tarefas com recorrência "Contínua"
+# (recurrence_indeterminate=true). Ver migration
+# 20260916160000_tarefa_recorrencia_indeterminada.sql
+[functions.extend-recurring-tasks]
+verify_jwt = false
+
 # generate-payroll: protegido por CRON_SECRET no header Authorization
 # Gera linhas de Folha de Pagamento em financial_transactions para cada
 # funcionário ativo conforme sua frequência (mensal/quinzenal/semanal)

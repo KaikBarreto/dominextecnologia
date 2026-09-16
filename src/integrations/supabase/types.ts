@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -1053,6 +1078,7 @@ export type Database = {
           logo_url: string | null
           name: string
           neighborhood: string | null
+          os_finish_revenue_prompt_enabled: boolean
           os_stock_consumption_enabled: boolean
           phone: string | null
           proposal_customization: Json | null
@@ -1100,6 +1126,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -1147,6 +1174,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -7573,8 +7601,10 @@ export type Database = {
           public_short_code: string | null
           recurrence_end_date: string | null
           recurrence_group_id: string | null
+          recurrence_indeterminate: boolean
           recurrence_interval: number | null
           recurrence_type: string | null
+          recurrence_weekdays: number[] | null
           require_client_signature: boolean | null
           require_tech_signature: boolean | null
           resumed_at: string | null
@@ -7642,8 +7672,10 @@ export type Database = {
           public_short_code?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
+          recurrence_indeterminate?: boolean
           recurrence_interval?: number | null
           recurrence_type?: string | null
+          recurrence_weekdays?: number[] | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           resumed_at?: string | null
@@ -7711,8 +7743,10 @@ export type Database = {
           public_short_code?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
+          recurrence_indeterminate?: boolean
           recurrence_interval?: number | null
           recurrence_type?: string | null
+          recurrence_weekdays?: number[] | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           resumed_at?: string | null
@@ -9858,6 +9892,10 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: undefined
       }
+      delete_tenant_charge_local: {
+        Args: { p_charge_id: string; p_company_id: string }
+        Returns: Json
+      }
       edit_service_order_scope: {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
@@ -9865,6 +9903,13 @@ export type Database = {
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      extend_indeterminate_task_series: {
+        Args: never
+        Returns: {
+          group_id: string
+          inserted_count: number
+        }[]
       }
       finalize_inventory_count: {
         Args: { p_count_id: string; p_notes?: string }
@@ -9882,6 +9927,17 @@ export type Database = {
       generate_pmoc_token: { Args: never; Returns: string }
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
+      generate_recurrence_dates: {
+        Args: {
+          p_end_date: string
+          p_interval: number
+          p_max_occurrences?: number
+          p_start_date: string
+          p_type: string
+          p_weekdays?: number[]
+        }
+        Returns: string[]
+      }
       get_accessible_inventory_ids: { Args: never; Returns: string[] }
       get_admin_cobrancas_overview: { Args: never; Returns: Json }
       get_company_health_scores: {
@@ -10463,6 +10519,20 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: undefined
       }
+      update_tenant_charge_local: {
+        Args: {
+          p_boleto_url: string
+          p_charge_id: string
+          p_company_id: string
+          p_description: string
+          p_due_date: string
+          p_invoice_url: string
+          p_pix_copy_paste: string
+          p_status: string
+          p_value: number
+        }
+        Returns: Json
+      }
       upsert_compute_catalog: { Args: { p_payload: Json }; Returns: number }
       vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
       vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
@@ -10635,6 +10705,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

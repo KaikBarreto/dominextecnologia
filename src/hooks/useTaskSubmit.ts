@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
-import { generateRecurrenceDates, findRecurrenceIssue, type RecurrenceIssue } from '@/lib/taskRecurrence';
+import { generateRecurrenceDates, findRecurrenceIssue, weekdaysToPersist, type RecurrenceIssue } from '@/lib/taskRecurrence';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { TaskFormData } from '@/components/schedule/TaskFormDialog';
@@ -43,6 +43,10 @@ function describeRecurrenceIssue(issue: RecurrenceIssue): string {
 // Status considerados "concluídos" para preservar ocorrências passadas na edição.
 const isCompletedStatus = (status?: string | null) => status === 'concluida';
 
+// `weekdaysToPersist` foi extraída pra `src/lib/taskRecurrence.ts` (mesma
+// regra vale pra OS — ver ServiceOrderFormDialog). Teste correspondente
+// mudou junto para lá.
+
 export function useTaskSubmit() {
   const { serviceOrders, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { toast } = useToast();
@@ -75,6 +79,8 @@ export function useTaskSubmit() {
         recurrence_type: data.recurrence_type || null,
         recurrence_interval: data.recurrence_interval || null,
         recurrence_end_date: data.recurrence_end_date || null,
+        recurrence_indeterminate: data.recurrence_indeterminate || false,
+        recurrence_weekdays: weekdaysToPersist(data),
         recurrence_group_id: groupId,
         company_id,
       } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']));
@@ -108,6 +114,7 @@ export function useTaskSubmit() {
         recurrence_interval: data.recurrence_interval,
         recurrence_end_date: data.recurrence_end_date,
         recurrence_weekdays: data.recurrence_weekdays,
+        recurrence_indeterminate: data.recurrence_indeterminate,
       });
       if (recurrenceIssue) {
         toast({
@@ -144,6 +151,8 @@ export function useTaskSubmit() {
             recurrence_type: data.recurrence_type || null,
             recurrence_interval: data.recurrence_interval || null,
             recurrence_end_date: data.recurrence_end_date || null,
+            recurrence_indeterminate: data.recurrence_indeterminate || false,
+            recurrence_weekdays: weekdaysToPersist(data),
             recurrence_group_id: groupId,
             assignee_user_ids: data.assignee_user_ids || [],
           } as any);
@@ -180,6 +189,7 @@ export function useTaskSubmit() {
               recurrence_interval: data.recurrence_interval,
               recurrence_end_date: data.recurrence_end_date,
               recurrence_weekdays: data.recurrence_weekdays,
+              recurrence_indeterminate: data.recurrence_indeterminate,
             }).filter(d => d !== baseDate);
 
             if (futureDates.length > 0) {
@@ -205,6 +215,7 @@ export function useTaskSubmit() {
         recurrence_interval: data.recurrence_interval,
         recurrence_end_date: data.recurrence_end_date,
         recurrence_weekdays: data.recurrence_weekdays,
+        recurrence_indeterminate: data.recurrence_indeterminate,
       });
 
       try {

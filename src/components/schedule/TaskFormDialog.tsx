@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Loader2 } from 'lucide-react';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { resolveEditingWeekdays } from '@/lib/taskRecurrence';
 
 export interface TaskFormData {
   task_title: string;
@@ -36,7 +38,13 @@ export interface TaskFormData {
   recurrence_interval?: number;
   recurrence_end_date?: string;
   recurrence_weekdays?: number[];
+  /** true = "Contínua" (sem data para acabar). Ver src/lib/taskRecurrence.ts. */
+  recurrence_indeterminate?: boolean;
 }
+
+// `resolveEditingWeekdays` foi extraída pra `src/lib/taskRecurrence.ts`
+// (mesma regra vale pra tarefa e pra OS — as duas vivem em `service_orders`,
+// ver ServiceOrderFormDialog). Teste correspondente mudou junto para lá.
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -73,7 +81,13 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   const [recurrenceType, setRecurrenceType] = useState('weekly');
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [recurrenceIndeterminate, setRecurrenceIndeterminate] = useState(false);
   const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([]);
+  // true = a tarefa em edição é uma série "Personalizada" cujos dias da semana
+  // nunca foram gravados (série criada antes da coluna `recurrence_weekdays`
+  // existir). Não dá pra adivinhar quais eram — mostramos um aviso em vez do
+  // seletor abrir vazio sem explicação nenhuma.
+  const [legacyCustomWithoutWeekdays, setLegacyCustomWithoutWeekdays] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -93,13 +107,14 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         setRecurrenceType(task.recurrence_type || 'weekly');
         setRecurrenceInterval(task.recurrence_interval || 1);
         setRecurrenceEndDate(task.recurrence_end_date || '');
-        // Os dias marcados não são gravados no banco (service_orders guarda só as
-        // datas já materializadas), então ao editar a série reabrimos marcando o
-        // dia desta ocorrência. Para série semanal clássica isso reproduz
-        // exatamente o que existia; se a série tinha vários dias, o usuário vê
-        // no seletor quais estão marcados antes de salvar e pode remarcar.
-        const baseDay = new Date((task.scheduled_date || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00').getDay();
-        setRecurrenceWeekdays(hasSeries ? [baseDay] : []);
+        setRecurrenceIndeterminate(!!task.recurrence_indeterminate);
+        // Remonta os dias marcados a partir do que foi gravado na própria série.
+        // `recurrence_weekdays` nulo/vazio = série antiga, criada antes dessa
+        // coluna existir: não há de onde tirar os dias, então abre vazio (nunca
+        // inventamos um dia) e sinalizamos o caso pro aviso abaixo do seletor.
+        const { weekdays, legacyCustomWithoutWeekdays: isLegacy } = resolveEditingWeekdays(task);
+        setRecurrenceWeekdays(weekdays);
+        setLegacyCustomWithoutWeekdays(isLegacy);
       } else {
         setTitle('');
         setCustomerId(defaultCustomerId || '');
@@ -114,12 +129,14 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         setRecurrenceType('weekly');
         setRecurrenceInterval(1);
         setRecurrenceEndDate('');
+        setRecurrenceIndeterminate(false);
         // Ancorado ao meio-dia local: `new Date('2026-03-02')` seria lido em UTC
         // e, no fuso -03, cairia no domingo anterior — marcando o dia errado
         // agora que a repetição semanal honra os dias marcados.
         const baseDateStr = defaultDate || format(new Date(), 'yyyy-MM-dd');
         const dayOfWeek = new Date(`${baseDateStr}T12:00:00`).getDay();
         setRecurrenceWeekdays([dayOfWeek]);
+        setLegacyCustomWithoutWeekdays(false);
       }
     }
   }, [open, defaultDate, defaultTime, defaultCustomerId, task]);
@@ -148,7 +165,9 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
       description: description || undefined,
       recurrence_type: recurrenceEnabled ? recurrenceType : undefined,
       recurrence_interval: recurrenceEnabled ? recurrenceInterval : undefined,
-      recurrence_end_date: recurrenceEnabled && recurrenceEndDate ? recurrenceEndDate : undefined,
+      // "Contínua" ignora a data final (o motor materializa até o horizonte).
+      recurrence_end_date: recurrenceEnabled && !recurrenceIndeterminate && recurrenceEndDate ? recurrenceEndDate : undefined,
+      recurrence_indeterminate: recurrenceEnabled ? recurrenceIndeterminate : undefined,
       // Semanal também usa os dias marcados (a cada N semanas, em cada dia).
       // Nenhum dia marcado = 1 por semana no dia da data inicial, como sempre foi.
       recurrence_weekdays:
@@ -268,7 +287,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           )}
           {recurrenceEnabled && (
             <div className="space-y-3 pt-1">
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs">{t.labelFrequency}</Label>
                   <Select value={recurrenceType} onValueChange={setRecurrenceType}>
@@ -292,9 +311,28 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
                     </span>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t.labelRecurrenceDuration}</Label>
+                <LabeledSwitch
+                  value={recurrenceIndeterminate ? 'indeterminate' : 'until'}
+                  onChange={(v) => setRecurrenceIndeterminate(v === 'indeterminate')}
+                  off={{ value: 'until', label: t.durationUntilDate }}
+                  on={{ value: 'indeterminate', label: t.durationContinuous }}
+                  aria-label={t.labelRecurrenceDuration}
+                />
+              </div>
+
+              {recurrenceIndeterminate ? (
+                <p className="text-xs text-muted-foreground rounded-md bg-muted/50 p-2.5">
+                  {t.indeterminateHint}
+                </p>
+              ) : (
                 <div className="space-y-1.5">
-                  {/* Obrigatório quando a recorrência está ligada: sem data final
-                      não existe série (useTaskSubmit barra com mensagem). */}
+                  {/* Obrigatório quando a recorrência está ligada e não é
+                      "Contínua": sem data final não existe série
+                      (useTaskSubmit barra com mensagem). */}
                   <Label className="text-xs">
                     {t.labelUntil} <span className="text-destructive">*</span>
                   </Label>
@@ -305,11 +343,16 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
                     aria-invalid={!recurrenceEndDate}
                   />
                 </div>
-              </div>
+              )}
 
               {/* Weekday picker for custom / weekly */}
               {(recurrenceType === 'custom' || recurrenceType === 'weekly') && (
                 <div className="space-y-1.5">
+                  {recurrenceType === 'custom' && legacyCustomWithoutWeekdays && recurrenceWeekdays.length === 0 && (
+                    <p className="text-xs text-muted-foreground rounded-md bg-muted/50 p-2.5">
+                      {t.legacyCustomWeekdaysHint}
+                    </p>
+                  )}
                   <Label className="text-xs">{t.labelRepeatOn}</Label>
                   <div className="flex gap-1">
                     {t.weekdayLabels.map((label, idx) => (

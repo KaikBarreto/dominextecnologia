@@ -6,12 +6,14 @@ import type { Locale } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Drawer, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { Calendar } from '@/components/ui/calendar';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { todayInBrazil } from '@/lib/today-brazil';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type DatePreset =
   | 'all'
@@ -102,6 +104,7 @@ export function useDateRangeFilter(defaultPreset: DatePreset = 'this_month') {
 export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }: DateRangeFilterProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.common;
+  const isMobile = useIsMobile();
   const [presetOpen, setPresetOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<Date | undefined>(value.from);
@@ -177,53 +180,52 @@ export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }
 
       {/* Custom date range picker */}
       {preset === 'custom' && (
-        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 h-9">
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              {value.from && value.to
-                ? `${formatDate(value.from, locale, timezone)} - ${formatDate(value.to, locale, timezone)}`
-                : t.dateRange.selectDates}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-4" align="start">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
+        isMobile ? (
+          // Mobile: Popover não cabe (dois meses estouram a tela e o rodapé de
+          // ações fica inalcançável). Vira drawer: cabeçalho e rodapé fixos,
+          // só o meio (labels + calendário de 1 mês) rola.
+          <Drawer open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <DrawerTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 h-9">
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                {t.dateRange.selectPeriod}
+                {value.from && value.to
+                  ? `${formatDate(value.from, locale, timezone)} - ${formatDate(value.to, locale, timezone)}`
+                  : t.dateRange.selectDates}
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent>
+              <DrawerHeader className="shrink-0 pb-2 text-left">
+                <DrawerTitle className="flex items-center gap-2 text-sm font-medium">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                  {t.dateRange.selectPeriod}
+                </DrawerTitle>
+              </DrawerHeader>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                <CustomRangeLabels
+                  tempFrom={tempFrom}
+                  tempTo={tempTo}
+                  locale={locale}
+                  timezone={timezone}
+                  t={t}
+                />
+
+                {/* Um mês por vez no celular: dois meses lado a lado não cabem
+                    em ~390px e empurravam o segundo mês (e o rodapé) pra fora da tela. */}
+                <Calendar
+                  mode="range"
+                  selected={tempFrom && tempTo ? { from: tempFrom, to: tempTo } : tempFrom ? { from: tempFrom, to: undefined } : undefined}
+                  onSelect={(range) => {
+                    setTempFrom(range?.from);
+                    setTempTo(range?.to);
+                  }}
+                  locale={DATE_FNS_LOCALE[locale]}
+                  numberOfMonths={1}
+                  className="p-0 pointer-events-auto"
+                />
               </div>
 
-              {/* Start / End labels */}
-              <div className="flex items-center gap-3 rounded-lg border p-3">
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t.dateRange.start}</p>
-                  <p className="text-sm font-medium">
-                    {tempFrom ? formatDate(tempFrom, locale, timezone) : '—'}
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t.dateRange.end}</p>
-                  <p className="text-sm font-medium">
-                    {tempTo ? formatDate(tempTo, locale, timezone) : '—'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Single calendar for range selection */}
-              <Calendar
-                mode="range"
-                selected={tempFrom && tempTo ? { from: tempFrom, to: tempTo } : tempFrom ? { from: tempFrom, to: undefined } : undefined}
-                onSelect={(range) => {
-                  setTempFrom(range?.from);
-                  setTempTo(range?.to);
-                }}
-                locale={DATE_FNS_LOCALE[locale]}
-                numberOfMonths={2}
-                className="p-0 pointer-events-auto"
-              />
-
-              <div className="flex items-center justify-end gap-2">
+              <DrawerFooter className="shrink-0 flex-row justify-end gap-2 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">
                 <Button variant="ghost" size="sm" onClick={handleClearCustom}>
                   {t.clear}
                 </Button>
@@ -236,11 +238,95 @@ export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }
                   <Check className="h-3.5 w-3.5" />
                   {t.apply}
                 </Button>
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          // Desktop: popover ancorado no botão, dois meses lado a lado (cabe de sobra).
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 h-9">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                {value.from && value.to
+                  ? `${formatDate(value.from, locale, timezone)} - ${formatDate(value.to, locale, timezone)}`
+                  : t.dateRange.selectDates}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4" align="start">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                  {t.dateRange.selectPeriod}
+                </div>
+
+                <CustomRangeLabels
+                  tempFrom={tempFrom}
+                  tempTo={tempTo}
+                  locale={locale}
+                  timezone={timezone}
+                  t={t}
+                />
+
+                <Calendar
+                  mode="range"
+                  selected={tempFrom && tempTo ? { from: tempFrom, to: tempTo } : tempFrom ? { from: tempFrom, to: undefined } : undefined}
+                  onSelect={(range) => {
+                    setTempFrom(range?.from);
+                    setTempTo(range?.to);
+                  }}
+                  locale={DATE_FNS_LOCALE[locale]}
+                  numberOfMonths={2}
+                  className="p-0 pointer-events-auto"
+                />
+
+                <div className="flex items-center justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleClearCustom}>
+                    {t.clear}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="gap-1"
+                    onClick={handleApplyCustom}
+                    disabled={!tempFrom || !tempTo}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    {t.apply}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+            </PopoverContent>
+          </Popover>
+        )
       )}
+    </div>
+  );
+}
+
+interface CustomRangeLabelsProps {
+  tempFrom: Date | undefined;
+  tempTo: Date | undefined;
+  locale: LocaleCode;
+  timezone: string;
+  t: (typeof MESSAGES)[LocaleCode]['app']['common'];
+}
+
+/** Labels de "Início" / "Fim" acima do calendário, compartilhados entre o drawer (mobile) e o popover (desktop). */
+function CustomRangeLabels({ tempFrom, tempTo, locale, timezone, t }: CustomRangeLabelsProps) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border p-3">
+      <div className="flex-1 text-center">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t.dateRange.start}</p>
+        <p className="text-sm font-medium">
+          {tempFrom ? formatDate(tempFrom, locale, timezone) : '—'}
+        </p>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+      <div className="flex-1 text-center">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t.dateRange.end}</p>
+        <p className="text-sm font-medium">
+          {tempTo ? formatDate(tempTo, locale, timezone) : '—'}
+        </p>
+      </div>
     </div>
   );
 }
