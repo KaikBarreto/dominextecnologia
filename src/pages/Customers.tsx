@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +27,7 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Customer } from '@/types/database';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
+import { CreateOpportunityDialog } from '@/components/customers/CreateOpportunityDialog';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -123,6 +125,7 @@ export default function Customers() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers;
   const { isAdminOrGestor, hasPermission } = useAuth();
+  const { hasModule } = useCompanyModules();
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -130,21 +133,39 @@ export default function Customers() {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [originConfigOpen, setOriginConfigOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
+  const [opportunityCustomer, setOpportunityCustomer] = useState<Customer | null>(null);
   const [viewMode, setViewMode] = useViewMode('customers-view-mode');
 
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
   const canEditCustomer = isAdminOrGestor() || hasPermission('fn:edit_customer');
   const canDeleteCustomer = isAdminOrGestor() || hasPermission('fn:delete_customer');
+  // Ação "Criar oportunidade no CRM" só aparece pra quem tem o módulo CRM
+  // contratado (mesmo gate de `hasModule('crm')` usado no menu/rota do CRM).
+  const canCreateOpportunity = hasModule('crm');
 
   const { customers, isLoading, isError, refetch, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
+  // Telefone é gravado em 2 formatos no banco: mascarado ("(21) 99518-5142")
+  // quando cadastrado pelo admin, e só dígitos ("21995185142") quando veio do
+  // formulário público de captação (submit_lead_capture_form normaliza assim).
+  // Por isso a comparação de telefone normaliza os dois lados pra dígitos —
+  // normaliza SÓ o campo telefone, não a busca inteira, senão buscar por nome
+  // quebraria.
+  const searchDigits = searchTerm.replace(/\D/g, '');
+  const filteredCustomers = customers.filter((customer) => {
+    if (
       fuzzyIncludes(customer.name, searchTerm) ||
       fuzzyIncludes(customer.email, searchTerm) ||
       fuzzyIncludes(customer.document, searchTerm) ||
       fuzzyIncludes(customer.company_name, searchTerm)
-  );
+    ) {
+      return true;
+    }
+    if (!searchDigits) return false;
+    const phoneDigits = (customer.phone || '').replace(/\D/g, '');
+    const celularDigits = (customer.celular || '').replace(/\D/g, '');
+    return phoneDigits.includes(searchDigits) || celularDigits.includes(searchDigits);
+  });
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);
   const pagination = useDataPagination(sortedItems, 10, 'customers-list');
@@ -168,6 +189,11 @@ export default function Customers() {
     e?.stopPropagation();
     setCustomerToDelete(customer);
     setDeleteDialogOpen(true);
+  };
+
+  const handleCreateOpportunity = (customer: Customer, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setOpportunityCustomer(customer);
   };
 
   const handleDelete = async () => {
@@ -333,6 +359,14 @@ export default function Customers() {
                       icon: <Eye className="h-4 w-4" />,
                       onClick: () => navigate(`/clientes/${customer.id}`),
                     },
+                    ...(canCreateOpportunity
+                      ? [{
+                          key: 'create-opportunity',
+                          label: t.createOpportunity,
+                          icon: <Handshake className="h-4 w-4" />,
+                          onClick: () => handleCreateOpportunity(customer),
+                        }]
+                      : []),
                     ...(canEditCustomer
                       ? [{
                           key: 'edit',
@@ -517,6 +551,12 @@ export default function Customers() {
                                         onClick: () => navigate(`/clientes/${customer.id}`),
                                       },
                                       {
+                                        label: t.createOpportunity,
+                                        icon: Handshake,
+                                        onClick: () => handleCreateOpportunity(customer),
+                                        hidden: !canCreateOpportunity,
+                                      },
+                                      {
                                         label: t.edit,
                                         icon: Pencil,
                                         variant: 'edit',
@@ -597,6 +637,12 @@ export default function Customers() {
       <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
 
       <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
+
+      <CreateOpportunityDialog
+        open={!!opportunityCustomer}
+        onOpenChange={(open) => { if (!open) setOpportunityCustomer(null); }}
+        customer={opportunityCustomer}
+      />
     </div>
   );
 }

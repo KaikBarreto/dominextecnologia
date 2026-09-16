@@ -22,6 +22,37 @@
  */
 import { addMonths } from 'date-fns';
 
+/**
+ * Rede de segurança de quantidade. 120 = 10 anos de mensalidade, o teto de
+ * qualquer contrato PMOC ou parcelamento reais do cliente. Existe aqui (e não
+ * só no formulário) porque este é o motor que qualquer tela nova vai chamar —
+ * se uma tela esquecer de validar o campo antes de enviar, o motor não tenta
+ * desenhar milhares de linhas mesmo assim. A validação com mensagem em PT-BR
+ * pro usuário mora no formulário (`TransactionFormDialog`, `ContractDetail`);
+ * aqui é só o limite físico que nunca deveria ser alcançado na prática.
+ */
+export const MAX_REPETITION_COUNT = 120;
+
+/**
+ * Faixa de ano aceitável pra uma data de lançamento/vencimento digitada à
+ * mão. `MIN_TRANSACTION_YEAR` cobre qualquer lançamento retroativo real;
+ * `MAX_TRANSACTION_YEAR_AHEAD` cobre até uma série de 10 anos (120 meses)
+ * começando hoje, com folga. Sem isso um dedo errado no calendário nativo
+ * grava vencimento em 2123 sem que ninguém perceba.
+ */
+export const MIN_TRANSACTION_YEAR = 2000;
+export const MAX_TRANSACTION_YEAR_AHEAD = 15;
+
+/**
+ * `currentYear` é passado por quem chama (nunca `new Date()` implícito
+ * aqui dentro — ver nota do módulo) pra a função continuar pura e testável.
+ */
+export function isTransactionYearInRange(iso: string, currentYear: number): boolean {
+  const year = Number(iso.slice(0, 4));
+  if (!Number.isFinite(year)) return false;
+  return year >= MIN_TRANSACTION_YEAR && year <= currentYear + MAX_TRANSACTION_YEAR_AHEAD;
+}
+
 /** Converte `YYYY-MM-DD` em Date ancorada ao meio-dia LOCAL (imune a DST/UTC-3). */
 function parseLocalDay(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
@@ -51,7 +82,7 @@ export function addMonthsISO(iso: string, months: number): string {
  * A primeira é sempre a própria `firstDate`.
  */
 export function buildInstallmentDates(firstDate: string, count: number): string[] {
-  const n = Math.max(1, Math.floor(count));
+  const n = Math.min(MAX_REPETITION_COUNT, Math.max(1, Math.floor(count)));
   return Array.from({ length: n }, (_, i) => addMonthsISO(firstDate, i));
 }
 
@@ -186,7 +217,7 @@ export function buildRepetitionPlan(args: {
   count: number;
   intervalMonths: number;
 }): InstallmentPlanRow[] {
-  const n = Math.max(1, Math.floor(Number(args.count) || 1));
+  const n = Math.min(MAX_REPETITION_COUNT, Math.max(1, Math.floor(Number(args.count) || 1)));
   const step = Math.max(0, Math.floor(Number(args.intervalMonths) || 0));
   const amount = round2(Number(args.amount) || 0);
   return Array.from({ length: n }, (_, i) => ({

@@ -242,6 +242,13 @@ export const settings = {
         publicApprovalTitle: 'Aprovação pelo link da proposta já gera conta a receber',
         publicApprovalDescription: 'Desligado, aprovar pelo link só muda o status do orçamento, nada entra no financeiro. Ligado, a conta a receber é criada automaticamente.',
       },
+      // Card de Movimentações Financeiras (preferência PESSOAL, salva em
+      // user_preferences, segue o usuário entre aparelhos, diferente do
+      // localStorage usado pelas outras opções desta aba)
+      financeMovements: {
+        cardTitle: 'Movimentações financeiras',
+        cardDescription: 'Preferência pessoal, vale em qualquer aparelho que você usar',
+      },
       // Card de Origens
       origins: {
         cardTitle: 'Origens',
@@ -1866,6 +1873,10 @@ export const settings = {
         publicApprovalTitle: 'Approval via proposal link already creates a receivable',
         publicApprovalDescription: 'Off, approving via the link only changes the quote status and nothing reaches Finance. On, the receivable is created automatically.',
       },
+      financeMovements: {
+        cardTitle: 'Financial movements',
+        cardDescription: 'Personal preference, applies on any device you use',
+      },
       origins: {
         cardTitle: 'Sources',
         cardDescription: 'Source list used in customer registration and CRM opportunities',
@@ -3430,6 +3441,10 @@ export const settings = {
         publicApprovalTitle: 'La aprobación por el enlace de la propuesta ya genera cuenta por cobrar',
         publicApprovalDescription: 'Apagado, aprobar por el enlace solo cambia el estado del presupuesto y nada llega a Finanzas. Encendido, la cuenta por cobrar se crea automáticamente.',
       },
+      financeMovements: {
+        cardTitle: 'Movimientos financieros',
+        cardDescription: 'Preferencia personal, se aplica en cualquier dispositivo que uses',
+      },
       origins: {
         cardTitle: 'Orígenes',
         cardDescription: 'Lista de orígenes usada en el registro de clientes y las oportunidades del CRM',
@@ -4993,6 +5008,10 @@ export const settings = {
         modeReceivableHint: `Crée une créance en attente. Le solde ne change qu'au moment du lettrage.`,
         publicApprovalTitle: `L'approbation via le lien de la proposition crée déjà une créance`,
         publicApprovalDescription: `Désactivé, approuver via le lien change seulement le statut du devis, rien n'arrive dans Finances. Activé, la créance est créée automatiquement.`,
+      },
+      financeMovements: {
+        cardTitle: 'Mouvements financiers',
+        cardDescription: `Préférence personnelle, elle s'applique sur n'importe quel appareil que vous utilisez`,
       },
       origins: {
         cardTitle: 'Sources',

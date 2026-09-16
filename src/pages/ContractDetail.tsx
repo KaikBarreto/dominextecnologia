@@ -58,7 +58,14 @@ import { format, isBefore, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
-import { buildRepetitionPlan, repetitionTotal } from '@/lib/finance-installments';
+import {
+  buildRepetitionPlan,
+  repetitionTotal,
+  MAX_REPETITION_COUNT,
+  MIN_TRANSACTION_YEAR,
+  MAX_TRANSACTION_YEAR_AHEAD,
+  isTransactionYearInRange,
+} from '@/lib/finance-installments';
 import { todayInBrazil } from '@/lib/today-brazil';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -539,6 +546,25 @@ export default function ContractDetail() {
     [accounts],
   );
 
+  // Trava a quantidade de lançamentos ANTES de chegar no motor. Sem isso o
+  // botão chegou a prometer "Criar 14444 Parcelas" (print do sócio): o motor
+  // (`buildRepetitionPlan`) tem uma rede de segurança em MAX_REPETITION_COUNT,
+  // mas se a tela não travasse aqui o botão continuaria anunciando um número
+  // que o banco nunca ia gravar — a mesma divergência tela x banco que o
+  // preview inteiro deste modal existe pra evitar.
+  const recInstallmentsExceedsMax = recFrequency !== 'unica'
+    && (parseInt(recInstallments, 10) || 0) > MAX_REPETITION_COUNT;
+
+  // Mesma lógica do TransactionFormDialog: ano fora de uma faixa razoável é
+  // dedo errado no calendário nativo (print do sócio: 01/02/2123), não uma
+  // data real.
+  const recDueDateYearInvalid = !!recDueDate
+    && !isTransactionYearInRange(recDueDate, new Date().getFullYear());
+  // Dica visual do calendário nativo (o bloqueio de verdade é o `refine`/check
+  // acima, não o `min`/`max` do input, que dá pra digitar por fora).
+  const recDueDateMin = `${MIN_TRANSACTION_YEAR}-01-01`;
+  const recDueDateMax = `${new Date().getFullYear() + MAX_TRANSACTION_YEAR_AHEAD}-12-31`;
+
   // Plano da série (data + valor de cada lançamento). MESMA fonte pro preview
   // do modal e pra gravação: quando as duas contas divergiam, o cliente via um
   // número na tela e outro no extrato.
@@ -559,6 +585,9 @@ export default function ContractDetail() {
 
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
+    // Guarda redundante ao botão desabilitado: o clique só pode acontecer com
+    // os dois campos dentro da faixa aceita.
+    if (recInstallmentsExceedsMax || recDueDateYearInvalid) return;
     setRecSaving(true);
     try {
       // REPETIÇÃO, não parcelamento. 48 mensalidades de R$ 180 são 48
@@ -1774,7 +1803,18 @@ export default function ContractDetail() {
           </div>
           <div>
             <Label>{td.financial.dueDateLabel}</Label>
-            <Input type="date" value={recDueDate} onChange={e => setRecDueDate(e.target.value)} />
+            <Input
+              type="date"
+              min={recDueDateMin}
+              max={recDueDateMax}
+              value={recDueDate}
+              onChange={e => setRecDueDate(e.target.value)}
+            />
+            {recDueDateYearInvalid && (
+              <p className="text-xs text-destructive mt-1">
+                {td.financial.dueDateYearError.replace('{min}', String(MIN_TRANSACTION_YEAR)).replace('{max}', String(new Date().getFullYear() + MAX_TRANSACTION_YEAR_AHEAD))}
+              </p>
+            )}
           </div>
           <div>
             <Label>{td.financial.recurrenceLabel}</Label>
@@ -1792,7 +1832,21 @@ export default function ContractDetail() {
           {recFrequency !== 'unica' && (
             <div>
               <Label>{td.financial.installmentsLabel}</Label>
-              <NumericInput value={recInstallments} onValueChange={setRecInstallments} placeholder="12" />
+              <NumericInput
+                value={recInstallments}
+                onValueChange={(v) => {
+                  // Trava aqui, não só no botão: sem isso o campo aceitava
+                  // "14444" e o botão chegava a anunciar "Criar 14444 Parcelas"
+                  // (print do sócio). Assim que ultrapassa o teto, volta pro teto.
+                  if (v === '') { setRecInstallments(v); return; }
+                  const n = parseInt(v, 10);
+                  setRecInstallments(Number.isFinite(n) ? String(Math.min(n, MAX_REPETITION_COUNT)) : v);
+                }}
+                placeholder="12"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {td.financial.installmentsMaxHint.replace('{max}', String(MAX_REPETITION_COUNT))}
+              </p>
             </div>
           )}
           {/* Preview da SÉRIE: deixa explícito que 48x R$ 180 são R$ 8.640 no
@@ -1805,7 +1859,11 @@ export default function ContractDetail() {
                 .replace('{total}', `R$ ${formatBRL(repetitionTotal(recReceivablePlan[0].amount, recReceivablePlan.length))}`)}
             </div>
           )}
-          <Button className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
+          <Button
+            className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
+            onClick={handleCreateReceivable}
+            disabled={recSaving || !recDescription || !recAmount || recInstallmentsExceedsMax || recDueDateYearInvalid}
+          >
             {recSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
             {recFrequency !== 'unica'
               ? td.financial.createInstallments.replace('{n}', String(recInstallments || 1))
