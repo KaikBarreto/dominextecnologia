@@ -49,6 +49,73 @@ export const charges = {
         refundSuccess: 'Estorno solicitado com sucesso.',
         refundError: 'Erro ao estornar',
         refundErrorFallback: 'Não foi possível estornar a cobrança.',
+        edit: 'Editar',
+        delete: 'Excluir',
+      },
+      // ── Editar cobrança (valor, vencimento, descrição) — só PENDING/OVERDUE ──
+      editDialog: {
+        title: 'Editar cobrança',
+        description: 'As alterações são aplicadas na cobrança gerada. Cobrança paga não pode ser editada.',
+        fields: {
+          value: 'Valor',
+          valuePlaceholder: '0,00',
+          dueDate: 'Vencimento',
+          description: 'Descrição',
+          descriptionPlaceholder: 'Ex.: Manutenção do ar-condicionado',
+        },
+        submit: 'Salvar alterações',
+        submitting: 'Salvando…',
+        cancel: 'Cancelar',
+        validation: {
+          valueRequired: 'Informe um valor maior que zero.',
+          dueDateRequired: 'Informe o vencimento.',
+        },
+        success: 'Cobrança atualizada com sucesso.',
+        errorTitle: 'Erro ao atualizar cobrança',
+      },
+      // ── Excluir cobrança — o link de pagamento deixa de funcionar para o cliente ──
+      deleteDialog: {
+        title: 'Excluir cobrança?',
+        description: 'Ao excluir, o link de pagamento desta cobrança deixa de funcionar para o cliente. Esta ação não pode ser desfeita.',
+        confirm: 'Excluir',
+        cancel: 'Cancelar',
+        success: 'Cobrança excluída com sucesso.',
+        errorTitle: 'Erro ao excluir cobrança',
+      },
+      // ── Erros dos endpoints de editar/excluir. O `message` do servidor tem
+      //    prioridade; isto é só fallback quando ele vier vazio.
+      errors: {
+        not_found: 'Cobrança não encontrada.',
+        not_editable: 'Esta cobrança já foi paga ou estornada e não pode ser alterada.',
+        gateway_error: 'Não foi possível falar com o gateway de pagamento agora. Tente novamente.',
+        invalid_input: 'Dados inválidos. Confira os campos e tente novamente.',
+        unknown: 'Algo deu errado. Tente novamente.',
+      },
+      // ── Aviso persistente: cobrança alterada/excluída no gateway, mas o
+      //    lançamento no Financeiro ficou para trás (ex.: já estava baixado).
+      financeWarning: {
+        title: 'Atenção ao lançamento no financeiro',
+        dismiss: 'Dispensar',
+      },
+      // ── Seleção múltipla para exclusão em lote (só cobranças PENDING/OVERDUE) ──
+      selection: {
+        selectAllAria: 'Selecionar todas as cobranças',
+        selectRowAria: 'Selecionar esta cobrança',
+        countLabel: (n: number) => `${n} selecionada${n !== 1 ? 's' : ''}`,
+      },
+      bulkDelete: 'Excluir selecionadas',
+      bulkDeleteDialog: {
+        title: 'Excluir cobranças selecionadas?',
+        descriptionAllDeletable: (n: number) =>
+          `${n} cobrança${n !== 1 ? 's' : ''} será${n !== 1 ? 'ão' : ''} excluída${n !== 1 ? 's' : ''}. O link de pagamento deixa de funcionar para o cliente. Esta ação não pode ser desfeita.`,
+        descriptionMixed: (deletable: number, blocked: number) =>
+          `${blocked} está${blocked !== 1 ? 'ão' : ''} paga${blocked !== 1 ? 's' : ''} ou estornada${blocked !== 1 ? 's' : ''} e não ${blocked !== 1 ? 'serão excluídas' : 'será excluída'}. ${deletable} cobrança${deletable !== 1 ? 's' : ''} será${deletable !== 1 ? 'ão' : ''} excluída${deletable !== 1 ? 's' : ''}, e o link de pagamento delas deixa de funcionar. Esta ação não pode ser desfeita.`,
+        descriptionNoneDeletable: 'Nenhuma das cobranças selecionadas pode ser excluída: todas já estão pagas ou estornadas.',
+        confirm: 'Excluir',
+        cancel: 'Cancelar',
+        success: (n: number) => `${n} cobrança${n !== 1 ? 's' : ''} excluída${n !== 1 ? 's' : ''} com sucesso.`,
+        partial: (ok: number, fail: number) =>
+          `${ok} excluída(s) com sucesso, ${fail} não puderam ser excluídas. Tente novamente.`,
       },
       // Status badges
       status: {
@@ -554,6 +621,66 @@ export const charges = {
         refundSuccess: 'Refund successfully requested.',
         refundError: 'Refund error',
         refundErrorFallback: 'Could not refund the charge.',
+        edit: 'Edit',
+        delete: 'Delete',
+      },
+      editDialog: {
+        title: 'Edit charge',
+        description: 'Changes are applied to the generated charge. A paid charge cannot be edited.',
+        fields: {
+          value: 'Amount',
+          valuePlaceholder: '0.00',
+          dueDate: 'Due date',
+          description: 'Description',
+          descriptionPlaceholder: 'E.g.: Air conditioning maintenance',
+        },
+        submit: 'Save changes',
+        submitting: 'Saving…',
+        cancel: 'Cancel',
+        validation: {
+          valueRequired: 'Enter an amount greater than zero.',
+          dueDateRequired: 'Enter the due date.',
+        },
+        success: 'Charge updated successfully.',
+        errorTitle: 'Error updating charge',
+      },
+      deleteDialog: {
+        title: 'Delete charge?',
+        description: 'Deleting this charge disables its payment link for the customer. This action cannot be undone.',
+        confirm: 'Delete',
+        cancel: 'Cancel',
+        success: 'Charge deleted successfully.',
+        errorTitle: 'Error deleting charge',
+      },
+      errors: {
+        not_found: 'Charge not found.',
+        not_editable: 'This charge has already been paid or refunded and cannot be changed.',
+        gateway_error: 'Could not reach the payment gateway right now. Please try again.',
+        invalid_input: 'Invalid data. Please check the fields and try again.',
+        unknown: 'Something went wrong. Please try again.',
+      },
+      financeWarning: {
+        title: 'Attention needed in your finances',
+        dismiss: 'Dismiss',
+      },
+      selection: {
+        selectAllAria: 'Select all charges',
+        selectRowAria: 'Select this charge',
+        countLabel: (n: number) => `${n} selected`,
+      },
+      bulkDelete: 'Delete selected',
+      bulkDeleteDialog: {
+        title: 'Delete selected charges?',
+        descriptionAllDeletable: (n: number) =>
+          `${n} charge${n !== 1 ? 's' : ''} will be deleted. The payment link stops working for the customer. This action cannot be undone.`,
+        descriptionMixed: (deletable: number, blocked: number) =>
+          `${blocked} ${blocked !== 1 ? 'are' : 'is'} already paid or refunded and will not be deleted. ${deletable} charge${deletable !== 1 ? 's' : ''} will be deleted, and their payment link stops working. This action cannot be undone.`,
+        descriptionNoneDeletable: 'None of the selected charges can be deleted: all of them are already paid or refunded.',
+        confirm: 'Delete',
+        cancel: 'Cancel',
+        success: (n: number) => `${n} charge${n !== 1 ? 's' : ''} deleted successfully.`,
+        partial: (ok: number, fail: number) =>
+          `${ok} deleted successfully, ${fail} could not be deleted. Please try again.`,
       },
       status: {
         paid: 'Paid',
@@ -1035,6 +1162,66 @@ export const charges = {
         refundSuccess: 'Reembolso solicitado correctamente.',
         refundError: 'Error al reembolsar',
         refundErrorFallback: 'No fue posible reembolsar el cobro.',
+        edit: 'Editar',
+        delete: 'Eliminar',
+      },
+      editDialog: {
+        title: 'Editar cobro',
+        description: 'Los cambios se aplican al cobro generado. Un cobro pagado no puede editarse.',
+        fields: {
+          value: 'Importe',
+          valuePlaceholder: '0,00',
+          dueDate: 'Vencimiento',
+          description: 'Descripción',
+          descriptionPlaceholder: 'Ej.: Mantenimiento del aire acondicionado',
+        },
+        submit: 'Guardar cambios',
+        submitting: 'Guardando…',
+        cancel: 'Cancelar',
+        validation: {
+          valueRequired: 'Ingresa un importe mayor que cero.',
+          dueDateRequired: 'Ingresa el vencimiento.',
+        },
+        success: 'Cobro actualizado correctamente.',
+        errorTitle: 'Error al actualizar el cobro',
+      },
+      deleteDialog: {
+        title: '¿Eliminar cobro?',
+        description: 'Al eliminarlo, el enlace de pago de este cobro deja de funcionar para el cliente. Esta acción no puede deshacerse.',
+        confirm: 'Eliminar',
+        cancel: 'Cancelar',
+        success: 'Cobro eliminado correctamente.',
+        errorTitle: 'Error al eliminar el cobro',
+      },
+      errors: {
+        not_found: 'Cobro no encontrado.',
+        not_editable: 'Este cobro ya fue pagado o reembolsado y no puede modificarse.',
+        gateway_error: 'No fue posible comunicarse con la pasarela de pago ahora. Inténtalo de nuevo.',
+        invalid_input: 'Datos inválidos. Revisa los campos e inténtalo de nuevo.',
+        unknown: 'Algo salió mal. Inténtalo de nuevo.',
+      },
+      financeWarning: {
+        title: 'Atención con el registro en tus finanzas',
+        dismiss: 'Descartar',
+      },
+      selection: {
+        selectAllAria: 'Seleccionar todos los cobros',
+        selectRowAria: 'Seleccionar este cobro',
+        countLabel: (n: number) => `${n} seleccionado${n !== 1 ? 's' : ''}`,
+      },
+      bulkDelete: 'Eliminar seleccionados',
+      bulkDeleteDialog: {
+        title: '¿Eliminar los cobros seleccionados?',
+        descriptionAllDeletable: (n: number) =>
+          `Se eliminará${n !== 1 ? 'n' : ''} ${n} cobro${n !== 1 ? 's' : ''}. El enlace de pago deja de funcionar para el cliente. Esta acción no puede deshacerse.`,
+        descriptionMixed: (deletable: number, blocked: number) =>
+          `${blocked} ya está${blocked !== 1 ? 'n' : ''} pagado${blocked !== 1 ? 's' : ''} o reembolsado${blocked !== 1 ? 's' : ''} y no se eliminará${blocked !== 1 ? 'n' : ''}. Se eliminará${deletable !== 1 ? 'n' : ''} ${deletable} cobro${deletable !== 1 ? 's' : ''}, y su enlace de pago deja de funcionar. Esta acción no puede deshacerse.`,
+        descriptionNoneDeletable: 'Ninguno de los cobros seleccionados puede eliminarse: todos ya están pagados o reembolsados.',
+        confirm: 'Eliminar',
+        cancel: 'Cancelar',
+        success: (n: number) => `${n} cobro${n !== 1 ? 's' : ''} eliminado${n !== 1 ? 's' : ''} correctamente.`,
+        partial: (ok: number, fail: number) =>
+          `${ok} eliminado(s) correctamente, ${fail} no pudieron eliminarse. Inténtalo de nuevo.`,
       },
       status: {
         paid: 'Pagado',
@@ -1516,6 +1703,66 @@ export const charges = {
         refundSuccess: 'Remboursement demandé avec succès.',
         refundError: 'Erreur de remboursement',
         refundErrorFallback: `Impossible de rembourser l'encaissement.`,
+        edit: 'Modifier',
+        delete: 'Supprimer',
+      },
+      editDialog: {
+        title: `Modifier l'encaissement`,
+        description: `Les modifications s'appliquent à l'encaissement généré. Un encaissement payé ne peut pas être modifié.`,
+        fields: {
+          value: 'Montant',
+          valuePlaceholder: '0,00',
+          dueDate: `Échéance`,
+          description: 'Description',
+          descriptionPlaceholder: `Ex. : Entretien de la climatisation`,
+        },
+        submit: 'Enregistrer les modifications',
+        submitting: 'Enregistrement…',
+        cancel: 'Annuler',
+        validation: {
+          valueRequired: 'Indiquez un montant supérieur à zéro.',
+          dueDateRequired: `Indiquez l'échéance.`,
+        },
+        success: 'Encaissement mis à jour avec succès.',
+        errorTitle: `Erreur lors de la mise à jour de l'encaissement`,
+      },
+      deleteDialog: {
+        title: `Supprimer l'encaissement ?`,
+        description: `En le supprimant, le lien de paiement de cet encaissement cesse de fonctionner pour le client. Cette action ne peut pas être annulée.`,
+        confirm: 'Supprimer',
+        cancel: 'Annuler',
+        success: 'Encaissement supprimé avec succès.',
+        errorTitle: `Erreur lors de la suppression de l'encaissement`,
+      },
+      errors: {
+        not_found: 'Encaissement introuvable.',
+        not_editable: `Cet encaissement a déjà été payé ou remboursé et ne peut pas être modifié.`,
+        gateway_error: `Impossible de contacter la passerelle de paiement pour le moment. Réessayez.`,
+        invalid_input: `Données invalides. Vérifiez les champs et réessayez.`,
+        unknown: `Une erreur est survenue. Réessayez.`,
+      },
+      financeWarning: {
+        title: 'Attention à vos finances',
+        dismiss: 'Ignorer',
+      },
+      selection: {
+        selectAllAria: 'Sélectionner tous les encaissements',
+        selectRowAria: 'Sélectionner cet encaissement',
+        countLabel: (n: number) => `${n} sélectionné${n !== 1 ? 's' : ''}`,
+      },
+      bulkDelete: `Supprimer la sélection`,
+      bulkDeleteDialog: {
+        title: 'Supprimer les encaissements sélectionnés ?',
+        descriptionAllDeletable: (n: number) =>
+          `${n} encaissement${n !== 1 ? 's' : ''} ${n !== 1 ? 'seront supprimés' : 'sera supprimé'}. Le lien de paiement cesse de fonctionner pour le client. Cette action ne peut pas être annulée.`,
+        descriptionMixed: (deletable: number, blocked: number) =>
+          `${blocked} ${blocked !== 1 ? 'sont déjà payés ou remboursés' : 'est déjà payé ou remboursé'} et ne ${blocked !== 1 ? 'seront pas supprimés' : 'sera pas supprimé'}. ${deletable} encaissement${deletable !== 1 ? 's' : ''} ${deletable !== 1 ? 'seront supprimés' : 'sera supprimé'}, et leur lien de paiement cesse de fonctionner. Cette action ne peut pas être annulée.`,
+        descriptionNoneDeletable: `Aucun des encaissements sélectionnés ne peut être supprimé : ils sont déjà tous payés ou remboursés.`,
+        confirm: 'Supprimer',
+        cancel: 'Annuler',
+        success: (n: number) => `${n} encaissement${n !== 1 ? 's' : ''} supprimé${n !== 1 ? 's' : ''} avec succès.`,
+        partial: (ok: number, fail: number) =>
+          `${ok} supprimé(s) avec succès, ${fail} n'ont pas pu être supprimés. Réessayez.`,
       },
       status: {
         paid: 'Payé',

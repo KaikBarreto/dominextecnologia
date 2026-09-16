@@ -107,6 +107,66 @@ async function extractEdgeError(error: unknown, data: unknown, fallback: string)
   return fallback;
 }
 
+/**
+ * Códigos de erro devolvidos por `tenant-asaas-update-charge` e
+ * `tenant-asaas-delete-charge`. Ambas respondem SEMPRE HTTP 200 com
+ * `{ ok: false, error_code, message }` — nunca HTTP 4xx/5xx no caminho feliz
+ * de validação. `message` já vem em PT-BR do servidor; usamos como texto ao
+ * usuário, com fallback traduzido do lado do client quando vier vazio.
+ */
+export type TenantChargeErrorCode = 'not_found' | 'not_editable' | 'gateway_error' | 'invalid_input';
+
+export class TenantChargeApiError extends Error {
+  code: TenantChargeErrorCode | 'unknown';
+  constructor(message: string, code: TenantChargeErrorCode | 'unknown') {
+    super(message);
+    this.name = 'TenantChargeApiError';
+    this.code = code;
+  }
+}
+
+const KNOWN_ERROR_CODES: TenantChargeErrorCode[] = ['not_found', 'not_editable', 'gateway_error', 'invalid_input'];
+
+/**
+ * Lê `{ ok, charge?, error_code?, message? }`. Quando `ok !== true`, lança
+ * `TenantChargeApiError` com o `message` do servidor (pode vir vazio — quem
+ * chama decide o fallback TRADUZIDO, via `t.errors[code]`, em vez de embutir
+ * um texto fixo em PT-BR aqui dentro do hook).
+ */
+function parseChargeApiResponse(data: unknown): Record<string, unknown> {
+  const body = data as Record<string, unknown> | null;
+  if (body && body.ok === true) return body;
+  const rawCode = typeof body?.error_code === 'string' ? body.error_code : undefined;
+  const code: TenantChargeErrorCode | 'unknown' =
+    rawCode && (KNOWN_ERROR_CODES as string[]).includes(rawCode) ? (rawCode as TenantChargeErrorCode) : 'unknown';
+  const message = typeof body?.message === 'string' ? body.message.trim() : '';
+  throw new TenantChargeApiError(message, code);
+}
+
+export interface UpdateChargeInput {
+  charge_id: string;
+  /** Só envia os campos que mudaram — contrato da edge é parcial. */
+  value?: number;
+  due_date?: string;
+  description?: string;
+}
+
+export interface UpdateChargeResult {
+  charge: {
+    id: string;
+    value: number;
+    due_date: string | null;
+    description: string | null;
+    status: string;
+    invoice_url: string | null;
+  };
+  financeWarning: string | null;
+}
+
+export interface DeleteChargeResult {
+  financeWarning: string | null;
+}
+
 /** Monta a URL pública amigável do checkout a partir do short_code. */
 export function buildCheckoutUrl(shortCode: string): string {
   return `https://dominex.app/pagar/${shortCode}`;
@@ -172,6 +232,74 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
     onError: async (_err: unknown) => {
       // Erro já foi re-throw pelo mutationFn como Error com mensagem legível.
       // O handler no componente (try/catch) cuida do toast e do fechamento.
+    },
+  });
+
+  // Edição de valor/vencimento/descrição — só faz sentido para cobrança ainda
+  // não paga (a UI só chama isso quando status é PENDING/OVERDUE). A edge é
+  // quem decide de verdade (`not_editable` se já foi paga/estornada).
+  const update = useMutation({
+    mutationFn: async (input: UpdateChargeInput): Promise<UpdateChargeResult> => {
+      const body: Record<string, unknown> = { charge_id: input.charge_id };
+      if (input.value !== undefined) body.value = input.value;
+      if (input.due_date !== undefined) body.due_date = input.due_date;
+      if (input.description !== undefined) body.description = input.description;
+
+      const { data, error } = await supabase.functions.invoke('tenant-asaas-update-charge', { body });
+      if (error) {
+        throw new TenantChargeApiError(
+          await extractEdgeError(error, data, 'Não foi possível atualizar a cobrança.'),
+          'gateway_error',
+        );
+      }
+      const responseBody = parseChargeApiResponse(data);
+      const charge = responseBody.charge as Record<string, unknown> | undefined;
+      return {
+        charge: {
+          id: typeof charge?.id === 'string' ? charge.id : input.charge_id,
+          value: typeof charge?.value === 'number' ? charge.value : (input.value ?? 0),
+          due_date: typeof charge?.due_date === 'string' ? charge.due_date : null,
+          description: typeof charge?.description === 'string' ? charge.description : null,
+          status: typeof charge?.status === 'string' ? charge.status : '',
+          invoice_url: typeof charge?.invoice_url === 'string' ? charge.invoice_url : null,
+        },
+        financeWarning: typeof responseBody.finance_warning === 'string' ? responseBody.finance_warning : null,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listKey });
+      queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+
+  // Exclusão — mesma regra de status do update. O link de pagamento (checkout
+  // próprio + invoice_url do Asaas) para de funcionar assim que a edge cancela
+  // a cobrança no gateway.
+  const remove = useMutation({
+    mutationFn: async ({ charge_id }: { charge_id: string }): Promise<DeleteChargeResult> => {
+      const { data, error } = await supabase.functions.invoke('tenant-asaas-delete-charge', {
+        body: { charge_id },
+      });
+      if (error) {
+        throw new TenantChargeApiError(
+          await extractEdgeError(error, data, 'Não foi possível excluir a cobrança.'),
+          'gateway_error',
+        );
+      }
+      const responseBody = parseChargeApiResponse(data);
+      return {
+        financeWarning: typeof responseBody.finance_warning === 'string' ? responseBody.finance_warning : null,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listKey });
+      queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 
@@ -252,5 +380,7 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
     companyId,
     create,
     refund,
+    update,
+    remove,
   };
 }

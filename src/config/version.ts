@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.19";
+export const APP_VERSION = "1.24.20";
 
-export const VERSION_NOTES = "Corrigimos um erro sério: editar uma parcela e trocar a forma de pagamento apagava as outras parcelas e refazia tudo com valor errado. Junto vieram seleção múltipla nas parcelas do contrato, editar assinatura e ações direto na ficha do cliente.";
+export const VERSION_NOTES = "Agora dá para editar e excluir uma cobrança que ainda não foi paga, direto na tela de Cobranças. A alteração vale também no link que o seu cliente recebeu.";

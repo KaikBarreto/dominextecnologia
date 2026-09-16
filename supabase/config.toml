@@ -257,6 +257,20 @@ verify_jwt = false
 [functions.tenant-asaas-manage-subscription]
 verify_jwt = false
 
+# tenant-asaas-update-charge: altera valor/vencimento/descrição de uma cobrança
+# ainda NÃO paga — na Asaas primeiro, no nosso banco depois. Mesmo gate (Bearer +
+# módulo 'cobrancas' + can_manage_system) na própria função, por isso verify_jwt=false:
+# todo erro sai como HTTP 200 { ok:false, error_code, message } em PT-BR, e com o
+# gateway barrando antes a UI receberia um 401 sem corpo.
+[functions.tenant-asaas-update-charge]
+verify_jwt = false
+
+# tenant-asaas-delete-charge: exclui cobrança ainda NÃO paga — remove na Asaas
+# primeiro e só então apaga daqui (o contrário deixaria a cobrança viva e pagável
+# no gateway). Mesmo gate na própria função. verify_jwt=false pelo mesmo motivo.
+[functions.tenant-asaas-delete-charge]
+verify_jwt = false
+
 # tenant-asaas-webhook: recepção de eventos da Asaas da conta do TENANT. SEM JWT de
 # usuário — segurança é o header asaas-access-token, validado timing-safe contra o token
 # daquele tenant (resolvido por externalReference → Vault). Fail-closed 401.

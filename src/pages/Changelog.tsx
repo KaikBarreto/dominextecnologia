@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.20',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Editar e excluir uma cobrança que ainda não foi paga',
+        description: 'Depois de gerar uma cobrança, não havia como corrigir nada: errou o valor, a data ou a descrição, ela ficava ali para sempre. Agora dá para editar valor, vencimento e descrição, e também excluir. A mudança vale de verdade: o link que o seu cliente recebeu passa a mostrar o valor novo, e uma cobrança excluída deixa de ser pagável. Vale só para cobrança ainda em aberto ou vencida. Cobrança já paga continua tendo o estorno, que é o caminho certo para ela.',
+        category: 'recurso',
+      },
+      {
+        title: 'Excluir várias cobranças de uma vez',
+        description: 'Na lista de Cobranças agora dá para marcar várias e excluir de uma vez, com uma confirmação só. Se você marcar junto alguma cobrança já paga, o sistema avisa quantas vão ficar de fora em vez de apagar sem perguntar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O sistema avisa quando o financeiro precisa de um ajuste seu',
+        description: 'Se você alterar ou excluir uma cobrança que já virou um lançamento e esse lançamento já tinha sido baixado, o sistema não mexe nele por conta própria. Em vez disso, avisa na tela que aquele lançamento continua lá e precisa do seu ajuste. Dinheiro já baixado não some sem você saber.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.19',
     date: '12 de setembro de 2026',
     type: 'patch',
