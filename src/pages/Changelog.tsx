@@ -42,6 +42,43 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.29',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Corrigida a tarifa cobrada a mais em venda parcelada no cartão',
+        description: 'Quando uma cobrança era parcelada no cartão, o sistema comparava o valor líquido de UMA parcela com o valor total da venda e registrava a diferença como tarifa. Numa venda de R$ 3.133,00 em 10x, isso lançou R$ 2.829,10 de tarifa, quase 90% da venda, derrubando a receita líquida no relatório. Agora o sistema reconhece que o aviso é de uma parcela e não inventa mais tarifa nenhuma nesse caso. Quem já tinha um lançamento errado assim foi corrigido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cobrança recebida voltou a aparecer no Regime de Caixa',
+        description: 'Uma cobrança paga aparecia no relatório por Competência e sumia por completo do Regime de Caixa. O motivo: a baixa preenchia o campo de "valor já recebido" sem registrar o recebimento correspondente, e a conta do relatório resultava em zero, fazendo a linha desaparecer. Corrigido nos dois lados: a baixa parou de preencher esse campo indevidamente, e o relatório passou a exigir o registro de recebimento antes de descontar qualquer coisa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Não dá mais para registrar um pagamento com data futura',
+        description: 'Era possível marcar uma conta como paga escolhendo uma data que ainda não chegou, e esse dinheiro aparecia como realizado no Regime de Caixa num mês que ainda não aconteceu. Agora a data de pagamento vai no máximo até hoje, em todas as telas: no lançamento com "Já foi pago", no "Confirmar pagamento" e no "Confirmar recebimento". Lançamentos antigos com data futura continuam abrindo normalmente, com um aviso, e só bloqueiam se você tentar trocar por outra data futura. Além disso, o Regime de Caixa passou a ignorar qualquer data que ainda não chegou.',
+        category: 'correcao',
+      },
+      {
+        title: 'O formulário de lançamento ficou mais fácil de entender',
+        description: 'A tela de nova receita ou despesa era uma lista longa e sem divisões. Agora está organizada em quatro partes: O que é, Dinheiro, Mais detalhes e Parcelas, sendo as duas últimas recolhidas. E as duas datas ganharam nome e explicação: "Data do lançamento" é quando a venda, a compra ou o serviço aconteceu, e conta no relatório por Competência; "Data do pagamento" é quando o dinheiro realmente saiu ou entrou da conta, e conta no Regime de Caixa. Vale também na tela de contas a pagar e receber.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O DRE mostra a cor e o ícone de cada categoria, e abre por centro de custo',
+        description: 'Ao abrir um grupo do DRE, cada categoria aparecia com uma bolinha cinza, mesmo tendo cor e ícone cadastrados. Agora aparece do mesmo jeito que na tela de categorias. E as categorias passaram a abrir mais um nível: clicando em uma delas, você vê quanto foi para cada centro de custo, com os lançamentos sem centro de custo aparecendo separados para a soma sempre fechar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A legenda da agenda não empurra mais o calendário',
+        description: 'Em empresas com muitos tipos de serviço cadastrados, a legenda virava uma parede de etiquetas que roubava a altura do calendário. Agora ela ocupa sempre uma linha só e mostra apenas os tipos que aparecem no período que você está vendo, que é justamente o que a legenda serve para explicar. O catálogo completo continua a um clique de distância. Para quem tem poucos tipos, nada muda.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.28',
     date: '17 de setembro de 2026',
     type: 'patch',
