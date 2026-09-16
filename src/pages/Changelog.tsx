@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.24',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefa que se repete sem data para acabar',
+        description: 'Ao criar uma tarefa que se repete, o campo "Até" era obrigatório: não havia como dizer que a rotina simplesmente não acaba. Agora existe a opção "Contínua". O sistema cria as próximas ocorrências aos poucos, sozinho, sem lotar a agenda de uma vez, e você encerra quando quiser voltando para "Até uma data" ou excluindo a série.',
+        category: 'recurso',
+      },
+      {
+        title: 'Os dias da semana das tarefas e ordens repetidas agora ficam guardados',
+        description: 'Quando você criava uma repetição "Personalizada" marcando, por exemplo, segunda e sábado, esses dias eram usados para montar as datas e depois descartados. Ao abrir a repetição de novo, o sistema mostrava um único dia, chutado a partir da data. Agora os dias escolhidos ficam guardados e aparecem exatamente como você marcou. As repetições que já existiam tiveram os dias recuperados a partir das datas já criadas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Escolher um período personalizado agora funciona no celular',
+        description: 'Ao escolher "Personalizado" no filtro de período, o calendário abria com dois meses empilhados, estourava a tela e o botão "Aplicar" ficava fora do alcance: dava para escolher as datas, mas não para confirmar. No celular agora abre uma janela própria, com um mês por vez, que rola por dentro e mantém os botões "Limpar" e "Aplicar" sempre visíveis. Vale em todas as telas que filtram por período, do Financeiro ao Ponto. No computador, nada muda.',
+        category: 'correcao',
+      },
+      {
+        title: 'Reordene as colunas do funil arrastando pelo nome',
+        description: 'No CRM, a ordem das colunas do funil só podia ser mudada dentro de "Gerenciar estágios". Agora, no computador, basta segurar no nome da coluna e arrastar para o lado. Arrastar um card continua movendo o lead, como sempre. No celular a reordenação continua sendo feita por "Gerenciar estágios".',
+        category: 'melhoria',
+      },
+      {
+        title: 'O formulário de nova cobrança ficou mais curto',
+        description: 'Criar uma cobrança exigia rolar por uma tela longa com tudo junto: cliente, valor, forma de pagamento, parcelas, multa, juros, desconto e categoria. Agora as informações estão separadas em quatro abas: Cobrança, Pagamento, Encargos e Financeiro. O valor que você vai receber fica fixo no rodapé, sempre visível, não importa em qual aba você esteja. E se faltar algum campo obrigatório, o sistema leva você direto até ele.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.23',
     date: '16 de setembro de 2026',
     type: 'patch',

@@ -149,6 +149,14 @@ export const charges = {
         description: 'Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações.',
         cta: 'Ir para Integrações',
       },
+      // Rótulos das abas do modal (reorganização de 1141 linhas em rolagem
+      // única para abas, mantendo o resumo do recebimento fora delas).
+      tabs: {
+        charge: 'Cobrança',
+        payment: 'Pagamento',
+        fees: 'Encargos',
+        finance: 'Financeiro',
+      },
       fields: {
         customer: 'Cliente',
         customerPlaceholder: 'Selecione o cliente',
@@ -158,6 +166,7 @@ export const charges = {
         description: 'Descrição',
         descriptionPlaceholder: 'Ex.: Manutenção do ar-condicionado',
         method: 'Forma de pagamento',
+        methodSingleHint: 'Único meio de pagamento habilitado nesta conta. Para oferecer mais opções, ative em Configurações, Integrações.',
         category: 'Categoria',
         categoryHint: 'Opcional. Se não escolher, usa a categoria padrão da conta de recebimento.',
       },
@@ -265,6 +274,8 @@ export const charges = {
         anticipateHint: 'Mostra quanto sobra se você receber tudo em 1 dia útil. A antecipação é contratada dentro da Asaas.',
         chooseTitle: 'O cliente escolhe como pagar. Veja quanto sobra em cada forma:',
         chooseCardLabel: 'Cartão à vista',
+        // Versão curta de "cliente escolhe", pro resumo compacto (sempre visível, fora das abas).
+        chooseCompact: 'Cliente escolhe a forma',
         estimate: 'Estimativa. O valor exato é confirmado pela Asaas na hora de gerar a cobrança.',
         fallbackWarning: 'Não foi possível ler as taxas da sua conta agora. Os valores abaixo usam a tabela padrão da Asaas e podem mudar.',
       },
@@ -710,6 +721,12 @@ export const charges = {
         description: 'To charge your customers online, activate the payments integration in Settings, Integrations.',
         cta: 'Go to Integrations',
       },
+      tabs: {
+        charge: 'Charge',
+        payment: 'Payment',
+        fees: 'Fees',
+        finance: 'Finance',
+      },
       fields: {
         customer: 'Customer',
         customerPlaceholder: 'Select the customer',
@@ -719,6 +736,7 @@ export const charges = {
         description: 'Description',
         descriptionPlaceholder: 'E.g.: Air conditioning maintenance',
         method: 'Payment method',
+        methodSingleHint: 'Only payment method enabled on this account. To offer more options, enable it in Settings, Integrations.',
         category: 'Category',
         categoryHint: 'Optional. If left empty, uses the payment account\'s default category.',
       },
@@ -822,6 +840,7 @@ export const charges = {
         anticipateHint: 'Shows what is left if you receive everything in 1 business day. Early payout is enabled inside Asaas.',
         chooseTitle: 'The customer picks how to pay. See what is left with each option:',
         chooseCardLabel: 'Card in full',
+        chooseCompact: 'Customer picks the method',
         estimate: 'Estimate. The exact amount is confirmed by Asaas when the charge is created.',
         fallbackWarning: 'We could not read your account fees right now. The values below use the standard Asaas table and may change.',
       },
@@ -1251,6 +1270,12 @@ export const charges = {
         description: 'Para cobrar a tus clientes en línea, activa la integración de cobros en Configuración, Integraciones.',
         cta: 'Ir a Integraciones',
       },
+      tabs: {
+        charge: 'Cobro',
+        payment: 'Pago',
+        fees: 'Cargos',
+        finance: 'Finanzas',
+      },
       fields: {
         customer: 'Cliente',
         customerPlaceholder: 'Selecciona el cliente',
@@ -1260,6 +1285,7 @@ export const charges = {
         description: 'Descripción',
         descriptionPlaceholder: 'Ej.: Mantenimiento del aire acondicionado',
         method: 'Forma de pago',
+        methodSingleHint: 'Único medio de pago habilitado en esta cuenta. Para ofrecer más opciones, actívalas en Configuración, Integraciones.',
         category: 'Categoría',
         categoryHint: 'Opcional. Si no eliges una, se usa la categoría predeterminada de la cuenta de cobro.',
       },
@@ -1363,6 +1389,7 @@ export const charges = {
         anticipateHint: 'Muestra cuánto queda si recibes todo en 1 día hábil. El adelanto se contrata dentro de Asaas.',
         chooseTitle: 'El cliente elige cómo pagar. Mira cuánto queda con cada forma:',
         chooseCardLabel: 'Tarjeta en un pago',
+        chooseCompact: 'El cliente elige la forma',
         estimate: 'Estimación. El importe exacto lo confirma Asaas al generar el cobro.',
         fallbackWarning: 'No pudimos leer las tarifas de tu cuenta ahora. Los valores de abajo usan la tabla estándar de Asaas y pueden cambiar.',
       },
@@ -1792,6 +1819,12 @@ export const charges = {
         description: 'Pour encaisser vos clients en ligne, activez l`intégration des encaissements dans Paramètres, Intégrations.',
         cta: 'Aller aux Intégrations',
       },
+      tabs: {
+        charge: 'Facture',
+        payment: 'Paiement',
+        fees: 'Frais',
+        finance: 'Finances',
+      },
       fields: {
         customer: 'Client',
         customerPlaceholder: 'Sélectionnez le client',
@@ -1801,6 +1834,7 @@ export const charges = {
         description: 'Description',
         descriptionPlaceholder: 'Ex. : Entretien de la climatisation',
         method: 'Mode de paiement',
+        methodSingleHint: 'Seul mode de paiement activé sur ce compte. Pour proposer plus d`options, activez-les dans Paramètres, Intégrations.',
         category: 'Catégorie',
         categoryHint: 'Facultatif. Si vous n`en choisissez pas, la catégorie par défaut du compte d`encaissement est utilisée.',
       },
@@ -1904,6 +1938,7 @@ export const charges = {
         anticipateHint: `Montre ce qu'il reste si vous recevez tout en 1 jour ouvré. L'avance se souscrit dans Asaas.`,
         chooseTitle: 'Le client choisit comment payer. Voyez ce qu\'il reste avec chaque moyen :',
         chooseCardLabel: 'Carte en une fois',
+        chooseCompact: 'Le client choisit le mode',
         estimate: 'Estimation. Le montant exact est confirmé par Asaas au moment de créer la facture.',
         fallbackWarning: `Impossible de lire les frais de votre compte pour l'instant. Les valeurs ci-dessous utilisent la grille standard Asaas et peuvent changer.`,
       },

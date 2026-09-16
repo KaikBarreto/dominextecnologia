@@ -2,7 +2,10 @@ import { useMemo, useState, useEffect } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -155,7 +158,24 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // Quem paga a taxa do cartão: 'company' (empresa absorve) ou 'customer'
   // (repasse ao cliente — o total é inflado no servidor pela taxa real do Asaas).
   const [feePayer, setFeePayer] = useState<'company' | 'customer'>('company');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // ── Abas do modal (reorganização de rolagem única em 4 grupos) ─────────────
+  const TAB_COBRANCA = 'cobranca';
+  const TAB_PAGAMENTO = 'pagamento';
+  const TAB_ENCARGOS = 'encargos';
+  const TAB_FINANCEIRO = 'financeiro';
+  type ChargeTabKey = typeof TAB_COBRANCA | typeof TAB_PAGAMENTO | typeof TAB_ENCARGOS | typeof TAB_FINANCEIRO;
+  const [activeTab, setActiveTab] = useState<ChargeTabKey>(TAB_COBRANCA);
+  // Campos que falharam na ÚLTIMA tentativa de salvar — usados para levar o
+  // usuário até a aba certa e destacar o campo (nunca deixar um erro preso
+  // numa aba escondida). Cada flag some sozinha quando a condição
+  // correspondente deixa de ser verdadeira, sem precisar de limpeza manual
+  // no onChange de cada campo (ver showXxxError abaixo).
+  const [fieldErrors, setFieldErrors] = useState<{ customer?: boolean; amount?: boolean; dueDate?: boolean; document?: boolean }>({});
+  // Resumo do recebimento: fica fixo no rodapé do modal, FORA das abas (nunca
+  // some ao trocar de aba). Só a linha do líquido fica sempre visível; o
+  // detalhamento (composição da taxa, antecipação, cronograma) abre aqui.
+  const [netExpanded, setNetExpanded] = useState(false);
 
   // Taxas EFETIVAS da conta Asaas do tenant (cartão, Pix, boleto, antecipação
   // e prazos), usadas para o RESUMO do líquido e para o default de quem paga a
@@ -256,6 +276,16 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     }
   }, [methodOptions, method]);
 
+  // Abrir para criar SEMPRE começa na 1ª aba, sem pendência marcada da
+  // tentativa anterior — nunca herda erro nem aba de uma abertura passada.
+  useEffect(() => {
+    if (open) {
+      setActiveTab(TAB_COBRANCA);
+      setFieldErrors({});
+      setNetExpanded(false);
+    }
+  }, [open]);
+
   const resetForm = () => {
     setCustomerId(presetCustomerId ?? '');
     setAmount(0);
@@ -268,7 +298,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
     setAnticipate(false);
     setShowSchedule(false);
-    setShowAdvanced(false);
+    setActiveTab(TAB_COBRANCA);
+    setFieldErrors({});
+    setNetExpanded(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
     setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
@@ -310,6 +342,15 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       ? t.missingDocument.missing(name)
       : t.missingDocument.invalid(name);
   }, [selectedCustomer, documentBlocked, documentStatus, t.missingDocument]);
+
+  // ── Erro por campo (aba Cobrança) ───────────────────────────────────────────
+  // Deriva do estado atual + da última tentativa de salvar: some sozinho
+  // assim que o campo é corrigido, sem precisar de onChange dedicado.
+  const showCustomerError = !!fieldErrors.customer && !customerId;
+  const showAmountError = !!fieldErrors.amount && (!amount || amount <= 0);
+  const showDueDateError = !!fieldErrors.dueDate && !dueDate;
+  const showDocumentError = !!fieldErrors.document && documentBlocked;
+  const cobrancaTabHasError = showCustomerError || showAmountError || showDueDateError || showDocumentError;
 
   // ── Resumo do líquido (estimativa) ─────────────────────────────────────────
   // Fórmula ÚNICA do front: src/lib/asaasFeeSimulator.ts (o mesmo helper do
@@ -406,24 +447,35 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   }, [defaultMaxInstallments]);
 
   const handleSubmit = async () => {
+    // Todo campo obrigatório mora na aba Cobrança: ao falhar, leva o usuário
+    // até lá e marca o campo (nunca deixa um erro preso numa aba escondida).
     if (!customerId) {
+      setFieldErrors({ customer: true });
+      setActiveTab(TAB_COBRANCA);
       toast({ variant: 'destructive', title: t.validation.customerRequired });
       return;
     }
     if (!amount || amount <= 0) {
+      setFieldErrors({ amount: true });
+      setActiveTab(TAB_COBRANCA);
       toast({ variant: 'destructive', title: t.validation.valueRequired });
       return;
     }
     if (!dueDate) {
+      setFieldErrors({ dueDate: true });
+      setActiveTab(TAB_COBRANCA);
       toast({ variant: 'destructive', title: t.validation.dueDateRequired });
       return;
     }
     // Espelho do gate do edge: sem CPF/CNPJ válido a Asaas recusa a cobrança.
     // Evita uma ida à edge só para receber o erro de volta.
     if (documentBlocked && documentMessage) {
+      setFieldErrors({ document: true });
+      setActiveTab(TAB_COBRANCA);
       toast({ variant: 'destructive', title: documentMessage });
       return;
     }
+    setFieldErrors({});
 
     const parsedFine = parseDecimalInput(finePercent);
     const parsedInterest = parseDecimalInput(interestPercent);
@@ -503,547 +555,626 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     window.open(link ?? `https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
   };
 
+  // ── Rodapé (fora das abas, fora do scroll) ──────────────────────────────────
+  // Só existe enquanto o formulário de criação está aberto (na tela de
+  // sucesso os botões já vêm embutidos no conteúdo, como antes). Contém o
+  // resumo do líquido — sempre visível, reage a forma/parcelas/taxa/
+  // antecipação independente da aba ativa — e as ações Cancelar/Gerar.
+  const netLoading = amount > 0 && feesLoading && !tenantFees;
+  const netFeesUnavailable = amount > 0 && !feesLoading && !tenantFees;
+  const netHasDetail = amount > 0 && !!tenantFees && (!!simulation || !!multiSimulation);
+
+  const footer = !result ? (
+    <div className="space-y-2">
+      {amount > 0 && (
+        <div className="overflow-hidden rounded-md border border-border bg-muted/40">
+          {netLoading && (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Calculator className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">{t.net.loading}</p>
+            </div>
+          )}
+
+          {netFeesUnavailable && (
+            <div className="flex items-start gap-2 px-3 py-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+              <p className="text-xs leading-snug text-foreground">{t.net.fallbackWarning}</p>
+            </div>
+          )}
+
+          {netHasDetail && (
+            <>
+              {/* Cabeçalho SEMPRE visível: só a linha do líquido. O
+                  detalhamento completo (taxa, antecipação, cronograma) abre
+                  ao tocar aqui — grande demais pra caber inteiro fixo. */}
+              <button
+                type="button"
+                onClick={() => setNetExpanded((v) => !v)}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                aria-expanded={netExpanded}
+              >
+                <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Calculator className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{t.net.title}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {simulation ? (
+                    <span className="text-sm font-bold tabular-nums text-success">
+                      {money(simulation.netAfterAnticipation)}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-muted-foreground">{t.net.chooseCompact}</span>
+                  )}
+                  {netExpanded ? (
+                    <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                </span>
+              </button>
+
+              {netExpanded && (
+                <div className="max-h-[42vh] space-y-2.5 overflow-y-auto border-t border-border px-3 pb-3 pt-3">
+                  {/* Taxa não veio da conta do tenant: o número é referência,
+                      e o usuário precisa saber disso antes de confiar nele. */}
+                  {feesAreReference && (
+                    <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                      <p className="text-xs leading-snug text-foreground">{t.net.fallbackWarning}</p>
+                    </div>
+                  )}
+
+                  {simulation && (
+                    <>
+                      <dl className="space-y-1.5 text-sm">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-muted-foreground">
+                            {simulation.feePassedOn > 0 ? t.net.targetNet : t.net.gross}
+                          </dt>
+                          <dd className="font-medium tabular-nums text-foreground">{money(amount)}</dd>
+                        </div>
+
+                        {/* Repasse ao cliente: o que ele paga a mais e o total dele. */}
+                        {simulation.feePassedOn > 0 && (
+                          <>
+                            <div className="flex items-baseline justify-between gap-3">
+                              <dt className="text-muted-foreground">{t.net.feePassedOn}</dt>
+                              <dd className="font-medium tabular-nums text-foreground">
+                                + {money(simulation.feePassedOn)}
+                              </dd>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-3">
+                              <dt className="text-muted-foreground">{t.net.customerPays}</dt>
+                              <dd className="font-medium tabular-nums text-foreground">{money(simulation.gross)}</dd>
+                            </div>
+                          </>
+                        )}
+
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-muted-foreground">
+                            {t.net.fee}
+                            <span className="block text-[11px] leading-snug text-muted-foreground">
+                              {simulation.feeBreakdown.percent > 0
+                                ? t.net.feeComposition(
+                                    percentLabel(simulation.feeBreakdown.percent),
+                                    money(simulation.feeBreakdown.fixed),
+                                  )
+                                : t.net.feeFixedOnly(money(simulation.feeBreakdown.fixed))}
+                            </span>
+                          </dt>
+                          <dd className="font-medium tabular-nums text-destructive">
+                            - {money(simulation.feeTotal)}
+                          </dd>
+                        </div>
+
+                        {simulation.anticipationCost != null && simulation.anticipationCost > 0 && (
+                          <div className="flex items-baseline justify-between gap-3">
+                            <dt className="text-muted-foreground">{t.net.anticipationCost}</dt>
+                            <dd className="font-medium tabular-nums text-destructive">
+                              - {money(simulation.anticipationCost)}
+                            </dd>
+                          </div>
+                        )}
+
+                        <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                          <dt className="font-semibold text-foreground">
+                            {isAnticipated ? t.net.netAtOnce : t.net.net}
+                          </dt>
+                          <dd className="text-base font-bold tabular-nums text-success">
+                            {money(simulation.netAfterAnticipation)}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {simulation.installmentValue != null && (
+                        <p className="text-xs text-muted-foreground">
+                          {t.net.installmentLine(simulation.installments, money(simulation.installmentValue))}
+                        </p>
+                      )}
+
+                      <p className="text-xs text-muted-foreground">
+                        {isAnticipated
+                          ? simulation.settlementDays <= 0
+                            ? t.net.settlementAnticipatedNow
+                            : t.net.settlementAnticipatedTotal(
+                                simulation.settlementDays,
+                                formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
+                              )
+                          : simulation.installments > 1
+                            ? t.net.settlementFirstInstallment(
+                                simulation.settlementDays,
+                                formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
+                              )
+                            : simulation.settlementDays <= 0
+                              ? t.net.settlementToday
+                              : t.net.settlementDays(
+                                  simulation.settlementDays,
+                                  formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
+                                )}
+                      </p>
+
+                      {/* Regra de dia útil, sempre visível quando o prazo não
+                          é "na hora": o cliente pediu que a regra apareça
+                          escrita, não só quando calha de rolar por fim de
+                          semana/feriado. */}
+                      {simulation.settlementDays > 0 && (
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          {t.net.settlementBusinessDayNote}
+                        </p>
+                      )}
+
+                      {/* Sem antecipação: quando cada parcela cai na conta da
+                          empresa. Com antecipação, a empresa recebe tudo numa
+                          data só — o que faz sentido detalhar é o que o
+                          CLIENTE paga por mês. */}
+                      {(() => {
+                        const scheduleList = isAnticipated ? simulation.customerSchedule : simulation.scheduleDetailed;
+                        if (scheduleList.length <= 1) return null;
+                        const showLabel = isAnticipated ? t.net.customerScheduleShow : t.net.scheduleShow;
+                        const hideLabel = isAnticipated ? t.net.customerScheduleHide : t.net.scheduleHide;
+                        const itemLabel = isAnticipated ? t.net.customerScheduleItem : t.net.scheduleItem;
+                        return (
+                          <div>
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 text-xs font-medium text-primary"
+                              onClick={() => setShowSchedule((v) => !v)}
+                            >
+                              {showSchedule ? hideLabel : showLabel}
+                              {showSchedule ? (
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            {showSchedule && (
+                              <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto rounded-md bg-background p-2">
+                                {scheduleList.map((item) => (
+                                  <li
+                                    key={item.installmentNumber}
+                                    className="flex items-baseline justify-between gap-3 text-xs"
+                                  >
+                                    <span className="text-muted-foreground">
+                                      {itemLabel(
+                                        item.installmentNumber,
+                                        formatDate(item.date, locale, timezone),
+                                      )}
+                                    </span>
+                                    <span className="font-medium tabular-nums text-foreground">
+                                      {money(item.amount)}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Antecipação: SIMULAÇÃO. Nada é enviado ao Asaas por
+                          aqui, a antecipação é contratada lá dentro. */}
+                      {(simulatorMethod === 'card' || simulatorMethod === 'boleto') && (
+                        <div className="flex items-start gap-2.5 border-t border-border pt-2.5">
+                          <Switch
+                            id="charge-anticipate"
+                            checked={anticipate}
+                            onCheckedChange={setAnticipate}
+                            className="mt-0.5"
+                          />
+                          <Label htmlFor="charge-anticipate" className="cursor-pointer">
+                            <span className="block text-xs font-medium text-foreground">
+                              {t.net.anticipateLabel}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] font-normal leading-snug text-muted-foreground">
+                              {t.net.anticipateHint}
+                            </span>
+                          </Label>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* "Cliente escolhe": líquido de cada meio habilitado. */}
+                  {multiSimulation && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">{t.net.chooseTitle}</p>
+                      <dl className="space-y-1 text-sm">
+                        {multiSimulation.map((row) => (
+                          <div key={row.key} className="flex items-baseline justify-between gap-3">
+                            <dt className="text-muted-foreground">{row.label}</dt>
+                            <dd className="font-semibold tabular-nums text-success">
+                              {money(row.result.net)}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] leading-snug text-muted-foreground">{t.net.estimate}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button variant="outline" onClick={() => handleClose(false)} disabled={create.isPending}>
+          {t.cancel}
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={create.isPending || !customerId || !amount || amount <= 0 || documentBlocked}
+        >
+          {create.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {t.submitting}
+            </>
+          ) : (
+            t.submit
+          )}
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={handleClose}
       title={t.dialogTitle}
       description={t.dialogDescription}
+      footer={footer}
     >
       <div className="space-y-4 px-4 pb-4 sm:px-1">
         {!result ? (
-          <>
-            {/* Cliente */}
-            <div className="space-y-2">
-              <Label htmlFor="charge-customer" className="text-sm font-medium">
-                {t.fields.customer}
-              </Label>
-              {lockCustomer && presetCustomerId ? (
-                // Travado: exibe o nome do cliente sem permitir troca.
-                // Quando 0 clientes E travado, este branch nunca renderiza
-                // (presetCustomerId virá do contexto que abriu o dialog).
-                <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                  {customers.find((c) => c.id === presetCustomerId)?.name ?? presetCustomerId}
-                </div>
-              ) : (
-                // Combobox com busca + botão "+" dentro da borda (padrão do
-                // sistema). requireDocument: a Asaas exige CPF/CNPJ para emitir.
-                <CustomerSelectField
-                  id="charge-customer"
-                  value={customerId}
-                  onValueChange={setCustomerId}
-                  customers={customers}
-                  requireDocument
-                  placeholder={t.fields.customerPlaceholder}
-                  searchPlaceholder={t.quickCustomer.searchPlaceholder}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ChargeTabKey)} className="space-y-4">
+            <MobilePillTabs
+              tabs={[
+                {
+                  value: TAB_COBRANCA,
+                  label: t.tabs.charge,
+                  icon: cobrancaTabHasError ? (
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" aria-hidden />
+                  ) : undefined,
+                },
+                { value: TAB_PAGAMENTO, label: t.tabs.payment },
+                { value: TAB_ENCARGOS, label: t.tabs.fees },
+                { value: TAB_FINANCEIRO, label: t.tabs.finance },
+              ]}
+              activeTab={activeTab}
+              onTabChange={(v) => setActiveTab(v as ChargeTabKey)}
+            />
+
+            {/* ── Aba: Cobrança (cliente, valor, vencimento, descrição) ────── */}
+            <TabsContent value={TAB_COBRANCA} className="space-y-4">
+              {/* Cliente */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="charge-customer"
+                  className={cn('text-sm font-medium', showCustomerError && 'text-destructive')}
+                >
+                  {t.fields.customer}
+                </Label>
+                {lockCustomer && presetCustomerId ? (
+                  // Travado: exibe o nome do cliente sem permitir troca.
+                  // Quando 0 clientes E travado, este branch nunca renderiza
+                  // (presetCustomerId virá do contexto que abriu o dialog).
+                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                    {customers.find((c) => c.id === presetCustomerId)?.name ?? presetCustomerId}
+                  </div>
+                ) : (
+                  // Combobox com busca + botão "+" dentro da borda (padrão do
+                  // sistema). requireDocument: a Asaas exige CPF/CNPJ para emitir.
+                  <CustomerSelectField
+                    id="charge-customer"
+                    value={customerId}
+                    onValueChange={setCustomerId}
+                    customers={customers}
+                    requireDocument
+                    placeholder={t.fields.customerPlaceholder}
+                    searchPlaceholder={t.quickCustomer.searchPlaceholder}
+                    className={showCustomerError ? 'border-destructive ring-1 ring-destructive' : undefined}
+                  />
+                )}
+
+                {/* Cliente sem CPF/CNPJ (ou com documento errado): avisa AQUI e
+                    deixa completar o cadastro sem perder o que já foi preenchido.
+                    Vale também no modo travado (cobrança vinda de um orçamento). */}
+                {documentBlocked && documentMessage && (
+                  <div
+                    className={cn(
+                      'flex flex-col gap-2 rounded-md border p-2.5 sm:flex-row sm:items-center sm:justify-between',
+                      showDocumentError ? 'border-destructive/50 bg-destructive/10' : 'border-warning/40 bg-warning/10',
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className={cn('mt-0.5 h-4 w-4 shrink-0', showDocumentError ? 'text-destructive' : 'text-warning')} />
+                      <p className="text-xs leading-snug text-foreground">{documentMessage}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="shrink-0 bg-warning text-warning-foreground hover:bg-warning/90"
+                      onClick={() => setEditCustomerOpen(true)}
+                    >
+                      <UserCog className="mr-2 h-4 w-4" />
+                      {t.missingDocument.cta}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Cadastro completo do cliente selecionado — abre por cima da
+                  cobrança e, ao salvar, o aviso some sozinho (a lista de clientes
+                  é invalidada pelo hook). Nada do formulário de cobrança se perde. */}
+              {selectedCustomer && (
+                <CustomerFormDialog
+                  open={editCustomerOpen}
+                  onOpenChange={setEditCustomerOpen}
+                  customer={selectedCustomer}
+                  onSubmit={async (data) => {
+                    // O form já validou os campos (zod); o cast só reconcilia o
+                    // tipo inferido do resolver com o input do hook.
+                    await updateCustomer.mutateAsync({ ...(data as CustomerInput), id: selectedCustomer.id });
+                  }}
+                  isLoading={updateCustomer.isPending}
                 />
               )}
 
-              {/* Cliente sem CPF/CNPJ (ou com documento errado): avisa AQUI e
-                  deixa completar o cadastro sem perder o que já foi preenchido.
-                  Vale também no modo travado (cobrança vinda de um orçamento). */}
-              {documentBlocked && documentMessage && (
-                <div className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 p-2.5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                    <p className="text-xs leading-snug text-foreground">{documentMessage}</p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="shrink-0 bg-warning text-warning-foreground hover:bg-warning/90"
-                    onClick={() => setEditCustomerOpen(true)}
-                  >
-                    <UserCog className="mr-2 h-4 w-4" />
-                    {t.missingDocument.cta}
-                  </Button>
+              {/* Valor (máscara de dinheiro, NÃO NumericInput) */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="charge-amount"
+                  className={cn('text-sm font-medium', showAmountError && 'text-destructive')}
+                >
+                  {t.fields.value}
+                </Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    R$
+                  </span>
+                  <Input
+                    id="charge-amount"
+                    className={cn('pl-9', showAmountError && 'border-destructive ring-1 ring-destructive')}
+                    inputMode="numeric"
+                    placeholder={t.fields.valuePlaceholder}
+                    value={amountDisplay}
+                    onChange={handleAmountChange}
+                  />
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Cadastro completo do cliente selecionado — abre por cima da
-                cobrança e, ao salvar, o aviso some sozinho (a lista de clientes
-                é invalidada pelo hook). Nada do formulário de cobrança se perde. */}
-            {selectedCustomer && (
-              <CustomerFormDialog
-                open={editCustomerOpen}
-                onOpenChange={setEditCustomerOpen}
-                customer={selectedCustomer}
-                onSubmit={async (data) => {
-                  // O form já validou os campos (zod); o cast só reconcilia o
-                  // tipo inferido do resolver com o input do hook.
-                  await updateCustomer.mutateAsync({ ...(data as CustomerInput), id: selectedCustomer.id });
-                }}
-                isLoading={updateCustomer.isPending}
-              />
-            )}
-
-            {/* Valor (máscara de dinheiro, NÃO NumericInput) */}
-            <div className="space-y-2">
-              <Label htmlFor="charge-amount" className="text-sm font-medium">
-                {t.fields.value}
-              </Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  R$
-                </span>
+              {/* Vencimento */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="charge-due"
+                  className={cn('text-sm font-medium', showDueDateError && 'text-destructive')}
+                >
+                  {t.fields.dueDate}
+                </Label>
                 <Input
-                  id="charge-amount"
-                  className="pl-9"
-                  inputMode="numeric"
-                  placeholder={t.fields.valuePlaceholder}
-                  value={amountDisplay}
-                  onChange={handleAmountChange}
+                  id="charge-due"
+                  type="date"
+                  value={dueDate}
+                  min={todayISO()}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className={showDueDateError ? 'border-destructive ring-1 ring-destructive' : undefined}
                 />
               </div>
-            </div>
 
-            {/* Vencimento */}
-            <div className="space-y-2">
-              <Label htmlFor="charge-due" className="text-sm font-medium">
-                {t.fields.dueDate}
-              </Label>
-              <Input
-                id="charge-due"
-                type="date"
-                value={dueDate}
-                min={todayISO()}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            </div>
-
-            {/* Forma de pagamento — só meios habilitados na conta */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t.fields.method}</Label>
-              <Select value={method} onValueChange={(v) => setMethod(v as BillingMethod)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {methodOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Parcelas — só visível quando cartão selecionado e há mais de 1 parcela */}
-            {method === 'CREDIT_CARD' && installmentOptions.length > 1 && (
+              {/* Descrição */}
               <div className="space-y-2">
-                <div className="flex items-baseline justify-between gap-2">
-                  <Label className="text-sm font-medium">{t.installments.label}</Label>
-                  <span className="text-xs text-muted-foreground">{t.installments.hint}</span>
-                </div>
-                <Select
-                  value={String(installmentCount)}
-                  onValueChange={(v) => setInstallmentCount(Number(v))}
-                >
+                <Label htmlFor="charge-desc" className="text-sm font-medium">
+                  {t.fields.description}
+                </Label>
+                <Textarea
+                  id="charge-desc"
+                  rows={2}
+                  placeholder={t.fields.descriptionPlaceholder}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </TabsContent>
+
+            {/* ── Aba: Pagamento (forma, parcelas, quem paga a taxa) ────────── */}
+            <TabsContent value={TAB_PAGAMENTO} className="space-y-4">
+              {/* Forma de pagamento — só meios habilitados na conta */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t.fields.method}</Label>
+                <Select value={method} onValueChange={(v) => setMethod(v as BillingMethod)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {installmentOptions.map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n === 1 ? t.installments.once : t.installments.times(n)}
+                    {methodOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
-
-            {/* Quem paga a taxa do cartão. Vale em QUALQUER cobrança de cartão
-                (inclusive à vista): o edge aplica o repasse sempre que
-                billingType = CREDIT_CARD, então esconder no 1x escondia um
-                repasse que acontecia mesmo assim. O efeito no dinheiro aparece
-                logo abaixo, no resumo do recebimento. */}
-            {method === 'CREDIT_CARD' && (
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">{t.installments.feePayerLabel}</Label>
-                <SegmentedControl
-                  options={[
-                    { value: 'company' as const, label: t.installments.feePayerCompany },
-                    { value: 'customer' as const, label: t.installments.feePayerCustomer },
-                  ]}
-                  value={feePayer}
-                  onValueChange={(v) => setFeePayer(v)}
-                  aria-label={t.installments.feePayerLabel}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {feePayer === 'customer'
-                    ? t.installments.feePayerCustomerHint
-                    : t.installments.feePayerCompanyHint}
-                </p>
-              </div>
-            )}
-
-            {/* Descrição */}
-            <div className="space-y-2">
-              <Label htmlFor="charge-desc" className="text-sm font-medium">
-                {t.fields.description}
-              </Label>
-              <Textarea
-                id="charge-desc"
-                rows={2}
-                placeholder={t.fields.descriptionPlaceholder}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-
-            {/* Lançar (ou não) esta cobrança no Financeiro — opção POR COBRANÇA
-                (pedido do CEO: nem toda cobrança precisa virar conta a
-                receber). O padrão vem da configuração da conta de recebimento. */}
-            <div className="space-y-1.5 rounded-md border border-border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm font-medium">{t.postToFinance.label}</Label>
-                <LabeledSwitch<'no' | 'yes'>
-                  value={postToFinance ? 'yes' : 'no'}
-                  onChange={(v) => setPostToFinance(v === 'yes')}
-                  off={{ value: 'no', label: t.postToFinance.no }}
-                  on={{ value: 'yes', label: t.postToFinance.yes }}
-                  aria-label={t.postToFinance.label}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {postToFinance ? t.postToFinance.hintOn : t.postToFinance.hintOff}
-              </p>
-            </div>
-
-            {/* Categoria do recebível no Financeiro — só faz sentido quando a
-                cobrança vai gerar lançamento. Opcional, sobrescreve o default
-                da conta de recebimento quando escolhida. */}
-            {postToFinance && (
-              <div className="space-y-2">
-                <Label htmlFor="charge-category" className="text-sm font-medium">
-                  {t.fields.category}
-                </Label>
-                <CategorySelectField
-                  id="charge-category"
-                  type="entrada"
-                  value={category}
-                  onValueChange={setCategory}
-                />
-                <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
-              </div>
-            )}
-
-            {/* Opções avançadas (collapsible) */}
-            <div className="rounded-md border border-border">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground"
-                onClick={() => setShowAdvanced((v) => !v)}
-              >
-                <span>{t.advanced.toggle}</span>
-                {showAdvanced ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                {/* Só 1 meio habilitado: não há escolha real aqui — a aba não
+                    fica vazia (o select some sozinho, mas o aviso some com o
+                    caminho pra ativar mais meios). */}
+                {methodOptions.length <= 1 && (
+                  <p className="text-xs text-muted-foreground">{t.fields.methodSingleHint}</p>
                 )}
-              </button>
+              </div>
 
-              {showAdvanced && (
-                <div className="space-y-3 border-t border-border px-3 pb-3 pt-3">
-                  {/* Multa e Juros lado a lado */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="adv-fine" className="text-xs font-medium">
-                        {t.advanced.finePercent}
-                      </Label>
-                      <Input
-                        id="adv-fine"
-                        inputMode="decimal"
-                        placeholder="2"
-                        value={finePercent}
-                        onChange={(e) => setFinePercent(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="adv-interest" className="text-xs font-medium">
-                        {t.advanced.interestPercent}
-                      </Label>
-                      <Input
-                        id="adv-interest"
-                        inputMode="decimal"
-                        placeholder="1"
-                        value={interestPercent}
-                        onChange={(e) => setInterestPercent(e.target.value)}
-                      />
-                    </div>
+              {/* Parcelas — só visível quando cartão selecionado e há mais de 1 parcela */}
+              {method === 'CREDIT_CARD' && installmentOptions.length > 1 && (
+                <div className="space-y-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <Label className="text-sm font-medium">{t.installments.label}</Label>
+                    <span className="text-xs text-muted-foreground">{t.installments.hint}</span>
                   </div>
-
-                  {/* Desconto e Dias para desconto: empilhado no mobile, lado a lado em sm+ */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="adv-discount" className="text-xs font-medium">
-                        {t.advanced.discountPercent}
-                      </Label>
-                      <Input
-                        id="adv-discount"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={discountPercent}
-                        onChange={(e) => setDiscountPercent(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="adv-discount-days" className="text-xs font-medium leading-snug">
-                        {t.advanced.discountDays}
-                      </Label>
-                      <Input
-                        id="adv-discount-days"
-                        inputMode="numeric"
-                        placeholder={t.advanced.discountDaysPlaceholder}
-                        value={discountDays}
-                        onChange={(e) => setDiscountDays(e.target.value.replace(/\D/g, ''))}
-                      />
-                    </div>
-                  </div>
+                  <Select
+                    value={String(installmentCount)}
+                    onValueChange={(v) => setInstallmentCount(Number(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {installmentOptions.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n === 1 ? t.installments.once : t.installments.times(n)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
-            </div>
 
-            {/* ── Resumo do recebimento (ESTIMATIVA) ──────────────────────────
-                Mostra quanto sobra depois da taxa da Asaas, quando o dinheiro
-                cai e o custo da antecipação. O cálculo é do simulador do front;
-                o valor contratual é recalculado no edge ao gerar a cobrança. */}
-            {amount > 0 && (
-              <div className="space-y-2.5 rounded-md border border-border bg-muted/40 p-3">
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <p className="text-sm font-semibold text-foreground">{t.net.title}</p>
+              {/* Quem paga a taxa do cartão. Vale em QUALQUER cobrança de cartão
+                  (inclusive à vista): o edge aplica o repasse sempre que
+                  billingType = CREDIT_CARD, então esconder no 1x escondia um
+                  repasse que acontecia mesmo assim. O efeito no dinheiro aparece
+                  no resumo do recebimento, fixo no rodapé. */}
+              {method === 'CREDIT_CARD' && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">{t.installments.feePayerLabel}</Label>
+                  <SegmentedControl
+                    options={[
+                      { value: 'company' as const, label: t.installments.feePayerCompany },
+                      { value: 'customer' as const, label: t.installments.feePayerCustomer },
+                    ]}
+                    value={feePayer}
+                    onValueChange={(v) => setFeePayer(v)}
+                    aria-label={t.installments.feePayerLabel}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {feePayer === 'customer'
+                      ? t.installments.feePayerCustomerHint
+                      : t.installments.feePayerCompanyHint}
+                  </p>
                 </div>
+              )}
+            </TabsContent>
 
-                {feesLoading && !tenantFees ? (
-                  <p className="text-xs text-muted-foreground">{t.net.loading}</p>
-                ) : !tenantFees ? (
-                  <p className="text-xs text-muted-foreground">{t.net.fallbackWarning}</p>
-                ) : (
-                  <>
-                    {/* Taxa não veio da conta do tenant: o número é referência,
-                        e o usuário precisa saber disso antes de confiar nele. */}
-                    {feesAreReference && (
-                      <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                        <p className="text-xs leading-snug text-foreground">{t.net.fallbackWarning}</p>
-                      </div>
-                    )}
-
-                    {simulation && (
-                      <>
-                        <dl className="space-y-1.5 text-sm">
-                          <div className="flex items-baseline justify-between gap-3">
-                            <dt className="text-muted-foreground">
-                              {simulation.feePassedOn > 0 ? t.net.targetNet : t.net.gross}
-                            </dt>
-                            <dd className="font-medium tabular-nums text-foreground">{money(amount)}</dd>
-                          </div>
-
-                          {/* Repasse ao cliente: o que ele paga a mais e o total dele. */}
-                          {simulation.feePassedOn > 0 && (
-                            <>
-                              <div className="flex items-baseline justify-between gap-3">
-                                <dt className="text-muted-foreground">{t.net.feePassedOn}</dt>
-                                <dd className="font-medium tabular-nums text-foreground">
-                                  + {money(simulation.feePassedOn)}
-                                </dd>
-                              </div>
-                              <div className="flex items-baseline justify-between gap-3">
-                                <dt className="text-muted-foreground">{t.net.customerPays}</dt>
-                                <dd className="font-medium tabular-nums text-foreground">{money(simulation.gross)}</dd>
-                              </div>
-                            </>
-                          )}
-
-                          <div className="flex items-baseline justify-between gap-3">
-                            <dt className="text-muted-foreground">
-                              {t.net.fee}
-                              <span className="block text-[11px] leading-snug text-muted-foreground">
-                                {simulation.feeBreakdown.percent > 0
-                                  ? t.net.feeComposition(
-                                      percentLabel(simulation.feeBreakdown.percent),
-                                      money(simulation.feeBreakdown.fixed),
-                                    )
-                                  : t.net.feeFixedOnly(money(simulation.feeBreakdown.fixed))}
-                              </span>
-                            </dt>
-                            <dd className="font-medium tabular-nums text-destructive">
-                              - {money(simulation.feeTotal)}
-                            </dd>
-                          </div>
-
-                          {simulation.anticipationCost != null && simulation.anticipationCost > 0 && (
-                            <div className="flex items-baseline justify-between gap-3">
-                              <dt className="text-muted-foreground">{t.net.anticipationCost}</dt>
-                              <dd className="font-medium tabular-nums text-destructive">
-                                - {money(simulation.anticipationCost)}
-                              </dd>
-                            </div>
-                          )}
-
-                          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-                            <dt className="font-semibold text-foreground">
-                              {isAnticipated ? t.net.netAtOnce : t.net.net}
-                            </dt>
-                            <dd className="text-base font-bold tabular-nums text-success">
-                              {money(simulation.netAfterAnticipation)}
-                            </dd>
-                          </div>
-                        </dl>
-
-                        {simulation.installmentValue != null && (
-                          <p className="text-xs text-muted-foreground">
-                            {t.net.installmentLine(simulation.installments, money(simulation.installmentValue))}
-                          </p>
-                        )}
-
-                        <p className="text-xs text-muted-foreground">
-                          {isAnticipated
-                            ? simulation.settlementDays <= 0
-                              ? t.net.settlementAnticipatedNow
-                              : t.net.settlementAnticipatedTotal(
-                                  simulation.settlementDays,
-                                  formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
-                                )
-                            : simulation.installments > 1
-                              ? t.net.settlementFirstInstallment(
-                                  simulation.settlementDays,
-                                  formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
-                                )
-                              : simulation.settlementDays <= 0
-                                ? t.net.settlementToday
-                                : t.net.settlementDays(
-                                    simulation.settlementDays,
-                                    formatDate(simulation.settlementDate, locale, timezone, { weekday: 'short' }),
-                                  )}
-                        </p>
-
-                        {/* Regra de dia útil, sempre visível quando o prazo não
-                            é "na hora": o cliente pediu que a regra apareça
-                            escrita, não só quando calha de rolar por fim de
-                            semana/feriado. */}
-                        {simulation.settlementDays > 0 && (
-                          <p className="text-[11px] leading-snug text-muted-foreground">
-                            {t.net.settlementBusinessDayNote}
-                          </p>
-                        )}
-
-                        {/* Sem antecipação: quando cada parcela cai na conta da
-                            empresa. Com antecipação, a empresa recebe tudo numa
-                            data só — o que faz sentido detalhar é o que o
-                            CLIENTE paga por mês. */}
-                        {(() => {
-                          const scheduleList = isAnticipated ? simulation.customerSchedule : simulation.scheduleDetailed;
-                          if (scheduleList.length <= 1) return null;
-                          const showLabel = isAnticipated ? t.net.customerScheduleShow : t.net.scheduleShow;
-                          const hideLabel = isAnticipated ? t.net.customerScheduleHide : t.net.scheduleHide;
-                          const itemLabel = isAnticipated ? t.net.customerScheduleItem : t.net.scheduleItem;
-                          return (
-                            <div>
-                              <button
-                                type="button"
-                                className="flex items-center gap-1 text-xs font-medium text-primary"
-                                onClick={() => setShowSchedule((v) => !v)}
-                              >
-                                {showSchedule ? hideLabel : showLabel}
-                                {showSchedule ? (
-                                  <ChevronUp className="h-3.5 w-3.5" />
-                                ) : (
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                )}
-                              </button>
-                              {showSchedule && (
-                                <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto rounded-md bg-background p-2">
-                                  {scheduleList.map((item) => (
-                                    <li
-                                      key={item.installmentNumber}
-                                      className="flex items-baseline justify-between gap-3 text-xs"
-                                    >
-                                      <span className="text-muted-foreground">
-                                        {itemLabel(
-                                          item.installmentNumber,
-                                          formatDate(item.date, locale, timezone),
-                                        )}
-                                      </span>
-                                      <span className="font-medium tabular-nums text-foreground">
-                                        {money(item.amount)}
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {/* Antecipação: SIMULAÇÃO. Nada é enviado ao Asaas por
-                            aqui, a antecipação é contratada lá dentro. */}
-                        {(simulatorMethod === 'card' || simulatorMethod === 'boleto') && (
-                          <div className="flex items-start gap-2.5 border-t border-border pt-2.5">
-                            <Switch
-                              id="charge-anticipate"
-                              checked={anticipate}
-                              onCheckedChange={setAnticipate}
-                              className="mt-0.5"
-                            />
-                            <Label htmlFor="charge-anticipate" className="cursor-pointer">
-                              <span className="block text-xs font-medium text-foreground">
-                                {t.net.anticipateLabel}
-                              </span>
-                              <span className="mt-0.5 block text-[11px] font-normal leading-snug text-muted-foreground">
-                                {t.net.anticipateHint}
-                              </span>
-                            </Label>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {/* "Cliente escolhe": líquido de cada meio habilitado. */}
-                    {multiSimulation && (
-                      <div className="space-y-1.5">
-                        <p className="text-xs text-muted-foreground">{t.net.chooseTitle}</p>
-                        <dl className="space-y-1 text-sm">
-                          {multiSimulation.map((row) => (
-                            <div key={row.key} className="flex items-baseline justify-between gap-3">
-                              <dt className="text-muted-foreground">{row.label}</dt>
-                              <dd className="font-semibold tabular-nums text-success">
-                                {money(row.result.net)}
-                              </dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
-                    )}
-
-                    <p className="text-[11px] leading-snug text-muted-foreground">{t.net.estimate}</p>
-                  </>
-                )}
+            {/* ── Aba: Encargos (multa, juros, desconto, dias) ──────────────── */}
+            <TabsContent value={TAB_ENCARGOS} className="space-y-3">
+              {/* Multa e Juros lado a lado */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="adv-fine" className="text-xs font-medium">
+                    {t.advanced.finePercent}
+                  </Label>
+                  <Input
+                    id="adv-fine"
+                    inputMode="decimal"
+                    placeholder="2"
+                    value={finePercent}
+                    onChange={(e) => setFinePercent(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adv-interest" className="text-xs font-medium">
+                    {t.advanced.interestPercent}
+                  </Label>
+                  <Input
+                    id="adv-interest"
+                    inputMode="decimal"
+                    placeholder="1"
+                    value={interestPercent}
+                    onChange={(e) => setInterestPercent(e.target.value)}
+                  />
+                </div>
               </div>
-            )}
 
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => handleClose(false)} disabled={create.isPending}>
-                {t.cancel}
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={create.isPending || !customerId || !amount || amount <= 0 || documentBlocked}
-              >
-                {create.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t.submitting}
-                  </>
-                ) : (
-                  t.submit
-                )}
-              </Button>
-            </div>
-          </>
+              {/* Desconto e Dias para desconto: empilhado no mobile, lado a lado em sm+ */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="adv-discount" className="text-xs font-medium">
+                    {t.advanced.discountPercent}
+                  </Label>
+                  <Input
+                    id="adv-discount"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adv-discount-days" className="text-xs font-medium leading-snug">
+                    {t.advanced.discountDays}
+                  </Label>
+                  <Input
+                    id="adv-discount-days"
+                    inputMode="numeric"
+                    placeholder={t.advanced.discountDaysPlaceholder}
+                    value={discountDays}
+                    onChange={(e) => setDiscountDays(e.target.value.replace(/\D/g, ''))}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Aba: Financeiro (lançar no financeiro, categoria) ─────────── */}
+            <TabsContent value={TAB_FINANCEIRO} className="space-y-4">
+              {/* Lançar (ou não) esta cobrança no Financeiro — opção POR COBRANÇA
+                  (pedido do CEO: nem toda cobrança precisa virar conta a
+                  receber). O padrão vem da configuração da conta de recebimento. */}
+              <div className="space-y-1.5 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm font-medium">{t.postToFinance.label}</Label>
+                  <LabeledSwitch<'no' | 'yes'>
+                    value={postToFinance ? 'yes' : 'no'}
+                    onChange={(v) => setPostToFinance(v === 'yes')}
+                    off={{ value: 'no', label: t.postToFinance.no }}
+                    on={{ value: 'yes', label: t.postToFinance.yes }}
+                    aria-label={t.postToFinance.label}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {postToFinance ? t.postToFinance.hintOn : t.postToFinance.hintOff}
+                </p>
+              </div>
+
+              {/* Categoria do recebível no Financeiro — só faz sentido quando a
+                  cobrança vai gerar lançamento. Opcional, sobrescreve o default
+                  da conta de recebimento quando escolhida. */}
+              {postToFinance && (
+                <div className="space-y-2">
+                  <Label htmlFor="charge-category" className="text-sm font-medium">
+                    {t.fields.category}
+                  </Label>
+                  <CategorySelectField
+                    id="charge-category"
+                    type="entrada"
+                    value={category}
+                    onValueChange={setCategory}
+                  />
+                  <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         ) : (
           /* ── Sucesso: link + copiar + WhatsApp ─────────────────────────── */
           <div className="space-y-4">
