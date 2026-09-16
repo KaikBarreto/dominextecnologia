@@ -19,6 +19,8 @@ import {
   useLeads
 } from '@/hooks/useLeads';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { IconPreview } from '@/components/customers/originIcons';
+import { OriginBadge } from '@/components/crm/OriginBadge';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
@@ -156,15 +158,30 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                 </SelectTrigger>
                 <SelectContent>
                   {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                    <SelectItem key={stage.id} value={stage.id}>
+                      <div className="flex items-center gap-2">
+                        {stage.icon ? (
+                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                            <IconPreview name={stage.icon} className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: getStageHex(stage.color) }}
+                          />
+                        )}
+                        {stage.name}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {currentStage && (
                 <Badge
-                  className="text-white border-0"
+                  className="text-white border-0 gap-1"
                   style={{ backgroundColor: getStageHex(currentStage.color) }}
                 >
+                  {currentStage.icon && <IconPreview name={currentStage.icon} className="h-3 w-3" />}
                   {currentStage.name}
                 </Badge>
               )}
@@ -207,7 +224,11 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   <MessageSquare className="h-4 w-4" />
                   <span className="text-xs">{t.detail.origin}</span>
                 </div>
-                <p className="text-sm font-medium">{lead.source || t.detail.originNotSet}</p>
+                {lead.source ? (
+                  <OriginBadge source={lead.source} className="text-xs px-2 py-0.5" iconClassName="h-3 w-3" />
+                ) : (
+                  <p className="text-sm font-medium">{t.detail.originNotSet}</p>
+                )}
               </div>
             </div>
 

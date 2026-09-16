@@ -17,12 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { User } from 'lucide-react';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { OriginSelectField } from '@/components/customers/OriginSelectField';
 import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { IconPreview } from '@/components/customers/originIcons';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -40,7 +43,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const { createLead, updateLead } = useLeads();
   const { customers } = useCustomers();
   const { users } = useUsers();
-  const { stages } = useCrmStages();
+  const { stages, getStageHex } = useCrmStages();
   const isEditing = !!lead;
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
@@ -151,14 +154,29 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                   handleChange('assigned_to', value === 'none' ? null : value)
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id="assigned_to">
                   <SelectValue placeholder={t.form.salespersonPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t.form.salespersonNone}</SelectItem>
+                  <SelectItem value="none">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted shrink-0">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                      <span>{t.form.salespersonNone}</span>
+                    </div>
+                  </SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.user_id} value={user.user_id}>
-                      {user.full_name}
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                            {user.full_name?.charAt(0)?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{user.full_name}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -204,7 +222,19 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                   <SelectItem value="none">{t.form.stageNone}</SelectItem>
                   {stages.map((stage) => (
                     <SelectItem key={stage.id} value={stage.id}>
-                      {stage.name}
+                      <div className="flex items-center gap-2">
+                        {stage.icon ? (
+                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                            <IconPreview name={stage.icon} className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: getStageHex(stage.color) }}
+                          />
+                        )}
+                        {stage.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

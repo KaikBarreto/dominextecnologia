@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.27";
+export const APP_VERSION = "1.24.28";
 
-export const VERSION_NOTES = "A legenda da Agenda não ocupa mais a tela inteira quando a empresa tem muitos tipos de serviço. Também dá para criar uma oportunidade no CRM direto da ficha do cliente.";
+export const VERSION_NOTES = "O funil do CRM ficou mais fácil de ler: origem com cor e ícone, foto do vendedor, ícone próprio por coluna e colunas alinhadas.";

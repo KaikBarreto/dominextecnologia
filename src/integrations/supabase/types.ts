@@ -2274,6 +2274,7 @@ export type Database = {
           color: string
           company_id: string
           created_at: string
+          icon: string | null
           id: string
           is_lost: boolean
           is_won: boolean
@@ -2285,6 +2286,7 @@ export type Database = {
           color?: string
           company_id: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean
@@ -2296,6 +2298,7 @@ export type Database = {
           color?: string
           company_id?: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean

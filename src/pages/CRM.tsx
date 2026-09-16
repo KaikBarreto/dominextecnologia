@@ -33,6 +33,7 @@ import {
 } from '@/hooks/useLeads';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { IconPreview } from '@/components/customers/originIcons';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
@@ -530,12 +531,12 @@ export default function CRM() {
         </Card>
       ) : (
         <div className="overflow-x-auto pb-4 -mx-1 px-1">
-          <div className="flex gap-3 sm:gap-4" style={{ minWidth: `${stages.length * 280}px` }}>
+          <div className="flex items-stretch gap-3 sm:gap-4" style={{ minWidth: `${stages.length * 280}px` }}>
             {stages.map((stage) => (
               <div
                 key={stage.id}
                 className={cn(
-                  'w-[260px] sm:w-[300px] flex-shrink-0 transition-opacity',
+                  'w-[260px] sm:w-[300px] flex-shrink-0 flex flex-col transition-opacity',
                   draggedStageId === stage.id && 'opacity-50',
                 )}
                 onDragOver={(e) => handleColumnDragOver(e, stage.id)}
@@ -544,7 +545,7 @@ export default function CRM() {
               >
                 <div
                   className={cn(
-                    'rounded-t-lg p-3 text-white',
+                    'rounded-t-lg p-3 text-white shrink-0',
                     !isMobile && 'cursor-grab active:cursor-grabbing',
                     dragOverStageId === stage.id && 'ring-2 ring-inset ring-white',
                     getStageHeaderStyle(stage.color).className,
@@ -555,20 +556,21 @@ export default function CRM() {
                   onDragEnd={handleStageDragEnd}
                   title={!isMobile ? t.stages.dragHint : undefined}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       {!isMobile && <GripVertical className="h-3.5 w-3.5 text-white/60 shrink-0" />}
-                      <span className="font-semibold text-sm">{stage.name}</span>
-                      <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full">
-                        {leadsByStage[stage.id]?.length || 0}
-                      </span>
+                      {stage.icon && <IconPreview name={stage.icon} className="h-3.5 w-3.5 shrink-0" />}
+                      <span className="font-semibold text-sm truncate">{stage.name}</span>
                     </div>
+                    <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full shrink-0">
+                      {leadsByStage[stage.id]?.length || 0}
+                    </span>
                   </div>
-                  {(valueByStage[stage.id] || 0) > 0 && (
-                    <p className="text-sm font-semibold mt-1.5 text-white/90">
-                      {formatCurrency(valueByStage[stage.id] || 0)}
-                    </p>
-                  )}
+                  {/* Sempre renderizada (mesmo em R$ 0,00) — senão a coluna some essa
+                      linha e o cabeçalho fica mais baixo que os vizinhos. */}
+                  <p className="text-sm font-semibold mt-1.5 text-white/90">
+                    {formatCurrency(valueByStage[stage.id] || 0)}
+                  </p>
                 </div>
 
                 <ScrollArea className="h-[450px] rounded-b-lg border border-t-0 bg-card">

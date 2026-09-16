@@ -187,6 +187,8 @@ export const crm = {
     // ── StageManagerDialog ──
     stages: {
       title: 'Gerenciar Estágios do Pipeline',
+      iconLabel: 'Ícone',
+      iconNone: 'Sem ícone',
       newStageLabel: 'Novo Estágio',
       namePlaceholder: 'Nome do estágio',
       dragHint: 'Arraste para reordenar os estágios',
@@ -1186,6 +1188,8 @@ export const crm = {
 
     stages: {
       title: 'Manage Pipeline Stages',
+      iconLabel: 'Icon',
+      iconNone: 'No icon',
       newStageLabel: 'New Stage',
       namePlaceholder: 'Stage name',
       dragHint: 'Drag to reorder stages',
@@ -2121,6 +2125,8 @@ export const crm = {
 
     stages: {
       title: 'Gestionar Etapas del Pipeline',
+      iconLabel: 'Icono',
+      iconNone: 'Sin icono',
       newStageLabel: 'Nueva Etapa',
       namePlaceholder: 'Nombre de la etapa',
       dragHint: 'Arrastra para reordenar las etapas',
@@ -3056,6 +3062,8 @@ export const crm = {
 
     stages: {
       title: 'Gérer les Étapes du Pipeline',
+      iconLabel: 'Icône',
+      iconNone: `Sans icône`,
       newStageLabel: 'Nouvelle Étape',
       namePlaceholder: "Nom de l'étape",
       dragHint: 'Glissez pour réorganiser les étapes',
