@@ -25,6 +25,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { ModalFormSection } from './ModalFormSection';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -221,7 +222,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
       open={open}
       onOpenChange={onOpenChange}
       title={isEditing ? t.titleEdit : t.titleNew}
-      className="sm:max-w-lg"
+      className="sm:max-w-2xl"
       footer={footer}
     >
       <p className="text-sm text-muted-foreground -mt-2 mb-4">
@@ -231,7 +232,12 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         }
       </p>
 
-      <div className="space-y-4 pb-2">
+      <div className="pb-2">
+        {/* ── Seção 1: O que é ─────────────────────────────────────────────
+            Identidade da conta: tipo, categoria (e os vínculos que dependem
+            dela), descrição e cliente/fornecedor. "Dinheiro" (valor,
+            vencimento, conta) é a próxima seção. */}
+        <ModalFormSection title={t.sections.whatIsIt}>
           <div className="space-y-1.5">
             <Label>{t.typeLabel}</Label>
             <Select value={tipo} onValueChange={(v) => { setTipo(v as TransactionType); setCategory(''); setEmployeeId(''); setContractId(''); }}>
@@ -241,22 +247,6 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
                 <SelectItem value="entrada">{t.types.entrada}</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t.descriptionLabel}</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>{t.amountLabel}</Label>
-              <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t.amountPlaceholder} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t.dueDateLabel}</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -270,14 +260,10 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             />
           </div>
 
-          {/* Centro de custo — opcional. Só renderiza pra quem tem centro ativo
-              cadastrado (ou quando a conta em edição já carrega um). */}
-          {(activeCostCenters.length > 0 || costCenterId) && (
-            <div className="space-y-1.5">
-              <Label>{fin.costCenters.fieldLabel}</Label>
-              <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
-            </div>
-          )}
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label>{t.descriptionLabel}</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} />
+          </div>
 
           {/* Employee selector for salary categories */}
           {isSalaryCategory && tipo === 'saida' && (
@@ -328,11 +314,24 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               placeholder={tSupplier.supplierPlaceholder}
             />
           </div>
+        </ModalFormSection>
+
+        {/* ── Seção 2: Dinheiro ────────────────────────────────────────────
+            Quanto, quando vence e de qual conta/caixa. */}
+        <ModalFormSection title={t.sections.money}>
+          <div className="space-y-1.5">
+            <Label>{t.amountLabel}</Label>
+            <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t.amountPlaceholder} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t.dueDateLabel}</Label>
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </div>
 
           {/* Account selector — required. Em recebimento (entrada), cartão de
               crédito nunca aparece: é conta de saída, não destino de receita. */}
           {accountsForTipo.length === 0 ? (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
+            <div className="lg:col-span-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
               <p className="font-medium text-amber-900 dark:text-amber-200">{t.noAccountTitle}</p>
               <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
                 {t.noAccountDescription}{' '}
@@ -340,7 +339,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               </p>
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 lg:col-span-2">
               <Label>{t.accountLabel} <span className="text-destructive">*</span></Label>
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger><SelectValue placeholder={t.accountPlaceholder} /></SelectTrigger>
@@ -358,8 +357,35 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               </Select>
             </div>
           )}
+        </ModalFormSection>
 
-          {!isEditing && (
+        {/* ── Seção 3: Mais detalhes ───────────────────────────────────────
+            Opcionais: centro de custo e observações. */}
+        <ModalFormSection
+          title={t.sections.moreDetails}
+          collapsible
+          defaultOpen={!!costCenterId || !!notes.trim()}
+        >
+          {/* Centro de custo — opcional. Só renderiza pra quem tem centro ativo
+              cadastrado (ou quando a conta em edição já carrega um). */}
+          {(activeCostCenters.length > 0 || costCenterId) && (
+            <div className="space-y-1.5">
+              <Label>{fin.costCenters.fieldLabel}</Label>
+              <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
+            </div>
+          )}
+
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label>{t.notesLabel}</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={t.notesPlaceholder} />
+          </div>
+        </ModalFormSection>
+
+        {/* ── Seção 4: Parcelar ou repetir ─────────────────────────────────
+            Só ao CRIAR — a recorrência gera N contas de uma vez; editar mexe
+            só nesta conta. */}
+        {!isEditing && (
+          <ModalFormSection title={t.sections.installmentsOrRecurrence} collapsible grid={false} defaultOpen={recurrence !== 'unica'}>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t.recurrenceLabel}</Label>
@@ -380,13 +406,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
                 </div>
               )}
             </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label>{t.notesLabel}</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={t.notesPlaceholder} />
-          </div>
-        </div>
+          </ModalFormSection>
+        )}
+      </div>
     </ResponsiveModal>
   );
 }

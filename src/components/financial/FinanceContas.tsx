@@ -62,7 +62,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInBrazil, isPaidDateAllowed } from '@/lib/today-brazil';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -1120,7 +1120,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
             <Button
-              disabled={!payDespAccountId || !payDespDate}
+              disabled={!payDespAccountId || !payDespDate || !isPaidDateAllowed(payDespDate)}
               className="min-h-11 rounded-xl"
               onClick={async () => {
                 if (!payingDespesaTxn || !payDespAccountId) return;
@@ -1177,7 +1177,14 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
             </div>
             <div className="space-y-1.5">
               <Label>{fin.accounts.payExpenseModal.paymentDate}</Label>
-              <Input type="date" value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+              {/* "Já foi pago" é sempre passado: não existe pagamento no
+                  futuro. `max` barra o calendário nativo; o disabled do botão
+                  Confirmar (acima) é quem garante de verdade, porque dá pra
+                  digitar a data manualmente. */}
+              <Input type="date" max={todayInBrazil()} value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+              {payDespDate && !isPaidDateAllowed(payDespDate) && (
+                <p className="text-xs text-destructive">{fin.accounts.payExpenseModal.paymentDateFuture}</p>
+              )}
             </div>
           </div>
 

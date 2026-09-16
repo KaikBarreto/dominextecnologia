@@ -71,7 +71,8 @@ import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInBrazil, isPaidDateAllowed } from '@/lib/today-brazil';
+import { ModalFormSection } from './ModalFormSection';
 
 
 // Billing months: 1 month back to 4 months ahead (covers all realistic card use cases)
@@ -111,8 +112,17 @@ function isYearInAcceptableRange(iso: string, currentYear: number): boolean {
 }
 
 function makeTransactionSchema(
-  v: { descriptionRequired: string; amountPositive: string; dateRequired: string; accountRequired: string; cardReceiptModeRequired: string; dateYearRange: string },
-  opts?: { canAskCardReceiptMode?: boolean },
+  v: { descriptionRequired: string; amountPositive: string; dateRequired: string; accountRequired: string; cardReceiptModeRequired: string; dateYearRange: string; paidDateFuture: string },
+  opts?: {
+    canAskCardReceiptMode?: boolean;
+    /**
+     * `paid_date` que já estava GRAVADO antes de abrir o form (edição). Dado
+     * legado com data futura (existe em produção) não pode travar uma edição
+     * que a pessoa não pediu — só uma MUDANÇA para uma data futura é barrada.
+     * Ver `isPaidDateAllowed` em `src/lib/today-brazil.ts`.
+     */
+    originalPaidDate?: string | null;
+  },
 ) {
   const currentYear = new Date().getFullYear();
   const base = z.object({
@@ -155,12 +165,26 @@ function makeTransactionSchema(
     card_receipt_mode: z.enum(['anticipated', 'as_customer_pays']).optional(),
   });
 
+  // "Já foi pago" é sempre passado, por definição: não existe dinheiro que já
+  // se moveu amanhã. Roda em TODO caso (criação e edição, com ou sem o bloco
+  // de crédito parcelado) — diferente da trava abaixo, que só faz sentido
+  // quando aquele bloco pode aparecer na tela.
+  let schema = base.superRefine((data, ctx) => {
+    if (data.is_paid && !isPaidDateAllowed(data.paid_date, opts?.originalPaidDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paid_date'],
+        message: v.paidDateFuture,
+      });
+    }
+  });
+
   // A trava só entra quando o bloco PODE aparecer na tela. Editando uma parcela
   // de um grupo já criado o campo vira badge read-only e a pergunta não é feita
   // — exigir a escolha ali bloquearia o salvar sem nada visível pra corrigir.
-  if (!opts?.canAskCardReceiptMode) return base;
+  if (!opts?.canAskCardReceiptMode) return schema;
 
-  return base.superRefine((data, ctx) => {
+  return schema.superRefine((data, ctx) => {
     if (needsCardReceiptChoice(data) && !data.card_receipt_mode) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -179,6 +203,7 @@ const transactionSchema = makeTransactionSchema({
   accountRequired: 'Selecione uma conta ou caixa',
   cardReceiptModeRequired: 'Escolha como o dinheiro entra na sua conta',
   dateYearRange: 'Use uma data entre 2000 e 2041.',
+  paidDateFuture: 'Esta data não pode ser no futuro. Já foi pago (ou recebido) é, no máximo, hoje.',
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -856,10 +881,14 @@ export function TransactionFormDialog({
   const isEditingInstallmentGroup = !!transaction && belongsToInstallmentGroup(transaction as any);
   const canAskCardReceiptMode = !isEditingInstallmentGroup;
 
+  // Dado GRAVADO antes da trava existir (e existe, em produção): usado pra
+  // não bloquear a edição de um lançamento antigo por causa de um erro que o
+  // usuário não criou. Ver `isPaidDateAllowed`.
+  const originalPaidDate = (transaction as any)?.paid_date ?? null;
   const localizedSchema = useMemo(
-    () => makeTransactionSchema(tf.validations, { canAskCardReceiptMode }),
+    () => makeTransactionSchema(tf.validations, { canAskCardReceiptMode, originalPaidDate }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [locale, canAskCardReceiptMode],
+    [locale, canAskCardReceiptMode, originalPaidDate],
   );
 
   const form = useForm<TransactionFormData>({
@@ -1219,7 +1248,7 @@ export function TransactionFormDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={transaction ? tf.titleEdit : tf.titleNew}
-      className="sm:max-w-[520px]"
+      className="sm:max-w-2xl"
       footer={footer}
     >
       <DraftResumeDialog
@@ -1233,10 +1262,15 @@ export function TransactionFormDialog({
       <p className="text-sm text-muted-foreground -mt-2 mb-4">{tf.subtitle}</p>
 
       <Form {...form}>
-        <form id="transaction-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <form id="transaction-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-0">
+          {/* ── Seção 1: O que é ───────────────────────────────────────────
+              Identidade do lançamento: tipo, categoria, descrição, cliente e
+              fornecedor. "Dinheiro" (valor, conta, forma de pagamento, datas,
+              já foi pago) é a próxima seção. */}
+          <ModalFormSection title={tf.sections.whatIsIt}>
           {/* Type toggle */}
           <FormField control={form.control} name="transaction_type" render={({ field }) => (
-            <FormItem>
+            <FormItem className="lg:col-span-2">
               <FormLabel>{tf.typeLabel}</FormLabel>
               <div className="grid grid-cols-2 gap-3">
                 <button type="button" onClick={() => field.onChange('entrada')}
@@ -1279,74 +1313,16 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Centro de custo — SEMPRE opcional. Só aparece pra quem usa: sem
-              nenhum centro ativo cadastrado, o campo nem é renderizado (não
-              poluir o form de quem não organiza por obra/projeto). A exceção é
-              editar um lançamento que JÁ tem centro: aí ele aparece mesmo que o
-              centro tenha sido desativado depois. */}
-          {showCostCenter && (
-            <FormField control={form.control} name="cost_center_id" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{fin.costCenters.fieldLabel}</FormLabel>
-                <CostCenterSelect
-                  value={field.value ?? null}
-                  onValueChange={(v) => field.onChange(v)}
-                />
-                <FormMessage />
-              </FormItem>
-            )} />
-          )}
-
-          {/* Amount */}
-          <FormField control={form.control} name="amount" render={({ field }) => {
-            const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-              const raw = e.target.value.replace(/\D/g, '');
-              field.onChange(parseInt(raw || '0', 10) / 100);
-            };
-            const displayValue = field.value
-              ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-              : '';
-            return (
-              <FormItem>
-                <FormLabel>{tf.amountLabel}</FormLabel>
-                <FormControl>
-                  <Input placeholder={tf.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            );
-          }} />
-
-          {/* Account */}
-          {accounts.length === 0 ? (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">{tf.noAccountTitle}</p>
-              <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                {tf.noAccountDescription}{' '}
-                <a href="/financeiro/caixas-bancos" className="underline font-medium">{tf.noAccountLink}</a>
-              </p>
-            </div>
-          ) : (
-            <FormField control={form.control} name="account_id" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{tf.accountLabel} <span className="text-destructive">*</span></FormLabel>
-                <SearchableSelect
-                  options={accountOptions}
-                  value={field.value || ''}
-                  onValueChange={field.onChange}
-                  placeholder={tf.accountPlaceholder}
-                  searchPlaceholder={tf.accountSearchPlaceholder}
-                  onCreateOption={canManageFinanceSettings ? (query) => {
-                    setAccountInitialName(query);
-                    setAccountFormOpen(true);
-                  } : undefined}
-                  createOptionLabel={tf.accountCreateLabel}
-                  createAlwaysLabel={tf.accountCreateAlwaysLabel}
-                />
-                <FormMessage />
-              </FormItem>
-            )} />
-          )}
+          {/* Description — sobe pra cá (era mostrada mais abaixo): a ordem
+              "tipo, categoria, descrição, cliente, fornecedor" é a leitura
+              natural de "o que é" o lançamento. */}
+          <FormField control={form.control} name="description" render={({ field }) => (
+            <FormItem className="lg:col-span-2">
+              <FormLabel>{tf.descriptionLabel}</FormLabel>
+              <FormControl><Textarea placeholder={tf.descriptionPlaceholder} rows={2} {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
           {/* Cliente e Fornecedor vinculados — os DOIS campos ficam SEMPRE
               visíveis, sem alternar por tipo (receita/despesa).
@@ -1389,6 +1365,63 @@ export function TransactionFormDialog({
               <FormMessage />
             </FormItem>
           )} />
+          </ModalFormSection>
+
+          {/* ── Seção 2: Dinheiro ──────────────────────────────────────────
+              De onde/pra onde o dinheiro vai: valor, conta, forma de
+              pagamento, as duas datas (lançamento e pagamento) e "já foi
+              pago". */}
+          <ModalFormSection title={tf.sections.money}>
+          {/* Amount */}
+          <FormField control={form.control} name="amount" render={({ field }) => {
+            const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+              const raw = e.target.value.replace(/\D/g, '');
+              field.onChange(parseInt(raw || '0', 10) / 100);
+            };
+            const displayValue = field.value
+              ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : '';
+            return (
+              <FormItem>
+                <FormLabel>{tf.amountLabel}</FormLabel>
+                <FormControl>
+                  <Input placeholder={tf.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }} />
+
+          {/* Account */}
+          {accounts.length === 0 ? (
+            <div className="lg:col-span-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">{tf.noAccountTitle}</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                {tf.noAccountDescription}{' '}
+                <a href="/financeiro/caixas-bancos" className="underline font-medium">{tf.noAccountLink}</a>
+              </p>
+            </div>
+          ) : (
+            <FormField control={form.control} name="account_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{tf.accountLabel} <span className="text-destructive">*</span></FormLabel>
+                <SearchableSelect
+                  options={accountOptions}
+                  value={field.value || ''}
+                  onValueChange={field.onChange}
+                  placeholder={tf.accountPlaceholder}
+                  searchPlaceholder={tf.accountSearchPlaceholder}
+                  onCreateOption={canManageFinanceSettings ? (query) => {
+                    setAccountInitialName(query);
+                    setAccountFormOpen(true);
+                  } : undefined}
+                  createOptionLabel={tf.accountCreateLabel}
+                  createAlwaysLabel={tf.accountCreateAlwaysLabel}
+                />
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
 
           {/* Forma de pagamento — visível em new e edit. Trocar o método em edição
               dispara em Finance.handleSubmit a recriação da despesa (delete da
@@ -1413,6 +1446,19 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
+          {/* Data do lançamento — quando o FATO aconteceu (a venda, a compra,
+              o serviço). Antes era só "Data", sem explicação nenhuma — e
+              convivia sem contraste com "Data do pagamento" logo abaixo,
+              então ninguém sabia pra que servia cada uma. */}
+          <FormField control={form.control} name="transaction_date" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{tf.dateLabel}</FormLabel>
+              <FormControl><Input type="date" min={dateInputMin} max={dateInputMax} {...field} /></FormControl>
+              <p className="text-xs text-muted-foreground">{tf.dateHint}</p>
+              <FormMessage />
+            </FormItem>
+          )} />
+
           {/* Credit card bill info */}
           {isCardAccount && transactionType === 'saida' && (() => {
             // Editando parcela de um grupo: mostrar só o mês DESTA parcela. O
@@ -1422,36 +1468,154 @@ export function TransactionFormDialog({
             // refaz o grupo. Ver src/lib/finance-edit-plan.ts.
             const wasAlreadyMultiple = isEditingInstallmentGroup;
             return (
-              <CreditCardBillSection
-                form={form}
-                cardName={selectedAccount?.name ?? ''}
-                account={selectedAccount}
-                installmentCount={wasAlreadyMultiple ? 1 : (form.watch('installment_count') ?? 1)}
-                totalAmount={form.watch('amount') ?? 0}
-                transactionDate={form.watch('transaction_date') ?? ''}
-              />
+              <div className="lg:col-span-2">
+                <CreditCardBillSection
+                  form={form}
+                  cardName={selectedAccount?.name ?? ''}
+                  account={selectedAccount}
+                  installmentCount={wasAlreadyMultiple ? 1 : (form.watch('installment_count') ?? 1)}
+                  totalAmount={form.watch('amount') ?? 0}
+                  transactionDate={form.watch('transaction_date') ?? ''}
+                />
+              </div>
             );
           })()}
 
-          {/* Description */}
-          <FormField control={form.control} name="description" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{tf.descriptionLabel}</FormLabel>
-              <FormControl><Textarea placeholder={tf.descriptionPlaceholder} rows={2} {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+          {/* Crédito parcelado em RECEITA: como o cliente paga ≠ como o dinheiro
+              entra. Sem escolha, o salvar fica bloqueado (decisão do CEO: a
+              pergunta é feita toda vez, sem opção pré-marcada). */}
+          {askCardReceiptMode && (
+            <div className="lg:col-span-2">
+              <CardReceiptModeSection
+                form={form}
+                installmentCount={watchedInstallmentCount}
+                totalAmount={form.watch('amount') ?? 0}
+                transactionDate={form.watch('transaction_date') ?? ''}
+              />
+            </div>
+          )}
 
-          {/* Date + Installments row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField control={form.control} name="transaction_date" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{tf.dateLabel}</FormLabel>
-                <FormControl><Input type="date" min={dateInputMin} max={dateInputMax} {...field} /></FormControl>
+          {/* Is Paid toggle — hidden for credit card expenses (always committed) */}
+          {!(isCardAccount && transactionType === 'saida') && (
+            <div className="lg:col-span-2 rounded-lg border border-border divide-y divide-border">
+              <FormField control={form.control} name="is_paid" render={({ field }) => (
+                <FormItem className="flex items-center justify-between p-3">
+                  <div>
+                    <FormLabel className="!mt-0 font-medium">
+                      {isEntrada ? tf.isPaidLabelRevenue : tf.isPaidLabelExpense}
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      {field.value
+                        ? (isEntrada ? tf.isPaidDescReceivedTrue : tf.isPaidDescPaidTrue)
+                        : (isEntrada ? tf.isPaidDescReceivedFalse : tf.isPaidDescPaidFalse)
+                      }
+                    </p>
+                  </div>
+                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                </FormItem>
+              )} />
+
+              {/* Data do pagamento — só com o switch ligado. Quando o dinheiro
+                  REALMENTE se moveu ≠ quando o fato aconteceu (campo acima):
+                  é esta data que manda no Regime de Caixa da DRE. Sem
+                  perguntar, uma conta de janeiro baixada em março voltava pra
+                  janeiro e mexia num mês já fechado.
+                  Trava de "não pode ser no futuro": validação no schema
+                  (isPaidDateAllowed) + `max` aqui, que barra o calendário
+                  nativo mas não a digitação manual — por isso a validação no
+                  submit é quem garante de verdade. Dado antigo com data
+                  futura (gravado antes desta trava existir) não é barrado
+                  enquanto não for TROCADO: só aparece o aviso abaixo. */}
+              {isPaid && (
+                <FormField control={form.control} name="paid_date" render={({ field }) => (
+                  <FormItem className="p-3">
+                    <FormLabel>{isEntrada ? tf.paidDateLabelRevenue : tf.paidDateLabelExpense}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        min={dateInputMin}
+                        max={todayInBrazil()}
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          paidDateTouched.current = true;
+                          field.onChange(e);
+                        }}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">{tf.paidDateHint}</p>
+                    {/* Aviso NÃO bloqueante: a data ainda é a que já estava
+                        gravada (o usuário não mexeu nela) e está no futuro —
+                        dado legado de antes desta trava existir. */}
+                    {field.value && field.value === originalPaidDate && !isPaidDateAllowed(field.value) && (
+                      <p className="flex items-start gap-1.5 text-xs text-warning">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        {tf.paidDateFutureLegacyWarning}
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+            </div>
+          )}
+          </ModalFormSection>
+
+          {/* ── Seção 3: Mais detalhes ─────────────────────────────────────
+              Opcionais: centro de custo, observações, comprovantes. */}
+          <ModalFormSection
+            title={tf.sections.moreDetails}
+            collapsible
+            defaultOpen={isEditing || !!defaults.cost_center_id || !!(defaults.notes && defaults.notes.trim())}
+          >
+            {/* Centro de custo — SEMPRE opcional. Só aparece pra quem usa: sem
+                nenhum centro ativo cadastrado, o campo nem é renderizado (não
+                poluir o form de quem não organiza por obra/projeto). A exceção é
+                editar um lançamento que JÁ tem centro: aí ele aparece mesmo que o
+                centro tenha sido desativado depois. */}
+            {showCostCenter && (
+              <FormField control={form.control} name="cost_center_id" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{fin.costCenters.fieldLabel}</FormLabel>
+                  <CostCenterSelect
+                    value={field.value ?? null}
+                    onValueChange={(v) => field.onChange(v)}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
+
+            {/* Notes */}
+            <FormField control={form.control} name="notes" render={({ field }) => (
+              <FormItem className="lg:col-span-2">
+                <FormLabel>{tf.notesLabel}</FormLabel>
+                <FormControl><Textarea placeholder={tf.notesPlaceholder} rows={2} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
+            {/* Anexos múltiplos */}
+            <div className="lg:col-span-2">
+              <AttachmentsSection
+                isEditing={isEditing}
+                transactionId={transaction?.id}
+                pendingFiles={pendingFiles}
+                setPendingFiles={setPendingFiles}
+                installmentCount={effectiveInstallmentCountUi}
+              />
+            </div>
+          </ModalFormSection>
+
+          {/* ── Seção 4: Parcelas ──────────────────────────────────────────
+              Este modal só parcela (não tem recorrência — quem repete é a
+              Conta a Pagar/Receber, no ContaFormDialog). */}
+          <ModalFormSection
+            title={tf.sections.installments}
+            collapsible
+            grid={false}
+            defaultOpen={isEditingInstallmentGroup || !!((transaction as any)?.installment_total > 1)}
+          >
             {(() => {
               const originalInstallmentTotal = (transaction as any)?.installment_total;
               // Edição de PARCELA: selo read-only, sempre. Trocar a forma de
@@ -1494,101 +1658,22 @@ export function TransactionFormDialog({
                 )} />
               );
             })()}
-          </div>
 
-          {/* Installment info — shown for non-card transactions only (card gets breakdown above).
-              Vale também na edição "à vista → parcelada" (transação JÁ parcelada nunca chega aqui
-              porque o campo vira badge read-only). */}
-          {!isEditingInstallmentGroup && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (
-            <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
-              {tf.installmentInfo
-                .replace('{count}', String(form.watch('installment_count')))
-                .replace('{amount}', formatMoney(
-                  (form.watch('amount') || 0) / (form.watch('installment_count') || 1),
-                  currency,
-                  locale,
-                ))}
-            </p>
-          )}
-
-          {/* Crédito parcelado em RECEITA: como o cliente paga ≠ como o dinheiro
-              entra. Sem escolha, o salvar fica bloqueado (decisão do CEO: a
-              pergunta é feita toda vez, sem opção pré-marcada). */}
-          {askCardReceiptMode && (
-            <CardReceiptModeSection
-              form={form}
-              installmentCount={watchedInstallmentCount}
-              totalAmount={form.watch('amount') ?? 0}
-              transactionDate={form.watch('transaction_date') ?? ''}
-            />
-          )}
-
-          {/* Notes */}
-          <FormField control={form.control} name="notes" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{tf.notesLabel}</FormLabel>
-              <FormControl><Textarea placeholder={tf.notesPlaceholder} rows={2} {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-
-          {/* Anexos múltiplos */}
-          <AttachmentsSection
-            isEditing={isEditing}
-            transactionId={transaction?.id}
-            pendingFiles={pendingFiles}
-            setPendingFiles={setPendingFiles}
-            installmentCount={effectiveInstallmentCountUi}
-          />
-
-          {/* Is Paid toggle — hidden for credit card expenses (always committed) */}
-          {!(isCardAccount && transactionType === 'saida') && (
-            <div className="rounded-lg border border-border divide-y divide-border">
-              <FormField control={form.control} name="is_paid" render={({ field }) => (
-                <FormItem className="flex items-center justify-between p-3">
-                  <div>
-                    <FormLabel className="!mt-0 font-medium">
-                      {isEntrada ? tf.isPaidLabelRevenue : tf.isPaidLabelExpense}
-                    </FormLabel>
-                    <p className="text-xs text-muted-foreground">
-                      {field.value
-                        ? (isEntrada ? tf.isPaidDescReceivedTrue : tf.isPaidDescPaidTrue)
-                        : (isEntrada ? tf.isPaidDescReceivedFalse : tf.isPaidDescPaidFalse)
-                      }
-                    </p>
-                  </div>
-                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                </FormItem>
-              )} />
-
-              {/* Data do pagamento — só com o switch ligado.
-                  O mês em que o dinheiro se move é o que manda no regime de
-                  Caixa da DRE. Sem perguntar, uma conta de janeiro baixada em
-                  março voltava pra janeiro e mexia num mês já fechado. */}
-              {isPaid && (
-                <FormField control={form.control} name="paid_date" render={({ field }) => (
-                  <FormItem className="p-3">
-                    <FormLabel>{isEntrada ? tf.paidDateLabelRevenue : tf.paidDateLabelExpense}</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        min={dateInputMin}
-                        max={dateInputMax}
-                        {...field}
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          paidDateTouched.current = true;
-                          field.onChange(e);
-                        }}
-                      />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">{tf.paidDateHint}</p>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              )}
-            </div>
-          )}
+            {/* Installment info — shown for non-card transactions only (card gets breakdown above).
+                Vale também na edição "à vista → parcelada" (transação JÁ parcelada nunca chega aqui
+                porque o campo vira badge read-only). */}
+            {!isEditingInstallmentGroup && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (
+              <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
+                {tf.installmentInfo
+                  .replace('{count}', String(form.watch('installment_count')))
+                  .replace('{amount}', formatMoney(
+                    (form.watch('amount') || 0) / (form.watch('installment_count') || 1),
+                    currency,
+                    locale,
+                  ))}
+              </p>
+            )}
+          </ModalFormSection>
 
         </form>
       </Form>

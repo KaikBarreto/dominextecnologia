@@ -14,7 +14,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInBrazil, isPaidDateAllowed } from '@/lib/today-brazil';
 
 export interface ReceivePaymentResult {
   account_id: string;
@@ -187,10 +187,14 @@ export function ReceivePaymentModal({
 
   const novoVencimentoInvalido = isPartial && !novoVencimento;
 
+  // "Já foi recebido" é sempre passado: não existe recebimento no futuro.
+  const paidDateInvalid = !isPaidDateAllowed(paidDate);
+
   const handleSubmit = async () => {
     if (!accountId) return;
     if (valorInvalido) return;
     if (novoVencimentoInvalido) return;
+    if (paidDateInvalid) return;
 
     await onConfirm({
       account_id: accountId,
@@ -212,7 +216,7 @@ export function ReceivePaymentModal({
       </Button>
       <Button
         onClick={handleSubmit}
-        disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido}
+        disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido || paidDateInvalid}
         className="bg-success hover:bg-success/90 text-white"
       >
         {isSubmitting ? t.confirmingLabel : t.confirmLabel}
@@ -269,7 +273,13 @@ export function ReceivePaymentModal({
           </div>
           <div>
             <Label>{t.receivedDateLabel}</Label>
-            <Input type="date" value={paidDate} onChange={e => setPaidDate(e.target.value)} />
+            {/* "Já foi recebido" é sempre passado. `max` barra o calendário
+                nativo; o disabled do botão Confirmar é quem garante de
+                verdade, porque dá pra digitar a data manualmente. */}
+            <Input type="date" max={todayInBrazil()} value={paidDate} onChange={e => setPaidDate(e.target.value)} />
+            {paidDateInvalid && (
+              <p className="text-xs text-destructive mt-1">{t.validations.dateFuture}</p>
+            )}
           </div>
         </div>
 

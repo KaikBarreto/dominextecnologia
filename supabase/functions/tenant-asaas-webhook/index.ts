@@ -172,6 +172,20 @@ async function recordOrphan(supabase: any, event: string, payment: any) {
   }
 }
 
+/**
+ * A cobrança é uma PARCELA de uma venda parcelada no cartão? A Asaas manda
+ * `payment.installment` (id do agrupamento) em TODAS as parcelas, inclusive
+ * a 1ª — é o único sinal confiável no payload de que `payment.value`/
+ * `payment.netValue` deste evento são de UMA parcela, não da venda inteira.
+ * Espelhado (mesma lógica) em `src/lib/asaasWebhookMoney.ts` pra ter
+ * cobertura de teste via vitest (este arquivo é Deno, fora do vitest).
+ */
+export function isInstallmentPaymentEvent(
+  payment: { installment?: unknown } | null | undefined,
+): boolean {
+  return typeof payment?.installment === "string" && payment.installment.length > 0;
+}
+
 /** Mapeia o status Asaas de uma assinatura pro status local de tenant_subscriptions. */
 function mapSubscriptionStatus(event: string, asaasStatus: string): string | null {
   const s = (asaasStatus || "").toUpperCase();
@@ -506,13 +520,48 @@ async function processEvent(
       // mas ainda é uma quitação → mesma baixa idempotente por asaas_payment_id.
       const paidAt =
         payment.paymentDate || payment.confirmedDate || new Date().toISOString();
-      const net = payment.netValue != null ? Number(payment.netValue) : null;
+      // [BUG financeiro real, 2026-09] Cartão PARCELADO: a Asaas cria um
+      // `payment.id` DIFERENTE por parcela (todas com `payment.installment`
+      // = o mesmo id de agrupamento), mas `tenant_charges.asaas_payment_id`
+      // só guarda o id da 1ª parcela (é o que a Asaas devolve na criação —
+      // ver tenant-asaas-create-charge). `payment.value`/`payment.netValue`
+      // de CADA evento são o valor/líquido DAQUELA PARCELA, nunca da venda
+      // inteira — mas `apply_tenant_charge_payment` compara o líquido
+      // recebido contra `tenant_charges.value` (o TOTAL). Resultado real:
+      // venda de R$3.133,00 em 10x, líquido da parcela 1 = R$303,90 →
+      // "tarifa" lançada = R$2.829,10 (90% do valor) na categoria Tarifas e
+      // Taxas — quase tudo virou "taxa" em vez de só a diferença real.
+      // Fix: nunca usar netValue de um evento de parcela como base do fee
+      // automático (passa p_net=null → RPC não lança tarifa nenhuma pra
+      // este evento). Reconciliar o fee real de vendas parceladas exige
+      // rastrear TODAS as parcelas (hoje só a 1ª existe em tenant_charges) —
+      // fora do escopo deste hotfix; ver nota devolvida ao Tech Lead.
+      const isInstallmentPayment = isInstallmentPaymentEvent(payment);
+      const net = !isInstallmentPayment && payment.netValue != null
+        ? Number(payment.netValue)
+        : null;
+      if (isInstallmentPayment) {
+        console.warn(
+          `[tenant-webhook] pagamento de PARCELA (${payment.id}, installment ${payment.installment}, ` +
+          `nº ${payment.installmentNumber ?? "?"}) — pulando lançamento automático de tarifa ` +
+          `(netValue da parcela não representa o líquido da venda inteira).`,
+        );
+      }
       const { data, error } = await supabase.rpc("apply_tenant_charge_payment", {
         p_asaas_payment_id: payment.id,
         p_paid_at: paidAt,
         p_net: net,
       });
       if (error) throw new Error(error.message);
+      if (data && typeof data === "object" && (data as Record<string, unknown>).ok === false) {
+        // Provável parcela 2+ de uma venda parcelada: o payment.id dela nunca
+        // existiu em tenant_charges (só a 1ª parcela foi gravada na criação).
+        // Não é erro de re-entrega — ack e loga alto pra não ficar invisível.
+        console.warn(
+          `[tenant-webhook] apply_tenant_charge_payment não encontrou a cobrança (${payment.id}) — ` +
+          `evento aceito sem efeito. Resultado: ${JSON.stringify(data)}`,
+        );
+      }
       console.log(`[tenant-webhook] baixa aplicada ${payment.id}:`, JSON.stringify(data));
     } else if (
       event === "PAYMENT_REFUNDED" ||
