@@ -154,7 +154,14 @@ export function EquipmentChecklistHeader({
         // a cor da paleta (token no preenchimento, slate no relatório).
         <div className="relative z-10 shrink-0 mt-0.5">{leadingIcon}</div>
       ) : hidePhoto ? null : photo ? (
-        <div className="relative z-10 w-14 self-stretch shrink-0 overflow-hidden rounded-md">
+        /* `data-pdf-gallery`: este wrapper tem largura fixa (w-14) e
+           `overflow-hidden`, e a <img> dentro dele é ABSOLUTA. O renderer do PDF
+           infla toda <img> do clone pra até 480x340 com `!important`. Aqui o pai
+           recorta em vez de deixar transbordar, então a foto do equipamento sairia
+           no documento como um pedaço ampliado do canto, e não enquadrada. O
+           marcador faz o `enlargeThumb` PULAR esta imagem (mesmo motivo das fotos
+           de cliente e técnico no OSReport). Na tela o atributo é inerte. */
+        <div data-pdf-gallery className="relative z-10 w-14 self-stretch shrink-0 overflow-hidden rounded-md">
           <SignedImg
             src={photo}
             alt={name}

@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.21',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'As fotos do checklist pararam de ficar por cima das perguntas no PDF da ordem de serviço',
+        description: 'Este é o mais importante desta atualização. Ao baixar o PDF de uma ordem de serviço, as fotos que o técnico anexou às respostas do checklist saíam esticadas por cima das perguntas seguintes, cada uma de um tamanho, deixando o documento embaralhado e difícil de entender. Agora toda foto sai no mesmo tamanho, inteira, sem cortar nada da imagem, e sempre logo abaixo da pergunta a que ela pertence. A pergunta e as fotos dela nunca se separam entre uma página e outra, e sobra bem menos espaço em branco no fim das páginas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Foto anexada a uma resposta de Conforme, Sim ou Não, ou a uma medição, voltou a aparecer',
+        description: 'Quando o técnico respondia Conforme, Não Conforme, Sim, Não ou registrava uma medição e anexava uma foto junto, a foto não aparecia no relatório nem no PDF. Ela ficava guardada, mas ninguém via. Agora aparece normalmente, na tela e no documento.',
+        category: 'correcao',
+      },
+      {
+        title: 'PDF gerado pelo celular agora sai com todas as fotos',
+        description: 'Quem baixava o PDF direto do celular recebia um documento sem nenhuma foto do checklist e com páginas quebradas no meio de uma resposta. Agora o PDF sai igual ao do computador, com todas as fotos e as quebras de página no lugar certo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Foto do técnico e do cliente saem enquadradas no PDF',
+        description: 'No topo do relatório, a foto redonda do técnico e a foto do cliente apareciam como um pedaço ampliado e irreconhecível da imagem. Agora saem enquadradas, do mesmo jeito que você vê na tela.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.20',
     date: '16 de setembro de 2026',
     type: 'patch',

@@ -8,8 +8,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
-import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
-import { cn } from '@/lib/utils';
 import { formatSignatureStamp } from '@/lib/signatureStamp';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +22,8 @@ import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG, REPORT_HEADER_DARK_GRADIENT } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
 import { ReportPmocChecklist, pmocGroupKeysFor } from './ReportPmocChecklist';
+import { ReportPhotoGrid } from './ReportPhotoGrid';
+import { PdfModeProvider } from './pdfMode';
 import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
 import { ContractInfoCard } from './ContractInfoCard';
 import type { ReportChecklistItem } from './ReportChecklist';
@@ -147,31 +147,6 @@ const GENERAL_KEY = '__geral__';
 
 // Helper to safely extract joined object (Supabase may return array for some joins)
 const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
-
-function ReportImage({ src, alt, className, onClick, wrapperClassName, errorLabel }: { src: string; alt: string; className?: string; onClick?: () => void; wrapperClassName?: string; errorLabel?: string }) {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
-  return (
-    <div className={wrapperClassName || 'relative inline-block'}>
-      {!loaded && !error && (
-        <div className={cn('bg-slate-200 animate-pulse rounded-md', className?.replace(/cursor-pointer|hover:opacity-80|transition-opacity/g, '') || 'w-20 h-20')} />
-      )}
-      <img
-        src={src}
-        alt={alt}
-        className={cn(className, !loaded && 'absolute opacity-0')}
-        onClick={onClick}
-        onLoad={() => setLoaded(true)}
-        onError={() => setError(true)}
-      />
-      {error && (
-        <div className={cn('bg-slate-100 rounded-md flex items-center justify-center text-xs text-slate-400', className?.replace(/cursor-pointer|hover:opacity-80|transition-opacity/g, '') || 'w-20 h-20')}>
-          {errorLabel ?? 'Err.'}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup, registerPmocOpener, stickyTopPx, isPmoc = false }: OSReportProps) {
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
@@ -935,45 +910,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                     <p className="text-sm text-slate-600 break-words">{response.response_value}</p>
                   )
                 )}
-                {hasPhoto && (() => {
-                  const urls = response.response_photo_url!.split(',').filter(Boolean).map(u => u.trim());
-                  const openFullscreen = (i: number) => { setGalleryImages(urls); setGalleryIndex(i); setPreviewImage(urls[i]); };
-                  return (
-                    <>
-                      {/* Mobile-tela: carrossel (foto grande, swipe). Escondido no desktop e SEMPRE no print
-                          pra impressão/PDF nunca perder foto — o grid abaixo cobre esses casos. */}
-                      <div className="md:hidden print:hidden">
-                        <PhotoCarousel
-                          urls={urls}
-                          onOpen={openFullscreen}
-                          renderImage={(url, alt, imgClassName) => (
-                            <ReportImage src={url} alt={alt} className={imgClassName} wrapperClassName="block w-full h-full" errorLabel={tR.imgError} />
-                          )}
-                        />
-                      </div>
-                      {/* Desktop-tela + SEMPRE no print: grid com TODAS as fotos visíveis (como antes).
-                          Na TELA do desktop as fotos são MAIORES e adaptativas à largura da coluna
-                          (largura % com min/max → ~2-4 por linha conforme o espaço, nunca minúsculas).
-                          No PDF (Baixar → html2canvas, `generating`) e na impressão (`print:`) voltam
-                          ao 80px fixo de sempre pra não mexer na paginação do documento. */}
-                      <div className="hidden md:flex print:flex flex-wrap gap-2">
-                        {urls.map((url, i) => (
-                          <ReportImage
-                            key={i}
-                            src={url}
-                            alt="photo"
-                            wrapperClassName={`relative ${generating ? 'w-20 h-20' : 'w-20 h-20 md:w-[30%] md:min-w-[120px] md:max-w-[220px] md:h-auto md:aspect-square print:!w-20 print:!h-20 print:!min-w-0 print:!max-w-none print:!aspect-auto'}`}
-                            className="w-full h-full object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => openFullscreen(i)}
-                            errorLabel={tR.imgError}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  );
-                })()}
               </>
             )}
+            {/* Fotos anexadas à resposta. IRMÃO da cadeia de `question_type` (e
+                não filho do último `else`): antes, resposta de conformidade,
+                sim/não, numérica ou medição PMOC com foto anexada NUNCA mostrava
+                a foto — nem na tela nem no PDF (o cliente VS PROJECT viu só o
+                selo). Vídeo + foto na mesma resposta também se perdia. */}
+            {hasPhoto && (() => {
+              const urls = response.response_photo_url!.split(',').filter(Boolean).map(u => u.trim());
+              const openFullscreen = (i: number) => { setGalleryImages(urls); setGalleryIndex(i); setPreviewImage(urls[i]); };
+              return <ReportPhotoGrid urls={urls} onOpen={openFullscreen} errorLabel={tR.imgError} />;
+            })()}
           </div>
         </div>
       </div>
@@ -990,6 +938,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           arredondamento das pontas vem do `rounded-lg` (canto externo) + um
           wrapper de clip SÓ no cabeçalho colorido (sibling do conteúdo, não
           ancestral do sticky). PDF/Imprimir não dependem de sticky. */}
+      {/* `generating` vira contexto: o grid de fotos lá no fundo do accordion do
+          PMOC precisa saber que está sendo clonado pro PDF (o html2canvas não
+          avalia `print:` e as media queries `md:` medem a JANELA, não o clone de
+          794px). Sem isso, PDF gerado do celular sai sem nenhuma foto. */}
+      <PdfModeProvider value={generating}>
       <div ref={reportRef} data-pdf-margins className="bg-white text-black rounded-lg print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         {/* Wrapper de clip do cabeçalho: arredonda só as pontas de cima sem criar
             um overflow-clip que alcance o conteúdo (sticky) abaixo. */}
@@ -1020,8 +973,17 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               </h3>
               <div className="flex gap-3">
                 {serviceOrder.customer?.photo_url && (
+                  /* `data-pdf-gallery`: o renderer do PDF infla TODA <img> do clone
+                     pra até 480x340 com `!important`. Aqui o pai é um quadrado fixo
+                     com `overflow-hidden`, então em vez de transbordar ele RECORTA,
+                     e a foto do cliente saía no PDF como um pedaço ampliado do canto
+                     superior esquerdo. (A rede de segurança do renderer só desfaz a
+                     ampliação quando o pai tem `overflow: visible`, de propósito.)
+                     Com o marcador, o `enlargeThumb` PULA esta imagem e o
+                     `object-cover` do próprio CSS enquadra certo. NÃO remover. */
                   <button
                     type="button"
+                    data-pdf-gallery
                     className="w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-lg border border-slate-200 shrink-0 transition-opacity hover:opacity-80"
                     onClick={() => setPreviewImage(serviceOrder.customer.photo_url)}
                   >
@@ -1180,8 +1142,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 {serviceOrder.check_in_time && (
                   <div className="flex items-start gap-3">
                     {technicianInfo?.photo_url && (
+                      /* `data-pdf-gallery`: mesmo caso da foto do cliente acima.
+                         Pai redondo de 48px com `overflow-hidden`, a ampliação do
+                         renderer virava um recorte ampliado do canto da foto. */
                       <button
                         type="button"
+                        data-pdf-gallery
                         className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 shrink-0 mt-0.5 transition-opacity hover:opacity-80"
                         onClick={() => setPreviewImage(technicianInfo.photo_url!)}
                       >
@@ -1220,8 +1186,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 {!partialReport && serviceOrder.check_out_time && (
                   <div className="flex items-start gap-3">
                     {technicianInfo?.photo_url && (
+                      /* `data-pdf-gallery`: mesmo caso da foto do cliente acima.
+                         Pai redondo de 48px com `overflow-hidden`, a ampliação do
+                         renderer virava um recorte ampliado do canto da foto. */
                       <button
                         type="button"
+                        data-pdf-gallery
                         className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 shrink-0 mt-0.5 transition-opacity hover:opacity-80"
                         onClick={() => setPreviewImage(technicianInfo.photo_url!)}
                       >
@@ -1517,6 +1487,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
         </div>
       </div>
+      </PdfModeProvider>
 
       {/* Ações do relatório (mobile/tablet). Quando NÃO há rodapé fixo desktop
           ligado (uso fora da tela de OS), mantém os botões inline. Com o rodapé

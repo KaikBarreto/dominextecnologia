@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { ListChecks, Check, X, MinusCircle, HelpCircle, Gauge, CheckCircle2, ClipboardCheck } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SignedImg } from '@/components/ui/SignedImg';
+import { ReportPhotoGrid } from './ReportPhotoGrid';
 import { cn } from '@/lib/utils';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { visitTypeFromFreqs } from '@/hooks/useOsActivityChecklist';
@@ -236,17 +237,21 @@ function PmocItemCard({
       )}
 
       {item.photos.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {item.photos.map((url, i) => (
-            <SignedImg
-              key={i}
-              src={url}
-              alt="Foto da atividade"
-              className="rounded-md h-20 w-20 object-cover border border-slate-200 cursor-pointer"
-              onClick={() => onPreviewPhoto?.(url, item.photos, i)}
-            />
-          ))}
-        </div>
+        // MESMA fonte de fotos do checklist personalizado (ReportPhotoGrid) pra
+        // que PMOC e questionário saiam idênticos no documento: tile fixo 176px,
+        // `object-contain` (não corta) e `data-pdf-gallery` (o renderer do PDF
+        // não infla a imagem por cima do texto).
+        // `renderImage` mantém o SignedImg: ele resolve URL assinada de bucket
+        // privado e tem placeholder próprio de imagem indisponível — trocar por
+        // um <img> cru seria uma regressão silenciosa se a foto vier de bucket
+        // fechado.
+        <ReportPhotoGrid
+          urls={item.photos}
+          onOpen={(i) => onPreviewPhoto?.(item.photos[i], item.photos, i)}
+          renderImage={(url, alt, className) => (
+            <SignedImg src={url} alt={alt} className={className} />
+          )}
+        />
       )}
     </div>
   );
@@ -453,6 +458,12 @@ function ReportPmocItem({
       )}
       <AccordionTrigger
         ref={triggerRef}
+        // Bloco atômico do PDF: o título do equipamento/checklist (ex.
+        // "Instalação de Split") nunca é fatiado ao meio entre duas páginas.
+        // Tem que ficar AQUI, no cabeçalho (pequeno), e não no AccordionItem:
+        // o grupo inteiro é bem maior que uma página e o renderer ignora blocos
+        // que não cabem (guarda `boxHeight <= usableHeight`).
+        data-pdf-keep
         // MESMO cabeçalho do preenchimento (EquipmentChecklistHeader), só que na
         // variante 'document' (documento branco, slate, print estático). Classes
         // sticky + full-bleed vêm da fonte ÚNICA compartilhada.
