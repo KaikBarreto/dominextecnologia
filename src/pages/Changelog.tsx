@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.23',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lançar a receita na hora de concluir a Ordem de Serviço',
+        description: 'Quando um serviço gerava dinheiro, era preciso concluir a OS, sair, entrar no Financeiro e digitar tudo de novo. Agora existe uma opção nas Configurações que faz o sistema perguntar, na hora de concluir: "Houve alguma receita nesta Ordem de Serviço?". Respondendo que sim, o lançamento abre já preenchido com o cliente e o valor do serviço, e a receita fica amarrada àquela OS. A própria OS passa a mostrar quanto ela faturou. Respondendo que não, a OS fecha normalmente, como sempre. A opção nasce desligada: para usar, ligue em Configurações, na seção Usabilidade. E como isso envolve dinheiro, quem vê a pergunta é só quem tiver a permissão nova "Lançar Receita ao Finalizar OS" — marque em Usuários para quem deve poder lançar. O técnico em campo, sem essa permissão, continua concluindo a OS como antes.',
+        category: 'recurso',
+      },
+      {
+        title: 'Os avisos do sistema não cobrem mais as janelas',
+        description: 'Aqueles avisos verdes e vermelhos que aparecem no canto da tela às vezes ficavam por cima de uma janela aberta, tapando justamente o que você precisava ler, principalmente no celular. Agora, sempre que houver uma janela aberta, o aviso sai da frente sozinho e aparece no topo da tela. Ele continua visível, só não atrapalha mais.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.22',
     date: '16 de setembro de 2026',
     type: 'patch',
