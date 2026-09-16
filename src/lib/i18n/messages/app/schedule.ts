@@ -68,6 +68,8 @@ export const schedule = {
       legendButton: 'Legenda',
       legendTitle: 'Legenda — Tipos de Serviço',
       holiday: 'Feriado',
+      showMore: '+{count} mais',
+      showLess: 'mostrar menos',
     },
     movingOrder: {
       hint: 'Toque no horário para mover a OS',
@@ -246,6 +248,8 @@ export const schedule = {
       legendButton: 'Legend',
       legendTitle: 'Legend — Service Types',
       holiday: 'Holiday',
+      showMore: '+{count} more',
+      showLess: 'show less',
     },
     movingOrder: {
       hint: 'Tap a time slot to move the WO',
@@ -424,6 +428,8 @@ export const schedule = {
       legendButton: 'Leyenda',
       legendTitle: 'Leyenda — Tipos de Servicio',
       holiday: 'Festivo',
+      showMore: '+{count} más',
+      showLess: 'mostrar menos',
     },
     movingOrder: {
       hint: 'Toque el horario para mover la OS',
@@ -602,6 +608,8 @@ export const schedule = {
       legendButton: 'Légende',
       legendTitle: 'Légende — Types de service',
       holiday: 'Jour férié',
+      showMore: `+{count} de plus`,
+      showLess: 'afficher moins',
     },
     movingOrder: {
       hint: "Appuyez sur l'heure pour déplacer l'OS",

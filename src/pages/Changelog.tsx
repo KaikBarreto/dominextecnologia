@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.27',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A legenda da Agenda não toma mais a tela inteira',
+        description: 'Em empresas com muitos tipos de serviço cadastrados, a legenda da Agenda no computador virava um paredão de etiquetas coloridas e o calendário ficava espremido. Agora ela mostra as primeiras etiquetas e, ao lado, um botão com quantas sobraram, como "+12 mais". Um clique abre todas, outro recolhe. No celular a legenda continua no botão de sempre.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criar oportunidade no CRM direto da ficha do cliente',
+        description: 'A ação de gerar uma oportunidade no CRM só existia na lista de clientes. Quem já estava dentro da ficha de um cliente precisava voltar para a lista. Agora ela também aparece no menu "Ações" da ficha, já com o cliente preenchido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Rótulos colados nas opções de duração',
+        description: 'Na criação de tarefa com repetição e na assinatura do Financeiro, a palavra "Duração" aparecia grudada na opção ao lado, formando uma frase sem sentido. Os rótulos voltaram para o lugar certo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.26',
     date: '16 de setembro de 2026',
     type: 'patch',
