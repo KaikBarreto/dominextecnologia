@@ -3961,6 +3961,7 @@ export type Database = {
           payroll_period: string | null
           receipt_url: string | null
           service_order_id: string | null
+          supplier_id: string | null
           tenant_charge_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -4002,6 +4003,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          supplier_id?: string | null
           tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -4043,6 +4045,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          supplier_id?: string | null
           tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
@@ -4125,6 +4128,13 @@ export type Database = {
             columns: ["service_order_id"]
             isOneToOne: false
             referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
           {

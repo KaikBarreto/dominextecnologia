@@ -39,6 +39,34 @@ describe('buildInstallmentRows', () => {
     expect(rows.every((r) => r.company_id === 'co-1')).toBe(true);
   });
 
+  it('TODAS as parcelas herdam o mesmo supplier_id (mesma regra do customer_id)', () => {
+    const plan = buildInstallmentPlan('2026-01-31', 1200, 4);
+    const { rows } = buildInstallmentRows({
+      rest: { ...baseRest, supplier_id: 'fornecedor-compressores' },
+      plan,
+      groupId: 'grp-supplier',
+      companyId: 'co-1',
+      isCardInstallment: false,
+      billDateFor: () => undefined,
+    });
+
+    expect(rows).toHaveLength(4);
+    expect(rows.every((r) => r.supplier_id === 'fornecedor-compressores')).toBe(true);
+  });
+
+  it('sem fornecedor, nenhuma parcela inventa um (null, não string vazia)', () => {
+    const plan = buildInstallmentPlan('2026-03-15', 300, 3);
+    const { rows } = buildInstallmentRows({
+      rest: { ...baseRest, supplier_id: '' },
+      plan,
+      groupId: 'grp-supplier-vazio',
+      companyId: 'co-1',
+      isCardInstallment: false,
+      billDateFor: () => undefined,
+    });
+    expect(rows.every((r) => r.supplier_id === null)).toBe(true);
+  });
+
   it('parcela de CARTÃO também herda o centro, e nenhuma nasce paga', () => {
     const plan = buildInstallmentPlan('2026-01-31', 1200, 3);
     const { rows, billMonths } = buildInstallmentRows({

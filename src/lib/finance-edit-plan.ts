@@ -190,6 +190,12 @@ export function planTransactionEdit(args: {
  */
 export const CARRIED_OVER_LINK_FIELDS = [
   'customer_id',
+  // Fornecedor virou campo do formulário junto com o cliente (nunca chega
+  // aqui vazio por "o form não conhecer o campo"), mas entra na mesma rede de
+  // segurança: se o `replace` (troca de forma de pagamento) rodar com
+  // `supplier_id` vazio por qualquer motivo, herda da transação original em
+  // vez de apagar o vínculo em silêncio.
+  'supplier_id',
   'service_order_id',
   'contract_id',
   'employee_id',

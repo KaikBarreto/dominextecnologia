@@ -20,6 +20,8 @@ import { CategoryFormDialog } from './CategoryFormDialog';
 import { AccountFormDialog } from './AccountFormDialog';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { useCustomers } from '@/hooks/useCustomers';
+import { SupplierSelectField } from '@/components/financial/SupplierSelectField';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -135,6 +137,13 @@ function makeTransactionSchema(
     account_id: z.string().min(1, v.accountRequired),
     // Cliente é SEMPRE opcional aqui: nem toda receita/despesa tem dono.
     customer_id: z.string().optional(),
+    // Fornecedor é SEMPRE opcional, pelo mesmo motivo do cliente. Os dois
+    // campos convivem SEMPRE visíveis (não alternam por tipo): o campo
+    // Cliente já era mostrado em receita E despesa antes deste campo existir
+    // (reembolso a cliente é despesa com dono, por exemplo), então condicionar
+    // por tipo quebraria esse uso já em produção. Ver nota grande mais abaixo,
+    // perto do JSX dos dois campos.
+    supplier_id: z.string().optional(),
     // Centro de custo é SEMPRE opcional — nenhum lançamento passa a exigir.
     cost_center_id: z.string().nullable().optional(),
     credit_card_bill_date: z.string().optional(),
@@ -733,6 +742,9 @@ export function TransactionFormDialog({
   // Mesmo filtro do ContaFormDialog: cliente excluído some da lista.
   const { customers } = useCustomers();
   const activeCustomers = useMemo(() => (customers || []).filter((c: any) => !c.is_deleted), [customers]);
+  // Fornecedor não tem soft-delete (tabela `suppliers` não tem `is_deleted`),
+  // então a lista inteira entra sem filtro — diferente do cliente de propósito.
+  const { suppliers } = useSuppliers();
   const { toast } = useToast();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
@@ -821,6 +833,7 @@ export function TransactionFormDialog({
       installment_count: 1,
       account_id: (transaction as any)?.account_id ?? lastAccountId,
       customer_id: (transaction as any)?.customer_id ?? '',
+      supplier_id: (transaction as any)?.supplier_id ?? '',
       cost_center_id: transaction?.cost_center_id ?? null,
       // Decisão do CEO: nunca nasce marcado. Sem padrão, sem preferência salva.
       card_receipt_mode: undefined,
@@ -1045,6 +1058,11 @@ export function TransactionFormDialog({
         // este campo chega vazio é que `carryOverTransactionLinks`
         // (src/lib/finance-edit-plan.ts) herda o cliente da linha anterior.
         customer_id: data.customer_id || null,
+        // Mesma regra do cliente: vazio vira `null`, nunca some do payload. Os
+        // dois vínculos (cliente e fornecedor) SEMPRE viajam juntos, mesmo que
+        // só um esteja preenchido — nenhum é descartado por causa do tipo da
+        // transação (ver nota no JSX).
+        supplier_id: data.supplier_id || null,
         cost_center_id: data.cost_center_id || null,
         credit_card_bill_date: data.credit_card_bill_date || null,
         // ── vínculos do prefill ────────────────────────────────────────────
@@ -1330,11 +1348,19 @@ export function TransactionFormDialog({
             )} />
           )}
 
-          {/* Cliente vinculado — SEMPRE opcional. Nem toda receita/despesa tem
-              dono, mas quando tem (ex: recebimento avulso fora de contrato/OS),
-              o financeiro do cliente precisava desse vínculo pra aparecer na
-              ficha dele. Mesmo componente do "Cliente vinculado" do
-              ContaFormDialog (Contas a Pagar/Receber): busca + "+" colado. */}
+          {/* Cliente e Fornecedor vinculados — os DOIS campos ficam SEMPRE
+              visíveis, sem alternar por tipo (receita/despesa).
+              Por quê: o campo Cliente já era mostrado em receita E despesa
+              ANTES deste form ganhar Fornecedor (ex.: reembolso a um cliente é
+              uma despesa com dono). Escondê-lo em despesa seria regressão de
+              um uso já em produção. Manter os dois sempre visíveis também
+              elimina de raiz o risco de "troquei o tipo e o vínculo que eu
+              tinha escolhido sumiu sem eu perceber": nada nunca é escondido
+              nem limpo automaticamente por causa do tipo, então nenhum vínculo
+              preenchido é descartado em silêncio (nem escondido, nem apagado)
+              quando o usuário muda entre Receita e Despesa.
+              Mesmo componente/padrão do "Cliente vinculado" do ContaFormDialog
+              (Contas a Pagar/Receber): busca + "+" colado. */}
           <FormField control={form.control} name="customer_id" render={({ field }) => (
             <FormItem>
               <FormLabel>{tf.customerLabel}</FormLabel>
@@ -1344,6 +1370,21 @@ export function TransactionFormDialog({
                 onValueChange={field.onChange}
                 placeholder={tf.customerPlaceholder}
                 searchPlaceholder={tf.customerSearchPlaceholder}
+              />
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="supplier_id" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{tf.supplierLabel}</FormLabel>
+              <SupplierSelectField
+                suppliers={suppliers}
+                value={field.value || ''}
+                onValueChange={field.onChange}
+                placeholder={tf.supplierPlaceholder}
+                searchPlaceholder={tf.supplierSearchPlaceholder}
+                createAriaLabel={tf.newSupplierAriaLabel}
               />
               <FormMessage />
             </FormItem>

@@ -67,7 +67,7 @@ import { todayInBrazil } from '@/lib/today-brazil';
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 
-type PayrollTxn = FinancialTransaction & { customer?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
+type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
 
 interface FinanceContasProps {
   /** Transações já filtradas pelo período selecionado no parent. */
@@ -270,6 +270,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       fuzzyIncludes(t.description, search)
       || fuzzyIncludes(t.category, search)
       || fuzzyIncludes(t.customer?.name, search)
+      || fuzzyIncludes(t.supplier?.name, search)
       || fuzzyIncludes(t.employee?.name, search)
       || fuzzyIncludes(String(Number(t.amount)), search)
       || fuzzyIncludes(fmt(Number(t.amount)), search)
@@ -898,6 +899,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                         </span>
                         {t.employee && <span className="truncate">{t.employee.name}</span>}
                         {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
+                        {!t.employee && t.supplier && <span className="truncate">{t.supplier.name}</span>}
                       </div>
                       {partial && (
                         <span className="text-warning text-[11px]">
@@ -958,6 +960,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                           </p>
                           {t.employee && <p className="text-xs text-muted-foreground">{t.employee.name}</p>}
                           {!t.employee && t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
+                          {!t.employee && t.supplier && <p className="text-xs text-muted-foreground">{t.supplier.name}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">

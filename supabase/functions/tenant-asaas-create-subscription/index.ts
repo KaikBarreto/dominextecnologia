@@ -20,6 +20,13 @@
 // As cobranças de cada ciclo são criadas PELO ASAAS e chegam via webhook
 // (tenant-asaas-webhook), que materializa cada uma em tenant_charges + recebível.
 //
+// Duração (opcional): `max_payments` vira `maxPayments` no POST — número máximo
+// de cobranças que a Asaas vai gerar. Ausente = contínua (default de hoje). Ao
+// esgotar o limite a Asaas encerra a assinatura sozinha (status EXPIRED) e o
+// webhook já mapeia EXPIRED/INACTIVE → 'cancelled' local. NÃO persistimos o
+// valor em tenant_subscriptions (sem coluna pra isso; a Asaas é a fonte da
+// verdade e conta os ciclos por conta própria).
+//
 // Nunca retorna custo/margem interna. Nunca loga a chave.
 
 import { handleCors } from "../_shared/cors.ts";
@@ -136,6 +143,27 @@ interface CreateSubscriptionInput {
   credit_card?: CreditCardInput;
   credit_card_holder_info?: CreditCardHolderInfoInput;
   remote_ip?: string;
+  // Número máximo de ciclos (cobranças) gerados por esta assinatura. Ausente =
+  // contínua (Asaas gera indefinidamente até cancelar). Mapeia pra `maxPayments`
+  // no POST da Asaas. NÃO persistido em tenant_subscriptions (a Asaas é quem
+  // conta e encerra sozinha; o webhook já reflete EXPIRED/INACTIVE → cancelled).
+  max_payments?: number;
+}
+
+/** Teto de segurança pro número de ciclos (sanidade de input, não limite real da Asaas). */
+const MAX_PAYMENTS_CEILING = 999;
+
+/** Valida `max_payments`: inteiro positivo, opcional. */
+function validateMaxPayments(raw: unknown): { ok: true; value: number | null } | { ok: false; error: string } {
+  if (raw === undefined || raw === null || raw === '') return { ok: true, value: null };
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+    return { ok: false, error: "O número de ciclos deve ser um número inteiro maior que zero." };
+  }
+  if (n > MAX_PAYMENTS_CEILING) {
+    return { ok: false, error: `O número de ciclos não pode ser maior que ${MAX_PAYMENTS_CEILING}.` };
+  }
+  return { ok: true, value: n };
 }
 
 /** Nome determinístico do secret do token de cartão no Vault (por assinatura Asaas). */
@@ -321,6 +349,12 @@ async function handleRequest(req: Request): Promise<Response> {
     }
   }
 
+  const maxPaymentsCheck = validateMaxPayments(input.max_payments);
+  if (!maxPaymentsCheck.ok) {
+    return jsonResponse(req, { error: maxPaymentsCheck.error }, 400);
+  }
+  const maxPayments = maxPaymentsCheck.value;
+
   const inputDescription =
     typeof input.description === "string" && input.description.trim()
       ? input.description.trim().slice(0, 500)
@@ -489,6 +523,8 @@ async function handleRequest(req: Request): Promise<Response> {
         externalReference: companyId,
         ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
         ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
+        // Ausente = contínua (sem maxPayments a Asaas nunca para sozinha).
+        ...(maxPayments !== null ? { maxPayments } : {}),
         ...creditCardBody,
       });
     } catch (postErr) {

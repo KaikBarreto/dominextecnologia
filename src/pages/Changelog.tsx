@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.25',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura com prazo para acabar',
+        description: 'Uma assinatura recorrente só podia ser contínua: gerava cobranças até alguém cancelar na mão. Agora, ao criar, você escolhe entre "Contínua" e "Número de ciclos". Escolhendo o número, a assinatura se encerra sozinha depois daquela quantidade de cobranças. Vale para Pix, boleto, cartão e "cliente escolhe". No Pix Automático a opção não aparece, porque aquele formato não aceita prazo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Vincule uma receita ou despesa a um fornecedor',
+        description: 'Já dava para amarrar um lançamento a um cliente. Agora também dá para amarrar a um fornecedor, usando o mesmo cadastro que Compras e Estoque já usam. O campo aparece em Movimentações e em Contas a Pagar e Receber, com o "+" do lado para cadastrar um fornecedor novo sem sair da tela. O fornecedor aparece nas listagens e a busca encontra o lançamento pelo nome dele. Apagar um fornecedor nunca apaga o lançamento: ele continua lá, só sem o vínculo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.24.24',
     date: '16 de setembro de 2026',
     type: 'patch',

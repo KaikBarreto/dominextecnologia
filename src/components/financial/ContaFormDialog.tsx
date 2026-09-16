@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useFinancial, type TransactionInput } from '@/hooks/useFinancial';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { SupplierSelectField } from '@/components/financial/SupplierSelectField';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { addMonths, addWeeks, addYears, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -15,6 +16,7 @@ import type { TransactionType, FinancialTransaction } from '@/types/database';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useContracts } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { NumericInput } from '@/components/ui/numeric-input';
@@ -38,10 +40,14 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const { locale } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const t = fin.contaForm;
+  // Fornecedor reusa a copy do formulário de Movimentações: é o mesmo campo,
+  // e duplicar a chave em contaForm criaria duas frases para divergir.
+  const tSupplier = fin.transactionForm;
   const { activeCostCenters } = useCostCenters();
   const { employees } = useEmployees();
   const { contracts } = useContracts();
   const { customers } = useCustomers();
+  const { suppliers } = useSuppliers();
   const { accounts } = useFinancialAccounts();
 
   const [tipo, setTipo] = useState<TransactionType>(defaultType);
@@ -55,6 +61,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [employeeId, setEmployeeId] = useState('');
   const [contractId, setContractId] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const [supplierId, setSupplierId] = useState('');
   const [accountId, setAccountId] = useState('');
   // Centro de custo é SEMPRE opcional: `null` = nenhum.
   const [costCenterId, setCostCenterId] = useState<string | null>(null);
@@ -74,6 +81,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setNotes(editingTransaction.notes || '');
         setContractId(editingTransaction.contract_id || '');
         setCustomerId(editingTransaction.customer_id || '');
+        setSupplierId((editingTransaction as any).supplier_id || '');
         setAccountId((editingTransaction as any).account_id || '');
         setCostCenterId(editingTransaction.cost_center_id ?? null);
         setRecurrence('unica');
@@ -92,6 +100,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setEmployeeId('');
         setContractId('');
         setCustomerId('');
+        setSupplierId('');
         setAccountId(localStorage.getItem('fin_last_account_id') || '');
         setCostCenterId(null);
       }
@@ -147,6 +156,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           ].filter(Boolean).join(' ') || undefined,
           contract_id: contractId && showContractSelector ? contractId : undefined,
           customer_id: customerId || undefined,
+          supplier_id: supplierId || undefined,
           account_id: accountId,
           cost_center_id: costCenterId,
         } as any;
@@ -179,6 +189,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             ].filter(Boolean).join(' ') || undefined,
             contract_id: contractId && showContractSelector ? contractId : undefined,
             customer_id: customerId || undefined,
+            supplier_id: supplierId || undefined,
             account_id: accountId,
             // Recorrência: TODA ocorrência leva o mesmo centro de custo.
             cost_center_id: costCenterId,
@@ -302,6 +313,19 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               value={customerId}
               onValueChange={setCustomerId}
               placeholder={t.customerPlaceholder}
+            />
+          </div>
+
+          {/* Fornecedor — mesma régua do Cliente acima: sempre opcional e
+              sempre visível, nos dois tipos. Uma conta a pagar quase sempre tem
+              fornecedor, e o campo existia só no formulário de Movimentações. */}
+          <div className="space-y-1.5">
+            <Label>{tSupplier.supplierLabel}</Label>
+            <SupplierSelectField
+              suppliers={(suppliers || []) as any}
+              value={supplierId}
+              onValueChange={setSupplierId}
+              placeholder={tSupplier.supplierPlaceholder}
             />
           </div>
 

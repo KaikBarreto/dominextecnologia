@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.24";
+export const APP_VERSION = "1.24.25";
 
-export const VERSION_NOTES = "Tarefas que se repetem podem não ter data para acabar, e os dias da semana escolhidos passam a ficar guardados. Escolher um período personalizado voltou a funcionar no celular, as colunas do funil se reordenam arrastando e o formulário de nova cobrança ficou mais curto.";
+export const VERSION_NOTES = "Assinaturas recorrentes podem ter prazo para acabar, e agora dá para vincular uma receita ou despesa a um fornecedor, com busca pelo nome dele nas listagens.";

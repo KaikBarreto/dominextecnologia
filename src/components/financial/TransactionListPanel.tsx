@@ -84,7 +84,7 @@ function formatDayDividerLabel(dateKey: string, locale: string) {
 interface TransactionListPanelProps {
   title: string;
   type?: TransactionType | 'all';
-  transactions: (FinancialTransaction & { customer?: any })[];
+  transactions: (FinancialTransaction & { customer?: any; supplier?: any })[];
   isLoading: boolean;
   onNew?: () => void;
   onEdit: (t: FinancialTransaction) => void;
@@ -758,6 +758,7 @@ export function TransactionListPanel({
                         </span>
                       )}
                       {t.customer && <span className="truncate">{t.customer.name}</span>}
+                      {t.supplier && <span className="truncate">{t.supplier.name}</span>}
                     </div>
                   }
                   trailing={
@@ -886,6 +887,7 @@ export function TransactionListPanel({
                             {renderReceiptLink(t)}
                           </p>
                           {t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
+                          {t.supplier && <p className="text-xs text-muted-foreground">{t.supplier.name}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
