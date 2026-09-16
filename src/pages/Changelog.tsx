@@ -42,6 +42,50 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.28',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cada coluna do funil pode ter o seu ícone',
+        description: 'No gerenciador de estágios do CRM, além do nome e da cor, agora dá para escolher um ícone para a coluna. Ele aparece no topo da coluna no funil e na hora de mover a oportunidade de estágio, o que ajuda a bater o olho e saber onde está cada negócio. O ícone é opcional: quem não escolher nenhum continua vendo o funil exatamente como antes.',
+        category: 'recurso',
+      },
+      {
+        title: 'O funil ficou mais fácil de ler de bate-pronto',
+        description: 'A origem da oportunidade agora aparece com a cor e o ícone que você cadastrou para ela, tanto no card quanto ao abrir o negócio, em vez de uma etiqueta cinza igual para todas. A lista de vendedores mostra a foto de cada pessoa, e o campo de estágio mostra a cor da coluna em cada opção.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Colunas do funil desalinhadas',
+        description: 'Quando uma coluna do CRM estava sem valor somado, o cabeçalho dela ficava mais baixo que o das outras e o funil parecia torto. Agora o valor aparece sempre, mesmo quando é zero, e os nomes compridos de coluna não empurram mais o contador de oportunidades para fora.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.27',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A legenda da Agenda não toma mais a tela inteira',
+        description: 'Em empresas com muitos tipos de serviço cadastrados, a legenda da Agenda no computador virava um paredão de etiquetas coloridas e o calendário ficava espremido. Agora ela mostra as primeiras etiquetas e, ao lado, um botão com quantas sobraram, como "+12 mais". Um clique abre todas, outro recolhe. No celular a legenda continua no botão de sempre.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criar oportunidade no CRM direto da ficha do cliente',
+        description: 'A ação de gerar uma oportunidade no CRM só existia na lista de clientes. Quem já estava dentro da ficha de um cliente precisava voltar para a lista. Agora ela também aparece no menu "Ações" da ficha, já com o cliente preenchido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Rótulos colados nas opções de duração',
+        description: 'Na criação de tarefa com repetição e na assinatura do Financeiro, a palavra "Duração" aparecia grudada na opção ao lado, formando uma frase sem sentido. Os rótulos voltaram para o lugar certo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.26',
     date: '16 de setembro de 2026',
     type: 'patch',

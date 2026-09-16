@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw, Handshake } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { ContactFormDialog } from '@/components/customers/ContactFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
+import { CreateOpportunityDialog } from '@/components/customers/CreateOpportunityDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useCustomerContacts } from '@/hooks/useCustomerContacts';
 import { osStatusLabels } from '@/types/database';
@@ -109,6 +110,7 @@ export default function CustomerDetail() {
   const { hasModule } = useCompanyModules();
   const hasPortal = hasModule('customer_portal');
   const hasCobrancas = hasModule('cobrancas');
+  const canCreateOpportunity = hasModule('crm');
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
   const showCobrancasTab = hasCobrancas && isPaymentActive;
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
@@ -151,6 +153,7 @@ export default function CustomerDetail() {
   const [portalIsPublic, setPortalIsPublic] = useState(true);
   const [updatingPortalVisibility, setUpdatingPortalVisibility] = useState(false);
   const [contractFormOpen, setContractFormOpen] = useState(false);
+  const [opportunityOpen, setOpportunityOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
@@ -622,6 +625,12 @@ export default function CustomerDetail() {
                 icon: ExternalLink,
                 onClick: () => { if (portalLink) window.open(portalLink, '_blank', 'noopener,noreferrer'); },
                 hidden: !hasPortal || !portalLink,
+              },
+              {
+                label: tCustomers.createOpportunity,
+                icon: Handshake,
+                onClick: () => setOpportunityOpen(true),
+                hidden: !canCreateOpportunity,
               },
               {
                 label: tCustomers.edit,
@@ -1886,6 +1895,13 @@ export default function CustomerDetail() {
           await updateCustomer.mutateAsync({ id: customer.id, ...data });
         }}
         isLoading={updateCustomer.isPending}
+      />
+
+      {/* Create Opportunity Dialog */}
+      <CreateOpportunityDialog
+        open={opportunityOpen}
+        onOpenChange={setOpportunityOpen}
+        customer={customer}
       />
 
       {/* Delete Confirmation */}

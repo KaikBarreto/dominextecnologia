@@ -592,7 +592,9 @@ export function SubscriptionDialog({
                     Não aparece no Pix Automático: aquele fluxo é autorização,
                     não assinatura, e não aceita limite de ciclos. */}
                 {!isPixAuto && (
-                  <div className="space-y-2">
+                  // flex-col (não space-y): Label é inline e LabeledSwitch é
+                  // inline-flex — em space-y os dois colam na mesma linha.
+                  <div className="flex flex-col items-start gap-2">
                     <Label className="text-sm font-medium">{t.fields.duration}</Label>
                     <LabeledSwitch
                       value={durationLimited ? 'limited' : 'continuous'}

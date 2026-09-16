@@ -313,7 +313,10 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              {/* flex-col (não space-y): o Label do shadcn é inline e o
+                  LabeledSwitch é inline-flex — num container de fluxo normal os
+                  dois colam na mesma linha ("DuraçãoAté uma data"). */}
+              <div className="flex flex-col items-start gap-1.5">
                 <Label className="text-xs">{t.labelRecurrenceDuration}</Label>
                 <LabeledSwitch
                   value={recurrenceIndeterminate ? 'indeterminate' : 'until'}

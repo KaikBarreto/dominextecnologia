@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { User, Calendar, DollarSign, TrendingUp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { OriginBadge } from '@/components/crm/OriginBadge';
 import { type Lead } from '@/hooks/useLeads';
 import { format } from 'date-fns';
 import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
@@ -106,11 +107,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
 
         {/* Tags */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {lead.source && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {lead.source}
-            </Badge>
-          )}
+          <OriginBadge source={lead.source} />
           {lead.expected_close_date && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex items-center gap-1">
               <Calendar className="h-2.5 w-2.5" />

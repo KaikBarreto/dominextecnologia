@@ -13,6 +13,24 @@ export interface CustomerOrigin {
 }
 
 /**
+ * Casa o texto livre salvo em `leads.source` (ou `customers.origin`) com o
+ * catálogo de origens. O lead guarda só o NOME — não o id — então a
+ * comparação precisa tolerar espaço nas pontas e diferença de maiúsculas
+ * (texto livre digitado em épocas diferentes do catálogo).
+ * Retorna `undefined` quando a origem foi renomeada/apagada do catálogo —
+ * quem chama deve cair no badge neutro nesse caso.
+ */
+export function findOriginByName(
+  origins: CustomerOrigin[],
+  name: string | null | undefined,
+): CustomerOrigin | undefined {
+  if (!name) return undefined;
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return undefined;
+  return origins.find((o) => o.name.trim().toLowerCase() === normalized);
+}
+
+/**
  * Conjunto inicial de origens, criado de uma vez pra empresa nova.
  * São linhas NORMAIS — totalmente editáveis e excluíveis pelo usuário.
  * Base universal herdada das origens fixas antigas do CRM.

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.26";
+export const APP_VERSION = "1.24.28";
 
-export const VERSION_NOTES = "O link de autocadastro agora aceita foto do cliente, com câmera direto no celular. E uma permissão que sobrava na função de autocadastro foi removida.";
+export const VERSION_NOTES = "O funil do CRM ficou mais fácil de ler: origem com cor e ícone, foto do vendedor, ícone próprio por coluna e colunas alinhadas.";
