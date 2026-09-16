@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.26',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O cliente já pode enviar uma foto no link de autocadastro',
+        description: 'O formulário público de autocadastro não tinha campo de foto. Agora dá para habilitar "Foto" nas configurações do formulário, marcando se é opcional ou obrigatória. Pelo celular, o campo abre a câmera direto, mostra a prévia e permite trocar antes de enviar. Se a foto for opcional e o envio dela falhar, o cadastro vai assim mesmo: melhor receber o cliente sem foto do que perder o cadastro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acesso desnecessário removido no formulário de autocadastro',
+        description: 'Numa revisão de segurança encontramos uma permissão sobrando na função que recebe os autocadastros: usuários já logados no sistema podiam acioná-la diretamente, contornando o limite de envios por visitante. Ninguém no sistema usava esse caminho. A permissão foi removida e o formulário público segue funcionando normalmente.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.25',
     date: '16 de setembro de 2026',
     type: 'patch',
