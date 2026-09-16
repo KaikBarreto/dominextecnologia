@@ -70,6 +70,8 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { getIsPmocFromOrder } from '@/hooks/useIsPmocOrder';
 import { formatOSNumberDigits } from '@/lib/osNumber';
+import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
+import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -136,6 +138,10 @@ export default function ServiceOrders() {
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { statuses } = useOsStatuses();
+  // Receita ao finalizar a OS. `maybeOpen` decide sozinho se abre (toggle da
+  // empresa + permissão + OS ainda sem receita) e nunca lança — não duplicar
+  // essas checagens aqui.
+  const { maybeOpen: maybeOpenRevenuePrompt, dialogProps: revenueDialogProps } = useOsFinishRevenuePrompt();
 
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
@@ -280,6 +286,25 @@ export default function ServiceOrders() {
 
   const handleStatusChange = async (os: ServiceOrder, newStatus: OsStatus) => {
     await updateServiceOrder.mutateAsync({ id: os.id, status: newStatus });
+
+    if (newStatus !== 'concluida') return;
+
+    // REGRA-LEI DA FEATURE: a pergunta de receita só entra DEPOIS de a OS já
+    // estar gravada como concluída. Nada aqui pode impedir/reverter o fechamento.
+    //
+    // O drop do kanban chama esta função com um objeto sintético (`{ id } as
+    // ServiceOrder`), sem order_number/customer/total_value. Resolver a OS real
+    // pela lista evita abrir o formulário de receita sem cliente e sem valor.
+    const fullOs = serviceOrders.find((o) => o.id === os.id) ?? os;
+    await maybeOpenRevenuePrompt({
+      serviceOrderId: fullOs.id,
+      osNumber: fullOs.order_number,
+      customerId: fullOs.customer_id,
+      // Mesma fonte que a tela já usa pra exibir o nome do cliente (o join vem
+      // do useServiceOrders). Sem query nova.
+      customerName: fullOs.customer?.name ?? null,
+      suggestedAmount: fullOs.total_value ?? null,
+    });
   };
 
   const kanbanColumns = statusOptions;
@@ -1121,6 +1146,10 @@ export default function ServiceOrders() {
               open={statusConfigOpen}
               onOpenChange={setStatusConfigOpen}
             />
+
+            {/* "Houve alguma receita nesta OS?" — sobe sozinho após a OS ser
+                gravada como concluída (lista, kanban ou modal de detalhe). */}
+            <OsFinishRevenueDialog {...revenueDialogProps} />
           </div>
         )}
       </SettingsSidebarLayout>

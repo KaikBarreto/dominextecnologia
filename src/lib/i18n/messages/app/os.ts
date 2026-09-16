@@ -288,6 +288,8 @@ export const os = {
       labelLabor: 'Mão de Obra',
       labelParts: 'Peças',
       labelTotal: 'Total',
+      // Receita já lançada nesta OS (só pra quem enxerga o Financeiro)
+      revenueLaunched: 'Receita lançada: {value}',
 
       // Checklist respostas
       answerYes: 'Sim',
@@ -1891,6 +1893,8 @@ export const os = {
       labelLabor: 'Labor',
       labelParts: 'Parts',
       labelTotal: 'Total',
+      // Revenue already recorded for this service order (finance access only)
+      revenueLaunched: 'Revenue recorded: {value}',
       answerYes: 'Yes',
       answerNo: 'No',
       answerNA: 'N/A',
@@ -3420,6 +3424,8 @@ export const os = {
       labelLabor: 'Mano de obra',
       labelParts: 'Piezas',
       labelTotal: 'Total',
+      // Ingreso ya registrado en esta OS (solo con acceso a Financiero)
+      revenueLaunched: 'Ingreso registrado: {value}',
       answerYes: 'Sí',
       answerNo: 'No',
       answerNA: 'N/D',
@@ -4949,6 +4955,8 @@ export const os = {
       labelLabor: "Main-d'œuvre",
       labelParts: 'Pièces',
       labelTotal: 'Total',
+      // Recette déjà enregistrée sur cet OS (accès Finances uniquement)
+      revenueLaunched: `Recette enregistrée : {value}`,
       answerYes: 'Oui',
       answerNo: 'Non',
       answerNA: 'N/D',

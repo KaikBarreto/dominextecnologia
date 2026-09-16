@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown, AlertTriangle, TrendingUp } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,8 @@ import { formatMoney, formatDate, formatDateTime } from '@/lib/format';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { formatOSNumberDigits } from '@/lib/osNumber';
 import { OsMaterialsSection } from './OsMaterialsSection';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOsRevenueSummary } from '@/hooks/useOsRevenueSummary';
 
 interface OSPhoto {
   id: string;
@@ -81,6 +83,12 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const { locale, currency, timezone } = useAppLocaleContext();
   const tv = MESSAGES[locale].app.os.viewDialog;
   const navigate = useNavigate();
+  // Receita já lançada nesta OS. Fecha o ciclo da feature "receita ao finalizar
+  // a OS": sem isso o usuário não tem como saber se já lançou. Valor financeiro
+  // só pra quem enxerga o Financeiro — técnico não vê.
+  const { hasScreenAccess } = useAuth();
+  const canSeeFinance = hasScreenAccess('screen:finance');
+  const osRevenue = useOsRevenueSummary(canSeeFinance ? serviceOrderId : null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder & { customer: any; equipment: any; form_template: any } | null>(null);
@@ -611,6 +619,18 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             <div className="flex justify-between font-medium"><span>{tv.labelTotal}</span><span>{formatCurrency(serviceOrder.total_value)}</span></div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Receita já lançada pra esta OS. Bloco próprio (não entra no card de
+          valores da OS): o total da OS é o preço do serviço, isto é o que de
+          fato entrou no Financeiro. Some quando não há nenhum lançamento. */}
+      {canSeeFinance && osRevenue.count > 0 && (
+        <div className="flex justify-center">
+          <Badge variant="success" className="gap-1.5 px-3 py-1 text-sm">
+            <TrendingUp className="h-3.5 w-3.5" />
+            {tv.revenueLaunched.replace('{value}', formatMoney(osRevenue.total, currency, locale))}
+          </Badge>
+        </div>
       )}
 
       {/* Ações da OS — pattern app nativo: grid de ícones compactos + CTA primário */}

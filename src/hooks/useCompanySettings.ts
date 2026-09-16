@@ -72,6 +72,13 @@ export interface CompanySettings {
   // aparelho, por isso mora aqui e não em localStorage. Default false no
   // banco. Ver Settings.tsx (aba Usabilidade → Ordens de Serviço).
   os_stock_consumption_enabled?: boolean;
+  // Receita ao finalizar a OS: ao concluir uma Ordem de Serviço, o sistema
+  // pergunta se houve receita e já abre o lançamento vinculado àquela OS.
+  // Também é decisão de tenant (não preferência de aparelho). A pergunta só
+  // aparece pra quem tem a permissão `fn:os_finish_revenue` — ver
+  // useCanLaunchOsRevenue. Default false no banco. Ver Settings.tsx
+  // (aba Usabilidade → card "Orçamento, OS e financeiro").
+  os_finish_revenue_prompt_enabled?: boolean;
   // Aprovação de orçamento → financeiro. `quote_approval_revenue_mode` só
   // escolhe a opção PRE-MARCADA no modal interno ('recebido' = entra paga,
   // comportamento antigo; 'a_receber' = entra pendente, com vencimento) — o

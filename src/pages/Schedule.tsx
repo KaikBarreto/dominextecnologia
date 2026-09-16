@@ -47,6 +47,8 @@ import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays'
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
+import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
@@ -58,6 +60,9 @@ export default function Schedule() {
   const { teamsWithMembers } = useTeams();
   const { user, hasRole, hasPermission, isAdminOrGestor, roles, permissions, hasPermissionRecord } = useAuth();
   const { settings: companySettings } = useCompanySettings();
+  // Receita ao finalizar a OS. `maybeOpen` já decide sozinho se abre (toggle da
+  // empresa + permissão + OS ainda sem receita) e nunca lança.
+  const { maybeOpen: maybeOpenRevenuePrompt, dialogProps: revenueDialogProps } = useOsFinishRevenuePrompt();
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.schedule;
 
@@ -415,9 +420,28 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
-  const handleFinalizeFromSummary = (id: string) => {
-    updateServiceOrder.mutate({ id, status: 'concluida' as any });
+  const handleFinalizeFromSummary = async (id: string) => {
+    // `mutateAsync` (e não `mutate`) porque a pergunta de receita só pode
+    // aparecer DEPOIS de a OS estar gravada como concluída. Se a gravação
+    // falhar, o erro segue o caminho de sempre do hook e nada é perguntado.
+    await updateServiceOrder.mutateAsync({ id, status: 'concluida' as any });
     setSummaryOrder(null);
+
+    // Na agenda, "tarefa" é service_orders com entry_type === 'tarefa' (mesmo
+    // critério que a UI usa em handleEditFromSummary). Tarefa interna não tem
+    // cliente nem faturamento: não pergunta sobre receita.
+    const order = serviceOrders.find((o: any) => o.id === id) as any;
+    if (!order) return;
+    if (order.entry_type === 'tarefa') return;
+
+    await maybeOpenRevenuePrompt({
+      serviceOrderId: order.id,
+      osNumber: order.order_number,
+      customerId: order.customer_id,
+      // Mesma fonte que a agenda já usa pra exibir o cliente (join do useServiceOrders).
+      customerName: order.customer?.name ?? null,
+      suggestedAmount: order.total_value ?? null,
+    });
   };
 
   const canReopenOS = isAdminOrGestor() || hasPermission('fn:reopen_os');
@@ -885,6 +909,9 @@ export default function Schedule() {
           orders={searchableOrders as any}
           onSelect={(order) => handleSearchResultSelect(order as any)}
         />
+        {/* "Houve alguma receita nesta OS?" — sobe depois de a OS ser gravada
+            como concluída. Renderizado nos DOIS layouts (mobile e desktop). */}
+        <OsFinishRevenueDialog {...revenueDialogProps} />
       </div>
     );
   }
@@ -1013,6 +1040,8 @@ export default function Schedule() {
         orders={searchableOrders as any}
         onSelect={(order) => handleSearchResultSelect(order as any)}
       />
+      {/* "Houve alguma receita nesta OS?" — ver comentário no layout mobile. */}
+      <OsFinishRevenueDialog {...revenueDialogProps} />
     </div>
   );
 }

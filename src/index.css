@@ -661,6 +661,81 @@ html {
   isolation: isolate;
 }
 
+/* ─── Toast nunca cobre modal/drawer ──────────────────────────────────────
+   Regra do CEO, 16/09/2026: "esses avisos/toasts não deviam nunca cobrir os
+   modais/drawers". Vale pro app inteiro, não é ajuste de uma tela.
+
+   Caso que originou: concluir OS no celular (390px) — o toast "OS atualizada
+   com sucesso!" flutuava POR CIMA do drawer que pergunta da receita e tapava a
+   linha do cliente por ~4s.
+
+   POR QUE NÃO baixar o z-index do toast pra abaixo do modal (z-50): o overlay
+   do modal é `bg-black/80` em tela cheia, então o toast não ficaria "atrás do
+   modal", ficaria INVISÍVEL atrás do véu. E toast disparado de DENTRO de modal
+   (erro de validação, erro ao salvar, confirmação) é padrão comum aqui —
+   trocaríamos um problema visual por um bug de silêncio, justo quando a
+   mensagem mais importa. Então o toast continua em cima (z-[100] / sonner com
+   z-index próprio) e apenas SAI DO CAMINHO: ancora no TOPO enquanto houver
+   superfície sobreposta aberta. Drawer sobe da borda de baixo, dialog fica
+   centralizado com margem, sheet vem das laterais — o topo limpa os três.
+
+   GANCHO DE DETECÇÃO: atributo próprio `data-app-overlay`, carimbado nos quatro
+   componentes de superfície (dialog.tsx, alert-dialog.tsx, sheet.tsx,
+   drawer.tsx), + `data-vaul-drawer`, que o vaul carimba sozinho (rede de
+   segurança pra drawer montado direto pelo primitivo).
+   NÃO usamos `[role="dialog"]`: o Radix Popover também renderiza role="dialog"
+   (todo SearchableSelect / date picker / filtro puxaria o toast pro topo à
+   toa), e existe painel flutuante NÃO-modal com role="dialog" no app
+   (OrgChartFullscreen).
+   O `[data-state="open"]` é obrigatório: durante a animação de saída o Radix
+   mantém o nó montado com data-state="closed" — é isso que devolve o toast pro
+   rodapé na hora certa, sem esperar o unmount.
+
+   SEM modal aberto nada muda: o toast segue no rodapé, com safe-area e a folga
+   da MobileBottomNav. */
+
+/* 1) Toast do Radix (`useToast`) — viewport ancorado no topo. */
+body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="open"])
+  .app-toast-viewport {
+  top: max(0.75rem, calc(env(safe-area-inset-top) + 0.5rem));
+  bottom: auto;
+  padding-bottom: 1rem;
+}
+
+/* 1b) Entrada passa a vir de cima (o utilitário `slide-in-from-bottom-full` do
+   tailwindcss-animate define `--tw-enter-translate-y: 100%`; invertemos o
+   sinal). Puramente cosmético: se o nome da variável mudar num upgrade, a
+   animação volta a entrar de baixo e nada quebra. */
+body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="open"])
+  .app-toast-viewport
+  > [data-state="open"] {
+  --tw-enter-translate-y: -100%;
+}
+
+/* 2) Toast do sonner (`import { toast } from 'sonner'`) — mesmo raciocínio.
+   O sonner está montado em App.tsx com position="bottom-center", então também
+   colide com drawer/dialog. Aqui replicamos EXATAMENTE o que o próprio sonner
+   faz no `data-y-position="top"` (container ancora no topo; toast ancora em
+   top:0 e `--lift: 1` pra empilhar/animar pra baixo).
+   Cuidado deliberado: NÃO tocamos em `--y`. O sonner recalcula `--y` em ~8
+   regras de zero especificidade (`:where(...)`) conforme mounted/expanded/
+   removed; qualquer override nosso venceria TODAS elas e travaria o toast fora
+   da tela. `--lift` já inverte o sentido de empilhamento e de saída, porque as
+   regras do sonner derivam de `var(--lift)` em tempo de uso. */
+body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="open"])
+  [data-sonner-toaster][data-y-position="bottom"] {
+  top: max(0.75rem, calc(env(safe-area-inset-top) + 0.5rem));
+  bottom: auto;
+}
+
+body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="open"])
+  [data-sonner-toaster][data-y-position="bottom"]
+  [data-sonner-toast][data-y-position="bottom"] {
+  top: 0;
+  bottom: auto;
+  --lift: 1;
+}
+
 /* ─── Domiflix — Animações de entrada e spinner (paridade EcoFlix) ────────── */
 @keyframes domiflix-page-enter {
   from { opacity: 0; transform: translateY(10px); }

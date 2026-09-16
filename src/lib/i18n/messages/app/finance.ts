@@ -1154,6 +1154,23 @@ export const finance = {
         amountExceedsRemaining: 'Valor não pode ser maior que o restante ({amount}).',
       },
     },
+    // ── Receita ao finalizar a OS (OsFinishRevenueDialog) ──────────────────
+    // A descrição gerada aqui vira TEXTO GRAVADO no lançamento — por isso
+    // nasce no idioma de quem lançou, como o resto da copy do Financeiro.
+    osRevenue: {
+      title: 'Receita da Ordem de Serviço',
+      question: 'Houve alguma receita nesta Ordem de Serviço?',
+      hint: 'Se entrou (ou vai entrar) dinheiro por este serviço, lance agora e o valor já fica vinculado a esta OS.',
+      osLabel: 'Ordem de Serviço',
+      customerLabel: 'Cliente',
+      osValueLabel: 'Valor da OS',
+      valueHint: 'Valor apenas sugerido, você pode alterar no próximo passo.',
+      noLabel: 'Não',
+      yesLabel: 'Sim, lançar receita',
+      descriptionWithCustomer: 'OS #{number} · {customer}',
+      descriptionOsOnly: 'OS #{number}',
+      descriptionFallback: 'Receita de Ordem de Serviço',
+    },
   },
 
   // ─── ENGLISH ──────────────────────────────────────────────────────────────
@@ -2255,6 +2272,20 @@ export const finance = {
         amountZero: 'Enter an amount greater than zero.',
         amountExceedsRemaining: 'Amount cannot exceed the remaining balance ({amount}).',
       },
+    },
+    osRevenue: {
+      title: 'Service order revenue',
+      question: 'Was there any revenue from this service order?',
+      hint: 'If money came in (or will come in) for this job, record it now and the amount stays linked to this service order.',
+      osLabel: 'Service order',
+      customerLabel: 'Customer',
+      osValueLabel: 'Service order amount',
+      valueHint: 'This amount is only a suggestion, you can change it in the next step.',
+      noLabel: 'No',
+      yesLabel: 'Yes, record revenue',
+      descriptionWithCustomer: 'SO #{number} · {customer}',
+      descriptionOsOnly: 'SO #{number}',
+      descriptionFallback: 'Service order revenue',
     },
   },
 
@@ -3359,6 +3390,20 @@ export const finance = {
         amountExceedsRemaining: 'El valor no puede superar el saldo restante ({amount}).',
       },
     },
+    osRevenue: {
+      title: 'Ingreso de la orden de servicio',
+      question: '¿Hubo algún ingreso en esta orden de servicio?',
+      hint: 'Si entró (o va a entrar) dinero por este servicio, regístrelo ahora y el importe ya queda vinculado a esta orden.',
+      osLabel: 'Orden de servicio',
+      customerLabel: 'Cliente',
+      osValueLabel: 'Importe de la orden',
+      valueHint: 'El importe es solo una sugerencia, puede cambiarlo en el siguiente paso.',
+      noLabel: 'No',
+      yesLabel: 'Sí, registrar ingreso',
+      descriptionWithCustomer: 'OS #{number} · {customer}',
+      descriptionOsOnly: 'OS #{number}',
+      descriptionFallback: 'Ingreso de orden de servicio',
+    },
   },
 
   // ─── FRANÇAIS ─────────────────────────────────────────────────────────────
@@ -4461,6 +4506,20 @@ export const finance = {
         amountZero: 'Saisissez un montant supérieur à zéro.',
         amountExceedsRemaining: 'Le montant ne peut pas dépasser le solde restant ({amount}).',
       },
+    },
+    osRevenue: {
+      title: `Recette de l'ordre de service`,
+      question: `Y a-t-il eu une recette sur cet ordre de service ?`,
+      hint: `Si de l'argent est entré (ou va entrer) pour cette intervention, enregistrez-le maintenant et le montant reste lié à cet ordre de service.`,
+      osLabel: 'Ordre de service',
+      customerLabel: 'Client',
+      osValueLabel: `Montant de l'ordre de service`,
+      valueHint: `Ce montant n'est qu'une suggestion, vous pourrez le modifier à l'étape suivante.`,
+      noLabel: 'Non',
+      yesLabel: 'Oui, enregistrer la recette',
+      descriptionWithCustomer: 'OS #{number} · {customer}',
+      descriptionOsOnly: 'OS #{number}',
+      descriptionFallback: `Recette d'ordre de service`,
     },
   },
 };
