@@ -521,6 +521,18 @@ export default function Settings() {
     );
   };
 
+  // Mesmo padrão dos dois acima: decisão da EMPRESA, salva no servidor. Liga a
+  // pergunta "Houve alguma receita nesta OS?" ao finalizar a Ordem de Serviço.
+  // A chave ligada não basta: a pergunta só aparece pra quem tem a permissão
+  // `fn:os_finish_revenue` — isso está dito na descrição do item pra o gestor
+  // não achar que está quebrado quando o técnico não vê nada.
+  const handleToggleOsFinishRevenuePrompt = (checked: boolean) => {
+    updateSettings.mutate(
+      { os_finish_revenue_prompt_enabled: checked } as any,
+      { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
+    );
+  };
+
   const usabilitySections = [
     {
       title: t.usability.sections.os.title,
@@ -1263,7 +1275,7 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Orçamento → Financeiro (decisão da EMPRESA, salva no servidor) */}
+          {/* Orçamento e OS → Financeiro (decisão da EMPRESA, salva no servidor) */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -1314,6 +1326,27 @@ export default function Settings() {
                     checked={!!settings?.quote_public_approval_creates_receivable}
                     disabled={!canSave || updateSettings.isPending}
                     onCheckedChange={handleTogglePublicApprovalReceivable}
+                  />
+                )}
+              </div>
+
+              <Separator className="opacity-50" />
+
+              <div className="flex items-center justify-between py-3">
+                <div className="space-y-0.5 pr-4">
+                  <Label className="text-sm font-medium">{t.usability.quoteFinance.osFinishRevenueTitle}</Label>
+                  <p className="text-xs text-muted-foreground">{t.usability.quoteFinance.osFinishRevenueDescription}</p>
+                </div>
+                {isLoading ? (
+                  // Valor vem do servidor — spinner até a query resolver, pro
+                  // Switch nunca mentir sobre o estado real (ver comentário do
+                  // handleToggleStockConsumption).
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                ) : (
+                  <Switch
+                    checked={!!settings?.os_finish_revenue_prompt_enabled}
+                    disabled={!canSave || updateSettings.isPending}
+                    onCheckedChange={handleToggleOsFinishRevenuePrompt}
                   />
                 )}
               </div>

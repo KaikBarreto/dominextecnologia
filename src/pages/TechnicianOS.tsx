@@ -109,6 +109,8 @@ import { formatOSNumber } from '@/lib/osNumber';
 import { OsConsumeStockDialog } from '@/components/service-orders/OsConsumeStockDialog';
 import { OsConsumptionSummaryDialog } from '@/components/service-orders/OsConsumptionSummaryDialog';
 import { useOsMaterials, useOsStockConsumptionEnabled, type CommitLineInput } from '@/hooks/useOsMaterials';
+import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
+import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
 
 interface OSPhoto {
   id: string;
@@ -414,6 +416,10 @@ function TechnicianOSInner() {
   // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
   // nem admin Auctus, então é seguro chamá-lo sempre (regras de hooks).
   const { blocked: subscriptionBlocked, screen: subscriptionScreen } = useSubscriptionBlock();
+  // "Houve alguma receita nesta OS?" no fechamento. O hook decide sozinho se
+  // abre (toggle da empresa + permissão + OS ainda sem receita) e nunca lança —
+  // não replicar essas checagens aqui.
+  const { maybeOpen: maybeOpenRevenuePrompt, dialogProps: revenueDialogProps } = useOsFinishRevenuePrompt();
   // Strings do fluxo autenticado do técnico. No modo público (anon) o hook
   // aponta pro locale da sessão corrente — não interfere, pois as strings deste
   // namespace só são usadas no caminho isAuthenticated===true.
@@ -1896,6 +1902,27 @@ function TechnicianOSInner() {
       setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus, check_out_time: now, partial_finish: false } as any : null);
 
       toast({ title: tFlow.toastFinishDone });
+
+      // REGRA-LEI DA FEATURE: a receita entra DEPOIS, nunca no lugar do
+      // fechamento. Neste ponto a OS já está gravada como 'concluida' no banco
+      // e o técnico já viu o toast de sucesso. `maybeOpen` nunca lança e nunca
+      // mostra erro — se o técnico estiver sem rede, simplesmente não pergunta.
+      // Última linha do try de propósito: os 3 caminhos que finalizam
+      // (handleConfirmFinish, handleMarkRestAndFinish e o gate de consumo em
+      // handleConfirmConsumptionAndFinish) chamam proceedFinishOS, então o
+      // gancho fica aqui e NÃO é duplicado nos chamadores.
+      // Modo público/cliente jamais chega aqui (o botão de finalizar não existe
+      // em forceReadOnly), mas a barreira é explícita pra não depender disso.
+      if (!forceReadOnly && resolvedOsId) {
+        await maybeOpenRevenuePrompt({
+          serviceOrderId: resolvedOsId,
+          osNumber: serviceOrder?.order_number ?? null,
+          customerId: serviceOrder?.customer_id ?? null,
+          // Mesma fonte que a tela já usa pra exibir o cliente (serviceOrder.customer?.name).
+          customerName: serviceOrder?.customer?.name ?? null,
+          suggestedAmount: serviceOrder?.total_value ?? null,
+        });
+      }
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -1958,6 +1985,17 @@ function TechnicianOSInner() {
   // o hook `useIsPmocOrder` não passa na RLS, então derivamos do payload público.
   const isPublicMode = forceReadOnly;
   const isPmocPublic = publicContract?.is_pmoc === true;
+
+  // Pergunta de receita ao finalizar. Esta página troca a TELA INTEIRA assim que
+  // a OS vira 'concluida' (o return do modo RELATÓRIO, mais abaixo). Se o dialog
+  // vivesse só no ramo "OS aberta", ele desmontaria no mesmo instante em que a
+  // pergunta deveria subir. Por isso o MESMO elemento é renderizado nos DOIS
+  // returns — o estado que manda (`revenueDialogProps`) mora no hook, no topo do
+  // componente, e sobrevive à troca de ramo.
+  // Nunca no modo público/cliente nem pro visitante anônimo: o relatório de uma
+  // OS já concluída é visível sem login, e nada financeiro pode subir ali.
+  const revenuePromptEl =
+    isPublicMode || isAuthenticated !== true ? null : <OsFinishRevenueDialog {...revenueDialogProps} />;
   const showPmocSeal = isPublicMode ? isPmocPublic : isPmocOrder;
 
   // Rótulo do tipo da OS: PMOC (contrato PMOC) / neutro (contrato comum) /
@@ -2497,6 +2535,10 @@ function TechnicianOSInner() {
           currentIndex={galleryIndex}
           onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
         />
+
+        {/* A OS acabou de ser concluída e a tela virou relatório: a pergunta de
+            receita precisa existir TAMBÉM aqui, senão nunca aparece. */}
+        {revenuePromptEl}
       </div>
     );
     // Modo público (relatório compartilhado): envolve no provider de locale da empresa.
@@ -4784,6 +4826,10 @@ function TechnicianOSInner() {
           </div>
         </div>
       )}
+
+      {/* Mesmo elemento do ramo RELATÓRIO. Cobre a janela entre o fim do
+          proceedFinishOS e o re-render que troca a tela. */}
+      {revenuePromptEl}
     </div>
   );
 }

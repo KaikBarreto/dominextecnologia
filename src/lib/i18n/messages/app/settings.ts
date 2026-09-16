@@ -231,8 +231,8 @@ export const settings = {
 
       // Card de Financeiro / Orçamento (decisões da EMPRESA, salvas no servidor)
       quoteFinance: {
-        cardTitle: 'Orçamento e financeiro',
-        cardDescription: 'Como a aprovação de um orçamento vira lançamento no financeiro',
+        cardTitle: 'Orçamento, OS e financeiro',
+        cardDescription: 'O que vira lançamento no financeiro automaticamente, ao aprovar um orçamento ou ao finalizar uma Ordem de Serviço',
         modeTitle: 'Ao aprovar um orçamento',
         modeDescription: 'Define o que já vem marcado no modal de aprovação. Dá pra trocar em cada orçamento.',
         modeReceived: 'Já recebi',
@@ -241,6 +241,8 @@ export const settings = {
         modeReceivableHint: 'Gera conta a receber pendente. O saldo só muda quando você der a baixa.',
         publicApprovalTitle: 'Aprovação pelo link da proposta já gera conta a receber',
         publicApprovalDescription: 'Desligado, aprovar pelo link só muda o status do orçamento, nada entra no financeiro. Ligado, a conta a receber é criada automaticamente.',
+        osFinishRevenueTitle: 'Perguntar sobre receita ao finalizar OS',
+        osFinishRevenueDescription: 'Ao concluir uma Ordem de Serviço, o sistema pergunta se houve receita e já abre o lançamento, sem precisar ir ao Financeiro depois. Só aparece para quem tem a permissão "Lançar Receita ao Finalizar OS".',
       },
       // Card de Origens
       origins: {
@@ -1855,8 +1857,8 @@ export const settings = {
       },
 
       quoteFinance: {
-        cardTitle: 'Quotes and finance',
-        cardDescription: 'How approving a quote turns into a finance entry',
+        cardTitle: 'Quotes, work orders and finance',
+        cardDescription: 'What automatically becomes a finance entry when a quote is approved or a work order is completed',
         modeTitle: 'When approving a quote',
         modeDescription: 'Sets what comes pre-selected in the approval modal. You can change it per quote.',
         modeReceived: 'Already received',
@@ -1865,6 +1867,8 @@ export const settings = {
         modeReceivableHint: 'Creates a pending receivable. The balance only changes when you settle it.',
         publicApprovalTitle: 'Approval via proposal link already creates a receivable',
         publicApprovalDescription: 'Off, approving via the link only changes the quote status and nothing reaches Finance. On, the receivable is created automatically.',
+        osFinishRevenueTitle: 'Ask about revenue when a work order is completed',
+        osFinishRevenueDescription: 'When a work order is completed, the system asks whether there was any revenue and opens the entry right away, with no need to go to Finance afterwards. It only shows for users who have the "Log Revenue When Completing a Work Order" permission.',
       },
       origins: {
         cardTitle: 'Sources',
@@ -3419,8 +3423,8 @@ export const settings = {
       },
 
       quoteFinance: {
-        cardTitle: 'Presupuestos y finanzas',
-        cardDescription: 'Cómo la aprobación de un presupuesto se convierte en un registro financiero',
+        cardTitle: 'Presupuestos, órdenes de servicio y finanzas',
+        cardDescription: 'Qué se convierte automáticamente en un registro financiero al aprobar un presupuesto o al finalizar una orden de servicio',
         modeTitle: 'Al aprobar un presupuesto',
         modeDescription: 'Define lo que viene preseleccionado en el modal de aprobación. Se puede cambiar en cada presupuesto.',
         modeReceived: 'Ya lo recibí',
@@ -3429,6 +3433,8 @@ export const settings = {
         modeReceivableHint: 'Genera una cuenta por cobrar pendiente. El saldo solo cambia cuando la das de baja.',
         publicApprovalTitle: 'La aprobación por el enlace de la propuesta ya genera cuenta por cobrar',
         publicApprovalDescription: 'Apagado, aprobar por el enlace solo cambia el estado del presupuesto y nada llega a Finanzas. Encendido, la cuenta por cobrar se crea automáticamente.',
+        osFinishRevenueTitle: 'Preguntar por el ingreso al finalizar una orden de servicio',
+        osFinishRevenueDescription: 'Al concluir una orden de servicio, el sistema pregunta si hubo ingreso y abre el registro enseguida, sin tener que ir a Finanzas después. Solo aparece para quien tiene el permiso "Registrar ingreso al finalizar la orden de servicio".',
       },
       origins: {
         cardTitle: 'Orígenes',
@@ -4983,8 +4989,8 @@ export const settings = {
       },
 
       quoteFinance: {
-        cardTitle: 'Devis et finances',
-        cardDescription: `Comment l'approbation d'un devis devient une écriture financière`,
+        cardTitle: 'Devis, ordres de service et finances',
+        cardDescription: `Ce qui devient automatiquement une écriture financière lorsqu'un devis est approuvé ou qu'un ordre de service est clôturé`,
         modeTitle: `À l'approbation d'un devis`,
         modeDescription: `Définit ce qui est présélectionné dans la fenêtre d'approbation. Modifiable sur chaque devis.`,
         modeReceived: 'Déjà encaissé',
@@ -4993,6 +4999,8 @@ export const settings = {
         modeReceivableHint: `Crée une créance en attente. Le solde ne change qu'au moment du lettrage.`,
         publicApprovalTitle: `L'approbation via le lien de la proposition crée déjà une créance`,
         publicApprovalDescription: `Désactivé, approuver via le lien change seulement le statut du devis, rien n'arrive dans Finances. Activé, la créance est créée automatiquement.`,
+        osFinishRevenueTitle: `Demander s'il y a eu une recette à la clôture d'un ordre de service`,
+        osFinishRevenueDescription: `À la clôture d'un ordre de service, le système demande s'il y a eu une recette et ouvre directement l'écriture, sans passer par Finances ensuite. Visible uniquement par les personnes ayant l'autorisation « Enregistrer la recette à la clôture d'un ordre de service ».`,
       },
       origins: {
         cardTitle: 'Sources',

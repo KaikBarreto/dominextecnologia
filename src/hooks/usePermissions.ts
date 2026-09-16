@@ -78,6 +78,10 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:manage_finance', label: 'Gerenciar Financeiro', description: 'Criar e editar transações financeiras', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:delete_finance', label: 'Excluir Lançamento Financeiro', description: 'Excluir transações financeiras (contas a pagar, contas a receber e movimentações)', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:view_finance_totals', label: 'Ver Totais Financeiros', description: 'Visualizar saldos, totais e projeções', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
+  // Mora na tela de OS (`relatedScreen`) porque é lá que a ação acontece — o fechamento
+  // da OS —, mas é do grupo Financeiro porque o que ela libera é lançar dinheiro.
+  // Gate em `src/hooks/useCanLaunchOsRevenue.ts` (NÃO usa hasPermission — ver comentário lá).
+  { key: 'fn:os_finish_revenue', label: 'Lançar Receita ao Finalizar OS', description: 'Ao concluir uma Ordem de Serviço, poder lançar a receita dela direto no fechamento.', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:service_orders' },
   { key: 'fn:manage_users', label: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:users' },
   { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
   { key: 'fn:export_company_data', label: 'Exportar Dados da Empresa', description: 'Baixar em planilha todos os dados da empresa, incluindo financeiro e salários dos funcionários', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },

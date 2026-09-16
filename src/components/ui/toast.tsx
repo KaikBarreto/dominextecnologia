@@ -14,6 +14,16 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
+      // `app-toast-viewport` é o gancho ESTÁVEL de seletor pro CSS global que
+      // tira o toast da frente de modal/drawer (ver `src/index.css`, bloco
+      // "Toast nunca cobre modal/drawer"). NÃO remover nem trocar por classe
+      // utilitária do Tailwind — utilitária muda, esta é o contrato.
+      "app-toast-viewport",
+      // Container não intercepta toque: quando não há toast, o <ol> ainda é uma
+      // faixa de ~104px colada no rodapé (p-4 + pb da bottom nav) e comeria o
+      // tap de tudo que estivesse embaixo. Cada toast tem `pointer-events-auto`
+      // em `toastVariants`, então botão/X/swipe do toast continuam funcionando.
+      "pointer-events-none",
       // Mobile/tablet: sobe o rodapé pra ficar ACIMA da MobileBottomNav (~4rem +
       // safe-area), senão o toast cobre o menu enquanto não some. Desktop (lg):
       // não tem bottom nav, volta pra margem curta no canto inferior direito.

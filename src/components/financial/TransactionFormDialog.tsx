@@ -680,10 +680,22 @@ interface TransactionFormDialogProps {
   onSubmit: (data: any) => Promise<any>;
   isLoading?: boolean;
   defaultType?: TransactionType;
+  /**
+   * Pré-preenchimento de um lançamento NOVO (modo criação). Diferente de
+   * `transaction`, que significa "estou editando este registro" e muda o plano
+   * de parcelas, a regra de `paid_date` e o comportamento de anexos.
+   *
+   * `service_order_id` e `customer_id` NÃO são campos do formulário (não estão
+   * no schema Zod, logo o parse os descartaria): eles são carimbados direto no
+   * payload em `runSubmit`. Ver o bloco "vínculos do prefill" lá.
+   *
+   * Hoje só o fluxo "receita ao finalizar OS" usa.
+   */
+  prefill?: Partial<TransactionFormData> & { service_order_id?: string; customer_id?: string };
 }
 
 export function TransactionFormDialog({
-  open, onOpenChange, transaction, onSubmit, isLoading, defaultType = 'entrada',
+  open, onOpenChange, transaction, onSubmit, isLoading, defaultType = 'entrada', prefill,
 }: TransactionFormDialogProps) {
   const { locale, currency } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
@@ -697,7 +709,18 @@ export function TransactionFormDialog({
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
   const isEditing = !!transaction;
-  const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
+  /**
+   * Rascunho automático NÃO vale quando o formulário já nasce preenchido por um
+   * fluxo de fora (hoje: receita ao finalizar a OS). Sem isso, um rascunho
+   * abandonado de OUTRO lançamento abre o DraftResumeDialog por cima do fluxo
+   * da OS e o usuário vê dados que não são daquele serviço.
+   *
+   * Usar SÓ para rascunho. `isEditing` continua sendo `isEditing` na validação,
+   * no `belongsToInstallmentGroup` e no selo de parcela: lá ele significa outra
+   * coisa (existe um registro sendo alterado).
+   */
+  const draftsDisabled = isEditing || !!prefill;
+  const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing: draftsDisabled });
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   // Guard de reentrância SÍNCRONO. O state `submitting` só atualiza no próximo
@@ -730,38 +753,56 @@ export function TransactionFormDialog({
   const lastPaymentMethod = normalizePaymentMethod(lastPaymentMethodRaw) ?? lastPaymentMethodRaw;
   const lastAccountId = localStorage.getItem('fin_last_account_id') || '';
 
-  const defaults: TransactionFormData = useMemo(() => ({
-    transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
-    category: transaction?.category ?? '',
-    description: transaction?.description ?? '',
-    amount: transaction?.amount ?? 0,
-    transaction_date: transaction?.transaction_date ?? todayInBrazil(),
-    is_paid: transaction?.is_paid ?? true,
-    // Regra da data de pagamento:
-    // - transação JÁ paga: preserva a data real. Editar a descrição não pode
-    //   recarimbar o mês em que o dinheiro se moveu.
-    // - EDITANDO uma conta em aberto (o caso do bug): padrão é HOJE, porque
-    //   quem liga "pago" agora está dando baixa agora. Antes vinha
-    //   `transaction_date` e a baixa de março voltava pra janeiro.
-    // - CRIANDO: espelha `transaction_date` (ver efeito de espelho abaixo), que
-    //   é o comportamento de sempre pra lançamento retroativo já pago.
-    paid_date: (transaction as any)?.paid_date
-      ?? (transaction ? todayInBrazil() : (transaction as any)?.transaction_date ?? todayInBrazil()),
-    notes: (transaction as any)?.notes ?? '',
-    payment_method: (transaction as any)?.payment_method
-      ? (normalizePaymentMethod((transaction as any).payment_method) ?? (transaction as any).payment_method)
-      : lastPaymentMethod,
-    // NUNCA semear com `installment_total`. O `amount` de uma parcela é a
-    // FATIA, não o total: semear 10 aqui fazia o motor dividir R$ 100 em 10 e
-    // a venda de R$ 1.000 voltava como R$ 100. Edição de parcela nasce em 1 e
-    // `planTransactionEdit` impede que ela vire parcelamento novo.
-    installment_count: 1,
-    account_id: (transaction as any)?.account_id ?? lastAccountId,
-    cost_center_id: transaction?.cost_center_id ?? null,
-    // Decisão do CEO: nunca nasce marcado. Sem padrão, sem preferência salva.
-    card_receipt_mode: undefined,
+  /**
+   * `prefill` chega quase sempre como objeto literal do chamador: identidade
+   * NOVA a cada render dele. Usado cru como dependência, `defaults` seria
+   * recalculado sem parar e qualquer efeito que dependa dele passaria a
+   * reiniciar o formulário no meio da digitação. A chave serializada compara
+   * por VALOR: só muda quando o conteúdo muda de verdade.
+   */
+  const prefillKey = prefill ? JSON.stringify(prefill) : '';
+
+  const defaults: TransactionFormData = useMemo(() => {
+    const base: TransactionFormData = {
+      transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
+      category: transaction?.category ?? '',
+      description: transaction?.description ?? '',
+      amount: transaction?.amount ?? 0,
+      transaction_date: transaction?.transaction_date ?? todayInBrazil(),
+      is_paid: transaction?.is_paid ?? true,
+      // Regra da data de pagamento:
+      // - transação JÁ paga: preserva a data real. Editar a descrição não pode
+      //   recarimbar o mês em que o dinheiro se moveu.
+      // - EDITANDO uma conta em aberto (o caso do bug): padrão é HOJE, porque
+      //   quem liga "pago" agora está dando baixa agora. Antes vinha
+      //   `transaction_date` e a baixa de março voltava pra janeiro.
+      // - CRIANDO: espelha `transaction_date` (ver efeito de espelho abaixo), que
+      //   é o comportamento de sempre pra lançamento retroativo já pago.
+      paid_date: (transaction as any)?.paid_date
+        ?? (transaction ? todayInBrazil() : (transaction as any)?.transaction_date ?? todayInBrazil()),
+      notes: (transaction as any)?.notes ?? '',
+      payment_method: (transaction as any)?.payment_method
+        ? (normalizePaymentMethod((transaction as any).payment_method) ?? (transaction as any).payment_method)
+        : lastPaymentMethod,
+      // NUNCA semear com `installment_total`. O `amount` de uma parcela é a
+      // FATIA, não o total: semear 10 aqui fazia o motor dividir R$ 100 em 10 e
+      // a venda de R$ 1.000 voltava como R$ 100. Edição de parcela nasce em 1 e
+      // `planTransactionEdit` impede que ela vire parcelamento novo.
+      installment_count: 1,
+      account_id: (transaction as any)?.account_id ?? lastAccountId,
+      cost_center_id: transaction?.cost_center_id ?? null,
+      // Decisão do CEO: nunca nasce marcado. Sem padrão, sem preferência salva.
+      card_receipt_mode: undefined,
+    };
+
+    // Pré-preenchimento só existe em CRIAÇÃO. Editando, quem manda é o registro.
+    // `service_order_id` / `customer_id` ficam de fora: não são campos do form
+    // (o parse do Zod os descartaria) e entram direto no payload em `runSubmit`.
+    if (transaction || !prefill) return base;
+    const { service_order_id: _prefillOsId, customer_id: _prefillCustomerId, ...prefillFields } = prefill;
+    return { ...base, ...prefillFields };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transaction, defaultType]);
+  }, [transaction, defaultType, prefillKey]);
 
   // Editando uma parcela de um grupo JÁ criado, o campo de parcelas vira badge
   // read-only e a pergunta do crédito parcelado não é feita. A validação segue
@@ -782,13 +823,13 @@ export function TransactionFormDialog({
 
   const watchedValues = form.watch();
   useEffect(() => {
-    if (open && !isEditing && !draft.showResumePrompt) draft.saveDraft(watchedValues);
-  }, [watchedValues, open, isEditing, draft.showResumePrompt]);
+    if (open && !draftsDisabled && !draft.showResumePrompt) draft.saveDraft(watchedValues);
+  }, [watchedValues, open, draftsDisabled, draft.showResumePrompt]);
 
   useEffect(() => {
     if (open) {
       setPendingFiles([]);
-      if (!isEditing && draft.hasDraft && draft.draftData) {
+      if (!draftsDisabled && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
         form.reset(defaults);
@@ -967,6 +1008,15 @@ export function TransactionFormDialog({
         account_id: data.account_id || null,
         cost_center_id: data.cost_center_id || null,
         credit_card_bill_date: data.credit_card_bill_date || null,
+        // ── vínculos do prefill ────────────────────────────────────────────
+        // `service_order_id` / `customer_id` não existem no schema Zod, então
+        // NÃO sobrevivem ao parse do react-hook-form: se dependessem do form,
+        // chegariam aqui como `undefined` e o vínculo da receita com a OS se
+        // perderia em silêncio. São carimbados direto no payload, por último,
+        // pra nada acima sobrescrever. Só em CRIAÇÃO: em edição o vínculo do
+        // registro já existe e não é assunto deste formulário.
+        ...(!isEditing && prefill?.service_order_id ? { service_order_id: prefill.service_order_id } : {}),
+        ...(!isEditing && prefill?.customer_id ? { customer_id: prefill.customer_id } : {}),
       };
       if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
       if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
@@ -1117,7 +1167,7 @@ export function TransactionFormDialog({
       footer={footer}
     >
       <DraftResumeDialog
-        open={draft.showResumePrompt}
+        open={!draftsDisabled && draft.showResumePrompt}
         onResume={() => { if (draft.draftData) form.reset(draft.draftData); draft.acceptDraft(); }}
         onDiscard={() => {
           draft.discardDraft();

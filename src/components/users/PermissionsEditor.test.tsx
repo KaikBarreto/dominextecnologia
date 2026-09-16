@@ -13,7 +13,7 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 }));
 
 import { PermissionsEditor } from './PermissionsEditor';
-import { getAllPermissionKeys } from '@/hooks/usePermissions';
+import { getAllPermissionKeys, getFunctionsByScreen } from '@/hooks/usePermissions';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -68,7 +68,12 @@ describe('PermissionsEditor', () => {
     expect(text()).toContain('Ordens de Serviço');
     expect(text()).toContain('Notas Fiscais');
     expect(text()).toContain('Personalizado');
-    expect(text()).toContain('0/5'); // 5 ações na tela de OS
+    // Contador de ações da tela de OS. O número vem do catálogo, não fixo no
+    // teste: permissão nova na tela de OS (ex.: `fn:os_finish_revenue`, v1.25)
+    // mudava o total e quebrava aqui sem nada de errado ter acontecido. O que
+    // importa provar é que o contador RENDERIZA o total certo.
+    const acoesDaTelaDeOs = getFunctionsByScreen('screen:service_orders').length;
+    expect(text()).toContain(`0/${acoesDaTelaDeOs}`);
   });
 
   it('aplicar cargo SUBSTITUI a seleção e acende o chip', () => {

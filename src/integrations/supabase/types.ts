@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -1053,6 +1078,7 @@ export type Database = {
           logo_url: string | null
           name: string
           neighborhood: string | null
+          os_finish_revenue_prompt_enabled: boolean
           os_stock_consumption_enabled: boolean
           phone: string | null
           proposal_customization: Json | null
@@ -1100,6 +1126,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -1147,6 +1174,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -9855,6 +9883,10 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: undefined
       }
+      delete_tenant_charge_local: {
+        Args: { p_charge_id: string; p_company_id: string }
+        Returns: Json
+      }
       edit_service_order_scope: {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
@@ -10460,6 +10492,20 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: undefined
       }
+      update_tenant_charge_local: {
+        Args: {
+          p_boleto_url: string
+          p_charge_id: string
+          p_company_id: string
+          p_description: string
+          p_due_date: string
+          p_invoice_url: string
+          p_pix_copy_paste: string
+          p_status: string
+          p_value: number
+        }
+        Returns: Json
+      }
       upsert_compute_catalog: { Args: { p_payload: Json }; Returns: number }
       vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
       vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
@@ -10632,6 +10678,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],
