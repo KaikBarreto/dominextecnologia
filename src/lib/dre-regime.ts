@@ -20,6 +20,7 @@
  */
 
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
+import { todayInTz } from '@/lib/timezone';
 
 /**
  * Regime da DRE:
@@ -174,9 +175,54 @@ export function isPayrollAdvance(t: DreTransactionLike): boolean {
  * Caixa mesmo com `paid_date` certo.
  */
 /**
+ * Trava de ENTRADA de data de pagamento, no FUSO DA EMPRESA.
+ *
+ * "Já foi pago" (ou "já foi recebido") é sempre PASSADO, por definição: não
+ * existe dinheiro que já se moveu amanhã. Trava única dos 3 lugares que capturam
+ * uma data de pagamento JÁ EFETIVADO: o campo "Data do pagamento" do
+ * `TransactionFormDialog` (com "Já foi pago" ligado), o "Confirmar pagamento" de
+ * despesa (`FinanceContas`) e o "Confirmar recebimento" de receita
+ * (`ReceivePaymentModal`). Print do sócio: 16/10/2026 (futuro) aceito nos dois, e
+ * o pagamento futuro já aparecia como realizado na DRE em Regime de Caixa, num
+ * período que ainda não aconteceu.
+ *
+ * `previousDateIso`: dado GRAVADO antes desta trava existir (e existe, em
+ * produção) não pode travar uma edição que a pessoa não pediu. Abrir um
+ * lançamento antigo com `paid_date` no futuro só pra corrigir a descrição não
+ * pode empacar num erro que o usuário não criou. Por isso: se a data não MUDOU
+ * em relação à que já estava salva, ela passa mesmo estando no futuro. Só uma
+ * mudança PARA uma data futura (nova ou diferente da gravada) é barrada.
+ * Comparação lexicográfica funciona porque o formato é sempre YYYY-MM-DD.
+ *
+ * Por que o fuso entra por PARÂMETRO: a versão antiga
+ * (`isPaidDateAllowed`, do extinto `@/lib/today-brazil`) comparava contra "hoje em
+ * America/Sao_Paulo" chumbado. Empresa em Cuiabá (UTC-4) às 23h15 do dia 30 tem
+ * "hoje" = dia 30, e São Paulo já está no 31: a trava ficava frouxa. Pior no
+ * outro sentido, e o app oferece esses fusos na config Regional: empresa em
+ * Europe/Lisbon (UTC+1) à 01h do dia 1º tem "hoje" = dia 1º enquanto São Paulo
+ * ainda marca 30, e a trava BARRAVA o próprio dia de hoje, deixando o botão
+ * "Confirmar" morto por 4 horas por dia. Fuso vazio ou inválido cai em
+ * America/Sao_Paulo sem lançar (ver `safeTimeZone`).
+ *
+ * Mora aqui, e não num módulo de data genérico, porque é REGRA DE NEGÓCIO
+ * financeira, não primitiva de fuso. O antigo `@/lib/today-brazil` foi
+ * aposentado em 2026-09-17 justamente por chumbar America/Sao_Paulo. É o gêmeo de ENTRADA do
+ * `isFutureCashDate` logo abaixo, que é o fail-safe de LEITURA da mesma regra.
+ */
+export function isPaidDateAllowedInTz(
+  dateIso: string | null | undefined,
+  timeZone: string | null | undefined,
+  previousDateIso?: string | null,
+): boolean {
+  if (!dateIso) return true;
+  if (dateIso <= todayInTz(timeZone)) return true;
+  return !!previousDateIso && dateIso === previousDateIso;
+}
+
+/**
  * Caixa é dinheiro que JÁ se moveu — por definição não existe "caixa do mês
- * que vem". `isPaidDateAllowed` (`@/lib/today-brazil`) trava a ENTRADA de uma
- * data de pagamento futura na tela; esta função é o fail-safe do lado da
+ * que vem". `isPaidDateAllowedInTz` (acima) trava a ENTRADA de uma data de
+ * pagamento futura na tela; esta função é o fail-safe do lado da
  * LEITURA: mesmo que um `paid_date` no futuro já esteja gravado no banco (dado
  * anterior à trava, ou uma brecha que passou por ela), a DRE em Caixa não pode
  * contar esse dinheiro antes do dia chegar.
@@ -190,7 +236,8 @@ export function isPayrollAdvance(t: DreTransactionLike): boolean {
  * funcionou (`entra pago ou não`), e essa não foi a reclamação.
  *
  * `today` entra por parâmetro (em vez de ler o relógio aqui dentro) pra função
- * continuar pura e testável — quem chama usa `todayInBrazil()`.
+ * continuar pura e testável. Quem chama usa `todayInTz(timezone)`, com o fuso
+ * DA EMPRESA vindo do `useAppLocaleContext`.
  */
 export function isFutureCashDate(effective: string | null, regime: DreRegime, today: string): boolean {
   if (regime !== 'caixa' || !effective) return false;

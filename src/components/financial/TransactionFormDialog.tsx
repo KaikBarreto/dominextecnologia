@@ -72,7 +72,8 @@ import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
-import { todayInBrazil, isPaidDateAllowed } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
+import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 import { ModalFormSection } from './ModalFormSection';
 
 
@@ -120,9 +121,15 @@ function makeTransactionSchema(
      * `paid_date` que já estava GRAVADO antes de abrir o form (edição). Dado
      * legado com data futura (existe em produção) não pode travar uma edição
      * que a pessoa não pediu — só uma MUDANÇA para uma data futura é barrada.
-     * Ver `isPaidDateAllowed` em `src/lib/today-brazil.ts`.
+     * Ver `isPaidDateAllowedInTz` em `src/lib/dre-regime.ts`.
      */
     originalPaidDate?: string | null;
+    /**
+     * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
+     * porque esta fábrica é módulo, não componente, e util não chama hook.
+     * Ausente ou inválido cai em America/Sao_Paulo sem lançar.
+     */
+    timeZone?: string | null;
   },
 ) {
   const currentYear = new Date().getFullYear();
@@ -171,7 +178,7 @@ function makeTransactionSchema(
   // de crédito parcelado) — diferente da trava abaixo, que só faz sentido
   // quando aquele bloco pode aparecer na tela.
   let schema = base.superRefine((data, ctx) => {
-    if (data.is_paid && !isPaidDateAllowed(data.paid_date, opts?.originalPaidDate)) {
+    if (data.is_paid && !isPaidDateAllowedInTz(data.paid_date, opts?.timeZone, opts?.originalPaidDate)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['paid_date'],
@@ -754,7 +761,9 @@ interface TransactionFormDialogProps {
 export function TransactionFormDialog({
   open, onOpenChange, transaction, onSubmit, isLoading, defaultType = 'entrada', prefill,
 }: TransactionFormDialogProps) {
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone`: fuso da empresa. Manda no "hoje" de `transaction_date` e
+  // `paid_date`, e este último decide o MÊS no regime de Caixa da DRE.
+  const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const tf = fin.transactionForm;
   // Faixa de ano aceita nos campos de data digitados à mão (`min`/`max` do
@@ -836,7 +845,7 @@ export function TransactionFormDialog({
       category: transaction?.category ?? '',
       description: transaction?.description ?? '',
       amount: transaction?.amount ?? 0,
-      transaction_date: transaction?.transaction_date ?? todayInBrazil(),
+      transaction_date: transaction?.transaction_date ?? todayInTz(timezone),
       is_paid: transaction?.is_paid ?? true,
       // Regra da data de pagamento:
       // - transação JÁ paga: preserva a data real. Editar a descrição não pode
@@ -847,7 +856,7 @@ export function TransactionFormDialog({
       // - CRIANDO: espelha `transaction_date` (ver efeito de espelho abaixo), que
       //   é o comportamento de sempre pra lançamento retroativo já pago.
       paid_date: (transaction as any)?.paid_date
-        ?? (transaction ? todayInBrazil() : (transaction as any)?.transaction_date ?? todayInBrazil()),
+        ?? (transaction ? todayInTz(timezone) : (transaction as any)?.transaction_date ?? todayInTz(timezone)),
       notes: (transaction as any)?.notes ?? '',
       payment_method: (transaction as any)?.payment_method
         ? (normalizePaymentMethod((transaction as any).payment_method) ?? (transaction as any).payment_method)
@@ -874,7 +883,7 @@ export function TransactionFormDialog({
     const { service_order_id: _prefillOsId, ...prefillFields } = prefill;
     return { ...base, ...prefillFields };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transaction, defaultType, prefillKey]);
+  }, [transaction, defaultType, prefillKey, timezone]);
 
   // Editando uma parcela de um grupo JÁ criado, o campo de parcelas vira badge
   // read-only e a pergunta do crédito parcelado não é feita. A validação segue
@@ -884,12 +893,12 @@ export function TransactionFormDialog({
 
   // Dado GRAVADO antes da trava existir (e existe, em produção): usado pra
   // não bloquear a edição de um lançamento antigo por causa de um erro que o
-  // usuário não criou. Ver `isPaidDateAllowed`.
+  // usuário não criou. Ver `isPaidDateAllowedInTz`.
   const originalPaidDate = (transaction as any)?.paid_date ?? null;
   const localizedSchema = useMemo(
-    () => makeTransactionSchema(tf.validations, { canAskCardReceiptMode, originalPaidDate }),
+    () => makeTransactionSchema(tf.validations, { canAskCardReceiptMode, originalPaidDate, timeZone: timezone }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [locale, canAskCardReceiptMode, originalPaidDate],
+    [locale, canAskCardReceiptMode, originalPaidDate, timezone],
   );
 
   const form = useForm<TransactionFormData>({
@@ -1535,7 +1544,7 @@ export function TransactionFormDialog({
                   perguntar, uma conta de janeiro baixada em março voltava pra
                   janeiro e mexia num mês já fechado.
                   Trava de "não pode ser no futuro": validação no schema
-                  (isPaidDateAllowed) + `max` aqui, que barra o calendário
+                  (isPaidDateAllowedInTz) + `max` aqui, que barra o calendário
                   nativo mas não a digitação manual — por isso a validação no
                   submit é quem garante de verdade. Dado antigo com data
                   futura (gravado antes desta trava existir) não é barrado
@@ -1548,7 +1557,7 @@ export function TransactionFormDialog({
                       <Input
                         type="date"
                         min={dateInputMin}
-                        max={todayInBrazil()}
+                        max={todayInTz(timezone)}
                         {...field}
                         value={field.value ?? ''}
                         onChange={(e) => {
@@ -1561,7 +1570,7 @@ export function TransactionFormDialog({
                     {/* Aviso NÃO bloqueante: a data ainda é a que já estava
                         gravada (o usuário não mexeu nela) e está no futuro —
                         dado legado de antes desta trava existir. */}
-                    {field.value && field.value === originalPaidDate && !isPaidDateAllowed(field.value) && (
+                    {field.value && field.value === originalPaidDate && !isPaidDateAllowedInTz(field.value, timezone) && (
                       <p className="flex items-start gap-1.5 text-xs text-warning">
                         <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                         {tf.paidDateFutureLegacyWarning}

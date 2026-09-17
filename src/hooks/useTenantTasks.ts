@@ -5,7 +5,13 @@
  * - `tasks`            — todas as tarefas da empresa (qualquer status).
  * - `pendingTasks`     — só status='pendente', ordenadas por task_date ASC.
  * - `pendingCount`     — contagem de pendentes (badge).
- * - `todayAndOverdue`  — pendentes com task_date <= hoje (BRT).
+ * - `todayAndOverdue`  — pendentes com task_date <= hoje (fuso da empresa).
+ * - `today`            — "hoje" (YYYY-MM-DD) no fuso da EMPRESA. FONTE ÚNICA:
+ *                        `TasksDrawer` e `DailyTasksPopup` consomem daqui, não
+ *                        recalculam. Antes, os três arquivos tinham a mesma
+ *                        função copiada e fixa em America/Sao_Paulo, então
+ *                        empresa em Cuiabá via tarefa marcada "Atrasada" e o
+ *                        popup diário resetava ~1h antes da meia-noite local.
  * - `isLoading`
  * - `createTask`       — inclui company_id + created_by no payload.
  * - `completeTask(id)` — status='concluida', completed_at=now, completed_by=user.
@@ -14,13 +20,17 @@
  * Regras do repo:
  * - Componente NUNCA chama supabase.from direto — sempre via este hook.
  * - company_id OBRIGATÓRIO no INSERT (RLS bloqueia silenciosamente se faltar).
- * - Timezone BRT (America/Sao_Paulo): hoje = deslocamento UTC-3 estável.
+ * - O dia é o da EMPRESA (`company_settings.timezone`, via useAppLocaleContext),
+ *   nunca o do aparelho e nunca Brasília chumbado. `todayInTz` cai no padrão
+ *   sem lançar quando o fuso é nulo ou inválido.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { todayInTz } from '@/lib/timezone';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -32,13 +42,6 @@ export type TenantTaskInsert = Pick<
   'title' | 'task_date' | 'description' | 'assigned_to'
 >;
 
-// ── helpers de data BRT ──────────────────────────────────────────────────────
-
-/** Retorna a data de hoje no fuso de Brasília (YYYY-MM-DD). */
-function todayBrt(): string {
-  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
-}
-
 // ── hook ─────────────────────────────────────────────────────────────────────
 
 const QUERY_KEY = ['tenant-tasks'] as const;
@@ -47,6 +50,7 @@ export function useTenantTasks() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { timezone } = useAppLocaleContext();
 
   // ── query principal ──────────────────────────────────────────────────────
   const { data: tasks = [], isLoading } = useQuery({
@@ -68,7 +72,7 @@ export function useTenantTasks() {
 
   const pendingCount = pendingTasks.length;
 
-  const today = todayBrt();
+  const today = todayInTz(timezone);
   const todayAndOverdue = pendingTasks.filter((t) => t.task_date <= today);
 
   // ── mutations ────────────────────────────────────────────────────────────
@@ -153,6 +157,8 @@ export function useTenantTasks() {
     pendingTasks,
     pendingCount,
     todayAndOverdue,
+    /** "Hoje" no fuso da empresa (YYYY-MM-DD). Use isto, não recalcule. */
+    today,
     isLoading,
     createTask,
     completeTask,

@@ -94,7 +94,7 @@ import { formatMoney } from '@/lib/format';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
   const { items, isLoading, stats, deleteItem, getQuantityForStock, getMinQuantityForStock, getPresenceForStock } = useInventory();
   const { accessibleIds, isLoading: isLoadingAccessible } = useAccessibleInventoryIds();
@@ -292,7 +292,7 @@ export default function Inventory() {
     const title = t.export.reportTitle;
     try {
       if (exportFormat === 'excel') {
-        await generateInventoryExcel({ title, rows, locale, currency, stockName: activeStock?.name });
+        await generateInventoryExcel({ title, rows, locale, currency, stockName: activeStock?.name, timezone });
       } else {
         await generateInventoryReportPdf({
           company: companySettings,
@@ -302,6 +302,7 @@ export default function Inventory() {
           locale,
           currency,
           stockName: activeStock?.name,
+          timezone,
         });
       }
     } catch (err) {

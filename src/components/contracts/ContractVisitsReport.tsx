@@ -19,6 +19,7 @@ import { useContractVisitsReport, type VisitEnrichment } from '@/hooks/useContra
 import { getFrequencyLabel, type Contract } from '@/hooks/useContracts';
 import { osStatusLabels, type OsStatus } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
 
@@ -283,12 +284,11 @@ function VisitBlock({
   const isDone = status === 'concluida';
   const isCancelled = status === 'cancelada';
 
+  const { timezone } = useAppLocaleContext();
   const occDate = scheduledDate ? parseLocalDate(scheduledDate) : null;
-  // "Hoje" no fuso Brasil (YYYY-MM-DD). Atrasada só a partir do DIA SEGUINTE:
-  // scheduled_date estritamente antes de hoje, comparando por dia.
-  const todaySP = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
+  // "Hoje" no fuso da empresa (YYYY-MM-DD). Atrasada só a partir do DIA
+  // SEGUINTE: scheduled_date estritamente antes de hoje, comparando por dia.
+  const todaySP = todayInTz(timezone);
   const isLate =
     !isDone && !isCancelled && !!scheduledDate && scheduledDate < todaySP;
 

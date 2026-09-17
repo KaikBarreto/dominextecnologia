@@ -13,16 +13,7 @@ import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
-
-/** Data de hoje (YYYY-MM-DD) no fuso de São Paulo — o padrão de data do app. */
-function todayBR(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
+import { todayInTz } from '@/lib/timezone';
 
 interface AdjustBalanceDialogProps {
   open: boolean;
@@ -43,7 +34,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
   const { balances } = useFinancialAccounts();
   const { createTransaction } = useFinancial();
   const { toast } = useToast();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.adjustBalance;
 
   // Saldo atual derivado das transações (fallback no saldo inicial).
@@ -101,7 +92,12 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     submitGuard.current = true;
     setSubmitting(true);
     try {
-      const today = todayBR();
+      // Hoje no fuso DA EMPRESA, nunca em Brasília chumbado nem no fuso do
+      // aparelho: `transaction_date`/`paid_date` decidem o mês do ajuste no
+      // regime de Caixa. Empresa em Cuiabá (UTC-4) ajustando às 23h15 do dia 30
+      // gravava dia 31 (já virou o dia em São Paulo) e o ajuste caía no mês
+      // seguinte.
+      const today = todayInTz(timezone);
       await createTransaction.mutateAsync({
         transaction_type: delta > 0 ? 'entrada' : 'saida',
         amount: Math.abs(delta),

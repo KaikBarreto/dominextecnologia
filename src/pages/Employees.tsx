@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { todayInTz } from '@/lib/timezone';
 import {
   Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
   FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network, Tablet,
@@ -76,21 +77,6 @@ function buildHoleriteIdentity(
     codigo: emp.matricula ?? undefined,
     cbo: emp.cbo ?? undefined,
   };
-}
-
-// TODO: trocar pelo helper canônico de data do Brasil quando ele existir (outro dev
-// está criando, provavelmente `src/lib/today-brazil.ts` exportando `todayInBrazil()`).
-// Ainda não existe no repo no momento desta correção — implementado inline aqui.
-// `new Date().toISOString().split('T')[0]` devolve a data em UTC: no Brasil (UTC-3),
-// qualquer ação a partir das 21h local grava a data de AMANHÃ. Mesmo padrão de
-// `todayInSaoPaulo()` em src/hooks/useCreditCardBills.ts.
-function todayInBrazil(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
 }
 
 /**
@@ -168,7 +154,12 @@ export default function Employees() {
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [kioskDialogOpen, setKioskDialogOpen] = useState(false);
 
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone` é o fuso da EMPRESA (company_settings.timezone), não o do
+  // aparelho. Toda data de folha e de vale que vira `paid_date` sai dele: sem
+  // isso, uma empresa em Cuiabá (UTC-4) pagando às 23h15 do dia 30 gravava 31,
+  // porque em São Paulo já era o dia seguinte, e a despesa pulava de mês no
+  // regime de Caixa da DRE.
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees;
 
   const isMobile = useIsMobile();
@@ -514,7 +505,7 @@ export default function Employees() {
     /** Bruto do ciclo (antes do abatimento de vales) — só folha preenche. */
     accrualAmount?: number;
   }) => {
-    const today = todayInBrazil();
+    const today = todayInTz(timezone);
     try {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
@@ -561,7 +552,7 @@ export default function Employees() {
       }
       throw err;
     }
-  }, [queryClient, user?.id, toast, t]);
+  }, [queryClient, user?.id, toast, t, timezone]);
 
   const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string }) => {
     if (!movementEmployee) return;
@@ -717,7 +708,7 @@ export default function Employees() {
 
           if (pendingPayroll?.id) {
             // Atualiza a folha pendente em vez de criar nova linha (evita duplicar despesa)
-            const today = todayInBrazil();
+            const today = todayInTz(timezone);
             // `amount` continua sendo o CAIXA (o que sai da conta) — é o que o
             // saldo bancário, o extrato e a DRE em Caixa leem. O bruto do ciclo
             // vai pra `accrual_amount`, que é o que a Competência lê.
@@ -1189,6 +1180,7 @@ export default function Employees() {
                   whiteLabel: wlEnabled,
                   generatedByName: profile?.full_name || undefined,
                   locale,
+                  timeZone: timezone,
                 });
                 const blob = new Blob([html], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);

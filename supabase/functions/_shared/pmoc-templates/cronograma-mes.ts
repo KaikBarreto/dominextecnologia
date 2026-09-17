@@ -17,7 +17,7 @@ import {
   StandardFonts,
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
-import { TemplateContext } from "./context.ts";
+import { TemplateContext, ymdInTimeZone } from "./context.ts";
 
 const A4_W = 595.28;
 const A4_H = 841.89;
@@ -72,6 +72,18 @@ export interface DrawCronogramaMesParams {
    * o Dossiê passa o logo pré-embedado, decodificamos uma vez só.
    */
   logoImage?: PDFImage | null;
+  /**
+   * Fuso da EMPRESA (`company_settings.timezone`). Define o que é "hoje" nesta
+   * página: o destaque do dia atual e o marcador "atrasada" das OSs.
+   *
+   * Antes o cálculo era em UTC: às 22h em São Paulo o instante já está no dia
+   * seguinte em UTC, então uma visita agendada para HOJE aparecia como ATRASADA
+   * no documento entregue ao cliente final, um dia antes da hora.
+   *
+   * Ausente/nulo/inválido cai em America/Sao_Paulo (ver `safeTimeZone`), sem
+   * derrubar a geração do PDF.
+   */
+  timeZone?: string | null;
 }
 
 function statusColor(status: string) {
@@ -95,13 +107,21 @@ function statusColor(status: string) {
 export async function drawCronogramaMesPage(
   params: DrawCronogramaMesParams,
 ): Promise<PDFPage> {
-  const { pdf, ctx, month, serviceOrders, logoImage } = params;
+  const { pdf, ctx, month, serviceOrders, logoImage, timeZone } = params;
   const page = pdf.addPage([A4_W, A4_H]);
 
   const helv = await pdf.embedFont(StandardFonts.Helvetica);
   const helvBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  const today = new Date();
+  // "Hoje" no calendário da EMPRESA, não em UTC. `month` continua em UTC de
+  // propósito: ele é aritmética de mês (dia 1), não instante de relógio.
+  const todayYmd = ymdInTimeZone(new Date(), timeZone);
+  /** "YYYY-MM-DD" de hoje no fuso da empresa, pra comparação lexicográfica. */
+  const todayIso = todayYmd
+    ? `${String(todayYmd.year).padStart(4, "0")}-${String(todayYmd.month).padStart(2, "0")}-${
+      String(todayYmd.day).padStart(2, "0")
+    }`
+    : "";
   const monthYear = month.getUTCFullYear();
   const monthIdx = month.getUTCMonth();
 
@@ -194,25 +214,27 @@ export async function drawCronogramaMesPage(
   const daysInMonth = new Date(Date.UTC(monthYear, monthIdx + 1, 0)).getUTCDate();
 
   // Indexa OSs por dia do mês
+  // `scheduled_date` é data-only ("YYYY-MM-DD"): `ymdInTimeZone` lê os números
+  // literais, sem converter fuso (converter reintroduziria o off-by-one ao
+  // contrário). Se um dia vier timestamptz, aí sim sai no fuso da empresa.
   const osByDay = new Map<number, CronogramaServiceOrder[]>();
+  const scheduledYmd = new Map<string, ReturnType<typeof ymdInTimeZone>>();
   for (const os of serviceOrders) {
     if (!os.scheduled_date) continue;
-    const d = new Date(os.scheduled_date);
-    if (
-      d.getUTCFullYear() === monthYear &&
-      d.getUTCMonth() === monthIdx
-    ) {
-      const day = d.getUTCDate();
-      const arr = osByDay.get(day) ?? [];
+    const ymd = ymdInTimeZone(os.scheduled_date, timeZone);
+    if (!ymd) continue;
+    scheduledYmd.set(os.id, ymd);
+    if (ymd.year === monthYear && ymd.month === monthIdx + 1) {
+      const arr = osByDay.get(ymd.day) ?? [];
       arr.push(os);
-      osByDay.set(day, arr);
+      osByDay.set(ymd.day, arr);
     }
   }
 
   // Desenha 6 linhas (máximo possível pra um mês)
   const totalCells = 6 * 7;
-  const todayKey = today.getUTCFullYear() === monthYear && today.getUTCMonth() === monthIdx
-    ? today.getUTCDate()
+  const todayKey = todayYmd && todayYmd.year === monthYear && todayYmd.month === monthIdx + 1
+    ? todayYmd.day
     : -1;
 
   for (let cell = 0; cell < totalCells; cell++) {
@@ -274,11 +296,22 @@ export async function drawCronogramaMesPage(
       const badgeX = x + 4;
       const badgeW = cellW - 8;
 
-      // Determina status visual (atrasada se scheduled < today e não concluída)
+      // Status visual: atrasada quando o dia agendado já passou NO CALENDÁRIO
+      // DA EMPRESA e a OS não foi concluída nem cancelada. Comparação de strings
+      // "YYYY-MM-DD" (lexicográfica = cronológica), sem instante no meio.
+      // Sem `todayIso` (relógio inválido) não marcamos nada: melhor não marcar
+      // do que marcar errado num documento legal.
       let visualStatus = os.status;
+      const osYmd = scheduledYmd.get(os.id);
+      const osIso = osYmd
+        ? `${String(osYmd.year).padStart(4, "0")}-${String(osYmd.month).padStart(2, "0")}-${
+          String(osYmd.day).padStart(2, "0")
+        }`
+        : "";
       if (
-        os.scheduled_date &&
-        new Date(os.scheduled_date) < new Date(today.toISOString().split("T")[0]) &&
+        todayIso &&
+        osIso &&
+        osIso < todayIso &&
         os.status !== "concluida" &&
         os.status !== "cancelada"
       ) {

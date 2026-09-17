@@ -57,7 +57,7 @@ function localInputToIso(val: string): string {
 
 export function StockPositionTab() {
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.stockPosition;
   const { stocks } = useStocks();
   const { settings: companySettings } = useCompanySettings();
@@ -105,7 +105,7 @@ export function StockPositionTab() {
 
   const handleExport = async (format: 'pdf' | 'excel') => {
     try {
-      const commonParams = { atDate: atIso, rows: filteredRows, locale, currency };
+      const commonParams = { atDate: atIso, rows: filteredRows, locale, currency, timezone };
       if (format === 'pdf') {
         await generateStockPositionPdf({ company: companySettings, whiteLabel: whiteLabelEnabled, ...commonParams });
       } else {

@@ -2,6 +2,7 @@ import type { InventoryReportRow } from '@/utils/inventoryPdfGenerator';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { todayInTz } from '@/lib/timezone';
 
 /**
  * Gera um `.xlsx` do Estoque com as mesmas colunas do PDF.
@@ -9,16 +10,6 @@ import { formatMoney } from '@/lib/format';
  * O `xlsx` (SheetJS) é importado de forma lazy (`await import`) pra não pesar o
  * bundle inicial — só carrega quando o usuário confirma "Exportar Excel".
  */
-
-function todayStamp(): string {
-  // YYYY-MM-DD em horário de Brasília para nomear o arquivo.
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
 
 interface GenerateInventoryExcelParams {
   title: string;
@@ -29,6 +20,12 @@ interface GenerateInventoryExcelParams {
   currency: string;
   /** Nome do local de estoque exportado (opcional). */
   stockName?: string | null;
+  /**
+   * Fuso IANA DA EMPRESA (`useAppLocaleContext().timezone`). Rótulo de exibição
+   * (nome do arquivo) — não toca saldo/kardex. Vazio/inválido cai em
+   * America/Sao_Paulo via `todayInTz`.
+   */
+  timezone?: string | null;
 }
 
 export async function generateInventoryExcel({
@@ -37,6 +34,7 @@ export async function generateInventoryExcel({
   locale,
   currency,
   stockName,
+  timezone,
 }: GenerateInventoryExcelParams): Promise<void> {
   const XLSX = await import('xlsx');
   const tr = MESSAGES[locale].app.inventory.report;
@@ -142,5 +140,5 @@ export async function generateInventoryExcel({
   XLSX.utils.book_append_sheet(wb, ws, tr.excelSheetName);
 
   const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-');
-  XLSX.writeFile(wb, `${slug}-${todayStamp()}.xlsx`);
+  XLSX.writeFile(wb, `${slug}-${todayInTz(timezone)}.xlsx`);
 }

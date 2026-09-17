@@ -34,7 +34,7 @@ import {
   classifyDreCategory,
   type DreRegime,
 } from '@/lib/dre-regime';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
 import { getCategoryIcon } from './categoryIcons';
 import type { LucideIcon } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -88,7 +88,9 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   const { categories: financialCategories } = useFinancialCategories();
   const { costCenters } = useCostCenters();
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone`: fuso da empresa, usado pra decidir o que já é passado no
+  // regime de Caixa (ver `isFutureCashDate`).
+  const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
@@ -136,10 +138,12 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
 
   const transactionsInPeriod = useMemo(
     () => {
-      // Fuso do Brasil, não o do dispositivo — mesma regra de todo campo de
-      // data financeira (ver `todayInBrazil`). Calculado uma vez por corte,
-      // não por linha.
-      const today = todayInBrazil();
+      // Fuso DA EMPRESA, não o do dispositivo nem São Paulo chumbado: mesma
+      // regra de todo campo de data financeira (ver `todayInTz`). Empresa em
+      // Cuiabá (UTC-4) abrindo a DRE às 23h15 do dia 30 tinha "hoje" = 31 e um
+      // pagamento datado 31 (ainda futuro pra ela) já contava como realizado.
+      // Calculado uma vez por corte, não por linha.
+      const today = todayInTz(timezone);
       const out: (FinancialTransaction & { customer?: any })[] = [];
       for (const t of rawTransactions) {
         // Lançamento CANCELADO não é resultado. Quando um funcionário é
@@ -170,7 +174,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
         const effective = getDreEffectiveDate(t, regime);
         // Caixa é dinheiro que JÁ se moveu: mesmo que um `paid_date` no futuro
         // já esteja gravado (dado anterior à trava de "Já foi pago" — ver
-        // `isPaidDateAllowed` — ou uma brecha que passou por ela), a DRE em
+        // `isPaidDateAllowedInTz` — ou uma brecha que passou por ela), a DRE em
         // Caixa não pode contar isso antes do dia chegar. Fail-safe de LEITURA:
         // não depende da validação de escrita ter pego o caso. Não vale pra
         // Competência, onde fato futuro é legítimo (conta agendada).
@@ -199,7 +203,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
       }
       return out;
     },
-    [rawTransactions, dreStartDate, regime, range, parentIdsWithPartialChild]
+    [rawTransactions, dreStartDate, regime, range, parentIdsWithPartialChild, timezone]
   );
 
   // Corte por centro de custo APLICADO POR CIMA do conjunto acima — e antes de
@@ -449,6 +453,9 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
           result: r.result,
         })),
         locale,
+        // Fuso da empresa: o carimbo "gerado em" do documento tem que mostrar o
+        // relógio da empresa, não o do aparelho de quem exportou.
+        timezone,
       });
     } finally {
       setIsExporting(false);

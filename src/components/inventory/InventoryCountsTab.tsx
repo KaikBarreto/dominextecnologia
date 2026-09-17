@@ -42,6 +42,7 @@ import {
   type InventoryCountDivergence,
 } from '@/hooks/useInventoryCounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { safeTimeZone } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -79,9 +80,9 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function formatDate(iso: string, locale: string) {
+function formatDate(iso: string, locale: string, timezone: string | null | undefined) {
   return new Date(iso).toLocaleDateString(locale === 'pt-br' ? 'pt-BR' : locale, {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timezone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -90,7 +91,7 @@ function formatDate(iso: string, locale: string) {
 
 export function InventoryCountsTab() {
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.inventoryCount;
   const { counts, isLoading, loadCountDetail, getDivergences, cancelCount } = useInventoryCounts();
   const { settings: companySettings } = useCompanySettings();
@@ -153,6 +154,7 @@ export function InventoryCountsTab() {
         rows,
         locale,
         currency,
+        timezone,
       };
 
       if (format === 'pdf') {
@@ -257,7 +259,7 @@ export function InventoryCountsTab() {
                       </div>
                     }
                     title={`${t.countNumberLabel} #${count.numero ?? '-'}`}
-                    subtitle={formatDate(count.created_at, locale)}
+                    subtitle={formatDate(count.created_at, locale, timezone)}
                     trailing={<StatusBadge status={count.status} />}
                   />
                 );
@@ -310,7 +312,7 @@ export function InventoryCountsTab() {
                           <StatusBadge status={count.status} />
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(count.created_at, locale)}
+                          {formatDate(count.created_at, locale, timezone)}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
                           {count.notes ?? '-'}

@@ -12,7 +12,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export type DatePreset =
@@ -44,12 +44,20 @@ interface DateRangeFilterProps {
   onRangeChange: (range: DateRange) => void;
 }
 
-export function getDateRangeFromPreset(preset: DatePreset): DateRange {
-  // Corte de período ancorado no fuso do Brasil, não no fuso do dispositivo
-  // (viajante ou máquina em UTC não pode fazer "Este mês" virar o mês errado).
-  // Meio-dia local evita qualquer sombra de DST/offset ao converter a
-  // string YYYY-MM-DD pra Date — mesmo padrão usado em filterByDate acima.
-  const now = new Date(`${todayInBrazil()}T12:00:00`);
+/**
+ * `timeZone`: fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por
+ * parâmetro porque a função é pura e roda fora de componente. Omitido, vazio ou
+ * inválido cai em America/Sao_Paulo, que é o comportamento que esta função
+ * sempre teve, então nenhum chamador antigo muda de resultado.
+ */
+export function getDateRangeFromPreset(preset: DatePreset, timeZone?: string | null): DateRange {
+  // Corte de período ancorado no fuso da EMPRESA, não no fuso do dispositivo
+  // (viajante ou máquina em UTC não pode fazer "Este mês" virar o mês errado) e
+  // nem em Brasília chumbado (empresa em Cuiabá, UTC-4, às 23h15 do dia 30 de
+  // setembro veria "Este mês" já em outubro). Meio-dia local evita qualquer
+  // sombra de DST/offset ao converter a string YYYY-MM-DD pra Date, mesmo
+  // padrão usado em filterByDate acima.
+  const now = new Date(`${todayInTz(timeZone)}T12:00:00`);
   switch (preset) {
     case 'all':
       return { from: undefined, to: undefined };
@@ -73,13 +81,16 @@ export function getDateRangeFromPreset(preset: DatePreset): DateRange {
 }
 
 export function useDateRangeFilter(defaultPreset: DatePreset = 'this_month') {
+  // Fuso da empresa: é ele que define em que dia/mês o usuário está quando
+  // escolhe "Hoje", "Este mês" ou "Mês passado".
+  const { timezone } = useAppLocaleContext();
   const [preset, setPreset] = useState<DatePreset>(defaultPreset);
-  const [range, setRange] = useState<DateRange>(getDateRangeFromPreset(defaultPreset));
+  const [range, setRange] = useState<DateRange>(() => getDateRangeFromPreset(defaultPreset, timezone));
 
   const handlePresetChange = (p: DatePreset) => {
     setPreset(p);
     if (p !== 'custom') {
-      setRange(getDateRangeFromPreset(p));
+      setRange(getDateRangeFromPreset(p, timezone));
     }
   };
 

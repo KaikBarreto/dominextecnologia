@@ -23,10 +23,16 @@ import {
  * ficam como estão, qualquer mudança de regra aqui vale só pro que for gerado
  * daqui pra frente.
  *
- * Datas são manipuladas ancoradas ao meio-dia local (`T12:00:00`) e formatadas
- * com `yyyy-MM-dd`, evitando que o fuso (America/Sao_Paulo, UTC-3) empurre a
- * data um dia pra trás na conversão. O armazenamento é só a data (sem hora),
- * então isso mantém o dia correto na agenda.
+ * Datas são manipuladas ancoradas ao MEIO-DIA local (`T12:00:00`) e formatadas
+ * com `yyyy-MM-dd`. Esta âncora é FUSO-AGNÓSTICA por construção e NÃO assume
+ * Brasília: entra uma data sem hora, sai uma data sem hora, e as 12h de folga
+ * pra cada lado absorvem qualquer deslocamento de fuso (e o horário de verão)
+ * antes que ele consiga empurrar o dia pra frente ou pra trás na conversão.
+ *
+ * Ou seja: não há nada a corrigir aqui quando a empresa não está em São Paulo.
+ * Trocar a âncora por meia-noite (ou por `new Date(iso)` puro) é que traria o
+ * defeito clássico do dia deslocado. O armazenamento é só a data (sem hora),
+ * então isso mantém o dia correto na agenda em qualquer fuso.
  */
 
 /**

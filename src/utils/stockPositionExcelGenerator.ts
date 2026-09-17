@@ -1,22 +1,20 @@
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { safeTimeZone, todayInTz } from '@/lib/timezone';
 import type { StockPositionRow } from '@/hooks/useStockPosition';
-
-function todayStamp(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
 
 interface GenerateStockPositionExcelParams {
   atDate: string;
   rows: StockPositionRow[];
   locale: LocaleCode;
   currency: string;
+  /**
+   * Fuso IANA DA EMPRESA (`useAppLocaleContext().timezone`). Rótulo de exibição
+   * (data de referência + nome do arquivo) — não toca saldo/kardex.
+   * Vazio/inválido cai em America/Sao_Paulo via `safeTimeZone`/`todayInTz`.
+   */
+  timezone?: string | null;
 }
 
 export async function generateStockPositionExcel({
@@ -24,6 +22,7 @@ export async function generateStockPositionExcel({
   rows,
   locale,
   currency,
+  timezone,
 }: GenerateStockPositionExcelParams): Promise<void> {
   const XLSX = await import('xlsx');
   const tr = MESSAGES[locale].app.inventory.stockPosition.pdf;
@@ -33,7 +32,7 @@ export async function generateStockPositionExcel({
   const totalProjecao = rows.reduce((acc, r) => acc + (r.projecao ?? 0), 0);
 
   const atLabel = new Date(atDate).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timezone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -91,6 +90,6 @@ export async function generateStockPositionExcel({
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, tr.excelSheetName);
 
-  const filename = `posicao-estoque-${todayStamp()}.xlsx`;
+  const filename = `posicao-estoque-${todayInTz(timezone)}.xlsx`;
   XLSX.writeFile(wb, filename);
 }
