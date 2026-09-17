@@ -22,6 +22,13 @@ export function BDIPreviewCard() {
 
   const [serviceCost, setServiceCost] = useState<number>(1000);
   const [distanceKm, setDistanceKm] = useState<number>(0);
+  // Texto CRU do campo de distância. O número em distanceKm segue sendo o que
+  // alimenta o cálculo; este espelho existe porque um input controlado por
+  // NUMBER engole o separador no meio da digitação: "17," volta pra 17, o
+  // campo re-renderiza "17" e o usuário, digitando 17,5 naturalmente, acabava
+  // calculando com 175. Régua: guardar string crua no estado, parsear só no
+  // uso — igual ao InventoryFormDialog.
+  const [distanceKmText, setDistanceKmText] = useState<string>('');
 
   const taxRate = Number(settings?.tax_rate ?? 10);
   const adminRate = Number(settings?.admin_indirect_rate ?? 12);
@@ -92,8 +99,11 @@ export function BDIPreviewCard() {
             </Label>
             <NumericInput
               decimal
-              value={Number.isFinite(distanceKm) && distanceKm ? String(distanceKm) : ''}
-              onValueChange={(v) => setDistanceKm(Number(v.replace(',', '.')) || 0)}
+              value={distanceKmText}
+              onValueChange={(v) => {
+                setDistanceKmText(v);
+                setDistanceKm(v.trim() === '' ? 0 : (Number(v.replace(',', '.')) || 0));
+              }}
             />
           </div>
         </div>

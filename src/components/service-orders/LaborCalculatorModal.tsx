@@ -36,6 +36,9 @@ interface LaborCalculatorModalProps {
   onApply: (hourlyRate: number, hours: number) => void;
 }
 
+/** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
+const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
+
 let nextId = 1;
 const makeWorker = (defaultHours: number): Worker => ({
   id: String(nextId++),
@@ -138,6 +141,16 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
   const [workers, setWorkers] = useState<Worker[]>(() => [makeWorker(2)]);
   const [costCalcWorkerId, setCostCalcWorkerId] = useState<string | null>(null);
 
+  // Texto cru dos campos decimais de horas (padrão + por trabalhador). Existe
+  // porque um input controlado por NUMBER engole a vírgula no meio da digitação:
+  // "2," volta pra 2, o campo re-renderiza "2" e o usuário, digitando 2,5
+  // naturalmente, acabava salvando 25. Guardar a string crua no estado e
+  // parsear só no uso é a régua da casa (mesmo padrão do InventoryFormDialog).
+  const [defaultServiceHoursText, setDefaultServiceHoursText] = useState(() => toNumericText(2));
+  const [workerHoursText, setWorkerHoursText] = useState<Record<string, string>>(() =>
+    Object.fromEntries(workers.map((w) => [w.id, toNumericText(w.hours)]))
+  );
+
   // Sync company hours when available
   useEffect(() => { setMonthlyHours(companyMonthlyHours); }, [companyMonthlyHours]);
 
@@ -165,16 +178,42 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
 
   const removeWorker = useCallback((id: string) => {
     setWorkers(prev => prev.filter(w => w.id !== id));
+    setWorkerHoursText(prev => {
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
   }, []);
 
   const addWorker = useCallback(() => {
-    setWorkers(prev => [...prev, makeWorker(defaultServiceHours)]);
+    const w = makeWorker(defaultServiceHours);
+    setWorkers(prev => [...prev, w]);
+    setWorkerHoursText(prev => ({ ...prev, [w.id]: toNumericText(w.hours) }));
   }, [defaultServiceHours]);
 
   const handleDefaultHoursChange = useCallback((val: number) => {
     setDefaultServiceHours(val);
     setWorkers(prev => prev.map(w => w.hoursEdited ? w : { ...w, hours: val }));
-  }, []);
+    setWorkerHoursText(prev => {
+      const next = { ...prev };
+      for (const w of workers) {
+        if (!w.hoursEdited) next[w.id] = toNumericText(val);
+      }
+      return next;
+    });
+  }, [workers]);
+
+  // Atualiza o texto exibido do campo "horas do serviço" (padrão) E propaga.
+  const handleDefaultHoursTextChange = useCallback((raw: string) => {
+    setDefaultServiceHoursText(raw);
+    handleDefaultHoursChange(raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0));
+  }, [handleDefaultHoursChange]);
+
+  // Idem, por trabalhador — marca hoursEdited pra não ser mais sobrescrito pelo padrão.
+  const handleWorkerHoursChange = useCallback((id: string, raw: string) => {
+    setWorkerHoursText(prev => ({ ...prev, [id]: raw }));
+    const val = raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0);
+    updateWorker(id, { hours: val, hoursEdited: true });
+  }, [updateWorker]);
 
   const calculations = useMemo(() => {
     let totalCostHourly = 0;
@@ -246,8 +285,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
               <Label className="text-xs">{t.laborServiceHoursLabel}</Label>
               <NumericInput
                 decimal
-                value={String(defaultServiceHours ?? '')}
-                onValueChange={v => handleDefaultHoursChange(Number(v.replace(',', '.')) || 0)}
+                value={defaultServiceHoursText}
+                onValueChange={handleDefaultHoursTextChange}
               />
               <p className="text-[11px] text-muted-foreground">{t.laborServiceHoursHint}</p>
             </div>
@@ -353,8 +392,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                         <Label className="text-[11px]">{t.laborServiceHoursWorkerLabel}</Label>
                         <NumericInput
                           decimal
-                          value={String(w.hours ?? '')}
-                          onValueChange={v => updateWorker(w.id, { hours: Number(v.replace(',', '.')) || 0, hoursEdited: true })}
+                          value={workerHoursText[w.id] ?? toNumericText(w.hours)}
+                          onValueChange={v => handleWorkerHoursChange(w.id, v)}
                           className="h-8 text-sm"
                         />
                       </div>

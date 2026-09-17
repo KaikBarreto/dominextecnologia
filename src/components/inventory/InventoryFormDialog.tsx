@@ -30,6 +30,9 @@ interface InventoryFormDialogProps {
   onOpenTransfer?: (item: InventoryItem, fromStockId: string) => void;
 }
 
+/** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
+const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
+
 export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, onOpenTransfer }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.formDialog;
@@ -43,6 +46,15 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '',
   });
   const [isSkuGenerating, setIsSkuGenerating] = useState(false);
+
+  // Texto CRU dos campos numéricos (quantidade e preços). O número em formData segue
+  // sendo o que vai pro save; este espelho existe porque um input controlado por NUMBER
+  // engole o separador no meio da digitação: "17," volta pra 17, o campo re-renderiza
+  // "17" e o usuário, digitando 17,99 naturalmente, acabava salvando 1799.
+  // Régua: guardar string crua no estado, parsear só no uso — igual ao stockMinQtyMap.
+  const [numericText, setNumericText] = useState<Record<'quantity' | 'cost_price' | 'sale_price', string>>({
+    quantity: '', cost_price: '', sale_price: '',
+  });
 
   // Estado de mínimo por estoque: { [stockId]: string (raw numeric) }
   const [stockMinQtyMap, setStockMinQtyMap] = useState<Record<string, string>>({});
@@ -99,11 +111,17 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     const run = async () => {
       if (item) {
         setFormData({ name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null, description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier: item.supplier || '' });
+        setNumericText({
+          quantity: toNumericText(item.quantity),
+          cost_price: toNumericText(item.cost_price),
+          sale_price: toNumericText(item.sale_price),
+        });
         initStockMinMap();
         initStockPresenceMap();
         return;
       }
       setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '' });
+      setNumericText({ quantity: '', cost_price: '', sale_price: '' });
       initStockMinMap();
       initStockPresenceMap();
       if (!open) return;
@@ -210,6 +228,13 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Atualiza o texto exibido E o número salvo. O texto é a fonte do que aparece na tela
+  // (preserva "17," durante a digitação); o número é derivado dele.
+  const handleNumericChange = (field: 'quantity' | 'cost_price' | 'sale_price', raw: string) => {
+    setNumericText(prev => ({ ...prev, [field]: raw }));
+    handleChange(field, raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0));
+  };
+
   const allPresent = stocks.length > 0 && stocks.every((s) => stockPresenceMap[s.id] !== false);
   const nonePresent = stocks.length > 0 && stocks.every((s) => stockPresenceMap[s.id] === false);
 
@@ -304,7 +329,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>{t.fields.quantity}</Label>
-            <NumericInput decimal value={formData.quantity ? String(formData.quantity) : ''} onValueChange={(v) => handleChange('quantity', parseFloat(v.replace(',', '.')) || 0)} />
+            <NumericInput decimal value={numericText.quantity} onValueChange={(v) => handleNumericChange('quantity', v)} />
           </div>
           <div className="space-y-2">
             <Label>{t.fields.unit}</Label>
@@ -321,8 +346,8 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
             <NumericInput
               decimal
               maxDecimals={2}
-              value={formData.cost_price ? String(formData.cost_price).replace('.', ',') : ''}
-              onValueChange={(v) => handleChange('cost_price', parseFloat(v.replace(',', '.')) || 0)}
+              value={numericText.cost_price}
+              onValueChange={(v) => handleNumericChange('cost_price', v)}
             />
             <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
           </div>
@@ -331,8 +356,8 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
             <NumericInput
               decimal
               maxDecimals={2}
-              value={formData.sale_price ? String(formData.sale_price).replace('.', ',') : ''}
-              onValueChange={(v) => handleChange('sale_price', parseFloat(v.replace(',', '.')) || 0)}
+              value={numericText.sale_price}
+              onValueChange={(v) => handleNumericChange('sale_price', v)}
             />
             <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
           </div>

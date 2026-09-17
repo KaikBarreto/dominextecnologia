@@ -52,6 +52,9 @@ function suggestMatch(name: string, items: InventoryItem[]): string | null {
   return hit?.id ?? null;
 }
 
+/** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
+const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
+
 /** Estado editável de cada linha na revisão. */
 interface ReviewLine {
   /** Chave estável (índice do det). */
@@ -88,6 +91,18 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
   const submittingRef = useRef(false);
   const [parsed, setParsed] = useState<NfeParseResult | null>(null);
   const [lines, setLines] = useState<ReviewLine[]>([]);
+  // Texto CRU da quantidade, por linha (chave = ReviewLine.key). O número em
+  // lines.quantity segue sendo o que vai pro import; este espelho existe porque
+  // um input controlado por NUMBER engole o separador no meio da digitação:
+  // "17," volta pra 17, o campo re-renderiza "17" e o usuário, digitando 17,99
+  // naturalmente, acabava importando 1799. Régua: guardar string crua no
+  // estado, parsear só no uso — igual ao InventoryFormDialog. Semeado em
+  // buildReview() porque as linhas nascem do XML importado, não de um form vazio.
+  const [qtyText, setQtyText] = useState<Record<string, string>>({});
+  // Mesmo espelho, agora para o custo unitário (campo monetário — a régua da
+  // casa também vale aqui: errar a vírgula contamina o custo do material que
+  // entra no estoque). Semeado junto com qtyText em buildReview().
+  const [unitCostText, setUnitCostText] = useState<Record<string, string>>({});
   // Confirmação de duplicidade pendente (data da importação anterior).
   const [dupConfirm, setDupConfirm] = useState<{ importedAt: string | null } | null>(null);
 
@@ -109,6 +124,8 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
   const resetState = () => {
     setParsed(null);
     setLines([]);
+    setQtyText({});
+    setUnitCostText({});
     setDupConfirm(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -120,23 +137,26 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
 
   const buildReview = (result: NfeParseResult) => {
     setParsed(result);
-    setLines(
-      result.items.map((it, idx) => {
-        const matchId = suggestMatch(it.name, items) ?? '';
-        return {
-          key: String(idx),
-          cProd: it.cProd,
-          ean: it.ean,
-          name: it.name,
-          unit: it.unit,
-          quantity: it.quantity,
-          unitCost: it.unitCost,
-          total: it.total,
-          include: true,
-          matchId,
-        };
-      }),
-    );
+    const reviewLines = result.items.map((it, idx) => {
+      const matchId = suggestMatch(it.name, items) ?? '';
+      return {
+        key: String(idx),
+        cProd: it.cProd,
+        ean: it.ean,
+        name: it.name,
+        unit: it.unit,
+        quantity: it.quantity,
+        unitCost: it.unitCost,
+        total: it.total,
+        include: true,
+        matchId,
+      };
+    });
+    setLines(reviewLines);
+    // Semeia o texto da quantidade e do custo unitário a partir do que veio do
+    // XML — senão a tela abre com os campos vazios mesmo já tendo valor importado.
+    setQtyText(Object.fromEntries(reviewLines.map((l) => [l.key, toNumericText(l.quantity)])));
+    setUnitCostText(Object.fromEntries(reviewLines.map((l) => [l.key, toNumericText(l.unitCost)])));
   };
 
   const handleFile = async (file: File) => {
@@ -188,6 +208,19 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
 
   const updateLine = (key: string, patch: Partial<ReviewLine>) => {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  };
+
+  // Atualiza o texto exibido E o número usado no import (mesmo padrão do
+  // handleNumericChange do InventoryFormDialog, mas por linha/key).
+  const handleQtyChange = (key: string, raw: string) => {
+    setQtyText((prev) => ({ ...prev, [key]: raw }));
+    updateLine(key, { quantity: raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0) });
+  };
+
+  // Idêntico ao handleQtyChange, para o custo unitário (campo monetário).
+  const handleUnitCostChange = (key: string, raw: string) => {
+    setUnitCostText((prev) => ({ ...prev, [key]: raw }));
+    updateLine(key, { unitCost: raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0) });
   };
 
   // Mapa id → item de estoque (para detectar divergência de unidade — B12).
@@ -424,12 +457,8 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                         <Label className="text-[11px] text-muted-foreground">{t.productsSection.qty}</Label>
                         <NumericInput
                           decimal
-                          value={line.quantity ? String(line.quantity) : ''}
-                          onValueChange={(v) =>
-                            updateLine(line.key, {
-                              quantity: Number(v.replace(',', '.')) || 0,
-                            })
-                          }
+                          value={qtyText[line.key] ?? toNumericText(line.quantity)}
+                          onValueChange={(v) => handleQtyChange(line.key, v)}
                           disabled={!line.include}
                           className="h-9 text-sm"
                         />
@@ -445,15 +474,11 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                       </div>
                       <div>
                         <Label className="text-[11px] text-muted-foreground">{t.productsSection.unitCost}</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={line.unitCost}
-                          onChange={(e) =>
-                            updateLine(line.key, {
-                              unitCost: Number(String(e.target.value).replace(',', '.')) || 0,
-                            })
-                          }
+                        <NumericInput
+                          decimal
+                          maxDecimals={2}
+                          value={unitCostText[line.key] ?? toNumericText(line.unitCost)}
+                          onValueChange={(v) => handleUnitCostChange(line.key, v)}
                           disabled={!line.include}
                           className="h-9 text-sm"
                         />
