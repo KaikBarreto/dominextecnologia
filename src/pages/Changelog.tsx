@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.35',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fornecedores ganharam lugar próprio, com o histórico de gastos',
+        description: 'Os fornecedores só podiam ser acessados por um botão escondido dentro de Compras, no Estoque. Agora existe uma aba Fornecedores na tela de Clientes, com busca, cadastro e edição. E a ficha de cada fornecedor mostra tudo o que já foi gasto com ele, com o total. Ao excluir um fornecedor, o sistema avisa o que será apagado junto: os lançamentos financeiros sobrevivem e só perdem o vínculo, mas as cotações de compra dele são apagadas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Centro de custo nos lugares onde ainda faltava',
+        description: 'O centro de custo já existia, mas não aparecia em várias telas. Agora ele está na nova cobrança, na nova assinatura, na receita lançada a partir de um contrato, e no pagamento de salário e de vale do funcionário. O arquivo exportado das movimentações também ganhou a coluna, com o nome do centro de custo e não o código. Na transferência entre contas ele continua não aparecendo de propósito: as duas pernas da transferência se anulam e poluiriam o relatório.',
+        category: 'melhoria',
+      },
+      {
+        title: 'No DRE, "CMV" virou "Custo dos Serviços Prestados"',
+        description: 'A linha de custo do DRE se chamava CMV, que é Custo da Mercadoria Vendida, um termo de comércio. Para uma empresa de serviço, o nome certo é Custo dos Serviços Prestados, ou CSP. Além de ficar mais claro que aquela linha é custo e não despesa, o relatório exportado usava uma terceira sigla diferente da tela. Agora os dois dizem a mesma coisa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.34',
     date: '18 de setembro de 2026',
     type: 'patch',

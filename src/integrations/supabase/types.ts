@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -2243,6 +2268,35 @@ export type Database = {
             columns: ["payment_transaction_id"]
             isOneToOne: false
             referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipeline_access: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          pipeline_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          pipeline_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          pipeline_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_access_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
             referencedColumns: ["id"]
           },
         ]
@@ -8995,6 +9049,7 @@ export type Database = {
           billing_type: string
           category: string | null
           company_id: string
+          cost_center_id: string | null
           created_at: string
           created_by: string | null
           credit_card_brand: string | null
@@ -9020,6 +9075,7 @@ export type Database = {
           billing_type: string
           category?: string | null
           company_id: string
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_card_brand?: string | null
@@ -9045,6 +9101,7 @@ export type Database = {
           billing_type?: string
           category?: string | null
           company_id?: string
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_card_brand?: string | null
@@ -9071,6 +9128,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_subscriptions_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {
@@ -9981,6 +10045,10 @@ export type Database = {
         Args: { _lead_id: string; _user_id: string }
         Returns: boolean
       }
+      can_access_pipeline: {
+        Args: { _pipeline_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_access_stock: {
         Args: { _stock_id: string; _user_id: string }
         Returns: boolean
@@ -10023,6 +10091,7 @@ export type Database = {
           p_amount: number
           p_category?: string
           p_company_id: string
+          p_cost_center_id?: string
           p_customer_id: string
           p_description: string
           p_due_date: string
@@ -10037,6 +10106,10 @@ export type Database = {
           p_company_id: string
         }
         Returns: boolean
+      }
+      crm_pipeline_company_id: {
+        Args: { _pipeline_id: string }
+        Returns: string
       }
       current_salesperson_id: { Args: never; Returns: string }
       delete_company_payment_with_rollback: {
@@ -10075,10 +10148,19 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
-      generate_payroll_for_employee: {
-        Args: { p_employee_id: string; p_lookahead_days?: number }
-        Returns: number
-      }
+      generate_payroll_for_employee:
+        | {
+            Args: { p_employee_id: string; p_lookahead_days?: number }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_employee_id: string
+              p_lookahead_days: number
+              p_today: string
+            }
+            Returns: number
+          }
       generate_pmoc_token: { Args: never; Returns: string }
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
@@ -10881,6 +10963,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],
