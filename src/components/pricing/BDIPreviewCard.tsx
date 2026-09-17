@@ -11,6 +11,7 @@ import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 export function BDIPreviewCard() {
   const { locale, currency } = useAppLocaleContext();
@@ -73,6 +74,15 @@ export function BDIPreviewCard() {
               step="0.01"
               value={Number.isFinite(serviceCost) ? serviceCost : 0}
               onChange={(e) => setServiceCost(Number(e.target.value) || 0)}
+              onPaste={(e) => {
+                // Simulador não persiste nada, mas colar "4.550" num
+                // `<input type="number">` ainda vira 4,55 pro navegador
+                // (decimal internacional) — o mesmo bug do sócio, aqui só
+                // distorcendo a prévia de BDI mostrada em tela.
+                const cents = readPastedCents(e);
+                if (cents == null) return;
+                setServiceCost(cents / 100);
+              }}
             />
           </div>
           <div className="space-y-1.5">

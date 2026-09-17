@@ -4,6 +4,7 @@ import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { safeTimeZone } from '@/lib/timezone';
 import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
 
 /**
@@ -38,25 +39,40 @@ interface MovimentacoesReportData {
   rows: MovimentacaoReportRow[];
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /**
+   * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
+   * porque util não chama hook. Ausente ou inválido cai em America/Sao_Paulo.
+   */
+  timezone?: string | null;
 }
 
 const formatCurrencyBR = (value: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
+/**
+ * Formata um dia de CALENDÁRIO (YYYY-MM-DD, coluna `date` do banco) como
+ * dd/MM/yyyy. Não há fuso envolvido: o dia 02 é o dia 02 em qualquer lugar.
+ *
+ * Antes isto passava por DOIS fusos e errava o dia: montava
+ * `new Date(y, m - 1, d)`, que é meia-noite no fuso do APARELHO, e depois
+ * reformatava forçando `America/Sao_Paulo`. Exportando de um notebook em Lisboa
+ * (UTC+1), a meia-noite local é 20:00 do dia ANTERIOR em São Paulo, então a
+ * movimentação do dia 02 saía como 01 no PDF que vai pro contador. Agora o dia
+ * é recortado da própria string, sem instante nenhum no meio.
+ */
 function formatDateBR(dateStr: string): string {
-  try {
-    return parseLocalDate(dateStr).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  } catch {
-    return dateStr;
-  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr ?? '').trim());
+  if (!m) return dateStr;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
-function formatGeneratedAt(locale?: LocaleCode): string {
+/**
+ * Carimbo "gerado em". Este SIM é um instante (`new Date()`), então o relógio
+ * mostrado tem que ser o DA EMPRESA, não o do aparelho de quem exportou nem
+ * Brasília chumbado: quem lê o documento é a empresa e o contador dela.
+ * `safeTimeZone` garante que fuso vazio ou inválido não derrube a exportação.
+ */
+function formatGeneratedAt(locale?: LocaleCode, timeZone?: string | null): string {
   const bcp47 =
     locale === 'pt-br' ? 'pt-BR'
     : locale === 'en' ? 'en-US'
@@ -64,7 +80,7 @@ function formatGeneratedAt(locale?: LocaleCode): string {
     : locale === 'fr' ? 'fr-FR'
     : 'pt-BR';
   return new Date().toLocaleString(bcp47, {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timeZone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -145,7 +161,7 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
   const saldo = totalEntradas - totalSaidas;
   const saldoColor = saldo > 0 ? '#16a34a' : saldo < 0 ? '#dc2626' : '#1f2937';
 
-  const generatedAt = formatGeneratedAt(locale);
+  const generatedAt = formatGeneratedAt(locale, data.timezone);
   const companyName = company?.show_name_in_documents !== false && company?.name ? company.name : 'Relatório';
 
   const bodyRows = rows.map((r) => {

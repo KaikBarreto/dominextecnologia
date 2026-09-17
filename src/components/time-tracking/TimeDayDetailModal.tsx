@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import { Pencil, Trash2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { timeInTz, timeWithSecondsInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -36,7 +36,7 @@ interface Props {
 }
 
 export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeName, date }: Props) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.timeclock.dayDetail;
 
   const { data: records = [], isLoading } = useTimeRecordsForDay(employeeId, date);
@@ -67,13 +67,13 @@ export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeNam
                   <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-semibold text-sm">{format(new Date(rec.recorded_at), 'HH:mm:ss')}</span>
+                        <span className="font-semibold text-sm">{timeWithSecondsInTz(rec.recorded_at, timezone)}</span>
                         <span className="text-xs text-muted-foreground">— {typeLabel(rec.type)}</span>
                         {rec.edited_at && (
                           <Badge
                             variant="outline"
                             className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground"
-                            title={t.editedTitle.replace('{{time}}', format(new Date(rec.original_recorded_at ?? rec.recorded_at), 'HH:mm'))}
+                            title={t.editedTitle.replace('{{time}}', timeInTz(rec.original_recorded_at ?? rec.recorded_at, timezone))}
                           >
                             {t.edited}
                           </Badge>
@@ -163,7 +163,7 @@ export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeNam
             <AlertDialogDescription>
               {deletingRecord && t.deleteConfirm.description
                 .replace('{{type}}', typeLabel(deletingRecord.type))
-                .replace('{{time}}', format(new Date(deletingRecord.recorded_at), 'HH:mm'))}
+                .replace('{{time}}', timeInTz(deletingRecord.recorded_at, timezone))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

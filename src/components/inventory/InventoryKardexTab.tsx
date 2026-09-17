@@ -34,6 +34,7 @@ import {
 } from '@/hooks/useInventoryMovements';
 import { useInventory } from '@/hooks/useInventory';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { dateInTz, timeInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatOSNumber } from '@/lib/osNumber';
 
@@ -76,21 +77,12 @@ function TypeBadge({ type, label }: { type: string; label: string }) {
   );
 }
 
-/** dd/MM/yyyy HH:mm no fuso de Brasília. */
-function formatDateTime(iso: string): string {
+/** dd/MM/yyyy HH:mm no fuso DA EMPRESA. Rótulo de exibição do kardex. */
+function formatDateTime(iso: string, timezone: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
-  const parts = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(d);
-  const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? '';
-  return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`;
+  const [year, month, day] = dateInTz(d, timezone).split('-');
+  return `${day}/${month}/${year} ${timeInTz(d, timezone)}`;
 }
 
 /** Texto curto de origem: OS > Fornecedor > notes. */
@@ -146,7 +138,7 @@ function initials(name: string | null, email: string | null): string {
 
 export function InventoryKardexTab() {
   const isMobile = useIsMobile();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const tInv = MESSAGES[locale].app.inventory;
   const t = tInv.kardex;
   const { movements, isLoading } = useInventoryMovements();
@@ -318,7 +310,7 @@ export function InventoryKardexTab() {
                     label={(t.movementTypes as Record<string, string>)[m.movement_type] ?? m.movement_type}
                   />
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(m.created_at)}
+                    {formatDateTime(m.created_at, timezone)}
                   </span>
                 </div>
                 <div className="min-w-0">
@@ -408,7 +400,7 @@ export function InventoryKardexTab() {
                         </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
-                        {formatDateTime(m.created_at)}
+                        {formatDateTime(m.created_at, timezone)}
                       </TableCell>
                       <TableCell>
                         <TypeBadge

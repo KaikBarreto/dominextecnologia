@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Camera, RefreshCw, X } from 'lucide-react';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { extractShortCode } from '@/utils/prettyLinks';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { CepLookup } from '@/components/CepLookup';
 import { resolvePrimaryContrast } from '@/hooks/useWhiteLabel';
 import { cpfCnpjMask, phoneMask, cepMask } from '@/utils/masks';
+import { compressSelfie } from '@/utils/imageConvert';
 
 // -----------------------------------------------------------------------------
 // Tipos do contrato do backend (RPC get_lead_capture_form).
@@ -19,7 +20,7 @@ import { cpfCnpjMask, phoneMask, cepMask } from '@/utils/masks';
 type FieldKey =
   | 'name' | 'customer_type' | 'document' | 'email' | 'phone' | 'celular'
   | 'company_name' | 'nome_fantasia' | 'zip_code' | 'address' | 'address_number'
-  | 'neighborhood' | 'complement' | 'city' | 'state' | 'notes';
+  | 'neighborhood' | 'complement' | 'city' | 'state' | 'notes' | 'photo_url';
 
 interface FieldSetting { enabled?: boolean; required?: boolean }
 
@@ -75,6 +76,11 @@ const UI = {
     consentFallback: 'Autorizo o contato e o tratamento dos meus dados para fins de atendimento, conforme a Lei Geral de Proteção de Dados (LGPD).',
     optional: '(opcional)',
     pf: 'Pessoa física', pj: 'Pessoa jurídica',
+    photoPick: 'Tirar foto ou escolher da galeria',
+    photoChange: 'Trocar foto',
+    photoRemove: 'Remover foto',
+    photoUploading: 'Enviando foto...',
+    photoWaitMsg: 'Aguarde a foto terminar de enviar.',
   },
   en: {
     submit: 'Submit', sending: 'Sending...',
@@ -89,6 +95,11 @@ const UI = {
     consentFallback: 'I authorize contact and the processing of my data for service purposes.',
     optional: '(optional)',
     pf: 'Individual', pj: 'Company',
+    photoPick: 'Take a photo or choose from gallery',
+    photoChange: 'Change photo',
+    photoRemove: 'Remove photo',
+    photoUploading: 'Uploading photo...',
+    photoWaitMsg: 'Please wait for the photo to finish uploading.',
   },
   es: {
     submit: 'Enviar', sending: 'Enviando...',
@@ -103,6 +114,11 @@ const UI = {
     consentFallback: 'Autorizo el contacto y el tratamiento de mis datos con fines de atención.',
     optional: '(opcional)',
     pf: 'Persona física', pj: 'Persona jurídica',
+    photoPick: 'Tomar foto o elegir de la galería',
+    photoChange: 'Cambiar foto',
+    photoRemove: 'Quitar foto',
+    photoUploading: 'Subiendo foto...',
+    photoWaitMsg: 'Espera a que la foto termine de subir.',
   },
   fr: {
     submit: 'Envoyer', sending: 'Envoi...',
@@ -117,6 +133,11 @@ const UI = {
     consentFallback: 'J`autorise le contact et le traitement de mes données à des fins de service.',
     optional: '(facultatif)',
     pf: 'Particulier', pj: 'Entreprise',
+    photoPick: 'Prendre une photo ou choisir dans la galerie',
+    photoChange: 'Changer la photo',
+    photoRemove: 'Supprimer la photo',
+    photoUploading: 'Envoi de la photo...',
+    photoWaitMsg: 'Veuillez attendre la fin de l`envoi de la photo.',
   },
 } as const;
 
@@ -126,15 +147,26 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   company_name: 'Razão social', nome_fantasia: 'Nome fantasia',
   zip_code: 'CEP', address: 'Endereço', address_number: 'Número',
   neighborhood: 'Bairro', complement: 'Complemento', city: 'Cidade',
-  state: 'Estado (UF)', notes: 'Observações',
+  state: 'Estado (UF)', notes: 'Observações', photo_url: 'Foto',
 };
 
 // Ordem de exibição estável.
 const FIELD_ORDER: FieldKey[] = [
   'name', 'customer_type', 'document', 'company_name', 'nome_fantasia',
   'email', 'phone', 'celular', 'zip_code', 'address', 'address_number',
-  'neighborhood', 'complement', 'city', 'state', 'notes',
+  'neighborhood', 'complement', 'city', 'state', 'photo_url', 'notes',
 ];
+
+// Converte um File em data URL ("data:image/...;base64,...") — o mesmo shape
+// que a edge lead-capture-upload-photo decodifica (aceita data URL ou base64 puro).
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 // -----------------------------------------------------------------------------
 // White-label: aplica a marca DO DONO DO LINK via CSS var, SEM cachear (regra-lei
@@ -174,6 +206,18 @@ export default function PublicLeadCapture() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const honeypotRef = useRef('');
+
+  // ── Foto: upload acontece ao selecionar (ANTES do envio), não no submit. ──
+  // `photoUrl` só fica preenchida quando o upload teve sucesso — é o único
+  // valor que vai em `fields.photo_url`. `photoGenRef` invalida uploads em
+  // andamento quando o usuário troca/remove a foto no meio do caminho (evita
+  // uma resposta tardia sobrescrever um estado mais novo).
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoGenRef = useRef(0);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const shortCode = useMemo(() => extractShortCode(code) ?? code ?? '', [code]);
   const lang = normalizeLang(result?.company_settings?.language);
@@ -263,14 +307,96 @@ export default function PublicLeadCapture() {
     return raw;
   };
 
+  // Sobe a foto ANTES do envio (edge lead-capture-upload-photo) e guarda a URL
+  // pronta pra ir em fields.photo_url no submit. Se falhar e o campo for
+  // OPCIONAL, o cadastro ainda pode ser enviado sem foto — perder a foto é
+  // melhor do que perder o lead inteiro. Se o campo for OBRIGATÓRIO, o submit
+  // é bloqueado até o upload dar certo (mesma régua de required dos outros campos).
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite selecionar o mesmo arquivo de novo depois
+    if (!file) return;
+
+    const myGen = ++photoGenRef.current;
+    setPhotoError(null);
+    setPhotoUrl(null);
+    setPhotoUploading(true);
+
+    // Reencoda pro menor arquivo sem perda perceptível (também resolve HEIC de
+    // iPhone, que os magic bytes da edge não reconheceriam). Nunca lança.
+    const processed = await compressSelfie(file);
+    if (myGen !== photoGenRef.current) return; // usuário trocou/removeu no meio do caminho
+
+    let dataUrl: string;
+    try {
+      dataUrl = await fileToDataUrl(processed);
+    } catch {
+      setPhotoError('Não foi possível ler a foto. Tente novamente.');
+      setPhotoUploading(false);
+      return;
+    }
+    if (myGen !== photoGenRef.current) return;
+    setPhotoPreview(dataUrl);
+
+    try {
+      const { data, error } = await supabaseAnon.functions.invoke('lead-capture-upload-photo', {
+        body: { short_code: shortCode, photo_base64: dataUrl },
+      });
+      if (myGen !== photoGenRef.current) return;
+      if (error) {
+        let msg = 'Não foi possível enviar a foto. Tente novamente.';
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            if (body?.error) msg = body.error;
+          }
+        } catch { /* mantém msg padrão */ }
+        setPhotoError(msg);
+        return;
+      }
+      const url = (data as any)?.photo_url;
+      if (typeof url !== 'string' || !url) {
+        setPhotoError('Não foi possível enviar a foto. Tente novamente.');
+        return;
+      }
+      setPhotoUrl(url);
+    } catch {
+      if (myGen !== photoGenRef.current) return;
+      setPhotoError('Não foi possível enviar a foto. Tente novamente.');
+    } finally {
+      if (myGen === photoGenRef.current) setPhotoUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    photoGenRef.current++; // invalida qualquer upload em andamento
+    setPhotoPreview(null);
+    setPhotoUrl(null);
+    setPhotoError(null);
+    setPhotoUploading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
     setErrorMsg(null);
 
+    if (photoUploading) {
+      setErrorMsg(ui.photoWaitMsg);
+      return;
+    }
+
     // Validação de obrigatórios no client (UX; edge revalida).
     for (const k of enabledFields) {
       if (k === 'customer_type') continue;
+      if (k === 'photo_url') {
+        if (isRequired(k) && !photoUrl) {
+          setErrorMsg(ui.requiredMsg);
+          return;
+        }
+        continue;
+      }
       if (isRequired(k) && !(values[k]?.trim())) {
         setErrorMsg(ui.requiredMsg);
         return;
@@ -281,10 +407,12 @@ export default function PublicLeadCapture() {
       return;
     }
 
-    // Só envia campos habilitados.
+    // Só envia campos habilitados. photo_url só entra se o upload teve sucesso
+    // (campo opcional sem foto, ou cuja foto falhou, simplesmente não é enviado).
     const fields: Record<string, string> = {};
     for (const k of enabledFields) {
       if (k === 'customer_type') { fields.customer_type = customerType; continue; }
+      if (k === 'photo_url') { if (photoUrl) fields.photo_url = photoUrl; continue; }
       const v = values[k]?.trim();
       if (v) fields[k] = v;
     }
@@ -458,6 +586,67 @@ export default function PublicLeadCapture() {
                 );
               }
 
+              if (k === 'photo_url') {
+                return (
+                  <div key={k} className="space-y-1.5">
+                    {labelNode}
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handlePhotoChange}
+                    />
+                    {photoPreview ? (
+                      <div className="relative overflow-hidden rounded-xl border">
+                        <img src={photoPreview} alt="" className="h-48 w-full object-cover" />
+                        {photoUploading ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                            <span className="text-xs">{ui.photoUploading}</span>
+                          </div>
+                        ) : (
+                          <div className="absolute right-2 top-2 flex gap-1.5">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="secondary"
+                              className="h-8 w-8"
+                              onClick={() => photoInputRef.current?.click()}
+                              aria-label={ui.photoChange}
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="destructive"
+                              className="h-8 w-8"
+                              onClick={handleRemovePhoto}
+                              aria-label={ui.photoRemove}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={() => photoInputRef.current?.click()}
+                      >
+                        <Camera className="h-4 w-4" />
+                        {ui.photoPick}
+                      </Button>
+                    )}
+                    {photoError ? <p className="text-xs text-destructive">{photoError}</p> : null}
+                  </div>
+                );
+              }
+
               const inputMode =
                 k === 'document' || k === 'phone' || k === 'celular' ? 'numeric' : undefined;
               const type = k === 'email' ? 'email' : 'text';
@@ -497,7 +686,7 @@ export default function PublicLeadCapture() {
               </div>
             ) : null}
 
-            <Button type="submit" className="w-full gap-2" disabled={submitting}>
+            <Button type="submit" className="w-full gap-2" disabled={submitting || photoUploading}>
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitting ? ui.sending : ui.submit}
             </Button>

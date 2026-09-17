@@ -11,7 +11,11 @@ import { Loader2, ArrowRight } from 'lucide-react';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
+// Sem campo de centro de custo aqui: DECISÃO DELIBERADA, não esquecimento.
+// A transferência fica fora do resultado (par com `transfer_pair_id`) — ver
+// a justificativa completa em `useFinancialAccounts.ts` (mutation `transfer`).
 interface TransferFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,6 +44,12 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setAmount(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleCurrencyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setAmount(cents / 100);
   };
 
   const displayValue = amount
@@ -121,7 +131,7 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>{t.amountLabel}</Label>
-            <Input placeholder={t.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
+            <Input placeholder={t.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} onPaste={handleCurrencyPaste} inputMode="numeric" />
           </div>
           <div className="space-y-1.5">
             <Label>{t.dateLabel}</Label>

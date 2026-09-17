@@ -34,6 +34,7 @@ const FIELD_LABELS: Record<LeadCaptureFieldKey, string> = {
   city: 'Cidade',
   state: 'Estado (UF)',
   notes: 'Observações',
+  photo_url: 'Foto',
 };
 
 const DEFAULT_CONSENT_TEXT =

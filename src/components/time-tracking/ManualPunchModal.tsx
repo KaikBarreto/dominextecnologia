@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { PunchType, TimeRecord } from '@/hooks/useTimeRecords';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { timeInTz, todayInTz, zonedDateTimeToUtc } from '@/lib/timezone';
 
 interface Props {
   open: boolean;
@@ -21,7 +21,7 @@ interface Props {
 }
 
 export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName, record, onSubmit }: Props) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.timeclock.manualPunch;
   const isEdit = !!record;
 
@@ -32,11 +32,11 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
     { value: 'clock_out', label: t.punchTypes.clock_out },
   ];
 
-  const todayIso = () => new Date().toISOString().split('T')[0];
-
   const [type, setType] = useState<PunchType>(record?.type ?? 'clock_in');
-  const [date, setDate] = useState(record ? record.date : todayIso());
-  const [time, setTime] = useState(record ? format(new Date(record.recorded_at), 'HH:mm') : '');
+  const [date, setDate] = useState(record ? record.date : todayInTz(timezone));
+  // A hora exibida é a do relógio da EMPRESA — `new Date(...)` formataria no fuso
+  // do aparelho do gestor e deslocaria a batida em horas sem erro na tela.
+  const [time, setTime] = useState(record ? timeInTz(record.recorded_at, timezone) : '');
   const [notes, setNotes] = useState(record?.notes ?? '');
   const [loading, setLoading] = useState(false);
 
@@ -44,11 +44,17 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
     if (!time || !notes.trim()) return;
     setLoading(true);
     try {
-      const recordedAt = new Date(`${date}T${time}`).toISOString();
+      // A hora digitada é a do relógio da EMPRESA, no dia da empresa. Antes o
+      // dia vinha de toISOString() (dia UTC, que às 22:00 de Brasília já virou)
+      // e a hora era interpretada no fuso do aparelho do admin, então quem
+      // lançava de outro fuso gravava o instante errado no espelho.
+      // No modo edição o dia é o que o gestor escolheu no campo Data; no
+      // lançamento é sempre hoje no fuso da empresa.
+      const recordedAt = zonedDateTimeToUtc(isEdit ? date : todayInTz(timezone), time, timezone);
       await onSubmit({ employeeId, type, recordedAt, notes });
       if (!isEdit) {
         setType('clock_in');
-        setDate(todayIso());
+        setDate(todayInTz(timezone));
         setTime('');
         setNotes('');
       }

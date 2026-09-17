@@ -1,4 +1,5 @@
 import { MapPin, MapPinned, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckSquare, CheckCircle2, Play } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
@@ -36,6 +37,19 @@ interface EventCardProps {
   colorShift?: number;
   isMoving?: boolean;
   assignees?: AssigneeInfo[];
+  /** Mostra a data (dd/MM) antes da hora no cabeçalho do card grande. Usado na
+   * visão de lista da Agenda, que junta itens de vários dias — no calendário
+   * normal (agrupado por dia/coluna) a data já está implícita e não precisa. */
+  showDate?: boolean;
+}
+
+function formatShortDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '--/--';
+  try {
+    return format(parseISO(dateStr), 'dd/MM');
+  } catch {
+    return '--/--';
+  }
 }
 
 const osTypeLabels: Record<OsType, string> = {
@@ -139,7 +153,7 @@ function AssigneeAvatars({ assignees, team, light }: { assignees: AssigneeInfo[]
   );
 }
 
-export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false, assignees: assigneesProp }: EventCardProps) {
+export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false, assignees: assigneesProp, showDate = false }: EventCardProps) {
   const assignees = assigneesProp ?? (order as any)._assignees;
   const team: TeamBadgeInfo | undefined = (order as any)._team;
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date, (order as any).partial_finish);
@@ -234,6 +248,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           )}
           {isDone && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
           {isTask && !isDone && <CheckSquare className="h-3.5 w-3.5 text-violet-500" />}
+          {showDate && (
+            <span className={cn('text-xs font-medium text-muted-foreground', isDone && 'line-through')}>
+              {formatShortDate(order.scheduled_date)}
+            </span>
+          )}
           <span className={cn('font-semibold text-sm', isDone && 'line-through')}>
             {order.scheduled_time?.slice(0, 5) || '--:--'}
           </span>

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, PauseCircle, Search as SearchIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Search as SearchIcon, Calendar as CalendarIcon, List as ListIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,11 +11,15 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 export type ViewMode = 'month' | 'week' | 'day';
+export type DisplayMode = 'calendar' | 'list';
 
 interface ScheduleHeaderProps {
   currentDate: Date;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  // Toggle Calendário/Lista (E4) — independente do período (viewMode) acima.
+  displayMode: DisplayMode;
+  onDisplayModeChange: (mode: DisplayMode) => void;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -32,12 +36,17 @@ interface ScheduleHeaderProps {
   customers: { id: string; name: string }[];
   statusFilter: string[];
   onStatusFilterChange: (val: string[]) => void;
+  // Tarefa x OS (E5) — filtra por entry_type
+  entryTypeFilter: string[];
+  onEntryTypeFilterChange: (val: string[]) => void;
 }
 
 export function ScheduleHeader({
   currentDate,
   viewMode,
   onViewModeChange,
+  displayMode,
+  onDisplayModeChange,
   onPrev,
   onNext,
   onToday,
@@ -53,6 +62,8 @@ export function ScheduleHeader({
   customers,
   statusFilter,
   onStatusFilterChange,
+  entryTypeFilter,
+  onEntryTypeFilterChange,
 }: ScheduleHeaderProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.scheduleHeader;
@@ -63,15 +74,21 @@ export function ScheduleHeader({
     { value: 'concluida', label: t.statusConcluida },
     { value: 'cancelada', label: t.statusCancelada },
   ];
+  const entryTypeOptions: { value: string; label: string }[] = [
+    { value: 'os', label: t.entryTypeOs },
+    { value: 'tarefa', label: t.entryTypeTask },
+  ];
   const activeFilterCount =
     (technicianFilter.length > 0 ? 1 : 0) +
     (customerFilter.length > 0 ? 1 : 0) +
-    (statusFilter.length > 0 ? 1 : 0);
+    (statusFilter.length > 0 ? 1 : 0) +
+    (entryTypeFilter.length > 0 ? 1 : 0);
   const isMobile = useIsMobile();
   const clearAllFilters = () => {
     onTechnicianFilterChange([]);
     onCustomerFilterChange([]);
     onStatusFilterChange([]);
+    onEntryTypeFilterChange([]);
   };
   return (
     <div className="space-y-3">
@@ -104,6 +121,20 @@ export function ScheduleHeader({
               <TabsTrigger value="month" className="text-xs px-3">{t.viewMonth}</TabsTrigger>
               {!isMobile && <TabsTrigger value="week" className="text-xs px-3">{t.viewWeek}</TabsTrigger>}
               <TabsTrigger value="day" className="text-xs px-3">{t.viewDay}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Calendário x Lista (E4) — período (acima) continua valendo nos dois. */}
+          <Tabs value={displayMode} onValueChange={(v) => onDisplayModeChange(v as DisplayMode)}>
+            <TabsList className="h-9">
+              <TabsTrigger value="calendar" className="text-xs px-3 gap-1.5">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {t.viewCalendar}
+              </TabsTrigger>
+              <TabsTrigger value="list" className="text-xs px-3 gap-1.5">
+                <ListIcon className="h-3.5 w-3.5" />
+                {t.viewList}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -141,6 +172,12 @@ export function ScheduleHeader({
               options={statusOptions.map((s) => ({ value: s.value, label: s.label }))}
               selected={statusFilter}
               onChange={onStatusFilterChange}
+            />
+            <FilterCheckboxGroup
+              label={t.filterEntryType}
+              options={entryTypeOptions}
+              selected={entryTypeFilter}
+              onChange={onEntryTypeFilterChange}
             />
           </FilterButton>
 

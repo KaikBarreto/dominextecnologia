@@ -62,12 +62,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
+import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 
-type PayrollTxn = FinancialTransaction & { customer?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
+type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
 
 interface FinanceContasProps {
   /** Transações já filtradas pelo período selecionado no parent. */
@@ -109,7 +110,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const [payDespAccountFormOpen, setPayDespAccountFormOpen] = useState(false);
   const [payDespAccountInitialName, setPayDespAccountInitialName] = useState('');
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone`: fuso da empresa. É ele que define o "hoje" de `paid_date`, que
+  // por sua vez decide o MÊS da despesa no regime de Caixa da DRE.
+  const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const { deleteTransaction } = useFinancial();
@@ -156,9 +159,11 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       setReceivingTxn(t);
     } else {
       setPayingDespesaTxn(t);
-      // Fuso do Brasil: `toISOString()` grava a data de AMANHÃ a partir das
-      // 21h locais (UTC-3) e joga a despesa pro mês seguinte.
-      setPayDespDate(todayInBrazil());
+      // Fuso DA EMPRESA: `toISOString()` grava a data de AMANHÃ a partir das
+      // 21h locais (UTC-3) e joga a despesa pro mês seguinte. São Paulo
+      // chumbado tinha o mesmo efeito pra empresa em Cuiabá (UTC-4) às 23h15
+      // do dia 30, que gravava dia 31.
+      setPayDespDate(todayInTz(timezone));
       setPayDespAccountId(cashBankAccounts[0]?.id ?? '');
       setPayDespMethod('pix');
       setPayDespNotes('');
@@ -175,8 +180,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     const { error } = await supabase.rpc('pay_payroll_transaction', {
       p_transaction_id: payrollTxn.id,
       p_account_id: payload.accountId,
-      // Idem: `paid_date` da folha define o mês da despesa no regime de Caixa.
-      p_paid_date: todayInBrazil(),
+      // Idem: `paid_date` da folha define o mês da despesa no regime de Caixa,
+      // e o dia é o do fuso DA EMPRESA.
+      p_paid_date: todayInTz(timezone),
       p_vale_discount: payload.valeDiscount,
       p_net_amount: netAmount,
       p_notes: payload.description ?? null,
@@ -270,6 +276,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       fuzzyIncludes(t.description, search)
       || fuzzyIncludes(t.category, search)
       || fuzzyIncludes(t.customer?.name, search)
+      || fuzzyIncludes(t.supplier?.name, search)
       || fuzzyIncludes(t.employee?.name, search)
       || fuzzyIncludes(String(Number(t.amount)), search)
       || fuzzyIncludes(fmt(Number(t.amount)), search)
@@ -898,6 +905,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                         </span>
                         {t.employee && <span className="truncate">{t.employee.name}</span>}
                         {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
+                        {!t.employee && t.supplier && <span className="truncate">{t.supplier.name}</span>}
                       </div>
                       {partial && (
                         <span className="text-warning text-[11px]">
@@ -958,6 +966,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                           </p>
                           {t.employee && <p className="text-xs text-muted-foreground">{t.employee.name}</p>}
                           {!t.employee && t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
+                          {!t.employee && t.supplier && <p className="text-xs text-muted-foreground">{t.supplier.name}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
@@ -1117,7 +1126,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
             <Button
-              disabled={!payDespAccountId || !payDespDate}
+              disabled={!payDespAccountId || !payDespDate || !isPaidDateAllowedInTz(payDespDate, timezone)}
               className="min-h-11 rounded-xl"
               onClick={async () => {
                 if (!payingDespesaTxn || !payDespAccountId) return;
@@ -1174,7 +1183,14 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
             </div>
             <div className="space-y-1.5">
               <Label>{fin.accounts.payExpenseModal.paymentDate}</Label>
-              <Input type="date" value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+              {/* "Já foi pago" é sempre passado: não existe pagamento no
+                  futuro. `max` barra o calendário nativo; o disabled do botão
+                  Confirmar (acima) é quem garante de verdade, porque dá pra
+                  digitar a data manualmente. */}
+              <Input type="date" max={todayInTz(timezone)} value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+              {payDespDate && !isPaidDateAllowedInTz(payDespDate, timezone) && (
+                <p className="text-xs text-destructive">{fin.accounts.payExpenseModal.paymentDateFuture}</p>
+              )}
             </div>
           </div>
 

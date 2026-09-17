@@ -273,6 +273,7 @@ async function processConfirmedPayment(
     billingType: string;        // PIX / CREDIT_CARD / BOLETO
     netValue?: number | null;   // valor líquido (pra calcular tarifa)
     customerId?: string | null; // asaas_customer_id do pagamento
+    dueDate?: string | null;    // payment.dueDate da Asaas (YYYY-MM-DD) = vencimento REAL do ciclo
     matchedBy: string;          // diagnóstico: como a company foi encontrada
   },
 ): Promise<{ processed: boolean; type?: string; reason?: string }> {
@@ -282,6 +283,28 @@ async function processConfirmedPayment(
   if (paymentAmount <= 0) {
     return { processed: false, reason: "valor inválido" };
   }
+
+  // ===== VENCIMENTO REAL DO CICLO (antes era sempre "HOJE") =====
+  // subscription_payments.due_date é a CHAVE DE CICLO do Guard 2 da RPC
+  // credit_ltv_once_for_payment: se existir OUTRA linha da MESMA company com o MESMO
+  // amount e o MESMO due_date já creditada, o mutex devolve FALSE e este pagamento vira
+  // no-op total (não credita LTV e NÃO estende subscription_expires_at).
+  //
+  // Por isso NÃO gravamos mais due_date = HOJE: duas cobranças de CICLOS DIFERENTES,
+  // de mesmo valor, pagas no MESMO DIA colapsavam na mesma chave e a 2ª era descartada
+  // como duplicata — o cliente pagava dois meses e ganhava um. Caso real: Alô gás
+  // Juquitiba com 19/09 e 19/10 (R$ 197 cada) abertas ao mesmo tempo na Asaas.
+  //
+  // Agora usamos payment.dueDate (vencimento REAL que vem no payload da Asaas).
+  // Ganho colateral: a dedup de duas cobranças do MESMO ciclo (ex.: PIX + boleto do
+  // mesmo mês) passa a funcionar mesmo quando são pagas em DIAS DIFERENTES — cenário
+  // que o "hoje" NÃO pegava.
+  // Fallback: sem dueDate no payload (ou fora de YYYY-MM-DD) → HOJE, exatamente o
+  // comportamento anterior. É UMA const só, usada nos DOIS pontos de gravação.
+  const todayIsoDate = new Date().toISOString().split("T")[0];
+  const effectiveDueDate = opts.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(opts.dueDate)
+    ? opts.dueDate
+    : todayIsoDate;
 
   // ===== FALLBACK DE MATERIALIZAÇÃO DA RENOVAÇÃO (FURO 3) =====
   // Root cause do incidente VS Project (17/ago): na renovação recorrente de CARTÃO,
@@ -298,9 +321,13 @@ async function processConfirmedPayment(
   //  - ltv_credited_at fica NULL de propósito → quem credita é o mutex (não pré-creditar).
   //  - INSERT ... ON CONFLICT (asaas_payment_id) DO NOTHING (coluna UNIQUE) → reprocessar
   //    o webhook (RECEIVED + CONFIRMED do mesmo pay_*) NÃO cria 2ª linha.
-  //  - due_date = HOJE (BRT via toISOString().split) e paid_at = agora, IDÊNTICO ao
-  //    UPSERT canônico de rastro mais abaixo. due_date importa: o Guard 2 do mutex
-  //    dedup por ciclo usa (company_id + amount + due_date).
+  //  - due_date = effectiveDueDate (vencimento REAL do payload da Asaas; HOJE só como
+  //    fallback) e paid_at = agora. TEM que ser o MESMO valor usado no UPSERT canônico
+  //    de rastro mais abaixo: aquele bloco roda DEPOIS do mutex e REGRAVA esta linha,
+  //    então se os dois divergirem o colapso de ciclo volta pela porta dos fundos no
+  //    PRÓXIMO pagamento avaliado pelo Guard 2. due_date importa: o Guard 2 do mutex
+  //    dedup por CICLO usa (company_id + amount + due_date) — com o vencimento real,
+  //    ciclos diferentes deixam de colidir e cobranças do mesmo ciclo continuam colidindo.
   //  - NÃO estende vencimento nem credita LTV aqui — só CRIA a linha pro mutex reivindicar.
   //  - 1ª venda intacta: nela a linha JÁ existe (linkada pelo PAYMENT_CREATED), então
   //    o SELECT abaixo acha e este bloco vira no-op.
@@ -334,7 +361,7 @@ async function processConfirmedPayment(
         billing_cycle: materializedBillingCycle,
         type: "renovacao",
         payment_method: (opts.billingType || "PIX").toLowerCase(),
-        due_date: nowIso.split("T")[0],
+        due_date: effectiveDueDate,
         paid_at: nowIso,
         ltv_credited_at: null, // o mutex é quem credita — NÃO pré-creditar aqui.
       });
@@ -561,6 +588,10 @@ async function processConfirmedPayment(
   }
 
   // subscription_payments — garante rastro (UPSERT por asaas_payment_id UNIQUE).
+  // due_date usa a MESMA const effectiveDueDate da materialização lá em cima (vencimento
+  // REAL da Asaas, HOJE só no fallback). NÃO trocar por "hoje" aqui: este UPSERT roda
+  // DEPOIS do mutex e regrava a linha, então gravar "hoje" aqui desfaria a correção para
+  // o PRÓXIMO pagamento que o Guard 2 comparar contra esta linha.
   await supabase.from("subscription_payments").upsert(
     {
       company_id: companyId,
@@ -572,7 +603,7 @@ async function processConfirmedPayment(
       billing_cycle: billingCycle,
       type: paymentType,
       payment_method: (opts.billingType || "PIX").toLowerCase(),
-      due_date: new Date().toISOString().split("T")[0],
+      due_date: effectiveDueDate,
       paid_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -1138,6 +1169,7 @@ Deno.serve(async (req) => {
         billingType: payment.billingType || "PIX",
         netValue: payment.netValue != null ? Number(payment.netValue) : null,
         customerId: payment.customer ?? null,
+        dueDate: payment.dueDate ?? null,
         matchedBy: resolved.matchedBy,
       });
       return json({ received: true, ...result });

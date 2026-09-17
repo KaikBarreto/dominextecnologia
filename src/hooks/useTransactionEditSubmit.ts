@@ -36,7 +36,7 @@ import type { FinancialTransaction } from '@/types/database';
  *    ganhar, um delete por `installment_group_id`: a única porta de exclusão
  *    aqui recebe um id de linha e nada mais. Apagar um parcelamento inteiro
  *    continua sendo uma ação explícita do usuário, em outro lugar.
- *  • Lançamento recriado carrega os vínculos da original (cliente, OS,
+ *  • Lançamento recriado carrega os vínculos da original (cliente, fornecedor, OS,
  *    contrato, funcionário/folha) via `carryOverTransactionLinks` — senão ele
  *    nasce órfão e some da ficha do cliente que o gerou.
  *  • Falha de anexo ou de exclusão não engole o erro: vira toast, nos 4 idiomas.
@@ -187,7 +187,7 @@ export function useTransactionEditSubmit({
 
     if (plan.action === 'replace') {
       // 1. Cria primeiro, pra não perder dados se algo falhar.
-      //    `carryOverTransactionLinks` reinjeta cliente, OS, contrato e folha:
+      //    `carryOverTransactionLinks` reinjeta cliente, fornecedor, OS, contrato e folha:
       //    o formulário não conhece esses campos.
       const payload = {
         ...carryOverTransactionLinks(data, editing as any, { fallbackCustomerId }),

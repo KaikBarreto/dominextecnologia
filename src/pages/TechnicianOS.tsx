@@ -423,7 +423,7 @@ function TechnicianOSInner() {
   // Strings do fluxo autenticado do técnico. No modo público (anon) o hook
   // aponta pro locale da sessão corrente — não interfere, pois as strings deste
   // namespace só são usadas no caminho isAuthenticated===true.
-  const { locale: appLocale } = useAppLocaleContext();
+  const { locale: appLocale, timezone: appTimezone } = useAppLocaleContext();
   const tFlow = MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.technicianFlow
     ?? MESSAGES['pt-br'].app.os.technicianFlow;
   // Copy do consumo de estoque dentro da OS (v1.22.0) — mesmo padrão do tFlow.
@@ -4100,6 +4100,7 @@ function TechnicianOSInner() {
                       at: techSignatureAt,
                       geo: loc,
                       address: loc?.address,
+                      timeZone: appTimezone,
                     });
                     return stamp ? (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">
@@ -4124,6 +4125,7 @@ function TechnicianOSInner() {
                       at: clientSignatureAt,
                       geo: loc,
                       address: loc?.address,
+                      timeZone: appTimezone,
                     });
                     return stamp ? (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">

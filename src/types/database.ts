@@ -261,6 +261,8 @@ export interface FinancialTransaction {
   paid_date?: string;
   is_paid: boolean;
   customer_id?: string;
+  /** Fornecedor vinculado ao lançamento. SEMPRE opcional, igual customer_id. */
+  supplier_id?: string;
   service_order_id?: string;
   contract_id?: string;
   receipt_url?: string;

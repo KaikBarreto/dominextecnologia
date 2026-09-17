@@ -14,7 +14,9 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
+import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
+import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 
 export interface ReceivePaymentResult {
   account_id: string;
@@ -28,6 +30,13 @@ export interface ReceivePaymentResult {
   new_due_date?: string;
 }
 
+// Sem campo de centro de custo aqui: DECISÃO DELIBERADA, não esquecimento
+// (auditoria do braço de centro de custo, dev-financeiro-rh, 17/09/2026). As
+// filhas do recebimento ("Recebimento parcial" e "Tarifa do recebimento")
+// JÁ HERDAM o centro da mãe automaticamente — ver `buildPartialReceiptRow` e
+// `buildReceiptFeeRow` em `useFinancial.ts`. Um segundo campo aqui deixaria o
+// usuário escolher um centro DIFERENTE do da mãe, criando divergência entre
+// receita e a parcela/tarifa dela na mesma obra.
 interface ReceivePaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,11 +63,15 @@ function fmt(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 }
 
-/** Soma N dias a uma data YYYY-MM-DD e devolve YYYY-MM-DD (sem deslocar timezone). */
-function addDaysISO(dateStr: string | undefined, days: number): string {
-  // Sem data de origem, a base é HOJE no fuso do Brasil: `new Date()` cru
-  // levava o `toISOString()` abaixo a virar o dia depois das 21h locais.
-  const base = new Date((dateStr || todayInBrazil()) + 'T12:00:00');
+/**
+ * Soma N dias a uma data YYYY-MM-DD e devolve YYYY-MM-DD (sem deslocar timezone).
+ * `timeZone` é o fuso DA EMPRESA e só é usado quando não há data de origem.
+ */
+function addDaysISO(dateStr: string | undefined, days: number, timeZone: string | null | undefined): string {
+  // Sem data de origem, a base é HOJE no fuso DA EMPRESA: `new Date()` cru
+  // levava o `toISOString()` abaixo a virar o dia depois das 21h locais, e
+  // "hoje em São Paulo" chumbado errava o dia de quem não está em Brasília.
+  const base = new Date((dateStr || todayInTz(timeZone)) + 'T12:00:00');
   base.setDate(base.getDate() + days);
   // Remonta a partir dos componentes LOCAIS: `toISOString()` aqui converteria
   // pra UTC e poderia devolver o dia anterior em máquinas à frente do Brasil.
@@ -90,14 +103,18 @@ export function ReceivePaymentModal({
   title,
   description, defaultMethod = 'pix', onConfirm, isSubmitting,
 }: ReceivePaymentModalProps) {
-  const { locale } = useAppLocaleContext();
+  // `timezone`: fuso da empresa. `paid_date` define o MÊS da movimentação no
+  // regime de Caixa, então o "hoje" tem que ser o da empresa.
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.receivePayment;
   const { accounts } = useFinancialAccounts();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
-  const activeAccounts = useMemo(() => accounts.filter(a => a.is_active), [accounts]);
+  // Este modal só existe pra dar baixa em RECEBIMENTO — cartão de crédito é
+  // conta de saída (fatura que a empresa paga), nunca destino de receita.
+  const activeAccounts = useMemo(() => filterAccountsForReceivable(accounts), [accounts]);
 
   // Opções do SearchableSelect de conta (busca por nome + ícone por tipo).
   const accountOptions = useMemo(
@@ -145,9 +162,10 @@ export function ReceivePaymentModal({
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountInitialName, setAccountInitialName] = useState('');
   const [method, setMethod] = useState(defaultMethod);
-  // Fuso do Brasil: `paid_date` define o mês da movimentação no regime de
-  // Caixa. `toISOString()` gravava amanhã a partir das 21h locais (UTC-3).
-  const [paidDate, setPaidDate] = useState(todayInBrazil());
+  // Fuso DA EMPRESA: `paid_date` define o mês da movimentação no regime de
+  // Caixa. `toISOString()` gravava amanhã a partir das 21h locais (UTC-3), e
+  // São Paulo chumbado gravava dia 31 pra quem em Cuiabá ainda está no dia 30.
+  const [paidDate, setPaidDate] = useState(() => todayInTz(timezone));
   const [feeAmount, setFeeAmount] = useState('');
   const [notes, setNotes] = useState('');
   // Valor recebido (string pra deixar o input livre — convertido no submit/validação).
@@ -158,16 +176,16 @@ export function ReceivePaymentModal({
   useEffect(() => {
     if (open) {
       setMethod(defaultMethod);
-      setPaidDate(todayInBrazil());
+      setPaidDate(todayInTz(timezone));
       setFeeAmount('');
       setNotes('');
       // Default = o que falta receber (formatado pt-BR).
       setValorRecebidoStr(restante.toFixed(2).replace('.', ','));
       // Default = vencimento atual + 30 dias.
-      setNovoVencimento(addDaysISO(currentDueDate, 30));
+      setNovoVencimento(addDaysISO(currentDueDate, 30, timezone));
       if (!accountId && activeAccounts[0]) setAccountId(activeAccounts[0].id);
     }
-  }, [open, defaultMethod, restante, currentDueDate]); // eslint-disable-line
+  }, [open, defaultMethod, restante, currentDueDate, timezone]); // eslint-disable-line
 
   const valorRecebido = useMemo(() => parseDecimal(valorRecebidoStr), [valorRecebidoStr]);
   const fee = parseDecimal(feeAmount);
@@ -187,10 +205,14 @@ export function ReceivePaymentModal({
 
   const novoVencimentoInvalido = isPartial && !novoVencimento;
 
+  // "Já foi recebido" é sempre passado: não existe recebimento no futuro.
+  const paidDateInvalid = !isPaidDateAllowedInTz(paidDate, timezone);
+
   const handleSubmit = async () => {
     if (!accountId) return;
     if (valorInvalido) return;
     if (novoVencimentoInvalido) return;
+    if (paidDateInvalid) return;
 
     await onConfirm({
       account_id: accountId,
@@ -212,7 +234,7 @@ export function ReceivePaymentModal({
       </Button>
       <Button
         onClick={handleSubmit}
-        disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido}
+        disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido || paidDateInvalid}
         className="bg-success hover:bg-success/90 text-white"
       >
         {isSubmitting ? t.confirmingLabel : t.confirmLabel}
@@ -269,7 +291,13 @@ export function ReceivePaymentModal({
           </div>
           <div>
             <Label>{t.receivedDateLabel}</Label>
-            <Input type="date" value={paidDate} onChange={e => setPaidDate(e.target.value)} />
+            {/* "Já foi recebido" é sempre passado. `max` barra o calendário
+                nativo; o disabled do botão Confirmar é quem garante de
+                verdade, porque dá pra digitar a data manualmente. */}
+            <Input type="date" max={todayInTz(timezone)} value={paidDate} onChange={e => setPaidDate(e.target.value)} />
+            {paidDateInvalid && (
+              <p className="text-xs text-destructive mt-1">{t.validations.dateFuture}</p>
+            )}
           </div>
         </div>
 

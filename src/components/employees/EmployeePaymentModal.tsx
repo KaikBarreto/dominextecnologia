@@ -9,11 +9,14 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { BalanceSummary } from '@/utils/employeeCalculations';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
+import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { calculatePayrollDeductions, type PayrollResult } from '@/utils/payrollDeductions';
 import { calculateEmployeeCost, defaultCostInput } from '@/utils/employeeCostProvisions';
 import type { HoleriteSnapshot } from '@/utils/holeriteHtmlGenerator';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 
 export interface PaymentPayload {
   valeDiscount: number;
@@ -23,6 +26,8 @@ export interface PaymentPayload {
   mode: 'informal' | 'clt';
   holeriteSnapshot?: HoleriteSnapshot; // preenchido só no CLT
   amount: number; // valor efetivamente pago (toPay informal | liquido CLT) — source of truth
+  /** Centro de custo (obra/projeto/setor) escolhido na hora do pagamento. Sempre opcional. */
+  costCenterId?: string | null;
 }
 
 interface EmployeePaymentModalProps {
@@ -68,6 +73,8 @@ export function EmployeePaymentModal({
   const { accounts, balances } = useFinancialAccounts();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.paymentModal;
+  const fin = MESSAGES[locale].app.finance;
+  const { activeCostCenters } = useCostCenters();
   const activeAccounts = useMemo(() => {
     const active = accounts.filter(a => a.is_active);
     // Sort: "Conta Principal" or "Caixa" first, then by sort_order
@@ -85,6 +92,7 @@ export function EmployeePaymentModal({
 
   const [valeDiscountStr, setValeDiscountStr] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [payMode, setPayMode] = useState<'informal' | 'clt'>('informal');
 
@@ -120,9 +128,23 @@ export function EmployeePaymentModal({
     if (o) {
       setValeDiscountStr(balance.totalVales > 0 ? currencyMask(String(Math.round(balance.totalVales * 100))) : '');
       setAccountId(defaultAccountId);
+      setCostCenterId(null);
       setDescription('');
     }
     onOpenChange(o);
+  };
+
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO pode passar pela
+  // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
+  // `money-paste-mask.ts`. `currencyMask(String(cents))` reaproveita a
+  // MESMA formatação que a digitação já usa.
+  const handleValeDiscountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+    const cents = centsFromPastedAmount(text);
+    if (cents == null) return;
+    e.preventDefault();
+    setValeDiscountStr(currencyMask(String(cents)));
   };
 
   const valeDiscount = useMemo(() => {
@@ -190,6 +212,7 @@ export function EmployeePaymentModal({
       mode: payMode,
       holeriteSnapshot: snapshot,
       amount: amountToPay, // MESMO número que será gravado
+      costCenterId,
     });
   };
 
@@ -258,6 +281,7 @@ export function EmployeePaymentModal({
                 <Input
                   value={valeDiscountStr}
                   onChange={e => setValeDiscountStr(currencyMask(e.target.value))}
+                  onPaste={handleValeDiscountPaste}
                   placeholder={fmt(balance.totalVales)}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -301,6 +325,16 @@ export function EmployeePaymentModal({
                     );
                   })}
                 </RadioGroup>
+              </div>
+            )}
+
+            {/* Centro de custo — mesma régua do resto do domínio: sempre
+                opcional, some da tela pra quem não usa (zero centros ativos
+                cadastrados). */}
+            {activeCostCenters.length > 0 && (
+              <div className="space-y-2">
+                <Label>{fin.costCenters.fieldLabel}</Label>
+                <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
               </div>
             )}
 

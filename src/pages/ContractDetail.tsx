@@ -45,6 +45,8 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
@@ -66,11 +68,12 @@ import {
   MAX_TRANSACTION_YEAR_AHEAD,
   isTransactionYearInRange,
 } from '@/lib/finance-installments';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz, dateInTz } from '@/lib/timezone';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -111,9 +114,10 @@ const FREQUENCY_MONTHS: Record<string, number> = {
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
+  const fin = MESSAGES[locale].app.finance;
 
   const FREQUENCY_OPTIONS = useMemo(
     () => Object.entries(FREQUENCY_MONTHS).map(([value, months]) => ({
@@ -137,6 +141,7 @@ export default function ContractDetail() {
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
   const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransactionsBatch } = useFinancial();
+  const { activeCostCenters } = useCostCenters();
   const { accounts } = useFinancialAccounts();
   const { settings: companySettings } = useCompanySettings();
   const qrConfig = useBrandedQrConfig();
@@ -172,6 +177,7 @@ export default function ContractDetail() {
   const [recInstallments, setRecInstallments] = useState('1');
   const [recAccountId, setRecAccountId] = useState('');
   const [recCategory, setRecCategory] = useState('');
+  const [recCostCenterId, setRecCostCenterId] = useState<string | null>(null);
   const [recSaving, setRecSaving] = useState(false);
   // "Aplicar conta/categoria a todas as parcelas" (contratos antigos sem vínculo).
   const [showApplyLinksModal, setShowApplyLinksModal] = useState(false);
@@ -533,6 +539,63 @@ export default function ContractDetail() {
     }
   };
 
+  // Máscara de dinheiro (centavos), igual ChargeDialog/TransactionFormDialog:
+  // digita só dígitos, os 2 últimos são os centavos. NUNCA usar
+  // `<input type="number">` aqui — bug real (2026-09-17, "PMOC - Daluz
+  // Freguesia"): o input nativo aceita colar "4.550" como texto válido
+  // (ponto = separador decimal do HTML), e o estado guardava a string
+  // "4.550" literal. Rio abaixo, `parseFloat("4.550")` e `Number("4.550")`
+  // leem ponto como decimal e devolvem 4.55 — 72 parcelas nasceram de
+  // R$ 4,55 em vez de R$ 4.550,00. `recAmount`/`editRecAmount`/
+  // `bulkEditAmount` continuam strings, só que agora são SEMPRE
+  // canônicas ("4550.00", nunca "4.550"), pra não exigir mudar quem já
+  // consome via `parseFloat`/`Number`.
+  //
+  // `onPaste` cobre o residual: sem ele, colar um valor pronto (ex. "4.550")
+  // ainda cai na regra de dígitos comum (2 últimos = centavos) e vira
+  // R$ 45,50 — 100x menor. `readPastedCents` lê o texto colado como valor de
+  // verdade (ver `src/lib/money-paste-mask.ts`), não como sequência de
+  // dígitos a empurrar da direita.
+  const handleRecAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleRecAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const recAmountDisplay = recAmount
+    ? Number(recAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+  const handleEditRecAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setEditRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleEditRecAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setEditRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const editRecAmountDisplay = editRecAmount
+    ? Number(editRecAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+  const handleBulkEditAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setBulkEditAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleBulkEditAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setBulkEditAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const bulkEditAmountDisplay = bulkEditAmount
+    ? Number(bulkEditAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
   // Opções de conta bancária / caixa de RECEBIMENTO. Exclui cartão de
   // crédito: é conta de saída (fatura que a empresa paga), nunca destino de
   // uma receita — senão o saldo fica como se o dinheiro do cliente tivesse
@@ -574,14 +637,14 @@ export default function ContractDetail() {
     const freqOption = FREQUENCY_OPTIONS.find((f) => f.value === recFrequency);
     const count = recFrequency === 'unica' ? 1 : Math.max(1, parseInt(recInstallments) || 1);
     return buildRepetitionPlan({
-      // Sem data escolhida, a 1a vence HOJE no fuso do Brasil (`new Date()` às
+      // Sem data escolhida, a 1a vence HOJE no fuso da empresa (`new Date()` às
       // 21h gravava amanhã).
-      firstDate: recDueDate || todayInBrazil(),
+      firstDate: recDueDate || todayInTz(timezone),
       amount,
       count,
       intervalMonths: freqOption?.months || 0,
     });
-  }, [recAmount, recDueDate, recFrequency, recInstallments, FREQUENCY_OPTIONS]);
+  }, [recAmount, recDueDate, recFrequency, recInstallments, FREQUENCY_OPTIONS, timezone]);
 
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
@@ -620,6 +683,7 @@ export default function ContractDetail() {
             customer_id: contract.customer_id,
             account_id: recAccountId || null,
             category: recCategory || undefined,
+            cost_center_id: recCostCenterId,
             notes: `Vinculado ao contrato: ${contract.name}`,
             contract_id: id,
           };
@@ -639,7 +703,7 @@ export default function ContractDetail() {
       setRecDueDate('');
       setRecFrequency('unica');
       setRecInstallments('1');
-      // Conta/categoria escolhidas ficam memorizadas pro próximo lançamento.
+      // Conta/categoria/centro de custo escolhidos ficam memorizados pro próximo lançamento.
     } catch (err: unknown) {
       toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     } finally {
@@ -779,11 +843,9 @@ export default function ContractDetail() {
   // vencimento já passou (timezone Brasil: comparamos só a data, sem hora).
   const totalPending = totalReceivable - totalPaid;
   const todayLocal = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
-  // "Hoje" no fuso Brasil como YYYY-MM-DD (mesmo formato de scheduled_date),
+  // "Hoje" no fuso da empresa como YYYY-MM-DD (mesmo formato de scheduled_date),
   // pra comparar atraso por DIA — uma visita só atrasa a partir do dia seguinte.
-  const todaySP = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
+  const todaySP = todayInTz(timezone);
   const overdueTransactions = (linkedTransactions || []).filter(
     t => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal),
   );
@@ -1778,7 +1840,10 @@ export default function ContractDetail() {
           </div>
           <div>
             <Label>{td.financial.amountLabel}</Label>
-            <Input type="number" step="0.01" value={recAmount} onChange={e => setRecAmount(e.target.value)} placeholder="0,00" />
+            {/* Dinheiro tem formatação própria: NÃO usa `type="number"` (colar
+                "4.550" vira 4,55 — bug real do sócio, ver comentário no
+                handler) nem `NumericInput`. */}
+            <Input inputMode="numeric" value={recAmountDisplay} onChange={handleRecAmountChange} onPaste={handleRecAmountPaste} placeholder="0,00" />
           </div>
           <div>
             <Label>{td.financial.accountLabel}</Label>
@@ -1801,6 +1866,16 @@ export default function ContractDetail() {
               searchPlaceholder={td.financial.categorySearch}
             />
           </div>
+          {/* Centro de custo — mesma régua do resto do domínio: sempre
+              opcional, some da tela pra quem não usa (zero centros ativos
+              cadastrados). Herdado por TODAS as parcelas da série, igual
+              conta/categoria acima. */}
+          {activeCostCenters.length > 0 && (
+            <div>
+              <Label>{fin.costCenters.fieldLabel}</Label>
+              <CostCenterSelect value={recCostCenterId} onValueChange={setRecCostCenterId} />
+            </div>
+          )}
           <div>
             <Label>{td.financial.dueDateLabel}</Label>
             <Input
@@ -2009,7 +2084,7 @@ export default function ContractDetail() {
       <ResponsiveModal open={showEditRecModal} onOpenChange={setShowEditRecModal} title={td.financial.editReceivableTitle}>
         <div className="space-y-4 p-1">
           <div><Label>{td.financial.descLabel}</Label><Input value={editRecDescription} onChange={e => setEditRecDescription(e.target.value)} /></div>
-          <div><Label>{td.financial.amountLabel}</Label><Input type="number" step="0.01" value={editRecAmount} onChange={e => setEditRecAmount(e.target.value)} /></div>
+          <div><Label>{td.financial.amountLabel}</Label><Input inputMode="numeric" value={editRecAmountDisplay} onChange={handleEditRecAmountChange} onPaste={handleEditRecAmountPaste} /></div>
           <div><Label>{td.financial.dueDateLabel}</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
           <div className="flex flex-col gap-2 pt-2">
             <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
@@ -2183,12 +2258,15 @@ export default function ContractDetail() {
           )}
           <div>
             <Label>{td.financial.amountLabel}</Label>
-            {/* Dinheiro tem formatação própria: NÃO usa NumericInput. */}
+            {/* Dinheiro tem formatação própria: NÃO usa `type="number"` (é
+                justo este campo, "Editar N parcelas", que o sócio tentou usar
+                pra corrigir o valor e teria repetido o mesmo bug) nem
+                `NumericInput`. */}
             <Input
-              type="number"
-              step="0.01"
-              value={bulkEditAmount}
-              onChange={(e) => setBulkEditAmount(e.target.value)}
+              inputMode="numeric"
+              value={bulkEditAmountDisplay}
+              onChange={handleBulkEditAmountChange}
+              onPaste={handleBulkEditAmountPaste}
               placeholder="0,00"
             />
           </div>

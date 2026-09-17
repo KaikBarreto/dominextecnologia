@@ -16,6 +16,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { brtTransactionTimestamp } from '@/lib/date-br';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface Props {
   salesperson: Salesperson;
@@ -30,7 +31,7 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 
 export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, payments, readOnly = false }: Props) {
   const [editingSalary, setEditingSalary] = useState(false);
-  const [newSalary, setNewSalary] = useState(Number(salesperson.salary) || 0);
+  const [newSalary, setNewSalary] = useState(String(Number(salesperson.salary) || 0));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selected, setSelected] = useState<ReturnType<typeof getMonthData> | null>(null);
   const [payDate, setPayDate] = useState<Date>(new Date());
@@ -70,9 +71,30 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
   const prevData = getMonthData(previousMonth);
   const currData = getMonthData(now);
 
+  // Máscara de dinheiro (centavos), igual ContaFormDialog/ChargeDialog: digita
+  // só dígitos, os 2 últimos são os centavos. NUNCA `<input type="number">`
+  // aqui — bug real (2026-09-17), e este é o salário pago de verdade a um
+  // vendedor. `onPaste` cobre colar valor pronto via `readPastedCents`
+  // (`src/lib/money-paste-mask.ts`). `newSalary` é sempre string canônica
+  // ("4550.00"), nunca "4.550".
+  const handleNewSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setNewSalary(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleNewSalaryPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setNewSalary(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const newSalaryDisplay = newSalary
+    ? Number(newSalary).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
   const handleSaveSalary = async () => {
     try {
-      await saveSalesperson.mutateAsync({ id: salesperson.id, salary: newSalary } as any);
+      const salaryValue = newSalary ? Number(newSalary) : 0;
+      await saveSalesperson.mutateAsync({ id: salesperson.id, salary: salaryValue } as any);
       setEditingSalary(false);
     } catch {
       toast.error('Erro ao atualizar salário');
@@ -173,8 +195,14 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
         <CardContent>
           {editingSalary ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Input type="number" step="0.01" min="0" value={newSalary}
-                onChange={(e) => setNewSalary(parseFloat(e.target.value) || 0)} className="w-40" />
+              <Input
+                id="sp-salary-edit"
+                inputMode="numeric"
+                value={newSalaryDisplay}
+                onChange={handleNewSalaryChange}
+                onPaste={handleNewSalaryPaste}
+                className="w-40"
+              />
               <Button size="sm" onClick={handleSaveSalary} disabled={saveSalesperson.isPending}>Salvar</Button>
               <Button size="sm" variant="outline" onClick={() => setEditingSalary(false)}>Cancelar</Button>
             </div>
@@ -182,7 +210,7 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
             <div className="flex items-center justify-between gap-4">
               <span className="text-2xl font-bold">{fmt(Number(salesperson.salary) || 0)}</span>
               {!readOnly && (
-                <Button variant="outline" size="sm" onClick={() => { setNewSalary(Number(salesperson.salary) || 0); setEditingSalary(true); }}>
+                <Button variant="outline" size="sm" onClick={() => { setNewSalary(String(Number(salesperson.salary) || 0)); setEditingSalary(true); }}>
                   Editar
                 </Button>
               )}

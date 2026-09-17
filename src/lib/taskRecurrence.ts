@@ -23,10 +23,16 @@ import {
  * ficam como estão, qualquer mudança de regra aqui vale só pro que for gerado
  * daqui pra frente.
  *
- * Datas são manipuladas ancoradas ao meio-dia local (`T12:00:00`) e formatadas
- * com `yyyy-MM-dd`, evitando que o fuso (America/Sao_Paulo, UTC-3) empurre a
- * data um dia pra trás na conversão. O armazenamento é só a data (sem hora),
- * então isso mantém o dia correto na agenda.
+ * Datas são manipuladas ancoradas ao MEIO-DIA local (`T12:00:00`) e formatadas
+ * com `yyyy-MM-dd`. Esta âncora é FUSO-AGNÓSTICA por construção e NÃO assume
+ * Brasília: entra uma data sem hora, sai uma data sem hora, e as 12h de folga
+ * pra cada lado absorvem qualquer deslocamento de fuso (e o horário de verão)
+ * antes que ele consiga empurrar o dia pra frente ou pra trás na conversão.
+ *
+ * Ou seja: não há nada a corrigir aqui quando a empresa não está em São Paulo.
+ * Trocar a âncora por meia-noite (ou por `new Date(iso)` puro) é que traria o
+ * defeito clássico do dia deslocado. O armazenamento é só a data (sem hora),
+ * então isso mantém o dia correto na agenda em qualquer fuso.
  */
 
 /**
@@ -58,7 +64,29 @@ export interface RecurrenceSpec {
    * o comportamento clássico de 1 ocorrência por semana no dia da data inicial).
    */
   recurrence_weekdays?: number[] | null;
+  /**
+   * Série "Contínua" (sem data de término escolhida pelo usuário): true faz
+   * `findRecurrenceIssue` não exigir `recurrence_end_date`, e faz
+   * `generateRecurrenceDates` IGNORAR `recurrence_end_date` e materializar só
+   * até o HORIZONTE de segurança (ver `RECURRENCE_INDETERMINATE_*` abaixo).
+   * Um cron fora deste arquivo empurra essa janela pra frente com o tempo —
+   * este módulo nunca gera além do horizonte numa chamada só.
+   *
+   * Campo NOVO e opcional: ausente/null/false preserva 100% o comportamento
+   * anterior (série finita ou nenhuma recorrência). Hoje só a tela de Tarefa
+   * oferece essa opção ao usuário — o formulário de OS não seta este campo,
+   * então OS continua exigindo "até" como sempre exigiu.
+   */
+  recurrence_indeterminate?: boolean | null;
 }
+
+/**
+ * Horizonte de materialização de uma série "Contínua" (sem fim escolhido):
+ * 12 meses adiante OU 60 ocorrências, o que vier primeiro. Fora daqui, o cron
+ * de renovação (dev-database) é quem estica a janela conforme o tempo passa.
+ */
+export const RECURRENCE_INDETERMINATE_HORIZON_MONTHS = 12;
+export const RECURRENCE_INDETERMINATE_MAX_OCCURRENCES = 60;
 
 /**
  * Motivo pelo qual a recorrência pedida NÃO geraria uma série de verdade.
@@ -89,7 +117,8 @@ export function findRecurrenceIssue(spec: RecurrenceSpec): RecurrenceIssue | nul
   if (!type) return null; // sem recorrência: nada a validar
 
   if (!isSupported(type)) return { code: 'unsupported_type', type };
-  if (!spec.recurrence_end_date) return { code: 'missing_end_date' };
+  // "Contínua" dispensa a data final — o motor materializa até o horizonte.
+  if (!spec.recurrence_end_date && !spec.recurrence_indeterminate) return { code: 'missing_end_date' };
   if (type === 'custom' && !(spec.recurrence_weekdays && spec.recurrence_weekdays.length > 0)) {
     return { code: 'custom_without_weekdays' };
   }
@@ -167,9 +196,17 @@ function scanWeekdays(
 
 /**
  * Gera todas as datas (yyyy-MM-dd) de uma série a partir de `startDate` (inclusive)
- * até `recurrence_end_date`. Sem recorrência ou sem data-final, retorna só a
- * própria `startDate` — por isso o chamador DEVE rodar `findRecurrenceIssue`
- * antes e avisar o usuário, em vez de salvar uma ocorrência só sem aviso.
+ * até `recurrence_end_date`. Sem recorrência ou sem data-final (e sem
+ * `recurrence_indeterminate`), retorna só a própria `startDate` — por isso o
+ * chamador DEVE rodar `findRecurrenceIssue` antes e avisar o usuário, em vez
+ * de salvar uma ocorrência só sem aviso.
+ *
+ * Com `recurrence_indeterminate: true` ("Contínua"), `recurrence_end_date` é
+ * IGNORADO e a série é materializada só até o HORIZONTE de segurança:
+ * `RECURRENCE_INDETERMINATE_HORIZON_MONTHS` meses adiante OU
+ * `RECURRENCE_INDETERMINATE_MAX_OCCURRENCES` ocorrências, o que vier primeiro.
+ * Quem estica a janela com o passar do tempo é um cron fora deste arquivo —
+ * esta função nunca materializa além do horizonte numa chamada só.
  *
  * A data inicial é SEMPRE a primeira ocorrência, mesmo que o dia da semana dela
  * não esteja entre os marcados (vale para 'weekly' e 'custom'): quem escolheu a
@@ -181,14 +218,27 @@ export function generateRecurrenceDates(startDate: string, spec: RecurrenceSpec)
   const base = startDate;
   const dates: string[] = [base];
 
-  if (!spec.recurrence_type || !spec.recurrence_end_date) {
+  if (!spec.recurrence_type) {
+    return dates;
+  }
+  const indeterminate = !!spec.recurrence_indeterminate;
+  if (!indeterminate && !spec.recurrence_end_date) {
     return dates;
   }
   if (!isSupported(spec.recurrence_type)) {
     throw new UnsupportedRecurrenceError(spec.recurrence_type);
   }
 
-  const endDate = anchor(spec.recurrence_end_date);
+  const start = anchor(base);
+  // Determinada: endDate = a data final escolhida, sem teto de ocorrências
+  // (Infinity == comportamento idêntico ao loop `for (;;)` de antes).
+  // Indeterminada: endDate = horizonte de tempo; maxOccurrences = horizonte
+  // de contagem. Vale o que vier primeiro.
+  const endDate = indeterminate
+    ? addMonths(start, RECURRENCE_INDETERMINATE_HORIZON_MONTHS)
+    : anchor(spec.recurrence_end_date!);
+  const maxOccurrences = indeterminate ? RECURRENCE_INDETERMINATE_MAX_OCCURRENCES : Infinity;
+
   const interval = spec.recurrence_interval || 1;
   const weekdays = spec.recurrence_weekdays || [];
 
@@ -197,25 +247,133 @@ export function generateRecurrenceDates(startDate: string, spec: RecurrenceSpec)
     // O campo "a cada N" segue ignorado aqui (comportamento histórico, mantido
     // de propósito para não mexer em série personalizada que já existe).
     // Sem nenhum dia marcado não há série: `findRecurrenceIssue` já barrou.
-    if (weekdays.length === 0) return dates;
-    dates.push(...scanWeekdays(base, endDate, weekdays, 1));
-    return dates;
-  }
-
-  if (spec.recurrence_type === 'weekly' && weekdays.length > 0) {
+    if (weekdays.length > 0) {
+      dates.push(...scanWeekdays(base, endDate, weekdays, 1));
+    }
+  } else if (spec.recurrence_type === 'weekly' && weekdays.length > 0) {
     // Semanal COM dias marcados = a cada N semanas, em cada dia marcado.
     // Sem nenhum dia marcado cai no passo simples abaixo (1 por semana no dia
     // da data inicial), que é como a semanal sempre funcionou.
     dates.push(...scanWeekdays(base, endDate, weekdays, interval));
-    return dates;
+  } else {
+    for (let k = 1; dates.length < maxOccurrences; k++) {
+      const current = occurrenceAt(start, spec.recurrence_type, interval, k);
+      if (current > endDate) break;
+      dates.push(format(current, 'yyyy-MM-dd'));
+    }
   }
 
-  const start = anchor(base);
-  for (let k = 1; ; k++) {
-    const current = occurrenceAt(start, spec.recurrence_type, interval, k);
-    if (current > endDate) break;
-    dates.push(format(current, 'yyyy-MM-dd'));
-  }
+  // Teto de ocorrências só existe no modo indeterminado (Infinity nunca corta
+  // nada no modo determinado). Cobre também os ramos 'custom'/'weekly' com
+  // varredura, que não respeitam o teto sozinhos.
+  return indeterminate ? dates.slice(0, maxOccurrences) : dates;
+}
 
-  return dates;
+/**
+ * Dias da semana a gravar em `service_orders.recurrence_weekdays`. Convenção
+ * 0=domingo..6=sábado (a mesma do `Date.getDay()` e do `EXTRACT(DOW)` do
+ * Postgres — não inverter). `null` quando a frequência não usa dia da semana
+ * (daily/biweekly/monthly/yearly) OU quando nenhum dia foi marcado: nunca
+ * gravamos `[]`, que seria ambíguo entre "não se aplica" e "vazio de propósito".
+ *
+ * Compartilhada entre tarefa (`useTaskSubmit`) e OS (`ServiceOrderFormDialog`)
+ * — as duas entram como linhas de `service_orders` (`entry_type` diferente),
+ * então a mesma regra de gravação vale pras duas. Extraída pra cá (em vez de
+ * duplicada) depois que a duplicata do motor de datas já tinha causado bug
+ * (ver docstring do topo deste arquivo, caso 'yearly').
+ */
+export function weekdaysToPersist(
+  data: Pick<RecurrenceSpec, 'recurrence_type' | 'recurrence_weekdays'>,
+): number[] | null {
+  const usesWeekdays = data.recurrence_type === 'custom' || data.recurrence_type === 'weekly';
+  if (!usesWeekdays) return null;
+  return data.recurrence_weekdays && data.recurrence_weekdays.length > 0 ? data.recurrence_weekdays : null;
+}
+
+/**
+ * Deriva, a partir do registro em edição (tarefa OU OS — ambas linhas de
+ * `service_orders`), quais dias da semana marcar no seletor e se é uma série
+ * "Personalizada" legada (sem dias gravados, criada antes de
+ * `recurrence_weekdays` existir). Extraída como função pura para dar pra
+ * testar sem montar o formulário inteiro (hooks de perfil, time, cliente etc.).
+ *
+ * Sem série (`recurrence_group_id` nulo) sempre volta vazio: não é o caso de
+ * remontar nada. Com série, os dias vêm 1:1 do que foi gravado — nunca
+ * inventamos um dia a partir da data agendada.
+ */
+export function resolveEditingWeekdays(
+  record: { recurrence_group_id?: string | null; recurrence_type?: string | null; recurrence_weekdays?: number[] | null } | null | undefined,
+): { weekdays: number[]; legacyCustomWithoutWeekdays: boolean } {
+  const hasSeries = !!record?.recurrence_group_id;
+  if (!hasSeries) return { weekdays: [], legacyCustomWithoutWeekdays: false };
+
+  const savedWeekdays = Array.isArray(record?.recurrence_weekdays) ? record!.recurrence_weekdays! : [];
+  return {
+    weekdays: savedWeekdays,
+    legacyCustomWithoutWeekdays: record?.recurrence_type === 'custom' && savedWeekdays.length === 0,
+  };
+}
+
+/**
+ * Colapsa uma lista de tarefas (linhas de `service_orders`, `entry_type='tarefa'`)
+ * agrupando cada série recorrente (`recurrence_group_id`) numa ÚNICA linha: a
+ * próxima ocorrência ainda pendente. Sem isso, o card do CRM (Onda E1) e a aba
+ * Tarefas (Onda E2) virariam uma lista de dezenas de linhas da mesma cobrança
+ * semanal — em produção, 411 das 475 tarefas fazem parte de série.
+ *
+ * Regra de escolha dentro do grupo:
+ *  - Considera só as ocorrências NÃO concluídas (`status !== 'concluida'`).
+ *  - Se nenhuma sobrou (série 100% concluída), o grupo inteiro é omitido —
+ *    não há "próxima pendente" pra mostrar.
+ *  - Entre as pendentes, escolhe a de MENOR data (atrasada entra antes de
+ *    futura, porque `yyyy-MM-dd` ordena como string). Sem data fica por
+ *    último dentro do grupo (mas isso é raríssimo: recorrência exige data —
+ *    ver `findRecurrenceIssue` / TaskFormDialog).
+ *
+ * Tarefas SEM `recurrence_group_id` (avulsas) passam direto, uma a uma.
+ *
+ * Função PURA e compartilhada: usada tanto pelo card da oportunidade quanto
+ * pela aba Tarefas da tela do CRM, pra as duas nunca divergirem sobre "qual
+ * ocorrência mostrar" de uma mesma série (risco 3 do plano da Onda E).
+ */
+export interface CollapsibleTask {
+  id: string;
+  recurrence_group_id?: string | null;
+  scheduled_date?: string | null;
+  status?: string | null;
+  [key: string]: unknown;
+}
+
+export function collapseRecurringOccurrences<T extends CollapsibleTask>(
+  tasks: T[],
+): Array<T & { _isRecurring?: boolean; _occurrenceCount?: number }> {
+  const singles: T[] = [];
+  const groups = new Map<string, T[]>();
+
+  tasks.forEach((task) => {
+    if (task.recurrence_group_id) {
+      const arr = groups.get(task.recurrence_group_id) || [];
+      arr.push(task);
+      groups.set(task.recurrence_group_id, arr);
+    } else {
+      singles.push(task);
+    }
+  });
+
+  const collapsed: Array<T & { _isRecurring?: boolean; _occurrenceCount?: number }> = [...singles];
+
+  groups.forEach((occurrences) => {
+    const pending = occurrences.filter((o) => o.status !== 'concluida');
+    if (pending.length === 0) return; // série inteira concluída: nada a mostrar
+
+    const [next] = [...pending].sort((a, b) => {
+      if (!a.scheduled_date) return 1;
+      if (!b.scheduled_date) return -1;
+      return a.scheduled_date.localeCompare(b.scheduled_date);
+    });
+
+    collapsed.push({ ...next, _isRecurring: true, _occurrenceCount: occurrences.length });
+  });
+
+  return collapsed;
 }

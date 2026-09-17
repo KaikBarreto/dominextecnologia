@@ -54,6 +54,9 @@ export interface CreateChargeInput {
   /** Categoria (nome) do recebível gerado no Financeiro. Ausente/vazio → a edge
    *  usa a categoria padrão da conta de pagamento (default_income_category). */
   category?: string;
+  /** Centro de custo do recebível gerado no Financeiro. Ausente/null → sem
+   *  centro (sempre opcional, sem default de conta). */
+  cost_center_id?: string | null;
   /** Lançar (ou não) o recebível no Financeiro NESTA cobrança. Ausente → a edge
    *  usa o default da conta de pagamento (auto_post_to_finance). */
   post_to_finance?: boolean;
@@ -325,6 +328,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       // Categoria escolhida pelo usuário nesta cobrança — sobrescreve o default
       // da conta (default_income_category) só quando informada.
       if (input.category?.trim()) body.category = input.category.trim();
+      // Centro de custo escolhido pelo usuário nesta cobrança. Sem default de
+      // conta (ao contrário de categoria) — ausente/null é "sem centro".
+      if (input.cost_center_id) body.cost_center_id = input.cost_center_id;
       // Lançar (ou não) o recebível no Financeiro NESTA cobrança. Ausente →
       // a edge usa o default da conta (compatibilidade com frontend antigo).
       if (input.post_to_finance !== undefined) body.post_to_finance = input.post_to_finance;

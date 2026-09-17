@@ -55,7 +55,7 @@ import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { StepTransition } from '@/components/ui/step-transition';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { generateRecurrenceDates, findRecurrenceIssue, type RecurrenceIssue, type RecurrenceSpec } from '@/lib/taskRecurrence';
+import { generateRecurrenceDates, findRecurrenceIssue, weekdaysToPersist, resolveEditingWeekdays, type RecurrenceIssue, type RecurrenceSpec } from '@/lib/taskRecurrence';
 import { formatDate } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { OsMaterialsSection } from '@/components/service-orders/OsMaterialsSection';
@@ -88,6 +88,10 @@ interface ServiceOrderFormDialogProps {
   // Status pré-preenchido quando a OS é criada via "+" de uma coluna do kanban.
   // Quando ausente, o backend usa o default do schema ('pendente').
   defaultStatus?: OsStatus;
+  /** Descrição pré-preenchida (ex: título da oportunidade, ao criar OS a partir do CRM). Só criação. */
+  defaultDescription?: string;
+  /** Responsáveis pré-selecionados (ex: vendedor da oportunidade, ao criar OS a partir do CRM). Só criação. */
+  defaultAssigneeUserIds?: string[];
 }
 
 const STEPS = [
@@ -98,6 +102,7 @@ const STEPS = [
 
 export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultStatus,
+  defaultDescription, defaultAssigneeUserIds,
 }: ServiceOrderFormDialogProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.form;
@@ -246,7 +251,7 @@ export function ServiceOrderFormDialog({
       scheduled_date: computedDate,
       scheduled_time: computedTime,
       duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
-      description: serviceOrder?.description ?? '',
+      description: serviceOrder?.description ?? defaultDescription ?? '',
       notes: serviceOrder?.notes ?? '',
       form_template_id: serviceOrder?.form_template_id ?? '',
     },
@@ -346,6 +351,9 @@ export function ServiceOrderFormDialog({
         setSelectedAssigneeUserIds(existingAssigneeIds);
       } else if (serviceOrder?.technician_id) {
         setSelectedAssigneeUserIds([serviceOrder.technician_id]);
+      } else if (!isEditing && defaultAssigneeUserIds && defaultAssigneeUserIds.length > 0) {
+        // Só na criação (ex: vendedor responsável da oportunidade, ao criar OS a partir do CRM).
+        setSelectedAssigneeUserIds(defaultAssigneeUserIds);
       } else {
         setSelectedAssigneeUserIds([]);
       }
@@ -354,8 +362,21 @@ export function ServiceOrderFormDialog({
       setRecurrenceType('weekly');
       setRecurrenceInterval(1);
       setRecurrenceEndDate('');
-      const dayOfWeek = new Date(defaultDate || new Date()).getDay();
-      setRecurrenceWeekdays([dayOfWeek]);
+      if (isEditing) {
+        // BUG CORRIGIDO — antes chutava sempre `[dayOfWeek]` (o dia da semana
+        // da própria data agendada), mesmo a OS pertencendo a uma série
+        // "Personalizada" com vários dias gravados. Como este estado hoje não
+        // é usado no submit de edição (a tela ainda não permite alterar o
+        // padrão de recorrência de uma série existente — ver relato ao Tech
+        // Lead), o chute nunca chegava a corromper nada salvo. Mesmo assim,
+        // remontar certo aqui evita a mesma pegadinha do bug de tarefa
+        // reaparecer no dia em que a edição de recorrência da OS for ligada.
+        const { weekdays } = resolveEditingWeekdays(serviceOrder as any);
+        setRecurrenceWeekdays(weekdays);
+      } else {
+        const dayOfWeek = new Date(defaultDate || new Date()).getDay();
+        setRecurrenceWeekdays([dayOfWeek]);
+      }
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
@@ -368,7 +389,7 @@ export function ServiceOrderFormDialog({
           scheduled_date: computedDate,
           scheduled_time: computedTime,
           duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
-          description: serviceOrder?.description ?? '',
+          description: serviceOrder?.description ?? defaultDescription ?? '',
           notes: serviceOrder?.notes ?? '',
           form_template_id: serviceOrder?.form_template_id ?? '',
         });
@@ -527,6 +548,12 @@ export function ServiceOrderFormDialog({
         recurrence_type: recurrenceType,
         recurrence_interval: recurrenceInterval,
         recurrence_end_date: recurrenceEndDate,
+        // BUG CORRIGIDO — os dias marcados eram usados só pra calcular as datas
+        // (generateRecurrenceDates) e nunca gravados na linha. A série nascia
+        // com `recurrence_weekdays` null, mesmo o usuário tendo escolhido dias
+        // específicos (ex.: "Personalizada" segunda + sábado). `null` (nunca
+        // `[]`) quando a frequência não usa dia da semana ou nenhum foi marcado.
+        recurrence_weekdays: weekdaysToPersist(recurrenceSpec),
         recurrence_group_id: groupId,
         company_id,
         ...serviceAddressPayload,

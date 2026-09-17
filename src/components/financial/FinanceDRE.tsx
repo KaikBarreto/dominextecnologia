@@ -30,8 +30,13 @@ import {
   getDreAmount,
   isPartialReceiptChild,
   isPayrollAdvance,
+  isFutureCashDate,
+  classifyDreCategory,
   type DreRegime,
 } from '@/lib/dre-regime';
+import { todayInTz } from '@/lib/timezone';
+import { getCategoryIcon } from './categoryIcons';
+import type { LucideIcon } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
@@ -64,9 +69,18 @@ interface FinanceDREProps {
  */
 
 interface CategoryBreakdown {
+  /** Nome de exibição da categoria (chave dos mapas por nome usados no resto da tela). */
   name: string;
+  /**
+   * Chave ÚNICA da linha, prefixada pelo grupo DRE (`opex:Combustível`).
+   * Existe pra buscar as transações da categoria em `categoryTxnsMap` sem
+   * colidir entre grupos — a mesma categoria pode teoricamente existir só do
+   * lado de saída, mas o prefixo blinda contra qualquer coincidência de nome.
+   */
+  key: string;
   value: number;
   color: string;
+  icon: LucideIcon;
 }
 
 export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREProps) {
@@ -74,7 +88,9 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   const { categories: financialCategories } = useFinancialCategories();
   const { costCenters } = useCostCenters();
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone`: fuso da empresa, usado pra decidir o que já é passado no
+  // regime de Caixa (ver `isFutureCashDate`).
+  const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
@@ -101,8 +117,33 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   // O que muda por regime: Caixa exige `is_paid` (Competência ignora) e a data
   // que define o mês (ver getDreEffectiveDate).
   // Se dreStartDate estiver preenchida, filtra só transações a partir dessa data.
+  // IDs de transação que têm pelo menos UMA filha REAL de "Recebimento
+  // parcial" apontando pra elas (`isPartialReceiptChild`). Existe porque
+  // `amount_received` não é confiável sozinho: a baixa de cobrança via Asaas
+  // (RPC `apply_tenant_charge_payment`, fora deste módulo) grava
+  // `amount_received = amount` na quitação total SEM nunca criar a filha —
+  // achado real (Aldebaran, R$3.133,00): a mãe zerava em `getDreAmount` e
+  // sumia do Caixa mesmo com `paid_date` certo, enquanto Competência (que
+  // ignora `amount_received`) mostrava o valor cheio. Calculado a partir de
+  // `rawTransactions` (o conjunto TODO, sem filtro de período/regime): a
+  // filha existir é fato estrutural, não depende do que está selecionado na
+  // tela.
+  const parentIdsWithPartialChild = useMemo(() => {
+    const ids = new Set<string>();
+    rawTransactions.forEach((t) => {
+      if (isPartialReceiptChild(t) && t.parent_transaction_id) ids.add(t.parent_transaction_id);
+    });
+    return ids;
+  }, [rawTransactions]);
+
   const transactionsInPeriod = useMemo(
     () => {
+      // Fuso DA EMPRESA, não o do dispositivo nem São Paulo chumbado: mesma
+      // regra de todo campo de data financeira (ver `todayInTz`). Empresa em
+      // Cuiabá (UTC-4) abrindo a DRE às 23h15 do dia 30 tinha "hoje" = 31 e um
+      // pagamento datado 31 (ainda futuro pra ela) já contava como realizado.
+      // Calculado uma vez por corte, não por linha.
+      const today = todayInTz(timezone);
       const out: (FinancialTransaction & { customer?: any })[] = [];
       for (const t of rawTransactions) {
         // Lançamento CANCELADO não é resultado. Quando um funcionário é
@@ -131,6 +172,13 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
         // dre_start_date e no agrupamento do gráfico. Se qualquer um deles usasse
         // outra data, tabela e gráfico discordariam no mesmo período.
         const effective = getDreEffectiveDate(t, regime);
+        // Caixa é dinheiro que JÁ se moveu: mesmo que um `paid_date` no futuro
+        // já esteja gravado (dado anterior à trava de "Já foi pago" — ver
+        // `isPaidDateAllowedInTz` — ou uma brecha que passou por ela), a DRE em
+        // Caixa não pode contar isso antes do dia chegar. Fail-safe de LEITURA:
+        // não depende da validação de escrita ter pego o caso. Não vale pra
+        // Competência, onde fato futuro é legítimo (conta agendada).
+        if (isFutureCashDate(effective, regime, today)) continue;
         if (!isInDreRange(effective, range)) continue;
         // Corte por data efetiva (e não por transaction_date sempre): no regime
         // Caixa o que importa é quando o dinheiro se moveu — senão um lançamento
@@ -146,7 +194,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
         // depois (totais, gráfico, quebra por centro e export) lê o mesmo
         // número, sem refazer a conta em lugar nenhum.
         const rawAmount = Number(t.amount);
-        const dreAmount = getDreAmount(t, regime);
+        const dreAmount = getDreAmount(t, regime, parentIdsWithPartialChild.has(t.id));
         if (dreAmount === rawAmount) {
           out.push(t);
         } else if (dreAmount > 0) {
@@ -155,7 +203,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
       }
       return out;
     },
-    [rawTransactions, dreStartDate, regime, range]
+    [rawTransactions, dreStartDate, regime, range, parentIdsWithPartialChild, timezone]
   );
 
   // Corte por centro de custo APLICADO POR CIMA do conjunto acima — e antes de
@@ -171,6 +219,16 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   const [showReceita, setShowReceita] = useState(false);
   const [showCostCenters, setShowCostCenters] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  // Categorias expandidas (3º nível: quebra por centro de custo), por `CategoryBreakdown.key`.
+  const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<Set<string>>(new Set());
+  const toggleCategoryExpanded = (key: string) => {
+    setExpandedCategoryKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   // Build a map from category name to dre_group using the DB field
   const categoryDreGroupMap = useMemo(() => {
@@ -181,20 +239,31 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     return map;
   }, [financialCategories]);
 
-  // Classify category using the dre_group field from financial_categories table
-  function classifyCategory(category: string | null): 'impostos' | 'cmv' | 'opex' {
-    const catName = category || '';
-    const dreGroup = categoryDreGroupMap.get(catName);
-    if (dreGroup === 'impostos') return 'impostos';
-    if (dreGroup === 'cmv') return 'cmv';
-    // Fallback: regex matching for backwards compatibility
-    const lower = catName.toLowerCase();
-    if (/imposto|taxa|tributo|icms|iss|pis|cofins/.test(lower)) return 'impostos';
-    if (/custo|material|peça|peca|fornecedor|insumo/.test(lower)) return 'cmv';
-    return 'opex';
-  }
+  // Cor + ícone REAIS da categoria (mesma fonte que o seletor de categoria do
+  // formulário — `CategorySelectField` — usa: `c.color` e `getCategoryIcon(c.icon)`).
+  // Antes o DRE desenhava uma bolinha cinza genérica pra toda categoria; agora
+  // reusa a mesma leitura, então a cor/ícone nunca diverge entre as duas telas.
+  const categoryMetaMap = useMemo(() => {
+    const map = new Map<string, { color: string; icon: LucideIcon }>();
+    financialCategories.forEach((c: any) => {
+      map.set(c.name, { color: c.color, icon: getCategoryIcon(c.icon) });
+    });
+    return map;
+  }, [financialCategories]);
 
-  const { dre, impostosCategories, cmvCategories, opexCategories, receitaCategories } = useMemo(() => {
+  // Cinza neutro pra "Sem categoria" (lançamento sem `category` no banco) e pra
+  // qualquer nome que não bate com nenhuma categoria cadastrada (apagada,
+  // renomeada). Mesmo literal já usado pro fallback do centro de custo nesta
+  // tela — precisa ser hex porque o mesmo valor alimenta o HTML do export.
+  const FALLBACK_CATEGORY_COLOR = '#6b7280';
+  const categoryMeta = (name: string) =>
+    categoryMetaMap.get(name) ?? { color: FALLBACK_CATEGORY_COLOR, icon: getCategoryIcon(undefined) };
+
+  // Classificação (impostos/CMV/OPEX) — motor puro e testado em `@/lib/dre-regime`.
+  const classifyCategory = (category: string | null) =>
+    classifyDreCategory(category, categoryDreGroupMap.get(category || ''));
+
+  const { dre, impostosCategories, cmvCategories, opexCategories, receitaCategories, categoryTxnsMap } = useMemo(() => {
     let receitaBruta = 0;
     let impostos = 0;
     let cmv = 0;
@@ -204,6 +273,18 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     const cmvMap = new Map<string, number>();
     const opexMap = new Map<string, number>();
     const receitaMap = new Map<string, number>();
+    // Transações de CADA categoria, prontas pra alimentar o 3º nível (quebra
+    // por centro de custo ao expandir uma categoria). Chave = `${grupo}:${nome}`,
+    // igual à `CategoryBreakdown.key` — o mesmo conjunto que soma o total da
+    // categoria acima é o que vai pro `buildCostCenterBreakdown` abaixo, então
+    // a soma dos centros fecha com o total ao centavo (mesma fonte, sem
+    // segunda agregação).
+    const txnsByKey = new Map<string, (FinancialTransaction & { customer?: any })[]>();
+    const pushTxn = (key: string, t: FinancialTransaction & { customer?: any }) => {
+      const arr = txnsByKey.get(key);
+      if (arr) arr.push(t);
+      else txnsByKey.set(key, [t]);
+    };
 
     transactions.forEach((t) => {
       const amount = Number(t.amount);
@@ -211,17 +292,21 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
       if (t.transaction_type === 'entrada') {
         receitaBruta += amount;
         receitaMap.set(cat, (receitaMap.get(cat) || 0) + amount);
+        pushTxn(`receita:${cat}`, t);
       } else {
         const cls = classifyCategory(t.category);
         if (cls === 'impostos') {
           impostos += amount;
           impostosMap.set(cat, (impostosMap.get(cat) || 0) + amount);
+          pushTxn(`impostos:${cat}`, t);
         } else if (cls === 'cmv') {
           cmv += amount;
           cmvMap.set(cat, (cmvMap.get(cat) || 0) + amount);
+          pushTxn(`cmv:${cat}`, t);
         } else {
           opex += amount;
           opexMap.set(cat, (opexMap.get(cat) || 0) + amount);
+          pushTxn(`opex:${cat}`, t);
         }
       }
     });
@@ -231,19 +316,24 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     const resultadoLiquido = lucroBruto - opex;
     const margem = receitaBruta > 0 ? (lucroBruto / receitaBruta) * 100 : 0;
 
-    const mapToArray = (map: Map<string, number>): CategoryBreakdown[] =>
+    const mapToArray = (map: Map<string, number>, group: string): CategoryBreakdown[] =>
       Array.from(map.entries())
-        .map(([name, value]) => ({ name, value, color: '#6b7280' }))
+        .map(([name, value]) => {
+          const meta = categoryMeta(name);
+          return { name, key: `${group}:${name}`, value, color: meta.color, icon: meta.icon };
+        })
         .sort((a, b) => b.value - a.value);
 
     return {
       dre: { receitaBruta, impostos, receitaLiquida, cmv, lucroBruto, opex, resultadoLiquido, margem },
-      impostosCategories: mapToArray(impostosMap),
-      cmvCategories: mapToArray(cmvMap),
-      opexCategories: mapToArray(opexMap),
-      receitaCategories: mapToArray(receitaMap),
+      impostosCategories: mapToArray(impostosMap, 'impostos'),
+      cmvCategories: mapToArray(cmvMap, 'cmv'),
+      opexCategories: mapToArray(opexMap, 'opex'),
+      receitaCategories: mapToArray(receitaMap, 'receita'),
+      categoryTxnsMap: txnsByKey,
     };
-  }, [transactions, categoryDreGroupMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions, categoryDreGroupMap, categoryMetaMap, fin.dre.fallbackCategory]);
 
   // Monthly chart data — mobile simplifica pros últimos 6 meses pra caber.
   const monthlyData = useMemo(() => {
@@ -288,13 +378,17 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     return map;
   }, [costCenters, fin.costCenters.inactiveSuffix]);
 
+  // Ordem alfabética dos centros cadastrados; o balde sem centro cai no fim.
+  // Reusada tanto na quebra GERAL (rodapé) quanto na quebra POR CATEGORIA (3º
+  // nível ao expandir uma categoria) — mesmo critério de ordenação nos dois.
+  const costCenterOrderIds = useMemo(
+    () => costCenters.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map((c) => c.id),
+    [costCenters]
+  );
+
   const costCenterBreakdown = useMemo(
-    () => buildCostCenterBreakdown(
-      transactions,
-      // Ordem alfabética dos centros cadastrados; o balde sem centro cai no fim.
-      costCenters.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map((c) => c.id),
-    ),
-    [transactions, costCenters]
+    () => buildCostCenterBreakdown(transactions, costCenterOrderIds),
+    [transactions, costCenterOrderIds]
   );
 
   /** Rótulo de uma linha da quebra (`null` = balde sem centro). */
@@ -359,6 +453,9 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
           result: r.result,
         })),
         locale,
+        // Fuso da empresa: o carimbo "gerado em" do documento tem que mostrar o
+        // relógio da empresa, não o do aparelho de quem exportou.
+        timezone,
       });
     } finally {
       setIsExporting(false);
@@ -377,37 +474,96 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     return dre.lucroBruto > 0 ? 'bg-success' : 'bg-destructive';
   };
 
-  const renderCategoryList = (categories: CategoryBreakdown[]) => (
-    <div className="divide-y divide-border/30">
-      {categories.map((c) => (
-        <div key={c.name} className="px-3 sm:px-4 py-2 flex items-center justify-between">
+  /**
+   * Linha de UMA categoria dentro de um grupo (OPEX/CMV/Impostos/Receita).
+   * Dois níveis a mais que antes de virar a lista simples:
+   *
+   * 1. Ícone + cor REAIS da categoria (`c.icon`/`c.color`) em vez da bolinha
+   *    cinza genérica — mesmo desenho do `CategorySelectField` (círculo
+   *    saturado + ícone branco dentro, sem contorno dessaturado atrás).
+   * 2. Clique expande um 3º nível: a MESMA categoria, quebrada por centro de
+   *    custo. A fonte é `categoryTxnsMap` — o mesmo conjunto (mesmo período,
+   *    mesmo regime, mesmo filtro de centro) que somou `c.value` acima, então
+   *    a soma dos centros fecha com o total da categoria por construção, sem
+   *    recalcular nada.
+   *
+   * Categoria com 1 centro só (ou nenhum, virando só o balde "Sem centro de
+   * custo") não ganha seta: abrir pra mostrar de novo o mesmo número já
+   * visível na linha é barulho, não informação.
+   */
+  const CategoryRow = ({ c, isRevenue }: { c: CategoryBreakdown; isRevenue: boolean }) => {
+    const txns = categoryTxnsMap.get(c.key) ?? [];
+    const breakdown = buildCostCenterBreakdown(txns, costCenterOrderIds);
+    const canExpand = breakdown.rows.length > 1;
+    const isOpen = expandedCategoryKeys.has(c.key);
+    const Icon = c.icon;
+    const valueColorClass = isRevenue ? 'text-success' : 'text-destructive';
+    const valueLabel = isRevenue ? fmt(c.value) : `-${fmt(c.value)}`;
+
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => canExpand && toggleCategoryExpanded(c.key)}
+          aria-expanded={canExpand ? isOpen : undefined}
+          aria-label={canExpand ? fin.dre.categoryBreakdown.expandAriaLabel.replace('{category}', c.name) : undefined}
+          className={cn(
+            'w-full px-3 sm:px-4 py-2 flex items-center justify-between text-left',
+            canExpand ? 'hover:bg-muted/40 transition-colors cursor-pointer' : 'cursor-default'
+          )}
+        >
           <div className="flex items-center gap-2 pl-2 sm:pl-4 min-w-0 flex-1">
-            <div className="w-2 h-2 rounded-full flex-shrink-0 bg-muted-foreground" />
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
+              style={{ backgroundColor: c.color }}
+            >
+              <Icon className="h-3 w-3 text-white" />
+            </span>
             <span className="text-xs text-foreground/70 truncate">{c.name}</span>
           </div>
-          <span className="text-xs font-medium text-destructive flex-shrink-0 ml-2">
-            -{fmt(c.value)}
-          </span>
-        </div>
-      ))}
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+            <span className={cn('text-xs font-medium', valueColorClass)}>{valueLabel}</span>
+            {canExpand && (
+              isOpen
+                ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+          </div>
+        </button>
+
+        {/* 3º nível — quebra por centro de custo. Hierarquia sinalizada por
+            fundo diferenciado + rótulo pequeno, não só por recuo: em ~390px um
+            3º nível que dependesse só de `padding-left` fica ilegível. */}
+        {canExpand && isOpen && (
+          <div className="bg-muted/20 pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 space-y-1">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+              {fin.costCenters.dreSectionTitle}
+            </p>
+            {breakdown.rows.map((r) => (
+              <div key={r.id ?? '__none__'} className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: costCenterColor(r.id) }} />
+                  <span className="text-[11px] text-muted-foreground truncate">{costCenterLabel(r.id)}</span>
+                </span>
+                <span className={cn('text-[11px] font-medium tabular-nums flex-shrink-0', valueColorClass)}>
+                  {isRevenue ? fmt(r.revenue) : `-${fmt(r.expense)}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCategoryRows = (categories: CategoryBreakdown[], isRevenue: boolean) => (
+    <div className="divide-y divide-border/30">
+      {categories.map((c) => <CategoryRow key={c.key} c={c} isRevenue={isRevenue} />)}
     </div>
   );
 
-  const renderReceitaList = (categories: CategoryBreakdown[]) => (
-    <div className="divide-y divide-border/30">
-      {categories.map((c) => (
-        <div key={c.name} className="px-3 sm:px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 pl-2 sm:pl-4 min-w-0 flex-1">
-            <div className="w-2 h-2 rounded-full flex-shrink-0 bg-success" />
-            <span className="text-xs text-foreground/70 truncate">{c.name}</span>
-          </div>
-          <span className="text-xs font-medium text-success flex-shrink-0 ml-2">
-            {fmt(c.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
+  const renderCategoryList = (categories: CategoryBreakdown[]) => renderCategoryRows(categories, false);
+  const renderReceitaList = (categories: CategoryBreakdown[]) => renderCategoryRows(categories, true);
 
   const CollapsibleSection = ({
     label,

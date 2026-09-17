@@ -33,6 +33,14 @@ export interface CompanyForAsaas {
   address_number?: string | null;
   neighborhood?: string | null;
   zip_code?: string | null;
+  /**
+   * Interruptor por empresa: quando TRUE, a Asaas manda e-mail de cobrança pro cliente.
+   * DEFAULT do banco = false, e ausente/undefined também vale false (fail-safe): a base
+   * inteira continua com `notificationDisabled: true`, como sempre foi.
+   */
+  billing_notifications_enabled?: boolean | null;
+  /** E-mail ADICIONAL (financeiro) que recebe a cobrança. Não substitui o `email` do cadastro. */
+  billing_email?: string | null;
 }
 
 /**
@@ -89,8 +97,13 @@ export async function provisionAsaasCustomer(
         name: company.name,
         email: company.email || undefined,
         cpfCnpj: cpfCnpjLimpo,
-        notificationDisabled: true,
+        // Fail-safe: sem a flag (false/null/undefined) → notificationDisabled: true,
+        // exatamente o comportamento histórico de TODA a base.
+        notificationDisabled: !company.billing_notifications_enabled,
       };
+      // E-mail do financeiro entra como ADICIONAL (o do cadastro segue sendo o principal).
+      const billingEmail = (company.billing_email || "").trim();
+      if (billingEmail) payload.additionalEmails = billingEmail;
       // Endereço FLAT no schema Dominex (não há company_fiscal_config).
       if (company.address) payload.address = company.address;
       if (company.address_number) payload.addressNumber = company.address_number;

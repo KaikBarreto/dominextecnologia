@@ -41,6 +41,13 @@ export interface ServiceOrderInput {
   equipment_items?: ServiceOrderEquipmentItem[];
   assignee_user_ids?: string[];
   assignee_team_ids?: string[];
+  // Onda E do overhaul do CRM — tarefa vinculada a uma oportunidade.
+  // `lead_id` liga a tarefa ao card do CRM (null = tarefa nascida na Agenda,
+  // relação de mão única). `show_in_schedule` é o checkbox "Mostrar na
+  // agenda": false = a tarefa existe e aparece no card/aba Tarefas, mas não
+  // no calendário. Ver migration 20260919100000_tarefa_do_crm_lead_id_e_show_in_schedule.sql.
+  lead_id?: string | null;
+  show_in_schedule?: boolean;
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
@@ -57,12 +64,18 @@ export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
   check_out_time?: string;
   check_out_location?: { lat: number; lng: number };
   client_signature?: string;
-  // Recorrência de tarefas (entry_type='tarefa'). A regeneração de ocorrências
-  // ("esta e as futuras") é orquestrada na agenda; aqui só persistimos os campos.
+  // Recorrência de tarefas e de OS (entry_type='tarefa'|'os'). A regeneração
+  // de ocorrências ("esta e as futuras") é orquestrada na agenda / no
+  // formulário de OS; aqui só persistimos os campos.
   recurrence_type?: string | null;
   recurrence_interval?: number | null;
   recurrence_end_date?: string | null;
   recurrence_group_id?: string | null;
+  // 0=domingo..6=sábado. `null` quando a frequência não usa dia da semana ou
+  // nenhum foi marcado — nunca `[]` (ver `weekdaysToPersist` em
+  // src/lib/taskRecurrence.ts). Campo era aceito só via `as any` antes disso;
+  // declarado aqui pra tirar a necessidade do cast.
+  recurrence_weekdays?: number[] | null;
 }
 
 export function useServiceOrders() {
@@ -179,7 +192,7 @@ export function useServiceOrders() {
           created_by: user?.id,
           company_id,
         },
-        ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']
+        ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id', 'lead_id']
       );
       const { data, error } = await supabase
         .from('service_orders')
@@ -257,6 +270,7 @@ export function useServiceOrders() {
         'service_type_id',
         'form_template_id',
         'contract_id',
+        'lead_id',
       ] as Array<keyof typeof input>);
 
       const { data, error } = await supabase

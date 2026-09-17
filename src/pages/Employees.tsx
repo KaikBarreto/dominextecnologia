@@ -8,9 +8,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { todayInTz } from '@/lib/timezone';
 import {
   Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
-  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network, Tablet,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
+import { PontoKioskLinkDialog } from '@/components/employees/PontoKioskLinkDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
@@ -75,21 +77,6 @@ function buildHoleriteIdentity(
     codigo: emp.matricula ?? undefined,
     cbo: emp.cbo ?? undefined,
   };
-}
-
-// TODO: trocar pelo helper canônico de data do Brasil quando ele existir (outro dev
-// está criando, provavelmente `src/lib/today-brazil.ts` exportando `todayInBrazil()`).
-// Ainda não existe no repo no momento desta correção — implementado inline aqui.
-// `new Date().toISOString().split('T')[0]` devolve a data em UTC: no Brasil (UTC-3),
-// qualquer ação a partir das 21h local grava a data de AMANHÃ. Mesmo padrão de
-// `todayInSaoPaulo()` em src/hooks/useCreditCardBills.ts.
-function todayInBrazil(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
 }
 
 /**
@@ -165,8 +152,14 @@ export default function Employees() {
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [kioskDialogOpen, setKioskDialogOpen] = useState(false);
 
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone` é o fuso da EMPRESA (company_settings.timezone), não o do
+  // aparelho. Toda data de folha e de vale que vira `paid_date` sai dele: sem
+  // isso, uma empresa em Cuiabá (UTC-4) pagando às 23h15 do dia 30 gravava 31,
+  // porque em São Paulo já era o dia seguinte, e a despesa pulava de mês no
+  // regime de Caixa da DRE.
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees;
 
   const isMobile = useIsMobile();
@@ -511,8 +504,10 @@ export default function Employees() {
     payrollKind?: 'salary' | 'vale' | 'bonus' | 'rescission';
     /** Bruto do ciclo (antes do abatimento de vales) — só folha preenche. */
     accrualAmount?: number;
+    /** Centro de custo (obra/projeto/setor) escolhido na hora do pagamento. Sempre opcional. */
+    costCenterId?: string | null;
   }) => {
-    const today = todayInBrazil();
+    const today = todayInTz(timezone);
     try {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
@@ -530,6 +525,7 @@ export default function Employees() {
         company_id,
         employee_id: input.employeeId ?? null,
         payroll_kind: input.payrollKind ?? null,
+        cost_center_id: input.costCenterId ?? null,
         ...(typeof input.accrualAmount === 'number' ? { accrual_amount: input.accrualAmount } : {}),
       });
 
@@ -559,9 +555,9 @@ export default function Employees() {
       }
       throw err;
     }
-  }, [queryClient, user?.id, toast, t]);
+  }, [queryClient, user?.id, toast, t, timezone]);
 
-  const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string }) => {
+  const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => {
     if (!movementEmployee) return;
 
     // If falta_banco, just record a non-financial movement
@@ -599,6 +595,7 @@ export default function Employees() {
               accountId: data.accountId,
               employeeId: emp.id,
               payrollKind: 'vale',
+              costCenterId: data.costCenterId,
             });
           } catch {
             // Toast já mostrado em registerFinancialTransaction; mantém modal
@@ -715,7 +712,7 @@ export default function Employees() {
 
           if (pendingPayroll?.id) {
             // Atualiza a folha pendente em vez de criar nova linha (evita duplicar despesa)
-            const today = todayInBrazil();
+            const today = todayInTz(timezone);
             // `amount` continua sendo o CAIXA (o que sai da conta) — é o que o
             // saldo bancário, o extrato e a DRE em Caixa leem. O bruto do ciclo
             // vai pra `accrual_amount`, que é o que a Competência lê.
@@ -726,6 +723,9 @@ export default function Employees() {
               amount: toPay,
               accrual_amount: accrualAmount,
               notes: payload.description,
+              // A folha pendente nasce sem centro de custo (o cron que a gera
+              // não tem de onde tirar); o usuário escolhe agora, na hora de pagar.
+              cost_center_id: payload.costCenterId ?? null,
             });
             if (payErr) {
               console.error('Erro ao quitar folha pendente:', payErr);
@@ -745,6 +745,7 @@ export default function Employees() {
               // Caminho sem folha pendente: a linha já NASCE líquida, então sem
               // `accrual_amount` a Competência perderia o vale do ciclo.
               accrualAmount,
+              costCenterId: payload.costCenterId,
             });
           }
         } catch (err) {
@@ -827,9 +828,23 @@ export default function Employees() {
         icon={Briefcase}
         actions={
           isMobile ? (
-            <Badge variant="secondary" className="text-[10px]">{employees.length}</Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={t.kioskDialog.triggerLabelMobile}
+                onClick={() => setKioskDialogOpen(true)}
+              >
+                <Tablet className="h-4 w-4" />
+              </Button>
+              <Badge variant="secondary" className="text-[10px]">{employees.length}</Badge>
+            </div>
           ) : (
             <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setKioskDialogOpen(true)}>
+                <Tablet className="h-4 w-4" /> {t.kioskDialog.triggerLabel}
+              </Button>
               <Badge variant="secondary">{employees.length}</Badge>
             </div>
           )
@@ -1055,6 +1070,8 @@ export default function Employees() {
       )}
 
       {/* Dialogs */}
+      <PontoKioskLinkDialog open={kioskDialogOpen} onOpenChange={setKioskDialogOpen} />
+
       <EmployeeFormDialog
         open={formOpen}
         onOpenChange={o => { setFormOpen(o); if (!o) setEditingEmployee(null); }}
@@ -1171,6 +1188,7 @@ export default function Employees() {
                   whiteLabel: wlEnabled,
                   generatedByName: profile?.full_name || undefined,
                   locale,
+                  timeZone: timezone,
                 });
                 const blob = new Blob([html], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);

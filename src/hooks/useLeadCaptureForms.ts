@@ -35,6 +35,7 @@ export const LEAD_CAPTURE_FIELDS = [
   'city',
   'state',
   'notes',
+  'photo_url',
 ] as const;
 
 export type LeadCaptureFieldKey = (typeof LEAD_CAPTURE_FIELDS)[number];

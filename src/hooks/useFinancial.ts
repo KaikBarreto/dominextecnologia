@@ -9,7 +9,8 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
 
 export interface TransactionCreator {
@@ -20,6 +21,7 @@ export interface TransactionCreator {
 
 export type TransactionWithRelations = FinancialTransaction & {
   customer: any;
+  supplier: any;
   account: any;
   employee: any;
   creator: TransactionCreator | null;
@@ -35,6 +37,8 @@ export interface TransactionInput {
   paid_date?: string;
   is_paid?: boolean;
   customer_id?: string;
+  /** Fornecedor vinculado ao lançamento. SEMPRE opcional, igual customer_id — nem toda receita/despesa tem um. */
+  supplier_id?: string;
   service_order_id?: string;
   contract_id?: string;
   notes?: string;
@@ -113,8 +117,9 @@ export function buildInstallmentRows(args: {
       } as InstallmentRowDraft,
       // `cost_center_id` entra na lista de FKs opcionais: string vazia vinda do
       // form viraria erro de FK. O VALOR vem de `rest`, então todas as parcelas
-      // carregam o mesmo centro de custo.
-      ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+      // carregam o mesmo centro de custo. `supplier_id` segue a mesma regra do
+      // `customer_id`: todas as parcelas herdam o mesmo vínculo da mãe.
+      ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
     ));
   }
 
@@ -241,6 +246,9 @@ export function useFinancial() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  // Fuso DA EMPRESA (company_settings.timezone). É ele que define o "hoje" das
+  // datas financeiras, nunca o fuso do aparelho nem Brasília chumbado.
+  const { timezone } = useAppLocaleContext();
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
@@ -253,12 +261,13 @@ export function useFinancial() {
   const transactionsQuery = useQuery({
     queryKey: ['financial-transactions'],
     queryFn: async () => {
-      const data = await fetchAllPaginated<FinancialTransaction & { customer: any; account: any; employee: any }>(
+      const data = await fetchAllPaginated<FinancialTransaction & { customer: any; supplier: any; account: any; employee: any }>(
         () => supabase
           .from('financial_transactions')
           .select(`
             *,
             customer:customers(id, name),
+            supplier:suppliers(id, name),
             account:financial_accounts(id, name, type, color),
             employee:employees(id, name, salary, photo_url)
           `)
@@ -427,7 +436,7 @@ export function useFinancial() {
 
       const sanitized = normalizeOptionalForeignKeys(
         { ...rest, created_by: user?.id, company_id },
-        ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+        ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
       );
 
       const { data, error } = await supabase
@@ -500,7 +509,7 @@ export function useFinancial() {
       const payload = rows.map((row) =>
         normalizeOptionalForeignKeys(
           { ...row, created_by: user?.id, company_id } as any,
-          ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+          ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
         )
       );
 
@@ -641,7 +650,7 @@ export function useFinancial() {
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
       const { installment_count, ...rest } = input;
-      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']);
+      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']);
 
       // Detect transition paid -> unpaid: also unmark linked children (tarifas, CMV)
       const { data: existing } = await supabase
@@ -801,11 +810,13 @@ export function useFinancial() {
   const markAsPaid = useMutation({
     mutationFn: async (params: string | MarkAsPaidParams) => {
       const cfg: MarkAsPaidParams = typeof params === 'string' ? { id: params } : params;
-      // `todayInBrazil()` e NUNCA `toISOString()`: este `paid_date` é o que
+      // `todayInTz(timezone)` e NUNCA `toISOString()`: este `paid_date` é o que
       // define o MÊS da movimentação no regime de Caixa. Baixa feita às 21h30
       // do dia 31 gravava dia 1º do mês seguinte (UTC-3) e jogava a receita
-      // pro mês errado.
-      const paidDate = cfg.paid_date || todayInBrazil();
+      // pro mês errado. O fuso é o DA EMPRESA: empresa em Cuiabá (UTC-4) dando
+      // baixa às 23h15 do dia 30 tem que gravar dia 30, não 31 (que é o dia que
+      // já virou em São Paulo).
+      const paidDate = cfg.paid_date || todayInTz(timezone);
 
       // Buscar a mãe pra calcular se é parcial e usar dados (company_id, due_date, customer_id, amount).
       const { data: parent, error: parentErr } = await supabase

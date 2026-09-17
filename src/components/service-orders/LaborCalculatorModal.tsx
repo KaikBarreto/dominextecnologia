@@ -16,6 +16,7 @@ import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface Worker {
   id: string;
@@ -145,6 +146,22 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
   const updateWorker = useCallback((id: string, patch: Partial<Worker>) => {
     setWorkers(prev => prev.map(w => w.id === id ? { ...w, ...patch } : w));
   }, []);
+
+  // `<input type="number">` deixa colar "4.550" como float válido do HTML
+  // (ponto = decimal do navegador) e normaliza pra "4.55" — 1000x menor que
+  // os R$ 4.550,00 pretendidos (bug real, 2026-09-17). DIGITAR não muda:
+  // continua number nativo. Só o COLAR é interceptado e reinterpretado como
+  // valor pronto via `readPastedCents` (mesma leitura do
+  // `src/lib/money-paste-mask.ts`). Fábrica reusada nos dois campos de
+  // dinheiro por trabalhador (custo fixo e custo mensal).
+  const handleMoneyPaste = useCallback(
+    (id: string, field: 'fixedCost' | 'salary') => (e: React.ClipboardEvent<HTMLInputElement>) => {
+      const cents = readPastedCents(e);
+      if (cents == null) return;
+      updateWorker(id, { [field]: cents / 100 });
+    },
+    [updateWorker]
+  );
 
   const removeWorker = useCallback((id: string) => {
     setWorkers(prev => prev.filter(w => w.id !== id));
@@ -301,6 +318,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                         type="number" min={0} step="0.01"
                         value={w.fixedCost || ''}
                         onChange={e => updateWorker(w.id, { fixedCost: Number(e.target.value) || 0 })}
+                        onPaste={handleMoneyPaste(w.id, 'fixedCost')}
                         placeholder="Ex: 150"
                         className="h-8 text-sm"
                       />
@@ -315,6 +333,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                             type="number" min={0} step="0.01"
                             value={w.salary || ''}
                             onChange={e => updateWorker(w.id, { salary: Number(e.target.value) || 0 })}
+                            onPaste={handleMoneyPaste(w.id, 'salary')}
                             placeholder="Ex: 3500"
                             className="h-8 text-sm"
                           />

@@ -15,6 +15,7 @@ import { processImageFile } from '@/utils/imageConvert';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface Props {
   open: boolean;
@@ -42,7 +43,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     name: '',
     email: '',
     phone: '',
-    salary: 0,
+    salary: '' as string,
     monthly_goal: '30',
     is_active: true,
     no_commission: false,
@@ -77,7 +78,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         name: editingSalesperson.name,
         email: editingSalesperson.email || '',
         phone: editingSalesperson.phone || '',
-        salary: Number(editingSalesperson.salary) || 0,
+        salary: editingSalesperson.salary != null ? String(editingSalesperson.salary) : '',
         monthly_goal: String(editingSalesperson.monthly_goal ?? 30),
         is_active: editingSalesperson.is_active ?? true,
         no_commission: editingSalesperson.no_commission ?? false,
@@ -88,7 +89,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
       });
       setPhotoUrl(editingSalesperson.photo_url || null);
     } else {
-      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: '30', is_active: true, no_commission: false, in_rotation: true, notes: '', user_id: 'none', role: 'closer' });
+      setFormData({ name: '', email: '', phone: '', salary: '', monthly_goal: '30', is_active: true, no_commission: false, in_rotation: true, notes: '', user_id: 'none', role: 'closer' });
       setPhotoUrl(null);
     }
   }, [editingSalesperson, open]);
@@ -203,6 +204,26 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     }
   };
 
+  // Máscara de dinheiro (centavos), igual ContaFormDialog/ChargeDialog: digita
+  // só dígitos, os 2 últimos são os centavos. NUNCA `<input type="number">`
+  // aqui — bug real (2026-09-17): input nativo aceita colar "4.550" como float
+  // válido, Number("4.550") vira 4.55, mil vezes menor. `onPaste` cobre colar
+  // valor pronto via `readPastedCents` (`src/lib/money-paste-mask.ts`).
+  // `formData.salary` é sempre string canônica ("4550.00"), nunca "4.550".
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setFormData({ ...formData, salary: cents ? (cents / 100).toFixed(2) : '' });
+  };
+  const handleSalaryPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setFormData({ ...formData, salary: cents ? (cents / 100).toFixed(2) : '' });
+  };
+  const salaryDisplay = formData.salary
+    ? Number(formData.salary).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -216,7 +237,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         name: formData.name.trim(),
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
-        salary: formData.salary,
+        salary: formData.salary ? Number(formData.salary) : 0,
         monthly_goal: parseInt(formData.monthly_goal, 10) || 0,
         is_active: formData.is_active,
         no_commission: formData.no_commission,
@@ -322,7 +343,13 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           </div>
           <div className="space-y-2">
             <Label htmlFor="sp-salary">Salário Fixo (R$)</Label>
-            <Input id="sp-salary" type="number" step="0.01" min="0" value={formData.salary} onChange={(e) => setFormData({ ...formData, salary: parseFloat(e.target.value) || 0 })} />
+            <Input
+              id="sp-salary"
+              inputMode="numeric"
+              value={salaryDisplay}
+              onChange={handleSalaryChange}
+              onPaste={handleSalaryPaste}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="sp-goal">Meta Mensal (vendas)</Label>

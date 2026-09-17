@@ -12,16 +12,8 @@ import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-
-/** Data de hoje (YYYY-MM-DD) no fuso de São Paulo — o padrão de data do app. */
-function todayBR(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
+import { readPastedCents } from '@/lib/money-paste-mask';
+import { todayInTz } from '@/lib/timezone';
 
 interface AdjustBalanceDialogProps {
   open: boolean;
@@ -42,7 +34,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
   const { balances } = useFinancialAccounts();
   const { createTransaction } = useFinancial();
   const { toast } = useToast();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.adjustBalance;
 
   // Saldo atual derivado das transações (fallback no saldo inicial).
@@ -71,6 +63,12 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     const raw = e.target.value.replace(/\D/g, '');
     setTargetBalance(parseInt(raw || '0', 10) / 100);
   };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleCurrencyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setTargetBalance(cents / 100);
+  };
 
   const targetDisplay = targetBalance
     ? targetBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -94,7 +92,12 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     submitGuard.current = true;
     setSubmitting(true);
     try {
-      const today = todayBR();
+      // Hoje no fuso DA EMPRESA, nunca em Brasília chumbado nem no fuso do
+      // aparelho: `transaction_date`/`paid_date` decidem o mês do ajuste no
+      // regime de Caixa. Empresa em Cuiabá (UTC-4) ajustando às 23h15 do dia 30
+      // gravava dia 31 (já virou o dia em São Paulo) e o ajuste caía no mês
+      // seguinte.
+      const today = todayInTz(timezone);
       await createTransaction.mutateAsync({
         transaction_type: delta > 0 ? 'entrada' : 'saida',
         amount: Math.abs(delta),
@@ -161,6 +164,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
               placeholder={t.targetBalancePlaceholder}
               value={targetDisplay}
               onChange={handleCurrencyChange}
+              onPaste={handleCurrencyPaste}
               inputMode="numeric"
               autoFocus
             />

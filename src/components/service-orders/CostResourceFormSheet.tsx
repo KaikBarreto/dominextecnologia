@@ -15,6 +15,7 @@ import { buildStorageFilePath } from '@/utils/storagePath';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 // Parse Brazilian number format: 200.000,50 → 200000.50 | 200000 → 200000
 function parseBRNumber(text: string): number {
@@ -180,6 +181,20 @@ export function CostResourceFormSheet({
     }
   };
   const handleRemoveItem = (index: number) => setItems(items.filter((_, i) => i !== index));
+
+  // `<input type="number">` deixa colar "4.550" como float válido do HTML
+  // (ponto = decimal do navegador) e normaliza pra "4.55" — 1000x menor que
+  // os R$ 4.550,00 pretendidos (bug real, 2026-09-17). DIGITAR não muda:
+  // continua number nativo. Só o COLAR é interceptado e reinterpretado como
+  // valor pronto via `readPastedCents` (mesma leitura do
+  // `src/lib/money-paste-mask.ts`). Fábrica reusada nos três campos de
+  // dinheiro dos itens de custo (custo total do brinde, valor anual, valor mensal).
+  const handleItemMoneyPaste = (index: number, field: 'total_cost' | 'annual_value' | 'value') =>
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      const cents = readPastedCents(e);
+      if (cents == null) return;
+      handleItemChange(index, field, cents / 100);
+    };
 
   const handleItemChange = (index: number, field: keyof CostItem, value: any) => {
     setItems(items.map((item, i) => {
@@ -417,6 +432,7 @@ export function CostResourceFormSheet({
                             placeholder="500,00"
                             value={item.total_cost ?? ''}
                             onChange={e => handleItemChange(index, 'total_cost', Number(e.target.value) || 0)}
+                            onPaste={handleItemMoneyPaste(index, 'total_cost')}
                           />
                         </div>
                         <div className="space-y-1">
@@ -462,11 +478,11 @@ export function CostResourceFormSheet({
                       </div>
                       {!item.is_monthly ? (
                         <div className="flex-1 flex items-center gap-2">
-                          <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderAnnual} value={item.annual_value ?? ''} onChange={e => handleItemChange(index, 'annual_value', Number(e.target.value) || 0)} className="flex-1" />
+                          <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderAnnual} value={item.annual_value ?? ''} onChange={e => handleItemChange(index, 'annual_value', Number(e.target.value) || 0)} onPaste={handleItemMoneyPaste(index, 'annual_value')} className="flex-1" />
                           <span className="text-xs text-muted-foreground whitespace-nowrap">{t.itemMonthlyEquiv.replace('{amount}', fmt(item.value))}</span>
                         </div>
                       ) : (
-                        <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderMonthly} value={item.value || ''} onChange={e => handleItemChange(index, 'value', Number(e.target.value) || 0)} className="flex-1" />
+                        <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderMonthly} value={item.value || ''} onChange={e => handleItemChange(index, 'value', Number(e.target.value) || 0)} onPaste={handleItemMoneyPaste(index, 'value')} className="flex-1" />
                       )}
                     </div>
                   )}

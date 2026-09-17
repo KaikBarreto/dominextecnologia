@@ -17,8 +17,7 @@ import {
   Globe,
   Table2,
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { dateInTz, timeInTz } from '@/lib/timezone';
 import {
   getDocumentValidityStatus,
   getValidityLabel,
@@ -97,23 +96,31 @@ const MESES_PT_BR = [
 
 /**
  * Deriva dia/mês/ano em PT-BR a partir do ISO de `contracts.created_at`.
- * Usa UTC pra casar EXATAMENTE com a edge function (dateToExtenso usa UTC),
- * evitando off-by-one quando timezone do navegador difere de UTC.
+ * Usa o fuso da EMPRESA pra casar EXATAMENTE com a edge function
+ * (`extractContractCreatedParts` também lê o instante no fuso da empresa),
+ * evitando off-by-one quando o navegador do gestor está em outro fuso.
  */
-function partsFromIso(iso: string | undefined): { dia: string; mes: string; ano: string } {
+function partsFromIso(
+  iso: string | undefined,
+  timeZone: string | null | undefined,
+): { dia: string; mes: string; ano: string } {
   if (!iso) return { dia: '', mes: '', ano: '' };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { dia: '', mes: '', ano: '' };
+  const [ano, mes, dia] = dateInTz(d, timeZone).split('-');
   return {
-    dia: String(d.getUTCDate()).padStart(2, '0'),
-    mes: MESES_PT_BR[d.getUTCMonth()] ?? '',
-    ano: String(d.getUTCFullYear()),
+    dia,
+    mes: MESES_PT_BR[Number(mes) - 1] ?? '',
+    ano,
   };
 }
 
-function toVariableContext(ctx: Partial<PmocTemplateContext> | undefined): PmocVariableContext {
+function toVariableContext(
+  ctx: Partial<PmocTemplateContext> | undefined,
+  timeZone: string | null | undefined,
+): PmocVariableContext {
   if (!ctx) return {};
-  const created = partsFromIso(ctx.contract_created_at_iso);
+  const created = partsFromIso(ctx.contract_created_at_iso, timeZone);
   return {
     'empresa.razao_social': ctx.empresa_razao_social,
     'empresa.cnpj': ctx.empresa_cnpj,
@@ -194,10 +201,15 @@ function SignatureStatusBadge({ status, t }: { status: PmocDocumentSignatureStat
   );
 }
 
-function formatGeneratedAt(iso?: string | null): string {
+/**
+ * "DD/MM/AAAA às HH:mm" do instante de geração, no fuso da EMPRESA
+ * (`company_settings.timezone`), não no do navegador de quem está olhando.
+ */
+function formatGeneratedAt(iso: string | null | undefined, timeZone: string | null | undefined): string {
   if (!iso) return '—';
   try {
-    return format(parseISO(iso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    const [y, m, d] = dateInTz(iso, timeZone).split('-');
+    return `${d}/${m}/${y} às ${timeInTz(iso, timeZone)}`;
   } catch {
     return '—';
   }
@@ -240,6 +252,8 @@ function DocCardHeader({
   version?: number;
   generatedAt?: string;
 }) {
+  // Fuso da empresa (não o do navegador do gestor) — regra do time.
+  const { timezone } = useAppLocaleContext();
   return (
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
@@ -252,7 +266,7 @@ function DocCardHeader({
           )}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Última geração: {formatGeneratedAt(generatedAt)}
+          Última geração: {formatGeneratedAt(generatedAt, timezone)}
         </p>
       </div>
     </div>
@@ -341,6 +355,9 @@ export function PmocContractDocsTab({
   portalDocumentsReleased = false,
 }: PmocContractDocsTabProps) {
   const t = useDocsT();
+  // Fuso da EMPRESA (company_settings.timezone). Toda data desta aba, incluindo
+  // o selo de validade dos documentos regulatórios, sai no calendário dela.
+  const { timezone } = useAppLocaleContext();
   const {
     customDocs,
     saveTermoRT,
@@ -377,8 +394,8 @@ export function PmocContractDocsTab({
   // Contexto no shape novo (chaves com ponto). Passado ao editor via prop
   // `templateContext` pra pintar badges azul (cheio) / vermelho (vazio).
   const variableContext = useMemo(
-    () => toVariableContext(templateContext),
-    [templateContext],
+    () => toVariableContext(templateContext, timezone),
+    [templateContext, timezone],
   );
 
   const termoRtHtml = customDocs?.termo_rt_content ?? null;
@@ -455,8 +472,10 @@ export function PmocContractDocsTab({
   const certValidUntil = latestCertificado
     ? resolveValidUntil(latestCertificado.valid_until, latestCertificado.generated_at)
     : null;
-  const trtValidityStatus = getDocumentValidityStatus(trtValidUntil);
-  const certValidityStatus = getDocumentValidityStatus(certValidUntil);
+  // Fuso da empresa: sem ele, tenant em UTC-4 via "Vencido" ainda dentro do dia
+  // do vencimento no relógio dele.
+  const trtValidityStatus = getDocumentValidityStatus(trtValidUntil, new Date(), timezone);
+  const certValidityStatus = getDocumentValidityStatus(certValidUntil, new Date(), timezone);
   const hasExpiredDoc =
     trtValidityStatus === 'vencido' || certValidityStatus === 'vencido';
 
@@ -603,7 +622,7 @@ export function PmocContractDocsTab({
             {t.dossieDesc}
           </p>
           <p className="text-xs text-muted-foreground">
-            {t.dossieLastGenerated}: {formatGeneratedAt(latestDossie?.generated_at)}
+            {t.dossieLastGenerated}: {formatGeneratedAt(latestDossie?.generated_at, timezone)}
           </p>
         </CardHeader>
         <CardContent className="space-y-4 min-w-0">
@@ -781,7 +800,7 @@ export function PmocContractDocsTab({
             {t.planilhaDesc}
           </p>
           <p className="text-xs text-muted-foreground">
-            {t.planilhaLastGenerated}: {formatGeneratedAt(latestPlanilha?.generated_at)}
+            {t.planilhaLastGenerated}: {formatGeneratedAt(latestPlanilha?.generated_at, timezone)}
           </p>
         </CardHeader>
         <CardContent>
@@ -991,6 +1010,8 @@ function VersionHistory({
 }
 
 function TypeBlock({ title, docs, downloadLabel }: { title: string; docs: PmocDocument[]; downloadLabel: string }) {
+  // Fuso da empresa (não o do navegador do gestor) — regra do time.
+  const { timezone } = useAppLocaleContext();
   if (docs.length === 0) return null;
   return (
     <div className="space-y-1.5">
@@ -1007,7 +1028,7 @@ function TypeBlock({ title, docs, downloadLabel }: { title: string; docs: PmocDo
               <p className="text-sm font-medium">
                 v{d.version}{' '}
                 <span className="font-mono text-xs text-muted-foreground">
-                  • {formatGeneratedAt(d.generated_at)}
+                  • {formatGeneratedAt(d.generated_at, timezone)}
                 </span>
               </p>
             </div>

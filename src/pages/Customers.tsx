@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -27,7 +27,7 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Customer } from '@/types/database';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
-import { CreateOpportunityDialog } from '@/components/customers/CreateOpportunityDialog';
+import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -36,6 +36,10 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { SuppliersTab } from '@/components/customers/SuppliersTab';
+
+type CustomersMainTab = 'clientes' | 'fornecedores';
 
 // Gera iniciais (máx 2 caracteres) para avatar fallback.
 function getInitials(name?: string) {
@@ -135,6 +139,12 @@ export default function Customers() {
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const [opportunityCustomer, setOpportunityCustomer] = useState<Customer | null>(null);
   const [viewMode, setViewMode] = useViewMode('customers-view-mode');
+  // Aba Fornecedores: pedido do CEO pra dar um lugar próprio ao cadastro que
+  // hoje só existe dentro de Compras (Estoque). Herda a permissão de tela
+  // desta página (screen:customers) — não é um módulo pago à parte, igual
+  // Estoque também não gateia suppliers por módulo hoje.
+  const [mainTab, setMainTab] = useState<CustomersMainTab>('clientes');
+  const tSuppliers = MESSAGES[locale].app.customers.suppliers;
 
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
   const canEditCustomer = isAdminOrGestor() || hasPermission('fn:edit_customer');
@@ -213,7 +223,7 @@ export default function Customers() {
         subtitle={t.subtitle}
         icon={Users}
         actions={
-          isMobile ? undefined : (
+          isMobile || mainTab !== 'clientes' ? undefined : (
             <>
               <Button variant="outline" size="icon" onClick={() => setOriginConfigOpen(true)} title={t.configureOrigins}>
                 <Settings2 className="h-4 w-4" />
@@ -232,6 +242,40 @@ export default function Customers() {
         }
       />
 
+      {/* Clientes / Fornecedores — mobile usa pills roláveis, desktop botões
+         (mesmo padrão das subabas do Financeiro em CustomerDetail). */}
+      {isMobile ? (
+        <MobilePillTabs
+          tabs={[
+            { value: 'clientes', label: t.title, icon: <Users className="h-4 w-4 shrink-0" /> },
+            { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },
+          ]}
+          activeTab={mainTab}
+          onTabChange={(v) => setMainTab(v as CustomersMainTab)}
+        />
+      ) : (
+        <div className="flex gap-2">
+          {([
+            { value: 'clientes' as const, label: t.title, icon: Users },
+            { value: 'fornecedores' as const, label: tSuppliers.tabLabel, icon: Truck },
+          ]).map((opt) => (
+            <Button
+              key={opt.value}
+              variant={mainTab === opt.value ? 'default' : 'outline'}
+              onClick={() => setMainTab(opt.value)}
+              className="min-h-10 rounded-xl gap-2"
+            >
+              <opt.icon className="h-4 w-4" />
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {mainTab === 'fornecedores' ? (
+        <SuppliersTab />
+      ) : (
+      <>
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -596,9 +640,11 @@ export default function Customers() {
           </Card>
         </div>
       )}
+      </>
+      )}
 
       {/* FAB mobile-only — desktop usa botão inline no header. */}
-      {isMobile && canCreateCustomer && (
+      {isMobile && canCreateCustomer && mainTab === 'clientes' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={t.newCustomerShort}
@@ -638,10 +684,10 @@ export default function Customers() {
 
       <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
 
-      <CreateOpportunityDialog
+      <LeadFormDialog
         open={!!opportunityCustomer}
         onOpenChange={(open) => { if (!open) setOpportunityCustomer(null); }}
-        customer={opportunityCustomer}
+        presetCustomerId={opportunityCustomer?.id ?? null}
       />
     </div>
   );

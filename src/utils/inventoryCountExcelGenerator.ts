@@ -2,15 +2,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { InventoryCountPdfRow } from '@/utils/inventoryCountPdfGenerator';
-
-function todayStamp(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
+import { todayInTz } from '@/lib/timezone';
 
 interface GenerateInventoryCountExcelParams {
   countNumber: number | null;
@@ -19,6 +11,12 @@ interface GenerateInventoryCountExcelParams {
   rows: InventoryCountPdfRow[];
   locale: LocaleCode;
   currency: string;
+  /**
+   * Fuso IANA DA EMPRESA (`useAppLocaleContext().timezone`). Rótulo de exibição
+   * (nome do arquivo) — não toca saldo/kardex. Vazio/inválido cai em
+   * America/Sao_Paulo via `todayInTz`.
+   */
+  timezone?: string | null;
 }
 
 export async function generateInventoryCountExcel({
@@ -28,6 +26,7 @@ export async function generateInventoryCountExcel({
   rows,
   locale,
   currency,
+  timezone,
 }: GenerateInventoryCountExcelParams): Promise<void> {
   const XLSX = await import('xlsx');
   const tr = MESSAGES[locale].app.inventory.inventoryCount.pdf;
@@ -95,6 +94,6 @@ export async function generateInventoryCountExcel({
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, tr.excelSheetName);
 
-  const filename = `inventario-${countNumber ?? 'sem-numero'}-${todayStamp()}.xlsx`;
+  const filename = `inventario-${countNumber ?? 'sem-numero'}-${todayInTz(timezone)}.xlsx`;
   XLSX.writeFile(wb, filename);
 }

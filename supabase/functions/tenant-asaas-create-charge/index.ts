@@ -112,6 +112,10 @@ interface CreateChargeInput {
   // Categoria (nome) do recebível no Financeiro. Ausente → default da conta
   // (default_income_category).
   category?: string;
+  // Centro de custo do recebível no Financeiro. Ausente/null → sem centro
+  // (sempre opcional). Posse validada dentro da RPC (FK real, cliente
+  // controla o valor) — ver 20260917160000_centro_de_custo_cobranca_assinatura.
+  cost_center_id?: string | null;
   // Lançar (ou não) o recebível no Financeiro NESTA cobrança. Decisão do CEO:
   // "nem toda cobrança tem que necessariamente já criar a conta a receber".
   // Ausente (frontend antigo, sem o campo) → cai no default da conta
@@ -263,6 +267,12 @@ async function handleRequest(req: Request): Promise<Response> {
   const inputCategory =
     typeof input.category === "string" && input.category.trim()
       ? input.category.trim().slice(0, 120)
+      : null;
+  // Centro de custo escolhido nesta cobrança (opcional, sem default de conta —
+  // não existe "centro de custo padrão" no domínio). A RPC valida posse.
+  const inputCostCenterId =
+    typeof input.cost_center_id === "string" && input.cost_center_id.trim()
+      ? input.cost_center_id.trim()
       : null;
 
   // Origem da cobrança (Onda D). Ausente → 'avulso' (fluxo histórico, sem regressão).
@@ -444,6 +454,15 @@ async function handleRequest(req: Request): Promise<Response> {
     if (!asaasPaymentId) {
       return jsonResponse(req, { error: "A Asaas não retornou a cobrança. Tente novamente." }, 502);
     }
+    // Venda parcelada (installmentCount > 1): a Asaas devolve `installment`
+    // (id do AGRUPAMENTO) no payment de criação — é o mesmo valor que virá em
+    // TODA parcela nos eventos de webhook, inclusive esta 1ª. É o único jeito
+    // das parcelas 2..N (payment.id próprio, nunca gravado aqui) acharem esta
+    // cobrança de volta — ver apply_tenant_charge_installment_payment.
+    const asaasInstallmentId: string | null =
+      installmentCount > 1 && typeof payment?.installment === "string" && payment.installment
+        ? payment.installment
+        : null;
 
     // 4) Dados de pagamento (pix copia-e-cola / boleto), best-effort.
     let pixCopyPaste: string | null = null;
@@ -457,11 +476,22 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
+    // Lançar (ou não) no Financeiro é decisão POR COBRANÇA (pedido do CEO: "nem
+    // toda cobrança tem que necessariamente já criar a conta a receber"). O
+    // corpo manda um booleano explícito quando o front oferece a opção;
+    // ausência (frontend antigo, compatibilidade) cai no default histórico da
+    // conta (auto_post_to_finance, DEFAULT true).
+    const postToFinance =
+      typeof input.post_to_finance === "boolean"
+        ? input.post_to_finance
+        : account.auto_post_to_finance !== false;
+
     // 5) Grava tenant_charges (idempotência por asaas_payment_id UNIQUE).
     const shortCode = generateShortCode();
     const chargeRow = {
       company_id: companyId,
       asaas_payment_id: asaasPaymentId,
+      asaas_installment_id: asaasInstallmentId,
       source_type: sourceType,
       source_id: sourceType === "quote" ? sourceId : null,
       customer_id: input.customer_id,
@@ -472,6 +502,11 @@ async function handleRequest(req: Request): Promise<Response> {
       due_date: dueDate,
       payment_date: null,
       description: description,
+      // Intenção de lançar (ou não) no Financeiro, gravada NA COBRANÇA. Sem
+      // isto, a auto-cura do recebível (RPC rebuild_tenant_charge_receivable)
+      // não teria como distinguir "o lançamento sumiu" de "o usuário recusou o
+      // lançamento nesta cobrança", e recriaria uma linha recusada de propósito.
+      post_to_finance: postToFinance,
       public_short_code: shortCode,
       invoice_url: payment?.invoiceUrl ?? null,
       pix_copy_paste: pixCopyPaste,
@@ -509,15 +544,8 @@ async function handleRequest(req: Request): Promise<Response> {
     }
     const finalShortCode = saved?.public_short_code ?? shortCode;
 
-    // Lançar (ou não) no Financeiro é decisão POR COBRANÇA (pedido do CEO: "nem
-    // toda cobrança tem que necessariamente já criar a conta a receber"). O
-    // corpo manda um booleano explícito quando o front oferece a opção;
-    // ausência (frontend antigo, compatibilidade) cai no default histórico da
-    // conta (auto_post_to_finance, DEFAULT true).
-    const postToFinance =
-      typeof input.post_to_finance === "boolean"
-        ? input.post_to_finance
-        : account.auto_post_to_finance !== false;
+    // `postToFinance` foi resolvido antes do INSERT de tenant_charges (a coluna
+    // post_to_finance grava a intenção; ver bloco acima).
 
     // Aviso pro usuário quando o lançamento no Financeiro falhar. A falha NUNCA
     // pode ser silenciosa (bug provado em produção: erro era só console.warn e
@@ -541,6 +569,8 @@ async function handleRequest(req: Request): Promise<Response> {
           p_account_id: account.default_finance_account_id ?? null,
           // Categoria escolhida NESTA cobrança sobrescreve o default da conta.
           p_category: inputCategory ?? account.default_income_category ?? null,
+          // Centro de custo escolhido NESTA cobrança. Sem default de conta.
+          p_cost_center_id: inputCostCenterId,
         });
         if (rpcErr) {
           // Loga sem vazar segredo (só mensagem pública do Postgres).

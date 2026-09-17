@@ -84,7 +84,7 @@ function formatDayDividerLabel(dateKey: string, locale: string) {
 interface TransactionListPanelProps {
   title: string;
   type?: TransactionType | 'all';
-  transactions: (FinancialTransaction & { customer?: any })[];
+  transactions: (FinancialTransaction & { customer?: any; supplier?: any })[];
   isLoading: boolean;
   onNew?: () => void;
   onEdit: (t: FinancialTransaction) => void;
@@ -174,7 +174,10 @@ export function TransactionListPanel({
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone`: fuso da empresa. Vai pros geradores de PDF/Excel pra o carimbo
+  // "gerado em" e o nome do arquivo saírem no relógio da empresa, e não no do
+  // aparelho de quem exportou.
+  const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
   // Rótulos de saldo resolvidos: o caller (FinanceMovimentacoes) só passa
@@ -421,6 +424,7 @@ export function TransactionListPanel({
         title,
         rows: buildExportRows(),
         locale,
+        timezone,
       });
     } catch (e: any) {
       toast({ variant: 'destructive', title: fin.transactionList.toastPdfError, description: getErrorMessage(e) });
@@ -429,7 +433,7 @@ export function TransactionListPanel({
 
   const handleExportExcel = async () => {
     try {
-      await generateMovimentacoesExcel({ title, rows: buildExportRows(), locale });
+      await generateMovimentacoesExcel({ title, rows: buildExportRows(), locale, timezone });
     } catch (e: any) {
       toast({ variant: 'destructive', title: fin.transactionList.toastExcelError, description: getErrorMessage(e) });
     }
@@ -758,6 +762,7 @@ export function TransactionListPanel({
                         </span>
                       )}
                       {t.customer && <span className="truncate">{t.customer.name}</span>}
+                      {t.supplier && <span className="truncate">{t.supplier.name}</span>}
                     </div>
                   }
                   trailing={
@@ -886,6 +891,7 @@ export function TransactionListPanel({
                             {renderReceiptLink(t)}
                           </p>
                           {t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
+                          {t.supplier && <p className="text-xs text-muted-foreground">{t.supplier.name}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">

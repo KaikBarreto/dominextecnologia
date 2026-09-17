@@ -16,6 +16,8 @@ import {
   TemplateContext,
   dateToExtenso,
   frequencyLabelFrom,
+  safeTimeZone,
+  ymdInTimeZone,
 } from "../_shared/pmoc-templates/context.ts";
 
 const corsHeaders = {
@@ -271,7 +273,10 @@ Deno.serve(async (req) => {
       supabase
         .from("company_settings")
         // CNPJ vive em `company_settings.document` (não há coluna `cnpj`).
-        .select("name, document, logo_url, white_label_enabled, white_label_logo_url, city")
+        // `timezone` manda na data impressa no documento (ver companyTimeZone).
+        .select(
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, timezone",
+        )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
       contract.responsible_technician_id
@@ -282,6 +287,12 @@ Deno.serve(async (req) => {
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
     ]);
+
+    // Fuso da EMPRESA: toda data impressa no cronograma sai no calendário dela.
+    // Ausente/inválido cai em America/Sao_Paulo sem derrubar a geração.
+    const companyTimeZone = safeTimeZone(
+      (companySettings as { timezone?: string | null } | null)?.timezone ?? null,
+    );
 
     let tenantName = (companySettings?.name ?? "").trim();
     if (!tenantName) {
@@ -368,9 +379,15 @@ Deno.serve(async (req) => {
     }
 
     // ---- Janela 12 meses a partir do mês atual
-    const now = new Date();
-    const startMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const endMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 12, 1));
+    // Mês corrente NO FUSO DA EMPRESA. Com getUTCMonth(), gerar o documento às
+    // 22h do último dia do mês em São Paulo já caía no mês seguinte em UTC e a
+    // janela pulava o mês corrente inteiro. O ancoramento em UTC dos Date abaixo
+    // é só aritmética de mês (dia 1), não instante de relógio.
+    const nowYmd = ymdInTimeZone(new Date(), companyTimeZone);
+    const baseYear = nowYmd?.year ?? new Date().getUTCFullYear();
+    const baseMonthIdx = (nowYmd?.month ?? new Date().getUTCMonth() + 1) - 1;
+    const startMonth = new Date(Date.UTC(baseYear, baseMonthIdx, 1));
+    const endMonth = new Date(Date.UTC(baseYear, baseMonthIdx + 12, 1));
 
     const startIso = startMonth.toISOString().slice(0, 10);
     const endIso = endMonth.toISOString().slice(0, 10);
@@ -432,8 +449,13 @@ Deno.serve(async (req) => {
     //    defensivo do logo (≤512px) entrou; força regen p/ aplicar o novo
     //    pipeline de imagem em quem já tinha cache do v5.
     const hashInput = JSON.stringify({
-      v: "cronograma_v6",
+      // Onda Fuso (2026-09): bump pra cronograma_v7 — a data "gerado em" passou
+      // a sair no fuso da empresa. O hash do cronograma NÃO carrega a data, então
+      // sem o bump o tenant continuaria recebendo o PDF cacheado com o dia errado.
+      v: "cronograma_v7",
       tenant: tenantName,
+      // Fuso entra no hash: mudar o fuso da empresa muda a data impressa.
+      tz: companyTimeZone,
       customer: customer?.name ?? "",
       window: { start: startIso, end: endIso },
       rt_signature: rt?.signature_image_url ?? null,
@@ -517,7 +539,9 @@ Deno.serve(async (req) => {
         start_date_extenso: dateToExtenso(contract.start_date ?? null),
       },
       cidade,
-      generated_at_extenso: dateToExtenso(new Date()),
+      // Data de geração no fuso da EMPRESA. Com `new Date()` lido em UTC, gerar
+      // o cronograma às 22h em São Paulo carimbava o dia seguinte no documento.
+      generated_at_extenso: dateToExtenso(new Date(), companyTimeZone),
     };
 
     // ---- Compor PDF: TABELA-relatório (1 linha por visita, paginação automática)

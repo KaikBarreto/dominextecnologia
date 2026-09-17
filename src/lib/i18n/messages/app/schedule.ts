@@ -38,6 +38,18 @@ export const schedule = {
       technician: 'Técnico',
       customer: 'Cliente',
       status: 'Status',
+      entryType: 'Tipo',
+    },
+    // Toggle Calendário / Lista (visão de lista da Agenda)
+    displayMode: {
+      calendar: 'Calendário',
+      list: 'Lista',
+    },
+    // Visão de lista: itens do período em lista corrida, atrasado primeiro
+    list: {
+      overdueSectionLabel: 'Atrasado',
+      emptyTitle: 'Nada por aqui',
+      emptyDescription: 'Nenhuma tarefa ou OS neste período.',
     },
     // Rótulos de status usados nos filtros da agenda (mesma semântica do os.statusFallback)
     statusLabels: {
@@ -66,8 +78,9 @@ export const schedule = {
     legend: {
       label: 'Legenda:',
       legendButton: 'Legenda',
-      legendTitle: 'Legenda — Tipos de Serviço',
+      legendTitle: 'Legenda, Tipos de Serviço',
       holiday: 'Feriado',
+      viewAll: 'Ver todos ({count})',
     },
     movingOrder: {
       hint: 'Toque no horário para mover a OS',
@@ -217,6 +230,16 @@ export const schedule = {
       technician: 'Technician',
       customer: 'Customer',
       status: 'Status',
+      entryType: 'Type',
+    },
+    displayMode: {
+      calendar: 'Calendar',
+      list: 'List',
+    },
+    list: {
+      overdueSectionLabel: 'Overdue',
+      emptyTitle: 'Nothing here',
+      emptyDescription: 'No task or work order in this period.',
     },
     statusLabels: {
       pendente: 'Pending',
@@ -244,8 +267,9 @@ export const schedule = {
     legend: {
       label: 'Legend:',
       legendButton: 'Legend',
-      legendTitle: 'Legend — Service Types',
+      legendTitle: 'Legend, Service Types',
       holiday: 'Holiday',
+      viewAll: 'View all ({count})',
     },
     movingOrder: {
       hint: 'Tap a time slot to move the WO',
@@ -395,6 +419,16 @@ export const schedule = {
       technician: 'Técnico',
       customer: 'Cliente',
       status: 'Estado',
+      entryType: 'Tipo',
+    },
+    displayMode: {
+      calendar: 'Calendario',
+      list: 'Lista',
+    },
+    list: {
+      overdueSectionLabel: 'Atrasado',
+      emptyTitle: 'Nada por aquí',
+      emptyDescription: 'No hay tareas ni órdenes de servicio en este período.',
     },
     statusLabels: {
       pendente: 'Pendiente',
@@ -422,8 +456,9 @@ export const schedule = {
     legend: {
       label: 'Leyenda:',
       legendButton: 'Leyenda',
-      legendTitle: 'Leyenda — Tipos de Servicio',
+      legendTitle: 'Leyenda, Tipos de Servicio',
       holiday: 'Festivo',
+      viewAll: 'Ver todos ({count})',
     },
     movingOrder: {
       hint: 'Toque el horario para mover la OS',
@@ -573,6 +608,16 @@ export const schedule = {
       technician: 'Technicien',
       customer: 'Client',
       status: 'Statut',
+      entryType: 'Type',
+    },
+    displayMode: {
+      calendar: 'Calendrier',
+      list: 'Liste',
+    },
+    list: {
+      overdueSectionLabel: 'En retard',
+      emptyTitle: 'Rien ici',
+      emptyDescription: 'Aucune tâche ni OT sur cette période.',
     },
     statusLabels: {
       pendente: 'En attente',
@@ -600,8 +645,9 @@ export const schedule = {
     legend: {
       label: 'Légende :',
       legendButton: 'Légende',
-      legendTitle: 'Légende — Types de service',
+      legendTitle: 'Légende, types de service',
       holiday: 'Jour férié',
+      viewAll: 'Voir tout ({count})',
     },
     movingOrder: {
       hint: "Appuyez sur l'heure pour déplacer l'OS",

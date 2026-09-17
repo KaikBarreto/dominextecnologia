@@ -18,7 +18,7 @@ import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { CreditCard, CheckCircle2, AlertCircle, Clock, Receipt, Lock } from 'lucide-react';
-import { format, parseISO, isBefore, startOfDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
@@ -26,7 +26,8 @@ import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 const BILL_STATUS_COLORS: Record<string, { color: string; icon: React.ElementType }> = {
   open: { color: 'text-blue-600', icon: Clock },
@@ -51,16 +52,19 @@ interface Props {
 }
 
 export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMobile }: Props) {
+  // `timezone`: fuso da empresa, fonte do "hoje" de toda data de fatura.
+  // Declarado ANTES dos useState porque o valor inicial de `payDate` já usa ele.
+  const { locale, currency, timezone } = useAppLocaleContext();
+
   const [detailOpen, setDetailOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [payAccountId, setPayAccountId] = useState('');
-  // Data de pagamento da fatura no fuso do Brasil. `toISOString()` grava
+  // Data de pagamento da fatura no fuso DA EMPRESA. `toISOString()` grava
   // AMANHÃ a partir das 21h locais (UTC-3) e a baixa cai no mês errado.
-  const [payDate, setPayDate] = useState(todayInBrazil());
+  const [payDate, setPayDate] = useState(() => todayInTz(timezone));
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
 
-  const { locale, currency } = useAppLocaleContext();
   const cc = MESSAGES[locale].app.finance.creditCard;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
@@ -74,10 +78,15 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   // Carrega o hook pra ter acesso ao payBill — escopo da conta deste card.
   const { payBill } = useCreditCardBills(account.id);
 
-  const today = startOfDay(new Date());
+  // Só pra EXIBIR o dia do fechamento (dd/MM). Meio-dia evita o off-by-one de
+  // quem parseia YYYY-MM-DD como UTC.
   const closingDate = parseLocalDate(invoice.closing_date);
   // Após o fechamento (inclusive o próprio dia) pode pagar. Antes não.
-  const canPay = !isBefore(today, closingDate);
+  // "Hoje" no fuso DA EMPRESA: antes vinha de `startOfDay(new Date())`, o fuso
+  // do APARELHO, então quem abria a tela de outro fuso via o botão liberado (ou
+  // travado) num dia diferente do que a RPC do banco aceita. Comparação lexical
+  // entre YYYY-MM-DD, mesma régua do `effectiveBillStatus`.
+  const canPay = !!invoice.closing_date && todayInTz(timezone) >= invoice.closing_date.slice(0, 10);
   const billTotal = invoice.total_amount ?? 0;
   const alreadyPaid = Number(invoice.amount_paid ?? 0);
   const remaining = billTotal - alreadyPaid;
@@ -85,7 +94,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   // Status EXIBIDO: fatura `open` cujo fechamento já foi alcançado (hoje >=
   // closing_date, inclusive o próprio dia) vira "Fechada" — o banco não
   // transiciona sozinho. `paid`/`partial` seguem do agregado.
-  const displayStatus = effectiveBillStatus(invoice);
+  const displayStatus = effectiveBillStatus(invoice, timezone);
   const statusCfg = BILL_STATUS_CONFIG[displayStatus] ?? BILL_STATUS_CONFIG.open;
   const StatusIcon = statusCfg.icon;
   const isPaid = invoice.status === 'paid';
@@ -93,7 +102,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const openPay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     setPayAmount(remaining);
-    setPayDate(todayInBrazil());
+    setPayDate(todayInTz(timezone));
     setPayAccountId(cashBankAccounts[0]?.id ?? '');
     setPayNotes('');
     setPayOpen(true);
@@ -102,6 +111,12 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const handlePayAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setPayAmount(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handlePayAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setPayAmount(cents / 100);
   };
 
   const handleConfirmPay = async () => {
@@ -396,6 +411,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
               placeholder="0,00"
               value={payAmount > 0 ? payAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
               onChange={handlePayAmountChange}
+              onPaste={handlePayAmountPaste}
               inputMode="numeric"
             />
             {isFullPayment ? (

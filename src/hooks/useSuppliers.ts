@@ -25,7 +25,7 @@ export function useSuppliers() {
   const { profile, user } = useAuth();
   const companyId = profile?.company_id ?? null;
 
-  const { data: suppliers = [], isLoading, error } = useQuery({
+  const { data: suppliers = [], isLoading, error, refetch } = useQuery({
     queryKey: ['suppliers', companyId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -102,6 +102,11 @@ export function useSuppliers() {
     suppliers,
     isLoading,
     error,
+    // Aba Fornecedores (Customers.tsx) usa a mesma régua de erro/retry das
+    // outras listagens (isError + refetch). Aditivo: não muda o shape usado
+    // pelos consumidores existentes do Estoque.
+    isError: !!error,
+    refetch,
     createSupplier,
     updateSupplier,
     deleteSupplier,

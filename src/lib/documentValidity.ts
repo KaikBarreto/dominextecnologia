@@ -12,10 +12,15 @@
  *  - Vigente            → faltam > 30 dias.
  *  - Sem validade       → `valid_until` ausente (doc antigo / cronograma / dossiê).
  *
- * Timezone: toda comparação é ancorada ao fuso de Brasília (America/Sao_Paulo)
- * pra que "hoje" e o dia do vencimento batam com o calendário do gestor, sem
- * off-by-one quando o navegador está em UTC.
+ * Timezone: toda comparação é ancorada ao fuso da EMPRESA
+ * (`company_settings.timezone`, exposto por `useAppLocaleContext`), pra que
+ * "hoje" e o dia do vencimento batam com o calendário do gestor, sem off-by-one
+ * quando o navegador está em outro fuso. Empresa em Cuiabá (UTC-4) não pode ver
+ * "Vencido" enquanto ainda é o dia do vencimento no relógio dela. Fuso ausente
+ * ou inválido cai em America/Sao_Paulo (`safeTimeZone`), nunca lança.
  */
+
+import { dateInTz, DEFAULT_TIME_ZONE } from '@/lib/timezone';
 
 export type DocumentValidityStatus =
   | 'vigente'
@@ -26,40 +31,39 @@ export type DocumentValidityStatus =
 /** Limite (em dias) abaixo do qual o documento entra em "vence em breve". */
 export const VENCE_EM_BREVE_THRESHOLD_DAYS = 30;
 
-const SAO_PAULO_TZ = 'America/Sao_Paulo';
-
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Retorna o "dia de hoje" (ano/mês/dia) no fuso de Brasília a partir de um
- * instante qualquer. Usa Intl.DateTimeFormat com timeZone pra não depender do
- * fuso do navegador.
+ * Retorna o "dia de hoje" (ano/mês/dia) no fuso da empresa a partir de um
+ * instante qualquer. `dateInTz` devolve "yyyy-MM-dd" (locale en-CA) e cai no
+ * fuso padrão quando o nome não é IANA válido, então nunca lança.
  */
-function brtYmd(now: Date): { y: number; m: number; d: number } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: SAO_PAULO_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0');
-  return { y: get('year'), m: get('month'), d: get('day') };
+function companyYmd(now: Date, timeZone: string | null | undefined): { y: number; m: number; d: number } {
+  const [y, m, d] = dateInTz(now, timeZone).split('-').map(Number);
+  return { y, m, d };
 }
 
 /**
  * Quantos dias inteiros faltam até `validUntil` (date-only "yyyy-MM-dd"),
- * tomando "hoje" no fuso de Brasília. Negativo = já venceu.
+ * tomando "hoje" no fuso da EMPRESA. Negativo = já venceu.
  *
  * Comparação dia-a-dia (meia-noite vs meia-noite em UTC) — independente de hora,
  * então não há off-by-one. Retorna `null` se a data for inválida/ausente.
+ *
+ * @param timeZone `company_settings.timezone` (via `useAppLocaleContext`).
+ *                 Ausente/inválido cai em America/Sao_Paulo.
  */
-export function daysUntil(validUntil: string | null | undefined, now: Date = new Date()): number | null {
+export function daysUntil(
+  validUntil: string | null | undefined,
+  now: Date = new Date(),
+  timeZone: string | null | undefined = DEFAULT_TIME_ZONE,
+): number | null {
   if (!validUntil) return null;
   const m = validUntil.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return null;
   const [, yy, mm, dd] = m;
   const target = Date.UTC(Number(yy), Number(mm) - 1, Number(dd));
-  const today = brtYmd(now);
+  const today = companyYmd(now, timeZone);
   const todayUtc = Date.UTC(today.y, today.m - 1, today.d);
   return Math.round((target - todayUtc) / MS_PER_DAY);
 }
@@ -69,12 +73,14 @@ export function daysUntil(validUntil: string | null | undefined, now: Date = new
  *
  * @param validUntil date-only "yyyy-MM-dd" do `pmoc_documents.valid_until`.
  * @param now        instante de referência (default: agora). Útil pra testes.
+ * @param timeZone   fuso da empresa. Ausente/inválido cai em America/Sao_Paulo.
  */
 export function getDocumentValidityStatus(
   validUntil: string | null | undefined,
   now: Date = new Date(),
+  timeZone: string | null | undefined = DEFAULT_TIME_ZONE,
 ): DocumentValidityStatus {
-  const days = daysUntil(validUntil, now);
+  const days = daysUntil(validUntil, now, timeZone);
   if (days === null) return 'sem_validade';
   if (days < 0) return 'vencido';
   if (days <= VENCE_EM_BREVE_THRESHOLD_DAYS) return 'vence_em_breve';

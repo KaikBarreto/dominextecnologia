@@ -6,15 +6,23 @@
 //
 // Resolução multi-tenant (§9.3): a company é identificada por
 //   payment.externalReference (= company_id, gravado no create-charge)  → O(1)
-// com fallback por tenant_charges.asaas_payment_id (UNIQUE). O token VALIDA (prova que
-// o POST veio mesmo da conta daquele tenant), não roteia.
+// com fallback por tenant_charges.asaas_payment_id (UNIQUE) e, pra parcela 2+ de
+// venda parcelada, por tenant_charges.asaas_installment_id. O token VALIDA (prova
+// que o POST veio mesmo da conta daquele tenant), não roteia.
 //
 // Idempotência: tenant_payment_webhook_events.event_id (dedupe de evento) +
-// apply_tenant_charge_payment idempotente por asaas_payment_id (já pago = no-op).
+// apply_tenant_charge_payment idempotente por asaas_payment_id (já pago = no-op) +
+// apply_tenant_charge_installment_payment idempotente POR PARCELA (UNIQUE parcial
+// em financial_transactions.asaas_payment_id).
 //
 // Eventos (cobertura ABRANGENTE do ciclo Asaas — ver mapa evento→efeito abaixo):
 //   PAYMENT (baixa):    PAYMENT_RECEIVED / PAYMENT_CONFIRMED / PAYMENT_RECEIVED_IN_CASH
-//                       → apply_tenant_charge_payment (baixa automática, idempotente).
+//                       → apply_tenant_charge_payment (cobrança avulsa/ciclo de
+//                       assinatura, baixa TOTAL idempotente) OU
+//                       apply_tenant_charge_installment_payment (venda parcelada no
+//                       cartão — isInstallmentPaymentEvent detecta payment.installment —
+//                       baixa POR PARCELA: cria filha "Recebimento parcial", só fecha
+//                       CONFIRMED quando a soma das filhas cobre o valor total).
 //   PAYMENT (estorno):  PAYMENT_REFUNDED / PAYMENT_REFUND_IN_PROGRESS / PAYMENT_CHARGEBACK_* /
 //                       PAYMENT_AWAITING_CHARGEBACK_REVERSAL → reverte/marca a tenant_charge.
 //   PAYMENT (vencido):  PAYMENT_OVERDUE → status OVERDUE (+ assinatura 'overdue' se for de ciclo).
@@ -85,6 +93,22 @@ async function resolveCompanyId(
       .from("tenant_charges")
       .select("company_id")
       .eq("asaas_payment_id", payment.id)
+      .maybeSingle();
+    if (data?.company_id) return data.company_id;
+  }
+  // Fallback pra PARCELA 2+ de venda parcelada: seu payment.id NUNCA existiu
+  // em tenant_charges (só o da 1ª parcela foi gravado na criação), mas
+  // payment.installment (id do AGRUPAMENTO) é o mesmo em todas — inclusive a
+  // 1ª — e foi gravado em asaas_installment_id (ver
+  // apply_tenant_charge_installment_payment). Na prática o externalReference
+  // (checado acima) já resolve isso sozinho, porque a Asaas ecoa o mesmo
+  // externalReference em toda parcela do grupo; este fallback é defesa em
+  // profundidade para o caso raro de externalReference vir vazio/divergente.
+  if (typeof payment?.installment === "string" && payment.installment) {
+    const { data } = await supabase
+      .from("tenant_charges")
+      .select("company_id")
+      .eq("asaas_installment_id", payment.installment)
       .maybeSingle();
     if (data?.company_id) return data.company_id;
   }
@@ -172,6 +196,20 @@ async function recordOrphan(supabase: any, event: string, payment: any) {
   }
 }
 
+/**
+ * A cobrança é uma PARCELA de uma venda parcelada no cartão? A Asaas manda
+ * `payment.installment` (id do agrupamento) em TODAS as parcelas, inclusive
+ * a 1ª — é o único sinal confiável no payload de que `payment.value`/
+ * `payment.netValue` deste evento são de UMA parcela, não da venda inteira.
+ * Espelhado (mesma lógica) em `src/lib/asaasWebhookMoney.ts` pra ter
+ * cobertura de teste via vitest (este arquivo é Deno, fora do vitest).
+ */
+export function isInstallmentPaymentEvent(
+  payment: { installment?: unknown } | null | undefined,
+): boolean {
+  return typeof payment?.installment === "string" && payment.installment.length > 0;
+}
+
 /** Mapeia o status Asaas de uma assinatura pro status local de tenant_subscriptions. */
 function mapSubscriptionStatus(event: string, asaasStatus: string): string | null {
   const s = (asaasStatus || "").toUpperCase();
@@ -250,14 +288,14 @@ async function ensureChargeForSubscriptionPayment(
   // pix_auto_authorization_id (aut_*). Tenta o primeiro; cai no segundo.
   let { data: sub } = await supabase
     .from("tenant_subscriptions")
-    .select("id, customer_id, description, category")
+    .select("id, customer_id, description, category, cost_center_id")
     .eq("asaas_subscription_id", asaasSubId)
     .eq("company_id", companyId)
     .maybeSingle();
   if (!sub?.id) {
     const { data: pixSub } = await supabase
       .from("tenant_subscriptions")
-      .select("id, customer_id, description, category")
+      .select("id, customer_id, description, category, cost_center_id")
       .eq("pix_auto_authorization_id", asaasSubId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -330,6 +368,10 @@ async function ensureChargeForSubscriptionPayment(
           // tem prioridade; ausente/null → default_income_category da conta (comportamento
           // de hoje, cobre também assinaturas antigas sem a coluna preenchida).
           p_category: sub?.category ?? account?.default_income_category ?? null,
+          // Centro de custo escolhido na criação da assinatura (persistido em
+          // tenant_subscriptions.cost_center_id). Sem default de conta; assinatura
+          // antiga (coluna NULL) materializa sem centro, como sempre foi.
+          p_cost_center_id: sub?.cost_center_id ?? null,
         });
         if (rpcErr) {
           console.warn("[tenant-webhook] create_tenant_charge_receivable (assinatura) falhou (não-fatal):", rpcErr.message);
@@ -471,6 +513,48 @@ async function processPixAutoAuthEvent(
 }
 
 /**
+ * Grita quando o dinheiro entrou e o Financeiro NÃO refletiu.
+ *
+ * As RPCs de baixa devolvem `receivable_status`:
+ *   'ok'                      → o recebível espelho já existia e foi quitado
+ *   'healed'                  → estava faltando e foi recriado (auto-cura)
+ *   'missing' | 'skipped_*' | 'heal_failed'
+ *                             → NÃO há lançamento no Financeiro para este pagamento
+ *
+ * Tratar qualquer um dos últimos como sucesso silencioso foi exatamente o que
+ * fez R$ 3.683,00 de cobrança confirmada da Glacial não aparecer no Financeiro.
+ * `ok === false` (cobrança inexistente) continua avisando pelo mesmo caminho.
+ */
+function warnOnUnsettledCharge(
+  rpc: string,
+  paymentId: string,
+  data: unknown,
+  installmentId?: string,
+): void {
+  if (!data || typeof data !== "object") return;
+  const row = data as Record<string, unknown>;
+  const status = typeof row.receivable_status === "string" ? row.receivable_status : null;
+  // Campo ausente = RPC ainda na versão anterior à auto-cura (janela entre o
+  // deploy desta função e a aplicação da migration). Nesse caso NÃO inventa
+  // alarme: cai no comportamento antigo, que só avisa quando ok === false.
+  const settled = status === null || status === "ok" || status === "healed";
+  if (row.ok !== false && settled) return;
+
+  const where = installmentId ? `${paymentId} (installment ${installmentId})` : paymentId;
+  if (row.ok === false) {
+    console.warn(
+      `[tenant-webhook] ${rpc} não aplicou a baixa em ${where} — evento aceito sem efeito. ` +
+      `Resultado: ${JSON.stringify(data)}`,
+    );
+    return;
+  }
+  console.warn(
+    `[tenant-webhook] ${rpc}: pagamento ${where} confirmado SEM lançamento no Financeiro ` +
+    `(receivable_status=${status ?? "desconhecido"}). Resultado: ${JSON.stringify(data)}`,
+  );
+}
+
+/**
  * Processa o evento. Retorna true se concluiu (marcou 'processed'), false se falhou
  * (marcou 'error'). O caller usa o boolean pra decidir ACK 200 vs 500 (re-entrega).
  */
@@ -506,14 +590,36 @@ async function processEvent(
       // mas ainda é uma quitação → mesma baixa idempotente por asaas_payment_id.
       const paidAt =
         payment.paymentDate || payment.confirmedDate || new Date().toISOString();
-      const net = payment.netValue != null ? Number(payment.netValue) : null;
-      const { data, error } = await supabase.rpc("apply_tenant_charge_payment", {
-        p_asaas_payment_id: payment.id,
-        p_paid_at: paidAt,
-        p_net: net,
-      });
-      if (error) throw new Error(error.message);
-      console.log(`[tenant-webhook] baixa aplicada ${payment.id}:`, JSON.stringify(data));
+      const isInstallmentPayment = isInstallmentPaymentEvent(payment);
+
+      if (isInstallmentPayment) {
+        // Venda PARCELADA no cartão: cada parcela tem seu próprio payment.id
+        // (nunca gravado em tenant_charges além da 1ª) e seu próprio
+        // value/netValue — nunca o da venda inteira. Baixa POR PARCELA:
+        // cria filha "Recebimento parcial" (+ neta de tarifa da PARCELA) e só
+        // fecha a cobrança como CONFIRMED quando a soma das filhas cobre o
+        // valor total (ver apply_tenant_charge_installment_payment).
+        const { data, error } = await supabase.rpc("apply_tenant_charge_installment_payment", {
+          p_asaas_payment_id: payment.id,
+          p_asaas_installment_id: payment.installment,
+          p_value: payment.value != null ? Number(payment.value) : null,
+          p_net_value: payment.netValue != null ? Number(payment.netValue) : null,
+          p_paid_at: paidAt,
+          p_installment_number: payment.installmentNumber ?? null,
+        });
+        if (error) throw new Error(error.message);
+        warnOnUnsettledCharge("apply_tenant_charge_installment_payment", payment.id, data, payment.installment);
+        console.log(`[tenant-webhook] baixa de parcela aplicada ${payment.id}:`, JSON.stringify(data));
+      } else {
+        const { data, error } = await supabase.rpc("apply_tenant_charge_payment", {
+          p_asaas_payment_id: payment.id,
+          p_paid_at: paidAt,
+          p_net: payment.netValue != null ? Number(payment.netValue) : null,
+        });
+        if (error) throw new Error(error.message);
+        warnOnUnsettledCharge("apply_tenant_charge_payment", payment.id, data);
+        console.log(`[tenant-webhook] baixa aplicada ${payment.id}:`, JSON.stringify(data));
+      }
     } else if (
       event === "PAYMENT_REFUNDED" ||
       event === "PAYMENT_REFUND_IN_PROGRESS" ||

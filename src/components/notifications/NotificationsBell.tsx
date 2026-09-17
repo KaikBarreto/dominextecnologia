@@ -12,6 +12,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserNotifications, type UserNotification } from '@/hooks/useUserNotifications';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { dateInTz, todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n';
 import { NotificationItem } from './NotificationItem';
 import { NotificationDetailModal } from './NotificationDetailModal';
@@ -21,19 +22,36 @@ type GroupKey = 'today' | 'yesterday' | 'week' | 'older';
 const GROUP_ORDER: GroupKey[] = ['today', 'yesterday', 'week', 'older'];
 
 /**
- * Índice do dia (número de dias desde a época) no fuso de Brasília (UTC-3 fixo,
- * conforme régua do projeto). Subtrai 3h do instante UTC e divide por 1 dia —
- * assim notificações criadas após 21:00 UTC já caem no dia seguinte BRT.
+ * Distância em DIAS entre o dia da notificação e hoje, ambos lidos no fuso da
+ * EMPRESA (`company_settings.timezone`).
+ *
+ * Antes isto era feito com deslocamento fixo de -3h na aritmética do timestamp,
+ * o que só valia para Brasília: em qualquer fuso mais atrasado (Cuiabá, Manaus,
+ * Rio Branco) o agrupamento Hoje/Ontem/Esta semana errava numa janela de ~1h em
+ * volta da meia-noite, todo dia. Comparar os DIAS já formatados no fuso certo
+ * elimina a aritmética de deslocamento e, de quebra, o horário de verão dos
+ * fusos estrangeiros suportados.
+ *
+ * As duas datas chegam aqui como YYYY-MM-DD; `Date.UTC` sobre os componentes é
+ * só para contar dias de calendário, nunca para converter fuso.
  */
-function brtDayIndex(iso: string): number {
-  const ms = new Date(iso).getTime() - 3 * 60 * 60 * 1000;
-  return Math.floor(ms / 86_400_000);
+function diffEmDias(diaNotificacao: string, diaHoje: string): number {
+  const ms = (dia: string) => {
+    const [y, m, d] = dia.split('-').map(Number);
+    return Date.UTC(y, (m ?? 1) - 1, d ?? 1);
+  };
+  return Math.round((ms(diaHoje) - ms(diaNotificacao)) / 86_400_000);
 }
 
-/** Classifica uma notificação num bucket de data relativo a "agora" (BRT). */
-function notificationGroup(createdAt: string, todayIndex: number): GroupKey {
-  const dayIndex = brtDayIndex(createdAt);
-  const diff = todayIndex - dayIndex;
+/** Classifica uma notificação num bucket de data relativo a hoje (fuso da empresa). */
+function notificationGroup(createdAt: string, today: string, timezone: string): GroupKey {
+  let diff: number;
+  try {
+    diff = diffEmDias(dateInTz(createdAt, timezone), today);
+  } catch {
+    // `created_at` ilegível não pode derrubar o sino: cai no bucket mais antigo.
+    return 'older';
+  }
   if (diff <= 0) return 'today';
   if (diff === 1) return 'yesterday';
   if (diff <= 6) return 'week';
@@ -60,13 +78,14 @@ export function NotificationsBell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<UserNotification | null>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss } = useUserNotifications();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.shell.notifications;
 
-  // Agrupa por data (BRT). Preserva a ordem original (created_at DESC) dentro
-  // de cada bucket porque iteramos sobre `notifications` já ordenada pelo hook.
+  // Agrupa por data NO FUSO DA EMPRESA. Preserva a ordem original
+  // (created_at DESC) dentro de cada bucket porque iteramos sobre
+  // `notifications` já ordenada pelo hook.
   const groupedNotifications = useMemo(() => {
-    const todayIndex = brtDayIndex(new Date().toISOString());
+    const today = todayInTz(timezone);
     const buckets: Record<GroupKey, UserNotification[]> = {
       today: [],
       yesterday: [],
@@ -74,7 +93,7 @@ export function NotificationsBell() {
       older: [],
     };
     for (const n of notifications) {
-      buckets[notificationGroup(n.created_at, todayIndex)].push(n);
+      buckets[notificationGroup(n.created_at, today, timezone)].push(n);
     }
     const groupLabels: Record<GroupKey, string> = {
       today: t.groupToday,
@@ -85,7 +104,7 @@ export function NotificationsBell() {
     return GROUP_ORDER.map((key) => ({ key, label: groupLabels[key], items: buckets[key] })).filter(
       (g) => g.items.length > 0,
     );
-  }, [notifications, t]);
+  }, [notifications, t, timezone]);
 
   // Click na notif: marca como lida + abre detalhe (em vez de navegar direto).
   // Detalhe tem botão "Abrir" que dispara o action_url efetivo.

@@ -620,6 +620,8 @@ export type Database = {
           asaas_customer_id: string | null
           asaas_subscription_id: string | null
           billing_cycle: string | null
+          billing_email: string | null
+          billing_notifications_enabled: boolean
           city: string | null
           cnpj: string | null
           complement: string | null
@@ -652,6 +654,7 @@ export type Database = {
           pending_plan_code: string | null
           pending_subscription_value: number | null
           phone: string | null
+          ponto_kiosk_slug: string | null
           salesperson_id: string | null
           sdr_id: string | null
           segment: string | null
@@ -672,6 +675,8 @@ export type Database = {
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string | null
+          billing_email?: string | null
+          billing_notifications_enabled?: boolean
           city?: string | null
           cnpj?: string | null
           complement?: string | null
@@ -704,6 +709,7 @@ export type Database = {
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
+          ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -724,6 +730,8 @@ export type Database = {
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string | null
+          billing_email?: string | null
+          billing_notifications_enabled?: boolean
           city?: string | null
           cnpj?: string | null
           complement?: string | null
@@ -756,6 +764,7 @@ export type Database = {
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
+          ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -2269,15 +2278,84 @@ export type Database = {
           },
         ]
       }
+      crm_pipeline_access: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          pipeline_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          pipeline_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          pipeline_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_access_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipelines: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipelines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           color: string
           company_id: string
           created_at: string
+          icon: string | null
           id: string
           is_lost: boolean
           is_won: boolean
           name: string
+          pipeline_id: string
           position: number
           updated_at: string
         }
@@ -2285,10 +2363,12 @@ export type Database = {
           color?: string
           company_id: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean
           name: string
+          pipeline_id: string
           position?: number
           updated_at?: string
         }
@@ -2296,10 +2376,12 @@ export type Database = {
           color?: string
           company_id?: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean
           name?: string
+          pipeline_id?: string
           position?: number
           updated_at?: string
         }
@@ -2309,6 +2391,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
             referencedColumns: ["id"]
           },
         ]
@@ -3177,6 +3266,48 @@ export type Database = {
           },
         ]
       }
+      employee_ponto_pins: {
+        Row: {
+          company_id: string
+          employee_id: string
+          failed_count: number
+          locked_until: string | null
+          pin_hash: string
+          set_at: string
+        }
+        Insert: {
+          company_id: string
+          employee_id: string
+          failed_count?: number
+          locked_until?: string | null
+          pin_hash: string
+          set_at?: string
+        }
+        Update: {
+          company_id?: string
+          employee_id?: string
+          failed_count?: number
+          locked_until?: string | null
+          pin_hash?: string
+          set_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_ponto_pins_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_ponto_pins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address: string | null
@@ -3931,6 +4062,7 @@ export type Database = {
           accrual_amount: number | null
           amount: number
           amount_received: number
+          asaas_payment_id: string | null
           bill_id: string | null
           billing_reminder_resolved_at: string | null
           billing_reminder_resolved_by: string | null
@@ -3961,6 +4093,7 @@ export type Database = {
           payroll_period: string | null
           receipt_url: string | null
           service_order_id: string | null
+          supplier_id: string | null
           tenant_charge_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -3972,6 +4105,7 @@ export type Database = {
           accrual_amount?: number | null
           amount: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -4002,6 +4136,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          supplier_id?: string | null
           tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -4013,6 +4148,7 @@ export type Database = {
           accrual_amount?: number | null
           amount?: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -4043,6 +4179,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          supplier_id?: string | null
           tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
@@ -4125,6 +4262,13 @@ export type Database = {
             columns: ["service_order_id"]
             isOneToOne: false
             referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
           {
@@ -4920,6 +5064,35 @@ export type Database = {
           },
         ]
       }
+      lead_assignees: {
+        Row: {
+          created_at: string
+          is_primary: boolean
+          lead_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignees_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_capture_forms: {
         Row: {
           company_id: string
@@ -5065,6 +5238,7 @@ export type Database = {
           expected_close_date: string | null
           id: string
           notes: string | null
+          pipeline_id: string | null
           probability: number | null
           source: string | null
           stage_id: string | null
@@ -5072,6 +5246,7 @@ export type Database = {
           title: string
           updated_at: string
           value: number | null
+          won_transaction_id: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -5082,6 +5257,7 @@ export type Database = {
           expected_close_date?: string | null
           id?: string
           notes?: string | null
+          pipeline_id?: string | null
           probability?: number | null
           source?: string | null
           stage_id?: string | null
@@ -5089,6 +5265,7 @@ export type Database = {
           title: string
           updated_at?: string
           value?: number | null
+          won_transaction_id?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -5099,6 +5276,7 @@ export type Database = {
           expected_close_date?: string | null
           id?: string
           notes?: string | null
+          pipeline_id?: string | null
           probability?: number | null
           source?: string | null
           stage_id?: string | null
@@ -5106,6 +5284,7 @@ export type Database = {
           title?: string
           updated_at?: string
           value?: number | null
+          won_transaction_id?: string | null
         }
         Relationships: [
           {
@@ -5123,10 +5302,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leads_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leads_stage_id_fkey"
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_won_transaction_id_fkey"
+            columns: ["won_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -7588,6 +7781,7 @@ export type Database = {
           id: string
           labor_hours: number | null
           labor_value: number | null
+          lead_id: string | null
           notes: string | null
           order_number: number
           origin: string
@@ -7601,8 +7795,10 @@ export type Database = {
           public_short_code: string | null
           recurrence_end_date: string | null
           recurrence_group_id: string | null
+          recurrence_indeterminate: boolean
           recurrence_interval: number | null
           recurrence_type: string | null
+          recurrence_weekdays: number[] | null
           require_client_signature: boolean | null
           require_tech_signature: boolean | null
           resumed_at: string | null
@@ -7617,6 +7813,7 @@ export type Database = {
           service_state: string | null
           service_type_id: string | null
           service_zip_code: string | null
+          show_in_schedule: boolean
           snapshot_data: Json | null
           solution: string | null
           started_at: string | null
@@ -7657,6 +7854,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          lead_id?: string | null
           notes?: string | null
           order_number?: number
           origin?: string
@@ -7670,8 +7868,10 @@ export type Database = {
           public_short_code?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
+          recurrence_indeterminate?: boolean
           recurrence_interval?: number | null
           recurrence_type?: string | null
+          recurrence_weekdays?: number[] | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           resumed_at?: string | null
@@ -7686,6 +7886,7 @@ export type Database = {
           service_state?: string | null
           service_type_id?: string | null
           service_zip_code?: string | null
+          show_in_schedule?: boolean
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null
@@ -7726,6 +7927,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          lead_id?: string | null
           notes?: string | null
           order_number?: number
           origin?: string
@@ -7739,8 +7941,10 @@ export type Database = {
           public_short_code?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
+          recurrence_indeterminate?: boolean
           recurrence_interval?: number | null
           recurrence_type?: string | null
+          recurrence_weekdays?: number[] | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           resumed_at?: string | null
@@ -7755,6 +7959,7 @@ export type Database = {
           service_state?: string | null
           service_type_id?: string | null
           service_zip_code?: string | null
+          show_in_schedule?: boolean
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null
@@ -7811,6 +8016,13 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
@@ -8582,6 +8794,7 @@ export type Database = {
       }
       tenant_charges: {
         Row: {
+          asaas_installment_id: string | null
           asaas_payment_id: string | null
           billing_type: string | null
           boleto_url: string | null
@@ -8596,6 +8809,7 @@ export type Database = {
           net_value: number | null
           payment_date: string | null
           pix_copy_paste: string | null
+          post_to_finance: boolean
           public_short_code: string | null
           source_id: string | null
           source_type: string
@@ -8605,6 +8819,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -8619,6 +8834,7 @@ export type Database = {
           net_value?: number | null
           payment_date?: string | null
           pix_copy_paste?: string | null
+          post_to_finance?: boolean
           public_short_code?: string | null
           source_id?: string | null
           source_type?: string
@@ -8628,6 +8844,7 @@ export type Database = {
           value: number
         }
         Update: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -8642,6 +8859,7 @@ export type Database = {
           net_value?: number | null
           payment_date?: string | null
           pix_copy_paste?: string | null
+          post_to_finance?: boolean
           public_short_code?: string | null
           source_id?: string | null
           source_type?: string
@@ -8853,6 +9071,7 @@ export type Database = {
           billing_type: string
           category: string | null
           company_id: string
+          cost_center_id: string | null
           created_at: string
           created_by: string | null
           credit_card_brand: string | null
@@ -8878,6 +9097,7 @@ export type Database = {
           billing_type: string
           category?: string | null
           company_id: string
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_card_brand?: string | null
@@ -8903,6 +9123,7 @@ export type Database = {
           billing_type?: string
           category?: string | null
           company_id?: string
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_card_brand?: string | null
@@ -8929,6 +9150,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_subscriptions_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {
@@ -9802,6 +10030,17 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: undefined
       }
+      apply_tenant_charge_installment_payment: {
+        Args: {
+          p_asaas_installment_id: string
+          p_asaas_payment_id: string
+          p_installment_number?: number
+          p_net_value?: number
+          p_paid_at?: string
+          p_value: number
+        }
+        Returns: Json
+      }
       apply_tenant_charge_payment: {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
         Returns: Json
@@ -9838,6 +10077,14 @@ export type Database = {
           tipo: string
           titulo: string
         }[]
+      }
+      can_access_lead: {
+        Args: { _lead_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_access_pipeline: {
+        Args: { _pipeline_id: string; _user_id: string }
+        Returns: boolean
       }
       can_access_stock: {
         Args: { _stock_id: string; _user_id: string }
@@ -9881,6 +10128,7 @@ export type Database = {
           p_amount: number
           p_category?: string
           p_company_id: string
+          p_cost_center_id?: string
           p_customer_id: string
           p_description: string
           p_due_date: string
@@ -9896,6 +10144,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      crm_pipeline_company_id: {
+        Args: { _pipeline_id: string }
+        Returns: string
+      }
       current_salesperson_id: { Args: never; Returns: string }
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
@@ -9909,9 +10161,20 @@ export type Database = {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
       }
+      ensure_default_crm_pipeline: {
+        Args: { _company_id: string }
+        Returns: string
+      }
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      extend_indeterminate_task_series: {
+        Args: never
+        Returns: {
+          group_id: string
+          inserted_count: number
+        }[]
       }
       finalize_inventory_count: {
         Args: { p_count_id: string; p_notes?: string }
@@ -9922,13 +10185,33 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
-      generate_payroll_for_employee: {
-        Args: { p_employee_id: string; p_lookahead_days?: number }
-        Returns: number
-      }
+      generate_payroll_for_employee:
+        | {
+            Args: { p_employee_id: string; p_lookahead_days?: number }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_employee_id: string
+              p_lookahead_days: number
+              p_today: string
+            }
+            Returns: number
+          }
       generate_pmoc_token: { Args: never; Returns: string }
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
+      generate_recurrence_dates: {
+        Args: {
+          p_end_date: string
+          p_interval: number
+          p_max_occurrences?: number
+          p_start_date: string
+          p_type: string
+          p_weekdays?: number[]
+        }
+        Returns: string[]
+      }
       get_accessible_inventory_ids: { Args: never; Returns: string[] }
       get_admin_cobrancas_overview: { Args: never; Returns: Json }
       get_company_health_scores: {
@@ -10050,6 +10333,10 @@ export type Database = {
           taxa_resposta: number
           user_id: string
         }[]
+      }
+      get_or_create_ponto_kiosk_slug: {
+        Args: { p_company_id: string }
+        Returns: string
       }
       get_portal_by_token: {
         Args: { _token: string }
@@ -10177,12 +10464,17 @@ export type Database = {
         Returns: boolean
       }
       has_full_permissions: { Args: { _user_id: string }; Returns: boolean }
+      has_ponto_pin: { Args: { p_employee_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      heal_orphan_tenant_charge_receivables: {
+        Args: { p_company_id: string; p_dry_run?: boolean }
+        Returns: Json
       }
       immutable_unaccent:
         | { Args: { p_itens: string[] }; Returns: string }
@@ -10199,6 +10491,10 @@ export type Database = {
       }
       is_customer_in_active_portal: {
         Args: { _customer_id: string }
+        Returns: boolean
+      }
+      is_lead_assignee: {
+        Args: { _lead_id: string; _user_id: string }
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
@@ -10263,6 +10559,10 @@ export type Database = {
           p_technician_id: string
         }
         Returns: number
+      }
+      rebuild_tenant_charge_receivable: {
+        Args: { p_charge_id: string; p_reason?: string }
+        Returns: Json
       }
       recalc_amount_received: {
         Args: { p_parent_id: string }
@@ -10431,6 +10731,10 @@ export type Database = {
         Args: { p_inventory_id: string; p_stock_ids: string[] }
         Returns: undefined
       }
+      set_ponto_pin: {
+        Args: { p_employee_id: string; p_pin: string }
+        Returns: undefined
+      }
       set_stock_access: {
         Args: {
           p_restricted: boolean
@@ -10470,6 +10774,10 @@ export type Database = {
           p_nps: number
           p_os_id: string
         }
+        Returns: Json
+      }
+      tenant_charges_without_receivable: {
+        Args: { p_company_id: string }
         Returns: Json
       }
       transfer_stock_between: {
@@ -10525,11 +10833,19 @@ export type Database = {
         Returns: Json
       }
       upsert_compute_catalog: { Args: { p_payload: Json }; Returns: number }
+      user_has_permission: {
+        Args: { _key: string; _user_id: string }
+        Returns: boolean
+      }
       vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
       vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
       vault_upsert_tenant_secret: {
         Args: { p_name: string; p_secret: string }
         Returns: string
+      }
+      verify_ponto_pin: {
+        Args: { p_employee_id: string; p_pin: string }
+        Returns: Json
       }
       whatsapp_can_send: { Args: { p_company_id: string }; Returns: boolean }
     }

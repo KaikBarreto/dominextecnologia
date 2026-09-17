@@ -12,11 +12,14 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { currencyMask, parseCurrency, calculateDailyValue } from '@/utils/employeeCalculations';
+import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 
 export interface MovementCashAccount {
   id: string;
@@ -30,7 +33,7 @@ interface EmployeeMovementModalProps {
   type: 'vale' | 'bonus' | 'falta';
   employeeName: string;
   currentBalance: number;
-  onSubmit: (data: { amount: number; description?: string; subType?: string; accountId?: string }) => void;
+  onSubmit: (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => void;
   isPending?: boolean;
   employeeId?: string;
   salary?: number;
@@ -53,9 +56,12 @@ export function EmployeeMovementModal({
   const [faltaMode, setFaltaMode] = useState<'salario' | 'banco'>('salario');
   const [applyDSR, setApplyDSR] = useState(false);
   const [accountId, setAccountId] = useState('');
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.movementModal;
+  const fin = MESSAGES[locale].app.finance;
+  const { activeCostCenters } = useCostCenters();
   const typeLabels: Record<string, string> = { vale: t.typeLabels.vale, bonus: t.typeLabels.bonus, falta: t.typeLabels.falta };
 
   const draft = useFormDraft<MovementDraft>({ key: `employee-movement-${type}`, isOpen: open });
@@ -78,6 +84,7 @@ export function EmployeeMovementModal({
       setFaltaMode('salario');
       setApplyDSR(false);
       setFaltaPreFilled(false);
+      setCostCenterId(null);
     }
 
     // Auto-seleciona primeira conta disponível pro vale (só relevante quando type === 'vale').
@@ -104,6 +111,19 @@ export function EmployeeMovementModal({
       setFaltaPreFilled(true);
     }
   }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt, faltaPreFilled, amount]);
+
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO pode passar pela
+  // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
+  // `money-paste-mask.ts`. `currencyMask(String(cents))` reaproveita a
+  // MESMA formatação que a digitação já usa.
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+    const cents = centsFromPastedAmount(text);
+    if (cents == null) return;
+    e.preventDefault();
+    setAmount(currencyMask(String(cents)));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +163,7 @@ export function EmployeeMovementModal({
       description: finalDescription,
       subType: type === 'falta' ? faltaMode : undefined,
       accountId: type === 'vale' ? accountId : undefined,
+      costCenterId: type === 'vale' ? costCenterId : undefined,
     });
     draft.clearDraft();
     setAmount('');
@@ -220,6 +241,16 @@ export function EmployeeMovementModal({
           </div>
         )}
 
+        {/* Centro de custo — só faz sentido pra vale (é o único tipo que gera
+            despesa imediata). Sempre opcional, some da tela pra quem não usa
+            (zero centros ativos cadastrados). */}
+        {type === 'vale' && activeCostCenters.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{fin.costCenters.fieldLabel}</Label>
+            <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
+          </div>
+        )}
+
         {/* Falta mode selection */}
         {type === 'falta' && (
           <div className="space-y-2">
@@ -245,7 +276,7 @@ export function EmployeeMovementModal({
 
         <div className="space-y-1.5">
           <Label>{t.amountLabel}</Label>
-          <Input value={amount} onChange={e => setAmount(currencyMask(e.target.value))} placeholder="R$ 0,00" required />
+          <Input value={amount} onChange={e => setAmount(currencyMask(e.target.value))} onPaste={handleAmountPaste} placeholder="R$ 0,00" required />
           {type === 'falta' && salary > 0 && (
             <p className="text-xs text-muted-foreground">
               {t.absenceSuggestion

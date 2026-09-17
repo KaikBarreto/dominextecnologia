@@ -91,11 +91,21 @@ export interface CreateSubscriptionInput {
   /** Categoria do recebível recorrente no Financeiro. Vazia/omitida = usa o
    *  default da conta de recebimento (comportamento de hoje). */
   category?: string;
+  /** Centro de custo do recebível recorrente no Financeiro, aplicado a CADA
+   *  ciclo. Ausente/null = sem centro (sempre opcional, sem default de conta).
+   *  Ignorado no Pix Automático (fluxo próprio que ainda não lê nem categoria). */
+  cost_center_id?: string | null;
   fine_percent?: number;
   interest_percent?: number;
   /** Origem da assinatura: 'avulso' (padrão) | 'contract' | 'quote'. */
   source_type?: 'avulso' | 'contract' | 'quote';
   source_id?: string;
+  /** Número máximo de ciclos (cobranças) desta assinatura. Ausente/undefined =
+   *  contínua (a Asaas gera cobranças indefinidamente até cancelar). Mapeia pra
+   *  `maxPayments` no POST /subscriptions da Asaas. Não persistido localmente
+   *  (a Asaas é a fonte da verdade; ela mesma encerra a assinatura ao esgotar
+   *  os ciclos, e o webhook reflete o cancelamento). */
+  max_payments?: number;
   // ── Cartão recorrente (feature dormente — só enviado quando billing_type=CREDIT_CARD) ──
   credit_card?: CreditCardInput;
   credit_card_holder_info?: CreditCardHolderInfo;
@@ -236,10 +246,14 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       // Campo enviado só quando preenchido — a edge ainda pode ignorá-lo até a
       // coluna `category` em tenant_subscriptions e o suporte no edge subirem.
       if (input.category?.trim()) body.category = input.category.trim();
+      // Centro de custo escolhido pelo usuário nesta assinatura. Sem default
+      // de conta — ausente/null é "sem centro".
+      if (input.cost_center_id) body.cost_center_id = input.cost_center_id;
       if (input.fine_percent !== undefined) body.fine_percent = input.fine_percent;
       if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
       if (input.source_type) body.source_type = input.source_type;
       if (input.source_id) body.source_id = input.source_id;
+      if (input.max_payments !== undefined) body.max_payments = input.max_payments;
       // ── Cartão recorrente (feature dormente) ─────────────────────────────────
       // INVARIANTE: dados de cartão nunca são logados. Enviados direto ao edge e
       // nunca persistidos no banco (o edge guarda apenas o token no Vault).

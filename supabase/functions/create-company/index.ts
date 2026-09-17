@@ -160,6 +160,10 @@ Deno.serve(async (req) => {
         cnpj: company_cnpj || null,
         asaas_customer_id: null,
         address: company_address || null,
+        // Empresa recém-criada pelo painel master: notificação de cobrança nasce DESLIGADA
+        // (companies.billing_notifications_enabled default false). Ligar é ato manual.
+        billing_notifications_enabled: false,
+        billing_email: null,
       })
       if (provision.outcome === 'failed') {
         console.error('[create-company] Asaas customer não provisionado (não-fatal):', provision.error)

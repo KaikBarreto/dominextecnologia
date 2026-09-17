@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, BASE_MODULE_CODES } from './ModuleGrid';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface Props {
   open: boolean;
@@ -46,6 +47,29 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [customPriceValue, setCustomPriceValue] = useState('');
+
+  // Máscara de dinheiro (centavos), igual ContaFormDialog/ChargeDialog: digita
+  // só dígitos, os 2 últimos são os centavos. NUNCA `<input type="number">`
+  // aqui — bug real (2026-09-17): input nativo aceita colar "4.550" como float
+  // válido, e `parseFloat` lia ponto como decimal e devolvia 4.55, mil vezes
+  // menor. `onPaste` cobre colar valor pronto via `readPastedCents`
+  // (`src/lib/money-paste-mask.ts`), que SUBSTITUI o campo inteiro. Usado nos
+  // DOIS campos "Valor (R$)" personalizado abaixo (aba "Plano" e aba
+  // "Personalizado") — ambos escrevem no mesmo `customPriceValue`, sempre
+  // string canônica ("4550.00"), nunca "4.550".
+  const handleCustomPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setCustomPriceValue(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleCustomPricePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setCustomPriceValue(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const customPriceDisplay = customPriceValue
+    ? Number(customPriceValue).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
   const [isPermanent, setIsPermanent] = useState(false);
   const [customPriceMonths, setCustomPriceMonths] = useState('3');
 
@@ -434,11 +458,12 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                 {useCustomPrice && (
                   <div className="space-y-3">
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="Ex: 150.00"
-                      value={customPriceValue}
-                      onChange={(e) => setCustomPriceValue(e.target.value)}
+                      id="link-custom-price-plano"
+                      inputMode="numeric"
+                      placeholder="Ex: 150,00"
+                      value={customPriceDisplay}
+                      onChange={handleCustomPriceChange}
+                      onPaste={handleCustomPricePaste}
                       className="h-8 text-sm"
                     />
                     {selectedPlan && (
@@ -548,11 +573,12 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                 {useCustomPrice && (
                   <div className="space-y-3">
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="Ex: 150.00"
-                      value={customPriceValue}
-                      onChange={(e) => setCustomPriceValue(e.target.value)}
+                      id="link-custom-price-personalizado"
+                      inputMode="numeric"
+                      placeholder="Ex: 150,00"
+                      value={customPriceDisplay}
+                      onChange={handleCustomPriceChange}
+                      onPaste={handleCustomPricePaste}
                       className="h-8 text-sm"
                     />
                     <p className="text-xs text-muted-foreground">

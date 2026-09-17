@@ -77,6 +77,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface ContractEnvironmentsTabProps {
@@ -190,7 +191,7 @@ function newEnvRow(): EnvRow {
  */
 export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabProps) {
   const { toast } = useToast();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.contracts.environmentsTab;
   const tForm = MESSAGES[locale].app.contracts.contractForm;
   const { updateContract } = useContracts();
@@ -915,17 +916,11 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
 
   // Quantas OSs futuras não-realizadas seriam refeitas (preview do diálogo).
   const futureRegenerable = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    const todayStr = fmt.format(new Date());
+    const todayStr = todayInTz(timezone);
     return ((contract.service_orders || []) as any[]).filter(
       (os) => REGENERABLE_OS_STATUSES.has(os.status ?? '') && (os.scheduled_date ?? '') >= todayStr,
     ).length;
-  }, [contract.service_orders]);
+  }, [contract.service_orders, timezone]);
 
   const isActive = contract.status === 'active';
 

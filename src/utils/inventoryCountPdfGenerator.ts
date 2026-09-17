@@ -7,6 +7,7 @@ import { openPdfInTab } from '@/utils/openPdfInTab';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatNumber, toBcp47 } from '@/lib/format';
+import { safeTimeZone, todayInTz } from '@/lib/timezone';
 
 export interface InventoryCountPdfRow {
   material_name: string;
@@ -28,6 +29,12 @@ interface InventoryCountPdfData {
   rows: InventoryCountPdfRow[];
   locale: LocaleCode;
   currency: string;
+  /**
+   * Fuso IANA DA EMPRESA (`useAppLocaleContext().timezone`). Rótulo de exibição
+   * no PDF (data/hora de geração + nome do arquivo) — não toca saldo/kardex.
+   * Vazio/inválido cai em America/Sao_Paulo via `safeTimeZone`/`todayInTz`.
+   */
+  timezone?: string | null;
 }
 
 function buildFormatters(locale: LocaleCode, currency: string) {
@@ -37,9 +44,9 @@ function buildFormatters(locale: LocaleCode, currency: string) {
   };
 }
 
-function formatGeneratedAt(locale: LocaleCode): string {
+function formatGeneratedAt(locale: LocaleCode, timezone: string | null | undefined): string {
   return new Date().toLocaleString(toBcp47(locale), {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timezone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -48,13 +55,8 @@ function formatGeneratedAt(locale: LocaleCode): string {
   });
 }
 
-function todayStamp(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+function todayStamp(timezone: string | null | undefined): string {
+  return todayInTz(timezone);
 }
 
 function buildCompanyDetailLines(s: CompanySettings): string[] {
@@ -94,7 +96,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const MARGIN = 14;
 
 export async function generateInventoryCountPdf(data: InventoryCountPdfData): Promise<void> {
-  const { company, whiteLabel, countNumber, status, notes, rows, locale, currency } = data;
+  const { company, whiteLabel, countNumber, status, notes, rows, locale, currency, timezone } = data;
   const tr = MESSAGES[locale].app.inventory.inventoryCount.pdf;
   const { formatCurrency, formatNum } = buildFormatters(locale, currency);
 
@@ -170,7 +172,7 @@ export async function generateInventoryCountPdf(data: InventoryCountPdfData): Pr
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(136, 136, 136);
-  doc.text(`${tr.status}: ${status}  |  ${tr.generatedAt} ${formatGeneratedAt(locale)}`, pageWidth / 2, y, { align: 'center' });
+  doc.text(`${tr.status}: ${status}  |  ${tr.generatedAt} ${formatGeneratedAt(locale, timezone)}`, pageWidth / 2, y, { align: 'center' });
   y += 5;
 
   if (notes) {
@@ -272,7 +274,7 @@ export async function generateInventoryCountPdf(data: InventoryCountPdfData): Pr
     }
   }
 
-  const filename = `inventario-${countNumber ?? 'sem-numero'}-${todayStamp()}`;
+  const filename = `inventario-${countNumber ?? 'sem-numero'}-${todayStamp(timezone)}`;
   const blob = doc.output('blob');
   openPdfInTab(blob, filename, targetWindow);
 }

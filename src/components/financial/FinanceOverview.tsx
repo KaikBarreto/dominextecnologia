@@ -14,6 +14,7 @@ import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useCostCenters } from '@/hooks/useCostCenters';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -45,6 +46,7 @@ const CHART_COLORS = [
 
 export function FinanceOverview({ transactions, summary, onNavigate, onNewReceita, onNewDespesa }: FinanceOverviewProps) {
   const { accounts, balances, cardBillTotals } = useFinancialAccounts();
+  const { costCenters } = useCostCenters();
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const ov = MESSAGES[locale].app.finance.overview;
@@ -117,11 +119,17 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
 
   const handleExportCSV = () => {
     const fin = MESSAGES[locale].app.finance;
+    // Nome, nunca o id cru: quem abre a planilha não sabe o que é um UUID.
+    // Cobre também centro desativado depois do lançamento (mesmo critério do
+    // filtro em TransactionListPanel) — só um id sem correspondência (empresa
+    // trocada, dado corrompido) cai no "sem centro de custo".
+    const costCenterName = new Map(costCenters.map((c) => [c.id, c.name]));
     const headers = [
       fin.transactionList.table.date,
       fin.transactionList.table.type,
       fin.transactionList.table.description,
       fin.transactionList.table.category,
+      fin.costCenters.fieldLabel,
       fin.transactionList.table.amount,
       fin.accounts.table.status,
     ];
@@ -130,6 +138,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       t.transaction_type === 'entrada' ? fin.transactionList.badges.revenue : fin.transactionList.badges.expense,
       `"${(t.description || '').replace(/"/g, '""')}"`,
       t.category || '',
+      (t.cost_center_id && costCenterName.get(t.cost_center_id)) || fin.costCenters.dreNoCenter,
       Number(t.amount).toFixed(2).replace('.', ','),
       t.is_paid ? ov.status.paid : ov.status.pending,
     ]);

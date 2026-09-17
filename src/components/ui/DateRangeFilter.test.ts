@@ -7,7 +7,7 @@ import { getDateRangeFromPreset } from './DateRangeFilter';
  * UTC (ou usuário viajando) às 21h30 de 31/01 no horário de Brasília — nesse
  * instante já é 01/02 em UTC. Se o preset "Este mês" usasse `new Date()` cru,
  * resolveria pra fevereiro e o relatório mostraria o mês errado sem aviso.
- * Ver src/lib/today-brazil.ts para a peça que resolve isso.
+ * Ver src/lib/timezone.ts (todayInTz) para a peça que resolve isso.
  */
 describe('getDateRangeFromPreset — âncora no fuso do Brasil', () => {
   afterEach(() => {

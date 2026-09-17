@@ -1,5 +1,6 @@
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { safeTimeZone } from '@/lib/timezone';
 import { escapeHtml, safeImageUrl } from "./escapeHtml";
 import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
 
@@ -64,6 +65,11 @@ interface DreReportData {
   regime?: 'caixa' | 'competencia';
   /** Locale do usuário que está gerando o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /**
+   * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
+   * porque util não chama hook. Ausente ou inválido cai em America/Sao_Paulo.
+   */
+  timezone?: string | null;
 }
 
 export const generateDreHtml = (data: DreReportData) => {
@@ -72,9 +78,13 @@ export const generateDreHtml = (data: DreReportData) => {
   const regime = data.regime ?? 'caixa';
   const regimeLabel = regime === 'caixa' ? t.regimeCash : t.regimeAccrual;
 
+  // "Gerado em" é um INSTANTE, então o relógio mostrado é o DA EMPRESA, não o
+  // do aparelho de quem exportou nem Brasília chumbado: quem lê o documento é a
+  // empresa e o contador dela. `safeTimeZone` impede que um fuso vazio ou
+  // inválido derrube a exportação com RangeError.
   const generatedDate = new Date().toLocaleString(
     locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR',
-    { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+    { timeZone: safeTimeZone(data.timezone), day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }
   );
 
   const grossProfitColor = data.lucroBruto > 0 ? '#16a34a' : data.lucroBruto < 0 ? '#dc2626' : '#374151';

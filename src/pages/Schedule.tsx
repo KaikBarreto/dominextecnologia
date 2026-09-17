@@ -1,15 +1,16 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, getYear } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, getYear, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette, Search as SearchIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, List as ListIcon, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { DailyCalendar } from '@/components/schedule/DailyCalendar';
 import { MobileAgendaView } from '@/components/schedule/MobileAgendaView';
-import { ScheduleHeader, type ViewMode } from '@/components/schedule/ScheduleHeader';
+import { ScheduleListView } from '@/components/schedule/ScheduleListView';
+import { ScheduleHeader, type ViewMode, type DisplayMode } from '@/components/schedule/ScheduleHeader';
 import { PausedOrdersDialog } from '@/components/schedule/PausedOrdersDialog';
 import { usePausedOrders } from '@/hooks/usePausedOrders';
 import { ScheduleDetailPanel } from '@/components/schedule/ScheduleDetailPanel';
@@ -22,10 +23,10 @@ import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTaskSubmit } from '@/hooks/useTaskSubmit';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
@@ -38,8 +39,6 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FABButton } from '@/components/mobile/FABButton';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -56,7 +55,6 @@ export default function Schedule() {
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
   const { user, hasRole, hasPermission, isAdminOrGestor, roles, permissions, hasPermissionRecord } = useAuth();
   const { settings: companySettings } = useCompanySettings();
@@ -91,13 +89,39 @@ export default function Schedule() {
 
   const [viewMode, setViewMode] = useState<ViewMode>(isMobile ? 'day' : 'month');
 
-  // Hidrata o viewMode a partir da preferência salva do aparelho atual. Também
-  // reage ao redimensionamento que cruza o breakpoint (celular ↔ computador):
-  // ao trocar de slot lógico, relê a view daquele aparelho.
+  // Calendário x Lista (E4) — eixo INDEPENDENTE do período acima (mês/semana/dia
+  // continua valendo nos dois). Persistido no MESMO slot/coluna do viewMode
+  // (não nasce preferência nova): o par é codificado num único texto, ex.
+  // "day::list" — sem sufixo "::list" o valor é só o período de sempre
+  // (compatível com todo mundo que já tinha preferência salva).
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('calendar');
+
+  // Slot de aparelho já hidratado. Sem isso, a escolha do usuário durava meio
+  // segundo e a tela voltava sozinha: `setScheduleViewMode` invalida a query de
+  // preferências, `scheduleViewMode` troca de identidade, este efeito roda de
+  // novo e reaplica o valor ANTIGO que acabou de voltar do servidor. Provado em
+  // produção na 1.24.38 (clicar em "Lista" voltava pro Calendário em ~2s).
+  // A hidratação tem que acontecer uma vez por aparelho, não a cada refetch —
+  // e continua reagindo ao resize que cruza o breakpoint, que troca o slot.
+  const hidratadoPara = useRef<'mobile' | 'desktop' | null>(null);
+
+  // Hidrata o viewMode+displayMode a partir da preferência salva do aparelho
+  // atual. Também reage ao redimensionamento que cruza o breakpoint (celular ↔
+  // computador): ao trocar de slot lógico, relê a preferência daquele aparelho.
   useEffect(() => {
     if (isPrefsLoading) return;
+    if (hidratadoPara.current === scheduleDevice) return;
+    hidratadoPara.current = scheduleDevice;
     const saved = scheduleViewMode?.[scheduleDevice];
-    setViewMode(saved ?? (isMobile ? 'day' : 'month'));
+    if (!saved) {
+      setViewMode(isMobile ? 'day' : 'month');
+      setDisplayMode('calendar');
+      return;
+    }
+    const [period, display] = saved.split('::');
+    const validPeriods: ViewMode[] = ['month', 'week', 'day'];
+    setViewMode(validPeriods.includes(period as ViewMode) ? (period as ViewMode) : (isMobile ? 'day' : 'month'));
+    setDisplayMode(display === 'list' ? 'list' : 'calendar');
     // scheduleViewMode é o objeto memoizado da query; scheduleDevice cobre o resize.
   }, [isPrefsLoading, scheduleViewMode, scheduleDevice, isMobile]);
 
@@ -106,9 +130,17 @@ export default function Schedule() {
   const handleViewModeChange = useCallback(
     (mode: ViewMode) => {
       setViewMode(mode);
-      setScheduleViewMode(scheduleDevice, mode);
+      setScheduleViewMode(scheduleDevice, displayMode === 'list' ? `${mode}::list` : mode);
     },
-    [setScheduleViewMode, scheduleDevice],
+    [setScheduleViewMode, scheduleDevice, displayMode],
+  );
+
+  const handleDisplayModeChange = useCallback(
+    (mode: DisplayMode) => {
+      setDisplayMode(mode);
+      setScheduleViewMode(scheduleDevice, mode === 'list' ? `${viewMode}::list` : viewMode);
+    },
+    [setScheduleViewMode, scheduleDevice, viewMode],
   );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
@@ -128,6 +160,8 @@ export default function Schedule() {
   const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);
   const [customerFilter, setCustomerFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  // Tarefa x OS (E5) — valores 'os' | 'tarefa', vazio = todos
+  const [entryTypeFilter, setEntryTypeFilter] = useState<string[]>([]);
 
   // Busca modal paginada (desktop e mobile) — ResponsiveModal com 10/página
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -176,9 +210,10 @@ export default function Schedule() {
   // hasPermission — de propósito: hasPermission, sem registro de permissões,
   // libera tudo pelo role. Aqui queremos o oposto para tarefas: sem o acesso
   // explícito, a tarefa só aparece pra quem é responsável por ela.
-  const canViewAllSchedule =
-    roles.includes('admin') || roles.includes('super_admin') ||
-    (hasPermissionRecord && (permissions.includes('*') || permissions.includes('fn:view_all_schedule')));
+  // Régua compartilhada com a aba Tarefas do CRM (src/lib/taskVisibility.ts).
+  // As duas telas mostram a MESMA tarefa; divergir aqui faz o usuário ver
+  // contagens diferentes pra mesma coisa e perder a confiança nas duas.
+  const canViewAllSchedule = canSeeAllTasks({ roles, permissions, hasPermissionRecord });
 
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
@@ -187,10 +222,7 @@ export default function Schedule() {
       // aparece pra quem é responsável (assignee/técnico legado) ou pro time
       // dela. OS comuns (entry_type !== 'tarefa') não são afetadas.
       if (order.entry_type === 'tarefa' && !canViewAllSchedule) {
-        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
-        const isMine =
-          (!!user?.id && (assigneeIds?.includes(user.id) || order.technician_id === user.id)) ||
-          (!!order.team_id && myTeamIds.includes(order.team_id));
+        const isMine = isMyTask(order as any, user?.id, myTeamIds);
         if (!isMine) return false;
       }
 
@@ -210,6 +242,10 @@ export default function Schedule() {
       }
       if (customerFilter.length > 0 && (!order.customer_id || !customerFilter.includes(order.customer_id))) return false;
       if (statusFilter.length > 0 && !statusFilter.includes(order.status)) return false;
+      if (entryTypeFilter.length > 0) {
+        const et = (order as any).entry_type === 'tarefa' ? 'tarefa' : 'os';
+        if (!entryTypeFilter.includes(et)) return false;
+      }
       return true;
     }).map(order => {
       const { assignees, team } = getAssignees(order);
@@ -265,8 +301,34 @@ export default function Schedule() {
       }
     }
 
-    return [...expanded, ...financialEvents];
-  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees, canViewAllSchedule]);
+    // Eventos financeiros nascem sempre como entry_type: 'tarefa' (ver
+    // useFinancialScheduleEvents) — filtrar "só OS" precisa escondê-los também.
+    const financialFiltered =
+      entryTypeFilter.length > 0 && !entryTypeFilter.includes('tarefa') ? [] : financialEvents;
+
+    return [...expanded, ...financialFiltered];
+  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, entryTypeFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees, canViewAllSchedule]);
+
+  // Recorte de `filteredOrders` pro período REALMENTE visível no calendário
+  // (mês exibido, incluindo os dias de virada de semana; semana; ou dia).
+  // Usado só pela legenda (ScheduleLegend), pra mostrar apenas os tipos de
+  // serviço que aparecem na tela agora — não o catálogo inteiro cadastrado.
+  const visibleRangeOrders = useMemo(() => {
+    let startKey: string;
+    let endKey: string;
+    if (viewMode === 'month') {
+      const gridStart = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 });
+      const gridEnd = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 });
+      startKey = format(gridStart, 'yyyy-MM-dd');
+      endKey = format(gridEnd, 'yyyy-MM-dd');
+    } else if (viewMode === 'week') {
+      startKey = format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+      endKey = format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+    } else {
+      startKey = endKey = format(currentDate, 'yyyy-MM-dd');
+    }
+    return filteredOrders.filter((o) => !!o.scheduled_date && o.scheduled_date >= startKey && o.scheduled_date <= endKey);
+  }, [filteredOrders, viewMode, currentDate]);
 
   // Fonte de dados para o modal de busca: aplica APENAS as regras de visibilidade
   // de negócio/segurança (tarefa sem acesso total e filtro de técnico), sem aplicar
@@ -584,12 +646,14 @@ export default function Schedule() {
     const activeFilterCount =
       (technicianFilter.length > 0 ? 1 : 0) +
       (customerFilter.length > 0 ? 1 : 0) +
-      (statusFilter.length > 0 ? 1 : 0);
+      (statusFilter.length > 0 ? 1 : 0) +
+      (entryTypeFilter.length > 0 ? 1 : 0);
 
     const clearFilters = () => {
       setTechnicianFilter([]);
       setCustomerFilter([]);
       setStatusFilter([]);
+      setEntryTypeFilter([]);
     };
 
     // Header actions: [Lupa → expande busca inline] + [PausadasOS]
@@ -718,9 +782,28 @@ export default function Schedule() {
                 selected={statusFilter}
                 onChange={setStatusFilter}
               />
+              <FilterCheckboxGroup
+                label={t.filters.entryType}
+                options={[
+                  { value: 'os', label: t.entryTypeSelector.osTitle },
+                  { value: 'tarefa', label: t.entryTypeSelector.taskTitle },
+                ]}
+                selected={entryTypeFilter}
+                onChange={setEntryTypeFilter}
+              />
             </div>
           </FilterSheet>
         </div>
+
+        {/* Calendário x Lista (E4) — período (tabs acima) continua valendo nos dois. */}
+        <MobilePillTabs
+          tabs={[
+            { value: 'calendar', label: t.displayMode.calendar, icon: <CalendarIcon className="h-3.5 w-3.5" /> },
+            { value: 'list', label: t.displayMode.list, icon: <ListIcon className="h-3.5 w-3.5" /> },
+          ]}
+          activeTab={displayMode}
+          onTabChange={(v) => handleDisplayModeChange(v as DisplayMode)}
+        />
 
         {/* Moving indicator */}
         {touchDrag.movingOrderId && (
@@ -730,118 +813,88 @@ export default function Schedule() {
           </div>
         )}
 
-        {/* Calendar — Dia/Semana ganham altura limitada com scroll interno no mobile.
-            Swipe lateral só nas views Dia/Semana (Mês mantém só botões). */}
-        <div
-          className={cn(
-            'rounded-xl border bg-card overflow-hidden',
-            isMobile && (viewMode === 'day' || viewMode === 'week') && 'h-[60vh] max-h-[60vh] flex flex-col'
-          )}
-          {...(isMobile && (viewMode === 'day' || viewMode === 'week') ? swipeHandlers : {})}
-        >
-          {viewMode === 'month' && (
-            <MonthlyCalendar
-              currentDate={currentDate}
-              serviceOrders={filteredOrders}
-              onDateSelect={handleDateSelect}
-              onDateDoubleClick={handleDateDoubleClick}
-              onOrderSelect={handleOrderSelect}
-              onDrop={handleDrop}
-              holidayMap={holidayMap}
-            />
-          )}
-          {viewMode === 'week' && (
-            <WeeklyCalendar
-              currentDate={currentDate}
-              orders={filteredOrders}
-              onOrderSelect={handleOrderSelect}
-              onSlotClick={handleSlotClick}
-              onDrop={handleDrop}
-              movingOrderId={touchDrag.movingOrderId}
-              // v1.9.35: removido onTouchPickUp — tap rola pro detalhe igual Daily.
-              // Reagendamento via drag nativo (long-press no touch).
-              onTouchDrop={touchDrag.dropOn}
-              holidayMap={holidayMap}
-            />
-          )}
-          {viewMode === 'day' && (
-            // v1.9.35: DailyCalendar mobile não usa touch pickup — tap rola
-            // pro detalhe abaixo e drag nativo move a OS. onTouchDrop é mantido
-            // pra finalizar drops vindos de outras views, mas pickUp foi removido.
-            <DailyCalendar
-              currentDate={currentDate}
-              orders={filteredOrders}
-              onOrderSelect={handleOrderSelect}
-              onSlotClick={handleSlotClick}
-              onDrop={handleDrop}
-              movingOrderId={touchDrag.movingOrderId}
-              onTouchDrop={touchDrag.dropOn}
-              holidayMap={holidayMap}
-            />
-          )}
-        </div>
-
-        {/* Legend — Sheet compacto no mobile, inline no desktop */}
-        {serviceTypes.filter(st => st.is_active).length > 0 && (
-          isMobile ? (
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 h-8 self-start">
-                  <Palette className="h-3.5 w-3.5" />
-                  <span className="text-xs">{t.legend.legendButton}</span>
-                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
-                    {serviceTypes.filter(st => st.is_active).length}
-                  </Badge>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[70vh] rounded-t-2xl p-0 flex flex-col">
-                <SheetHeader className="px-4 pt-4 pb-2 border-b">
-                  <SheetTitle>{t.legend.legendTitle}</SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-4 py-4 grid grid-cols-2 gap-x-3 gap-y-2.5">
-                  {serviceTypes.filter(st => st.is_active).map((st) => (
-                    <div key={st.id} className="flex items-center gap-2 min-w-0">
-                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
-                      <span className="text-sm truncate">{st.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </SheetContent>
-            </Sheet>
-          ) : (
-            <div className="flex flex-wrap gap-3 items-center justify-center">
-              <span className="text-xs text-muted-foreground font-medium">{t.legend.label}</span>
-              {serviceTypes.filter(st => st.is_active).map((st) => (
-                <div key={st.id} className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
-                  <span className="text-xs text-muted-foreground">{st.name}</span>
-                </div>
-              ))}
-            </div>
-          )
-        )}
-
-        {/* Resumo do Dia (v1.9.35): só aparece nas visões Semana e Mês.
-            Na visão Dia o calendário acima já lista as OSs do dia, então mostrar
-            de novo aqui era duplicação visual (feedback CEO). Em Semana/Mês continua
-            servindo pra contextualizar a data selecionada. */}
-        {viewMode !== 'day' && (
+        {displayMode === 'list' ? (
+          <ScheduleListView orders={visibleRangeOrders} onOrderSelect={handleOrderSelect} />
+        ) : (
           <>
-            <div>
-              <h3 className="text-lg font-semibold">
-                {t.daySummary.title} {new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric', timeZone: timezone }).format(currentDate)}
-              </h3>
-              <p className="text-xs text-muted-foreground capitalize">
-                {new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: timezone }).format(currentDate)}
-              </p>
+            {/* Calendar — Dia/Semana ganham altura limitada com scroll interno no mobile.
+                Swipe lateral só nas views Dia/Semana (Mês mantém só botões). */}
+            <div
+              className={cn(
+                'rounded-xl border bg-card overflow-hidden',
+                isMobile && (viewMode === 'day' || viewMode === 'week') && 'h-[60vh] max-h-[60vh] flex flex-col'
+              )}
+              {...(isMobile && (viewMode === 'day' || viewMode === 'week') ? swipeHandlers : {})}
+            >
+              {viewMode === 'month' && (
+                <MonthlyCalendar
+                  currentDate={currentDate}
+                  serviceOrders={filteredOrders}
+                  onDateSelect={handleDateSelect}
+                  onDateDoubleClick={handleDateDoubleClick}
+                  onOrderSelect={handleOrderSelect}
+                  onDrop={handleDrop}
+                  holidayMap={holidayMap}
+                />
+              )}
+              {viewMode === 'week' && (
+                <WeeklyCalendar
+                  currentDate={currentDate}
+                  orders={filteredOrders}
+                  onOrderSelect={handleOrderSelect}
+                  onSlotClick={handleSlotClick}
+                  onDrop={handleDrop}
+                  movingOrderId={touchDrag.movingOrderId}
+                  // v1.9.35: removido onTouchPickUp — tap rola pro detalhe igual Daily.
+                  // Reagendamento via drag nativo (long-press no touch).
+                  onTouchDrop={touchDrag.dropOn}
+                  holidayMap={holidayMap}
+                />
+              )}
+              {viewMode === 'day' && (
+                // v1.9.35: DailyCalendar mobile não usa touch pickup — tap rola
+                // pro detalhe abaixo e drag nativo move a OS. onTouchDrop é mantido
+                // pra finalizar drops vindos de outras views, mas pickUp foi removido.
+                <DailyCalendar
+                  currentDate={currentDate}
+                  orders={filteredOrders}
+                  onOrderSelect={handleOrderSelect}
+                  onSlotClick={handleSlotClick}
+                  onDrop={handleDrop}
+                  movingOrderId={touchDrag.movingOrderId}
+                  onTouchDrop={touchDrag.dropOn}
+                  holidayMap={holidayMap}
+                />
+              )}
             </div>
 
-            <MobileAgendaView
-              currentDate={currentDate}
-              orders={filteredOrders}
-              onOrderSelect={handleOrderSelect}
-              holidayMap={holidayMap}
-            />
+            {/* Legenda: mesma tira de altura fixa do desktop (ver abaixo) — nunca
+                empurra o resto da tela, não importa quantos tipos a empresa tenha. */}
+            <ScheduleLegend ordersInView={visibleRangeOrders} ordersAllTime={filteredOrders} />
+
+            {/* Resumo do Dia (v1.9.35): só aparece nas visões Semana e Mês.
+                Na visão Dia o calendário acima já lista as OSs do dia, então mostrar
+                de novo aqui era duplicação visual (feedback CEO). Em Semana/Mês continua
+                servindo pra contextualizar a data selecionada. */}
+            {viewMode !== 'day' && (
+              <>
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {t.daySummary.title} {new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric', timeZone: timezone }).format(currentDate)}
+                  </h3>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: timezone }).format(currentDate)}
+                  </p>
+                </div>
+
+                <MobileAgendaView
+                  currentDate={currentDate}
+                  orders={filteredOrders}
+                  onOrderSelect={handleOrderSelect}
+                  holidayMap={holidayMap}
+                />
+              </>
+            )}
           </>
         )}
 
@@ -930,6 +983,8 @@ export default function Schedule() {
         currentDate={currentDate}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
+        displayMode={displayMode}
+        onDisplayModeChange={handleDisplayModeChange}
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
@@ -945,45 +1000,57 @@ export default function Schedule() {
         customers={customers}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        entryTypeFilter={entryTypeFilter}
+        onEntryTypeFilterChange={setEntryTypeFilter}
       />
 
       <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 mt-4">
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0">
-            {viewMode === 'month' && (
-              <MonthlyCalendar
-                currentDate={currentDate}
-                serviceOrders={filteredOrders}
-                onDateSelect={handleDateSelect}
-                onDateDoubleClick={handleDateDoubleClick}
-                onOrderSelect={handleOrderSelect}
-                onDrop={handleDrop}
-                holidayMap={holidayMap}
-              />
-            )}
-            {viewMode === 'week' && (
-              <WeeklyCalendar
-                currentDate={currentDate}
-                orders={filteredOrders}
-                onOrderSelect={handleOrderSelect}
-                onSlotClick={handleSlotClick}
-                onDrop={handleDrop}
-                holidayMap={holidayMap}
-              />
-            )}
-            {viewMode === 'day' && (
-              <DailyCalendar
-                currentDate={currentDate}
-                orders={filteredOrders}
-                onOrderSelect={handleOrderSelect}
-                onSlotClick={handleSlotClick}
-                onDrop={handleDrop}
-                holidayMap={holidayMap}
-              />
-            )}
-          </div>
-          {/* Legenda abaixo do calendário no desktop (Onda UI-4) */}
-          <ScheduleLegend />
+          {displayMode === 'list' ? (
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <ScheduleListView orders={visibleRangeOrders} onOrderSelect={handleOrderSelect} />
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 min-h-0">
+                {viewMode === 'month' && (
+                  <MonthlyCalendar
+                    currentDate={currentDate}
+                    serviceOrders={filteredOrders}
+                    onDateSelect={handleDateSelect}
+                    onDateDoubleClick={handleDateDoubleClick}
+                    onOrderSelect={handleOrderSelect}
+                    onDrop={handleDrop}
+                    holidayMap={holidayMap}
+                  />
+                )}
+                {viewMode === 'week' && (
+                  <WeeklyCalendar
+                    currentDate={currentDate}
+                    orders={filteredOrders}
+                    onOrderSelect={handleOrderSelect}
+                    onSlotClick={handleSlotClick}
+                    onDrop={handleDrop}
+                    holidayMap={holidayMap}
+                  />
+                )}
+                {viewMode === 'day' && (
+                  <DailyCalendar
+                    currentDate={currentDate}
+                    orders={filteredOrders}
+                    onOrderSelect={handleOrderSelect}
+                    onSlotClick={handleSlotClick}
+                    onDrop={handleDrop}
+                    holidayMap={holidayMap}
+                  />
+                )}
+              </div>
+              {/* Legenda abaixo do calendário no desktop (Onda UI-4). Onda UI-5:
+                  tira de altura fixa, com scroll horizontal próprio — não some com
+                  o calendário mais quando o catálogo de tipos é grande. */}
+              <ScheduleLegend ordersInView={visibleRangeOrders} ordersAllTime={filteredOrders} />
+            </>
+          )}
         </div>
 
         <div className="w-full lg:w-80 lg:shrink-0 min-h-[200px]">

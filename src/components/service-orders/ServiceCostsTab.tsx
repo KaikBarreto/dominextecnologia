@@ -20,6 +20,7 @@ import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
 import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
 import { LinkedResourcesSection } from '@/components/service-orders/LinkedResourcesSection';
@@ -159,6 +160,23 @@ export function ServiceCostsTab() {
     setExtraCosts((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  // `<input type="number">` deixa colar "4.550" como float válido do HTML
+  // (ponto = decimal do navegador) e normaliza pra "4.55" — 1000x menor que
+  // os R$ 4.550,00 pretendidos (bug real, 2026-09-17). DIGITAR não muda:
+  // continua number nativo. Só o COLAR é interceptado e reinterpretado como
+  // valor pronto via `readPastedCents` (mesma leitura do
+  // `src/lib/money-paste-mask.ts`).
+  const handleHourlyRatePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setHourlyRate(cents / 100);
+  };
+  const handleExtraAmountPaste = (idx: number) => (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    updateExtraLine(idx, { amount: cents / 100 });
+  };
+
   const handleSave = async () => {
     await saveCost.mutateAsync({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
     setSavedIndicator(true);
@@ -238,7 +256,7 @@ export function ServiceCostsTab() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                         <div className="space-y-1.5">
                           <Label className="text-xs">{tsc.laborHourlyCost}</Label>
-                          <Input type="number" min={0} step="0.01" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value) || 0)} />
+                          <Input type="number" min={0} step="0.01" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value) || 0)} onPaste={handleHourlyRatePaste} />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">{tsc.laborHours}</Label>
@@ -276,7 +294,7 @@ export function ServiceCostsTab() {
                               <div className="sm:col-span-2 space-y-1">
                                 <Label className="text-xs">{tsc.extrasValueLabel}</Label>
                                 <div className="flex gap-2">
-                                  <Input type="number" min={0} step="0.01" value={l.amount} onChange={(e) => updateExtraLine(idx, { amount: Number(e.target.value) || 0 })} />
+                                  <Input type="number" min={0} step="0.01" value={l.amount} onChange={(e) => updateExtraLine(idx, { amount: Number(e.target.value) || 0 })} onPaste={handleExtraAmountPaste(idx)} />
                                   <Button variant="destructive-ghost" size="icon" onClick={() => removeExtraLine(idx)} className="h-10 w-10">
                                     ×
                                   </Button>

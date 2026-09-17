@@ -8,7 +8,7 @@ import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { cn } from '@/lib/utils';
 import { sectionLabel } from '@/utils/sectionLabel';
-import { formatBrtDateTime } from '@/lib/date-br';
+import { safeTimeZone } from '@/lib/timezone';
 import type { ContractActivityExecutionRow } from '@/hooks/useContractPmocExecution';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -17,7 +17,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
  * View PURA do "Histórico PMOC" — prova de cumprimento da Planilha PMOC
  * tarefa-a-tarefa. Recebe as linhas já carregadas (`rows`) e agrupa
  * visita → equipamento → tarefa, com selo SATURADO de conformidade e carimbo de
- * quando/quem (America/Sao_Paulo). NÃO chama Supabase nem hook — o caller
+ * quando/quem (no fuso da EMPRESA, via useAppLocaleContext). NÃO chama Supabase nem hook — o caller
  * resolve os dados (aba autenticada via hook; portal público via payload da
  * edge). Mobile-first, PT-BR, tema do contexto que a renderiza.
  */
@@ -27,6 +27,35 @@ type ExecutionHistoryT = ReturnType<typeof useExecutionHistoryT>;
 function useExecutionHistoryT() {
   const { locale } = useAppLocaleContext();
   return MESSAGES[locale].app.pmoc.executionHistory;
+}
+
+/**
+ * "DD/MM/AAAA às HH:mm:ss" de um instante (ex.: `responded_at` do checklist) NO
+ * FUSO DA EMPRESA. Antes vinha chumbado em America/Sao_Paulo: técnico em Cuiabá
+ * respondendo às 23h40 do dia 5 aparecia pro gestor como "06 às 00:40",
+ * distorcendo a auditoria de prazo. Fuso inválido cai no padrão, nunca lança.
+ */
+function formatRespondedAt(
+  iso: string | null | undefined,
+  timeZone: string | null | undefined,
+): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: safeTimeZone(timeZone),
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    hourCycle: 'h23',
+  }).formatToParts(d);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('day')}/${get('month')}/${get('year')} às ${get('hour')}:${get('minute')}:${get('second')}`;
 }
 
 /** Data BR (DD/MM/AAAA) a partir de um date-only "yyyy-MM-dd", sem off-by-one. */
@@ -97,6 +126,9 @@ export function PmocExecutionHistoryView({
   showHeader = true,
 }: PmocExecutionHistoryViewProps) {
   const t = useExecutionHistoryT();
+  // Fuso da EMPRESA — na aba autenticada vem do company_settings; no portal
+  // público vem do payload do tenant (PublicAppLocaleProvider).
+  const { timezone } = useAppLocaleContext();
 
   // Frequência M/T/S/A/E → rótulo no locale atual.
   const FREQ_LABELS: Record<string, string> = {
@@ -265,7 +297,7 @@ export function PmocExecutionHistoryView({
                           const cb = conformityBadge(task.conformity_status, t);
                           const secLabel = sectionLabel(task.section);
                           const freqLabel = task.freq_code ? FREQ_LABELS[task.freq_code] ?? task.freq_code : null;
-                          const respondedAt = formatBrtDateTime(task.responded_at);
+                          const respondedAt = formatRespondedAt(task.responded_at, timezone);
                           return (
                             <div
                               key={task.activity_id}

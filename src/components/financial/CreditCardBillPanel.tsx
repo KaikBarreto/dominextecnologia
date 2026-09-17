@@ -18,9 +18,10 @@ import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isBefore, startOfDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -30,7 +31,7 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
 
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
@@ -41,14 +42,22 @@ function formatMonth(dateStr: string) {
 }
 
 // Mesma regra do `CreditCardInvoiceRow` (única fonte da verdade da trava de
-// UI): fechada (e liberada pra pagamento) quando hoje >= closing_date — o
+// UI): fechada (e liberada pra pagamento) quando hoje >= closing_date, o
 // próprio dia do fechamento já libera, pois nenhuma compra nova entra mais
-// nessa fatura a partir daí. A trava definitiva fica na RPC no servidor —
-// esta só evita que o usuário chegue a clicar.
-function canPayBill(bill: Pick<CreditCardBillWithTransactions, 'closing_date'>): boolean {
-  const today = startOfDay(new Date());
-  const closingDate = parseLocalDate(bill.closing_date);
-  return !isBefore(today, closingDate);
+// nessa fatura a partir daí. A trava definitiva fica na RPC no servidor, esta
+// só evita que o usuário chegue a clicar.
+//
+// "Hoje" é no fuso DA EMPRESA, por parâmetro. Antes vinha de
+// `startOfDay(new Date())`, que é o fuso do APARELHO: o sócio abrindo o painel
+// de um notebook em Lisboa liberava (ou travava) o pagamento um dia fora do
+// que a RPC valida, e a tela dava erro depois do clique. Comparação lexical
+// entre YYYY-MM-DD, igual à do `effectiveBillStatus`.
+function canPayBill(
+  bill: Pick<CreditCardBillWithTransactions, 'closing_date'>,
+  timeZone: string | null | undefined,
+): boolean {
+  if (!bill.closing_date) return false;
+  return todayInTz(timeZone) >= bill.closing_date.slice(0, 10);
 }
 
 interface CreditCardBillPanelProps {
@@ -71,7 +80,9 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
-  const { locale, currency } = useAppLocaleContext();
+  // `timezone`: fuso da empresa. Toda data de fatura (status exibido, trava de
+  // pagamento, data do pagamento) é lida nele, nunca no fuso do aparelho.
+  const { locale, currency, timezone } = useAppLocaleContext();
   const cc = MESSAGES[locale].app.finance.creditCard;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
@@ -90,9 +101,9 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const [detailBill, setDetailBill] = useState<CreditCardBillWithTransactions | null>(null);
   const [payingBill, setPayingBill] = useState<CreditCardBillWithTransactions | null>(null);
   const [payAccountId, setPayAccountId] = useState('');
-  // Data de pagamento da fatura no fuso do Brasil. `toISOString()` grava
+  // Data de pagamento da fatura no fuso DA EMPRESA. `toISOString()` grava
   // AMANHÃ a partir das 21h locais (UTC-3) e a baixa cai no mês errado.
-  const [payDate, setPayDate] = useState(todayInBrazil());
+  const [payDate, setPayDate] = useState(() => todayInTz(timezone));
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -114,7 +125,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const filteredBills = statusFilter.length === 0
     ? bills
     // Filtra pelo status EXIBIDO (fatura fechada lê "closed" mesmo gravada "open").
-    : bills.filter(b => statusFilter.includes(effectiveBillStatus(b)));
+    : bills.filter(b => statusFilter.includes(effectiveBillStatus(b, timezone)));
 
   const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
 
@@ -122,7 +133,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
     const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
     setPayingBill(bill);
     setPayAmount(remaining);
-    setPayDate(todayInBrazil());
+    setPayDate(todayInTz(timezone));
     setPayAccountId(cashBankAccounts[0]?.id ?? '');
     setPayNotes('');
   };
@@ -144,6 +155,12 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const handlePayAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setPayAmount(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handlePayAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setPayAmount(cents / 100);
   };
 
   // Header reaproveitado pra mobile (com seta voltar) e desktop (com botão Fechar).
@@ -195,7 +212,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
   // Filtro por status — só faz sentido mostrar quando há ≥2 status entre as faturas.
   // Usa o status EXIBIDO (open cujo fechamento já foi alcançado conta como "closed").
-  const distinctStatuses = new Set(bills.map(b => effectiveBillStatus(b)));
+  const distinctStatuses = new Set(bills.map(b => effectiveBillStatus(b, timezone)));
   const showFilter = distinctStatuses.size > 1;
 
   const filterContent = (
@@ -215,9 +232,9 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
   // Renderiza linha de fatura — usado em mobile (MobileListItem) e detalhe.
   const renderBillMobile = (bill: CreditCardBillWithTransactions) => {
-    const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(bill)] ?? BILL_STATUS_CONFIG.open;
+    const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(bill, timezone)] ?? BILL_STATUS_CONFIG.open;
     const StatusIcon = statusCfg.icon;
-    const canPay = canPayBill(bill);
+    const canPay = canPayBill(bill, timezone);
     const txnCount = bill.transactions?.length ?? 0;
     const itemActions: ItemAction[] = [];
     if (bill.status !== 'paid') {
@@ -342,11 +359,11 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
         // sua coluna — não esticam pra full-width. CEO aprovou densidade extra.
         <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
           {bills.map(bill => {
-            const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(bill)] ?? BILL_STATUS_CONFIG.open;
+            const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(bill, timezone)] ?? BILL_STATUS_CONFIG.open;
             const StatusIcon = statusCfg.icon;
             const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
             const isExpanded = expandedBill === bill.id;
-            const canPay = canPayBill(bill);
+            const canPay = canPayBill(bill, timezone);
             const txnCount = bill.transactions?.length ?? 0;
 
             return (
@@ -467,7 +484,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
         className="sm:max-w-[480px]"
       >
         {detailBill && (() => {
-          const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(detailBill)] ?? BILL_STATUS_CONFIG.open;
+          const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(detailBill, timezone)] ?? BILL_STATUS_CONFIG.open;
           const StatusIcon = statusCfg.icon;
           const billTotal = detailBill.total_amount ?? 0;
           const alreadyPaid = Number(detailBill.amount_paid ?? 0);
@@ -539,7 +556,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
               </div>
 
               {detailBill.status !== 'paid' && (
-                canPayBill(detailBill) ? (
+                canPayBill(detailBill, timezone) ? (
                   <Button
                     className="w-full gap-2"
                     onClick={() => {
@@ -629,6 +646,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                 placeholder="0,00"
                 value={payAmount > 0 ? payAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
                 onChange={handlePayAmountChange}
+                onPaste={handlePayAmountPaste}
                 inputMode="numeric"
               />
               {/* Aviso de estado do pagamento. Card BRANCO (bg-card/border-border)

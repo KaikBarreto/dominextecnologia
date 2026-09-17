@@ -33,6 +33,21 @@
 
   <p>No celular, a visão que abre é <span class="ui">Dia</span>. O motivo é prático: numa tela de celular, uma semana inteira com sete colunas e horários vira um amontoado ilegível. A visão de Dia mostra um compromisso por vez, com o horário, o cliente, o endereço e o técnico, no tamanho em que dá para ler com o celular na mão.</p>
 
+  <h3>Calendário ou Lista</h3>
+
+  <p>Ao lado dos botões de <span class="ui">Dia</span>, <span class="ui">Semana</span> e <span class="ui">Mês</span> fica um segundo alternador, com os botões <span class="ui">Calendário</span> e <span class="ui">Lista</span>. O período que você está navegando (o dia, a semana ou o mês escolhido acima) e os filtros aplicados são exatamente os mesmos nos dois: o alternador só muda a forma como os compromissos daquele período aparecem na tela, no computador e no celular.</p>
+
+  <p>Na visão <span class="ui">Lista</span> some a grade do calendário e os compromissos do período aparecem em sequência, um cartão embaixo do outro, com a data escrita em cada cartão (num período de semana ou mês, cada item pode ser de um dia diferente). Compromissos atrasados (data já passada, sem estar concluídos nem cancelados) sobem para o topo, debaixo do aviso <span class="ui">Atrasado</span>. Sem nenhum compromisso no período, a Lista mostra "Nada por aqui" e "Nenhuma tarefa ou OS neste período."</p>
+
+  <figure>
+    <img src="img/t6-agenda-lista.png" alt="Agenda da Dominex na visão Lista, com os compromissos do período em sequência de cartões, sem a grade do calendário, e a seção Atrasado destacada no topo">
+    <figcaption>Agenda em Lista: os mesmos compromissos do período, em sequência, com os atrasados no topo.</figcaption>
+  </figure>
+
+  <div class="dica">
+    A escolha entre Calendário e Lista fica salva, mas separadamente para o computador e para o celular: dá para deixar o computador em Lista (bom pra conferir tudo em sequência antes de despachar o dia) e o celular em Calendário, ou vice-versa, que cada aparelho lembra a sua própria preferência.
+  </div>
+
   <h3>Navegar</h3>
   <ul>
     <li>Setas de anterior e próximo movem um dia, uma semana ou um mês, conforme a visão em que você está.</li>
@@ -51,10 +66,19 @@
   </div>
 
   <h3>Filtros</h3>
-  <p>O botão <span class="ui">Filtros</span> traz <span class="ui">Técnico</span>, <span class="ui">Cliente</span> e <span class="ui">Status</span>, todos com seleção múltipla. Sem nada marcado, mostra tudo.</p>
+  <p>O botão <span class="ui">Filtros</span> traz <span class="ui">Técnico</span>, <span class="ui">Cliente</span>, <span class="ui">Status</span> e <span class="ui">Tipo</span>, todos com seleção múltipla. Sem nada marcado, mostra tudo. O grupo <span class="ui">Tipo</span> tem as opções <span class="ui">Ordem de Serviço</span> e <span class="ui">Tarefa</span>: marque só uma delas para esconder a outra da tela, por exemplo pra ver apenas os atendimentos a cliente e esconder reunião e compromisso interno. Vale nas duas visões (Calendário e Lista) e nos dois aparelhos.</p>
+
+  <figure>
+    <img src="img/t6-agenda-filtro-tipo.png" alt="Painel de Filtros da Agenda aberto, com os grupos Técnico, Cliente, Status e Tipo, este último com as opções Ordem de Serviço e Tarefa">
+    <figcaption>Painel de Filtros da Agenda: o grupo Tipo separa Ordem de Serviço de Tarefa.</figcaption>
+  </figure>
 
   <div class="regra">
-    <b>Quem é técnico só enxerga a própria agenda.</b> Um usuário com o papel de técnico vê apenas as OS em que ele é responsável ou em que a equipe dele foi escalada. Isso não é filtro, é regra de visibilidade e ele não consegue desligar. Para tarefas internas vale uma regra parecida com todos os papéis: sem a permissão <span class="ui">Ver Toda a Agenda</span>, a tarefa só aparece para quem é responsável por ela ou para a equipe dela.
+    <b>Quem é técnico só enxerga a própria agenda de Ordem de Serviço.</b> Um usuário com o papel de técnico vê apenas as OS em que ele é responsável ou em que a equipe dele foi escalada. Isso não é filtro, é regra de visibilidade e ele não consegue desligar.
+  </div>
+
+  <div class="regra">
+    <b>Tarefa segue uma régua própria, ligada à permissão <span class="ui">Gerenciar Tarefas</span> (a mesma explicada em T2).</b> Quem tem essa permissão vê as tarefas de todo mundo na Agenda. Quem não tem vê só as tarefas em que é o responsável, é o técnico, foi quem criou, ou que pertencem à sua equipe. Quem já tinha a permissão <span class="ui">Ver Toda a Agenda</span> continua vendo todas as tarefas do calendário, exatamente como antes: nisso, nada mudou. A permissão <span class="ui">Gerenciar Tarefas</span> só faz diferença de verdade para as tarefas que nascem dentro de uma oportunidade do CRM e que foram marcadas para <b>não</b> aparecer na Agenda (a chave "Mostrar na agenda" desligada, ver T10); para o resto do calendário, ter uma das duas permissões já é suficiente. Essa régua é só de Tarefa: <b>Ordem de Serviço não é afetada por nada disso.</b>
   </div>
 
   <h2>2. Criar pelo "+": Nova OS × Nova Tarefa — a diferença que mais confunde</h2>
@@ -338,6 +362,11 @@
         <td>Usuário com papel de técnico só enxerga o que é dele ou da equipe dele. Abra a OS e coloque o nome dele (ou a equipe) em <span class="ui">Responsáveis</span>.</td>
       </tr>
       <tr>
+        <td>"Sumiram tarefas da minha agenda"</td>
+        <td>O usuário não tem <span class="ui">Gerenciar Tarefas</span> nem <span class="ui">Ver Toda a Agenda</span>, e a tarefa não é dele</td>
+        <td>Sem uma dessas duas permissões, a pessoa só vê na Agenda as tarefas em que é responsável, é o técnico, foi quem criou ou que são da equipe dela. Se ela precisa ver as tarefas de todo mundo, ligue <span class="ui">Gerenciar Tarefas</span> (ou <span class="ui">Ver Toda a Agenda</span>, que já libera o calendário inteiro) na edição do usuário. Isso não mexe em Ordem de Serviço, só em Tarefa.</td>
+      </tr>
+      <tr>
         <td>"Não consigo criar equipe, a tela de Funcionários não abre"</td>
         <td>Empresa sem o módulo RH</td>
         <td>A aba Equipes fica dentro de Funcionários, que depende do módulo RH. Sem ele, o sistema redireciona e oferece a contratação. As equipes já criadas continuam funcionando nas OS, o que não dá é criar ou editar.</td>
@@ -380,7 +409,7 @@
       <tr>
         <td>"A agenda está vazia mas eu tenho OS"</td>
         <td>Filtro ativo ou período errado</td>
-        <td>Confira o botão <span class="ui">Filtros</span>: técnico, cliente ou status podem estar marcados. Confira também se você está no dia certo, especialmente na visão Dia.</td>
+        <td>Confira o botão <span class="ui">Filtros</span>: técnico, cliente, status ou tipo (Ordem de Serviço / Tarefa) podem estar marcados. Confira também se você está no dia certo, especialmente na visão Dia, e se a visão Lista não está com um período diferente do que parece.</td>
       </tr>
     </tbody>
   </table>
@@ -389,6 +418,15 @@
   <dl class="qa">
     <dt>Qual a diferença entre Tarefa e Ordem de Serviço?</dt>
     <dd>Ordem de Serviço é atendimento a cliente: tem checklist, check-in, fotos, assinatura, link para o cliente e relatório. Tarefa é compromisso interno: só aparece na Agenda, com título, responsável, data e descrição.</dd>
+
+    <dt>Qual a diferença entre a visão Calendário e a visão Lista?</dt>
+    <dd>Mostram o mesmo período e os mesmos filtros. Calendário desenha a grade do mês, da semana ou do dia. Lista mostra os mesmos compromissos em sequência, um cartão por linha, com os atrasados agrupados no topo. A escolha entre as duas fica salva separadamente no computador e no celular.</dd>
+
+    <dt>Dá para ver só Ordem de Serviço na Agenda, sem as Tarefas (ou o contrário)?</dt>
+    <dd>Dá. No botão Filtros, o grupo Tipo tem as opções Ordem de Serviço e Tarefa. Marque só a que você quer ver. Vale no Calendário e na Lista.</dd>
+
+    <dt>Por que sumiram tarefas da minha agenda?</dt>
+    <dd>Provavelmente você não tem a permissão Gerenciar Tarefas nem Ver Toda a Agenda. Sem uma das duas, a Agenda só mostra as tarefas em que você é responsável, é o técnico, foi quem criou, ou que são da sua equipe. Peça pra quem administra o sistema ligar uma das duas permissões se você precisa ver as tarefas de todo mundo. Essa regra é só de Tarefa: Ordem de Serviço nunca foi afetada por ela.</dd>
 
     <dt>Empresa sem o módulo RH consegue usar equipe?</dt>
     <dd>Consegue usar as que já existem, escalando na OS. Não consegue criar, editar nem excluir equipe, porque o cadastro vive dentro da tela Funcionários, que depende do módulo RH.</dd>

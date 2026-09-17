@@ -1,3 +1,15 @@
+// ⚠️ ESCOPO: ESTE MÓDULO É DA AUCTUS/PLATAFORMA, NÃO DO TENANT.
+//
+// Ele chumba America/Sao_Paulo DE PROPÓSITO. Os únicos usos legítimos são
+// registros da própria Auctus, onde Brasília é o fuso correto por definição:
+// aceite dos termos de uso, painel administrativo e controle de vendedores.
+//
+// Para QUALQUER data de dado do cliente (tenant), use `@/lib/timezone`
+// (safeTimeZone / dateInTz / todayInTz / timeInTz / zonedDateTimeToUtc) com o
+// fuso vindo de `useAppLocaleContext().timezone`. Auditoria de 2026-09-17:
+// usar este módulo em dado de tenant foi a causa de data errada em documento
+// de PMOC, recibo e paid_date. O irmão `today-brazil.ts` foi extinto por isso.
+
 /**
  * Helpers de data ancorada ao fuso de Brasília (America/Sao_Paulo).
  *

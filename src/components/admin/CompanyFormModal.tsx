@@ -31,6 +31,7 @@ import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, B
 import { useNfseTiers } from '@/hooks/useNfseTiers';
 import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface Props {
   open: boolean;
@@ -299,6 +300,29 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     return p?.price != null ? Number(p.price) : null;
   })();
   const referencePriceLabel = isPersonalizado ? 'Valor sugerido dos módulos' : 'Valor original do plano';
+
+  // Máscara de dinheiro (centavos), igual ContaFormDialog/ChargeDialog: digita
+  // só dígitos, os 2 últimos são os centavos. NUNCA `<input type="number">`
+  // aqui — bug real (2026-09-17): input nativo aceita colar "4.550" como float
+  // válido, e `parseFloat`/`Number` liam ponto como decimal e devolviam 4.55,
+  // mil vezes menor. `onPaste` cobre colar valor pronto via `readPastedCents`
+  // (`src/lib/money-paste-mask.ts`), que SUBSTITUI o campo inteiro. Usado nos
+  // DOIS campos "Valor (R$)" abaixo (personalizado e padrão) — ambos escrevem
+  // no mesmo `formData.subscription_value`, sempre string canônica
+  // ("4550.00"), nunca "4.550".
+  const handleSubscriptionValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    updateField('subscription_value', cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleSubscriptionValuePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    updateField('subscription_value', cents ? (cents / 100).toFixed(2) : '');
+  };
+  const subscriptionValueDisplay = formData.subscription_value
+    ? Number(formData.subscription_value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
 
   // ========== Mutation ==========
   const mutation = useMutation({
@@ -739,10 +763,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     <div className="space-y-1">
                       <Label className="text-xs">Valor (R$)</Label>
                       <Input
-                        type="number"
-                        step="0.01"
-                        value={formData.subscription_value}
-                        onChange={e => updateField('subscription_value', e.target.value)}
+                        id="company-subscription-value-custom"
+                        inputMode="numeric"
+                        value={subscriptionValueDisplay}
+                        onChange={handleSubscriptionValueChange}
+                        onPaste={handleSubscriptionValuePaste}
                       />
                       {referencePlanPrice != null && (
                         <p className="text-xs text-muted-foreground">
@@ -794,11 +819,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     <Label className="text-xs">Valor (R$)</Label>
                     {/* Personalizado: valor sugerido (soma dos módulos) fica editável */}
                     <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.subscription_value}
+                      id="company-subscription-value-default"
+                      inputMode="numeric"
+                      value={subscriptionValueDisplay}
                       disabled={!isPersonalizado}
-                      onChange={e => updateField('subscription_value', e.target.value)}
+                      onChange={handleSubscriptionValueChange}
+                      onPaste={handleSubscriptionValuePaste}
                     />
                   </div>
                   <div className="space-y-1">

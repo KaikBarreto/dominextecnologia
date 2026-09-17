@@ -46,6 +46,8 @@ import {
   dateToExtenso,
   extractContractCreatedParts,
   formatDateBr,
+  safeTimeZone,
+  ymdInTimeZone,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
 import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
@@ -352,7 +354,7 @@ Deno.serve(async (req) => {
         // Onda I: + report_header_* pra estilizar o cabeçalho identidade do
         //         tenant no topo do Termo RT (embedded no Dossiê).
         .select(
-          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size",
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size, timezone",
         )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
@@ -381,6 +383,13 @@ Deno.serve(async (req) => {
         .eq("company_id", contract.company_id)
         .maybeSingle(),
     ]);
+
+    // Fuso da EMPRESA: manda em TODA data do Dossiê (capa, Termo RT,
+    // Certificado e Planilha embutidos). Ausente/inválido cai em
+    // America/Sao_Paulo sem derrubar a geração.
+    const companyTimeZone = safeTimeZone(
+      (companySettings as { timezone?: string | null } | null)?.timezone ?? null,
+    );
 
     // Resolver tenant name (fallback companies.name)
     let tenantName = (companySettings?.name ?? "").trim();
@@ -596,7 +605,9 @@ Deno.serve(async (req) => {
         start_date_extenso: dateToExtenso(contract.start_date ?? null),
       },
       cidade,
-      generated_at_extenso: dateToExtenso(new Date()),
+      // Data de geração no fuso da EMPRESA (antes saía em UTC: gerar às 22h em
+      // São Paulo carimbava o dia seguinte na capa do Dossiê).
+      generated_at_extenso: dateToExtenso(new Date(), companyTimeZone),
       portal_url: portalUrl,
       portal_qr_png: portalQrPng,
     };
@@ -619,6 +630,7 @@ Deno.serve(async (req) => {
     //          usadas na assinatura "Cidade, DD de mês de AAAA." do termo RT.
     const createdParts = extractContractCreatedParts(
       (contract as { created_at?: string | null }).created_at ?? null,
+      companyTimeZone,
     );
 
     // Validade pras páginas embutidas (Termo RT + Certificado). O Dossiê é um
@@ -633,6 +645,7 @@ Deno.serve(async (req) => {
     const { formatted: validUntilFormatted } = computeValidUntil(
       generatedAt,
       termoValidityMonths,
+      companyTimeZone,
     );
     const validadeLabel = `${termoValidityMonths} ${termoValidityMonths === 1 ? "mês" : "meses"}`;
 
@@ -662,18 +675,24 @@ Deno.serve(async (req) => {
       "contrato.criado_dia": createdParts.dia,
       "contrato.criado_mes": createdParts.mes,
       "contrato.criado_ano": createdParts.ano,
-      "data.hoje_extenso": dateToExtenso(generatedAt),
+      "data.hoje_extenso": dateToExtenso(generatedAt, companyTimeZone),
       "documento.validade": validadeLabel,
       "documento.data_vencimento": validUntilFormatted,
-      "documento.data_emissao": formatDateBr(generatedAt),
+      "documento.data_emissao": formatDateBr(generatedAt, companyTimeZone),
     };
 
     // ---- 7.6 (Onda L) Cronograma anual — janela de 12 meses a partir do mês
     //          atual. COPIA a lógica de generate-pmoc-cronograma-pdf pra incluir
     //          as 12 páginas de calendário ao final do Dossiê.
-    const now = new Date();
-    const startMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const endMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 12, 1));
+    // Mês corrente NO FUSO DA EMPRESA. Com getUTCMonth(), gerar o documento às
+    // 22h do último dia do mês em São Paulo já caía no mês seguinte em UTC e a
+    // janela pulava o mês corrente inteiro. O ancoramento em UTC dos Date abaixo
+    // é só aritmética de mês (dia 1), não instante de relógio.
+    const nowYmd = ymdInTimeZone(new Date(), companyTimeZone);
+    const baseYear = nowYmd?.year ?? new Date().getUTCFullYear();
+    const baseMonthIdx = (nowYmd?.month ?? new Date().getUTCMonth() + 1) - 1;
+    const startMonth = new Date(Date.UTC(baseYear, baseMonthIdx, 1));
+    const endMonth = new Date(Date.UTC(baseYear, baseMonthIdx + 12, 1));
 
     const startIso = startMonth.toISOString().slice(0, 10);
     const endIso = endMonth.toISOString().slice(0, 10);
@@ -1099,6 +1118,8 @@ Deno.serve(async (req) => {
         month,
         serviceOrders: cronogramaOrders,
         logoImage: cronogramaLogo,
+        // Fuso da empresa manda no "hoje" e no marcador "atrasada" da página.
+        timeZone: companyTimeZone,
       });
     }
 
@@ -1129,7 +1150,7 @@ Deno.serve(async (req) => {
       },
       ambientes: planilhaAmbientes,
       activities: planilhaActivities,
-      generated_at_extenso: dateToExtenso(new Date()),
+      generated_at_extenso: dateToExtenso(new Date(), companyTimeZone),
       // Rodapé Dominex por página da Planilha embutida — oculto em white-label
       // (mesmo `useWhiteLabel` do resto do Dossiê).
       whiteLabel: useWhiteLabel,

@@ -9,7 +9,7 @@ import { formatMoney } from '@/lib/format';
 import type { CreditCardBill } from '@/types/database';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { format, addDays, setDate, addMonths, startOfMonth, getDaysInMonth } from 'date-fns';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
 
 export type { CreditCardBill };
 
@@ -115,21 +115,36 @@ export function computeBillDates(
  * Aqui derivamos o status visível: `open` + fechamento já passado → `closed`.
  * `partial`/`paid` são do agregado e não mudam (o que importa é se foi paga).
  *
- * Comparação em America/Sao_Paulo: a fatura está FECHADA quando hoje já alcançou
- * a data de fechamento (INCLUSIVE o próprio dia). Só segue `open`/em acumulação
- * o ciclo cujo fechamento ainda está no futuro.
+ * Comparação no FUSO DA EMPRESA (`timeZone`, vindo do `useAppLocaleContext`): a
+ * fatura está FECHADA quando hoje já alcançou a data de fechamento (INCLUSIVE o
+ * próprio dia). Só segue `open`/em acumulação o ciclo cujo fechamento ainda está
+ * no futuro.
+ *
+ * O fuso é PARÂMETRO porque esta função é pura (não pode chamar hook). Antes ela
+ * comparava contra "hoje em America/Sao_Paulo" chumbado: empresa em Cuiabá
+ * (UTC-4) via a fatura já "fechada" durante a última hora do dia anterior ao
+ * fechamento, das 23h às 23h59 locais. Fuso vazio ou inválido cai no padrão
+ * America/Sao_Paulo sem lançar, então a tela nunca cai.
+ *
+ * As bordas de mês (28/29/30/31) continuam vindo prontas de `computeBillDates`,
+ * que já faz o clamp do dia de fechamento pelo tamanho do mês. Aqui a comparação
+ * é lexical entre duas strings YYYY-MM-DD, então mês curto não muda nada: o que
+ * este ajuste move é só QUANDO o dia vira, não qual é o dia do fechamento.
  *
  * Por que o próprio dia já conta como fechado: `computeBillDate` (acima) manda a
  * compra feita NO dia do fechamento pra fatura SEGUINTE. Com `closing_day = 20`,
- * a fatura de referência 2026-09-01 acumula de 20/08 a 19/09 — no dia 20/09 ela
+ * a fatura de referência 2026-09-01 acumula de 20/08 a 19/09, no dia 20/09 ela
  * está completa, nenhuma compra nova cai nela. Mesma régua nas três superfícies:
  * a RPC do banco, este status exibido e a trava do botão de pagar.
  */
-export function effectiveBillStatus(bill: Pick<CreditCardBill, 'status' | 'closing_date'>): string {
+export function effectiveBillStatus(
+  bill: Pick<CreditCardBill, 'status' | 'closing_date'>,
+  timeZone: string | null | undefined,
+): string {
   if (bill.status !== 'open') return bill.status;
   if (!bill.closing_date) return bill.status;
-  // closing_date e "hoje" são ambos YYYY-MM-DD no fuso do Brasil → compara lexical.
-  return todayInBrazil() >= bill.closing_date ? 'closed' : 'open';
+  // closing_date e "hoje" são ambos YYYY-MM-DD no fuso da empresa → compara lexical.
+  return todayInTz(timeZone) >= bill.closing_date ? 'closed' : 'open';
 }
 
 /**

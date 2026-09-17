@@ -49,21 +49,11 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { cn } from '@/lib/utils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-/** Data de hoje no fuso BRT (YYYY-MM-DD). */
-function todayBrt(): string {
-  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
-}
-
-/** Verifica se task_date (YYYY-MM-DD) é anterior a hoje (BRT). */
-function isOverdue(taskDate: string): boolean {
-  return taskDate < todayBrt();
-}
-
-/** Verifica se task_date é hoje (BRT). */
-function isToday(taskDate: string): boolean {
-  return taskDate === todayBrt();
-}
+//
+// "Hoje" NÃO é calculado aqui: vem de `useTenantTasks().today`, que usa o fuso
+// da EMPRESA (`company_settings.timezone`). Este arquivo tinha uma cópia de
+// `todayBrt()` fixa em America/Sao_Paulo, igual à do hook e à do popup diário,
+// e por isso empresa em Cuiabá via tarefa do próprio dia marcada "Atrasada".
 
 /** Valor sentinela para "sem responsável" — Radix Select proíbe SelectItem com value="". */
 const ASSIGNEE_NONE = '__none__';
@@ -78,11 +68,11 @@ function TaskCreateForm({ onClose }: TaskFormProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.tasks;
   const { toast } = useToast();
-  const { createTask } = useTenantTasks();
+  const { createTask, today } = useTenantTasks();
   const { data: profiles = [] } = useProfiles();
 
   const [title, setTitle] = useState('');
-  const [taskDate, setTaskDate] = useState(todayBrt());
+  const [taskDate, setTaskDate] = useState(today);
   const [description, setDescription] = useState('');
   const [assignedTo, setAssignedTo] = useState<string>(ASSIGNEE_NONE);
   const [saving, setSaving] = useState(false);
@@ -193,13 +183,15 @@ type TasksT = typeof import('@/lib/i18n/messages/app/tasks').tasks['pt-br'];
 interface TaskItemProps {
   task: TenantTask;
   t: TasksT;
+  /** "Hoje" (YYYY-MM-DD) no fuso da empresa, vindo de `useTenantTasks`. */
+  today: string;
   onComplete: (task: TenantTask) => void;
   onDelete: (task: TenantTask) => void;
 }
 
-function TaskItem({ task, t, onComplete, onDelete }: TaskItemProps) {
-  const overdue = isOverdue(task.task_date);
-  const todayTask = isToday(task.task_date);
+function TaskItem({ task, t, today, onComplete, onDelete }: TaskItemProps) {
+  const overdue = task.task_date < today;
+  const todayTask = task.task_date === today;
 
   return (
     <div className="flex items-start gap-3 rounded-lg border bg-card p-3">
@@ -271,7 +263,7 @@ export function TasksDrawer({ open: externalOpen, onOpenChange: externalOnOpenCh
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.tasks;
   const { toast } = useToast();
-  const { pendingTasks, pendingCount, completeTask, deleteTask } = useTenantTasks();
+  const { pendingTasks, pendingCount, today, completeTask, deleteTask } = useTenantTasks();
 
   const [internalOpen, setInternalOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -378,6 +370,7 @@ export function TasksDrawer({ open: externalOpen, onOpenChange: externalOnOpenCh
               key={task.id}
               task={task}
               t={t}
+              today={today}
               onComplete={handleComplete}
               onDelete={handleDelete}
             />
