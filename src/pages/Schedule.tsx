@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, getYear } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, getYear, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette, Search as SearchIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
@@ -22,7 +22,6 @@ import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTaskSubmit } from '@/hooks/useTaskSubmit';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -38,8 +37,6 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FABButton } from '@/components/mobile/FABButton';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -56,7 +53,6 @@ export default function Schedule() {
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
   const { user, hasRole, hasPermission, isAdminOrGestor, roles, permissions, hasPermissionRecord } = useAuth();
   const { settings: companySettings } = useCompanySettings();
@@ -267,6 +263,27 @@ export default function Schedule() {
 
     return [...expanded, ...financialEvents];
   }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees, canViewAllSchedule]);
+
+  // Recorte de `filteredOrders` pro período REALMENTE visível no calendário
+  // (mês exibido, incluindo os dias de virada de semana; semana; ou dia).
+  // Usado só pela legenda (ScheduleLegend), pra mostrar apenas os tipos de
+  // serviço que aparecem na tela agora — não o catálogo inteiro cadastrado.
+  const visibleRangeOrders = useMemo(() => {
+    let startKey: string;
+    let endKey: string;
+    if (viewMode === 'month') {
+      const gridStart = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 });
+      const gridEnd = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 });
+      startKey = format(gridStart, 'yyyy-MM-dd');
+      endKey = format(gridEnd, 'yyyy-MM-dd');
+    } else if (viewMode === 'week') {
+      startKey = format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+      endKey = format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+    } else {
+      startKey = endKey = format(currentDate, 'yyyy-MM-dd');
+    }
+    return filteredOrders.filter((o) => !!o.scheduled_date && o.scheduled_date >= startKey && o.scheduled_date <= endKey);
+  }, [filteredOrders, viewMode, currentDate]);
 
   // Fonte de dados para o modal de busca: aplica APENAS as regras de visibilidade
   // de negócio/segurança (tarefa sem acesso total e filtro de técnico), sem aplicar
@@ -781,45 +798,9 @@ export default function Schedule() {
           )}
         </div>
 
-        {/* Legend — Sheet compacto no mobile, inline no desktop */}
-        {serviceTypes.filter(st => st.is_active).length > 0 && (
-          isMobile ? (
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 h-8 self-start">
-                  <Palette className="h-3.5 w-3.5" />
-                  <span className="text-xs">{t.legend.legendButton}</span>
-                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
-                    {serviceTypes.filter(st => st.is_active).length}
-                  </Badge>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[70vh] rounded-t-2xl p-0 flex flex-col">
-                <SheetHeader className="px-4 pt-4 pb-2 border-b">
-                  <SheetTitle>{t.legend.legendTitle}</SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-4 py-4 grid grid-cols-2 gap-x-3 gap-y-2.5">
-                  {serviceTypes.filter(st => st.is_active).map((st) => (
-                    <div key={st.id} className="flex items-center gap-2 min-w-0">
-                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
-                      <span className="text-sm truncate">{st.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </SheetContent>
-            </Sheet>
-          ) : (
-            <div className="flex flex-wrap gap-3 items-center justify-center">
-              <span className="text-xs text-muted-foreground font-medium">{t.legend.label}</span>
-              {serviceTypes.filter(st => st.is_active).map((st) => (
-                <div key={st.id} className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
-                  <span className="text-xs text-muted-foreground">{st.name}</span>
-                </div>
-              ))}
-            </div>
-          )
-        )}
+        {/* Legenda: mesma tira de altura fixa do desktop (ver abaixo) — nunca
+            empurra o resto da tela, não importa quantos tipos a empresa tenha. */}
+        <ScheduleLegend ordersInView={visibleRangeOrders} ordersAllTime={filteredOrders} />
 
         {/* Resumo do Dia (v1.9.35): só aparece nas visões Semana e Mês.
             Na visão Dia o calendário acima já lista as OSs do dia, então mostrar
@@ -982,8 +963,10 @@ export default function Schedule() {
               />
             )}
           </div>
-          {/* Legenda abaixo do calendário no desktop (Onda UI-4) */}
-          <ScheduleLegend />
+          {/* Legenda abaixo do calendário no desktop (Onda UI-4). Onda UI-5:
+              tira de altura fixa, com scroll horizontal próprio — não some com
+              o calendário mais quando o catálogo de tipos é grande. */}
+          <ScheduleLegend ordersInView={visibleRangeOrders} ordersAllTime={filteredOrders} />
         </div>
 
         <div className="w-full lg:w-80 lg:shrink-0 min-h-[200px]">

@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.24.25',
+    version: '1.24.33',
     date: '17 de setembro de 2026',
     type: 'patch',
     changes: [
@@ -65,6 +65,182 @@ export const changelog: ChangelogEntry[] = [
         title: 'Logo da empresa deixou de sair esticado na foto do ponto',
         description: 'A foto tirada na hora da batida recebe um carimbo com o logo da empresa. O logo estava sendo encaixado à força num quadrado, então quem tem logo mais largo que alto via a marca espremida. Agora o logo mantém a proporção original.',
         category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.32',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais de um vendedor responsável pela mesma oportunidade',
+        description: 'Antes cada oportunidade tinha um responsável só. Agora dá para colocar vários, com as fotos aparecendo no card do funil. O primeiro que você escolhe é o responsável principal, que é quem continua valendo para os filtros, os relatórios e a comissão. Quem já usa o CRM não perde nada: o responsável atual de cada oportunidade virou o principal automaticamente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cada vendedor vê as oportunidades dele',
+        description: 'O funil mostrava todas as oportunidades da empresa para qualquer pessoa com acesso à tela. Agora cada um vê apenas aquelas em que é responsável, co-responsável ou foi quem cadastrou, e os totais no topo passam a refletir isso. Quem tem a permissão "Gerenciar CRM" continua enxergando o funil inteiro, e empresas que ainda não usam o controle de permissões não mudam em nada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Lead que chega sozinho agora tem uma fila',
+        description: 'Quando um contato entra pelo formulário de captação do site, ele chega sem dono. Esse tipo de oportunidade aparece marcada como "Sem responsável" para todo mundo da empresa, com um botão para assumir. Quem assumir vira o responsável e a oportunidade sai da fila dos colegas. Também dá para filtrar só as que estão sem responsável, para ninguém deixar contato parado.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.24.31',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Valor colado com ponto de milhar não vira mais centavos',
+        description: 'Ao copiar um valor como R$ 4.550 e colar num campo do sistema, ele era gravado como R$ 4,55, mil vezes menor, sem nenhum aviso. Um contrato chegou a ficar com 72 parcelas de R$ 4,55. A causa era o ponto sendo lido como vírgula decimal. Agora o sistema entende a notação brasileira ao colar, em todos os campos de dinheiro: financeiro, contas a pagar e receber, contratos, orçamentos, CRM, custos de ordem de serviço, folha e painel administrativo. Digitar continua funcionando exatamente como antes.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cartão de crédito aparece só onde faz sentido',
+        description: 'Ao registrar um recebimento, os cartões de crédito apareciam como opção de conta, o que não faz sentido: dinheiro não entra num cartão. E ao lançar uma despesa no cartão, o cartão não aparecia na lista, então não dava para dizer em qual cartão a compra foi feita e ela nunca chegava na fatura. Os dois lados foram corrigidos, aqui e também ao aprovar um orçamento.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.30',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ganhou a venda, o sistema já oferece lançar a receita',
+        description: 'Ao mover uma oportunidade para uma coluna de ganho, seja arrastando no funil ou trocando o estágio pelo próprio negócio, aparece o convite para lançar a receita daquele cliente, já com o valor da oportunidade preenchido. É um convite, não uma obrigação: dá para fechar e a venda continua ganha. E o sistema não oferece duas vezes para a mesma oportunidade, então não tem risco de lançar a receita repetida.',
+        category: 'recurso',
+      },
+      {
+        title: 'Transformar a oportunidade em ordem de serviço ou tarefa',
+        description: 'Ao abrir uma oportunidade no funil, agora existem os botões de criar ordem de serviço e criar tarefa, já com o cliente, o título e o responsável preenchidos. Antes era preciso sair do CRM, ir para outra tela e digitar tudo de novo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Criar oportunidade pelo cliente abre o formulário completo',
+        description: 'A ação de criar oportunidade a partir do cliente abria uma versão reduzida, que jogava o negócio sempre na primeira coluna do funil. Agora ela abre o mesmo formulário do CRM, onde dá para escolher a coluna de destino, a origem, o vendedor responsável e a probabilidade. O cliente já vem preenchido e fica travado, para não trocar sem querer.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.29',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Corrigida a tarifa cobrada a mais em venda parcelada no cartão',
+        description: 'Quando uma cobrança era parcelada no cartão, o sistema comparava o valor líquido de UMA parcela com o valor total da venda e registrava a diferença como tarifa. Numa venda de R$ 3.133,00 em 10x, isso lançou R$ 2.829,10 de tarifa, quase 90% da venda, derrubando a receita líquida no relatório. Agora o sistema reconhece que o aviso é de uma parcela e não inventa mais tarifa nenhuma nesse caso. Quem já tinha um lançamento errado assim foi corrigido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cobrança recebida voltou a aparecer no Regime de Caixa',
+        description: 'Uma cobrança paga aparecia no relatório por Competência e sumia por completo do Regime de Caixa. O motivo: a baixa preenchia o campo de "valor já recebido" sem registrar o recebimento correspondente, e a conta do relatório resultava em zero, fazendo a linha desaparecer. Corrigido nos dois lados: a baixa parou de preencher esse campo indevidamente, e o relatório passou a exigir o registro de recebimento antes de descontar qualquer coisa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Não dá mais para registrar um pagamento com data futura',
+        description: 'Era possível marcar uma conta como paga escolhendo uma data que ainda não chegou, e esse dinheiro aparecia como realizado no Regime de Caixa num mês que ainda não aconteceu. Agora a data de pagamento vai no máximo até hoje, em todas as telas: no lançamento com "Já foi pago", no "Confirmar pagamento" e no "Confirmar recebimento". Lançamentos antigos com data futura continuam abrindo normalmente, com um aviso, e só bloqueiam se você tentar trocar por outra data futura. Além disso, o Regime de Caixa passou a ignorar qualquer data que ainda não chegou.',
+        category: 'correcao',
+      },
+      {
+        title: 'O formulário de lançamento ficou mais fácil de entender',
+        description: 'A tela de nova receita ou despesa era uma lista longa e sem divisões. Agora está organizada em quatro partes: O que é, Dinheiro, Mais detalhes e Parcelas, sendo as duas últimas recolhidas. E as duas datas ganharam nome e explicação: "Data do lançamento" é quando a venda, a compra ou o serviço aconteceu, e conta no relatório por Competência; "Data do pagamento" é quando o dinheiro realmente saiu ou entrou da conta, e conta no Regime de Caixa. Vale também na tela de contas a pagar e receber.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O DRE mostra a cor e o ícone de cada categoria, e abre por centro de custo',
+        description: 'Ao abrir um grupo do DRE, cada categoria aparecia com uma bolinha cinza, mesmo tendo cor e ícone cadastrados. Agora aparece do mesmo jeito que na tela de categorias. E as categorias passaram a abrir mais um nível: clicando em uma delas, você vê quanto foi para cada centro de custo, com os lançamentos sem centro de custo aparecendo separados para a soma sempre fechar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A legenda da agenda não empurra mais o calendário',
+        description: 'Em empresas com muitos tipos de serviço cadastrados, a legenda virava uma parede de etiquetas que roubava a altura do calendário. Agora ela ocupa sempre uma linha só e mostra apenas os tipos que aparecem no período que você está vendo, que é justamente o que a legenda serve para explicar. O catálogo completo continua a um clique de distância. Para quem tem poucos tipos, nada muda.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.28',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cada coluna do funil pode ter o seu ícone',
+        description: 'No gerenciador de estágios do CRM, além do nome e da cor, agora dá para escolher um ícone para a coluna. Ele aparece no topo da coluna no funil e na hora de mover a oportunidade de estágio, o que ajuda a bater o olho e saber onde está cada negócio. O ícone é opcional: quem não escolher nenhum continua vendo o funil exatamente como antes.',
+        category: 'recurso',
+      },
+      {
+        title: 'O funil ficou mais fácil de ler de bate-pronto',
+        description: 'A origem da oportunidade agora aparece com a cor e o ícone que você cadastrou para ela, tanto no card quanto ao abrir o negócio, em vez de uma etiqueta cinza igual para todas. A lista de vendedores mostra a foto de cada pessoa, e o campo de estágio mostra a cor da coluna em cada opção.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Colunas do funil desalinhadas',
+        description: 'Quando uma coluna do CRM estava sem valor somado, o cabeçalho dela ficava mais baixo que o das outras e o funil parecia torto. Agora o valor aparece sempre, mesmo quando é zero, e os nomes compridos de coluna não empurram mais o contador de oportunidades para fora.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.27',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A legenda da Agenda não toma mais a tela inteira',
+        description: 'Em empresas com muitos tipos de serviço cadastrados, a legenda da Agenda no computador virava um paredão de etiquetas coloridas e o calendário ficava espremido. Agora ela mostra as primeiras etiquetas e, ao lado, um botão com quantas sobraram, como "+12 mais". Um clique abre todas, outro recolhe. No celular a legenda continua no botão de sempre.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criar oportunidade no CRM direto da ficha do cliente',
+        description: 'A ação de gerar uma oportunidade no CRM só existia na lista de clientes. Quem já estava dentro da ficha de um cliente precisava voltar para a lista. Agora ela também aparece no menu "Ações" da ficha, já com o cliente preenchido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Rótulos colados nas opções de duração',
+        description: 'Na criação de tarefa com repetição e na assinatura do Financeiro, a palavra "Duração" aparecia grudada na opção ao lado, formando uma frase sem sentido. Os rótulos voltaram para o lugar certo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.26',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O cliente já pode enviar uma foto no link de autocadastro',
+        description: 'O formulário público de autocadastro não tinha campo de foto. Agora dá para habilitar "Foto" nas configurações do formulário, marcando se é opcional ou obrigatória. Pelo celular, o campo abre a câmera direto, mostra a prévia e permite trocar antes de enviar. Se a foto for opcional e o envio dela falhar, o cadastro vai assim mesmo: melhor receber o cliente sem foto do que perder o cadastro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acesso desnecessário removido no formulário de autocadastro',
+        description: 'Numa revisão de segurança encontramos uma permissão sobrando na função que recebe os autocadastros: usuários já logados no sistema podiam acioná-la diretamente, contornando o limite de envios por visitante. Ninguém no sistema usava esse caminho. A permissão foi removida e o formulário público segue funcionando normalmente.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.24.25',
+    date: '16 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura com prazo para acabar',
+        description: 'Uma assinatura recorrente só podia ser contínua: gerava cobranças até alguém cancelar na mão. Agora, ao criar, você escolhe entre "Contínua" e "Número de ciclos". Escolhendo o número, a assinatura se encerra sozinha depois daquela quantidade de cobranças. Vale para Pix, boleto, cartão e "cliente escolhe". No Pix Automático a opção não aparece, porque aquele formato não aceita prazo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Vincule uma receita ou despesa a um fornecedor',
+        description: 'Já dava para amarrar um lançamento a um cliente. Agora também dá para amarrar a um fornecedor, usando o mesmo cadastro que Compras e Estoque já usam. O campo aparece em Movimentações e em Contas a Pagar e Receber, com o "+" do lado para cadastrar um fornecedor novo sem sair da tela. O fornecedor aparece nas listagens e a busca encontra o lançamento pelo nome dele. Apagar um fornecedor nunca apaga o lançamento: ele continua lá, só sem o vínculo.',
+        category: 'recurso',
       },
     ],
   },

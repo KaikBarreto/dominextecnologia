@@ -45,6 +45,7 @@ import {
 } from '@/hooks/useSalespersonData';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { toast } from 'sonner';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 export interface RegistrarVendaPrefill {
   companyName?: string;
@@ -74,7 +75,12 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
 
   const [closerId, setCloserId] = useState<string>('');
   const [sdrId, setSdrId] = useState<string>(NONE);
-  const [amount, setAmount] = useState<number>(0);
+  // String canônica de dinheiro ("4550.00"), nunca "4.550" — ver
+  // `handleAmountChange`/`handleAmountPaste` abaixo. `amount` (number) é
+  // derivado pra manter o resto do componente (calculateCommission, payload)
+  // sem mudar de tipo.
+  const [amountInput, setAmountInput] = useState<string>('');
+  const amount = amountInput ? Number(amountInput) : 0;
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [companyName, setCompanyName] = useState<string>('');
 
@@ -83,7 +89,7 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
     if (!open) return;
     setCloserId(prefill?.closerId || linkedSalespersonId || '');
     setSdrId(prefill?.sdrId || NONE);
-    setAmount(prefill?.value ?? 0);
+    setAmountInput(prefill?.value != null ? String(prefill.value) : '');
     setBillingCycle(prefill?.billingCycle || 'monthly');
     setCompanyName(prefill?.companyName || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,6 +119,28 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
   const sdrName = salespeople.find((s) => s.id === sdrId)?.name || 'SDR';
 
   const canSubmit = !!closerId && amount > 0 && !createSale.isPending;
+
+  // Máscara de dinheiro (centavos), igual ContaFormDialog/ChargeDialog: digita
+  // só dígitos, os 2 últimos são os centavos. NUNCA `<input type="number">`
+  // aqui — bug real (2026-09-17): input nativo aceita colar "4.550" como float
+  // válido, Number("4.550") vira 4.55, mil vezes menor. Este é o campo MAIS
+  // grave da leva: alimenta direto `calculateCommission` — uma venda salva
+  // 1000x menor distorce a comissão de todo vendedor naquele mês. `onPaste`
+  // cobre colar valor pronto via `readPastedCents`
+  // (`src/lib/money-paste-mask.ts`), que SUBSTITUI o campo inteiro.
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setAmountInput(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setAmountInput(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const amountDisplay = amountInput
+    ? Number(amountInput).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
 
   const handleSubmit = async () => {
     if (!closerId) {
@@ -208,11 +236,10 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
             <Label htmlFor="rv-amount">Valor (R$)*</Label>
             <Input
               id="rv-amount"
-              type="number"
-              step="0.01"
-              min="0"
-              value={amount || ''}
-              onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+              inputMode="numeric"
+              value={amountDisplay}
+              onChange={handleAmountChange}
+              onPaste={handleAmountPaste}
               placeholder="0,00"
             />
           </div>

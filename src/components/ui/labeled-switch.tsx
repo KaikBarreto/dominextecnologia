@@ -22,6 +22,12 @@ interface LabeledSwitchProps<T extends string> {
   "aria-label"?: string;
 }
 
+/**
+ * ATENÇÃO ao empilhar com um `<Label>`: o Label do shadcn é `inline` e a raiz
+ * daqui é `inline-flex`. Num pai com `space-y-*` os dois caem na MESMA linha,
+ * grudados ("DuraçãoAté uma data"). Use `flex flex-col items-start gap-*` no
+ * pai (ou um wrapper block), nunca `space-y`.
+ */
 export function LabeledSwitch<T extends string>({
   value,
   onChange,

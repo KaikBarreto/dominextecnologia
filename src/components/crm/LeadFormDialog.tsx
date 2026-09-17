@@ -17,22 +17,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { OriginSelectField } from '@/components/customers/OriginSelectField';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { IconPreview } from '@/components/customers/originIcons';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface LeadFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead?: Lead | null;
+  /**
+   * Cliente pré-selecionado quando o formulário é aberto a partir da ficha do
+   * cliente (Customers.tsx / CustomerDetail.tsx). O campo Cliente nasce
+   * preenchido e TRAVADO (não só pré-selecionado) — quem entrou por dentro da
+   * ficha do cliente pra criar uma oportunidade não tem intenção de trocar o
+   * cliente ali; permitir a troca seria abrir espaço pra acidente. Ignorado
+   * quando `lead` (edição) está presente.
+   */
+  presetCustomerId?: string | null;
 }
 
-export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps) {
+export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: LeadFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const tOrigins = MESSAGES[locale].app.equipment.origins;
@@ -40,7 +54,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const { createLead, updateLead } = useLeads();
   const { customers } = useCustomers();
   const { users } = useUsers();
-  const { stages } = useCrmStages();
+  const { stages, getStageHex } = useCrmStages();
   const isEditing = !!lead;
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
@@ -51,9 +65,14 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     source: '',
     stage_id: null,
     expected_close_date: null,
-    assigned_to: null,
     notes: '',
   });
+
+  // Responsáveis (Onda C — multi-responsável): o primeiro da lista é o
+  // principal (convenção explicada no hint abaixo do campo). Persistido à
+  // parte de `formData` porque o hook trata a lista via `lead_assignees`,
+  // nunca via `leads.assigned_to` direto (ver useLeads.ts).
+  const [assigneeUserIds, setAssigneeUserIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (lead) {
@@ -65,35 +84,43 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         source: lead.source || '',
         stage_id: lead.stage_id,
         expected_close_date: lead.expected_close_date,
-        assigned_to: lead.assigned_to,
         notes: lead.notes || '',
       });
+      // lead.assignees já vem ordenado com o principal primeiro (useLeads).
+      setAssigneeUserIds(
+        lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : []
+      );
     } else {
       // Set default stage to first stage if available
       const defaultStageId = stages.length > 0 ? stages[0].id : null;
       setFormData({
         title: '',
-        customer_id: null,
+        customer_id: presetCustomerId || null,
         value: 0,
         probability: 50,
         source: '',
         stage_id: defaultStageId,
         expected_close_date: null,
-        assigned_to: null,
         notes: '',
       });
+      setAssigneeUserIds([]);
     }
     // Depende do 1º estágio, não do array inteiro: o efeito só precisa rodar de
     // novo quando o default muda, e assim não depende da identidade da lista.
-  }, [lead, open, stages[0]?.id]);
+  }, [lead, open, stages[0]?.id, presetCustomerId]);
+
+  // Cliente travado: só quando vem pré-selecionado E não é edição (editar uma
+  // oportunidade existente nunca trava o cliente, mesmo que `presetCustomerId`
+  // tenha sido passado por engano pelo chamador).
+  const isCustomerLocked = !isEditing && !!presetCustomerId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (isEditing && lead) {
-      await updateLead.mutateAsync({ id: lead.id, ...formData });
+      await updateLead.mutateAsync({ id: lead.id, ...formData, assignee_user_ids: assigneeUserIds });
     } else {
-      await createLead.mutateAsync(formData as LeadInsert);
+      await createLead.mutateAsync({ ...formData, assignee_user_ids: assigneeUserIds } as LeadInsert & { assignee_user_ids: string[] });
     }
 
     onOpenChange(false);
@@ -140,29 +167,57 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                 noneValue="none"
                 noneLabel={t.form.customerNone}
                 onCreated={(id) => handleChange('customer_id', id)}
+                disabled={isCustomerLocked}
               />
+              {isCustomerLocked && (
+                <p className="text-xs text-muted-foreground">{t.form.customerLockedHint}</p>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="assigned_to">{t.form.salesperson}</Label>
-              <Select
-                value={formData.assigned_to || 'none'}
-                onValueChange={(value) =>
-                  handleChange('assigned_to', value === 'none' ? null : value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t.form.salespersonPlaceholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t.form.salespersonNone}</SelectItem>
-                  {users.map((user) => (
-                    <SelectItem key={user.user_id} value={user.user_id}>
-                      {user.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-1.5">
+              <AssigneeMultiSelect
+                technicians={users.map((user) => ({
+                  user_id: user.user_id,
+                  full_name: user.full_name,
+                  avatar_url: user.avatar_url,
+                }))}
+                teams={[]}
+                selectedUserIds={assigneeUserIds}
+                selectedTeamIds={[]}
+                onChangeUsers={setAssigneeUserIds}
+                onChangeTeams={() => {}}
+                label={t.form.salesperson}
+                usersLabel={t.form.salespersonUsersLabel}
+              />
+              <p className="text-xs text-muted-foreground">{t.form.salespersonHint}</p>
+              {assigneeUserIds.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {assigneeUserIds.map((uid, idx) => {
+                    const user = users.find((u) => u.user_id === uid);
+                    if (!user) return null;
+                    return (
+                      <Badge
+                        key={uid}
+                        variant={idx === 0 ? 'default' : 'secondary'}
+                        className="gap-1.5 pl-1 pr-2 font-normal"
+                      >
+                        <Avatar className="h-4 w-4">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                            {user.full_name?.charAt(0)?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate max-w-[120px]">{user.full_name}</span>
+                        {idx === 0 && (
+                          <span className="text-[9px] font-bold uppercase tracking-wide">
+                            {t.form.salespersonPrimaryBadge}
+                          </span>
+                        )}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -204,7 +259,19 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                   <SelectItem value="none">{t.form.stageNone}</SelectItem>
                   {stages.map((stage) => (
                     <SelectItem key={stage.id} value={stage.id}>
-                      {stage.name}
+                      <div className="flex items-center gap-2">
+                        {stage.icon ? (
+                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                            <IconPreview name={stage.icon} className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: getStageHex(stage.color) }}
+                          />
+                        )}
+                        {stage.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -222,6 +289,17 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                 step="0.01"
                 value={formData.value || 0}
                 onChange={(e) => handleChange('value', parseFloat(e.target.value) || 0)}
+                onPaste={(e) => {
+                  // Colar valor pronto (ex. "4.550" de uma planilha) num
+                  // `<input type="number">` é lido pelo navegador como
+                  // decimal internacional e vira 4,55 — 1000x menor (bug
+                  // real do sócio). `readPastedCents` lê o texto como valor
+                  // de verdade em PT-BR/internacional antes do navegador
+                  // decidir sozinho.
+                  const cents = readPastedCents(e);
+                  if (cents == null) return;
+                  handleChange('value', cents / 100);
+                }}
               />
             </div>
 

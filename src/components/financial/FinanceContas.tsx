@@ -62,12 +62,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInBrazil, isPaidDateAllowed } from '@/lib/today-brazil';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 
-type PayrollTxn = FinancialTransaction & { customer?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
+type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
 
 interface FinanceContasProps {
   /** Transações já filtradas pelo período selecionado no parent. */
@@ -270,6 +270,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       fuzzyIncludes(t.description, search)
       || fuzzyIncludes(t.category, search)
       || fuzzyIncludes(t.customer?.name, search)
+      || fuzzyIncludes(t.supplier?.name, search)
       || fuzzyIncludes(t.employee?.name, search)
       || fuzzyIncludes(String(Number(t.amount)), search)
       || fuzzyIncludes(fmt(Number(t.amount)), search)
@@ -898,6 +899,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                         </span>
                         {t.employee && <span className="truncate">{t.employee.name}</span>}
                         {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
+                        {!t.employee && t.supplier && <span className="truncate">{t.supplier.name}</span>}
                       </div>
                       {partial && (
                         <span className="text-warning text-[11px]">
@@ -958,6 +960,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                           </p>
                           {t.employee && <p className="text-xs text-muted-foreground">{t.employee.name}</p>}
                           {!t.employee && t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
+                          {!t.employee && t.supplier && <p className="text-xs text-muted-foreground">{t.supplier.name}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
@@ -1117,7 +1120,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
             <Button
-              disabled={!payDespAccountId || !payDespDate}
+              disabled={!payDespAccountId || !payDespDate || !isPaidDateAllowed(payDespDate)}
               className="min-h-11 rounded-xl"
               onClick={async () => {
                 if (!payingDespesaTxn || !payDespAccountId) return;
@@ -1174,7 +1177,14 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
             </div>
             <div className="space-y-1.5">
               <Label>{fin.accounts.payExpenseModal.paymentDate}</Label>
-              <Input type="date" value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+              {/* "Já foi pago" é sempre passado: não existe pagamento no
+                  futuro. `max` barra o calendário nativo; o disabled do botão
+                  Confirmar (acima) é quem garante de verdade, porque dá pra
+                  digitar a data manualmente. */}
+              <Input type="date" max={todayInBrazil()} value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+              {payDespDate && !isPaidDateAllowed(payDespDate) && (
+                <p className="text-xs text-destructive">{fin.accounts.payExpenseModal.paymentDateFuture}</p>
+              )}
             </div>
           </div>
 

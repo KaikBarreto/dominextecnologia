@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   User, Phone, Mail, Calendar, DollarSign, TrendingUp,
-  MessageSquare, Clock, Plus, Send, Edit, Trash2, X
+  MessageSquare, Clock, Plus, Send, Edit, Trash2, X, Wrench, CalendarPlus,
+  UserX, UserPlus,
 } from 'lucide-react';
 import {
   useLeadInteractions,
@@ -19,6 +21,8 @@ import {
   useLeads
 } from '@/hooks/useLeads';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { IconPreview } from '@/components/customers/originIcons';
+import { OriginBadge } from '@/components/crm/OriginBadge';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
@@ -26,6 +30,11 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { useAuth } from '@/contexts/AuthContext';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
+import { useTaskSubmit } from '@/hooks/useTaskSubmit';
+import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -50,8 +59,18 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const interactionTypes = getInteractionTypes(locale);
   const { stages, getStageHex } = useCrmStages();
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
-  const { deleteLead } = useLeads();
-  
+  const { deleteLead, claimLead } = useLeads();
+
+  const { user, isAdminOrGestor, hasPermission } = useAuth();
+  const { createServiceOrder } = useServiceOrders();
+  const { submitTask } = useTaskSubmit();
+  // Tarefa ainda não tem permissão própria (fn:manage_tasks é Onda E do
+  // overhaul do CRM) — hoje o próprio Schedule.tsx usa o mesmo gate de OS
+  // pra oferecer a criação de tarefa (ver FAB "Nova Tarefa/OS"). Espelhamos
+  // o mesmo padrão aqui até a permissão dedicada existir.
+  const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
+  const canCreateTask = canCreateOS;
+
   const [newInteraction, setNewInteraction] = useState({
     type: '',
     description: '',
@@ -59,6 +78,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
     next_action_date: '',
   });
   const [isAddingInteraction, setIsAddingInteraction] = useState(false);
+  const [osFormOpen, setOsFormOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [creatingTask, setCreatingTask] = useState(false);
 
   if (!lead) return null;
 
@@ -95,6 +117,17 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
     }
   };
 
+  // Fila "sem responsável" (correção da Onda C): ao assumir, o usuário vira o
+  // responsável principal e o lead sai da fila compartilhada pra quem não tem
+  // fn:manage_crm. O toast de claimLead (useLeads) já avisa essa consequência
+  // — não usamos confirm() aqui de propósito: o texto do botão + a legenda
+  // logo abaixo dele já deixam claro o que vai acontecer, e um confirm extra
+  // só atrasaria a ação mais comum desse estado (pegar o lead da fila).
+  const handleClaim = async () => {
+    if (!user) return;
+    await claimLead.mutateAsync(lead.id);
+  };
+
   const getInteractionIcon = (type: string) => {
     const found = interactionTypes.find(it => it.value === type);
     return found?.icon || '📝';
@@ -106,6 +139,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
@@ -156,19 +190,102 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                 </SelectTrigger>
                 <SelectContent>
                   {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                    <SelectItem key={stage.id} value={stage.id}>
+                      <div className="flex items-center gap-2">
+                        {stage.icon ? (
+                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                            <IconPreview name={stage.icon} className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: getStageHex(stage.color) }}
+                          />
+                        )}
+                        {stage.name}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {currentStage && (
                 <Badge
-                  className="text-white border-0"
+                  className="text-white border-0 gap-1"
                   style={{ backgroundColor: getStageHex(currentStage.color) }}
                 >
+                  {currentStage.icon && <IconPreview name={currentStage.icon} className="h-3 w-3" />}
                   {currentStage.name}
                 </Badge>
               )}
             </div>
+
+            {/* Responsáveis (Onda C — multi-responsável). Principal em destaque
+                (badge saturado + selo "Principal"); co-responsáveis em badge neutro.
+                Sem nenhum responsável = lead da fila compartilhada (correção da
+                Onda C): badge saturado de atenção + botão pra assumir. */}
+            {lead.assignees?.length ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Label className="text-muted-foreground">{t.detail.assigneesLabel}</Label>
+                {lead.assignees.map((a) => (
+                  <Badge
+                    key={a.user_id}
+                    variant={a.is_primary ? 'default' : 'secondary'}
+                    className="gap-1.5 pl-1 pr-2 font-normal"
+                  >
+                    <Avatar className="h-4 w-4">
+                      <AvatarImage src={a.avatar_url || undefined} />
+                      <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                        {a.full_name?.charAt(0)?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{a.full_name || t.detail.assigneeUnknown}</span>
+                    {a.is_primary && (
+                      <span className="text-[9px] font-bold uppercase tracking-wide">
+                        {t.detail.assigneePrimaryBadge}
+                      </span>
+                    )}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant="warning" className="gap-1.5">
+                  <UserX className="h-3.5 w-3.5" />
+                  {t.detail.unassignedLabel}
+                </Badge>
+                <div className="flex flex-col gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-2 w-fit"
+                    onClick={handleClaim}
+                    disabled={claimLead.isPending}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    {t.detail.claimButton}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">{t.detail.claimHint}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Atalhos: gerar OS ou Tarefa já com os dados desta oportunidade */}
+            {(canCreateOS || canCreateTask) && (
+              <div className="flex flex-wrap gap-2">
+                {canCreateOS && (
+                  <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setOsFormOpen(true)}>
+                    <Wrench className="h-4 w-4" />
+                    {t.detail.createOs}
+                  </Button>
+                )}
+                {canCreateTask && (
+                  <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setTaskFormOpen(true)}>
+                    <CalendarPlus className="h-4 w-4" />
+                    {t.detail.createTask}
+                  </Button>
+                )}
+              </div>
+            )}
 
             {/* Info Cards */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -207,7 +324,11 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   <MessageSquare className="h-4 w-4" />
                   <span className="text-xs">{t.detail.origin}</span>
                 </div>
-                <p className="text-sm font-medium">{lead.source || t.detail.originNotSet}</p>
+                {lead.source ? (
+                  <OriginBadge source={lead.source} className="text-xs px-2 py-0.5" iconClassName="h-3 w-3" />
+                ) : (
+                  <p className="text-sm font-medium">{t.detail.originNotSet}</p>
+                )}
               </div>
             </div>
 
@@ -419,5 +540,43 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    {/* Criar OS a partir da oportunidade — cliente, título e vendedor
+        responsável pré-preenchidos. Só criação (nunca edição aqui). */}
+    <ServiceOrderFormDialog
+      open={osFormOpen}
+      onOpenChange={setOsFormOpen}
+      defaultCustomerId={lead.customer_id ?? undefined}
+      defaultDescription={lead.title}
+      defaultAssigneeUserIds={
+        lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : undefined
+      }
+      onSubmit={async (data) => {
+        await createServiceOrder.mutateAsync(data as any);
+      }}
+      isLoading={createServiceOrder.isPending}
+    />
+
+    {/* Criar Tarefa a partir da oportunidade — mesmos dados pré-preenchidos. */}
+    <TaskFormDialog
+      open={taskFormOpen}
+      onOpenChange={setTaskFormOpen}
+      defaultCustomerId={lead.customer_id ?? undefined}
+      defaultTitle={lead.title}
+      defaultAssigneeUserIds={
+        lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : undefined
+      }
+      task={null}
+      isLoading={creatingTask}
+      onSubmit={async (data: TaskFormData) => {
+        setCreatingTask(true);
+        try {
+          await submitTask(data, null);
+        } finally {
+          setCreatingTask(false);
+        }
+      }}
+    />
+    </>
   );
 }

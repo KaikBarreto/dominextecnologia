@@ -10,6 +10,7 @@ import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { calculateEmployeeCost } from '@/utils/employeeCostProvisions';
 
@@ -73,12 +74,26 @@ interface MonthlyCostCalculatorModalProps {
 }
 
 function CurrencyField({ label, value, onChange, hint }: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
+  // Máscara de centavos (dígito a dígito, os 2 últimos são os centavos):
+  // DIGITAR não muda. Mas colar um valor pronto (ex. "4.550" copiado de
+  // planilha) pela mesma regra de dígitos daria R$ 45,50 — 100x menor (o
+  // defeito mais leve da máscara, ver comentário completo em
+  // `src/lib/money-paste-mask.ts` e `ContaFormDialog.tsx`). `onPaste`
+  // intercepta e reinterpreta o texto colado como valor de verdade via
+  // `readPastedCents`, remontando a mesma string mascarada que `onChange`
+  // já produz (`currencyMask`), pra não duplicar a lógica de exibição.
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    onChange(currencyMask(String(cents)));
+  };
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       <Input
         value={value}
         onChange={e => onChange(currencyMask(e.target.value))}
+        onPaste={handlePaste}
         placeholder="R$ 0,00"
         className="h-8 text-sm"
       />

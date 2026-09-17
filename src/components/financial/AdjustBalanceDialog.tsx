@@ -12,6 +12,7 @@ import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 /** Data de hoje (YYYY-MM-DD) no fuso de São Paulo — o padrão de data do app. */
 function todayBR(): string {
@@ -70,6 +71,12 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setTargetBalance(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleCurrencyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setTargetBalance(cents / 100);
   };
 
   const targetDisplay = targetBalance
@@ -161,6 +168,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
               placeholder={t.targetBalancePlaceholder}
               value={targetDisplay}
               onChange={handleCurrencyChange}
+              onPaste={handleCurrencyPaste}
               inputMode="numeric"
               autoFocus
             />

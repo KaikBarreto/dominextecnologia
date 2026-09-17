@@ -27,7 +27,7 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Customer } from '@/types/database';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
-import { CreateOpportunityDialog } from '@/components/customers/CreateOpportunityDialog';
+import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -638,10 +638,10 @@ export default function Customers() {
 
       <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
 
-      <CreateOpportunityDialog
+      <LeadFormDialog
         open={!!opportunityCustomer}
         onOpenChange={(open) => { if (!open) setOpportunityCustomer(null); }}
-        customer={opportunityCustomer}
+        presetCustomerId={opportunityCustomer?.id ?? null}
       />
     </div>
   );

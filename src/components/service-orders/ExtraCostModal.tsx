@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Car, Wrench, HardHat, Fuel, ShieldCheck, MoreHorizontal, Plus } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 // Internal key → icon mapping (keys are stable, labels come from i18n)
 const EXTRA_COST_ICONS = [
@@ -41,6 +42,18 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
     setAmount(0);
     setCustomLabel('');
     onOpenChange(false);
+  };
+
+  // `<input type="number">` deixa colar "4.550" como float válido do HTML
+  // (ponto = decimal), e o navegador normaliza pra "4.55" — 1000x menor que
+  // os R$ 4.550,00 pretendidos (bug real, 2026-09-17). DIGITAR não muda:
+  // continua number nativo, dígitos e "." decimal como sempre. Só o COLAR é
+  // interceptado e reinterpretado como valor pronto via `readPastedCents`
+  // (mesma leitura PT-BR/internacional do `money-paste-mask.ts`).
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setAmount(cents / 100);
   };
 
   return (
@@ -94,6 +107,7 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
             type="number" min={0} step="0.01"
             value={amount || ''}
             onChange={e => setAmount(Number(e.target.value) || 0)}
+            onPaste={handleAmountPaste}
             placeholder={t.extraCostAmountPlaceholder}
           />
         </div>

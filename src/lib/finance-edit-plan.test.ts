@@ -312,6 +312,24 @@ describe('vínculos do lançamento recriado', () => {
   it('sem original não inventa vínculo', () => {
     expect(carryOverTransactionLinks({ amount: 10 }, null)).toEqual({ amount: 10 });
   });
+
+  it('reinjeta fornecedor igual reinjeta cliente — vínculo nunca some numa recriação (troca de forma de pagamento)', () => {
+    const original = { supplier_id: 'fornecedor-tintas' };
+    const formData = { description: 'Compra de tinta', amount: 300, supplier_id: '' };
+
+    const payload = carryOverTransactionLinks(formData, original);
+
+    expect(payload.supplier_id).toBe('fornecedor-tintas');
+  });
+
+  it('fornecedor escolhido no formulário tem prioridade sobre o da transação original', () => {
+    const payload = carryOverTransactionLinks(
+      { supplier_id: 'fornecedor-novo' },
+      { supplier_id: 'fornecedor-antigo' },
+    );
+
+    expect(payload.supplier_id).toBe('fornecedor-novo');
+  });
 });
 
 /**

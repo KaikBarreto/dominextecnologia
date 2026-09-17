@@ -30,6 +30,7 @@ import {
 import { useCustomers } from '@/hooks/useCustomers';
 import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 import { formatBRL } from '@/utils/currency';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import {
   Copy,
   RotateCcw,
@@ -216,6 +217,12 @@ export function FinanceCobrancas() {
   const handleEditAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setEditAmount(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleEditAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setEditAmount(cents / 100);
   };
   const editAmountDisplay = editAmount
     ? editAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -757,6 +764,7 @@ export function FinanceCobrancas() {
                 placeholder={t.editDialog.fields.valuePlaceholder}
                 value={editAmountDisplay}
                 onChange={handleEditAmountChange}
+                onPaste={handleEditAmountPaste}
               />
             </div>
           </div>

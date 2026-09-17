@@ -33,12 +33,15 @@ import {
 } from '@/hooks/useLeads';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { IconPreview } from '@/components/customers/originIcons';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
 import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
+import { LeadWonRevenueDialog } from '@/components/financial/LeadWonRevenueDialog';
+import { useLeadWonRevenuePrompt } from '@/hooks/useLeadWonRevenuePrompt';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
@@ -50,9 +53,11 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -60,6 +65,17 @@ const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   es: esLocale,
   fr: frLocale,
 };
+
+// Filtro de valor (min/max) não grava no banco, mas colar "4.550" num
+// `<input type="number">` ainda erra o filtro (o navegador lê ponto como
+// decimal internacional e vira 4,55 — o mesmo bug do sócio, só que aqui sem o
+// dano de mil vezes numa parcela). `readPastedCents` lê o texto como valor de
+// verdade antes do navegador decidir sozinho.
+function handleMoneyFilterPaste(e: React.ClipboardEvent<HTMLInputElement>, setValue: (v: string) => void) {
+  const cents = readPastedCents(e);
+  if (cents == null) return;
+  setValue(cents ? (cents / 100).toFixed(2) : '');
+}
 
 interface Filters {
   search: string;
@@ -71,6 +87,12 @@ interface Filters {
 
 type ViewMode = 'list' | 'kanban';
 
+// Sentinela do filtro "Vendedor" pra representar leads sem NENHUM responsável
+// (fila compartilhada da correção da Onda C). Reaproveita o mesmo
+// FilterCheckboxGroup/FilterSheet já usados pros outros filtros da tela, em
+// vez de criar um mecanismo de filtro novo.
+const UNASSIGNED_FILTER_VALUE = '__unassigned__';
+
 export default function CRM() {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
@@ -80,6 +102,22 @@ export default function CRM() {
   const { users } = useUsers();
   const { stages, isLoading: stagesLoading, seedDefaultStages, reorderStages } = useCrmStages();
 
+  // Onda C — "cada um vê as suas": filtro no client é UX, a RLS (policy
+  // "Leads visiveis apenas ao responsavel") já é quem garante a segurança de
+  // verdade. Mesma chave que a RLS espelha (public.user_has_permission),
+  // pra tela e banco nunca discordarem sobre quem enxerga o quê.
+  const { user, hasPermission } = useAuth();
+  const canManageCrm = hasPermission('fn:manage_crm');
+  const visibleLeads = useMemo(() => {
+    if (canManageCrm) return leads;
+    const uid = user?.id;
+    if (!uid) return [];
+    return leads.filter((lead) => {
+      if (lead.assigned_to === uid || lead.created_by === uid) return true;
+      return (lead.assignees || []).some((a) => a.user_id === uid);
+    });
+  }, [leads, canManageCrm, user?.id]);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   // Guardamos só o id do lead aberto no modal de detalhe e derivamos o objeto
@@ -88,9 +126,14 @@ export default function CRM() {
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailLead = useMemo(
-    () => leads.find((l) => l.id === detailLeadId) ?? null,
-    [leads, detailLeadId],
+    () => visibleLeads.find((l) => l.id === detailLeadId) ?? null,
+    [visibleLeads, detailLeadId],
   );
+
+  // Oferta de lançar a receita quando a oportunidade vai pro estágio de ganho.
+  // Só a oferta mora aqui; o gate de permissão, a trava de idempotência
+  // (leads.won_transaction_id) e o formulário ficam no hook/dialog.
+  const leadWonRevenue = useLeadWonRevenuePrompt();
 
   // Loss reason dialog
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
@@ -107,21 +150,36 @@ export default function CRM() {
   // Mobile-only: alternância List/Kanban. Default mobile = Lista; desktop = Kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
-  // Apply filters
+  // Apply filters — em cima de visibleLeads (já recortado por permissão),
+  // nunca de `leads` cru, senão total/valor no topo mentiriam pra quem não
+  // tem fn:manage_crm.
   const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
+    return visibleLeads.filter(lead => {
       if (filters.search) {
         const matchesTitle = fuzzyIncludes(lead.title, filters.search);
         const matchesCustomer = fuzzyIncludes(lead.customers?.name, filters.search);
         if (!matchesTitle && !matchesCustomer) return false;
       }
       if (filters.source.length > 0 && !filters.source.includes(lead.source ?? '')) return false;
-      if (filters.assignedTo.length > 0 && !filters.assignedTo.includes(lead.assigned_to ?? '')) return false;
+      if (filters.assignedTo.length > 0) {
+        // Considera TODOS os responsáveis (principal + co-responsáveis), não só assigned_to.
+        const leadAssigneeIds = lead.assignees?.length
+          ? lead.assignees.map((a) => a.user_id)
+          : lead.assigned_to
+            ? [lead.assigned_to]
+            : [];
+        const matchesUnassigned =
+          filters.assignedTo.includes(UNASSIGNED_FILTER_VALUE) && leadAssigneeIds.length === 0;
+        const matchesAssignee = filters.assignedTo.some(
+          (id) => id !== UNASSIGNED_FILTER_VALUE && leadAssigneeIds.includes(id),
+        );
+        if (!matchesUnassigned && !matchesAssignee) return false;
+      }
       if (filters.minValue && (lead.value || 0) < parseFloat(filters.minValue)) return false;
       if (filters.maxValue && (lead.value || 0) > parseFloat(filters.maxValue)) return false;
       return true;
     });
-  }, [leads, filters]);
+  }, [visibleLeads, filters]);
 
   // Group filtered leads by stage_id — assign leads without stage to the first stage
   const leadsByStage = useMemo(() => {
@@ -164,10 +222,16 @@ export default function CRM() {
     value: src,
     label: src,
   }));
-  const assignedToOptions: FilterCheckboxOption[] = users.map((user) => ({
-    value: user.user_id,
-    label: user.full_name,
-  }));
+  const assignedToOptions: FilterCheckboxOption[] = [
+    { value: UNASSIGNED_FILTER_VALUE, label: t.filterUnassigned },
+    ...users.map((user) => ({ value: user.user_id, label: user.full_name })),
+  ];
+
+  // Rótulo do responsável (ou "Sem responsável") pro badge de filtro ativo.
+  const getAssignedToLabel = (id: string) =>
+    id === UNASSIGNED_FILTER_VALUE
+      ? t.filterUnassigned
+      : users.find((u) => u.user_id === id)?.full_name || 'N/A';
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
@@ -246,6 +310,7 @@ export default function CRM() {
   // destino é de perda (is_lost), abre o LossReasonDialog em vez de gravar direto.
   // `fromModal` fecha o modal de detalhe antes de abrir o LossReasonDialog pra
   // evitar dois Dialogs Radix empilhados (histórico de bug de foco/pointer-events).
+  // Se o destino é de ganho (is_won), grava e DEPOIS oferece lançar a receita.
   const requestStageChange = async (
     lead: Lead,
     stageId: string,
@@ -259,13 +324,34 @@ export default function CRM() {
       return;
     }
     await updateLead.mutateAsync({ id: lead.id, stage_id: stageId });
+
+    // Ganhou → oferece lançar a receita. É OFERTA, NUNCA BLOQUEIO: o estágio
+    // acima já foi gravado, e `maybeOpen` é no-op silencioso quando o usuário
+    // não pode lançar no Financeiro ou quando esta oportunidade já gerou
+    // receita. Vale pros três gatilhos que passam por aqui (arrastar no kanban,
+    // select do modal de detalhe e menu de ações do mobile).
+    if (targetStage?.is_won) {
+      await leadWonRevenue.maybeOpen(
+        {
+          leadId: lead.id,
+          leadTitle: lead.title,
+          customerId: lead.customer_id,
+          customerName: lead.customers?.name ?? null,
+          suggestedAmount: lead.value,
+        },
+        // Fecha o detalhe ANTES de a oferta abrir — dois Dialogs Radix
+        // empilhados já deram bug de foco/pointer-events (mesmo cuidado do
+        // LossReasonDialog logo acima).
+        { beforeOpen: opts?.fromModal ? () => setDetailOpen(false) : undefined },
+      );
+    }
   };
 
   const handleDrop = async (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('leadId');
     if (!leadId) return;
-    const lead = leads.find(l => l.id === leadId);
+    const lead = visibleLeads.find(l => l.id === leadId);
     if (!lead) return;
     await requestStageChange(lead, stageId);
   };
@@ -274,7 +360,7 @@ export default function CRM() {
     if (!pendingLossDrop) return;
     // Acrescenta o motivo às observações existentes em vez de sobrescrever —
     // o usuário pode já ter escrito algo relevante no lead antes de marcá-lo como perdido.
-    const currentLead = leads.find(l => l.id === pendingLossDrop.leadId);
+    const currentLead = visibleLeads.find(l => l.id === pendingLossDrop.leadId);
     const reasonLine = `${t.lossNotePrefix} ${reason}${details ? `\n${details}` : ''}`;
     const existingNotes = currentLead?.notes?.trim();
     const notes = existingNotes ? `${existingNotes}\n\n${reasonLine}` : reasonLine;
@@ -372,6 +458,7 @@ export default function CRM() {
             placeholder={t.filterMinPlaceholder}
             value={filters.minValue}
             onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
+            onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, minValue: v })))}
           />
         </div>
         <div>
@@ -381,6 +468,7 @@ export default function CRM() {
             placeholder={t.filterMaxPlaceholder}
             value={filters.maxValue}
             onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
+            onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, maxValue: v })))}
           />
         </div>
       </div>
@@ -471,9 +559,9 @@ export default function CRM() {
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="h-5 w-5" />
           <h2 className="text-lg font-semibold">{t.pipeline}</h2>
-          {filteredLeads.length !== leads.length && (
+          {filteredLeads.length !== visibleLeads.length && (
             <Badge variant="outline" className="ml-2">
-              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(leads.length))}
+              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(visibleLeads.length))}
             </Badge>
           )}
         </div>
@@ -521,21 +609,21 @@ export default function CRM() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">
-              {leads.length === 0 ? t.emptyOpportunities : t.emptySearch}
+              {visibleLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
             </h3>
             <p className="text-muted-foreground max-w-sm">
-              {leads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
+              {visibleLeads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="overflow-x-auto pb-4 -mx-1 px-1">
-          <div className="flex gap-3 sm:gap-4" style={{ minWidth: `${stages.length * 280}px` }}>
+          <div className="flex items-stretch gap-3 sm:gap-4" style={{ minWidth: `${stages.length * 280}px` }}>
             {stages.map((stage) => (
               <div
                 key={stage.id}
                 className={cn(
-                  'w-[260px] sm:w-[300px] flex-shrink-0 transition-opacity',
+                  'w-[260px] sm:w-[300px] flex-shrink-0 flex flex-col transition-opacity',
                   draggedStageId === stage.id && 'opacity-50',
                 )}
                 onDragOver={(e) => handleColumnDragOver(e, stage.id)}
@@ -544,7 +632,7 @@ export default function CRM() {
               >
                 <div
                   className={cn(
-                    'rounded-t-lg p-3 text-white',
+                    'rounded-t-lg p-3 text-white shrink-0',
                     !isMobile && 'cursor-grab active:cursor-grabbing',
                     dragOverStageId === stage.id && 'ring-2 ring-inset ring-white',
                     getStageHeaderStyle(stage.color).className,
@@ -555,20 +643,21 @@ export default function CRM() {
                   onDragEnd={handleStageDragEnd}
                   title={!isMobile ? t.stages.dragHint : undefined}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       {!isMobile && <GripVertical className="h-3.5 w-3.5 text-white/60 shrink-0" />}
-                      <span className="font-semibold text-sm">{stage.name}</span>
-                      <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full">
-                        {leadsByStage[stage.id]?.length || 0}
-                      </span>
+                      {stage.icon && <IconPreview name={stage.icon} className="h-3.5 w-3.5 shrink-0" />}
+                      <span className="font-semibold text-sm truncate">{stage.name}</span>
                     </div>
+                    <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full shrink-0">
+                      {leadsByStage[stage.id]?.length || 0}
+                    </span>
                   </div>
-                  {(valueByStage[stage.id] || 0) > 0 && (
-                    <p className="text-sm font-semibold mt-1.5 text-white/90">
-                      {formatCurrency(valueByStage[stage.id] || 0)}
-                    </p>
-                  )}
+                  {/* Sempre renderizada (mesmo em R$ 0,00) — senão a coluna some essa
+                      linha e o cabeçalho fica mais baixo que os vizinhos. */}
+                  <p className="text-sm font-semibold mt-1.5 text-white/90">
+                    {formatCurrency(valueByStage[stage.id] || 0)}
+                  </p>
                 </div>
 
                 <ScrollArea className="h-[450px] rounded-b-lg border border-t-0 bg-card">
@@ -618,8 +707,8 @@ export default function CRM() {
       ) : mobileListLeads.length === 0 ? (
         <EmptyState
           icon={<TrendingUp className="h-12 w-12" />}
-          title={leads.length === 0 ? t.emptyOpportunities : t.emptySearch}
-          description={leads.length === 0 ? t.emptyMobileLeadDesc : t.emptyMobileDesc}
+          title={visibleLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
+          description={visibleLeads.length === 0 ? t.emptyMobileLeadDesc : t.emptyMobileDesc}
         />
       ) : (
         <div className="rounded-xl border bg-card overflow-hidden">
@@ -791,6 +880,10 @@ export default function CRM() {
           onConfirm={handleLossConfirm}
           leadTitle={pendingLossDrop?.leadTitle}
         />
+        {/* Oferta de receita da oportunidade ganha (CRM → Financeiro).
+            Fica fora do modal de detalhe de propósito: a oferta também
+            nasce do arrastar no kanban e do menu de ações do mobile. */}
+        <LeadWonRevenueDialog {...leadWonRevenue.dialogProps} />
       </div>
     );
   }
@@ -919,6 +1012,7 @@ export default function CRM() {
                 placeholder={t.filterMinPlaceholder}
                 value={filters.minValue}
                 onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
+                onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, minValue: v })))}
               />
             </div>
             <div className="space-y-2">
@@ -928,6 +1022,7 @@ export default function CRM() {
                 placeholder={t.filterMaxPlaceholder}
                 value={filters.maxValue}
                 onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
+                onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, maxValue: v })))}
               />
             </div>
           </div>
@@ -950,7 +1045,7 @@ export default function CRM() {
             <Badge className="gap-1 bg-foreground text-background">
               {t.badgeSalesperson}:{' '}
               {filters.assignedTo.length === 1
-                ? users.find((u) => u.user_id === filters.assignedTo[0])?.full_name || 'N/A'
+                ? getAssignedToLabel(filters.assignedTo[0])
                 : t.badgeSelectedM_other.replace('{count}', String(filters.assignedTo.length))}
               <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, assignedTo: [] }))} />
             </Badge>
@@ -996,6 +1091,10 @@ export default function CRM() {
         onConfirm={handleLossConfirm}
         leadTitle={pendingLossDrop?.leadTitle}
       />
+      {/* Oferta de receita da oportunidade ganha (CRM → Financeiro).
+          Fica fora do modal de detalhe de propósito: a oferta também
+          nasce do arrastar no kanban e do menu de ações do mobile. */}
+      <LeadWonRevenueDialog {...leadWonRevenue.dialogProps} />
     </div>
   );
 }

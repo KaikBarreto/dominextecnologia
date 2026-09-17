@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { NumericInput } from '@/components/ui/numeric-input';
 import {
   Select,
   SelectContent,
@@ -26,6 +28,7 @@ import {
   type PixAutoAuthorization,
 } from '@/hooks/useTenantSubscriptions';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface SubscriptionDialogProps {
   open: boolean;
@@ -119,6 +122,10 @@ export function SubscriptionDialog({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [finePercent, setFinePercent] = useState('');
   const [interestPercent, setInterestPercent] = useState('');
+  // Duração: assinatura nasce CONTÍNUA (sem fim) — o oposto do padrão da
+  // tarefa recorrente, que nasce COM fim. Ver TaskFormDialog.tsx.
+  const [durationLimited, setDurationLimited] = useState(false);
+  const [maxCycles, setMaxCycles] = useState('');
 
   // ── Estado cartão recorrente (feature dormente) ───────────────────────────
   // INVARIANTE: estes campos nunca vão pro console/log.
@@ -205,6 +212,8 @@ export function SubscriptionDialog({
     setShowAdvanced(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
+    setDurationLimited(false);
+    setMaxCycles('');
     // reset cartão (sem log)
     setCardHolderName('');
     setCardNumber('');
@@ -233,6 +242,12 @@ export function SubscriptionDialog({
     const raw = e.target.value.replace(/\D/g, '');
     setAmount(parseInt(raw || '0', 10) / 100);
   };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setAmount(cents / 100);
+  };
   const amountDisplay = amount
     ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
@@ -241,8 +256,17 @@ export function SubscriptionDialog({
   const isPixAuto = billingType === ('PIX_AUTO' as SubscriptionBillingType);
   const isCreditCard = billingType === 'CREDIT_CARD';
 
+  // Só se aplica a Pix/Boleto/Cliente escolhe/Cartão (POST /subscriptions da
+  // Asaas). Pix Automático usa outro recurso na Asaas (autorização, não
+  // assinatura) que não aceita limitar por número de ciclos — por isso o
+  // switch de Duração nem aparece nesse fluxo (ver JSX abaixo).
+  const parsedMaxCycles = parseInt(maxCycles, 10);
+  const maxCyclesValid = Number.isInteger(parsedMaxCycles) && parsedMaxCycles >= 1 && parsedMaxCycles <= 999;
+  const maxPayments = !isPixAuto && durationLimited && maxCyclesValid ? parsedMaxCycles : undefined;
+
   const handleSubmit = async () => {
     if (!customerId || !amount || amount <= 0) return;
+    if (!isPixAuto && durationLimited && !maxCyclesValid) return;
 
     const parsedFine = parseFloat(finePercent.replace(',', '.'));
     const parsedInterest = parseFloat(interestPercent.replace(',', '.'));
@@ -290,6 +314,7 @@ export function SubscriptionDialog({
           interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
           source_type: source?.type,
           source_id: source?.id,
+          max_payments: maxPayments,
           // INVARIANTE: dados do cartão nunca logados — enviados diretamente ao edge
           credit_card: {
             holderName: cardHolderName.trim(),
@@ -332,6 +357,7 @@ export function SubscriptionDialog({
       interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
       source_type: source?.type,
       source_id: source?.id,
+      max_payments: maxPayments,
     });
 
     // Toast disparado pelo hook — só fecha o dialog aqui.
@@ -527,6 +553,7 @@ export function SubscriptionDialog({
                       placeholder={t.fields.valuePlaceholder}
                       value={amountDisplay}
                       onChange={handleAmountChange}
+                      onPaste={handleAmountPaste}
                     />
                   </div>
                 </div>
@@ -565,6 +592,46 @@ export function SubscriptionDialog({
                     </Select>
                   </div>
                 </div>
+
+                {/* Duração: quantos ciclos a assinatura vai durar.
+                    Nasce CONTÍNUA (oposto da tarefa recorrente, que nasce com
+                    fim). Vira `maxPayments` no POST /subscriptions da Asaas, que
+                    encerra a assinatura sozinha ao esgotar e dispara o webhook.
+                    Não aparece no Pix Automático: aquele fluxo é autorização,
+                    não assinatura, e não aceita limite de ciclos. */}
+                {!isPixAuto && (
+                  // flex-col (não space-y): Label é inline e LabeledSwitch é
+                  // inline-flex — em space-y os dois colam na mesma linha.
+                  <div className="flex flex-col items-start gap-2">
+                    <Label className="text-sm font-medium">{t.fields.duration}</Label>
+                    <LabeledSwitch
+                      value={durationLimited ? 'limited' : 'continuous'}
+                      onChange={(v) => setDurationLimited(v === 'limited')}
+                      off={{ value: 'continuous', label: t.fields.durationContinuous }}
+                      on={{ value: 'limited', label: t.fields.durationLimited }}
+                      aria-label={t.fields.duration}
+                    />
+
+                    {durationLimited ? (
+                      <div className="space-y-2 pt-1">
+                        <Label htmlFor="sub-max-cycles" className="text-sm font-medium">
+                          {t.fields.maxCycles}
+                        </Label>
+                        <NumericInput
+                          id="sub-max-cycles"
+                          value={maxCycles}
+                          onValueChange={setMaxCycles}
+                          placeholder="12"
+                        />
+                        <p className="text-xs text-muted-foreground">{t.fields.maxCyclesHint}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground rounded-md bg-muted/50 p-2.5">
+                        {t.fields.durationContinuousHint}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* 1º vencimento */}
                 <div className="space-y-2">

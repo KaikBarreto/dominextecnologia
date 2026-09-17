@@ -34,6 +34,7 @@ import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
 import { cn } from '@/lib/utils';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import {
   User, UserPlus, Palette, Wrench, MapPin, Package,
   Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
@@ -153,6 +154,17 @@ function ServiceItemsList({
                       type="number" min={0} step="0.01"
                       value={item.unit_price || ''}
                       onChange={e => onUpdatePrice(globalIdx, parseFloat(e.target.value) || 0)}
+                      onPaste={e => {
+                        // Colar valor pronto (ex. "4.550" de uma planilha) num
+                        // `<input type="number">` seria lido pelo navegador como
+                        // decimal internacional e viraria 4,55 — 1000x menor (bug
+                        // real do sócio). `readPastedCents` lê o texto como valor
+                        // de verdade em PT-BR/internacional antes do navegador
+                        // decidir sozinho.
+                        const cents = readPastedCents(e);
+                        if (cents == null) return;
+                        onUpdatePrice(globalIdx, cents / 100);
+                      }}
                       className="h-7 w-24 text-xs text-right ml-auto"
                     />
                   </td>
@@ -1183,6 +1195,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                         <Label className="text-xs whitespace-nowrap">{tq.materialUnitPriceLabel}</Label>
                         <Input type="number" min={0} step="0.01" value={addMatManualPrice}
                           onChange={e => setAddMatManualPrice(Number(e.target.value) || 0)}
+                          onPaste={e => {
+                            const cents = readPastedCents(e);
+                            if (cents == null) return;
+                            setAddMatManualPrice(cents / 100);
+                          }}
                           className="h-9 w-24 text-sm" />
                       </>
                     )}
@@ -1236,6 +1253,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                                   type="number" min={0} step="0.01"
                                   value={item.unit_price || ''}
                                   onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
+                                  onPaste={e => {
+                                    const cents = readPastedCents(e);
+                                    if (cents == null) return;
+                                    updateItemPrice(globalIdx, cents / 100);
+                                  }}
                                   className="h-7 w-24 text-xs text-right ml-auto"
                                 />
                               </td>
@@ -1305,6 +1327,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   </Select>
                   <Input type="number" min={0} step="0.01" value={discountValue || ''}
                     onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                    onPaste={e => {
+                      // Só faz sentido interpretar como dinheiro quando o
+                      // desconto está em "R$". Em "%" o valor colado é
+                      // percentual (0-100), não teria a heurística de milhar.
+                      if (discountType !== 'valor') return;
+                      const cents = readPastedCents(e);
+                      if (cents == null) return;
+                      setDiscountValue(cents / 100);
+                    }}
                     placeholder="0" className="w-28 h-9" />
                   {discountAmount > 0 && (
                     <span className="text-xs text-destructive font-medium">− {fmt(discountAmount)}</span>

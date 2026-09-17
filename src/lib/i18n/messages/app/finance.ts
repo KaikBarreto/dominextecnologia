@@ -118,6 +118,9 @@ export const finance = {
       fallbackCategory: 'Sem categoria',
       fallbackCompany: 'Minha Empresa',
       fallbackPeriod: 'Período Atual',
+      categoryBreakdown: {
+        expandAriaLabel: 'Ver detalhamento de "{category}" por centro de custo',
+      },
     },
 
     // ── Contas a Pagar / Receber (FinanceContas) ────────────────────────────
@@ -222,6 +225,8 @@ export const finance = {
         noAccountWarning: 'Cadastre um caixa ou conta primeiro.',
         paymentMethod: 'Forma de pagamento',
         paymentDate: 'Data do pagamento *',
+        // "Já foi pago" é sempre passado: não existe pagamento no futuro.
+        paymentDateFuture: 'A data do pagamento não pode ser no futuro. No máximo, hoje.',
         notes: 'Observações',
         optional: 'Opcional',
         paymentMethods: {
@@ -503,6 +508,17 @@ export const finance = {
       titleNew: 'Nova Transação',
       titleEdit: 'Editar Transação',
       subtitle: 'Registre uma receita ou despesa',
+      // Títulos das seções do modal (remodelagem em seções, igual ao padrão
+      // já usado no EcoSistema): identidade do lançamento, dinheiro, campos
+      // opcionais e parcelamento. Ver ModalFormSection.
+      sections: {
+        whatIsIt: 'O que é',
+        money: 'Dinheiro',
+        moreDetails: 'Mais detalhes',
+        // Este modal só parcela (não tem recorrência, ao contrário da Conta a
+        // Pagar/Receber) — por isso o título não fala em "repetir".
+        installments: 'Parcelas',
+      },
       typeLabel: 'Tipo de Movimentação',
       typeRevenue: 'Receita',
       typeExpense: 'Despesa',
@@ -523,6 +539,10 @@ export const finance = {
       customerLabel: 'Cliente vinculado',
       customerPlaceholder: 'Selecione um cliente (opcional)',
       customerSearchPlaceholder: 'Buscar cliente...',
+      supplierLabel: 'Fornecedor vinculado',
+      supplierPlaceholder: 'Selecione um fornecedor (opcional)',
+      supplierSearchPlaceholder: 'Buscar fornecedor...',
+      newSupplierAriaLabel: 'Criar fornecedor',
       noAccountTitle: 'Nenhuma conta cadastrada',
       noAccountDescription: 'É necessário cadastrar pelo menos uma conta ou caixa para registrar transações.',
       noAccountLink: 'Cadastrar agora',
@@ -559,7 +579,13 @@ export const finance = {
       attachmentsInstallmentInfo: 'Os comprovantes serão vinculados a todas as {count} parcelas.',
       descriptionLabel: 'Descrição',
       descriptionPlaceholder: 'Descreva a movimentação',
-      dateLabel: 'Data',
+      // Antes só "Data", sem explicação — ninguém sabia se era a data do
+      // fato ou a data do dinheiro (esse campo convive com "Data do
+      // pagamento"/"Data do recebimento" logo abaixo). "Data do lançamento"
+      // já é o termo usado pra esta mesma coluna (transaction_date) na tela
+      // de detalhe da transação (transactionDetail.dateLabel).
+      dateLabel: 'Data do lançamento',
+      dateHint: 'Quando isso aconteceu: a venda, a compra ou o serviço prestado. É essa data que conta no relatório em Regime de Competência.',
       installmentsLabel: 'Parcelas',
       installmentSingle: 'À vista',
       installmentBadgePrefix: 'Parcela',
@@ -596,7 +622,11 @@ export const finance = {
       isPaidDescPaidFalse: 'Irá para contas a pagar',
       paidDateLabelRevenue: 'Data do recebimento',
       paidDateLabelExpense: 'Data do pagamento',
-      paidDateHint: 'Quando o dinheiro realmente se moveu, e não a data do lançamento.',
+      paidDateHint: 'Quando o dinheiro realmente saiu ou entrou da conta, e não a data do lançamento acima. É essa data que conta no relatório em Regime de Caixa.',
+      // Aviso NÃO bloqueante: dado gravado antes desta trava existir. Editar
+      // um lançamento antigo não pode travar num erro que o usuário não
+      // criou — mas ele precisa saber que aquela data está errada.
+      paidDateFutureLegacyWarning: 'Esta data está no futuro e já estava gravada assim antes desta trava existir. Mantivemos para não travar sua edição, mas o ideal é corrigir para hoje ou antes.',
       cancelLabel: 'Cancelar',
       saveLabel: 'Salvar',
       validations: {
@@ -606,6 +636,9 @@ export const finance = {
         dateYearRange: 'Use uma data entre {min} e {max}.',
         accountRequired: 'Selecione uma conta ou caixa',
         cardReceiptModeRequired: 'Escolha como o dinheiro entra na sua conta',
+        // "Já foi pago"/"Já foi recebido" é sempre passado, por definição:
+        // não existe dinheiro que já se moveu amanhã.
+        paidDateFuture: 'Esta data não pode ser no futuro. Já foi pago (ou recebido) é, no máximo, hoje.',
       },
       installmentScopeHint: 'A alteração vale só para esta parcela. As outras do parcelamento não mudam.',
       replaceDialog: {
@@ -837,6 +870,15 @@ export const finance = {
       subtitleNew: 'Crie uma conta a {tipo}, com opção de recorrência.',
       subtitleEditPayable: 'Editando conta a pagar',
       subtitleEditReceivable: 'Editando conta a receber',
+      // Títulos das seções do modal (mesmo padrão do EcoSistema/ModalFormSection).
+      // Diferente do transactionForm, esta conta TEM recorrência de verdade
+      // (unica/semanal/mensal/anual), então a última seção fala em "repetir".
+      sections: {
+        whatIsIt: 'O que é',
+        money: 'Dinheiro',
+        moreDetails: 'Mais detalhes',
+        installmentsOrRecurrence: 'Parcelar ou repetir',
+      },
       typeLabel: 'Tipo',
       types: {
         saida: 'A Pagar',
@@ -1152,6 +1194,8 @@ export const finance = {
       validations: {
         amountZero: 'Informe um valor maior que zero.',
         amountExceedsRemaining: 'Valor não pode ser maior que o restante ({amount}).',
+        // "Já foi recebido" é sempre passado: não existe recebimento no futuro.
+        dateFuture: 'A data do recebimento não pode ser no futuro. No máximo, hoje.',
       },
     },
     // ── Receita ao finalizar a OS (OsFinishRevenueDialog) ──────────────────
@@ -1170,6 +1214,26 @@ export const finance = {
       descriptionWithCustomer: 'OS #{number} · {customer}',
       descriptionOsOnly: 'OS #{number}',
       descriptionFallback: 'Receita de Ordem de Serviço',
+    },
+    // ── Receita da oportunidade ganha (LeadWonRevenueDialog, no CRM) ───────
+    // Mesma régua do osRevenue acima: a descrição gerada aqui vira TEXTO
+    // GRAVADO no lançamento, então nasce no idioma de quem lançou.
+    leadRevenue: {
+      title: 'Oportunidade ganha',
+      question: 'Quer lançar a receita desta venda?',
+      hint: 'Abrimos a conta a receber já com o cliente e o valor da oportunidade. Você confere e ajusta antes de salvar.',
+      opportunityLabel: 'Oportunidade',
+      customerLabel: 'Cliente',
+      valueLabel: 'Valor estimado',
+      valueHint: 'Valor apenas sugerido, você pode alterar no próximo passo.',
+      valueHintEmpty: 'Esta oportunidade não tem valor estimado, preencha o valor no próximo passo.',
+      noLabel: 'Agora não',
+      yesLabel: 'Sim, lançar receita',
+      descriptionWithCustomer: '{title} · {customer}',
+      descriptionTitleOnly: '{title}',
+      descriptionFallback: 'Receita de oportunidade ganha',
+      linkErrorTitle: 'Receita lançada, mas sem vínculo com a oportunidade',
+      linkErrorDesc: 'O lançamento foi criado no Financeiro. Como o vínculo não foi gravado, o sistema pode oferecer o lançamento de novo, confira antes de aceitar para não duplicar a receita.',
     },
   },
 
@@ -1282,6 +1346,9 @@ export const finance = {
       fallbackCategory: 'No category',
       fallbackCompany: 'My Company',
       fallbackPeriod: 'Current Period',
+      categoryBreakdown: {
+        expandAriaLabel: 'View "{category}" breakdown by cost center',
+      },
     },
     accounts: {
       header: {
@@ -1383,6 +1450,7 @@ export const finance = {
         noAccountWarning: 'Please add a cash register or bank account first.',
         paymentMethod: 'Payment method',
         paymentDate: 'Payment date *',
+        paymentDateFuture: 'The payment date cannot be in the future. At most, today.',
         notes: 'Notes',
         optional: 'Optional',
         paymentMethods: {
@@ -1647,6 +1715,12 @@ export const finance = {
       titleNew: 'New Transaction',
       titleEdit: 'Edit Transaction',
       subtitle: 'Record a revenue or expense',
+      sections: {
+        whatIsIt: 'What is it',
+        money: 'Money',
+        moreDetails: 'More details',
+        installments: 'Installments',
+      },
       typeLabel: 'Transaction Type',
       typeRevenue: 'Revenue',
       typeExpense: 'Expense',
@@ -1667,6 +1741,10 @@ export const finance = {
       customerLabel: 'Linked customer',
       customerPlaceholder: 'Select a customer (optional)',
       customerSearchPlaceholder: 'Search customer...',
+      supplierLabel: 'Linked supplier',
+      supplierPlaceholder: 'Select a supplier (optional)',
+      supplierSearchPlaceholder: 'Search supplier...',
+      newSupplierAriaLabel: 'Create supplier',
       noAccountTitle: 'No account registered',
       noAccountDescription: 'You need at least one account or cash register to record transactions.',
       noAccountLink: 'Register now',
@@ -1703,7 +1781,8 @@ export const finance = {
       attachmentsInstallmentInfo: 'Attachments will be linked to all {count} installments.',
       descriptionLabel: 'Description',
       descriptionPlaceholder: 'Describe the transaction',
-      dateLabel: 'Date',
+      dateLabel: 'Entry date',
+      dateHint: 'When it happened: the sale, the purchase or the service rendered. This is the date used in the report under the Accrual regime.',
       installmentsLabel: 'Installments',
       installmentSingle: 'One-time',
       installmentBadgePrefix: 'Installment',
@@ -1740,7 +1819,8 @@ export const finance = {
       isPaidDescPaidFalse: 'Will go to accounts payable',
       paidDateLabelRevenue: 'Date received',
       paidDateLabelExpense: 'Date paid',
-      paidDateHint: 'When the money actually moved, not the entry date.',
+      paidDateHint: 'When the money actually left or landed in the account, not the entry date above. This is the date used in the report under the Cash regime.',
+      paidDateFutureLegacyWarning: 'This date is in the future and was already saved this way before this check existed. We kept it so your edit is not blocked, but it should ideally be corrected to today or earlier.',
       cancelLabel: 'Cancel',
       saveLabel: 'Save',
       validations: {
@@ -1750,6 +1830,7 @@ export const finance = {
         dateYearRange: 'Use a date between {min} and {max}.',
         accountRequired: 'Select an account or cash register',
         cardReceiptModeRequired: 'Choose how the money reaches your account',
+        paidDateFuture: 'This date cannot be in the future. Already paid (or received) means, at most, today.',
       },
       installmentScopeHint: 'This change applies only to this installment. The others are not affected.',
       replaceDialog: {
@@ -1971,6 +2052,12 @@ export const finance = {
       subtitleNew: 'Create a {tipo} bill with optional recurrence.',
       subtitleEditPayable: 'Editing payable bill',
       subtitleEditReceivable: 'Editing receivable bill',
+      sections: {
+        whatIsIt: 'What is it',
+        money: 'Money',
+        moreDetails: 'More details',
+        installmentsOrRecurrence: 'Split or repeat',
+      },
       typeLabel: 'Type',
       types: {
         saida: 'Payable',
@@ -2271,6 +2358,7 @@ export const finance = {
       validations: {
         amountZero: 'Enter an amount greater than zero.',
         amountExceedsRemaining: 'Amount cannot exceed the remaining balance ({amount}).',
+        dateFuture: 'The received date cannot be in the future. At most, today.',
       },
     },
     osRevenue: {
@@ -2286,6 +2374,23 @@ export const finance = {
       descriptionWithCustomer: 'SO #{number} · {customer}',
       descriptionOsOnly: 'SO #{number}',
       descriptionFallback: 'Service order revenue',
+    },
+    leadRevenue: {
+      title: 'Opportunity won',
+      question: 'Do you want to record the revenue from this sale?',
+      hint: 'We open the receivable with the customer and the opportunity amount already filled in. Review and adjust before saving.',
+      opportunityLabel: 'Opportunity',
+      customerLabel: 'Customer',
+      valueLabel: 'Estimated amount',
+      valueHint: 'This amount is only a suggestion, you can change it in the next step.',
+      valueHintEmpty: 'This opportunity has no estimated amount, enter the amount in the next step.',
+      noLabel: 'Not now',
+      yesLabel: 'Yes, record revenue',
+      descriptionWithCustomer: '{title} · {customer}',
+      descriptionTitleOnly: '{title}',
+      descriptionFallback: 'Revenue from won opportunity',
+      linkErrorTitle: 'Revenue recorded, but not linked to the opportunity',
+      linkErrorDesc: 'The entry was created in Finance. Since the link was not saved, the system may offer to record it again, check before accepting so the revenue is not duplicated.',
     },
   },
 
@@ -2398,6 +2503,9 @@ export const finance = {
       fallbackCategory: 'Sin categoría',
       fallbackCompany: 'Mi Empresa',
       fallbackPeriod: 'Período Actual',
+      categoryBreakdown: {
+        expandAriaLabel: 'Ver detalle de "{category}" por centro de costo',
+      },
     },
     accounts: {
       header: {
@@ -2500,6 +2608,7 @@ export const finance = {
         noAccountWarning: 'Registre una caja o cuenta bancaria primero.',
         paymentMethod: 'Forma de pago',
         paymentDate: 'Fecha de pago *',
+        paymentDateFuture: 'La fecha de pago no puede ser en el futuro. Como máximo, hoy.',
         notes: 'Observaciones',
         optional: 'Opcional',
         paymentMethods: {
@@ -2764,6 +2873,12 @@ export const finance = {
       titleNew: 'Nueva Transacción',
       titleEdit: 'Editar Transacción',
       subtitle: 'Registre un ingreso o egreso',
+      sections: {
+        whatIsIt: 'Qué es',
+        money: 'Dinero',
+        moreDetails: 'Más detalles',
+        installments: 'Cuotas',
+      },
       typeLabel: 'Tipo de transacción',
       typeRevenue: 'Ingreso',
       typeExpense: 'Egreso',
@@ -2784,6 +2899,10 @@ export const finance = {
       customerLabel: 'Cliente vinculado',
       customerPlaceholder: 'Seleccione un cliente (opcional)',
       customerSearchPlaceholder: 'Buscar cliente...',
+      supplierLabel: 'Proveedor vinculado',
+      supplierPlaceholder: 'Seleccione un proveedor (opcional)',
+      supplierSearchPlaceholder: 'Buscar proveedor...',
+      newSupplierAriaLabel: 'Crear proveedor',
       noAccountTitle: 'Sin cuenta registrada',
       noAccountDescription: 'Necesita al menos una cuenta o caja para registrar transacciones.',
       noAccountLink: 'Registrar ahora',
@@ -2820,7 +2939,8 @@ export const finance = {
       attachmentsInstallmentInfo: 'Los archivos se vincularán a las {count} cuotas.',
       descriptionLabel: 'Descripción',
       descriptionPlaceholder: 'Describa la transacción',
-      dateLabel: 'Fecha',
+      dateLabel: 'Fecha del registro',
+      dateHint: 'Cuándo ocurrió: la venta, la compra o el servicio prestado. Es la fecha que cuenta en el informe bajo el Régimen de Devengo.',
       installmentsLabel: 'Cuotas',
       installmentSingle: 'Pago único',
       installmentBadgePrefix: 'Cuota',
@@ -2857,7 +2977,8 @@ export const finance = {
       isPaidDescPaidFalse: 'Irá a cuentas por pagar',
       paidDateLabelRevenue: 'Fecha de cobro',
       paidDateLabelExpense: 'Fecha de pago',
-      paidDateHint: 'Cuando el dinero se movió realmente, no la fecha del registro.',
+      paidDateHint: 'Cuando el dinero realmente salió o entró en la cuenta, no la fecha del registro de arriba. Es la fecha que cuenta en el informe bajo el Régimen de Caja.',
+      paidDateFutureLegacyWarning: 'Esta fecha está en el futuro y ya estaba guardada así antes de que existiera esta validación. La mantuvimos para no bloquear su edición, pero lo ideal es corregirla a hoy o antes.',
       cancelLabel: 'Cancelar',
       saveLabel: 'Guardar',
       validations: {
@@ -2867,6 +2988,7 @@ export const finance = {
         dateYearRange: 'Use una fecha entre {min} y {max}.',
         accountRequired: 'Seleccione una cuenta o caja',
         cardReceiptModeRequired: 'Elija cómo entra el dinero en su cuenta',
+        paidDateFuture: 'Esta fecha no puede ser en el futuro. Ya pagado (o recibido) es, como máximo, hoy.',
       },
       installmentScopeHint: 'El cambio vale solo para esta cuota. Las demás no cambian.',
       replaceDialog: {
@@ -3088,6 +3210,12 @@ export const finance = {
       subtitleNew: 'Cree una cuenta {tipo} con recurrencia opcional.',
       subtitleEditPayable: 'Editando cuenta por pagar',
       subtitleEditReceivable: 'Editando cuenta por cobrar',
+      sections: {
+        whatIsIt: 'Qué es',
+        money: 'Dinero',
+        moreDetails: 'Más detalles',
+        installmentsOrRecurrence: 'Dividir en cuotas o repetir',
+      },
       typeLabel: 'Tipo',
       types: {
         saida: 'Por Pagar',
@@ -3388,6 +3516,7 @@ export const finance = {
       validations: {
         amountZero: 'Ingrese un valor mayor a cero.',
         amountExceedsRemaining: 'El valor no puede superar el saldo restante ({amount}).',
+        dateFuture: 'La fecha de recepción no puede ser en el futuro. Como máximo, hoy.',
       },
     },
     osRevenue: {
@@ -3403,6 +3532,23 @@ export const finance = {
       descriptionWithCustomer: 'OS #{number} · {customer}',
       descriptionOsOnly: 'OS #{number}',
       descriptionFallback: 'Ingreso de orden de servicio',
+    },
+    leadRevenue: {
+      title: 'Oportunidad ganada',
+      question: '¿Quiere registrar el ingreso de esta venta?',
+      hint: 'Abrimos la cuenta por cobrar con el cliente y el importe de la oportunidad ya completados. Revise y ajuste antes de guardar.',
+      opportunityLabel: 'Oportunidad',
+      customerLabel: 'Cliente',
+      valueLabel: 'Importe estimado',
+      valueHint: 'El importe es solo una sugerencia, puede cambiarlo en el siguiente paso.',
+      valueHintEmpty: 'Esta oportunidad no tiene importe estimado, complete el valor en el siguiente paso.',
+      noLabel: 'Ahora no',
+      yesLabel: 'Sí, registrar ingreso',
+      descriptionWithCustomer: '{title} · {customer}',
+      descriptionTitleOnly: '{title}',
+      descriptionFallback: 'Ingreso de oportunidad ganada',
+      linkErrorTitle: 'Ingreso registrado, pero sin vínculo con la oportunidad',
+      linkErrorDesc: 'El registro se creó en Finanzas. Como el vínculo no se guardó, el sistema puede volver a ofrecer el registro, verifique antes de aceptar para no duplicar el ingreso.',
     },
   },
 
@@ -3515,6 +3661,9 @@ export const finance = {
       fallbackCategory: 'Sans catégorie',
       fallbackCompany: 'Mon Entreprise',
       fallbackPeriod: 'Période Actuelle',
+      categoryBreakdown: {
+        expandAriaLabel: `Voir la répartition de « {category} » par centre de coût`,
+      },
     },
     accounts: {
       header: {
@@ -3617,6 +3766,7 @@ export const finance = {
         noAccountWarning: 'Veuillez d\'abord enregistrer une caisse ou un compte.',
         paymentMethod: 'Moyen de paiement',
         paymentDate: 'Date de paiement *',
+        paymentDateFuture: `La date de paiement ne peut pas être dans le futur. Au plus tard, aujourd'hui.`,
         notes: 'Observations',
         optional: 'Facultatif',
         paymentMethods: {
@@ -3881,6 +4031,12 @@ export const finance = {
       titleNew: 'Nouvelle Transaction',
       titleEdit: 'Modifier la Transaction',
       subtitle: 'Enregistrez un produit ou une charge',
+      sections: {
+        whatIsIt: `Ce que c'est`,
+        money: 'Argent',
+        moreDetails: 'Plus de détails',
+        installments: 'Versements',
+      },
       typeLabel: 'Type de transaction',
       typeRevenue: 'Produit',
       typeExpense: 'Charge',
@@ -3901,6 +4057,10 @@ export const finance = {
       customerLabel: 'Client lié',
       customerPlaceholder: 'Sélectionnez un client (facultatif)',
       customerSearchPlaceholder: 'Rechercher un client...',
+      supplierLabel: 'Fournisseur lié',
+      supplierPlaceholder: 'Sélectionnez un fournisseur (facultatif)',
+      supplierSearchPlaceholder: 'Rechercher un fournisseur...',
+      newSupplierAriaLabel: 'Créer un fournisseur',
       noAccountTitle: 'Aucun compte enregistré',
       noAccountDescription: "Vous avez besoin d'au moins un compte ou une caisse pour enregistrer des transactions.",
       noAccountLink: 'Enregistrer maintenant',
@@ -3937,7 +4097,8 @@ export const finance = {
       attachmentsInstallmentInfo: 'Les fichiers seront liés aux {count} versements.',
       descriptionLabel: 'Description',
       descriptionPlaceholder: 'Décrivez la transaction',
-      dateLabel: 'Date',
+      dateLabel: `Date de l'opération`,
+      dateHint: `Quand cela s'est passé : la vente, l'achat ou le service rendu. C'est cette date qui compte dans le rapport en régime d'engagement (compétence).`,
       installmentsLabel: 'Versements',
       installmentSingle: 'Paiement unique',
       installmentBadgePrefix: 'Versement',
@@ -3974,7 +4135,8 @@ export const finance = {
       isPaidDescPaidFalse: 'Ira dans les dettes fournisseurs',
       paidDateLabelRevenue: `Date d'encaissement`,
       paidDateLabelExpense: 'Date de paiement',
-      paidDateHint: `Quand l'argent a réellement bougé, pas la date de saisie.`,
+      paidDateHint: `Quand l'argent est réellement sorti ou arrivé sur le compte, pas la date de l'opération ci-dessus. C'est cette date qui compte dans le rapport en régime de caisse.`,
+      paidDateFutureLegacyWarning: `Cette date est dans le futur et était déjà enregistrée ainsi avant l'existence de ce contrôle. Nous l'avons conservée pour ne pas bloquer votre modification, mais il faudrait la corriger à aujourd'hui ou avant.`,
       cancelLabel: 'Annuler',
       saveLabel: 'Enregistrer',
       validations: {
@@ -3984,6 +4146,7 @@ export const finance = {
         dateYearRange: 'Utilisez une date entre {min} et {max}.',
         accountRequired: 'Sélectionnez un compte ou une caisse',
         cardReceiptModeRequired: `Choisissez comment l'argent arrive sur votre compte`,
+        paidDateFuture: `Cette date ne peut pas être dans le futur. Déjà payé (ou encaissé) veut dire, au plus tard, aujourd'hui.`,
       },
       installmentScopeHint: 'La modification ne vaut que pour ce versement. Les autres ne changent pas.',
       replaceDialog: {
@@ -4205,6 +4368,12 @@ export const finance = {
       subtitleNew: 'Créez une facture {tipo} avec récurrence optionnelle.',
       subtitleEditPayable: 'Modification de la dette fournisseur',
       subtitleEditReceivable: 'Modification de la créance client',
+      sections: {
+        whatIsIt: `Ce que c'est`,
+        money: 'Argent',
+        moreDetails: 'Plus de détails',
+        installmentsOrRecurrence: 'Fractionner ou répéter',
+      },
       typeLabel: 'Type',
       types: {
         saida: 'À Payer',
@@ -4505,6 +4674,7 @@ export const finance = {
       validations: {
         amountZero: 'Saisissez un montant supérieur à zéro.',
         amountExceedsRemaining: 'Le montant ne peut pas dépasser le solde restant ({amount}).',
+        dateFuture: `La date d'encaissement ne peut pas être dans le futur. Au plus tard, aujourd'hui.`,
       },
     },
     osRevenue: {
@@ -4520,6 +4690,23 @@ export const finance = {
       descriptionWithCustomer: 'OS #{number} · {customer}',
       descriptionOsOnly: 'OS #{number}',
       descriptionFallback: `Recette d'ordre de service`,
+    },
+    leadRevenue: {
+      title: 'Opportunité gagnée',
+      question: 'Voulez-vous enregistrer la recette de cette vente ?',
+      hint: `Nous ouvrons la créance avec le client et le montant de l'opportunité déjà renseignés. Vérifiez et ajustez avant d'enregistrer.`,
+      opportunityLabel: 'Opportunité',
+      customerLabel: 'Client',
+      valueLabel: 'Montant estimé',
+      valueHint: `Ce montant n'est qu'une suggestion, vous pourrez le modifier à l'étape suivante.`,
+      valueHintEmpty: `Cette opportunité n'a pas de montant estimé, saisissez le montant à l'étape suivante.`,
+      noLabel: 'Pas maintenant',
+      yesLabel: 'Oui, enregistrer la recette',
+      descriptionWithCustomer: '{title} · {customer}',
+      descriptionTitleOnly: '{title}',
+      descriptionFallback: `Recette d'opportunité gagnée`,
+      linkErrorTitle: `Recette enregistrée, mais sans lien avec l'opportunité`,
+      linkErrorDesc: `L'écriture a été créée dans les Finances. Comme le lien n'a pas été enregistré, le système peut proposer de l'enregistrer à nouveau, vérifiez avant d'accepter pour ne pas dupliquer la recette.`,
     },
   },
 };

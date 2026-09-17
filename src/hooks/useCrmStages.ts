@@ -7,6 +7,7 @@ export interface CrmStage {
   id: string;
   name: string;
   color: string;
+  icon: string | null;
   position: number;
   is_won: boolean;
   is_lost: boolean;
@@ -17,6 +18,7 @@ export interface CrmStage {
 export interface CrmStageInsert {
   name: string;
   color?: string;
+  icon?: string | null;
   position?: number;
   is_won?: boolean;
   is_lost?: boolean;
@@ -26,6 +28,7 @@ export interface CrmStageUpdate {
   id: string;
   name?: string;
   color?: string;
+  icon?: string | null;
   position?: number;
   is_won?: boolean;
   is_lost?: boolean;

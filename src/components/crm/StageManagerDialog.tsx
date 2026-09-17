@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ICON_OPTIONS, IconPreview } from '@/components/customers/originIcons';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCrmStages, type CrmStage } from '@/hooks/useCrmStages';
 import { cn } from '@/lib/utils';
@@ -35,9 +37,16 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [newStage, setNewStage] = useState({
+  const [newStage, setNewStage] = useState<{
+    name: string;
+    color: string;
+    icon: string | null;
+    is_won: boolean;
+    is_lost: boolean;
+  }>({
     name: '',
     color: '#6B7280',
+    icon: null,
     is_won: false,
     is_lost: false,
   });
@@ -48,7 +57,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   const handleCreateStage = () => {
     if (!newStage.name.trim()) return;
     createStage.mutate(newStage, {
-      onSuccess: () => setNewStage({ name: '', color: '#6B7280', is_won: false, is_lost: false }),
+      onSuccess: () => setNewStage({ name: '', color: '#6B7280', icon: null, is_won: false, is_lost: false }),
     });
   };
 
@@ -95,6 +104,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   const EditableRow = ({ stage }: { stage: CrmStage }) => {
     const [name, setName] = useState(stage.name);
     const [color, setColor] = useState(stage.color);
+    const [icon, setIcon] = useState<string | null>(stage.icon);
     const [isWon, setIsWon] = useState(stage.is_won);
     const [isLost, setIsLost] = useState(stage.is_lost);
     const isEditing = editingId === stage.id;
@@ -112,6 +122,25 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
               className="flex-1"
               autoFocus
             />
+            <Select value={icon ?? 'none'} onValueChange={(v) => setIcon(v === 'none' ? null : v)}>
+              <SelectTrigger className="w-[100px] h-9" aria-label={t.stages.iconLabel}>
+                <div className="flex items-center gap-1.5">
+                  {icon ? <IconPreview name={icon} className="h-3.5 w-3.5" /> : null}
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t.stages.iconNone}</SelectItem>
+                {ICON_OPTIONS.map((ic) => (
+                  <SelectItem key={ic} value={ic}>
+                    <div className="flex items-center gap-2">
+                      <IconPreview name={ic} className="h-3.5 w-3.5" />
+                      <span className="text-xs">{ic}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <ColorPicker value={color} onChange={setColor} />
           </div>
           <div className="flex items-center justify-between">
@@ -158,6 +187,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
                 onClick={() => {
                   setName(stage.name);
                   setColor(stage.color);
+                  setIcon(stage.icon);
                   setIsWon(stage.is_won);
                   setIsLost(stage.is_lost);
                   setEditingId(null);
@@ -169,7 +199,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  handleUpdateStage(stage, { name, color, is_won: isWon, is_lost: isLost });
+                  handleUpdateStage(stage, { name, color, icon, is_won: isWon, is_lost: isLost });
                   setEditingId(null);
                 }}
               >
@@ -198,7 +228,10 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
         )}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
-        <Badge className={cn(getStageColorClass(stage.color), 'font-medium')}>{stage.name}</Badge>
+        <Badge className={cn(getStageColorClass(stage.color), 'font-medium gap-1')}>
+          {stage.icon && <IconPreview name={stage.icon} className="h-3 w-3" />}
+          {stage.name}
+        </Badge>
         <div className="flex-1 flex items-center gap-2">
           {stage.is_won && <Trophy className="h-3.5 w-3.5 text-success" />}
           {stage.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive" />}
@@ -232,13 +265,35 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
         <div className="space-y-4">
           <div className="space-y-3 p-3 rounded-lg border-2 border-dashed border-muted">
             <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Input
                 value={newStage.name}
                 onChange={(e) => setNewStage({ ...newStage, name: e.target.value })}
                 placeholder={t.stages.namePlaceholder}
-                className="flex-1"
+                className="flex-1 min-w-[120px]"
               />
+              <Select
+                value={newStage.icon ?? 'none'}
+                onValueChange={(v) => setNewStage({ ...newStage, icon: v === 'none' ? null : v })}
+              >
+                <SelectTrigger className="w-[100px] h-9" aria-label={t.stages.iconLabel}>
+                  <div className="flex items-center gap-1.5">
+                    {newStage.icon ? <IconPreview name={newStage.icon} className="h-3.5 w-3.5" /> : null}
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t.stages.iconNone}</SelectItem>
+                  {ICON_OPTIONS.map((ic) => (
+                    <SelectItem key={ic} value={ic}>
+                      <div className="flex items-center gap-2">
+                        <IconPreview name={ic} className="h-3.5 w-3.5" />
+                        <span className="text-xs">{ic}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <ColorPicker
                 value={newStage.color}
                 onChange={(color) => setNewStage({ ...newStage, color })}

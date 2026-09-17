@@ -32,3 +32,28 @@ export function todayInBrazil(): string {
     day: '2-digit',
   }).format(new Date());
 }
+
+/**
+ * "Já foi pago" (ou "já foi recebido") é sempre PASSADO, por definição: não
+ * existe dinheiro que já se moveu amanhã. Trava única usada nos 3 lugares que
+ * capturam uma data de pagamento JÁ EFETIVADO: o campo "Data do pagamento" do
+ * TransactionFormDialog (quando "Já foi pago" está ligado), o modal
+ * "Confirmar pagamento" de despesa e o "Confirmar recebimento" de receita.
+ * Print do sócio: 16/10/2026 (futuro) nos dois — e o pagamento futuro já
+ * aparecia como realizado no DRE em Regime de Caixa, num período que ainda
+ * não aconteceu.
+ *
+ * `previousDateIso`: dado GRAVADO antes desta trava existir (e existe, em
+ * produção) não pode travar uma edição que a pessoa não pediu — abrir um
+ * lançamento antigo com `paid_date` no futuro pra corrigir a descrição não
+ * pode empacar num erro que o usuário não criou. Por isso: se a data não
+ * MUDOU em relação à que já estava salva, ela passa mesmo estando no futuro.
+ * Só uma mudança PARA uma data futura (nova ou diferente da gravada) é
+ * barrada. Comparação lexicográfica funciona porque o formato é sempre
+ * YYYY-MM-DD.
+ */
+export function isPaidDateAllowed(dateIso: string | null | undefined, previousDateIso?: string | null): boolean {
+  if (!dateIso) return true;
+  if (dateIso <= todayInBrazil()) return true;
+  return !!previousDateIso && dateIso === previousDateIso;
+}

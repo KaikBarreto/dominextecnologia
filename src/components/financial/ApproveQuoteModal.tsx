@@ -19,6 +19,7 @@ import { evaluateFeeSanity } from '@/lib/fee-sanity';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 
 /**
  * Modal de APROVAÇÃO de orçamento.
@@ -124,7 +125,9 @@ export function ApproveQuoteModal({
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
-  const activeAccounts = useMemo(() => accounts.filter((a) => a.is_active), [accounts]);
+  // Os dois modos ('recebido' e 'a_receber') são sempre RECEITA — cartão de
+  // crédito não é conta de destino de recebimento, nunca aparece aqui.
+  const activeAccounts = useMemo(() => filterAccountsForReceivable(accounts), [accounts]);
   const { activeCostCenters } = useCostCenters();
 
   const accountOptions = useMemo(

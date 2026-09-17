@@ -3954,6 +3954,7 @@ export type Database = {
           accrual_amount: number | null
           amount: number
           amount_received: number
+          asaas_payment_id: string | null
           bill_id: string | null
           billing_reminder_resolved_at: string | null
           billing_reminder_resolved_by: string | null
@@ -3996,6 +3997,7 @@ export type Database = {
           accrual_amount?: number | null
           amount: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -4038,6 +4040,7 @@ export type Database = {
           accrual_amount?: number | null
           amount?: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -4949,6 +4952,35 @@ export type Database = {
             columns: ["stock_id"]
             isOneToOne: false
             referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_assignees: {
+        Row: {
+          created_at: string
+          is_primary: boolean
+          lead_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignees_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -8631,6 +8663,7 @@ export type Database = {
       }
       tenant_charges: {
         Row: {
+          asaas_installment_id: string | null
           asaas_payment_id: string | null
           billing_type: string | null
           boleto_url: string | null
@@ -8654,6 +8687,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -8677,6 +8711,7 @@ export type Database = {
           value: number
         }
         Update: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -9836,6 +9871,17 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: undefined
       }
+      apply_tenant_charge_installment_payment: {
+        Args: {
+          p_asaas_installment_id: string
+          p_asaas_payment_id: string
+          p_installment_number?: number
+          p_net_value?: number
+          p_paid_at?: string
+          p_value: number
+        }
+        Returns: Json
+      }
       apply_tenant_charge_payment: {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
         Returns: Json
@@ -9872,6 +9918,10 @@ export type Database = {
           tipo: string
           titulo: string
         }[]
+      }
+      can_access_lead: {
+        Args: { _lead_id: string; _user_id: string }
+        Returns: boolean
       }
       can_access_stock: {
         Args: { _stock_id: string; _user_id: string }
@@ -10258,6 +10308,10 @@ export type Database = {
         Args: { _customer_id: string }
         Returns: boolean
       }
+      is_lead_assignee: {
+        Args: { _lead_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
       lead_valida_cnpj: { Args: { p_doc: string }; Returns: boolean }
@@ -10586,6 +10640,10 @@ export type Database = {
         Returns: Json
       }
       upsert_compute_catalog: { Args: { p_payload: Json }; Returns: number }
+      user_has_permission: {
+        Args: { _key: string; _user_id: string }
+        Returns: boolean
+      }
       vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
       vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
       vault_upsert_tenant_secret: {

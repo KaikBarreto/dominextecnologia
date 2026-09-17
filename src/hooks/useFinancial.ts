@@ -20,6 +20,7 @@ export interface TransactionCreator {
 
 export type TransactionWithRelations = FinancialTransaction & {
   customer: any;
+  supplier: any;
   account: any;
   employee: any;
   creator: TransactionCreator | null;
@@ -35,6 +36,8 @@ export interface TransactionInput {
   paid_date?: string;
   is_paid?: boolean;
   customer_id?: string;
+  /** Fornecedor vinculado ao lançamento. SEMPRE opcional, igual customer_id — nem toda receita/despesa tem um. */
+  supplier_id?: string;
   service_order_id?: string;
   contract_id?: string;
   notes?: string;
@@ -113,8 +116,9 @@ export function buildInstallmentRows(args: {
       } as InstallmentRowDraft,
       // `cost_center_id` entra na lista de FKs opcionais: string vazia vinda do
       // form viraria erro de FK. O VALOR vem de `rest`, então todas as parcelas
-      // carregam o mesmo centro de custo.
-      ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+      // carregam o mesmo centro de custo. `supplier_id` segue a mesma regra do
+      // `customer_id`: todas as parcelas herdam o mesmo vínculo da mãe.
+      ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
     ));
   }
 
@@ -253,12 +257,13 @@ export function useFinancial() {
   const transactionsQuery = useQuery({
     queryKey: ['financial-transactions'],
     queryFn: async () => {
-      const data = await fetchAllPaginated<FinancialTransaction & { customer: any; account: any; employee: any }>(
+      const data = await fetchAllPaginated<FinancialTransaction & { customer: any; supplier: any; account: any; employee: any }>(
         () => supabase
           .from('financial_transactions')
           .select(`
             *,
             customer:customers(id, name),
+            supplier:suppliers(id, name),
             account:financial_accounts(id, name, type, color),
             employee:employees(id, name, salary, photo_url)
           `)
@@ -427,7 +432,7 @@ export function useFinancial() {
 
       const sanitized = normalizeOptionalForeignKeys(
         { ...rest, created_by: user?.id, company_id },
-        ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+        ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
       );
 
       const { data, error } = await supabase
@@ -500,7 +505,7 @@ export function useFinancial() {
       const payload = rows.map((row) =>
         normalizeOptionalForeignKeys(
           { ...row, created_by: user?.id, company_id } as any,
-          ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
+          ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
         )
       );
 
@@ -641,7 +646,7 @@ export function useFinancial() {
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
       const { installment_count, ...rest } = input;
-      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']);
+      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']);
 
       // Detect transition paid -> unpaid: also unmark linked children (tarifas, CMV)
       const { data: existing } = await supabase
