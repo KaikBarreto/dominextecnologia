@@ -77,9 +77,15 @@ function drawSelfieStamp(
   const fsCo = Math.max(11, 3.0 * u);
   const gap = fsBody * 1.55;
 
+  // logoSize é a ALTURA-alvo do logo. Logo de empresa raramente é quadrado
+  // (é bem comum ser bem mais largo que alto) — a largura real é derivada
+  // da proporção da imagem lá embaixo, com teto pra não empurrar o nome pra fora.
   const logoSize = 9.5 * u;
-  const textLeft = padX + logoSize + 3 * u;
-  const maxTextW = W - textLeft - padX;
+  const logoMaxW = 22 * u;
+  // textLeft/maxTextW dependem da largura REAL do logo desenhado; viram `let`
+  // e só ganham valor final depois que a geometria do logo é calculada abaixo.
+  let textLeft = padX + logoSize + 3 * u;
+  let maxTextW = W - textLeft - padX;
 
   // ícones vetoriais (sem emoji)
   const iconSize = fsBody;
@@ -125,11 +131,29 @@ function drawSelfieStamp(
   // ---- cabeçalho: logo + nome da empresa ----
   let cy = bandTop + topPad;
   if (logoImg) {
-    roundRectPath(ctx, padX, cy, logoSize, logoSize, 1.6 * u);
+    // proporção real da imagem; natural* pode vir 0 em alguns SVGs, cai pro width/height do elemento.
+    const natW = logoImg.naturalWidth || logoImg.width;
+    const natH = logoImg.naturalHeight || logoImg.height;
+    const ratio = natW > 0 && natH > 0 ? natW / natH : NaN;
+    let drawnW = logoSize;
+    let drawnH = logoSize;
+    if (Number.isFinite(ratio) && ratio > 0) {
+      drawnW = logoSize * ratio;
+      if (drawnW > logoMaxW) {
+        // logo muito panorâmico: teto na largura, reduz a altura na mesma proporção (nunca distorce)
+        drawnW = logoMaxW;
+        drawnH = drawnW / ratio;
+      }
+    }
+    // centraliza verticalmente na faixa de altura logoSize (mesmo se o logo desenhado for mais baixo)
+    const drawY = cy + (logoSize - drawnH) / 2;
+    roundRectPath(ctx, padX, drawY, drawnW, drawnH, 1.6 * u);
     ctx.save();
     ctx.clip();
-    ctx.drawImage(logoImg, padX, cy, logoSize, logoSize);
+    ctx.drawImage(logoImg, padX, drawY, drawnW, drawnH);
     ctx.restore();
+    textLeft = padX + drawnW + 3 * u;
+    maxTextW = W - textLeft - padX;
   }
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";

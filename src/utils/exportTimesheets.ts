@@ -2,11 +2,20 @@ import type { TimeSheet } from '@/hooks/useTimeRecords';
 import { formatMinutes } from '@/hooks/useTimeRecords';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { safeTimeZone, timeInTz, todayInTz, zonedDateTimeToUtc } from '@/lib/ponto/timezone';
 
+/**
+ * Exporta o espelho de ponto em CSV.
+ *
+ * `timeZone` é o fuso da EMPRESA (`useAppLocaleContext().timezone`). Util não
+ * chama hook, então quem chama passa por parâmetro. Vazio ou inválido cai em
+ * America/Sao_Paulo.
+ */
 export function exportToCSV(
   sheets: TimeSheet[],
   employees: { id: string; name: string }[],
   locale: LocaleCode = 'pt-br',
+  timeZone?: string | null,
 ) {
   const t = MESSAGES[locale].app.employees.timesheetsGenerator;
   const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
@@ -27,16 +36,24 @@ export function exportToCSV(
     t.csvColWorked, t.csvColBreak, t.csvColBalance, t.csvColStatus,
   ].join(';');
 
+  // Fuso da empresa, já validado: cada linha do CSV é documento de jornada e
+  // tem que sair no relógio da empresa, não no de quem exportou. Antes as
+  // quatro conversões abaixo estavam chumbadas em America/Sao_Paulo.
+  const tz = safeTimeZone(timeZone);
+
   const rows = sheets.map(s => {
-    const d = new Date(s.date + 'T12:00:00');
-    const weekday = d.toLocaleDateString(bcp47, { weekday: 'long', timeZone: 'America/Sao_Paulo' });
-    const dateStr = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    // Meio-dia DO DIA DA EMPRESA: instante seguro pra formatar dia da semana e
+    // data sem risco de escorregar um dia. Com `s.date + 'T12:00:00'` o meio-dia
+    // era o do aparelho, e entre fusos distantes virava o dia vizinho.
+    const d = new Date(zonedDateTimeToUtc(s.date, '12:00', tz));
+    const weekday = d.toLocaleDateString(bcp47, { weekday: 'long', timeZone: tz });
+    const dateStr = d.toLocaleDateString('pt-BR', { timeZone: tz });
     return [
       getName(s.employee_id),
       dateStr,
       weekday,
-      s.first_clock_in ? new Date(s.first_clock_in).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '—',
-      s.last_clock_out ? new Date(s.last_clock_out).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '—',
+      s.first_clock_in ? timeInTz(s.first_clock_in, tz) : '—',
+      s.last_clock_out ? timeInTz(s.last_clock_out, tz) : '—',
       s.total_worked_min != null ? formatMinutes(s.total_worked_min) : '—',
       s.total_break_min != null ? formatMinutes(s.total_break_min) : '—',
       s.balance_min != null ? formatMinutes(s.balance_min) : '—',
@@ -44,7 +61,9 @@ export function exportToCSV(
     ].join(';');
   });
 
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  // Data no nome do arquivo: dia da EMPRESA, o mesmo que o painel e as batidas
+  // usam. Antes estava chumbado em America/Sao_Paulo.
+  const today = todayInTz(tz);
   const csv = '﻿' + [header, ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

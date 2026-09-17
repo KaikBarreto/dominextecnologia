@@ -10,7 +10,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import {
   Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
-  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network, Tablet,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
+import { PontoKioskLinkDialog } from '@/components/employees/PontoKioskLinkDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
@@ -165,6 +166,7 @@ export default function Employees() {
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [kioskDialogOpen, setKioskDialogOpen] = useState(false);
 
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees;
@@ -827,9 +829,23 @@ export default function Employees() {
         icon={Briefcase}
         actions={
           isMobile ? (
-            <Badge variant="secondary" className="text-[10px]">{employees.length}</Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={t.kioskDialog.triggerLabelMobile}
+                onClick={() => setKioskDialogOpen(true)}
+              >
+                <Tablet className="h-4 w-4" />
+              </Button>
+              <Badge variant="secondary" className="text-[10px]">{employees.length}</Badge>
+            </div>
           ) : (
             <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setKioskDialogOpen(true)}>
+                <Tablet className="h-4 w-4" /> {t.kioskDialog.triggerLabel}
+              </Button>
               <Badge variant="secondary">{employees.length}</Badge>
             </div>
           )
@@ -1055,6 +1071,8 @@ export default function Employees() {
       )}
 
       {/* Dialogs */}
+      <PontoKioskLinkDialog open={kioskDialogOpen} onOpenChange={setKioskDialogOpen} />
+
       <EmployeeFormDialog
         open={formOpen}
         onOpenChange={o => { setFormOpen(o); if (!o) setEditingEmployee(null); }}

@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { dateInTz, timeInTz, todayInTz } from '@/lib/ponto/timezone';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 // ─── Types ───────────────────────────────────────────
@@ -81,6 +82,11 @@ export interface EmployeeBasic {
   is_active: boolean;
 }
 
+// ─── Dia canônico da batida ───
+// `todayInTz`, `dateInTz` e `timeInTz` moram em `@/lib/ponto/timezone` (uma
+// implementação só, reusada aqui e no export do espelho). O dia e a hora do
+// ponto seguem o fuso da EMPRESA, nunca o do aparelho. O porquê está lá.
+
 // ─── Helper: calculate worked minutes from records ───
 export function calculateWorkedMinutes(records: TimeRecord[]): { worked: number; breakMin: number } {
   const sorted = [...records].filter(r => r.is_valid).sort(
@@ -144,7 +150,10 @@ export function useWorkedMinutes(records: TimeRecord[]) {
 export function useTimeRecord(userId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const today = format(new Date(), 'yyyy-MM-dd');
+  // Fuso da EMPRESA, não do aparelho. Entra na queryKey, no filtro `date` e no
+  // path da selfie, sempre o mesmo valor.
+  const { timezone } = useAppLocaleContext();
+  const today = todayInTz(timezone);
 
   const { data: todayRecords = [], isLoading: loadingRecords } = useQuery({
     queryKey: ['timeRecords', userId, today],
@@ -249,7 +258,19 @@ export function useTimeRecord(userId: string | undefined) {
 
       if (!companyId) throw new Error('Empresa não encontrada. Contate o administrador para vincular sua conta.');
 
-      let photoUrl: string | null = null;
+      // Selfie da batida: `photo_url` guarda o PATH do Storage, NÃO uma URL.
+      //
+      // O bucket `time-photos` virou PRIVADO na migration 20260418165057, então a
+      // URL pública que este código gravava antes simplesmente NÃO ABRE — e a
+      // selfie é a evidência jurídica da batida. Quem for LER isso tem que
+      // assinar o path (createSignedUrl) em vez de usar o valor direto.
+      //
+      // DISCRIMINADOR (é o que permite assinar na leitura sem migrar dados):
+      // valor ANTIGO começa com "http" (URL pública morta, gravada até 1.24.x);
+      // valor NOVO é path puro. O leitor decide pelo prefixo: `startsWith('http')`
+      // → parseia a URL pra extrair o path; senão → já é o path do bucket
+      // `time-photos`. Mesma regra vale pro que a edge `time-clock-portal` grava.
+      let photoPath: string | null = null;
       if (photo) {
         const ext = photo.name.split('.').pop() || 'jpg';
         const path = `${userId}/${today}-${type}-${Date.now()}.${ext}`;
@@ -257,8 +278,7 @@ export function useTimeRecord(userId: string | undefined) {
           .from('time-photos')
           .upload(path, photo, { upsert: true });
         if (upErr) throw upErr;
-        const { data: urlData } = supabase.storage.from('time-photos').getPublicUrl(path);
-        photoUrl = urlData.publicUrl;
+        photoPath = path;
       }
 
       const now = new Date().toISOString();
@@ -273,7 +293,7 @@ export function useTimeRecord(userId: string | undefined) {
         latitude: coords?.latitude ?? null,
         longitude: coords?.longitude ?? null,
         address,
-        photo_url: photoUrl,
+        photo_url: photoPath,
         device_info: { userAgent: navigator.userAgent, platform: navigator.platform },
         source: 'app',
       });
@@ -317,7 +337,10 @@ export function useTimeRecord(userId: string | undefined) {
         break_end: 'Fim do intervalo',
         clock_out: 'Saída',
       };
-      toast({ title: `✅ ${labels[type]} registrada às ${format(new Date(), 'HH:mm')}` });
+      // A hora do toast sai no fuso da EMPRESA, o mesmo que o espelho de ponto
+      // usa pra mostrar esse registro depois. Com o relógio do aparelho, quem
+      // batia às 08:00 via 08:00 no toast e 09:00 no espelho, e abria chamado.
+      toast({ title: `✅ ${labels[type]} registrada às ${timeInTz(new Date(), timezone)}` });
       if (navigator.vibrate) navigator.vibrate(200);
       queryClient.invalidateQueries({ queryKey: ['timeRecords'] });
       queryClient.invalidateQueries({ queryKey: ['timeSheet'] });
@@ -343,7 +366,9 @@ export function useTimeRecord(userId: string | undefined) {
 export function useAdminTimeSheet() {
   const { user } = useAuth();
   const { companyId } = useUserCompany();
-  const today = format(new Date(), 'yyyy-MM-dd');
+  // Mesma regra do useTimeRecord: o dia do painel é o dia da EMPRESA.
+  const { timezone } = useAppLocaleContext();
+  const today = todayInTz(timezone);
   const queryClient = useQueryClient();
 
   // Fetch employees instead of profiles
@@ -454,7 +479,11 @@ export function useAdminTimeSheet() {
       const { error } = await supabase.from('time_records').insert({
         company_id: profile.company_id,
         employee_id: employeeId,
-        date: format(new Date(recordedAt), 'yyyy-MM-dd'),
+        // Batida manual é lançamento em documento de jornada: o dia sai do fuso
+        // da EMPRESA no instante que o admin informou, não do fuso do aparelho
+        // dele. Admin em Lisboa lançando 00:30 pra empresa em Cuiabá grava o dia
+        // de Cuiabá, que ainda é o dia anterior, e não o dia de Lisboa.
+        date: dateInTz(recordedAt, timezone),
         type,
         recorded_at: recordedAt,
         source: 'admin',

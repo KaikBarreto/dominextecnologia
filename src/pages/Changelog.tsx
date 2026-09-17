@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.25',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ponto em grupo: um tablet para o time inteiro bater ponto',
+        description: 'Antes cada funcionário precisava do próprio link para registrar o ponto pelo celular. Agora dá para deixar um tablet fixo na empresa mostrando a lista do time, e cada pessoa bate o próprio ponto tocando no seu nome. A tela mostra quem já chegou, quem está em intervalo e quem ainda não bateu, tem busca por nome e volta sozinha para a lista depois de cada registro. O link do tablet fica na tela de Funcionários, com QR Code para imprimir e colar na parede.',
+        category: 'recurso',
+      },
+      {
+        title: 'PIN por funcionário para proteger a batida no tablet',
+        description: 'Como o tablet é compartilhado, cada funcionário pode ter um PIN de 4 ou 6 dígitos. Sem o PIN correto ninguém consegue registrar ponto no lugar de outra pessoa, e depois de várias tentativas erradas o acesso trava por um tempo. O PIN é opcional e você define na ficha do funcionário, em Pagamento.',
+        category: 'seguranca',
+      },
+      {
+        title: 'O ponto passou a seguir o fuso horário da sua empresa',
+        description: 'O horário de Brasília estava fixo no ponto. Para empresa em outro fuso, como Mato Grosso ou Acre, toda batida aparecia adiantada e os registros perto da meia-noite caíam no dia seguinte, bagunçando o espelho e o fechamento do mês. Agora o ponto usa o fuso que está em Configurações, na aba Regional. Isso vale para a batida pelo celular, para o tablet, para o lançamento manual feito pelo administrador e para a planilha do espelho. Para empresas em São Paulo nada muda.',
+        category: 'correcao',
+      },
+      {
+        title: 'Logo da empresa deixou de sair esticado na foto do ponto',
+        description: 'A foto tirada na hora da batida recebe um carimbo com o logo da empresa. O logo estava sendo encaixado à força num quadrado, então quem tem logo mais largo que alto via a marca espremida. Agora o logo mantém a proporção original.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.24',
     date: '16 de setembro de 2026',
     type: 'patch',

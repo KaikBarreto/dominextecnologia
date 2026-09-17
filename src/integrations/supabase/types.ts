@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -652,6 +627,7 @@ export type Database = {
           pending_plan_code: string | null
           pending_subscription_value: number | null
           phone: string | null
+          ponto_kiosk_slug: string | null
           salesperson_id: string | null
           sdr_id: string | null
           segment: string | null
@@ -704,6 +680,7 @@ export type Database = {
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
+          ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -756,6 +733,7 @@ export type Database = {
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
+          ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -2274,6 +2252,7 @@ export type Database = {
           color: string
           company_id: string
           created_at: string
+          icon: string | null
           id: string
           is_lost: boolean
           is_won: boolean
@@ -2285,6 +2264,7 @@ export type Database = {
           color?: string
           company_id: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean
@@ -2296,6 +2276,7 @@ export type Database = {
           color?: string
           company_id?: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean
@@ -3177,6 +3158,48 @@ export type Database = {
           },
         ]
       }
+      employee_ponto_pins: {
+        Row: {
+          company_id: string
+          employee_id: string
+          failed_count: number
+          locked_until: string | null
+          pin_hash: string
+          set_at: string
+        }
+        Insert: {
+          company_id: string
+          employee_id: string
+          failed_count?: number
+          locked_until?: string | null
+          pin_hash: string
+          set_at?: string
+        }
+        Update: {
+          company_id?: string
+          employee_id?: string
+          failed_count?: number
+          locked_until?: string | null
+          pin_hash?: string
+          set_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_ponto_pins_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_ponto_pins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address: string | null
@@ -3961,6 +3984,7 @@ export type Database = {
           payroll_period: string | null
           receipt_url: string | null
           service_order_id: string | null
+          supplier_id: string | null
           tenant_charge_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -4002,6 +4026,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          supplier_id?: string | null
           tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -4043,6 +4068,7 @@ export type Database = {
           payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
+          supplier_id?: string | null
           tenant_charge_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
@@ -4125,6 +4151,13 @@ export type Database = {
             columns: ["service_order_id"]
             isOneToOne: false
             referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
           {
@@ -5072,6 +5105,7 @@ export type Database = {
           title: string
           updated_at: string
           value: number | null
+          won_transaction_id: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -5089,6 +5123,7 @@ export type Database = {
           title: string
           updated_at?: string
           value?: number | null
+          won_transaction_id?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -5106,6 +5141,7 @@ export type Database = {
           title?: string
           updated_at?: string
           value?: number | null
+          won_transaction_id?: string | null
         }
         Relationships: [
           {
@@ -5127,6 +5163,13 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_won_transaction_id_fkey"
+            columns: ["won_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -10060,6 +10103,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_or_create_ponto_kiosk_slug: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_portal_by_token: {
         Args: { _token: string }
         Returns: {
@@ -10186,6 +10233,7 @@ export type Database = {
         Returns: boolean
       }
       has_full_permissions: { Args: { _user_id: string }; Returns: boolean }
+      has_ponto_pin: { Args: { p_employee_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -10440,6 +10488,10 @@ export type Database = {
         Args: { p_inventory_id: string; p_stock_ids: string[] }
         Returns: undefined
       }
+      set_ponto_pin: {
+        Args: { p_employee_id: string; p_pin: string }
+        Returns: undefined
+      }
       set_stock_access: {
         Args: {
           p_restricted: boolean
@@ -10539,6 +10591,10 @@ export type Database = {
       vault_upsert_tenant_secret: {
         Args: { p_name: string; p_secret: string }
         Returns: string
+      }
+      verify_ponto_pin: {
+        Args: { p_employee_id: string; p_pin: string }
+        Returns: Json
       }
       whatsapp_can_send: { Args: { p_company_id: string }; Returns: boolean }
     }
@@ -10705,9 +10761,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

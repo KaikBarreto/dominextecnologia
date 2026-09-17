@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { PunchType } from '@/hooks/useTimeRecords';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { todayInTz, zonedDateTimeToUtc } from '@/lib/ponto/timezone';
 
 interface Props {
   open: boolean;
@@ -18,7 +19,7 @@ interface Props {
 }
 
 export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName, onSubmit }: Props) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.timeclock.manualPunch;
 
   const TYPE_OPTIONS: { value: PunchType; label: string }[] = [
@@ -37,8 +38,12 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
     if (!time || !notes.trim()) return;
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const recordedAt = new Date(`${today}T${time}`).toISOString();
+      // A hora digitada é a do relógio da EMPRESA, no dia da empresa. Antes o
+      // dia vinha de toISOString() (dia UTC, que às 22:00 de Brasília já virou)
+      // e a hora era interpretada no fuso do aparelho do admin, então quem
+      // lançava de outro fuso gravava o instante errado no espelho.
+      const today = todayInTz(timezone);
+      const recordedAt = zonedDateTimeToUtc(today, time, timezone);
       await onSubmit({ employeeId, type, recordedAt, notes });
       setType('clock_in');
       setTime('');
