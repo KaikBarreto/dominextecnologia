@@ -23,6 +23,8 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
@@ -104,10 +106,12 @@ const METHOD_TO_SIMULATOR: Record<Exclude<BillingMethod, 'UNDEFINED'>, Simulator
 export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, source }: ChargeDialogProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
+  const fin = MESSAGES[locale].app.finance;
   const { toast } = useToast();
 
   const { customers, updateCustomer } = useCustomers();
   const { create } = useTenantCharges();
+  const { activeCostCenters } = useCostCenters();
   const paymentAccount = useTenantPaymentAccount();
   // Personalização do QR (logo do tenant white-label + estilo/cor das settings).
   const qrConfig = useBrandedQrConfig();
@@ -150,6 +154,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [description, setDescription] = useState('');
   // Categoria do recebível gerado no Financeiro. Vazia = usa o default da conta.
   const [category, setCategory] = useState('');
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
   // Lançar (ou não) esta cobrança no Financeiro. Decisão do CEO: é uma opção
   // por cobrança, com o padrão vindo da configuração da conta de recebimento
   // (auto_post_to_finance).
@@ -249,6 +254,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       setDiscountDays(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
       setDescription(presetDescription ?? defaultDescription ?? '');
       setCategory('');
+      setCostCenterId(null);
       setPostToFinance(autoPostToFinance);
       if (presetAmount != null && presetAmount > 0) {
         setAmount(presetAmount);
@@ -293,6 +299,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setDueDate(todayISO());
     setDescription(defaultDescription ?? '');
     setCategory('');
+    setCostCenterId(null);
     setPostToFinance(autoPostToFinance);
     setMethod(methodOptions[0]?.value ?? 'UNDEFINED');
     setInstallmentCount(1);
@@ -499,6 +506,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         billing_type: method,
         description: description.trim() || undefined,
         category: category.trim() || undefined,
+        cost_center_id: costCenterId,
         fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
         interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
         discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
@@ -1179,6 +1187,21 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     onValueChange={setCategory}
                   />
                   <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+                </div>
+              )}
+
+              {/* Centro de custo do recebível — mesma régua do resto do domínio:
+                  sempre opcional, some da tela pra quem não usa (zero centros
+                  ativos cadastrados). Só faz sentido junto do lançamento no
+                  Financeiro, por isso vive dentro do mesmo `postToFinance`. */}
+              {postToFinance && activeCostCenters.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{fin.costCenters.fieldLabel}</Label>
+                  <CostCenterSelect
+                    value={costCenterId}
+                    onValueChange={setCostCenterId}
+                  />
+                  <p className="text-xs text-muted-foreground">{t.fields.costCenterHint}</p>
                 </div>
               )}
             </TabsContent>

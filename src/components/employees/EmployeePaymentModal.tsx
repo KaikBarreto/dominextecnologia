@@ -15,6 +15,8 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { calculatePayrollDeductions, type PayrollResult } from '@/utils/payrollDeductions';
 import { calculateEmployeeCost, defaultCostInput } from '@/utils/employeeCostProvisions';
 import type { HoleriteSnapshot } from '@/utils/holeriteHtmlGenerator';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 
 export interface PaymentPayload {
   valeDiscount: number;
@@ -24,6 +26,8 @@ export interface PaymentPayload {
   mode: 'informal' | 'clt';
   holeriteSnapshot?: HoleriteSnapshot; // preenchido só no CLT
   amount: number; // valor efetivamente pago (toPay informal | liquido CLT) — source of truth
+  /** Centro de custo (obra/projeto/setor) escolhido na hora do pagamento. Sempre opcional. */
+  costCenterId?: string | null;
 }
 
 interface EmployeePaymentModalProps {
@@ -69,6 +73,8 @@ export function EmployeePaymentModal({
   const { accounts, balances } = useFinancialAccounts();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.paymentModal;
+  const fin = MESSAGES[locale].app.finance;
+  const { activeCostCenters } = useCostCenters();
   const activeAccounts = useMemo(() => {
     const active = accounts.filter(a => a.is_active);
     // Sort: "Conta Principal" or "Caixa" first, then by sort_order
@@ -86,6 +92,7 @@ export function EmployeePaymentModal({
 
   const [valeDiscountStr, setValeDiscountStr] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [payMode, setPayMode] = useState<'informal' | 'clt'>('informal');
 
@@ -121,6 +128,7 @@ export function EmployeePaymentModal({
     if (o) {
       setValeDiscountStr(balance.totalVales > 0 ? currencyMask(String(Math.round(balance.totalVales * 100))) : '');
       setAccountId(defaultAccountId);
+      setCostCenterId(null);
       setDescription('');
     }
     onOpenChange(o);
@@ -204,6 +212,7 @@ export function EmployeePaymentModal({
       mode: payMode,
       holeriteSnapshot: snapshot,
       amount: amountToPay, // MESMO número que será gravado
+      costCenterId,
     });
   };
 
@@ -316,6 +325,16 @@ export function EmployeePaymentModal({
                     );
                   })}
                 </RadioGroup>
+              </div>
+            )}
+
+            {/* Centro de custo — mesma régua do resto do domínio: sempre
+                opcional, some da tela pra quem não usa (zero centros ativos
+                cadastrados). */}
+            {activeCostCenters.length > 0 && (
+              <div className="space-y-2">
+                <Label>{fin.costCenters.fieldLabel}</Label>
+                <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
               </div>
             )}
 

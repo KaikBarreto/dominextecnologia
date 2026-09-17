@@ -18,6 +18,8 @@ import {
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 import { ChevronDown, ChevronUp, Copy, ExternalLink, Info, Loader2, Users } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
@@ -103,10 +105,12 @@ export function SubscriptionDialog({
 }: SubscriptionDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
+  const fin = MESSAGES[locale].app.finance;
 
   const { customers } = useCustomers();
   const { createSubscription, authorizePixAuto } = useTenantSubscriptions();
   const paymentAccount = useTenantPaymentAccount();
+  const { activeCostCenters } = useCostCenters();
 
   const { defaultFinePercent, defaultInterestPercent, cardRecurringEnabled, pixAutoEnabled } = paymentAccount;
 
@@ -119,6 +123,8 @@ export function SubscriptionDialog({
   const [description, setDescription] = useState(presetDescription ?? '');
   // Categoria do recebível recorrente no Financeiro. Vazia = usa o default da conta.
   const [category, setCategory] = useState('');
+  // Centro de custo do recebível recorrente. Sem default de conta (sempre null se não escolhido).
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [finePercent, setFinePercent] = useState('');
   const [interestPercent, setInterestPercent] = useState('');
@@ -209,6 +215,7 @@ export function SubscriptionDialog({
     setFirstDueDate(todayISO());
     setDescription(presetDescription ?? '');
     setCategory('');
+    setCostCenterId(null);
     setShowAdvanced(false);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
@@ -310,6 +317,7 @@ export function SubscriptionDialog({
           next_due_date: firstDueDate || undefined,
           description: description.trim() || undefined,
           category: category.trim() || undefined,
+          cost_center_id: costCenterId,
           fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
           interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
           source_type: source?.type,
@@ -353,6 +361,7 @@ export function SubscriptionDialog({
       next_due_date: firstDueDate || undefined,
       description: description.trim() || undefined,
       category: category.trim() || undefined,
+      cost_center_id: costCenterId,
       fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
       interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
       source_type: source?.type,
@@ -676,6 +685,21 @@ export function SubscriptionDialog({
                       onValueChange={setCategory}
                     />
                     <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+                  </div>
+                )}
+
+                {/* Centro de custo do recebível recorrente — mesma régua do
+                    resto do domínio: sempre opcional, some da tela pra quem
+                    não usa (zero centros ativos cadastrados). Oculto no Pix
+                    Automático pelo mesmo motivo da categoria acima. */}
+                {!isPixAuto && activeCostCenters.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{fin.costCenters.fieldLabel}</Label>
+                    <CostCenterSelect
+                      value={costCenterId}
+                      onValueChange={setCostCenterId}
+                    />
+                    <p className="text-xs text-muted-foreground">{t.fields.costCenterHint}</p>
                   </div>
                 )}
 

@@ -13,6 +13,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
 
+// Sem campo de centro de custo aqui: DECISÃO DELIBERADA, não esquecimento.
+// A transferência fica fora do resultado (par com `transfer_pair_id`) — ver
+// a justificativa completa em `useFinancialAccounts.ts` (mutation `transfer`).
 interface TransferFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;

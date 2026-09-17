@@ -45,6 +45,8 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
@@ -115,6 +117,7 @@ export default function ContractDetail() {
   const { locale } = useAppLocaleContext();
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
+  const fin = MESSAGES[locale].app.finance;
 
   const FREQUENCY_OPTIONS = useMemo(
     () => Object.entries(FREQUENCY_MONTHS).map(([value, months]) => ({
@@ -138,6 +141,7 @@ export default function ContractDetail() {
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
   const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransactionsBatch } = useFinancial();
+  const { activeCostCenters } = useCostCenters();
   const { accounts } = useFinancialAccounts();
   const { settings: companySettings } = useCompanySettings();
   const qrConfig = useBrandedQrConfig();
@@ -173,6 +177,7 @@ export default function ContractDetail() {
   const [recInstallments, setRecInstallments] = useState('1');
   const [recAccountId, setRecAccountId] = useState('');
   const [recCategory, setRecCategory] = useState('');
+  const [recCostCenterId, setRecCostCenterId] = useState<string | null>(null);
   const [recSaving, setRecSaving] = useState(false);
   // "Aplicar conta/categoria a todas as parcelas" (contratos antigos sem vínculo).
   const [showApplyLinksModal, setShowApplyLinksModal] = useState(false);
@@ -678,6 +683,7 @@ export default function ContractDetail() {
             customer_id: contract.customer_id,
             account_id: recAccountId || null,
             category: recCategory || undefined,
+            cost_center_id: recCostCenterId,
             notes: `Vinculado ao contrato: ${contract.name}`,
             contract_id: id,
           };
@@ -697,7 +703,7 @@ export default function ContractDetail() {
       setRecDueDate('');
       setRecFrequency('unica');
       setRecInstallments('1');
-      // Conta/categoria escolhidas ficam memorizadas pro próximo lançamento.
+      // Conta/categoria/centro de custo escolhidos ficam memorizados pro próximo lançamento.
     } catch (err: unknown) {
       toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     } finally {
@@ -1862,6 +1868,16 @@ export default function ContractDetail() {
               searchPlaceholder={td.financial.categorySearch}
             />
           </div>
+          {/* Centro de custo — mesma régua do resto do domínio: sempre
+              opcional, some da tela pra quem não usa (zero centros ativos
+              cadastrados). Herdado por TODAS as parcelas da série, igual
+              conta/categoria acima. */}
+          {activeCostCenters.length > 0 && (
+            <div>
+              <Label>{fin.costCenters.fieldLabel}</Label>
+              <CostCenterSelect value={recCostCenterId} onValueChange={setRecCostCenterId} />
+            </div>
+          )}
           <div>
             <Label>{td.financial.dueDateLabel}</Label>
             <Input

@@ -511,6 +511,8 @@ export default function Employees() {
     payrollKind?: 'salary' | 'vale' | 'bonus' | 'rescission';
     /** Bruto do ciclo (antes do abatimento de vales) — só folha preenche. */
     accrualAmount?: number;
+    /** Centro de custo (obra/projeto/setor) escolhido na hora do pagamento. Sempre opcional. */
+    costCenterId?: string | null;
   }) => {
     const today = todayInBrazil();
     try {
@@ -530,6 +532,7 @@ export default function Employees() {
         company_id,
         employee_id: input.employeeId ?? null,
         payroll_kind: input.payrollKind ?? null,
+        cost_center_id: input.costCenterId ?? null,
         ...(typeof input.accrualAmount === 'number' ? { accrual_amount: input.accrualAmount } : {}),
       });
 
@@ -561,7 +564,7 @@ export default function Employees() {
     }
   }, [queryClient, user?.id, toast, t]);
 
-  const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string }) => {
+  const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => {
     if (!movementEmployee) return;
 
     // If falta_banco, just record a non-financial movement
@@ -599,6 +602,7 @@ export default function Employees() {
               accountId: data.accountId,
               employeeId: emp.id,
               payrollKind: 'vale',
+              costCenterId: data.costCenterId,
             });
           } catch {
             // Toast já mostrado em registerFinancialTransaction; mantém modal
@@ -726,6 +730,9 @@ export default function Employees() {
               amount: toPay,
               accrual_amount: accrualAmount,
               notes: payload.description,
+              // A folha pendente nasce sem centro de custo (o cron que a gera
+              // não tem de onde tirar); o usuário escolhe agora, na hora de pagar.
+              cost_center_id: payload.costCenterId ?? null,
             });
             if (payErr) {
               console.error('Erro ao quitar folha pendente:', payErr);
@@ -745,6 +752,7 @@ export default function Employees() {
               // Caminho sem folha pendente: a linha já NASCE líquida, então sem
               // `accrual_amount` a Competência perderia o vale do ciclo.
               accrualAmount,
+              costCenterId: payload.costCenterId,
             });
           }
         } catch (err) {

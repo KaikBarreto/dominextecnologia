@@ -112,6 +112,10 @@ interface CreateChargeInput {
   // Categoria (nome) do recebível no Financeiro. Ausente → default da conta
   // (default_income_category).
   category?: string;
+  // Centro de custo do recebível no Financeiro. Ausente/null → sem centro
+  // (sempre opcional). Posse validada dentro da RPC (FK real, cliente
+  // controla o valor) — ver 20260917160000_centro_de_custo_cobranca_assinatura.
+  cost_center_id?: string | null;
   // Lançar (ou não) o recebível no Financeiro NESTA cobrança. Decisão do CEO:
   // "nem toda cobrança tem que necessariamente já criar a conta a receber".
   // Ausente (frontend antigo, sem o campo) → cai no default da conta
@@ -263,6 +267,12 @@ async function handleRequest(req: Request): Promise<Response> {
   const inputCategory =
     typeof input.category === "string" && input.category.trim()
       ? input.category.trim().slice(0, 120)
+      : null;
+  // Centro de custo escolhido nesta cobrança (opcional, sem default de conta —
+  // não existe "centro de custo padrão" no domínio). A RPC valida posse.
+  const inputCostCenterId =
+    typeof input.cost_center_id === "string" && input.cost_center_id.trim()
+      ? input.cost_center_id.trim()
       : null;
 
   // Origem da cobrança (Onda D). Ausente → 'avulso' (fluxo histórico, sem regressão).
@@ -551,6 +561,8 @@ async function handleRequest(req: Request): Promise<Response> {
           p_account_id: account.default_finance_account_id ?? null,
           // Categoria escolhida NESTA cobrança sobrescreve o default da conta.
           p_category: inputCategory ?? account.default_income_category ?? null,
+          // Centro de custo escolhido NESTA cobrança. Sem default de conta.
+          p_cost_center_id: inputCostCenterId,
         });
         if (rpcErr) {
           // Loga sem vazar segredo (só mensagem pública do Postgres).

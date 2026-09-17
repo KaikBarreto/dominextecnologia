@@ -29,6 +29,13 @@ export interface ReceivePaymentResult {
   new_due_date?: string;
 }
 
+// Sem campo de centro de custo aqui: DECISÃO DELIBERADA, não esquecimento
+// (auditoria do braço de centro de custo, dev-financeiro-rh, 17/09/2026). As
+// filhas do recebimento ("Recebimento parcial" e "Tarifa do recebimento")
+// JÁ HERDAM o centro da mãe automaticamente — ver `buildPartialReceiptRow` e
+// `buildReceiptFeeRow` em `useFinancial.ts`. Um segundo campo aqui deixaria o
+// usuário escolher um centro DIFERENTE do da mãe, criando divergência entre
+// receita e a parcela/tarifa dela na mesma obra.
 interface ReceivePaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;

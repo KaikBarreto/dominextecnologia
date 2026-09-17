@@ -139,6 +139,11 @@ interface CreateSubscriptionInput {
   // (mesmo comportamento de hoje). Persistida em tenant_subscriptions.category;
   // o webhook lê daqui na hora de materializar cada ciclo.
   category?: string;
+  // Centro de custo do recebível no Financeiro, aplicado a CADA ciclo. Ausente/
+  // null → sem centro (sempre opcional, sem default de conta). Persistido em
+  // tenant_subscriptions.cost_center_id; o webhook lê daqui em cada ciclo.
+  // Posse validada na RPC (create_tenant_charge_receivable), não aqui.
+  cost_center_id?: string | null;
   // Só quando billing_type === 'CREDIT_CARD' (dados sensíveis, não persistidos).
   credit_card?: CreditCardInput;
   credit_card_holder_info?: CreditCardHolderInfoInput;
@@ -368,6 +373,14 @@ async function handleRequest(req: Request): Promise<Response> {
       ? input.category.trim().slice(0, 120)
       : null;
 
+  // Centro de custo escolhido nesta assinatura (opcional). Ausente → NULL na
+  // coluna, que significa "sem centro de custo" (não existe default de conta
+  // pra centro, ao contrário de categoria).
+  const inputCostCenterId =
+    typeof input.cost_center_id === "string" && input.cost_center_id.trim()
+      ? input.cost_center_id.trim()
+      : null;
+
   const sourceType =
     input.source_type === "contract" || input.source_type === "quote"
       ? input.source_type
@@ -593,6 +606,7 @@ async function handleRequest(req: Request): Promise<Response> {
       interest_percent: interestOverride,
       description,
       category: inputCategory,
+      cost_center_id: inputCostCenterId,
       created_by: userId,
       // Cartão: só referência do token (Vault) + last4/brand (exibição). Nunca PAN/CVV.
       ...(isCreditCard

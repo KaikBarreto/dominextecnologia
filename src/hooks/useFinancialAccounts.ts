@@ -191,6 +191,17 @@ export function useFinancialAccounts() {
     onError: (e: Error) => { toast({ variant: 'destructive', title: 'Erro ao excluir conta', description: getErrorMessage(e) }); },
   });
 
+  // Transferência entre contas NÃO recebe `cost_center_id`, e isso é DECISÃO
+  // DELIBERADA, não buraco esquecido (auditoria do braço de centro de custo,
+  // dev-financeiro-rh, 17/09/2026): as duas pernas ficam fora do resultado
+  // por `transfer_pair_id` (ver filtro em useFinancial.ts e FinanceOverview.tsx
+  // — `!t.transfer_pair_id`) porque é movimento de BALANÇO (dinheiro trocando
+  // de bolso dentro da mesma empresa), não RESULTADO. Carimbar um centro de
+  // custo nelas faria a quebra "Por centro de custo" do DRE somar um gasto que
+  // a obra/projeto nunca teve — o dinheiro nem saiu da empresa. Se um dia
+  // precisar rastrear a QUAL centro pertence uma conta bancária dedicada
+  // (não a transferência em si), a pergunta certa é outra: centro de custo
+  // por conta, não por lançamento de transferência.
   const transfer = useMutation({
     mutationFn: async (input: TransferInput) => {
       const pairId = crypto.randomUUID();

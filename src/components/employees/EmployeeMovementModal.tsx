@@ -18,6 +18,8 @@ import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
 
 export interface MovementCashAccount {
   id: string;
@@ -31,7 +33,7 @@ interface EmployeeMovementModalProps {
   type: 'vale' | 'bonus' | 'falta';
   employeeName: string;
   currentBalance: number;
-  onSubmit: (data: { amount: number; description?: string; subType?: string; accountId?: string }) => void;
+  onSubmit: (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => void;
   isPending?: boolean;
   employeeId?: string;
   salary?: number;
@@ -54,9 +56,12 @@ export function EmployeeMovementModal({
   const [faltaMode, setFaltaMode] = useState<'salario' | 'banco'>('salario');
   const [applyDSR, setApplyDSR] = useState(false);
   const [accountId, setAccountId] = useState('');
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.movementModal;
+  const fin = MESSAGES[locale].app.finance;
+  const { activeCostCenters } = useCostCenters();
   const typeLabels: Record<string, string> = { vale: t.typeLabels.vale, bonus: t.typeLabels.bonus, falta: t.typeLabels.falta };
 
   const draft = useFormDraft<MovementDraft>({ key: `employee-movement-${type}`, isOpen: open });
@@ -79,6 +84,7 @@ export function EmployeeMovementModal({
       setFaltaMode('salario');
       setApplyDSR(false);
       setFaltaPreFilled(false);
+      setCostCenterId(null);
     }
 
     // Auto-seleciona primeira conta disponível pro vale (só relevante quando type === 'vale').
@@ -157,6 +163,7 @@ export function EmployeeMovementModal({
       description: finalDescription,
       subType: type === 'falta' ? faltaMode : undefined,
       accountId: type === 'vale' ? accountId : undefined,
+      costCenterId: type === 'vale' ? costCenterId : undefined,
     });
     draft.clearDraft();
     setAmount('');
@@ -231,6 +238,16 @@ export function EmployeeMovementModal({
                 </SelectContent>
               </Select>
             )}
+          </div>
+        )}
+
+        {/* Centro de custo — só faz sentido pra vale (é o único tipo que gera
+            despesa imediata). Sempre opcional, some da tela pra quem não usa
+            (zero centros ativos cadastrados). */}
+        {type === 'vale' && activeCostCenters.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{fin.costCenters.fieldLabel}</Label>
+            <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
           </div>
         )}
 

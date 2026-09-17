@@ -57,6 +57,14 @@ vi.mock('@/hooks/useCustomers', () => ({
   }),
 }));
 
+// Zero centros de custo cadastrados: o campo (gated por `activeCostCenters.length
+// > 0`, mesma régua do resto do domínio) nunca renderiza nestes testes, então
+// `CostCenterSelect` nunca é instanciado — só o hook precisa de stub aqui pra
+// não exigir um QueryClientProvider real (o componente não mocka react-query).
+vi.mock('@/hooks/useCostCenters', () => ({
+  useCostCenters: () => ({ activeCostCenters: [], costCenters: [] }),
+}));
+
 vi.mock('@/hooks/useTenantCharges', () => ({
   useTenantCharges: () => ({ create: { mutateAsync: createMutateAsync, isPending: false } }),
   buildCheckoutUrl: (code: string) => `https://dominex.app/pagar/${code}`,
