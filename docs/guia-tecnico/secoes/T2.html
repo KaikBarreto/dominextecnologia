@@ -148,8 +148,8 @@
       <tr><td>Equipamentos</td><td><span class="ui">Gerenciar Equipamentos</span> (criar, editar e excluir).</td></tr>
       <tr><td>Estoque</td><td><span class="ui">Gerenciar Estoque</span> (materiais e movimentações).</td></tr>
       <tr><td>Financeiro</td><td><span class="ui">Gerenciar Financeiro</span> (criar e editar transações), <span class="ui">Excluir Lançamento Financeiro</span> e <span class="ui">Ver Totais Financeiros</span> (saldos, totais e projeções).</td></tr>
-      <tr><td>Agenda</td><td><span class="ui">Ver Contas na Agenda</span> (contas a pagar e receber como avisos) e <span class="ui">Ver Toda a Agenda</span> (ver todas as tarefas, não apenas as próprias).</td></tr>
-      <tr><td>CRM</td><td><span class="ui">Gerenciar CRM</span> (leads e pipeline comercial).</td></tr>
+      <tr><td>Agenda</td><td><span class="ui">Ver Contas na Agenda</span> (contas a pagar e receber como avisos), <span class="ui">Ver Toda a Agenda</span> (ver todas as tarefas do calendário, não apenas as próprias) e <span class="ui">Gerenciar Tarefas</span> (ver e gerenciar as tarefas de todos, não apenas as próprias, na Agenda <b>e</b> na aba Tarefas do CRM).</td></tr>
+      <tr><td>CRM</td><td><span class="ui">Gerenciar CRM</span> (ver e gerenciar todas as oportunidades do funil comercial, não apenas as próprias).</td></tr>
       <tr><td>Contratos</td><td><span class="ui">Gerenciar Contratos</span> (contratos recorrentes e manutenções).</td></tr>
       <tr><td>Funcionários</td><td><span class="ui">Gerenciar Funcionários</span> e <span class="ui">Gerenciar Ponto</span> (ver e gerenciar o ponto de todos).</td></tr>
       <tr><td>Usuários</td><td><span class="ui">Gerenciar Usuários</span> (criar, editar e gerenciar usuários).</td></tr>
@@ -163,6 +163,16 @@
 
   <h3><span class="ui">Ver Toda a Agenda</span>, a permissão que mais gera dúvida</h3>
   <p>Sem essa ação, o usuário abre a Agenda e vê só as tarefas dele. Com ela ligada, vê a agenda inteira da empresa. Para técnico, o normal é deixar desligada: ele enxerga o próprio dia sem se distrair com o resto.</p>
+
+  <h3><span class="ui">Gerenciar CRM</span>: o que a pessoa deixa de ver sem ela</h3>
+  <p>Sem essa ação, o usuário que tem a tela <span class="ui">CRM</span> liberada não vê mais o funil inteiro: ele passa a ver só as oportunidades em que é responsável (principal ou secundário) ou foi quem cadastrou, mais uma fila especial de oportunidades <b>sem nenhum responsável</b> (a que costuma vir de webhook de captação), que fica visível pra empresa inteira até alguém assumir. Os cartões de resumo do topo do CRM (Total de Leads, Valor Total) também passam a somar só o que a pessoa enxerga, não o total da empresa.</p>
+  <div class="regra">Essa restrição só entra em vigor pra usuário que já recebeu <b>algum</b> permissionamento explícito. Se a sua empresa nunca configurou permissões por pessoa (todo mundo com Acesso Total ou sem nenhuma linha de permissão salva), o comportamento continua sendo o de sempre: qualquer um com a tela CRM aberta vê o funil inteiro.</div>
+  <p>Além da ação <span class="ui">Gerenciar CRM</span>, um funil individual pode estar <b>restrito a algumas pessoas</b> (o item "Quem pode ver" dentro de Gerenciar Funis, no CRM). Isso é configurado dentro da própria tela do CRM, não neste editor, e só fica disponível pra administrador, gestor ou quem tem <span class="ui">Gerenciar Configurações</span> ligada.</p>
+
+  <h3><span class="ui">Gerenciar Tarefas</span>: o que a pessoa deixa de ver sem ela</h3>
+  <p>É diferente de <span class="ui">Ver Toda a Agenda</span>, embora pareçam a mesma coisa. <span class="ui">Ver Toda a Agenda</span> é sobre o <b>calendário</b>: quem tem, vê todos os compromissos agendados. <span class="ui">Gerenciar Tarefas</span> é sobre o <b>conjunto inteiro de tarefas</b>, que é maior que o calendário, porque existe tarefa criada dentro de uma oportunidade do CRM que nunca aparece na Agenda (a chave "Mostrar na agenda" desligada, ver T10).</p>
+  <p>Sem <span class="ui">Gerenciar Tarefas</span> e sem <span class="ui">Ver Toda a Agenda</span>, o usuário vê apenas as tarefas em que é responsável, é o técnico, foi quem criou, ou que pertencem à sua equipe, tanto na Agenda quanto na aba <span class="ui">Tarefas</span> do CRM. Com <span class="ui">Ver Toda a Agenda</span> ligada, ele vê todo o calendário, mas ainda pode ficar de fora de uma tarefa de CRM que nunca chegou a entrar na agenda. Com <span class="ui">Gerenciar Tarefas</span> ligada, ele vê absolutamente todas as tarefas, nos dois lugares.</p>
+  <div class="dica">Pra quem coordena vendas e também acompanha a agenda de campo ao mesmo tempo, ligue as duas: <span class="ui">Ver Toda a Agenda</span> e <span class="ui">Gerenciar Tarefas</span>. Pra técnico comum, deixe as duas desligadas, do mesmo jeito que hoje.</div>
 
   <h2>4. Chip Acesso Total e por que ele não quebra quando a gente lança tela nova</h2>
 
@@ -348,6 +358,16 @@
         <td>Abra o usuário, expanda a tela Agenda e desligue Ver Toda a Agenda. Ele passa a ver só as tarefas dele.</td>
       </tr>
       <tr>
+        <td>"Sumiram oportunidades do funil do meu vendedor"</td>
+        <td>Ele não tem a ação Gerenciar CRM, então passou a ver só as oportunidades em que é responsável ou criador.</td>
+        <td>É esperado. Ligue Gerenciar CRM pra quem precisa enxergar o funil inteiro, como gestor ou coordenador comercial.</td>
+      </tr>
+      <tr>
+        <td>"Minha coordenadora não vê as tarefas criadas dentro do CRM, só as da Agenda"</td>
+        <td>Ela tem Ver Toda a Agenda, mas não Gerenciar Tarefas.</td>
+        <td>Ver Toda a Agenda cobre só o calendário. Ligue também Gerenciar Tarefas pra ela ver as tarefas do CRM que não aparecem na Agenda.</td>
+      </tr>
+      <tr>
         <td>"Criei um usuário e ele não consegue entrar"</td>
         <td>Senha errada ou conta desativada</td>
         <td>Confira se a conta está como Ativo na lista. Se estiver, reenvie a senha; ela pode ser trocada depois em Perfil › Alterar Senha.</td>
@@ -389,9 +409,15 @@
 
     <dt>Existe importação de usuários em massa?</dt>
     <dd>Não. Cada usuário é criado pela tela, um a um.</dd>
+
+    <dt>O que muda pro meu vendedor se eu não ligar Gerenciar CRM?</dt>
+    <dd>Ele continua acessando a tela CRM normalmente, mas passa a ver só as oportunidades das quais é responsável ou foi quem cadastrou, além da fila de oportunidades sem responsável, que é visível pra todo mundo.</dd>
+
+    <dt>Qual a diferença entre Ver Toda a Agenda e Gerenciar Tarefas?</dt>
+    <dd>Ver Toda a Agenda cobre o calendário. Gerenciar Tarefas cobre o conjunto inteiro de tarefas, incluindo as que nasceram dentro de uma oportunidade do CRM e nunca aparecem no calendário. Pra ver tudo em ambos os lugares, ligue as duas.</dd>
   </dl>
 
   <div class="glossario">
-    <b>Palavras que o cliente usa pra isso:</b> usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master
+    <b>Palavras que o cliente usa pra isso:</b> usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master, gerenciar CRM, gerenciar tarefas, ver as tarefas de todo mundo, ver o funil inteiro
   </div>
 </section>

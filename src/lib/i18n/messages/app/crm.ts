@@ -278,12 +278,14 @@ export const crm = {
         if (opportunitiesCount === 0) return `${peoplePart}.`;
         const oppWord = opportunitiesCount === 1 ? 'oportunidade' : 'oportunidades';
         const relArticle = opportunitiesCount === 1 ? 'a' : 'as';
-        const relSuffix = opportunitiesCount === 1 ? '' : 'is';
+        // "quais", não "qualis": o plural de "qual" é irregular, então não dá
+        // pra montar por sufixo como o resto da frase faz.
+        const relPronoun = opportunitiesCount === 1 ? 'qual' : 'quais';
         const pronounVerb = peopleCount === 1 ? 'ela é' : 'elas são';
         const responsavel = peopleCount === 1 ? 'responsável' : 'responsáveis';
         const oppVerb = opportunitiesCount === 1 ? 'vai' : 'vão';
         const possessive = peopleCount === 1 ? 'dela' : 'delas';
-        return `${peoplePart}, e ${opportunitiesCount} ${oppWord} pel${relArticle} qual${relSuffix} ${pronounVerb} ${responsavel} ${oppVerb} sumir da tela ${possessive}.`;
+        return `${peoplePart}, e ${opportunitiesCount} ${oppWord} pel${relArticle} ${relPronoun} ${pronounVerb} ${responsavel} ${oppVerb} sumir da tela ${possessive}.`;
       },
     },
 

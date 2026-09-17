@@ -4,7 +4,7 @@
     {
       "id": "t10-nova-oportunidade",
       "url": "/crm",
-      "legenda": "Janela Nova Oportunidade com os campos Título, Cliente, Vendedor Responsável, Origem, Estágio, Valor Estimado, Probabilidade, Previsão Fechamento e Observações, sem nada preenchido.",
+      "legenda": "Janela Nova Oportunidade com os campos Título, Cliente, Vendedor Responsável (múltipla escolha), Origem, Estágio, Valor Estimado, Probabilidade, Previsão Fechamento e Observações, sem nada preenchido.",
       "passos": [
         { "esperar": 2500 },
         { "clicar": "Nova Oportunidade" },
@@ -15,7 +15,7 @@
     {
       "id": "t10-gerenciar-estagios",
       "url": "/crm",
-      "legenda": "Janela Gerenciar Estágios do Pipeline com o bloco Novo Estágio (nome e cor) e a lista de estágios com as marcações de ganho e perdido.",
+      "legenda": "Janela Gerenciar Estágios do Pipeline com o bloco Novo Estágio (nome, ícone e cor) e a lista de estágios com as marcações de ganho e perdido.",
       "passos": [
         { "esperar": 2500 },
         { "clicarSeletor": "[title=\"Gerenciar estágios\"]" },
@@ -32,6 +32,78 @@
         { "clicarSeletor": "[title=\"Configurar webhooks\"]" },
         { "esperar": 1800 },
         { "rolarAte": "Como usar o webhook", "opcional": true }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-seletor-funil",
+      "url": "/crm",
+      "legenda": "Topo da tela CRM com o alternador Funil/Tarefas e, logo abaixo, o seletor de funil em pílulas, visível porque a empresa demo tem mais de um funil cadastrado. REQUISITO DE DADO: a empresa demo precisa ter ao menos 2 funis já cadastrados antes da captura (o seletor não aparece com um funil só, e este roteiro não pode criar um novo funil, pois 'Criar' é ação proibida na captura).",
+      "passos": [
+        { "esperar": 2500 }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t10-gerenciar-funis",
+      "url": "/crm",
+      "legenda": "Janela Gerenciar Funis com o bloco Novo Funil, a lista de funis da empresa com a alça de arrastar, o selo Padrão (ou o botão Tornar padrão) e o menu de ações de cada linha.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "[title=\"Gerenciar funis\"]" },
+        { "esperar": 1800 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-quem-pode-ver",
+      "url": "/crm",
+      "legenda": "Janela Acesso ao funil, com a faixa verde Aberto para toda a empresa e o campo Pessoas com acesso para restringir quem enxerga aquele funil. REQUISITO: usuário logado precisa ser admin/gestor ou ter Gerenciar Configurações, senão o item 'Quem pode ver' não aparece no menu da linha.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "[title=\"Gerenciar funis\"]" },
+        { "esperar": 1200 },
+        { "clicarSeletor": "[role=\"dialog\"] [aria-label=\"Ações\"]" },
+        { "esperar": 600 },
+        { "clicar": "Quem pode ver" },
+        { "esperar": 1200 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-oportunidade-aba-tarefas",
+      "url": "/crm",
+      "legenda": "Detalhe de uma oportunidade aberto na aba Tarefas, mostrando a lista de tarefas vinculadas ao card (ou o estado vazio 'Nenhuma tarefa nesta oportunidade'). Exige uma oportunidade de teste já cadastrada na conta de demonstração.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "h4.line-clamp-2" },
+        { "esperar": 1500 },
+        { "clicar": "Tarefas" },
+        { "esperar": 1000 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-nova-tarefa-oportunidade",
+      "url": "/crm",
+      "legenda": "Formulário de nova tarefa aberto a partir de uma oportunidade do CRM, com a chave 'Mostrar na agenda' ligada e o campo Data marcado como obrigatório.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "h4.line-clamp-2" },
+        { "esperar": 1500 },
+        { "clicar": "Criar Tarefa" },
+        { "esperar": 1500 }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-fila-sem-responsavel",
+      "url": "/crm",
+      "legenda": "Detalhe de uma oportunidade sem nenhum responsável, com o selo amarelo 'Sem responsável' e o botão 'Assumir oportunidade' (sem clicar nele). REQUISITO DE DADO: a empresa demo precisa ter ao menos uma oportunidade sem responsável (ex.: vinda de webhook) antes da captura.",
+      "passos": [
+        { "esperar": 2500 },
+        { "clicarSeletor": "text=Sem responsável" },
+        { "esperar": 1500 }
       ],
       "recorte": "dialog"
     }
