@@ -5,12 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectSectionLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   User, Phone, Mail, Calendar, DollarSign, TrendingUp,
-  MessageSquare, Clock, Plus, Send, Edit, Trash2, X, Wrench, CalendarPlus
+  MessageSquare, Clock, Plus, Send, Edit, Trash2, X, Wrench, CalendarPlus,
+  UserX, UserPlus,
 } from 'lucide-react';
 import {
   useLeadInteractions,
@@ -19,6 +29,7 @@ import {
   useLeads
 } from '@/hooks/useLeads';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { useCrmPipelines } from '@/hooks/useCrmPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
 import { OriginBadge } from '@/components/crm/OriginBadge';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -56,10 +67,13 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const dfLocale = DATE_FNS_LOCALES[locale];
   const interactionTypes = getInteractionTypes(locale);
   const { stages, getStageHex } = useCrmStages();
+  // Onda D — multi-pipeline: mesmo agrupamento por funil do LeadFormDialog.
+  const { pipelines } = useCrmPipelines();
+  const hasMultiplePipelines = pipelines.length > 1;
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
-  const { deleteLead } = useLeads();
+  const { deleteLead, claimLead } = useLeads();
 
-  const { isAdminOrGestor, hasPermission } = useAuth();
+  const { user, isAdminOrGestor, hasPermission } = useAuth();
   const { createServiceOrder } = useServiceOrders();
   const { submitTask } = useTaskSubmit();
   // Tarefa ainda não tem permissão própria (fn:manage_tasks é Onda E do
@@ -113,6 +127,17 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
       await deleteLead.mutateAsync(lead.id);
       onOpenChange(false);
     }
+  };
+
+  // Fila "sem responsável" (correção da Onda C): ao assumir, o usuário vira o
+  // responsável principal e o lead sai da fila compartilhada pra quem não tem
+  // fn:manage_crm. O toast de claimLead (useLeads) já avisa essa consequência
+  // — não usamos confirm() aqui de propósito: o texto do botão + a legenda
+  // logo abaixo dele já deixam claro o que vai acontecer, e um confirm extra
+  // só atrasaria a ação mais comum desse estado (pegar o lead da fila).
+  const handleClaim = async () => {
+    if (!user) return;
+    await claimLead.mutateAsync(lead.id);
   };
 
   const getInteractionIcon = (type: string) => {
@@ -176,23 +201,50 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   <SelectValue placeholder={t.form.stagePlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      <div className="flex items-center gap-2">
-                        {stage.icon ? (
-                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
-                            <IconPreview name={stage.icon} className="h-3 w-3" />
-                          </span>
-                        ) : (
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: getStageHex(stage.color) }}
-                          />
-                        )}
-                        {stage.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {hasMultiplePipelines
+                    ? pipelines.map((pipeline) => {
+                        const stagesInPipeline = stages.filter((s) => s.pipeline_id === pipeline.id);
+                        if (stagesInPipeline.length === 0) return null;
+                        return (
+                          <SelectGroup key={pipeline.id}>
+                            <SelectSectionLabel>{pipeline.name}</SelectSectionLabel>
+                            {stagesInPipeline.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                <div className="flex items-center gap-2">
+                                  {stage.icon ? (
+                                    <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                                      <IconPreview name={stage.icon} className="h-3 w-3" />
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: getStageHex(stage.color) }}
+                                    />
+                                  )}
+                                  {stage.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        );
+                      })
+                    : stages.map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          <div className="flex items-center gap-2">
+                            {stage.icon ? (
+                              <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                                <IconPreview name={stage.icon} className="h-3 w-3" />
+                              </span>
+                            ) : (
+                              <span
+                                className="h-2.5 w-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: getStageHex(stage.color) }}
+                              />
+                            )}
+                            {stage.name}
+                          </div>
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
               {currentStage && (
@@ -204,7 +256,60 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   {currentStage.name}
                 </Badge>
               )}
+              {hasMultiplePipelines && (
+                <p className="w-full text-xs text-muted-foreground">{t.detail.stagePipelineHint}</p>
+              )}
             </div>
+
+            {/* Responsáveis (Onda C — multi-responsável). Principal em destaque
+                (badge saturado + selo "Principal"); co-responsáveis em badge neutro.
+                Sem nenhum responsável = lead da fila compartilhada (correção da
+                Onda C): badge saturado de atenção + botão pra assumir. */}
+            {lead.assignees?.length ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Label className="text-muted-foreground">{t.detail.assigneesLabel}</Label>
+                {lead.assignees.map((a) => (
+                  <Badge
+                    key={a.user_id}
+                    variant={a.is_primary ? 'default' : 'secondary'}
+                    className="gap-1.5 pl-1 pr-2 font-normal"
+                  >
+                    <Avatar className="h-4 w-4">
+                      <AvatarImage src={a.avatar_url || undefined} />
+                      <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                        {a.full_name?.charAt(0)?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{a.full_name || t.detail.assigneeUnknown}</span>
+                    {a.is_primary && (
+                      <span className="text-[9px] font-bold uppercase tracking-wide">
+                        {t.detail.assigneePrimaryBadge}
+                      </span>
+                    )}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant="warning" className="gap-1.5">
+                  <UserX className="h-3.5 w-3.5" />
+                  {t.detail.unassignedLabel}
+                </Badge>
+                <div className="flex flex-col gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-2 w-fit"
+                    onClick={handleClaim}
+                    disabled={claimLead.isPending}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    {t.detail.claimButton}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">{t.detail.claimHint}</p>
+                </div>
+              </div>
+            )}
 
             {/* Atalhos: gerar OS ou Tarefa já com os dados desta oportunidade */}
             {(canCreateOS || canCreateTask) && (
@@ -485,7 +590,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
       onOpenChange={setOsFormOpen}
       defaultCustomerId={lead.customer_id ?? undefined}
       defaultDescription={lead.title}
-      defaultAssigneeUserIds={lead.assigned_to ? [lead.assigned_to] : undefined}
+      defaultAssigneeUserIds={
+        lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : undefined
+      }
       onSubmit={async (data) => {
         await createServiceOrder.mutateAsync(data as any);
       }}
@@ -498,7 +605,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
       onOpenChange={setTaskFormOpen}
       defaultCustomerId={lead.customer_id ?? undefined}
       defaultTitle={lead.title}
-      defaultAssigneeUserIds={lead.assigned_to ? [lead.assigned_to] : undefined}
+      defaultAssigneeUserIds={
+        lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : undefined
+      }
       task={null}
       isLoading={creatingTask}
       onSubmit={async (data: TaskFormData) => {

@@ -42,6 +42,77 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.34',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vários funis de vendas na mesma empresa',
+        description: 'Até agora o CRM tinha um funil só. Agora dá para criar quantos precisar, por exemplo um para venda nova e outro para manutenção, cada um com as suas próprias etapas e oportunidades. Um seletor no topo da tela troca de funil, e a escolha fica guardada para a próxima vez que você entrar. Quem usa um funil só não vê nada diferente: o seletor nem aparece.',
+        category: 'recurso',
+      },
+      {
+        title: 'Mover uma oportunidade de um funil para outro',
+        description: 'Ao trocar a etapa de uma oportunidade, a lista agora vem separada por funil, com o nome de cada um em cima das suas etapas. Escolher uma etapa de outro funil move o negócio para lá, e a tela avisa isso antes de você confirmar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Proteção ao excluir um funil',
+        description: 'Um funil que ainda tem etapas ou oportunidades dentro não pode ser excluído, e o sistema explica o porquê em vez de dar erro. Assim ninguém apaga negócio em andamento sem perceber.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.24.33',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ponto em grupo: um tablet para o time inteiro bater ponto',
+        description: 'Antes cada funcionário precisava do próprio link para registrar o ponto pelo celular. Agora dá para deixar um tablet fixo na empresa mostrando a lista do time, e cada pessoa bate o próprio ponto tocando no seu nome. A tela mostra quem já chegou, quem está em intervalo e quem ainda não bateu, tem busca por nome e volta sozinha para a lista depois de cada registro. O link do tablet fica na tela de Funcionários, com QR Code para imprimir e colar na parede.',
+        category: 'recurso',
+      },
+      {
+        title: 'PIN por funcionário para proteger a batida no tablet',
+        description: 'Como o tablet é compartilhado, cada funcionário pode ter um PIN de 4 ou 6 dígitos. Sem o PIN correto ninguém consegue registrar ponto no lugar de outra pessoa, e depois de várias tentativas erradas o acesso trava por um tempo. O PIN é opcional e você define na ficha do funcionário, em Pagamento.',
+        category: 'seguranca',
+      },
+      {
+        title: 'O ponto passou a seguir o fuso horário da sua empresa',
+        description: 'O horário de Brasília estava fixo no ponto. Para empresa em outro fuso, como Mato Grosso ou Acre, toda batida aparecia adiantada e os registros perto da meia-noite caíam no dia seguinte, bagunçando o espelho e o fechamento do mês. Agora o ponto usa o fuso que está em Configurações, na aba Regional. Isso vale para a batida pelo celular, para o tablet, para o lançamento manual feito pelo administrador e para a planilha do espelho. Para empresas em São Paulo nada muda.',
+        category: 'correcao',
+      },
+      {
+        title: 'Logo da empresa deixou de sair esticado na foto do ponto',
+        description: 'A foto tirada na hora da batida recebe um carimbo com o logo da empresa. O logo estava sendo encaixado à força num quadrado, então quem tem logo mais largo que alto via a marca espremida. Agora o logo mantém a proporção original.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.32',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais de um vendedor responsável pela mesma oportunidade',
+        description: 'Antes cada oportunidade tinha um responsável só. Agora dá para colocar vários, com as fotos aparecendo no card do funil. O primeiro que você escolhe é o responsável principal, que é quem continua valendo para os filtros, os relatórios e a comissão. Quem já usa o CRM não perde nada: o responsável atual de cada oportunidade virou o principal automaticamente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cada vendedor vê as oportunidades dele',
+        description: 'O funil mostrava todas as oportunidades da empresa para qualquer pessoa com acesso à tela. Agora cada um vê apenas aquelas em que é responsável, co-responsável ou foi quem cadastrou, e os totais no topo passam a refletir isso. Quem tem a permissão "Gerenciar CRM" continua enxergando o funil inteiro, e empresas que ainda não usam o controle de permissões não mudam em nada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Lead que chega sozinho agora tem uma fila',
+        description: 'Quando um contato entra pelo formulário de captação do site, ele chega sem dono. Esse tipo de oportunidade aparece marcada como "Sem responsável" para todo mundo da empresa, com um botão para assumir. Quem assumir vira o responsável e a oportunidade sai da fila dos colegas. Também dá para filtrar só as que estão sem responsável, para ninguém deixar contato parado.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.24.31',
     date: '17 de setembro de 2026',
     type: 'patch',

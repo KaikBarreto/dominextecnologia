@@ -32,11 +32,20 @@ vi.mock('@/hooks/useLeads', () => ({
 vi.mock('@/hooks/useUsers', () => ({ useUsers: () => ({ users: [] }) }));
 vi.mock('@/hooks/useCrmStages', () => ({
   useCrmStages: () => ({
-    stages: [{ id: 'stage-1', name: 'Novo', color: 'blue', position: 0 }],
+    stages: [{ id: 'stage-1', name: 'Novo', color: 'blue', position: 0, pipeline_id: 'pipeline-1' }],
     isLoading: false,
-    seedDefaultStages: { mutateAsync: vi.fn() },
+    seedDefaultStages: { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false },
     reorderStages: { mutateAsync: vi.fn() },
     getStageHex: () => '#000000',
+  }),
+}));
+// Onda D (multi-pipeline): CRM.tsx passou a chamar useCrmPipelines. Mock com 1
+// único funil = mesmo comportamento visual de antes do D2 (sem seletor de funil).
+vi.mock('@/hooks/useCrmPipelines', () => ({
+  useCrmPipelines: () => ({
+    pipelines: [{ id: 'pipeline-1', name: 'Funil de Vendas', is_default: true }],
+    isLoading: false,
+    defaultPipeline: { id: 'pipeline-1', name: 'Funil de Vendas', is_default: true },
   }),
 }));
 
@@ -54,10 +63,19 @@ vi.mock('@/hooks/useLeadWonRevenuePrompt', () => ({
   }),
 }));
 vi.mock('@/hooks/useCanLaunchLeadRevenue', () => ({ useCanLaunchLeadRevenue: () => false }));
+// A 1.24.32 (Onda C do CRM) passou a chamar useAuth DIRETO na tela, pra recortar
+// as oportunidades por responsável (`fn:manage_crm`). Sem este mock o teste morre
+// em "useAuth must be used within an AuthProvider" — e o caso sob teste é o PASTE
+// no filtro de valor, que não exercita permissão nenhuma. `hasPermission: true`
+// mantém a tela mostrando todas as oportunidades, como era antes do recorte.
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'user-teste' }, hasPermission: () => true }),
+}));
 vi.mock('@/components/crm/LeadFormDialog', () => ({ LeadFormDialog: () => null }));
 vi.mock('@/components/crm/LeadDetailModal', () => ({ LeadDetailModal: () => null }));
 vi.mock('@/components/crm/LeadCard', () => ({ LeadCard: () => null }));
 vi.mock('@/components/crm/StageManagerDialog', () => ({ StageManagerDialog: () => null }));
+vi.mock('@/components/crm/PipelineManagerDialog', () => ({ PipelineManagerDialog: () => null }));
 vi.mock('@/components/crm/WebhookManagerDialog', () => ({ WebhookManagerDialog: () => null }));
 vi.mock('@/components/crm/LossReasonDialog', () => ({ LossReasonDialog: () => null }));
 

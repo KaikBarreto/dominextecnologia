@@ -159,6 +159,7 @@ const NotFound = React.lazy(() => import("./pages/NotFound"));
 const Changelog = React.lazy(() => import("./pages/Changelog"));
 const Employees = React.lazy(() => import("./pages/Employees"));
 const PontoPublico = React.lazy(() => import("./pages/PontoPublico"));
+const PontoKiosk = React.lazy(() => import("./pages/PontoKiosk"));
 const Billing = React.lazy(() => import("./pages/Billing"));
 const LiveMap = React.lazy(() => import("./pages/LiveMap"));
 const Checkout = React.lazy(() => import("./pages/Checkout"));
@@ -637,6 +638,9 @@ const AppRoutes = () => (
     {/* Ponto eletrônico por link público — anônimo, fora do AppLayout. O
        funcionário bate o ponto deslogado; tudo passa pela edge time-clock-portal. */}
     <Route path="/ponto/:slug" element={<PontoPublico />} />
+    {/* Ponto em grupo — tablet fixo da empresa, quiosque com a grade de crachás
+       do time. Mesma tela de batida do link pessoal, mesma edge, anônimo. */}
+    <Route path="/ponto/empresa/:kioskSlug" element={<PontoKiosk />} />
     {/* Perfil Comportamental (DISC) por link público — anônimo, fora do AppLayout.
        O funcionário responde deslogado; tudo passa pelas RPCs get_disc_public /
        submit_disc_assessment (SECURITY DEFINER). */}

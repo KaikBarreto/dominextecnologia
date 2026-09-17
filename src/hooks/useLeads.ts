@@ -7,9 +7,23 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
 
+/**
+ * Um responsável da oportunidade (Onda C do overhaul de CRM). `is_primary`
+ * espelha `leads.assigned_to` via trigger no banco — ver migration
+ * 20260917150000_crm_multi_responsavel_e_visibilidade.sql.
+ */
+export type LeadAssignee = {
+  user_id: string;
+  is_primary: boolean;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
 export type Lead = Tables<'leads'> & {
   customers?: Partial<Tables<'customers'>> | null;
   assigned_profile?: { full_name: string; avatar_url: string | null } | null;
+  /** Lista completa de responsáveis (principal + co-responsáveis), principal primeiro. */
+  assignees?: LeadAssignee[];
 };
 export type LeadInsert = TablesInsert<'leads'>;
 export type LeadUpdate = TablesUpdate<'leads'>;
@@ -99,37 +113,95 @@ export function useLeads() {
         .select(`
           *,
           customers (id, name, phone, celular, email),
-          crm_stages (id, name, color)
+          crm_stages (id, name, color),
+          lead_assignees (user_id, is_primary)
         `)
         .order('updated_at', { ascending: false });
-      
+
       if (error) throw error;
 
-      // Fetch assigned profiles
-      const assignedIds = [...new Set((data || []).map(l => l.assigned_to).filter(Boolean))] as string[];
+      // Fetch profiles for both the legacy assigned_to and every co-responsável
+      // em lead_assignees — junta tudo num único round trip. lead_assignees não
+      // tem FK pra profiles (aponta pra auth.users), então o join precisa ser
+      // manual, igual já era feito pra assigned_profile.
+      const assignedIds = new Set<string>();
+      (data || []).forEach((l: any) => {
+        if (l.assigned_to) assignedIds.add(l.assigned_to);
+        (l.lead_assignees || []).forEach((la: any) => assignedIds.add(la.user_id));
+      });
       let profilesMap: Record<string, { full_name: string; avatar_url: string | null }> = {};
-      if (assignedIds.length > 0) {
+      if (assignedIds.size > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('user_id, full_name, avatar_url')
-          .in('user_id', assignedIds);
+          .in('user_id', [...assignedIds]);
         if (profiles) {
           profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url }]));
         }
       }
 
-      return (data || []).map(lead => ({
-        ...lead,
-        assigned_profile: lead.assigned_to ? profilesMap[lead.assigned_to] || null : null,
-      })) as unknown as (Lead & { crm_stages?: { id: string; name: string; color: string } | null })[];
+      return (data || []).map((lead: any) => {
+        const assignees: LeadAssignee[] = (lead.lead_assignees || [])
+          .map((la: any) => ({
+            user_id: la.user_id,
+            is_primary: la.is_primary,
+            full_name: profilesMap[la.user_id]?.full_name ?? null,
+            avatar_url: profilesMap[la.user_id]?.avatar_url ?? null,
+          }))
+          // Principal primeiro, resto por nome — UI sempre mostra o principal em destaque.
+          .sort((a: LeadAssignee, b: LeadAssignee) => {
+            if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+            return (a.full_name || '').localeCompare(b.full_name || '');
+          });
+        return {
+          ...lead,
+          assigned_profile: lead.assigned_to ? profilesMap[lead.assigned_to] || null : null,
+          assignees,
+        };
+      }) as unknown as (Lead & { crm_stages?: { id: string; name: string; color: string } | null })[];
     },
   });
 
+  // Substitui a lista de responsáveis de um lead (delete + insert completo).
+  // Escrevemos SÓ em lead_assignees, nunca em leads.assigned_to ao mesmo tempo
+  // — é o caminho de escrita escolhido pra não brigar com o trigger de espelho
+  // (leads_sync_primary_assignee / lead_assignees_sync_to_lead, ver migration
+  // 20260917150000): o AFTER trigger de lead_assignees propaga o `is_primary`
+  // pra leads.assigned_to sozinho assim que a lista é gravada.
+  //
+  // DELETE+INSERT client-side aqui é seguro (ao contrário do incidente PMOC
+  // documentado — replace_children_via_rpc_nao_client_delete_insert): a RLS de
+  // lead_assignees usa a MESMA função (can_access_lead) no USING do DELETE e
+  // no WITH CHECK do INSERT, então não existe a assimetria "delete casa 0,
+  // insert sempre passa" — se o ator não pode acessar o lead, o INSERT falha
+  // alto (RLS violation), nunca fica quieto enquanto o delete não apaga nada.
+  const replaceLeadAssignees = async (leadId: string, assigneeUserIds: string[]) => {
+    const { error: deleteError } = await supabase
+      .from('lead_assignees')
+      .delete()
+      .eq('lead_id', leadId);
+    if (deleteError) throw deleteError;
+
+    if (assigneeUserIds.length > 0) {
+      const { error: insertError } = await supabase.from('lead_assignees').insert(
+        // Convenção da tela (LeadFormDialog): o primeiro selecionado é o principal.
+        assigneeUserIds.map((uid, idx) => ({ lead_id: leadId, user_id: uid, is_primary: idx === 0 }))
+      );
+      if (insertError) throw insertError;
+    }
+  };
+
   const createLead = useMutation({
-    mutationFn: async (lead: LeadInsert) => {
+    mutationFn: async ({ assignee_user_ids, ...lead }: LeadInsert & { assignee_user_ids?: string[] }) => {
       const { data: userData } = await supabase.auth.getUser();
+      const leadFields: LeadInsert = { ...lead, created_by: userData.user?.id };
+      if (assignee_user_ids !== undefined) {
+        // A lista de responsáveis manda: assigned_to nasce vazio e o trigger do
+        // banco preenche a partir do principal quando lead_assignees é gravado.
+        delete leadFields.assigned_to;
+      }
       const sanitized = normalizeOptionalForeignKeys(
-        { ...lead, created_by: userData.user?.id },
+        leadFields,
         ['customer_id', 'assigned_to', 'stage_id']
       );
       const { data, error } = await supabase
@@ -137,8 +209,13 @@ export function useLeads() {
         .insert(sanitized)
         .select()
         .single();
-      
+
       if (error) throw error;
+
+      if (assignee_user_ids !== undefined) {
+        await replaceLeadAssignees(data.id, assignee_user_ids);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -151,16 +228,25 @@ export function useLeads() {
   });
 
   const updateLead = useMutation({
-    mutationFn: async ({ id, ...updates }: LeadUpdate & { id: string }) => {
-      const sanitized = normalizeOptionalForeignKeys(updates, ['customer_id', 'assigned_to', 'stage_id']);
+    mutationFn: async ({ id, assignee_user_ids, ...updates }: LeadUpdate & { id: string; assignee_user_ids?: string[] }) => {
+      const updateFields: LeadUpdate = { ...updates };
+      if (assignee_user_ids !== undefined) {
+        delete updateFields.assigned_to;
+      }
+      const sanitized = normalizeOptionalForeignKeys(updateFields, ['customer_id', 'assigned_to', 'stage_id']);
       const { data, error } = await supabase
         .from('leads')
         .update(sanitized)
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
+
+      if (assignee_user_ids !== undefined) {
+        await replaceLeadAssignees(id, assignee_user_ids);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -169,6 +255,37 @@ export function useLeads() {
     },
     onError: (error) => {
       toast({ title: 'Erro ao atualizar lead', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+
+  // Assumir a oportunidade (fila "sem responsável", Onda C — correção da fila).
+  // Escreve direto em leads.assigned_to (caminho legado): o trigger
+  // leads_sync_primary_assignee espelha pra lead_assignees sozinho. É o mesmo
+  // caminho de escrita que updateLead usa quando assignee_user_ids não é
+  // passado, só que aqui o alvo é sempre o próprio usuário logado.
+  const claimLead = useMutation({
+    mutationFn: async (id: string) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) throw new Error('Usuário não autenticado');
+      const { data, error } = await supabase
+        .from('leads')
+        .update({ assigned_to: uid })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({
+        title: 'Oportunidade assumida!',
+        description: 'Ela saiu da fila compartilhada e agora aparece só pra você.',
+      });
+    },
+    onError: (error) => {
+      toast({ title: 'Erro ao assumir oportunidade', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -212,6 +329,7 @@ export function useLeads() {
     error,
     createLead,
     updateLead,
+    claimLead,
     deleteLead,
     leadsByStatus,
     valueByStatus,

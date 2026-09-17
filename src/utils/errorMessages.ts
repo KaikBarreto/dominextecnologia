@@ -160,6 +160,16 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'Este estágio não pode ser excluído porque possui leads vinculados. Mova os leads para outro estágio antes.',
   },
 
+  // ── FK: CRM Pipelines (Onda D — multi-funil) ──
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('crm_stages_pipeline_id_fkey'),
+    text: 'Este funil não pode ser excluído porque possui etapas vinculadas. Mova ou exclua as etapas antes.',
+  },
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('leads_pipeline_id_fkey'),
+    text: 'Este funil não pode ser excluído porque possui oportunidades vinculadas. Mova as oportunidades para outro funil antes.',
+  },
+
   // ── FK: Financial Categories ──
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('financial_transactions_category'),

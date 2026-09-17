@@ -24,7 +24,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 export function TimeHistory() {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const tc = MESSAGES[locale].app.employees.timeclock;
 
   // Status label map derived from translations
@@ -158,7 +158,7 @@ export function TimeHistory() {
             variant="outline"
             size="sm"
             className="gap-2 h-9"
-            onClick={() => exportToCSV(sheets, employees, locale)}
+            onClick={() => exportToCSV(sheets, employees, locale, timezone)}
             disabled={sheets.length === 0}
           >
             <Download className="h-4 w-4" /> CSV
@@ -177,7 +177,7 @@ export function TimeHistory() {
               variant="outline"
               size="sm"
               className="gap-2 h-9"
-              onClick={() => exportToCSV(sheets, employees, locale)}
+              onClick={() => exportToCSV(sheets, employees, locale, timezone)}
               disabled={sheets.length === 0}
             >
               <Download className="h-4 w-4" /> CSV
