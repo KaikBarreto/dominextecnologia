@@ -33,6 +33,7 @@ import {
   type SubscriptionCycle,
 } from '@/hooks/useTenantSubscriptions';
 import { formatBRL } from '@/utils/currency';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { CalendarDays, Loader2, Pencil, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -127,6 +128,12 @@ function EditSubscriptionModal({
     const raw = e.target.value.replace(/\D/g, '');
     setAmount(parseInt(raw || '0', 10) / 100);
   };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setAmount(cents / 100);
+  };
   const amountDisplay = amount
     ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
@@ -157,6 +164,7 @@ function EditSubscriptionModal({
               placeholder={t.fields.valuePlaceholder}
               value={amountDisplay}
               onChange={handleAmountChange}
+              onPaste={handleAmountPaste}
             />
           </div>
         </div>

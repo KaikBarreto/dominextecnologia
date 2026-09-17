@@ -28,6 +28,7 @@ import {
   type PixAutoAuthorization,
 } from '@/hooks/useTenantSubscriptions';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface SubscriptionDialogProps {
   open: boolean;
@@ -240,6 +241,12 @@ export function SubscriptionDialog({
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setAmount(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setAmount(cents / 100);
   };
   const amountDisplay = amount
     ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -546,6 +553,7 @@ export function SubscriptionDialog({
                       placeholder={t.fields.valuePlaceholder}
                       value={amountDisplay}
                       onChange={handleAmountChange}
+                      onPaste={handleAmountPaste}
                     />
                   </div>
                 </div>

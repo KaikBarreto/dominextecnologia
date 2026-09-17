@@ -54,6 +54,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -61,6 +62,17 @@ const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   es: esLocale,
   fr: frLocale,
 };
+
+// Filtro de valor (min/max) não grava no banco, mas colar "4.550" num
+// `<input type="number">` ainda erra o filtro (o navegador lê ponto como
+// decimal internacional e vira 4,55 — o mesmo bug do sócio, só que aqui sem o
+// dano de mil vezes numa parcela). `readPastedCents` lê o texto como valor de
+// verdade antes do navegador decidir sozinho.
+function handleMoneyFilterPaste(e: React.ClipboardEvent<HTMLInputElement>, setValue: (v: string) => void) {
+  const cents = readPastedCents(e);
+  if (cents == null) return;
+  setValue(cents ? (cents / 100).toFixed(2) : '');
+}
 
 interface Filters {
   search: string;
@@ -373,6 +385,7 @@ export default function CRM() {
             placeholder={t.filterMinPlaceholder}
             value={filters.minValue}
             onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
+            onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, minValue: v })))}
           />
         </div>
         <div>
@@ -382,6 +395,7 @@ export default function CRM() {
             placeholder={t.filterMaxPlaceholder}
             value={filters.maxValue}
             onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
+            onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, maxValue: v })))}
           />
         </div>
       </div>
@@ -921,6 +935,7 @@ export default function CRM() {
                 placeholder={t.filterMinPlaceholder}
                 value={filters.minValue}
                 onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
+                onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, minValue: v })))}
               />
             </div>
             <div className="space-y-2">
@@ -930,6 +945,7 @@ export default function CRM() {
                 placeholder={t.filterMaxPlaceholder}
                 value={filters.maxValue}
                 onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
+                onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, maxValue: v })))}
               />
             </div>
           </div>

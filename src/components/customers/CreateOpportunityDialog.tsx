@@ -8,6 +8,7 @@ import { useLeads } from '@/hooks/useLeads';
 import { useCrmStages } from '@/hooks/useCrmStages';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import type { Customer } from '@/types/database';
 
 interface CreateOpportunityDialogProps {
@@ -100,6 +101,16 @@ export function CreateOpportunityDialog({ open, onOpenChange, customer }: Create
             step="0.01"
             value={value}
             onChange={(e) => setValue(e.target.value)}
+            onPaste={(e) => {
+              // Colar valor pronto (ex. "4.550" de uma planilha) num
+              // `<input type="number">` é lido pelo navegador como decimal
+              // internacional e vira 4,55 — 1000x menor (bug real do sócio).
+              // `readPastedCents` lê o texto como valor de verdade em
+              // PT-BR/internacional antes do navegador decidir sozinho.
+              const cents = readPastedCents(e);
+              if (cents == null) return;
+              setValue(cents ? (cents / 100).toFixed(2) : '');
+            }}
             placeholder="0,00"
           />
         </div>

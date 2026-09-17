@@ -14,6 +14,7 @@ import { BankInstitutionCombobox, BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 const ACCOUNT_COLORS = [
   '#0F172A', '#1E293B', '#334155', '#0EA5E9', '#0284C7', '#1D4ED8',
@@ -129,10 +130,20 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
     const raw = e.target.value.replace(/\D/g, '');
     setInitialBalance(parseInt(raw || '0', 10) / 100);
   };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleCurrencyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setInitialBalance(cents / 100);
+  };
 
   const handleCreditLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setCreditLimit(parseInt(raw || '0', 10) / 100);
+  };
+  const handleCreditLimitPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setCreditLimit(cents / 100);
   };
 
   const balanceDisplay = initialBalance
@@ -227,6 +238,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                 placeholder="0,00"
                 value={creditLimitDisplay}
                 onChange={handleCreditLimitChange}
+                onPaste={handleCreditLimitPaste}
                 inputMode="numeric"
               />
             </div>
@@ -234,7 +246,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
         ) : (
           <div className="space-y-1.5">
             <Label>{t.initialBalanceLabel}</Label>
-            <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} inputMode="numeric" />
+            <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} onPaste={handleCurrencyPaste} inputMode="numeric" />
             {editing && (
               <p className="text-xs text-muted-foreground">⚠️ {t.initialBalanceEditWarning}</p>
             )}

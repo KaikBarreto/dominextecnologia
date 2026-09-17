@@ -23,6 +23,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { ModalFormSection } from './ModalFormSection';
@@ -132,6 +133,35 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   }));
 
   const activeCustomers = (customers || []).filter((c: any) => !c.is_deleted);
+
+  // Máscara de dinheiro (centavos), igual ChargeDialog/TransactionFormDialog:
+  // digita só dígitos, os 2 últimos são os centavos. NUNCA usar
+  // `<input type="number">` aqui — bug real (2026-09-17, "PMOC - Daluz
+  // Freguesia"): o input nativo aceita colar "4.550" como texto válido
+  // (ponto = separador decimal do HTML), e `parseFloat`/`Number` liam ponto
+  // como decimal e devolviam 4.55 — 72 parcelas nasceram de R$ 4,55 em vez
+  // de R$ 4.550,00. `amount` continua string, só que agora é SEMPRE
+  // canônica ("4550.00", nunca "4.550"), pra não exigir mudar quem já
+  // consome via `Number(amount)`.
+  //
+  // `onPaste` cobre a outra ponta do mesmo bug: colar um valor pronto (ex.
+  // "4.550" copiado de planilha) através da regra de centavos comum
+  // (dígitos → últimos 2 = centavos) daria R$ 45,50 — 100x menor. Por isso
+  // COLAR usa `readPastedCents`, que lê o texto como valor de verdade (ver
+  // `src/lib/money-paste-mask.ts`), não como sequência de dígitos.
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const amountDisplay = amount
+    ? Number(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
 
   const handleSubmit = async () => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
@@ -321,7 +351,14 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         <ModalFormSection title={t.sections.money}>
           <div className="space-y-1.5">
             <Label>{t.amountLabel}</Label>
-            <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t.amountPlaceholder} />
+            <Input
+              id="conta-amount"
+              inputMode="numeric"
+              value={amountDisplay}
+              onChange={handleAmountChange}
+              onPaste={handleAmountPaste}
+              placeholder={t.amountPlaceholder}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>{t.dueDateLabel}</Label>

@@ -3934,6 +3934,7 @@ export type Database = {
           accrual_amount: number | null
           amount: number
           amount_received: number
+          asaas_payment_id: string | null
           bill_id: string | null
           billing_reminder_resolved_at: string | null
           billing_reminder_resolved_by: string | null
@@ -3976,6 +3977,7 @@ export type Database = {
           accrual_amount?: number | null
           amount: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -4018,6 +4020,7 @@ export type Database = {
           accrual_amount?: number | null
           amount?: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -8601,6 +8604,7 @@ export type Database = {
       }
       tenant_charges: {
         Row: {
+          asaas_installment_id: string | null
           asaas_payment_id: string | null
           billing_type: string | null
           boleto_url: string | null
@@ -8624,6 +8628,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -8647,6 +8652,7 @@ export type Database = {
           value: number
         }
         Update: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -9805,6 +9811,17 @@ export type Database = {
       admin_delete_company: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      apply_tenant_charge_installment_payment: {
+        Args: {
+          p_asaas_installment_id: string
+          p_asaas_payment_id: string
+          p_installment_number?: number
+          p_net_value?: number
+          p_paid_at?: string
+          p_value: number
+        }
+        Returns: Json
       }
       apply_tenant_charge_payment: {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }

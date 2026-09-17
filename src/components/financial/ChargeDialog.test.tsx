@@ -181,6 +181,13 @@ function selectValue(select: HTMLSelectElement, value: string) {
     select.dispatchEvent(new Event('change', { bubbles: true }));
   });
 }
+function paste(input: HTMLInputElement, text: string) {
+  const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
+  pasteEvent.clipboardData = { getData: () => text };
+  act(() => {
+    input.dispatchEvent(pasteEvent);
+  });
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -309,5 +316,12 @@ describe('ChargeDialog — reorganização em abas', () => {
     expect(payload.customer_id).toBe(CUSTOMER_OK.id);
     expect(payload.value).toBe(100);
     expect(payload.post_to_finance).toBe(true);
+  });
+
+  it('colar "R$ 4.550" no campo de valor dá R$ 4.550,00, não R$ 45,50 (defeito residual da máscara de centavos no paste)', () => {
+    mount();
+    const amountInput = q('#charge-amount') as HTMLInputElement;
+    paste(amountInput, 'R$ 4.550');
+    expect(amountInput.value).toBe('4.550,00');
   });
 });

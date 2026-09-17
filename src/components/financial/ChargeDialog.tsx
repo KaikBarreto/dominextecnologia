@@ -46,6 +46,7 @@ import {
 import { getDocumentStatus } from '@/lib/documentValidation';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { formatBRL } from '@/utils/currency';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface ChargeDialogProps {
   open: boolean;
@@ -435,6 +436,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setAmount(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setAmount(cents / 100);
   };
   const amountDisplay = amount
     ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -963,6 +970,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     placeholder={t.fields.valuePlaceholder}
                     value={amountDisplay}
                     onChange={handleAmountChange}
+                    onPaste={handleAmountPaste}
                   />
                 </div>
               </div>

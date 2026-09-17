@@ -23,6 +23,7 @@ import { Employee, PaymentFrequency, PaymentDayType } from '@/hooks/useEmployees
 import { useUsers } from '@/hooks/useUsers';
 import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
+import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from '@/components/service-orders/MonthlyCostCalculatorModal';
@@ -155,6 +156,20 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setIsSavingForDisc(false);
     }
   }, [open, employee?.id]);
+
+  // Colar um valor pronto (ex. "4.550" de planilha) nos campos de dinheiro
+  // (salário, custo mensal, VT) NÃO pode passar pela regra de centavos
+  // comum: "os 2 últimos dígitos são os centavos" daria R$ 45,50 (100x
+  // menor). Ver `money-paste-mask.ts`. `currencyMask(String(cents))`
+  // reaproveita a MESMA formatação que a digitação já usa.
+  const handleCurrencyFieldPaste = (setter: (v: string) => void) => (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+    const cents = centsFromPastedAmount(text);
+    if (cents == null) return;
+    e.preventDefault();
+    setter(currencyMask(String(cents)));
+  };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
@@ -380,12 +395,12 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>{t.fields.salary}</Label>
-            <Input value={salary} onChange={e => setSalary(currencyMask(e.target.value))} placeholder="R$ 0,00" />
+            <Input value={salary} onChange={e => setSalary(currencyMask(e.target.value))} onPaste={handleCurrencyFieldPaste(setSalary)} placeholder="R$ 0,00" />
           </div>
           <div className="space-y-1.5">
             <Label>{t.fields.monthlyCost}</Label>
             <div className="flex gap-1">
-              <Input value={monthlyCost} onChange={e => setMonthlyCost(currencyMask(e.target.value))} placeholder="R$ 0,00" />
+              <Input value={monthlyCost} onChange={e => setMonthlyCost(currencyMask(e.target.value))} onPaste={handleCurrencyFieldPaste(setMonthlyCost)} placeholder="R$ 0,00" />
               <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title={t.fields.monthlyCostHint}>
                 <Calculator className="h-4 w-4 mr-1" />
                 {t.fields.calculateButton}
@@ -461,6 +476,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                 <Input
                   value={vtMonthlyValue}
                   onChange={e => setVtMonthlyValue(currencyMask(e.target.value))}
+                  onPaste={handleCurrencyFieldPaste(setVtMonthlyValue)}
                   placeholder="R$ 0,00"
                 />
               </div>

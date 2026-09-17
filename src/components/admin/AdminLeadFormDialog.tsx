@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
@@ -110,6 +111,28 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
 
   const selectedStage = stages.find(s => s.id === form.stage_id);
   const isLostStage = !!selectedStage?.is_lost;
+
+  // Máscara de dinheiro (centavos), igual ContaFormDialog/ChargeDialog: digita
+  // só dígitos, os 2 últimos são os centavos. NUNCA `<input type="number">`
+  // aqui — bug real (2026-09-17): o input nativo aceita colar "4.550" como
+  // float válido, e Number("4.550") devolve 4.55, mil vezes menor. `onPaste`
+  // cobre colar um valor pronto (ex. copiado de planilha) via
+  // `readPastedCents` (ver `src/lib/money-paste-mask.ts`), que lê o texto como
+  // valor de verdade em vez de dígitos-cents. `form.value` é sempre uma string
+  // canônica ("4550.00"), nunca "4.550".
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setForm(f => ({ ...f, value: cents ? (cents / 100).toFixed(2) : '' }));
+  };
+  const handleValuePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setForm(f => ({ ...f, value: cents ? (cents / 100).toFixed(2) : '' }));
+  };
+  const valueDisplay = form.value
+    ? Number(form.value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
 
   const handleSubmit = () => {
     if (form.email && !validateEmail(form.email)) {
@@ -348,7 +371,14 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
             </div>
             <div>
               <Label>Valor (R$)</Label>
-              <Input type="number" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} placeholder="0,00" />
+              <Input
+                id="admin-lead-value"
+                inputMode="numeric"
+                value={valueDisplay}
+                onChange={handleValueChange}
+                onPaste={handleValuePaste}
+                placeholder="0,00"
+              />
             </div>
             <div>
               <Label>Previsão de Fechamento</Label>

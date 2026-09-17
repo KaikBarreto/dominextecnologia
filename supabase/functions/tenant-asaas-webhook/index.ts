@@ -6,15 +6,23 @@
 //
 // Resolução multi-tenant (§9.3): a company é identificada por
 //   payment.externalReference (= company_id, gravado no create-charge)  → O(1)
-// com fallback por tenant_charges.asaas_payment_id (UNIQUE). O token VALIDA (prova que
-// o POST veio mesmo da conta daquele tenant), não roteia.
+// com fallback por tenant_charges.asaas_payment_id (UNIQUE) e, pra parcela 2+ de
+// venda parcelada, por tenant_charges.asaas_installment_id. O token VALIDA (prova
+// que o POST veio mesmo da conta daquele tenant), não roteia.
 //
 // Idempotência: tenant_payment_webhook_events.event_id (dedupe de evento) +
-// apply_tenant_charge_payment idempotente por asaas_payment_id (já pago = no-op).
+// apply_tenant_charge_payment idempotente por asaas_payment_id (já pago = no-op) +
+// apply_tenant_charge_installment_payment idempotente POR PARCELA (UNIQUE parcial
+// em financial_transactions.asaas_payment_id).
 //
 // Eventos (cobertura ABRANGENTE do ciclo Asaas — ver mapa evento→efeito abaixo):
 //   PAYMENT (baixa):    PAYMENT_RECEIVED / PAYMENT_CONFIRMED / PAYMENT_RECEIVED_IN_CASH
-//                       → apply_tenant_charge_payment (baixa automática, idempotente).
+//                       → apply_tenant_charge_payment (cobrança avulsa/ciclo de
+//                       assinatura, baixa TOTAL idempotente) OU
+//                       apply_tenant_charge_installment_payment (venda parcelada no
+//                       cartão — isInstallmentPaymentEvent detecta payment.installment —
+//                       baixa POR PARCELA: cria filha "Recebimento parcial", só fecha
+//                       CONFIRMED quando a soma das filhas cobre o valor total).
 //   PAYMENT (estorno):  PAYMENT_REFUNDED / PAYMENT_REFUND_IN_PROGRESS / PAYMENT_CHARGEBACK_* /
 //                       PAYMENT_AWAITING_CHARGEBACK_REVERSAL → reverte/marca a tenant_charge.
 //   PAYMENT (vencido):  PAYMENT_OVERDUE → status OVERDUE (+ assinatura 'overdue' se for de ciclo).
@@ -85,6 +93,22 @@ async function resolveCompanyId(
       .from("tenant_charges")
       .select("company_id")
       .eq("asaas_payment_id", payment.id)
+      .maybeSingle();
+    if (data?.company_id) return data.company_id;
+  }
+  // Fallback pra PARCELA 2+ de venda parcelada: seu payment.id NUNCA existiu
+  // em tenant_charges (só o da 1ª parcela foi gravado na criação), mas
+  // payment.installment (id do AGRUPAMENTO) é o mesmo em todas — inclusive a
+  // 1ª — e foi gravado em asaas_installment_id (ver
+  // apply_tenant_charge_installment_payment). Na prática o externalReference
+  // (checado acima) já resolve isso sozinho, porque a Asaas ecoa o mesmo
+  // externalReference em toda parcela do grupo; este fallback é defesa em
+  // profundidade para o caso raro de externalReference vir vazio/divergente.
+  if (typeof payment?.installment === "string" && payment.installment) {
+    const { data } = await supabase
+      .from("tenant_charges")
+      .select("company_id")
+      .eq("asaas_installment_id", payment.installment)
       .maybeSingle();
     if (data?.company_id) return data.company_id;
   }
@@ -520,49 +544,47 @@ async function processEvent(
       // mas ainda é uma quitação → mesma baixa idempotente por asaas_payment_id.
       const paidAt =
         payment.paymentDate || payment.confirmedDate || new Date().toISOString();
-      // [BUG financeiro real, 2026-09] Cartão PARCELADO: a Asaas cria um
-      // `payment.id` DIFERENTE por parcela (todas com `payment.installment`
-      // = o mesmo id de agrupamento), mas `tenant_charges.asaas_payment_id`
-      // só guarda o id da 1ª parcela (é o que a Asaas devolve na criação —
-      // ver tenant-asaas-create-charge). `payment.value`/`payment.netValue`
-      // de CADA evento são o valor/líquido DAQUELA PARCELA, nunca da venda
-      // inteira — mas `apply_tenant_charge_payment` compara o líquido
-      // recebido contra `tenant_charges.value` (o TOTAL). Resultado real:
-      // venda de R$3.133,00 em 10x, líquido da parcela 1 = R$303,90 →
-      // "tarifa" lançada = R$2.829,10 (90% do valor) na categoria Tarifas e
-      // Taxas — quase tudo virou "taxa" em vez de só a diferença real.
-      // Fix: nunca usar netValue de um evento de parcela como base do fee
-      // automático (passa p_net=null → RPC não lança tarifa nenhuma pra
-      // este evento). Reconciliar o fee real de vendas parceladas exige
-      // rastrear TODAS as parcelas (hoje só a 1ª existe em tenant_charges) —
-      // fora do escopo deste hotfix; ver nota devolvida ao Tech Lead.
       const isInstallmentPayment = isInstallmentPaymentEvent(payment);
-      const net = !isInstallmentPayment && payment.netValue != null
-        ? Number(payment.netValue)
-        : null;
+
       if (isInstallmentPayment) {
-        console.warn(
-          `[tenant-webhook] pagamento de PARCELA (${payment.id}, installment ${payment.installment}, ` +
-          `nº ${payment.installmentNumber ?? "?"}) — pulando lançamento automático de tarifa ` +
-          `(netValue da parcela não representa o líquido da venda inteira).`,
-        );
+        // Venda PARCELADA no cartão: cada parcela tem seu próprio payment.id
+        // (nunca gravado em tenant_charges além da 1ª) e seu próprio
+        // value/netValue — nunca o da venda inteira. Baixa POR PARCELA:
+        // cria filha "Recebimento parcial" (+ neta de tarifa da PARCELA) e só
+        // fecha a cobrança como CONFIRMED quando a soma das filhas cobre o
+        // valor total (ver apply_tenant_charge_installment_payment).
+        const { data, error } = await supabase.rpc("apply_tenant_charge_installment_payment", {
+          p_asaas_payment_id: payment.id,
+          p_asaas_installment_id: payment.installment,
+          p_value: payment.value != null ? Number(payment.value) : null,
+          p_net_value: payment.netValue != null ? Number(payment.netValue) : null,
+          p_paid_at: paidAt,
+          p_installment_number: payment.installmentNumber ?? null,
+        });
+        if (error) throw new Error(error.message);
+        if (data && typeof data === "object" && (data as Record<string, unknown>).ok === false) {
+          console.warn(
+            `[tenant-webhook] apply_tenant_charge_installment_payment não encontrou a cobrança ` +
+            `(${payment.id}, installment ${payment.installment}) — evento aceito sem efeito. ` +
+            `Resultado: ${JSON.stringify(data)}`,
+          );
+        }
+        console.log(`[tenant-webhook] baixa de parcela aplicada ${payment.id}:`, JSON.stringify(data));
+      } else {
+        const { data, error } = await supabase.rpc("apply_tenant_charge_payment", {
+          p_asaas_payment_id: payment.id,
+          p_paid_at: paidAt,
+          p_net: payment.netValue != null ? Number(payment.netValue) : null,
+        });
+        if (error) throw new Error(error.message);
+        if (data && typeof data === "object" && (data as Record<string, unknown>).ok === false) {
+          console.warn(
+            `[tenant-webhook] apply_tenant_charge_payment não encontrou a cobrança (${payment.id}) — ` +
+            `evento aceito sem efeito. Resultado: ${JSON.stringify(data)}`,
+          );
+        }
+        console.log(`[tenant-webhook] baixa aplicada ${payment.id}:`, JSON.stringify(data));
       }
-      const { data, error } = await supabase.rpc("apply_tenant_charge_payment", {
-        p_asaas_payment_id: payment.id,
-        p_paid_at: paidAt,
-        p_net: net,
-      });
-      if (error) throw new Error(error.message);
-      if (data && typeof data === "object" && (data as Record<string, unknown>).ok === false) {
-        // Provável parcela 2+ de uma venda parcelada: o payment.id dela nunca
-        // existiu em tenant_charges (só a 1ª parcela foi gravada na criação).
-        // Não é erro de re-entrega — ack e loga alto pra não ficar invisível.
-        console.warn(
-          `[tenant-webhook] apply_tenant_charge_payment não encontrou a cobrança (${payment.id}) — ` +
-          `evento aceito sem efeito. Resultado: ${JSON.stringify(data)}`,
-        );
-      }
-      console.log(`[tenant-webhook] baixa aplicada ${payment.id}:`, JSON.stringify(data));
     } else if (
       event === "PAYMENT_REFUNDED" ||
       event === "PAYMENT_REFUND_IN_PROGRESS" ||

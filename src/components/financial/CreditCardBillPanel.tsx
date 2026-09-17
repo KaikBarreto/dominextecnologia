@@ -18,6 +18,7 @@ import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
@@ -144,6 +145,12 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const handlePayAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setPayAmount(parseInt(raw || '0', 10) / 100);
+  };
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
+  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
+  const handlePayAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setPayAmount(cents / 100);
   };
 
   // Header reaproveitado pra mobile (com seta voltar) e desktop (com botão Fechar).
@@ -629,6 +636,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                 placeholder="0,00"
                 value={payAmount > 0 ? payAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
                 onChange={handlePayAmountChange}
+                onPaste={handlePayAmountPaste}
                 inputMode="numeric"
               />
               {/* Aviso de estado do pagamento. Card BRANCO (bg-card/border-border)

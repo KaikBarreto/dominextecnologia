@@ -71,6 +71,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -532,6 +533,63 @@ export default function ContractDetail() {
       toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     }
   };
+
+  // Máscara de dinheiro (centavos), igual ChargeDialog/TransactionFormDialog:
+  // digita só dígitos, os 2 últimos são os centavos. NUNCA usar
+  // `<input type="number">` aqui — bug real (2026-09-17, "PMOC - Daluz
+  // Freguesia"): o input nativo aceita colar "4.550" como texto válido
+  // (ponto = separador decimal do HTML), e o estado guardava a string
+  // "4.550" literal. Rio abaixo, `parseFloat("4.550")` e `Number("4.550")`
+  // leem ponto como decimal e devolvem 4.55 — 72 parcelas nasceram de
+  // R$ 4,55 em vez de R$ 4.550,00. `recAmount`/`editRecAmount`/
+  // `bulkEditAmount` continuam strings, só que agora são SEMPRE
+  // canônicas ("4550.00", nunca "4.550"), pra não exigir mudar quem já
+  // consome via `parseFloat`/`Number`.
+  //
+  // `onPaste` cobre o residual: sem ele, colar um valor pronto (ex. "4.550")
+  // ainda cai na regra de dígitos comum (2 últimos = centavos) e vira
+  // R$ 45,50 — 100x menor. `readPastedCents` lê o texto colado como valor de
+  // verdade (ver `src/lib/money-paste-mask.ts`), não como sequência de
+  // dígitos a empurrar da direita.
+  const handleRecAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleRecAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const recAmountDisplay = recAmount
+    ? Number(recAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+  const handleEditRecAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setEditRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleEditRecAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setEditRecAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const editRecAmountDisplay = editRecAmount
+    ? Number(editRecAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+  const handleBulkEditAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setBulkEditAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleBulkEditAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setBulkEditAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const bulkEditAmountDisplay = bulkEditAmount
+    ? Number(bulkEditAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
 
   // Opções de conta bancária / caixa de RECEBIMENTO. Exclui cartão de
   // crédito: é conta de saída (fatura que a empresa paga), nunca destino de
@@ -1778,7 +1836,10 @@ export default function ContractDetail() {
           </div>
           <div>
             <Label>{td.financial.amountLabel}</Label>
-            <Input type="number" step="0.01" value={recAmount} onChange={e => setRecAmount(e.target.value)} placeholder="0,00" />
+            {/* Dinheiro tem formatação própria: NÃO usa `type="number"` (colar
+                "4.550" vira 4,55 — bug real do sócio, ver comentário no
+                handler) nem `NumericInput`. */}
+            <Input inputMode="numeric" value={recAmountDisplay} onChange={handleRecAmountChange} onPaste={handleRecAmountPaste} placeholder="0,00" />
           </div>
           <div>
             <Label>{td.financial.accountLabel}</Label>
@@ -2009,7 +2070,7 @@ export default function ContractDetail() {
       <ResponsiveModal open={showEditRecModal} onOpenChange={setShowEditRecModal} title={td.financial.editReceivableTitle}>
         <div className="space-y-4 p-1">
           <div><Label>{td.financial.descLabel}</Label><Input value={editRecDescription} onChange={e => setEditRecDescription(e.target.value)} /></div>
-          <div><Label>{td.financial.amountLabel}</Label><Input type="number" step="0.01" value={editRecAmount} onChange={e => setEditRecAmount(e.target.value)} /></div>
+          <div><Label>{td.financial.amountLabel}</Label><Input inputMode="numeric" value={editRecAmountDisplay} onChange={handleEditRecAmountChange} onPaste={handleEditRecAmountPaste} /></div>
           <div><Label>{td.financial.dueDateLabel}</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
           <div className="flex flex-col gap-2 pt-2">
             <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
@@ -2183,12 +2244,15 @@ export default function ContractDetail() {
           )}
           <div>
             <Label>{td.financial.amountLabel}</Label>
-            {/* Dinheiro tem formatação própria: NÃO usa NumericInput. */}
+            {/* Dinheiro tem formatação própria: NÃO usa `type="number"` (é
+                justo este campo, "Editar N parcelas", que o sócio tentou usar
+                pra corrigir o valor e teria repetido o mesmo bug) nem
+                `NumericInput`. */}
             <Input
-              type="number"
-              step="0.01"
-              value={bulkEditAmount}
-              onChange={(e) => setBulkEditAmount(e.target.value)}
+              inputMode="numeric"
+              value={bulkEditAmountDisplay}
+              onChange={handleBulkEditAmountChange}
+              onPaste={handleBulkEditAmountPaste}
               placeholder="0,00"
             />
           </div>

@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { BalanceSummary } from '@/utils/employeeCalculations';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
+import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { calculatePayrollDeductions, type PayrollResult } from '@/utils/payrollDeductions';
@@ -123,6 +124,19 @@ export function EmployeePaymentModal({
       setDescription('');
     }
     onOpenChange(o);
+  };
+
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO pode passar pela
+  // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
+  // `money-paste-mask.ts`. `currencyMask(String(cents))` reaproveita a
+  // MESMA formatação que a digitação já usa.
+  const handleValeDiscountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+    const cents = centsFromPastedAmount(text);
+    if (cents == null) return;
+    e.preventDefault();
+    setValeDiscountStr(currencyMask(String(cents)));
   };
 
   const valeDiscount = useMemo(() => {
@@ -258,6 +272,7 @@ export function EmployeePaymentModal({
                 <Input
                   value={valeDiscountStr}
                   onChange={e => setValeDiscountStr(currencyMask(e.target.value))}
+                  onPaste={handleValeDiscountPaste}
                   placeholder={fmt(balance.totalVales)}
                 />
                 <p className="text-xs text-muted-foreground">

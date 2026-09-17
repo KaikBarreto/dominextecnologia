@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { todayInBrazil, isPaidDateAllowed } from '@/lib/today-brazil';
+import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 
 export interface ReceivePaymentResult {
   account_id: string;
@@ -97,7 +98,9 @@ export function ReceivePaymentModal({
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
-  const activeAccounts = useMemo(() => accounts.filter(a => a.is_active), [accounts]);
+  // Este modal só existe pra dar baixa em RECEBIMENTO — cartão de crédito é
+  // conta de saída (fatura que a empresa paga), nunca destino de receita.
+  const activeAccounts = useMemo(() => filterAccountsForReceivable(accounts), [accounts]);
 
   // Opções do SearchableSelect de conta (busca por nome + ícone por tipo).
   const accountOptions = useMemo(

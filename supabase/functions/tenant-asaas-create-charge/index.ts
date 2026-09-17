@@ -444,6 +444,15 @@ async function handleRequest(req: Request): Promise<Response> {
     if (!asaasPaymentId) {
       return jsonResponse(req, { error: "A Asaas não retornou a cobrança. Tente novamente." }, 502);
     }
+    // Venda parcelada (installmentCount > 1): a Asaas devolve `installment`
+    // (id do AGRUPAMENTO) no payment de criação — é o mesmo valor que virá em
+    // TODA parcela nos eventos de webhook, inclusive esta 1ª. É o único jeito
+    // das parcelas 2..N (payment.id próprio, nunca gravado aqui) acharem esta
+    // cobrança de volta — ver apply_tenant_charge_installment_payment.
+    const asaasInstallmentId: string | null =
+      installmentCount > 1 && typeof payment?.installment === "string" && payment.installment
+        ? payment.installment
+        : null;
 
     // 4) Dados de pagamento (pix copia-e-cola / boleto), best-effort.
     let pixCopyPaste: string | null = null;
@@ -462,6 +471,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const chargeRow = {
       company_id: companyId,
       asaas_payment_id: asaasPaymentId,
+      asaas_installment_id: asaasInstallmentId,
       source_type: sourceType,
       source_id: sourceType === "quote" ? sourceId : null,
       customer_id: input.customer_id,

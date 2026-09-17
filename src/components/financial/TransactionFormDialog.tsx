@@ -33,6 +33,7 @@ import { computeBillDate } from '@/hooks/useCreditCardBills';
 import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCostCenters } from '@/hooks/useCostCenters';
@@ -1215,7 +1216,13 @@ export function TransactionFormDialog({
         </span>
       ),
     })),
-    [accounts, tf.cashSuffix],
+    // `isEntrada` faltava aqui: o dialog é reaberto trocando só o `defaultType`
+    // (mesma instância, sem desmontar — ver o `form.reset` no `useEffect` de
+    // `open`), então `accounts` e `tf.cashSuffix` continuavam os MESMOS entre
+    // "Nova Receita" e "Nova Despesa". O `useMemo` não recomputava e a lista
+    // ficava presa no filtro da primeira vez que o formulário abriu na sessão
+    // — se abriu como receita primeiro, despesa nunca mostrava o cartão depois.
+    [accounts, tf.cashSuffix, isEntrada],
   );
 
   const footer = (
@@ -1378,6 +1385,13 @@ export function TransactionFormDialog({
               const raw = e.target.value.replace(/\D/g, '');
               field.onChange(parseInt(raw || '0', 10) / 100);
             };
+            // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela
+            // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
+            // `money-paste-mask.ts`.
+            const handleCurrencyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+              const cents = readPastedCents(e);
+              if (cents != null) field.onChange(cents / 100);
+            };
             const displayValue = field.value
               ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
               : '';
@@ -1385,7 +1399,7 @@ export function TransactionFormDialog({
               <FormItem>
                 <FormLabel>{tf.amountLabel}</FormLabel>
                 <FormControl>
-                  <Input placeholder={tf.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
+                  <Input placeholder={tf.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} onPaste={handleCurrencyPaste} inputMode="numeric" />
                 </FormControl>
                 <FormMessage />
               </FormItem>

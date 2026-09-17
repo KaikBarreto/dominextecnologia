@@ -9,7 +9,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useInventory } from '@/hooks/useInventory';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import type { QuoteItem } from '@/hooks/useQuotes';
+
+// Colar valor pronto (ex. "4.550" de uma planilha) num `<input type="number">`
+// é lido pelo navegador como decimal internacional e vira 4,55 — 1000x menor
+// (bug real do sócio). `readPastedCents` lê o texto como valor de verdade em
+// PT-BR/internacional antes do navegador decidir sozinho.
+function handleUnitPricePaste(e: React.ClipboardEvent<HTMLInputElement>, setUnitPrice: (v: string) => void) {
+  const cents = readPastedCents(e);
+  if (cents == null) return;
+  setUnitPrice(cents ? (cents / 100).toFixed(2) : '');
+}
 
 interface QuoteItemsTableProps {
   items: QuoteItem[];
@@ -88,6 +99,7 @@ function ServiceInputRow({
           placeholder="0,00"
           value={unitPrice}
           onChange={(e) => setUnitPrice(e.target.value)}
+          onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)}
           className="h-8 text-xs bg-background w-24"
           min={0}
           step="0.01"
@@ -193,6 +205,7 @@ function MaterialInputRow({
           placeholder="0,00"
           value={unitPrice}
           onChange={(e) => setUnitPrice(e.target.value)}
+          onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)}
           className="h-8 text-xs bg-background w-24"
           min={0}
           step="0.01"

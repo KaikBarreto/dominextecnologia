@@ -28,6 +28,7 @@ import { useCrmStages } from '@/hooks/useCrmStages';
 import { IconPreview } from '@/components/customers/originIcons';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -252,6 +253,17 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                 step="0.01"
                 value={formData.value || 0}
                 onChange={(e) => handleChange('value', parseFloat(e.target.value) || 0)}
+                onPaste={(e) => {
+                  // Colar valor pronto (ex. "4.550" de uma planilha) num
+                  // `<input type="number">` é lido pelo navegador como
+                  // decimal internacional e vira 4,55 — 1000x menor (bug
+                  // real do sócio). `readPastedCents` lê o texto como valor
+                  // de verdade em PT-BR/internacional antes do navegador
+                  // decidir sozinho.
+                  const cents = readPastedCents(e);
+                  if (cents == null) return;
+                  handleChange('value', cents / 100);
+                }}
               />
             </div>
 

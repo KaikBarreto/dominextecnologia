@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { currencyMask, parseCurrency, calculateDailyValue } from '@/utils/employeeCalculations';
+import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
@@ -104,6 +105,19 @@ export function EmployeeMovementModal({
       setFaltaPreFilled(true);
     }
   }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt, faltaPreFilled, amount]);
+
+  // Colar um valor pronto (ex. "4.550" de planilha) NÃO pode passar pela
+  // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
+  // `money-paste-mask.ts`. `currencyMask(String(cents))` reaproveita a
+  // MESMA formatação que a digitação já usa.
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+    const cents = centsFromPastedAmount(text);
+    if (cents == null) return;
+    e.preventDefault();
+    setAmount(currencyMask(String(cents)));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,7 +259,7 @@ export function EmployeeMovementModal({
 
         <div className="space-y-1.5">
           <Label>{t.amountLabel}</Label>
-          <Input value={amount} onChange={e => setAmount(currencyMask(e.target.value))} placeholder="R$ 0,00" required />
+          <Input value={amount} onChange={e => setAmount(currencyMask(e.target.value))} onPaste={handleAmountPaste} placeholder="R$ 0,00" required />
           {type === 'falta' && salary > 0 && (
             <p className="text-xs text-muted-foreground">
               {t.absenceSuggestion
