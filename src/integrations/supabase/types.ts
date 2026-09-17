@@ -620,6 +620,8 @@ export type Database = {
           asaas_customer_id: string | null
           asaas_subscription_id: string | null
           billing_cycle: string | null
+          billing_email: string | null
+          billing_notifications_enabled: boolean
           city: string | null
           cnpj: string | null
           complement: string | null
@@ -673,6 +675,8 @@ export type Database = {
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string | null
+          billing_email?: string | null
+          billing_notifications_enabled?: boolean
           city?: string | null
           cnpj?: string | null
           complement?: string | null
@@ -726,6 +730,8 @@ export type Database = {
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string | null
+          billing_email?: string | null
+          billing_notifications_enabled?: boolean
           city?: string | null
           cnpj?: string | null
           complement?: string | null
