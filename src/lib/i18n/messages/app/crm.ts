@@ -239,6 +239,37 @@ export const crm = {
       cancel: 'Cancelar',
     },
 
+    // ── PipelineAccessDialog (Onda D3 — ACL por funil) ──
+    pipelineAccess: {
+      menuLabel: 'Quem pode ver',
+      restrictedBadge: 'Restrito',
+      title: 'Acesso ao funil',
+      subtitle: 'Escolha quem enxerga este funil. Deixe a lista vazia para manter aberto a toda a empresa.',
+      openStateTitle: 'Aberto para toda a empresa',
+      openStateDesc: 'Todos os usuários da empresa podem ver este funil. Selecione pessoas abaixo para restringir o acesso.',
+      restrictedStateTitle: 'Restrito',
+      restrictedStateDesc: 'Só as pessoas selecionadas abaixo (e quem tem permissão de Gerenciar CRM) podem ver este funil.',
+      peopleLabel: 'Pessoas com acesso',
+      saveButton: 'Salvar acesso',
+      cancelButton: 'Cancelar',
+      confirmTitle: 'Restringir o acesso a este funil?',
+      confirmAction: 'Restringir mesmo assim',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const peopleWord = peopleCount === 1 ? 'pessoa' : 'pessoas';
+        const peopleVerb = peopleCount === 1 ? 'vai' : 'vão';
+        const peoplePart = `${peopleCount} ${peopleWord} ${peopleVerb} deixar de ver este funil`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const oppWord = opportunitiesCount === 1 ? 'oportunidade' : 'oportunidades';
+        const relArticle = opportunitiesCount === 1 ? 'a' : 'as';
+        const relSuffix = opportunitiesCount === 1 ? '' : 'is';
+        const pronounVerb = peopleCount === 1 ? 'ela é' : 'elas são';
+        const responsavel = peopleCount === 1 ? 'responsável' : 'responsáveis';
+        const oppVerb = opportunitiesCount === 1 ? 'vai' : 'vão';
+        const possessive = peopleCount === 1 ? 'dela' : 'delas';
+        return `${peoplePart}, e ${opportunitiesCount} ${oppWord} pel${relArticle} qual${relSuffix} ${pronounVerb} ${responsavel} ${oppVerb} sumir da tela ${possessive}.`;
+      },
+    },
+
     // ── WebhookManagerDialog ──
     webhooks: {
       title: 'Webhooks de Leads Externos',
@@ -1275,6 +1306,29 @@ export const crm = {
       cancel: 'Cancel',
     },
 
+    pipelineAccess: {
+      menuLabel: 'Who can see',
+      restrictedBadge: 'Restricted',
+      title: 'Pipeline access',
+      subtitle: 'Choose who can see this pipeline. Leave the list empty to keep it open to the whole company.',
+      openStateTitle: 'Open to the whole company',
+      openStateDesc: 'Every company user can see this pipeline. Select people below to restrict access.',
+      restrictedStateTitle: 'Restricted',
+      restrictedStateDesc: 'Only the people selected below (plus anyone with the Manage CRM permission) can see this pipeline.',
+      peopleLabel: 'People with access',
+      saveButton: 'Save access',
+      cancelButton: 'Cancel',
+      confirmTitle: 'Restrict access to this pipeline?',
+      confirmAction: 'Restrict anyway',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const people = peopleCount === 1 ? '1 person' : `${peopleCount} people`;
+        const peoplePart = `${people} will lose access to this pipeline`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const opp = opportunitiesCount === 1 ? '1 opportunity' : `${opportunitiesCount} opportunities`;
+        return `${peoplePart}, and ${opp} they are responsible for will disappear from their view.`;
+      },
+    },
+
     webhooks: {
       title: 'External Lead Webhooks',
       createTitle: 'Create new webhook',
@@ -2247,6 +2301,31 @@ export const crm = {
       cancel: 'Cancelar',
     },
 
+    pipelineAccess: {
+      menuLabel: 'Quién puede ver',
+      restrictedBadge: 'Restringido',
+      title: 'Acceso al embudo',
+      subtitle: 'Elige quién puede ver este embudo. Deja la lista vacía para mantenerlo abierto a toda la empresa.',
+      openStateTitle: 'Abierto para toda la empresa',
+      openStateDesc: 'Todos los usuarios de la empresa pueden ver este embudo. Selecciona personas abajo para restringir el acceso.',
+      restrictedStateTitle: 'Restringido',
+      restrictedStateDesc: 'Solo las personas seleccionadas abajo (más quien tenga el permiso de Gestionar CRM) pueden ver este embudo.',
+      peopleLabel: 'Personas con acceso',
+      saveButton: 'Guardar acceso',
+      cancelButton: 'Cancelar',
+      confirmTitle: '¿Restringir el acceso a este embudo?',
+      confirmAction: 'Restringir de todos modos',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const people = peopleCount === 1 ? '1 persona' : `${peopleCount} personas`;
+        const peopleVerb = peopleCount === 1 ? 'va a' : 'van a';
+        const peoplePart = `${people} ${peopleVerb} dejar de ver este embudo`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const opp = opportunitiesCount === 1 ? '1 oportunidad' : `${opportunitiesCount} oportunidades`;
+        const oppVerb = opportunitiesCount === 1 ? 'va a' : 'van a';
+        return `${peoplePart}, y ${opp} de las que son responsables ${oppVerb} desaparecer de su pantalla.`;
+      },
+    },
+
     webhooks: {
       title: 'Webhooks de Leads Externos',
       createTitle: 'Crear nuevo webhook',
@@ -3217,6 +3296,29 @@ export const crm = {
       deleteDesc: 'Cette action est irréversible.',
       deleteConfirm: 'Supprimer',
       cancel: 'Annuler',
+    },
+
+    pipelineAccess: {
+      menuLabel: 'Qui peut voir',
+      restrictedBadge: 'Restreint',
+      title: 'Accès au pipeline',
+      subtitle: `Choisissez qui peut voir ce pipeline. Laissez la liste vide pour le garder ouvert à toute l'entreprise.`,
+      openStateTitle: `Ouvert à toute l'entreprise`,
+      openStateDesc: `Tous les utilisateurs de l'entreprise peuvent voir ce pipeline. Sélectionnez des personnes ci-dessous pour restreindre l'accès.`,
+      restrictedStateTitle: 'Restreint',
+      restrictedStateDesc: `Seules les personnes sélectionnées ci-dessous (plus celles ayant la permission Gérer le CRM) peuvent voir ce pipeline.`,
+      peopleLabel: 'Personnes ayant accès',
+      saveButton: `Enregistrer l'accès`,
+      cancelButton: 'Annuler',
+      confirmTitle: `Restreindre l'accès à ce pipeline ?`,
+      confirmAction: 'Restreindre quand même',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const people = peopleCount === 1 ? '1 personne' : `${peopleCount} personnes`;
+        const peoplePart = `${people} ne pourront plus voir ce pipeline`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const opp = opportunitiesCount === 1 ? '1 opportunité' : `${opportunitiesCount} opportunités`;
+        return `${peoplePart}, et ${opp} dont elles sont responsables vont disparaître de leur écran.`;
+      },
     },
 
     webhooks: {

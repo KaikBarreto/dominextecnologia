@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.37',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Escolher quem pode ver cada funil do CRM',
+        description: 'Em Gerenciar Funis, cada funil ganhou a opção "Quem pode ver". Por padrão todo funil fica aberto para a empresa inteira, e é isso que continua valendo em todos os funis de hoje. Assim que você seleciona alguém, o funil passa a ser restrito: só as pessoas escolhidas, mais quem tem a permissão de Gerenciar CRM, enxergam o funil, as etapas e as oportunidades dele.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aviso antes de restringir um funil',
+        description: 'Restringir um funil pode tirar da tela de um vendedor oportunidades pelas quais ele é responsável. Por isso, antes de confirmar, o sistema mostra quantas pessoas vão deixar de ver o funil e quantas oportunidades delas somem junto. Só depois de você confirmar a mudança é aplicada.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.36',
     date: '17 de setembro de 2026',
     type: 'patch',

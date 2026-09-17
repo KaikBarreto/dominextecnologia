@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Check, X, Star } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Check, X, Star, Lock, Users } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { PipelineAccessDialog } from '@/components/crm/PipelineAccessDialog';
 import { useCrmPipelines, type CrmPipeline } from '@/hooks/useCrmPipelines';
+import { useCrmPipelineAccess } from '@/hooks/useCrmPipelineAccess';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -36,11 +39,21 @@ interface PipelineManagerDialogProps {
 export function PipelineManagerDialog({ children }: PipelineManagerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
+  const tAccess = t.pipelineAccess;
   const { pipelines, createPipeline, updatePipeline, setDefaultPipeline, deletePipeline, reorderPipelines } =
     useCrmPipelines();
+  // Gate da gestão de "quem pode ver" — o MESMO público que a RLS de
+  // crm_pipeline_access deixa escrever (public.can_manage_system: admin/gestor
+  // ou fn:manage_settings). NÃO é fn:manage_crm: quem só gerencia o CRM não
+  // necessariamente administra o sistema. Mostrar o botão pra quem não passa
+  // nesse gate levaria a um clique que a RLS recusa em silêncio.
+  const { isAdminOrGestor, hasPermission } = useAuth();
+  const canManagePipelineAccess = isAdminOrGestor() || hasPermission('fn:manage_settings');
+  const { access: pipelineAccessRows } = useCrmPipelineAccess();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [accessPipelineId, setAccessPipelineId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -145,6 +158,12 @@ export function PipelineManagerDialog({ children }: PipelineManagerDialogProps) 
       >
         <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
         <span className="flex-1 font-medium text-sm truncate">{pipeline.name}</span>
+        {pipelineAccessRows.some((a) => a.pipeline_id === pipeline.id) && (
+          <Badge className="bg-warning text-white gap-1 shrink-0">
+            <Lock className="h-3 w-3" />
+            {tAccess.restrictedBadge}
+          </Badge>
+        )}
         {pipeline.is_default ? (
           <Badge className="bg-primary text-white gap-1">
             <Star className="h-3 w-3" />
@@ -170,6 +189,13 @@ export function PipelineManagerDialog({ children }: PipelineManagerDialogProps) 
                 icon: Pencil,
                 variant: 'edit',
                 onClick: () => setEditingId(pipeline.id),
+              },
+              {
+                label: tAccess.menuLabel,
+                icon: Users,
+                variant: 'default',
+                hidden: !canManagePipelineAccess,
+                onClick: () => setAccessPipelineId(pipeline.id),
               },
               {
                 label: t.pipelines.deleteLabel,
@@ -233,6 +259,12 @@ export function PipelineManagerDialog({ children }: PipelineManagerDialogProps) 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PipelineAccessDialog
+        pipeline={pipelines.find((p) => p.id === accessPipelineId) ?? null}
+        open={!!accessPipelineId}
+        onOpenChange={(o) => !o && setAccessPipelineId(null)}
+      />
     </>
   );
 }
