@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.31";
+export const APP_VERSION = "1.24.32";
 
-export const VERSION_NOTES = "Colar um valor como R$ 4.550 não grava mais R$ 4,55: a notação brasileira passou a ser entendida em todos os campos de dinheiro do sistema. E o cartão de crédito aparece só onde faz sentido, na despesa e não no recebimento.";
+export const VERSION_NOTES = "Uma oportunidade pode ter vários vendedores responsáveis, cada vendedor passa a ver as oportunidades dele, e os leads que chegam sozinhos ficam numa fila de quem pegar primeiro.";

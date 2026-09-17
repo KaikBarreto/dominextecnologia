@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { User, Calendar, DollarSign, TrendingUp, UserX } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { OriginBadge } from '@/components/crm/OriginBadge';
 import { type Lead } from '@/hooks/useLeads';
@@ -36,7 +36,14 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
     return 'text-destructive';
   };
 
-  const assignee = lead.assigned_profile;
+  // Onda C (multi-responsável): lead.assignees já vem ordenado com o
+  // principal primeiro (useLeads). Fallback pro campo legado assigned_profile
+  // cobre o caso raro de um lead sem linha em lead_assignees ainda.
+  const assignees = lead.assignees?.length
+    ? lead.assignees
+    : lead.assigned_profile
+      ? [{ user_id: lead.assigned_to as string, is_primary: true, ...lead.assigned_profile }]
+      : [];
 
   return (
     <Card
@@ -57,18 +64,41 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
           )}
         </div>
 
-        {/* Assigned user */}
-        {assignee && (
-          <div className="flex items-center gap-2 mb-3">
-            <Avatar className="h-5 w-5">
-              <AvatarImage src={assignee.avatar_url || undefined} />
-              <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
-                {assignee.full_name?.charAt(0)?.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-xs text-muted-foreground truncate">{assignee.full_name}</span>
-          </div>
-        )}
+        {/* Responsáveis — grupo de avatares empilhados (até 3) + "+N" quando
+            passar disso. min-w-0/shrink-0 pra não estourar a largura da
+            coluna do kanban (mesma régua da Onda A5). Sem responsável (fila
+            compartilhada, correção da Onda C): badge saturado no lugar do
+            avatar, pra ninguém confundir com "card esquecido". */}
+        <div className="mb-3 min-w-0">
+          {assignees.length > 0 ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex -space-x-1.5 shrink-0">
+                {assignees.slice(0, 3).map((a) => (
+                  <Avatar key={a.user_id} className="h-5 w-5 border-2 border-card">
+                    <AvatarImage src={a.avatar_url || undefined} />
+                    <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                      {a.full_name?.charAt(0)?.toUpperCase() || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                {assignees.length > 3 && (
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-muted text-[8px] font-semibold text-muted-foreground">
+                    +{assignees.length - 3}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground truncate min-w-0">
+                {assignees[0]?.full_name}
+                {assignees.length > 1 && ` +${assignees.length - 1}`}
+              </span>
+            </div>
+          ) : (
+            <Badge variant="warning" className="gap-1 text-[10px] px-1.5 py-0.5 font-normal">
+              <UserX className="h-3 w-3" />
+              {t.detail.unassignedLabel}
+            </Badge>
+          )}
+        </div>
 
         {/* Value */}
         {lead.value && lead.value > 0 && (

@@ -18,9 +18,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { OriginSelectField } from '@/components/customers/OriginSelectField';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
@@ -64,9 +65,14 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
     source: '',
     stage_id: null,
     expected_close_date: null,
-    assigned_to: null,
     notes: '',
   });
+
+  // Responsáveis (Onda C — multi-responsável): o primeiro da lista é o
+  // principal (convenção explicada no hint abaixo do campo). Persistido à
+  // parte de `formData` porque o hook trata a lista via `lead_assignees`,
+  // nunca via `leads.assigned_to` direto (ver useLeads.ts).
+  const [assigneeUserIds, setAssigneeUserIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (lead) {
@@ -78,9 +84,12 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
         source: lead.source || '',
         stage_id: lead.stage_id,
         expected_close_date: lead.expected_close_date,
-        assigned_to: lead.assigned_to,
         notes: lead.notes || '',
       });
+      // lead.assignees já vem ordenado com o principal primeiro (useLeads).
+      setAssigneeUserIds(
+        lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : []
+      );
     } else {
       // Set default stage to first stage if available
       const defaultStageId = stages.length > 0 ? stages[0].id : null;
@@ -92,9 +101,9 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
         source: '',
         stage_id: defaultStageId,
         expected_close_date: null,
-        assigned_to: null,
         notes: '',
       });
+      setAssigneeUserIds([]);
     }
     // Depende do 1º estágio, não do array inteiro: o efeito só precisa rodar de
     // novo quando o default muda, e assim não depende da identidade da lista.
@@ -109,9 +118,9 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
     e.preventDefault();
 
     if (isEditing && lead) {
-      await updateLead.mutateAsync({ id: lead.id, ...formData });
+      await updateLead.mutateAsync({ id: lead.id, ...formData, assignee_user_ids: assigneeUserIds });
     } else {
-      await createLead.mutateAsync(formData as LeadInsert);
+      await createLead.mutateAsync({ ...formData, assignee_user_ids: assigneeUserIds } as LeadInsert & { assignee_user_ids: string[] });
     }
 
     onOpenChange(false);
@@ -165,41 +174,50 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="assigned_to">{t.form.salesperson}</Label>
-              <Select
-                value={formData.assigned_to || 'none'}
-                onValueChange={(value) =>
-                  handleChange('assigned_to', value === 'none' ? null : value)
-                }
-              >
-                <SelectTrigger id="assigned_to">
-                  <SelectValue placeholder={t.form.salespersonPlaceholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted shrink-0">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                      </div>
-                      <span>{t.form.salespersonNone}</span>
-                    </div>
-                  </SelectItem>
-                  {users.map((user) => (
-                    <SelectItem key={user.user_id} value={user.user_id}>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-5 w-5">
+            <div className="space-y-1.5">
+              <AssigneeMultiSelect
+                technicians={users.map((user) => ({
+                  user_id: user.user_id,
+                  full_name: user.full_name,
+                  avatar_url: user.avatar_url,
+                }))}
+                teams={[]}
+                selectedUserIds={assigneeUserIds}
+                selectedTeamIds={[]}
+                onChangeUsers={setAssigneeUserIds}
+                onChangeTeams={() => {}}
+                label={t.form.salesperson}
+                usersLabel={t.form.salespersonUsersLabel}
+              />
+              <p className="text-xs text-muted-foreground">{t.form.salespersonHint}</p>
+              {assigneeUserIds.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {assigneeUserIds.map((uid, idx) => {
+                    const user = users.find((u) => u.user_id === uid);
+                    if (!user) return null;
+                    return (
+                      <Badge
+                        key={uid}
+                        variant={idx === 0 ? 'default' : 'secondary'}
+                        className="gap-1.5 pl-1 pr-2 font-normal"
+                      >
+                        <Avatar className="h-4 w-4">
                           <AvatarImage src={user.avatar_url || undefined} />
-                          <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                          <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
                             {user.full_name?.charAt(0)?.toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{user.full_name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                        <span className="truncate max-w-[120px]">{user.full_name}</span>
+                        {idx === 0 && (
+                          <span className="text-[9px] font-bold uppercase tracking-wide">
+                            {t.form.salespersonPrimaryBadge}
+                          </span>
+                        )}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

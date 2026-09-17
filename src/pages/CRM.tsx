@@ -53,6 +53,7 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
@@ -86,6 +87,12 @@ interface Filters {
 
 type ViewMode = 'list' | 'kanban';
 
+// Sentinela do filtro "Vendedor" pra representar leads sem NENHUM responsável
+// (fila compartilhada da correção da Onda C). Reaproveita o mesmo
+// FilterCheckboxGroup/FilterSheet já usados pros outros filtros da tela, em
+// vez de criar um mecanismo de filtro novo.
+const UNASSIGNED_FILTER_VALUE = '__unassigned__';
+
 export default function CRM() {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
@@ -95,6 +102,22 @@ export default function CRM() {
   const { users } = useUsers();
   const { stages, isLoading: stagesLoading, seedDefaultStages, reorderStages } = useCrmStages();
 
+  // Onda C — "cada um vê as suas": filtro no client é UX, a RLS (policy
+  // "Leads visiveis apenas ao responsavel") já é quem garante a segurança de
+  // verdade. Mesma chave que a RLS espelha (public.user_has_permission),
+  // pra tela e banco nunca discordarem sobre quem enxerga o quê.
+  const { user, hasPermission } = useAuth();
+  const canManageCrm = hasPermission('fn:manage_crm');
+  const visibleLeads = useMemo(() => {
+    if (canManageCrm) return leads;
+    const uid = user?.id;
+    if (!uid) return [];
+    return leads.filter((lead) => {
+      if (lead.assigned_to === uid || lead.created_by === uid) return true;
+      return (lead.assignees || []).some((a) => a.user_id === uid);
+    });
+  }, [leads, canManageCrm, user?.id]);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   // Guardamos só o id do lead aberto no modal de detalhe e derivamos o objeto
@@ -103,8 +126,8 @@ export default function CRM() {
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailLead = useMemo(
-    () => leads.find((l) => l.id === detailLeadId) ?? null,
-    [leads, detailLeadId],
+    () => visibleLeads.find((l) => l.id === detailLeadId) ?? null,
+    [visibleLeads, detailLeadId],
   );
 
   // Oferta de lançar a receita quando a oportunidade vai pro estágio de ganho.
@@ -127,21 +150,36 @@ export default function CRM() {
   // Mobile-only: alternância List/Kanban. Default mobile = Lista; desktop = Kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
-  // Apply filters
+  // Apply filters — em cima de visibleLeads (já recortado por permissão),
+  // nunca de `leads` cru, senão total/valor no topo mentiriam pra quem não
+  // tem fn:manage_crm.
   const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
+    return visibleLeads.filter(lead => {
       if (filters.search) {
         const matchesTitle = fuzzyIncludes(lead.title, filters.search);
         const matchesCustomer = fuzzyIncludes(lead.customers?.name, filters.search);
         if (!matchesTitle && !matchesCustomer) return false;
       }
       if (filters.source.length > 0 && !filters.source.includes(lead.source ?? '')) return false;
-      if (filters.assignedTo.length > 0 && !filters.assignedTo.includes(lead.assigned_to ?? '')) return false;
+      if (filters.assignedTo.length > 0) {
+        // Considera TODOS os responsáveis (principal + co-responsáveis), não só assigned_to.
+        const leadAssigneeIds = lead.assignees?.length
+          ? lead.assignees.map((a) => a.user_id)
+          : lead.assigned_to
+            ? [lead.assigned_to]
+            : [];
+        const matchesUnassigned =
+          filters.assignedTo.includes(UNASSIGNED_FILTER_VALUE) && leadAssigneeIds.length === 0;
+        const matchesAssignee = filters.assignedTo.some(
+          (id) => id !== UNASSIGNED_FILTER_VALUE && leadAssigneeIds.includes(id),
+        );
+        if (!matchesUnassigned && !matchesAssignee) return false;
+      }
       if (filters.minValue && (lead.value || 0) < parseFloat(filters.minValue)) return false;
       if (filters.maxValue && (lead.value || 0) > parseFloat(filters.maxValue)) return false;
       return true;
     });
-  }, [leads, filters]);
+  }, [visibleLeads, filters]);
 
   // Group filtered leads by stage_id — assign leads without stage to the first stage
   const leadsByStage = useMemo(() => {
@@ -184,10 +222,16 @@ export default function CRM() {
     value: src,
     label: src,
   }));
-  const assignedToOptions: FilterCheckboxOption[] = users.map((user) => ({
-    value: user.user_id,
-    label: user.full_name,
-  }));
+  const assignedToOptions: FilterCheckboxOption[] = [
+    { value: UNASSIGNED_FILTER_VALUE, label: t.filterUnassigned },
+    ...users.map((user) => ({ value: user.user_id, label: user.full_name })),
+  ];
+
+  // Rótulo do responsável (ou "Sem responsável") pro badge de filtro ativo.
+  const getAssignedToLabel = (id: string) =>
+    id === UNASSIGNED_FILTER_VALUE
+      ? t.filterUnassigned
+      : users.find((u) => u.user_id === id)?.full_name || 'N/A';
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
@@ -307,7 +351,7 @@ export default function CRM() {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('leadId');
     if (!leadId) return;
-    const lead = leads.find(l => l.id === leadId);
+    const lead = visibleLeads.find(l => l.id === leadId);
     if (!lead) return;
     await requestStageChange(lead, stageId);
   };
@@ -316,7 +360,7 @@ export default function CRM() {
     if (!pendingLossDrop) return;
     // Acrescenta o motivo às observações existentes em vez de sobrescrever —
     // o usuário pode já ter escrito algo relevante no lead antes de marcá-lo como perdido.
-    const currentLead = leads.find(l => l.id === pendingLossDrop.leadId);
+    const currentLead = visibleLeads.find(l => l.id === pendingLossDrop.leadId);
     const reasonLine = `${t.lossNotePrefix} ${reason}${details ? `\n${details}` : ''}`;
     const existingNotes = currentLead?.notes?.trim();
     const notes = existingNotes ? `${existingNotes}\n\n${reasonLine}` : reasonLine;
@@ -515,9 +559,9 @@ export default function CRM() {
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="h-5 w-5" />
           <h2 className="text-lg font-semibold">{t.pipeline}</h2>
-          {filteredLeads.length !== leads.length && (
+          {filteredLeads.length !== visibleLeads.length && (
             <Badge variant="outline" className="ml-2">
-              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(leads.length))}
+              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(visibleLeads.length))}
             </Badge>
           )}
         </div>
@@ -565,10 +609,10 @@ export default function CRM() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">
-              {leads.length === 0 ? t.emptyOpportunities : t.emptySearch}
+              {visibleLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
             </h3>
             <p className="text-muted-foreground max-w-sm">
-              {leads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
+              {visibleLeads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
             </p>
           </CardContent>
         </Card>
@@ -663,8 +707,8 @@ export default function CRM() {
       ) : mobileListLeads.length === 0 ? (
         <EmptyState
           icon={<TrendingUp className="h-12 w-12" />}
-          title={leads.length === 0 ? t.emptyOpportunities : t.emptySearch}
-          description={leads.length === 0 ? t.emptyMobileLeadDesc : t.emptyMobileDesc}
+          title={visibleLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
+          description={visibleLeads.length === 0 ? t.emptyMobileLeadDesc : t.emptyMobileDesc}
         />
       ) : (
         <div className="rounded-xl border bg-card overflow-hidden">
@@ -1001,7 +1045,7 @@ export default function CRM() {
             <Badge className="gap-1 bg-foreground text-background">
               {t.badgeSalesperson}:{' '}
               {filters.assignedTo.length === 1
-                ? users.find((u) => u.user_id === filters.assignedTo[0])?.full_name || 'N/A'
+                ? getAssignedToLabel(filters.assignedTo[0])
                 : t.badgeSelectedM_other.replace('{count}', String(filters.assignedTo.length))}
               <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, assignedTo: [] }))} />
             </Badge>

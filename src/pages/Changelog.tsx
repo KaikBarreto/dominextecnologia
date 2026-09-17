@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.32',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais de um vendedor responsável pela mesma oportunidade',
+        description: 'Antes cada oportunidade tinha um responsável só. Agora dá para colocar vários, com as fotos aparecendo no card do funil. O primeiro que você escolhe é o responsável principal, que é quem continua valendo para os filtros, os relatórios e a comissão. Quem já usa o CRM não perde nada: o responsável atual de cada oportunidade virou o principal automaticamente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cada vendedor vê as oportunidades dele',
+        description: 'O funil mostrava todas as oportunidades da empresa para qualquer pessoa com acesso à tela. Agora cada um vê apenas aquelas em que é responsável, co-responsável ou foi quem cadastrou, e os totais no topo passam a refletir isso. Quem tem a permissão "Gerenciar CRM" continua enxergando o funil inteiro, e empresas que ainda não usam o controle de permissões não mudam em nada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Lead que chega sozinho agora tem uma fila',
+        description: 'Quando um contato entra pelo formulário de captação do site, ele chega sem dono. Esse tipo de oportunidade aparece marcada como "Sem responsável" para todo mundo da empresa, com um botão para assumir. Quem assumir vira o responsável e a oportunidade sai da fila dos colegas. Também dá para filtrar só as que estão sem responsável, para ninguém deixar contato parado.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.24.31',
     date: '17 de setembro de 2026',
     type: 'patch',

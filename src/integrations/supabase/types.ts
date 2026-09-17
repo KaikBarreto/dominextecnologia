@@ -652,6 +652,7 @@ export type Database = {
           pending_plan_code: string | null
           pending_subscription_value: number | null
           phone: string | null
+          ponto_kiosk_slug: string | null
           salesperson_id: string | null
           sdr_id: string | null
           segment: string | null
@@ -704,6 +705,7 @@ export type Database = {
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
+          ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -756,6 +758,7 @@ export type Database = {
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
+          ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -3180,6 +3183,48 @@ export type Database = {
           },
         ]
       }
+      employee_ponto_pins: {
+        Row: {
+          company_id: string
+          employee_id: string
+          failed_count: number
+          locked_until: string | null
+          pin_hash: string
+          set_at: string
+        }
+        Insert: {
+          company_id: string
+          employee_id: string
+          failed_count?: number
+          locked_until?: string | null
+          pin_hash: string
+          set_at?: string
+        }
+        Update: {
+          company_id?: string
+          employee_id?: string
+          failed_count?: number
+          locked_until?: string | null
+          pin_hash?: string
+          set_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_ponto_pins_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_ponto_pins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address: string | null
@@ -4932,6 +4977,35 @@ export type Database = {
             columns: ["stock_id"]
             isOneToOne: false
             referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_assignees: {
+        Row: {
+          created_at: string
+          is_primary: boolean
+          lead_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignees_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -9870,6 +9944,10 @@ export type Database = {
           titulo: string
         }[]
       }
+      can_access_lead: {
+        Args: { _lead_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_access_stock: {
         Args: { _stock_id: string; _user_id: string }
         Returns: boolean
@@ -10100,6 +10178,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_or_create_ponto_kiosk_slug: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_portal_by_token: {
         Args: { _token: string }
         Returns: {
@@ -10226,6 +10308,7 @@ export type Database = {
         Returns: boolean
       }
       has_full_permissions: { Args: { _user_id: string }; Returns: boolean }
+      has_ponto_pin: { Args: { p_employee_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -10248,6 +10331,10 @@ export type Database = {
       }
       is_customer_in_active_portal: {
         Args: { _customer_id: string }
+        Returns: boolean
+      }
+      is_lead_assignee: {
+        Args: { _lead_id: string; _user_id: string }
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
@@ -10480,6 +10567,10 @@ export type Database = {
         Args: { p_inventory_id: string; p_stock_ids: string[] }
         Returns: undefined
       }
+      set_ponto_pin: {
+        Args: { p_employee_id: string; p_pin: string }
+        Returns: undefined
+      }
       set_stock_access: {
         Args: {
           p_restricted: boolean
@@ -10574,11 +10665,19 @@ export type Database = {
         Returns: Json
       }
       upsert_compute_catalog: { Args: { p_payload: Json }; Returns: number }
+      user_has_permission: {
+        Args: { _key: string; _user_id: string }
+        Returns: boolean
+      }
       vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
       vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
       vault_upsert_tenant_secret: {
         Args: { p_name: string; p_secret: string }
         Returns: string
+      }
+      verify_ponto_pin: {
+        Args: { p_employee_id: string; p_pin: string }
+        Returns: Json
       }
       whatsapp_can_send: { Args: { p_company_id: string }; Returns: boolean }
     }
