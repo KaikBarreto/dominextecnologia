@@ -30,6 +30,12 @@ vi.mock('@/hooks/useUsers', () => ({ useUsers: () => ({ users: [] }) }));
 vi.mock('@/hooks/useCrmStages', () => ({
   useCrmStages: () => ({ stages: [{ id: 'stage-1', name: 'Novo' }], getStageHex: () => '#000000' }),
 }));
+// Onda D (multi-pipeline): LeadFormDialog passou a chamar useCrmPipelines pra
+// agrupar o select de estágio por funil. Mock com 1 único funil = mesmo
+// comportamento visual de antes do D2 (select plano, sem seções).
+vi.mock('@/hooks/useCrmPipelines', () => ({
+  useCrmPipelines: () => ({ pipelines: [{ id: 'pipeline-1', name: 'Funil de Vendas', is_default: true }] }),
+}));
 vi.mock('@/components/customers/CustomerSelectField', () => ({ CustomerSelectField: () => null }));
 vi.mock('@/components/customers/OriginSelectField', () => ({ OriginSelectField: () => null }));
 

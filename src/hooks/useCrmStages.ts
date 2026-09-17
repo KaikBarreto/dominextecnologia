@@ -11,6 +11,9 @@ export interface CrmStage {
   position: number;
   is_won: boolean;
   is_lost: boolean;
+  /** Funil dono da etapa (Onda D — multi-pipeline). Sempre presente no banco
+   *  (NOT NULL); ver migration 20260918100000_crm_multi_pipeline.sql. */
+  pipeline_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +25,15 @@ export interface CrmStageInsert {
   position?: number;
   is_won?: boolean;
   is_lost?: boolean;
+  /**
+   * Funil dono da nova etapa. REQUIRED de propósito (espelha
+   * `TablesInsert<'crm_stages'>` gerado do banco, onde a coluna é NOT NULL
+   * sem default) — é o que substitui o `as any` que existia aqui antes do D2.
+   * O chamador (StageManagerDialog) sempre tem um funil resolvido na tela;
+   * o caso raríssimo de empresa sem NENHUM funil ainda é tratado só em
+   * `seedDefaultStages` (abaixo), que é o único caminho de bootstrap.
+   */
+  pipeline_id: string;
 }
 
 export interface CrmStageUpdate {
@@ -32,6 +44,9 @@ export interface CrmStageUpdate {
   position?: number;
   is_won?: boolean;
   is_lost?: boolean;
+  /** Mover a etapa de funil — o trigger AFTER propaga o novo pipeline_id
+   *  pros leads que estão nela (denormalização em leads.pipeline_id). */
+  pipeline_id?: string;
 }
 
 export const STAGE_COLORS = [
@@ -93,10 +108,10 @@ export function useCrmStages() {
       const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('crm_stages')
-        .insert({ ...stage, position: stage.position ?? maxPosition, company_id } as any)
+        .insert({ ...stage, position: stage.position ?? maxPosition, company_id })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -113,15 +128,27 @@ export function useCrmStages() {
     },
   });
 
+  // pipelineId: funil dono dos estágios padrão (D2 sempre manda o funil
+  // selecionado na tela). Só fica de fora no bootstrap raríssimo de empresa
+  // sem NENHUM funil ainda — aí o trigger cria o funil padrão sozinho, e por
+  // isso o onSuccess também invalida `crm_pipelines` (pra esse funil recém
+  // criado pelo trigger aparecer no seletor sem precisar de reload).
   const seedDefaultStages = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (pipelineId?: string) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
       const rows = DEFAULT_CRM_STAGES.map((stage, index) => ({
         ...stage,
         position: index,
         company_id,
+        ...(pipelineId ? { pipeline_id: pipelineId } : {}),
       }));
+      // `as any` só AQUI: `pipeline_id` fica de fora da linha no bootstrap
+      // (pipelineId undefined) de propósito, pro trigger `crm_stages_resolve_pipeline`
+      // criar o funil padrão sozinho — mas o tipo gerado do banco
+      // (TablesInsert<'crm_stages'>) marca a coluna como obrigatória (NOT
+      // NULL sem default), porque codegen não sabe do trigger. Único uso de
+      // `as any` que sobra no arquivo; o insert normal (createStage) não usa mais.
       const { data, error } = await supabase
         .from('crm_stages')
         .insert(rows as any)
@@ -132,6 +159,7 @@ export function useCrmStages() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_stages'] });
+      queryClient.invalidateQueries({ queryKey: ['crm_pipelines'] });
       toast({ title: 'Estágios padrão criados!' });
     },
     onError: (error) => {

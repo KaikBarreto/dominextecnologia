@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.34',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vários funis de vendas na mesma empresa',
+        description: 'Até agora o CRM tinha um funil só. Agora dá para criar quantos precisar, por exemplo um para venda nova e outro para manutenção, cada um com as suas próprias etapas e oportunidades. Um seletor no topo da tela troca de funil, e a escolha fica guardada para a próxima vez que você entrar. Quem usa um funil só não vê nada diferente: o seletor nem aparece.',
+        category: 'recurso',
+      },
+      {
+        title: 'Mover uma oportunidade de um funil para outro',
+        description: 'Ao trocar a etapa de uma oportunidade, a lista agora vem separada por funil, com o nome de cada um em cima das suas etapas. Escolher uma etapa de outro funil move o negócio para lá, e a tela avisa isso antes de você confirmar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Proteção ao excluir um funil',
+        description: 'Um funil que ainda tem etapas ou oportunidades dentro não pode ser excluído, e o sistema explica o porquê em vez de dar erro. Assim ninguém apaga negócio em andamento sem perceber.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.33',
     date: '17 de setembro de 2026',
     type: 'patch',

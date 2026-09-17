@@ -2247,6 +2247,44 @@ export type Database = {
           },
         ]
       }
+      crm_pipelines: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipelines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           color: string
@@ -2257,6 +2295,7 @@ export type Database = {
           is_lost: boolean
           is_won: boolean
           name: string
+          pipeline_id: string
           position: number
           updated_at: string
         }
@@ -2269,6 +2308,7 @@ export type Database = {
           is_lost?: boolean
           is_won?: boolean
           name: string
+          pipeline_id: string
           position?: number
           updated_at?: string
         }
@@ -2281,6 +2321,7 @@ export type Database = {
           is_lost?: boolean
           is_won?: boolean
           name?: string
+          pipeline_id?: string
           position?: number
           updated_at?: string
         }
@@ -2290,6 +2331,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
             referencedColumns: ["id"]
           },
         ]
@@ -5130,6 +5178,7 @@ export type Database = {
           expected_close_date: string | null
           id: string
           notes: string | null
+          pipeline_id: string | null
           probability: number | null
           source: string | null
           stage_id: string | null
@@ -5148,6 +5197,7 @@ export type Database = {
           expected_close_date?: string | null
           id?: string
           notes?: string | null
+          pipeline_id?: string | null
           probability?: number | null
           source?: string | null
           stage_id?: string | null
@@ -5166,6 +5216,7 @@ export type Database = {
           expected_close_date?: string | null
           id?: string
           notes?: string | null
+          pipeline_id?: string | null
           probability?: number | null
           source?: string | null
           stage_id?: string | null
@@ -5188,6 +5239,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
             referencedColumns: ["id"]
           },
           {
@@ -9992,6 +10050,10 @@ export type Database = {
       edit_service_order_scope: {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
+      }
+      ensure_default_crm_pipeline: {
+        Args: { _company_id: string }
+        Returns: string
       }
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }

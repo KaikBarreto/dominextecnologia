@@ -56,7 +56,11 @@ export const crm = {
 
     // ── Ações de configuração ──
     manageStages: 'Gerenciar estágios',
+    managePipelines: 'Gerenciar funis',
     configWebhooks: 'Configurar webhooks',
+
+    // ── Seletor de funil (Onda D — multi-pipeline) ──
+    pipelineSelectorLabel: 'Funil',
 
     // ── Kanban ──
     pipeline: 'Pipeline de Vendas',
@@ -104,6 +108,7 @@ export const crm = {
       edit: 'Editar',
       statusLabel: 'Status:',
       stageLabel: 'Estágio:',
+      stagePipelineHint: 'Escolher uma etapa de outro funil move esta oportunidade para esse funil.',
       assigneesLabel: 'Responsáveis:',
       assigneePrimaryBadge: 'Principal',
       assigneeUnknown: 'Usuário removido',
@@ -166,6 +171,7 @@ export const crm = {
       stage: 'Estágio',
       stageNone: 'Não atribuído',
       stagePlaceholder: 'Selecione o estágio',
+      stagePipelineHint: 'Escolher uma etapa de outro funil move esta oportunidade para esse funil.',
       estimatedValue: 'Valor Estimado (R$)',
       probability: 'Probabilidade (%)',
       closeDate: 'Previsão Fechamento',
@@ -200,6 +206,7 @@ export const crm = {
     // ── StageManagerDialog ──
     stages: {
       title: 'Gerenciar Estágios do Pipeline',
+      titleWithPipeline: 'Gerenciar Estágios do Funil "{pipeline}"',
       iconLabel: 'Ícone',
       iconNone: 'Sem ícone',
       newStageLabel: 'Novo Estágio',
@@ -211,6 +218,23 @@ export const crm = {
       lostLabel: 'Perdido',
       deleteTitle: 'Remover estágio?',
       deleteDesc: 'Esta ação não pode ser desfeita. Leads neste estágio ficarão sem estágio atribuído.',
+      deleteConfirm: 'Remover',
+      cancel: 'Cancelar',
+    },
+
+    // ── PipelineManagerDialog (Onda D — multi-pipeline) ──
+    pipelines: {
+      title: 'Gerenciar Funis',
+      subtitle: 'Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais.',
+      newPipelineLabel: 'Novo Funil',
+      namePlaceholder: 'Nome do funil',
+      dragHint: 'Arraste para reordenar os funis',
+      defaultBadge: 'Padrão',
+      setDefaultAction: 'Tornar padrão',
+      editLabel: 'Editar',
+      deleteLabel: 'Excluir',
+      deleteTitle: 'Remover funil?',
+      deleteDesc: 'Esta ação não pode ser desfeita.',
       deleteConfirm: 'Remover',
       cancel: 'Cancelar',
     },
@@ -1078,7 +1102,10 @@ export const crm = {
     viewKanban: 'Kanban',
 
     manageStages: 'Manage stages',
+    managePipelines: 'Manage pipelines',
     configWebhooks: 'Configure webhooks',
+
+    pipelineSelectorLabel: 'Pipeline',
 
     pipeline: 'Sales Pipeline',
     xOfY: '{filtered} of {total}',
@@ -1121,6 +1148,7 @@ export const crm = {
       edit: 'Edit',
       statusLabel: 'Status:',
       stageLabel: 'Stage:',
+      stagePipelineHint: 'Choosing a stage from another pipeline moves this opportunity to that pipeline.',
       assigneesLabel: 'Assigned to:',
       assigneePrimaryBadge: 'Primary',
       assigneeUnknown: 'Removed user',
@@ -1182,6 +1210,7 @@ export const crm = {
       stage: 'Stage',
       stageNone: 'Unassigned',
       stagePlaceholder: 'Select stage',
+      stagePipelineHint: 'Choosing a stage from another pipeline moves this opportunity to that pipeline.',
       estimatedValue: 'Estimated Value',
       probability: 'Probability (%)',
       closeDate: 'Expected Close Date',
@@ -1214,6 +1243,7 @@ export const crm = {
 
     stages: {
       title: 'Manage Pipeline Stages',
+      titleWithPipeline: 'Manage Stages of Pipeline "{pipeline}"',
       iconLabel: 'Icon',
       iconNone: 'No icon',
       newStageLabel: 'New Stage',
@@ -1225,6 +1255,22 @@ export const crm = {
       lostLabel: 'Lost',
       deleteTitle: 'Remove stage?',
       deleteDesc: 'This action cannot be undone. Leads in this stage will become unassigned.',
+      deleteConfirm: 'Remove',
+      cancel: 'Cancel',
+    },
+
+    pipelines: {
+      title: 'Manage Pipelines',
+      subtitle: 'Create separate pipelines for sales, after sales, bidding and other workflows.',
+      newPipelineLabel: 'New Pipeline',
+      namePlaceholder: 'Pipeline name',
+      dragHint: 'Drag to reorder pipelines',
+      defaultBadge: 'Default',
+      setDefaultAction: 'Make default',
+      editLabel: 'Edit',
+      deleteLabel: 'Delete',
+      deleteTitle: 'Remove pipeline?',
+      deleteDesc: 'This action cannot be undone.',
       deleteConfirm: 'Remove',
       cancel: 'Cancel',
     },
@@ -2028,7 +2074,10 @@ export const crm = {
     viewKanban: 'Kanban',
 
     manageStages: 'Gestionar etapas',
+    managePipelines: 'Gestionar embudos',
     configWebhooks: 'Configurar webhooks',
+
+    pipelineSelectorLabel: 'Embudo',
 
     pipeline: 'Embudo de Ventas',
     xOfY: '{filtered} de {total}',
@@ -2071,6 +2120,7 @@ export const crm = {
       edit: 'Editar',
       statusLabel: 'Estado:',
       stageLabel: 'Etapa:',
+      stagePipelineHint: 'Elegir una etapa de otro embudo mueve esta oportunidad a ese embudo.',
       assigneesLabel: 'Responsables:',
       assigneePrimaryBadge: 'Principal',
       assigneeUnknown: 'Usuario eliminado',
@@ -2132,6 +2182,7 @@ export const crm = {
       stage: 'Etapa',
       stageNone: 'Sin asignar',
       stagePlaceholder: 'Selecciona la etapa',
+      stagePipelineHint: 'Elegir una etapa de otro embudo mueve esta oportunidad a ese embudo.',
       estimatedValue: 'Valor Estimado',
       probability: 'Probabilidad (%)',
       closeDate: 'Fecha de Cierre Estimada',
@@ -2164,6 +2215,7 @@ export const crm = {
 
     stages: {
       title: 'Gestionar Etapas del Pipeline',
+      titleWithPipeline: 'Gestionar Etapas del Embudo "{pipeline}"',
       iconLabel: 'Icono',
       iconNone: 'Sin icono',
       newStageLabel: 'Nueva Etapa',
@@ -2175,6 +2227,22 @@ export const crm = {
       lostLabel: 'Perdido',
       deleteTitle: '¿Eliminar etapa?',
       deleteDesc: 'Esta acción no se puede deshacer. Los leads en esta etapa quedarán sin etapa asignada.',
+      deleteConfirm: 'Eliminar',
+      cancel: 'Cancelar',
+    },
+
+    pipelines: {
+      title: 'Gestionar Embudos',
+      subtitle: 'Crea embudos separados para ventas, posventa, licitaciones y otros flujos.',
+      newPipelineLabel: 'Nuevo Embudo',
+      namePlaceholder: 'Nombre del embudo',
+      dragHint: 'Arrastra para reordenar los embudos',
+      defaultBadge: 'Predeterminado',
+      setDefaultAction: 'Hacer predeterminado',
+      editLabel: 'Editar',
+      deleteLabel: 'Eliminar',
+      deleteTitle: '¿Eliminar embudo?',
+      deleteDesc: 'Esta acción no se puede deshacer.',
       deleteConfirm: 'Eliminar',
       cancel: 'Cancelar',
     },
@@ -2978,7 +3046,10 @@ export const crm = {
     viewKanban: 'Kanban',
 
     manageStages: 'Gérer les étapes',
+    managePipelines: 'Gérer les pipelines',
     configWebhooks: 'Configurer les webhooks',
+
+    pipelineSelectorLabel: 'Pipeline',
 
     pipeline: 'Pipeline Commercial',
     xOfY: '{filtered} sur {total}',
@@ -3021,6 +3092,7 @@ export const crm = {
       edit: 'Modifier',
       statusLabel: 'Statut :',
       stageLabel: 'Étape :',
+      stagePipelineHint: `Choisir une étape d'un autre pipeline déplace cette opportunité vers ce pipeline.`,
       assigneesLabel: 'Responsables :',
       assigneePrimaryBadge: 'Principal',
       assigneeUnknown: 'Utilisateur supprimé',
@@ -3082,6 +3154,7 @@ export const crm = {
       stage: 'Étape',
       stageNone: 'Non assigné',
       stagePlaceholder: 'Sélectionner l\'étape',
+      stagePipelineHint: `Choisir une étape d'un autre pipeline déplace cette opportunité vers ce pipeline.`,
       estimatedValue: 'Valeur Estimée',
       probability: 'Probabilité (%)',
       closeDate: 'Date de Clôture Prévue',
@@ -3114,6 +3187,7 @@ export const crm = {
 
     stages: {
       title: 'Gérer les Étapes du Pipeline',
+      titleWithPipeline: `Gérer les Étapes du Pipeline "{pipeline}"`,
       iconLabel: 'Icône',
       iconNone: `Sans icône`,
       newStageLabel: 'Nouvelle Étape',
@@ -3125,6 +3199,22 @@ export const crm = {
       lostLabel: 'Perdu',
       deleteTitle: "Supprimer l'étape ?",
       deleteDesc: 'Cette action est irréversible. Les leads dans cette étape seront sans étape assignée.',
+      deleteConfirm: 'Supprimer',
+      cancel: 'Annuler',
+    },
+
+    pipelines: {
+      title: 'Gérer les Pipelines',
+      subtitle: `Créez des pipelines séparés pour les ventes, le service après vente, les appels d'offres et autres flux.`,
+      newPipelineLabel: 'Nouveau Pipeline',
+      namePlaceholder: 'Nom du pipeline',
+      dragHint: 'Glissez pour réorganiser les pipelines',
+      defaultBadge: 'Par défaut',
+      setDefaultAction: 'Définir par défaut',
+      editLabel: 'Modifier',
+      deleteLabel: 'Supprimer',
+      deleteTitle: 'Supprimer le pipeline ?',
+      deleteDesc: 'Cette action est irréversible.',
       deleteConfirm: 'Supprimer',
       cancel: 'Annuler',
     },
