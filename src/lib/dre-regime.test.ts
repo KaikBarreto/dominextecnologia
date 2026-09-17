@@ -6,6 +6,7 @@ import {
   isPartialReceiptChild,
   isPayrollAdvance,
   isFutureCashDate,
+  isPaidDateAllowedInTz,
   classifyDreCategory,
   parseDreDate,
   type DreTransactionLike,
@@ -508,5 +509,50 @@ describe('3º nível da DRE — quebra por centro de custo de UMA categoria fech
     const key = 'receita:Vendas de Serviços';
     const breakdown = buildCostCenterBreakdown(txnsByKey.get(key));
     expect(breakdown.totals.revenue).toBeCloseTo(totalByKey.get(key)!, 2);
+  });
+});
+
+// ── isPaidDateAllowedInTz ────────────────────────────────────────────────────
+// Restaurados em 2026-09-17: a bateria original vivia em `today-brazil.test.ts`
+// e foi perdida no merge que aposentou aquele módulo em favor da versão ciente
+// de fuso. A função sobreviveu à refatoração; os testes não. Sem eles, o bug
+// de "marcar pagamento com data futura" (que o sócio do CEO reportou com print,
+// e que fazia o Regime de Caixa contar dinheiro de um mês que não aconteceu)
+// pode voltar sem ninguém perceber.
+describe('isPaidDateAllowedInTz', () => {
+  const SP = 'America/Sao_Paulo';
+  // Data fixa bem no passado: não depende de quando a suíte roda.
+  const ONTEM = '2020-01-01';
+
+  it('data vazia passa: o campo é opcional', () => {
+    expect(isPaidDateAllowedInTz(null, SP)).toBe(true);
+    expect(isPaidDateAllowedInTz(undefined, SP)).toBe(true);
+    expect(isPaidDateAllowedInTz('', SP)).toBe(true);
+  });
+
+  it('data no passado passa', () => {
+    expect(isPaidDateAllowedInTz(ONTEM, SP)).toBe(true);
+  });
+
+  it('data no futuro é barrada', () => {
+    expect(isPaidDateAllowedInTz('2099-12-31', SP)).toBe(false);
+  });
+
+  it('data futura JÁ GRAVADA passa: não prende o usuário num erro que ele não criou', () => {
+    expect(isPaidDateAllowedInTz('2099-12-31', SP, '2099-12-31')).toBe(true);
+  });
+
+  it('trocar uma data futura por OUTRA data futura continua barrado', () => {
+    expect(isPaidDateAllowedInTz('2099-12-30', SP, '2099-12-31')).toBe(false);
+  });
+
+  it('corrigir o legado para uma data do passado sempre passa', () => {
+    expect(isPaidDateAllowedInTz(ONTEM, SP, '2099-12-31')).toBe(true);
+  });
+
+  it('fuso vazio ou inválido não lança: cai no padrão sem quebrar a tela', () => {
+    expect(isPaidDateAllowedInTz(ONTEM, null)).toBe(true);
+    expect(isPaidDateAllowedInTz(ONTEM, 'Fuso/Inexistente')).toBe(true);
+    expect(isPaidDateAllowedInTz('2099-12-31', 'Fuso/Inexistente')).toBe(false);
   });
 });
