@@ -77,6 +77,83 @@ export interface TemplateContext {
 // Helpers de formato compartilhados
 // -----------------------------------------------------------------------------
 
+// ─── Fuso da EMPRESA (company_settings.timezone) ─────────────────────────────
+//
+// DUPLICAÇÃO PROPOSITAL de `src/lib/timezone.ts`. Edge function roda em Deno e
+// NÃO pode importar de `src/` (o bundle da edge não enxerga o app). As regras
+// são as mesmas e precisam continuar iguais nos dois lados:
+//
+//  - `en-CA` é o único locale que o Intl formata como ISO YYYY-MM-DD. Remontar
+//    a data com `getUTCDate()/getUTCFullYear()` ignora o fuso e é exatamente o
+//    defeito que esta onda corrige: às 22h em São Paulo o instante já está no
+//    dia seguinte em UTC, e o PDF saía com "documento gerado em [amanhã]".
+//  - `Intl` lança RangeError quando o nome do fuso não é IANA válido, então
+//    todo caminho cai no padrão sem derrubar a geração do PDF.
+//
+// IMPORTANTE: fuso só se aplica a INSTANTE (timestamptz, `new Date()`). Uma
+// data-only ("2026-01-15", ex.: `contracts.start_date`) é dia de calendário,
+// não instante: aplicar fuso nela reintroduziria o off-by-one ao contrário.
+// Por isso todo helper abaixo detecta data-only e usa os números literais.
+
+/** Fuso padrão quando a empresa não tem um configurado ou o valor é inválido. */
+export const DEFAULT_TIME_ZONE = "America/Sao_Paulo";
+
+/** Nome de fuso que o Intl aceita, sempre. Vazio/nulo/inválido → padrão. */
+export function safeTimeZone(timeZone: string | null | undefined): string {
+  const tz = typeof timeZone === "string" && timeZone.trim() ? timeZone.trim() : DEFAULT_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: tz });
+    return tz;
+  } catch {
+    return DEFAULT_TIME_ZONE;
+  }
+}
+
+/** Data-only "YYYY-MM-DD" (dia de calendário, sem hora). */
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export type Ymd = { year: number; month: number; day: number };
+
+/**
+ * Ano/mês/dia de uma entrada, no fuso da empresa.
+ *  - data-only → números literais (sem conversão de fuso);
+ *  - instante  → o dia que o relógio da empresa mostra naquele instante.
+ * `null` quando a entrada é vazia ou inválida.
+ */
+export function ymdInTimeZone(
+  input: Date | string | null,
+  timeZone: string | null | undefined,
+): Ymd | null {
+  if (!input) return null;
+
+  if (typeof input === "string") {
+    const onlyDate = DATE_ONLY_RE.exec(input.trim());
+    if (onlyDate) {
+      return {
+        year: Number(onlyDate[1]),
+        month: Number(onlyDate[2]),
+        day: Number(onlyDate[3]),
+      };
+    }
+  }
+
+  const d = input instanceof Date ? input : new Date(input);
+  if (isNaN(d.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: safeTimeZone(timeZone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? NaN);
+  const ymd = { year: get("year"), month: get("month"), day: get("day") };
+  if (!Number.isFinite(ymd.year) || !Number.isFinite(ymd.month) || !Number.isFinite(ymd.day)) {
+    return null;
+  }
+  return ymd;
+}
+
 const MESES_PT: Record<number, string> = {
   0: "janeiro",
   1: "fevereiro",
@@ -92,14 +169,23 @@ const MESES_PT: Record<number, string> = {
   11: "dezembro",
 };
 
-export function dateToExtenso(input: Date | string | null): string {
-  if (!input) return "____ de ___________________ de 20____";
-  const d = input instanceof Date ? input : new Date(input);
-  if (isNaN(d.getTime())) return "____ de ___________________ de 20____";
-  const dia = String(d.getUTCDate()).padStart(2, "0");
-  const mes = MESES_PT[d.getUTCMonth()] ?? "____________";
-  const ano = d.getUTCFullYear();
-  return `${dia} de ${mes} de ${ano}`;
+/**
+ * "15 de janeiro de 2026" a partir de um instante OU de uma data-only.
+ *
+ * `timeZone` é o `company_settings.timezone` da empresa dona do contrato. Ele
+ * só entra quando a entrada é um INSTANTE (ex.: `new Date()` da geração do
+ * documento): o dia tem que ser o do calendário da empresa, não o dia UTC.
+ * Sem isso, gerar o PDF depois das 21h em São Paulo carimbava o dia seguinte.
+ */
+export function dateToExtenso(
+  input: Date | string | null,
+  timeZone?: string | null,
+): string {
+  const ymd = ymdInTimeZone(input, timeZone);
+  if (!ymd) return "____ de ___________________ de 20____";
+  const dia = String(ymd.day).padStart(2, "0");
+  const mes = MESES_PT[ymd.month - 1] ?? "____________";
+  return `${dia} de ${mes} de ${ymd.year}`;
 }
 
 /**
@@ -109,40 +195,38 @@ export function dateToExtenso(input: Date | string | null): string {
  * Retorna strings vazias quando a data é inválida — substituidor de variáveis
  * trata vazio como linha pontilhada (`____________________`) no PDF final.
  *
- * UTC para casar EXATAMENTE com o `dateToExtenso` e com o helper espelhado no
- * frontend (`partsFromIso` em PmocContractDocsTab.tsx), evitando off-by-one
- * quando o navegador do gestor está em fuso diferente de UTC.
+ * `contracts.created_at` é um INSTANTE (timestamptz), então o dia sai no fuso
+ * da empresa (`timeZone`), exatamente como o `dateToExtenso`. O helper espelhado
+ * no frontend (`partsFromIso` em PmocContractDocsTab.tsx) segue a mesma regra.
  */
 export function extractContractCreatedParts(
   input: Date | string | null,
+  timeZone?: string | null,
 ): { dia: string; mes: string; ano: string } {
-  if (!input) return { dia: "", mes: "", ano: "" };
-  const d = input instanceof Date ? input : new Date(input);
-  if (isNaN(d.getTime())) return { dia: "", mes: "", ano: "" };
+  const ymd = ymdInTimeZone(input, timeZone);
+  if (!ymd) return { dia: "", mes: "", ano: "" };
   return {
-    dia: String(d.getUTCDate()).padStart(2, "0"),
-    mes: MESES_PT[d.getUTCMonth()] ?? "",
-    ano: String(d.getUTCFullYear()),
+    dia: String(ymd.day).padStart(2, "0"),
+    mes: MESES_PT[ymd.month - 1] ?? "",
+    ano: String(ymd.year),
   };
 }
 
 /**
- * Formata um Date (instante) como DD/MM/AAAA no fuso de Brasília
- * (America/Sao_Paulo). Usado pras variáveis `documento.data_emissao` e
- * `documento.data_vencimento`. Sem dependência externa (Intl).
+ * Formata um Date (instante) como DD/MM/AAAA no fuso da EMPRESA
+ * (`company_settings.timezone`, padrão America/Sao_Paulo). Usado pras variáveis
+ * `documento.data_emissao` e `documento.data_vencimento`. Sem dependência
+ * externa (Intl).
  */
-export function formatDateBr(input: Date | string | null): string {
-  if (!input) return "";
-  const d = input instanceof Date ? input : new Date(input);
-  if (isNaN(d.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("day")}/${get("month")}/${get("year")}`;
+export function formatDateBr(
+  input: Date | string | null,
+  timeZone?: string | null,
+): string {
+  const ymd = ymdInTimeZone(input, timeZone);
+  if (!ymd) return "";
+  const dd = String(ymd.day).padStart(2, "0");
+  const mm = String(ymd.month).padStart(2, "0");
+  return `${dd}/${mm}/${String(ymd.year).padStart(4, "0")}`;
 }
 
 /**
@@ -151,26 +235,22 @@ export function formatDateBr(input: Date | string | null): string {
  *  - `dateOnly` ("yyyy-MM-dd") pra gravar em `pmoc_documents.valid_until`;
  *  - `formatted` (DD/MM/AAAA) pra variável `documento.data_vencimento`.
  *
- * Ancorado ao fuso de Brasília: o "dia" da geração é extraído em America/
- * Sao_Paulo antes de somar os meses, evitando off-by-one quando o instante
- * cai perto da meia-noite UTC. Overflow de mês é clampado pro último dia do
- * mês destino (ex: 31/01 + 1 mês → 28/02).
+ * Ancorado ao fuso da EMPRESA (`company_settings.timezone`, padrão
+ * America/Sao_Paulo): o "dia" da geração é extraído nesse fuso antes de somar
+ * os meses, evitando off-by-one quando o instante cai perto da meia-noite UTC.
+ * Overflow de mês é clampado pro último dia do mês destino (ex: 31/01 + 1 mês
+ * → 28/02).
  */
 export function computeValidUntil(
   generatedAt: Date,
   months: number,
+  timeZone?: string | null,
 ): { dateOnly: string; formatted: string } {
-  // Dia de geração no fuso de Brasília.
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(generatedAt);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
-  const baseYear = get("year");
-  const baseMonthIdx = get("month") - 1;
-  const baseDay = get("day");
+  // Dia de geração no fuso da empresa (fuso inválido cai no padrão, sem lançar).
+  const ymd = ymdInTimeZone(generatedAt, timeZone) ?? { year: 1970, month: 1, day: 1 };
+  const baseYear = ymd.year;
+  const baseMonthIdx = ymd.month - 1;
+  const baseDay = ymd.day;
 
   const safeMonths = Number.isFinite(months) && months > 0 ? Math.round(months) : 12;
   const totalMonths = baseMonthIdx + safeMonths;

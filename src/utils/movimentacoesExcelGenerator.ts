@@ -1,6 +1,7 @@
 import type { MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { todayInTz } from '@/lib/timezone';
 
 /**
  * Gera um `.xlsx` das Movimentações financeiras com as mesmas colunas do PDF.
@@ -12,28 +13,26 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 const formatCurrencyBR = (value: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
+/**
+ * Formata um dia de CALENDÁRIO (YYYY-MM-DD, coluna `date` do banco) como
+ * dd/MM/yyyy. Não há fuso envolvido: o dia 02 é o dia 02 em qualquer lugar.
+ *
+ * Antes isto passava por DOIS fusos e errava o dia: montava
+ * `new Date(y, m - 1, d)`, que é meia-noite no fuso do APARELHO, e depois
+ * reformatava forçando `America/Sao_Paulo`. Exportando de um notebook em Lisboa
+ * (UTC+1), a meia-noite local é 20:00 do dia ANTERIOR em São Paulo, então a
+ * movimentação do dia 02 saía como 01 no PDF que vai pro contador. Agora o dia
+ * é recortado da própria string, sem instante nenhum no meio.
+ */
 function formatDateBR(dateStr: string): string {
-  try {
-    return parseLocalDate(dateStr).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  } catch {
-    return dateStr;
-  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr ?? '').trim());
+  if (!m) return dateStr;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
-function todayStamp(): string {
-  // YYYY-MM-DD em horário de Brasília para nomear o arquivo.
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-  return parts; // en-CA já entrega no formato YYYY-MM-DD
+/** YYYY-MM-DD no fuso DA EMPRESA, pra nomear o arquivo. */
+function todayStamp(timeZone?: string | null): string {
+  return todayInTz(timeZone);
 }
 
 interface GenerateMovimentacoesExcelParams {
@@ -41,9 +40,14 @@ interface GenerateMovimentacoesExcelParams {
   rows: MovimentacaoReportRow[];
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /**
+   * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
+   * porque util não chama hook. Ausente ou inválido cai em America/Sao_Paulo.
+   */
+  timezone?: string | null;
 }
 
-export async function generateMovimentacoesExcel({ title, rows, locale: rawLocale }: GenerateMovimentacoesExcelParams): Promise<void> {
+export async function generateMovimentacoesExcel({ title, rows, locale: rawLocale, timezone }: GenerateMovimentacoesExcelParams): Promise<void> {
   const locale = rawLocale ?? 'pt-br';
   const t = MESSAGES[locale].app.finance.movimentacoesGenerator;
   const XLSX = await import('xlsx');
@@ -99,5 +103,5 @@ export async function generateMovimentacoesExcel({ title, rows, locale: rawLocal
   XLSX.utils.book_append_sheet(wb, ws, 'Movimentações');
 
   const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-');
-  XLSX.writeFile(wb, `${slug}-${todayStamp()}.xlsx`);
+  XLSX.writeFile(wb, `${slug}-${todayStamp(timezone)}.xlsx`);
 }

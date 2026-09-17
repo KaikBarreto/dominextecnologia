@@ -5,6 +5,7 @@ import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
+import { safeTimeZone } from '@/lib/timezone';
 
 export interface PaymentBreakdown {
   salary: number;
@@ -40,6 +41,13 @@ interface ReceiptData {
   vale?: ValeBreakdown;
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /**
+   * Fuso da EMPRESA (`company_settings.timezone`, via `useAppLocaleContext`),
+   * nunca o do aparelho de quem imprime. O recibo é documento: a data de
+   * emissão tem que ser a mesma pra todo mundo da empresa. Vazio ou inválido
+   * cai em America/Sao_Paulo, que é o comportamento antigo.
+   */
+  timeZone?: string | null;
 }
 
 function buildWhiteLabelHeader(s: CompanySettings): string {
@@ -146,8 +154,9 @@ export function generateReceiptHTML(data: ReceiptData): string {
 
   const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
+  const tz = safeTimeZone(data.timeZone);
   const dateStr = new Date(movement.created_at).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: tz,
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -320,7 +329,13 @@ export function generateExtractHTMLWithHeader(
   companySettings?: CompanySettings | null,
   whiteLabel?: boolean,
   locale: LocaleCode = 'pt-br',
+  /**
+   * Fuso da EMPRESA (`company_settings.timezone`). Vazio ou inválido cai em
+   * America/Sao_Paulo, que era o valor chumbado aqui antes.
+   */
+  timeZone?: string | null,
 ): string {
+  const tz = safeTimeZone(timeZone);
   const t = MESSAGES[locale].app.employees.receiptGenerator;
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
@@ -328,13 +343,13 @@ export function generateExtractHTMLWithHeader(
   const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
   const generatedAt = new Date().toLocaleString(bcp47, {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: tz,
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
   const formatMovDate = (iso: string) =>
     new Date(iso).toLocaleString(bcp47, {
-      timeZone: 'America/Sao_Paulo',
+      timeZone: tz,
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     });

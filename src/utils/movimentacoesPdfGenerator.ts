@@ -7,6 +7,7 @@ import { openPdfInTab } from '@/utils/openPdfInTab';
 import type { MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { safeTimeZone, todayInTz } from '@/lib/timezone';
 
 /**
  * Relatório PDF A4 paginado (real) das Movimentações financeiras.
@@ -20,7 +21,8 @@ import type { LocaleCode } from '@/lib/i18n/locales';
  * Mesmas regras do gerador HTML:
  *  - Cabeçalho: logo + dados da empresa respeitando os toggles `show_*_in_documents`.
  *  - Rodapé Dominex SÓ quando o tenant NÃO é white-label (regra-lei #2).
- *  - BRL, datas em America/Sao_Paulo.
+ *  - BRL. Datas de LANÇAMENTO são dia de calendário (sem fuso); o carimbo
+ *    "gerado em" e o nome do arquivo usam o fuso DA EMPRESA.
  */
 
 interface MovimentacoesPdfData {
@@ -31,25 +33,40 @@ interface MovimentacoesPdfData {
   rows: MovimentacaoReportRow[];
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /**
+   * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
+   * porque util não chama hook. Ausente ou inválido cai em America/Sao_Paulo.
+   */
+  timezone?: string | null;
 }
 
 const formatCurrencyBR = (value: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
+/**
+ * Formata um dia de CALENDÁRIO (YYYY-MM-DD, coluna `date` do banco) como
+ * dd/MM/yyyy. Não há fuso envolvido: o dia 02 é o dia 02 em qualquer lugar.
+ *
+ * Antes isto passava por DOIS fusos e errava o dia: montava
+ * `new Date(y, m - 1, d)`, que é meia-noite no fuso do APARELHO, e depois
+ * reformatava forçando `America/Sao_Paulo`. Exportando de um notebook em Lisboa
+ * (UTC+1), a meia-noite local é 20:00 do dia ANTERIOR em São Paulo, então a
+ * movimentação do dia 02 saía como 01 no PDF que vai pro contador. Agora o dia
+ * é recortado da própria string, sem instante nenhum no meio.
+ */
 function formatDateBR(dateStr: string): string {
-  try {
-    return parseLocalDate(dateStr).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  } catch {
-    return dateStr;
-  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr ?? '').trim());
+  if (!m) return dateStr;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
-function formatGeneratedAt(locale?: LocaleCode): string {
+/**
+ * Carimbo "gerado em". Este SIM é um instante (`new Date()`), então o relógio
+ * mostrado tem que ser o DA EMPRESA, não o do aparelho de quem exportou nem
+ * Brasília chumbado: quem lê o documento é a empresa e o contador dela.
+ * `safeTimeZone` garante que fuso vazio ou inválido não derrube a exportação.
+ */
+function formatGeneratedAt(locale?: LocaleCode, timeZone?: string | null): string {
   const bcp47 =
     locale === 'pt-br' ? 'pt-BR'
     : locale === 'en' ? 'en-US'
@@ -57,7 +74,7 @@ function formatGeneratedAt(locale?: LocaleCode): string {
     : locale === 'fr' ? 'fr-FR'
     : 'pt-BR';
   return new Date().toLocaleString(bcp47, {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timeZone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -66,13 +83,9 @@ function formatGeneratedAt(locale?: LocaleCode): string {
   });
 }
 
-function todayStamp(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+/** YYYY-MM-DD no fuso DA EMPRESA, pra nomear o arquivo. */
+function todayStamp(timeZone?: string | null): string {
+  return todayInTz(timeZone);
 }
 
 /** Linhas de dados da empresa (texto puro pro PDF), respeitando os toggles. */
@@ -118,7 +131,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const MARGIN = 14; // mm
 
 export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData): Promise<void> {
-  const { company, whiteLabel, title, rows } = data;
+  const { company, whiteLabel, title, rows, timezone } = data;
   const locale = data.locale ?? 'pt-br';
   const t = MESSAGES[locale].app.finance.movimentacoesGenerator;
 
@@ -211,7 +224,7 @@ export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData)
   doc.setFontSize(9);
   doc.setTextColor(136, 136, 136);
   const registros = `${rows.length} ${rows.length !== 1 ? t.recordsPlural : t.records}`;
-  doc.text(`${registros}  |  ${t.generatedAt}: ${formatGeneratedAt(locale)}`, pageWidth / 2, y, { align: 'center' });
+  doc.text(`${registros}  |  ${t.generatedAt}: ${formatGeneratedAt(locale, timezone)}`, pageWidth / 2, y, { align: 'center' });
   y += 8;
 
   // ===== Cards de totais (Entradas / Saídas / Saldo) =====
@@ -317,7 +330,7 @@ export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData)
   }
 
   const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-');
-  const filename = `${slug}-${todayStamp()}`;
+  const filename = `${slug}-${todayStamp(timezone)}`;
 
   const blob = doc.output('blob');
   openPdfInTab(blob, filename, targetWindow);

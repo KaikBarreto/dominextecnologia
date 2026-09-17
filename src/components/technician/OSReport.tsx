@@ -1366,6 +1366,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                       ?? serviceOrder.check_in_time,
                     geo: loc,
                     address: loc?.address,
+                    timeZone: timezone,
                   });
                   return (
                     <div className="flex flex-col items-center text-center">
@@ -1385,6 +1386,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                       ?? serviceOrder.check_in_time,
                     geo: loc,
                     address: loc?.address,
+                    timeZone: timezone,
                   });
                   return (
                     <div className="flex flex-col items-center text-center">
@@ -1406,6 +1408,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                         at: response.responded_at,
                         geo: respLoc,
                         address: respLoc?.address,
+                        timeZone: timezone,
                       })
                     : null;
                   return (

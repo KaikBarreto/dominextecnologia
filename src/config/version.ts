@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.35";
+export const APP_VERSION = "1.24.36";
 
-export const VERSION_NOTES = "Fornecedores ganharam aba própria na tela de Clientes, com o histórico de gastos de cada um. O centro de custo chegou às telas onde ainda faltava, e a linha de custo do DRE passou a se chamar Custo dos Serviços Prestados.";
+export const VERSION_NOTES = "Fornecedores ganharam aba própria com o histórico de gastos, o centro de custo chegou às telas onde faltava, e a venda parcelada no cartão deixou de ser dada como recebida já na primeira parcela.";

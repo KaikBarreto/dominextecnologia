@@ -144,7 +144,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   };
 
   const handleExport = () => {
-    openHTMLInNewTab(generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled, locale));
+    openHTMLInNewTab(generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled, locale, timezone));
   };
 
   const generateReceipt = (target: ReceiptTarget, outputFormat: 'a4' | 'thermal') => {
@@ -182,12 +182,13 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
         openHTMLInNewTab(generateReceiptHTML({
           employeeName, kind: 'pagamento', salary: employeeSalary, movement,
           companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, payment, locale,
+          timeZone: timezone,
         }));
       } else {
         const payment: ThermalPaymentBreakdown = { ...b, paymentMethod: method, description: movement.description || undefined };
         void generateEmployeeThermalReceipt({
           company: companySettings, whiteLabel: wlEnabled, employee,
-          responsibleName, kind: 'pagamento', payment, locale,
+          responsibleName, kind: 'pagamento', payment, locale, timeZone: timezone,
         });
       }
       return;
@@ -201,12 +202,13 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
       openHTMLInNewTab(generateReceiptHTML({
         employeeName, kind: 'vale', salary: employeeSalary, movement,
         companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, vale, locale,
+        timeZone: timezone,
       }));
     } else {
       const vale: ThermalValeData = { amount: Math.abs(movement.amount), paymentMethod: method, date: dateStr, description: movement.description || undefined };
       void generateEmployeeThermalReceipt({
         company: companySettings, whiteLabel: wlEnabled, employee,
-        responsibleName, kind: 'vale', vale, locale,
+        responsibleName, kind: 'vale', vale, locale, timeZone: timezone,
       });
     }
   };

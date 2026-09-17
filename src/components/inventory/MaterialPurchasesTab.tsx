@@ -20,6 +20,7 @@ import { fuzzyIncludes } from '@/lib/utils';
 import { useCompras, type CompraListRow, type CompraStatus } from '@/hooks/useCompras';
 import { useLowStock } from '@/hooks/useLowStock';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { safeTimeZone } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { SuppliersDialog } from './SuppliersDialog';
 import { CompraEditorDialog } from './CompraEditorDialog';
@@ -34,13 +35,13 @@ const STATUS_VARIANT: Record<string, 'info' | 'success' | 'destructive'> = {
 // Ordem fixa para o filtro de status.
 const STATUS_FILTER_KEYS: CompraStatus[] = ['aberta', 'concluida', 'cancelada'];
 
-function formatDate(iso: string, locale: string): string {
-  return new Date(iso).toLocaleDateString(locale === 'pt-br' ? 'pt-BR' : locale, { timeZone: 'America/Sao_Paulo' });
+function formatDate(iso: string, locale: string, timezone: string | null | undefined): string {
+  return new Date(iso).toLocaleDateString(locale === 'pt-br' ? 'pt-BR' : locale, { timeZone: safeTimeZone(timezone) });
 }
 
 export function MaterialPurchasesTab() {
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchases;
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale, { style: 'currency', currency: currency || 'BRL' }).format(v);
@@ -276,7 +277,7 @@ export function MaterialPurchasesTab() {
                     {/* Linha secundária: data + nº de cotações + fornecedor aceito */}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(c.created_at, locale)} • {c.cotacao_count === 1
+                        {formatDate(c.created_at, locale, timezone)} • {c.cotacao_count === 1
                           ? t.card.quotes.replace('{count}', String(c.cotacao_count))
                           : t.card.quotesPlural.replace('{count}', String(c.cotacao_count))}
                       </p>

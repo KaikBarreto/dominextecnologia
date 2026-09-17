@@ -2,7 +2,9 @@
  * DailyTasksPopup — popup automático que aparece 1x por dia quando há tarefas
  * do dia (ou atrasadas) com status='pendente'.
  *
- * Controle de frequência: localStorage por `userId + data BRT`.
+ * Controle de frequência: localStorage por `userId + dia no fuso da EMPRESA`
+ * (o dia vem de `useTenantTasks().today`, fonte única). Com Brasília chumbado,
+ * empresa em Cuiabá tinha o popup resetando ~1h antes da meia-noite local.
  * Estilo: fundo saturado (bg-primary) + texto e ícones BRANCOS (regra CEO).
  * Layout: Drawer no mobile / Dialog no desktop.
  * Botões: "Ver tarefas" (abre o drawer) e "Depois" (dispensa).
@@ -28,28 +30,23 @@ import { useTenantTasks } from '@/hooks/useTenantTasks';
 
 const LS_PREFIX = 'dominex:daily-tasks-shown';
 
-/** Retorna a data de hoje no fuso BRT (YYYY-MM-DD). */
-function todayBrt(): string {
-  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
-}
-
 function storageKey(userId: string): string {
   return `${LS_PREFIX}:${userId}`;
 }
 
-function hasShownToday(userId: string): boolean {
+function hasShownToday(userId: string, today: string): boolean {
   try {
-    return localStorage.getItem(storageKey(userId)) === todayBrt();
+    return localStorage.getItem(storageKey(userId)) === today;
   } catch {
     return false;
   }
 }
 
-function markShownToday(userId: string): void {
+function markShownToday(userId: string, today: string): void {
   try {
-    localStorage.setItem(storageKey(userId), todayBrt());
+    localStorage.setItem(storageKey(userId), today);
   } catch {
-    // localStorage pode falhar em modo privado com storage cheio — ignora.
+    // localStorage pode falhar em modo privado com storage cheio, ignora.
   }
 }
 
@@ -120,10 +117,9 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.tasks;
 
-  const { todayAndOverdue, isLoading } = useTenantTasks();
+  // `today` vem do hook (fuso da empresa), nunca recalculado aqui.
+  const { todayAndOverdue, today, isLoading } = useTenantTasks();
 
-  // Hoje no BRT
-  const today = todayBrt();
   const todayTasks = todayAndOverdue.filter((task) => task.task_date === today);
   const overdueTasks = todayAndOverdue.filter((task) => task.task_date < today);
   const todayCount = todayTasks.length;
@@ -135,14 +131,14 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
     if (isLoading) return;
     if (!userId) return;
     if (totalCount === 0) return;
-    if (hasShownToday(userId)) return;
+    if (hasShownToday(userId, today)) return;
 
-    markShownToday(userId);
+    markShownToday(userId, today);
     setOpen(true);
     // Intencional: deps não incluem `todayAndOverdue` para não reabrir se a
     // lista mudar depois de montado. O popup abre UMA vez após os dados chegarem.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, userId, totalCount]);
+  }, [isLoading, userId, totalCount, today]);
 
   const dismiss = useCallback(() => {
     setOpen(false);

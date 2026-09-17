@@ -7,6 +7,7 @@ import { openPdfInTab } from '@/utils/openPdfInTab';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatNumber, toBcp47 } from '@/lib/format';
+import { safeTimeZone, todayInTz } from '@/lib/timezone';
 import type { StockPositionRow } from '@/hooks/useStockPosition';
 
 interface StockPositionPdfData {
@@ -16,6 +17,13 @@ interface StockPositionPdfData {
   rows: StockPositionRow[];
   locale: LocaleCode;
   currency: string;
+  /**
+   * Fuso IANA DA EMPRESA (`useAppLocaleContext().timezone`). Rótulo de exibição
+   * (data de referência + data/hora de geração + nome do arquivo) — não toca
+   * saldo/kardex. Vazio/inválido cai em America/Sao_Paulo via `safeTimeZone`/
+   * `todayInTz`.
+   */
+  timezone?: string | null;
 }
 
 function buildFormatters(locale: LocaleCode, currency: string) {
@@ -25,9 +33,9 @@ function buildFormatters(locale: LocaleCode, currency: string) {
   };
 }
 
-function formatDateLabel(locale: LocaleCode, iso: string): string {
+function formatDateLabel(locale: LocaleCode, iso: string, timezone: string | null | undefined): string {
   return new Date(iso).toLocaleString(toBcp47(locale), {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timezone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -36,9 +44,9 @@ function formatDateLabel(locale: LocaleCode, iso: string): string {
   });
 }
 
-function formatGeneratedAt(locale: LocaleCode): string {
+function formatGeneratedAt(locale: LocaleCode, timezone: string | null | undefined): string {
   return new Date().toLocaleString(toBcp47(locale), {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timezone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -47,13 +55,8 @@ function formatGeneratedAt(locale: LocaleCode): string {
   });
 }
 
-function todayStamp(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+function todayStamp(timezone: string | null | undefined): string {
+  return todayInTz(timezone);
 }
 
 function buildCompanyDetailLines(s: CompanySettings): string[] {
@@ -93,7 +96,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const MARGIN = 14;
 
 export async function generateStockPositionPdf(data: StockPositionPdfData): Promise<void> {
-  const { company, whiteLabel, atDate, rows, locale, currency } = data;
+  const { company, whiteLabel, atDate, rows, locale, currency, timezone } = data;
   const tr = MESSAGES[locale].app.inventory.stockPosition.pdf;
   const { formatCurrency, formatNum } = buildFormatters(locale, currency);
 
@@ -170,7 +173,7 @@ export async function generateStockPositionPdf(data: StockPositionPdfData): Prom
   doc.setFontSize(9);
   doc.setTextColor(136, 136, 136);
   doc.text(
-    `${tr.atLabel}: ${formatDateLabel(locale, atDate)}  |  ${tr.generatedAt} ${formatGeneratedAt(locale)}`,
+    `${tr.atLabel}: ${formatDateLabel(locale, atDate, timezone)}  |  ${tr.generatedAt} ${formatGeneratedAt(locale, timezone)}`,
     pageWidth / 2,
     y,
     { align: 'center' },
@@ -269,7 +272,7 @@ export async function generateStockPositionPdf(data: StockPositionPdfData): Prom
     }
   }
 
-  const filename = `posicao-estoque-${todayStamp()}`;
+  const filename = `posicao-estoque-${todayStamp(timezone)}`;
   const blob = doc.output('blob');
   openPdfInTab(blob, filename, targetWindow);
 }

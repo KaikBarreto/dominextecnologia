@@ -1522,7 +1522,9 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
 
   const showPendingSignature = available && doc.signature_status === 'pending';
   const validUntil = doc.valid_until ?? null;
-  const validityStatus = getDocumentValidityStatus(validUntil);
+  // Fuso do TENANT (payload da edge), nunca o da máquina do visitante: sem ele
+  // uma empresa em UTC-4 veria "Vencido" ainda dentro do dia do vencimento.
+  const validityStatus = getDocumentValidityStatus(validUntil, new Date(), timezone);
   const showValidity = available && validityStatus !== 'sem_validade';
   const validityPillClass =
     validityStatus === 'vencido'

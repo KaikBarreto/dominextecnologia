@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.24.35',
+    version: '1.24.36',
     date: '17 de setembro de 2026',
     type: 'patch',
     changes: [
@@ -57,9 +57,56 @@ export const changelog: ChangelogEntry[] = [
         category: 'melhoria',
       },
       {
+        title: 'Venda parcelada no cartão deixa de ser dada como recebida na primeira parcela',
+        description: 'Quando uma cobrança parcelada no cartão tinha a primeira parcela confirmada, o sistema marcava a venda inteira como recebida e mostrava a etiqueta "Paga" para você. Agora cada parcela confirmada é registrada como um recebimento próprio, com a tarifa daquela parcela, e a cobrança só fica marcada como paga quando a última entra.',
+        category: 'correcao',
+      },
+      {
         title: 'No DRE, "CMV" virou "Custo dos Serviços Prestados"',
         description: 'A linha de custo do DRE se chamava CMV, que é Custo da Mercadoria Vendida, um termo de comércio. Para uma empresa de serviço, o nome certo é Custo dos Serviços Prestados, ou CSP. Além de ficar mais claro que aquela linha é custo e não despesa, o relatório exportado usava uma terceira sigla diferente da tela. Agora os dois dizem a mesma coisa.',
         category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.35',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todo o sistema passou a usar o fuso horário da sua empresa',
+        description: 'O horário de Brasília estava fixo em dezenas de pontos do sistema. Para empresa em outro fuso, como Mato Grosso, Amazonas ou Acre, isso deslocava datas em recibo, relatório, filtro de período, tarefa e aviso. Agora tudo segue o fuso que está em Configurações, na aba Regional. Para empresas em São Paulo nada muda, e conferimos isso comparando o resultado antigo com o novo minuto a minuto ao longo de um ano inteiro.',
+        category: 'correcao',
+      },
+      {
+        title: 'Nota fiscal emitida à noite deixou de sair no mês seguinte',
+        description: 'Quando a nota era emitida depois das 21h e o mês de competência não era preenchido à mão, o sistema usava a data de um fuso internacional e a nota podia sair com o mês fiscal do dia seguinte. Isso valia até para empresas em São Paulo. Agora a competência sai sempre do dia da sua empresa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Data de pagamento não pula mais de mês',
+        description: 'Pagamento de folha, vale, recebimento e ajuste de saldo confirmados no fim da noite podiam ser gravados com a data do dia seguinte. No último dia do mês, isso jogava o valor para o mês seguinte no seu relatório de resultado. O botão de pagar fatura de cartão também passou a respeitar o dia certo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Documentos do PMOC com a data correta',
+        description: 'Dossiê, cronograma, planilha, termo de responsabilidade técnica e certificado podiam sair com a data do dia seguinte quando gerados à noite, inclusive em São Paulo. A data de validade dos documentos também era calculada errada, e um documento podia aparecer como vencido antes do fim do dia. Tudo corrigido, e os arquivos já gerados foram atualizados para não servirem versão antiga.',
+        category: 'correcao',
+      },
+      {
+        title: 'Ordem de serviço do PMOC deixou de cair em data errada no fim do mês',
+        description: 'Um contrato ancorado no dia 31 com repetição mensal gerava a próxima ordem em 3 de março em vez de 28 de fevereiro. Agora, quando o mês seguinte não tem aquele dia, a ordem cai no último dia do mês.',
+        category: 'correcao',
+      },
+      {
+        title: 'Recibo do funcionário e carimbo de assinatura com o horário certo',
+        description: 'O recibo de pagamento e o carimbo que registra data e hora da assinatura da ordem de serviço usavam o horário de Brasília fixo. Agora usam o horário da sua empresa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tarefas e avisos deixaram de virar o dia mais cedo',
+        description: 'Para empresa fora do horário de Brasília, uma tarefa aparecia como atrasada cerca de uma hora antes da hora certa, o lembrete diário reiniciava cedo e os avisos ficavam agrupados no dia errado. Corrigido.',
+        category: 'correcao',
       },
     ],
   },

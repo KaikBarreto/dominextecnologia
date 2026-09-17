@@ -5,6 +5,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useFeatureFlag, isFlagEnabledFor } from './useFeatureFlag';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { todayInTz } from '@/lib/timezone';
 import { addDays, addMonths } from 'date-fns';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -842,15 +844,13 @@ export function shouldRegenerateVisits(args: {
   return args.scheduleChanged || !args.hasFutureVisits;
 }
 
-/** Data de hoje (America/Sao_Paulo) como string YYYY-MM-DD, sem shift de TZ. */
-function todayStrSaoPaulo(): string {
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  return fmt.format(new Date()); // en-CA → YYYY-MM-DD
+/**
+ * Data de hoje no fuso DA EMPRESA como string YYYY-MM-DD, sem shift de TZ.
+ * Função pura: recebe o fuso por parâmetro (vem de `useAppLocaleContext()` no
+ * hook chamador). Fuso vazio/inválido cai em America/Sao_Paulo via `todayInTz`.
+ */
+function todayStrSaoPaulo(timeZone: string | null | undefined): string {
+  return todayInTz(timeZone);
 }
 
 /**
@@ -1854,6 +1854,7 @@ export function getFrequencyLabel(type: string, value: number): string {
 export function useContracts() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { timezone } = useAppLocaleContext();
   const queryClient = useQueryClient();
   // Flag de rollout da RPC server-side de regeneração de visitas. Lida no TOP do
   // hook (regra dos hooks); cada call-site decide via isFlagEnabledFor(flag, id).
@@ -2770,7 +2771,7 @@ export function useContracts() {
 
       // 4) Carrega as OSs do contrato ANTES do gate: precisamos saber se há
       //    visita futura pra decidir o auto-heal (contrato ativo zerado/reativado).
-      const todayStr = todayStrSaoPaulo();
+      const todayStr = todayStrSaoPaulo(timezone);
 
       const { data: contractOss } = await supabase
         .from('service_orders')
@@ -3061,7 +3062,7 @@ export function useContracts() {
       }
 
       // 2) Carrega OSs ANTES do gate (auto-heal precisa saber de visita futura).
-      const todayStr = todayStrSaoPaulo();
+      const todayStr = todayStrSaoPaulo(timezone);
 
       const { data: contractOss } = await supabase
         .from('service_orders')

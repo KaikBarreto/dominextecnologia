@@ -20,6 +20,7 @@ import {
   dateToExtenso,
   extractContractCreatedParts,
   formatDateBr,
+  safeTimeZone,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
 import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
@@ -282,7 +283,7 @@ Deno.serve(async (req) => {
         // Onda I: + report_header_* pra estilizar o cabeçalho identidade do
         //         tenant no topo do documento.
         .select(
-          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size",
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size, timezone",
         )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
@@ -312,6 +313,12 @@ Deno.serve(async (req) => {
     ]);
 
     // Resolver tenant name (fallback companies.name)
+    // Fuso da EMPRESA: manda em TODA data do documento (emissão, vencimento,
+    // "hoje por extenso"). Ausente/inválido cai em America/Sao_Paulo sem lançar.
+    const companyTimeZone = safeTimeZone(
+      (companySettings as { timezone?: string | null } | null)?.timezone ?? null,
+    );
+
     let tenantName = (companySettings?.name ?? "").trim();
     if (!tenantName) {
       const { data: companyRow } = await supabase
@@ -481,7 +488,9 @@ Deno.serve(async (req) => {
         start_date_extenso: dateToExtenso(contract.start_date ?? null),
       },
       cidade,
-      generated_at_extenso: dateToExtenso(new Date()),
+      // Data de geração no fuso da EMPRESA (antes saía em UTC: gerar às 22h em
+      // São Paulo carimbava o dia seguinte no documento).
+      generated_at_extenso: dateToExtenso(new Date(), companyTimeZone),
     };
 
     // ---- 7.5 (Onda H) PmocVariableContext — chaves "ponto" pra substituir
@@ -500,6 +509,7 @@ Deno.serve(async (req) => {
     //          pras variáveis `contrato.criado_{dia,mes,ano}`.
     const createdParts = extractContractCreatedParts(
       (contract as { created_at?: string | null }).created_at ?? null,
+      companyTimeZone,
     );
 
     // Validade do documento (Certificado): generated_at + N meses (config da
@@ -510,7 +520,7 @@ Deno.serve(async (req) => {
       ((docTemplates as { certificado_validity_months?: number | null } | null)
         ?.certificado_validity_months) ?? 12;
     const { dateOnly: validUntilDateOnly, formatted: validUntilFormatted } =
-      computeValidUntil(generatedAt, validityMonths);
+      computeValidUntil(generatedAt, validityMonths, companyTimeZone);
     const validadeLabel = `${validityMonths} ${validityMonths === 1 ? "mês" : "meses"}`;
 
     const variableContext: PmocVariableContext = {
@@ -539,10 +549,10 @@ Deno.serve(async (req) => {
       "contrato.criado_dia": createdParts.dia,
       "contrato.criado_mes": createdParts.mes,
       "contrato.criado_ano": createdParts.ano,
-      "data.hoje_extenso": dateToExtenso(generatedAt),
+      "data.hoje_extenso": dateToExtenso(generatedAt, companyTimeZone),
       "documento.validade": validadeLabel,
       "documento.data_vencimento": validUntilFormatted,
-      "documento.data_emissao": formatDateBr(generatedAt),
+      "documento.data_emissao": formatDateBr(generatedAt, companyTimeZone),
     };
 
     // ---- 8. content_hash — INCLUI signature_image_url (RT atualiza assinatura

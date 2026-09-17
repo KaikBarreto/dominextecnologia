@@ -2,7 +2,7 @@ import type { TimeSheet } from '@/hooks/useTimeRecords';
 import { formatMinutes } from '@/hooks/useTimeRecords';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
-import { safeTimeZone, timeInTz, todayInTz, zonedDateTimeToUtc } from '@/lib/ponto/timezone';
+import { safeTimeZone, timeInTz, todayInTz, zonedDateTimeToUtc } from '@/lib/timezone';
 
 /**
  * Exporta o espelho de ponto em CSV.

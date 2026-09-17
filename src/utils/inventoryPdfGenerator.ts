@@ -7,6 +7,7 @@ import { openPdfInTab } from '@/utils/openPdfInTab';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatNumber, toBcp47 } from '@/lib/format';
+import { safeTimeZone, todayInTz } from '@/lib/timezone';
 
 /**
  * Relatório PDF A4 paginado (real) do Estoque/Inventário.
@@ -53,6 +54,12 @@ interface InventoryPdfData {
   currency: string;
   /** Nome do local de estoque exportado (opcional, aparece no subtítulo). */
   stockName?: string | null;
+  /**
+   * Fuso IANA DA EMPRESA (`useAppLocaleContext().timezone`). Rótulo de exibição
+   * (data/hora de geração + nome do arquivo) — não toca saldo/kardex.
+   * Vazio/inválido cai em America/Sao_Paulo via `safeTimeZone`/`todayInTz`.
+   */
+  timezone?: string | null;
 }
 
 function buildFormatters(locale: LocaleCode, currency: string) {
@@ -62,9 +69,9 @@ function buildFormatters(locale: LocaleCode, currency: string) {
   return { formatCurrency, formatNum };
 }
 
-function formatGeneratedAt(locale: LocaleCode): string {
+function formatGeneratedAt(locale: LocaleCode, timezone: string | null | undefined): string {
   return new Date().toLocaleString(toBcp47(locale), {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timezone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -73,13 +80,8 @@ function formatGeneratedAt(locale: LocaleCode): string {
   });
 }
 
-function todayStamp(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+function todayStamp(timezone: string | null | undefined): string {
+  return todayInTz(timezone);
 }
 
 /** Linhas de dados da empresa (texto puro pro PDF), respeitando os toggles. */
@@ -125,7 +127,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const MARGIN = 14; // mm
 
 export async function generateInventoryReportPdf(data: InventoryPdfData): Promise<void> {
-  const { company, whiteLabel, title, rows, locale, currency, stockName } = data;
+  const { company, whiteLabel, title, rows, locale, currency, stockName, timezone } = data;
   const tr = MESSAGES[locale].app.inventory.report;
   const { formatCurrency, formatNum } = buildFormatters(locale, currency);
 
@@ -221,7 +223,7 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
     : tr.itemCount.replace('{count}', String(count));
   const stockLabel = stockName ? `  |  ${tr.stockLabel ?? 'Local'}: ${stockName}` : '';
   doc.text(
-    `${registros}${stockLabel}  |  ${tr.generatedAt} ${formatGeneratedAt(locale)}`,
+    `${registros}${stockLabel}  |  ${tr.generatedAt} ${formatGeneratedAt(locale, timezone)}`,
     pageWidth / 2,
     y,
     { align: 'center' },
@@ -354,7 +356,7 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
   }
 
   const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-');
-  const filename = `${slug}-${todayStamp()}`;
+  const filename = `${slug}-${todayStamp(timezone)}`;
 
   const blob = doc.output('blob');
   openPdfInTab(blob, filename, targetWindow);

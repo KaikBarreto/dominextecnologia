@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { PunchType } from '@/hooks/useTimeRecords';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { todayInTz, zonedDateTimeToUtc } from '@/lib/ponto/timezone';
+import { todayInTz, zonedDateTimeToUtc } from '@/lib/timezone';
 
 interface Props {
   open: boolean;

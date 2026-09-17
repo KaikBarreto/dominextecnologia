@@ -4,6 +4,7 @@ import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { safeTimeZone } from '@/lib/timezone';
 
 // ---------------------------------------------------------------------------
 // Recibo térmico (80mm) de funcionário — pagamento ou vale.
@@ -106,6 +107,12 @@ export interface GenerateEmployeeThermalReceiptParams {
   payment?: ThermalPaymentBreakdown;
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /**
+   * Fuso da EMPRESA (`company_settings.timezone`, via `useAppLocaleContext`),
+   * nunca o do aparelho de quem imprime. Vazio ou inválido cai em
+   * America/Sao_Paulo, que era o valor chumbado aqui antes.
+   */
+  timeZone?: string | null;
 }
 
 const composeAddress = (c: CompanySettings): string => {
@@ -289,7 +296,7 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
   const docTitle = isVale ? t.titleAdvance : t.titlePayment;
   const generatedDate = new Date().toLocaleString(bcp47, {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(params.timeZone),
   });
 
   doc.setFillColor(0, 0, 0);

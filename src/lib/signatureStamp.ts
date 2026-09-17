@@ -2,7 +2,7 @@
  * Carimbo legal da assinatura da OS.
  *
  * Abaixo de cada assinatura (técnico/cliente), na tela de preenchimento e no
- * relatório/PDF, mostramos um carimbo com APENAS a data/hora (fuso de Brasília)
+ * relatório/PDF, mostramos um carimbo com APENAS a data/hora (fuso DA EMPRESA)
  * e a geolocalização do aparelho no momento da confirmação.
  *
  * Decisão CEO: o NOME de quem assinou NÃO é registrado nem exibido. Motivo: a
@@ -15,6 +15,8 @@
  * data nem geo, ou seja, não há o que carimbar).
  */
 
+import { safeTimeZone } from '@/lib/timezone';
+
 export interface SignatureStampInput {
   /** Instante ISO (timestamptz UTC) da assinatura. */
   at?: string | null;
@@ -26,19 +28,27 @@ export interface SignatureStampInput {
    * vem de `*_signed_location.address`.
    */
   address?: string | null;
+  /**
+   * Fuso IANA DA EMPRESA (`useAppLocaleContext().timezone`). É documento
+   * assinado: o carimbo tem que refletir o horário local da empresa que operou
+   * a OS, não sempre Brasília. Vazio/inválido cai em America/Sao_Paulo via
+   * `safeTimeZone`, nunca lança.
+   */
+  timeZone?: string | null;
 }
 
 /**
- * Formata "DD/MM/YYYY às HH:MM" no horário de Brasília. Espelha o formato que a
- * OS já usa pro check-in/check-out (sem segundos), via Intl com timeZone fixo.
+ * Formata "DD/MM/YYYY às HH:MM" no fuso informado. Espelha o formato que a OS
+ * já usa pro check-in/check-out (sem segundos), via Intl com timeZone seguro
+ * (nunca lança, mesmo com fuso vazio/inválido).
  */
-function formatStampDateTime(iso: string | null | undefined): string | null {
+function formatStampDateTime(iso: string | null | undefined, timeZone: string | null | undefined): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
 
   const parts = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: safeTimeZone(timeZone),
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -67,7 +77,7 @@ function formatStampGeo(geo: SignatureStampInput['geo']): string | null {
  * há nada útil (sem data E sem local) — o chamador não renderiza carimbo.
  */
 export function formatSignatureStamp(input: SignatureStampInput): string | null {
-  const when = formatStampDateTime(input.at);
+  const when = formatStampDateTime(input.at, input.timeZone);
   const address = typeof input.address === 'string' && input.address.trim()
     ? input.address.trim()
     : null;

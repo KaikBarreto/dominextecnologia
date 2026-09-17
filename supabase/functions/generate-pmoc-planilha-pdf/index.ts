@@ -39,6 +39,7 @@ import {
 import {
   dateToExtenso,
   frequencyLabelFrom,
+  safeTimeZone,
 } from "../_shared/pmoc-templates/context.ts";
 
 // Sigla curta da coluna FREQ pro modelo NOVO (por-pergunta). Deriva de
@@ -350,7 +351,11 @@ Deno.serve(async (req) => {
         .maybeSingle(),
       supabase
         .from("company_settings")
-        .select("name, document, logo_url, white_label_enabled, white_label_logo_url, city")
+        // Allowlist explícita (nunca `select('*')`). `timezone` manda na data
+        // impressa na planilha (ver companyTimeZone logo abaixo).
+        .select(
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, timezone",
+        )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
       contract.responsible_technician_id
@@ -388,6 +393,14 @@ Deno.serve(async (req) => {
         .eq("company_id", contract.company_id)
         .order("sort_order", { ascending: true }),
     ]);
+
+    // Fuso da EMPRESA: toda data impressa na planilha sai no calendário dela.
+    // Antes a planilha herdava o padrão do context.ts e ignorava o fuso real do
+    // tenant. Ausente/nulo/inválido cai em America/Sao_Paulo sem derrubar a
+    // geração (Intl lança RangeError com fuso inválido; safeTimeZone segura).
+    const companyTimeZone = safeTimeZone(
+      (companySettings as { timezone?: string | null } | null)?.timezone ?? null,
+    );
 
     // Tenant name (fallback companies.name)
     let tenantName = (companySettings?.name ?? "").trim();
@@ -971,7 +984,9 @@ Deno.serve(async (req) => {
       // checklist (itens com form_template_ids). Renderizados ANTES do legado.
       perQuestionBlocks,
       activities,
-      generated_at_extenso: dateToExtenso(new Date()),
+      // Data de geração no fuso da EMPRESA. Sem isso, gerar às 22h em São Paulo
+      // carimbava o dia seguinte no cabeçalho da planilha.
+      generated_at_extenso: dateToExtenso(new Date(), companyTimeZone),
       // Rodapé Dominex (linha + logo + dominex.app) em toda página — oculto em
       // white-label (mesmo critério do Dossiê).
       whiteLabel: useWhiteLabel,
@@ -1020,8 +1035,14 @@ Deno.serve(async (req) => {
       // sombreiam os meses SEM visita. MENSAL fica idêntico ao v12. A cadência
       // (`cadence`) e o `monthHasVisit` por linha entram no hash pra o cache
       // regenerar quando a cadência muda. Itens legados seguem idênticos.
-      v: "planilha_v13",
+      // planilha_v14 (Onda Fuso, 2026-09): a data "gerado em" passou a sair no
+      // fuso da empresa (`company_settings.timezone`). O hash da planilha NÃO
+      // carrega data nenhuma, então sem o bump o tenant continuaria recebendo o
+      // PDF cacheado com o dia errado, e PDF cacheado errado não some sozinho.
+      v: "planilha_v14",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
+      // Fuso entra no hash: mudar o fuso da empresa muda a data impressa.
+      tz: companyTimeZone,
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
       unidade: planilhaData.unidade,

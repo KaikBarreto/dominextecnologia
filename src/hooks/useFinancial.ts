@@ -9,7 +9,8 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz } from '@/lib/timezone';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
 
 export interface TransactionCreator {
@@ -245,6 +246,9 @@ export function useFinancial() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  // Fuso DA EMPRESA (company_settings.timezone). É ele que define o "hoje" das
+  // datas financeiras, nunca o fuso do aparelho nem Brasília chumbado.
+  const { timezone } = useAppLocaleContext();
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
@@ -806,11 +810,13 @@ export function useFinancial() {
   const markAsPaid = useMutation({
     mutationFn: async (params: string | MarkAsPaidParams) => {
       const cfg: MarkAsPaidParams = typeof params === 'string' ? { id: params } : params;
-      // `todayInBrazil()` e NUNCA `toISOString()`: este `paid_date` é o que
+      // `todayInTz(timezone)` e NUNCA `toISOString()`: este `paid_date` é o que
       // define o MÊS da movimentação no regime de Caixa. Baixa feita às 21h30
       // do dia 31 gravava dia 1º do mês seguinte (UTC-3) e jogava a receita
-      // pro mês errado.
-      const paidDate = cfg.paid_date || todayInBrazil();
+      // pro mês errado. O fuso é o DA EMPRESA: empresa em Cuiabá (UTC-4) dando
+      // baixa às 23h15 do dia 30 tem que gravar dia 30, não 31 (que é o dia que
+      // já virou em São Paulo).
+      const paidDate = cfg.paid_date || todayInTz(timezone);
 
       // Buscar a mãe pra calcular se é parcial e usar dados (company_id, due_date, customer_id, amount).
       const { data: parent, error: parentErr } = await supabase

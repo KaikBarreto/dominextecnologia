@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
-import { dateInTz, timeInTz, todayInTz } from '@/lib/ponto/timezone';
+import { dateInTz, timeInTz, todayInTz } from '@/lib/timezone';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 // ─── Types ───────────────────────────────────────────
@@ -83,7 +83,7 @@ export interface EmployeeBasic {
 }
 
 // ─── Dia canônico da batida ───
-// `todayInTz`, `dateInTz` e `timeInTz` moram em `@/lib/ponto/timezone` (uma
+// `todayInTz`, `dateInTz` e `timeInTz` moram em `@/lib/timezone` (uma
 // implementação só, reusada aqui e no export do espelho). O dia e a hora do
 // ponto seguem o fuso da EMPRESA, nunca o do aparelho. O porquê está lá.
 

@@ -68,7 +68,7 @@ import {
   MAX_TRANSACTION_YEAR_AHEAD,
   isTransactionYearInRange,
 } from '@/lib/finance-installments';
-import { todayInBrazil } from '@/lib/today-brazil';
+import { todayInTz, dateInTz } from '@/lib/timezone';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -114,7 +114,7 @@ const FREQUENCY_MONTHS: Record<string, number> = {
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
   const fin = MESSAGES[locale].app.finance;
@@ -637,14 +637,14 @@ export default function ContractDetail() {
     const freqOption = FREQUENCY_OPTIONS.find((f) => f.value === recFrequency);
     const count = recFrequency === 'unica' ? 1 : Math.max(1, parseInt(recInstallments) || 1);
     return buildRepetitionPlan({
-      // Sem data escolhida, a 1a vence HOJE no fuso do Brasil (`new Date()` às
+      // Sem data escolhida, a 1a vence HOJE no fuso da empresa (`new Date()` às
       // 21h gravava amanhã).
-      firstDate: recDueDate || todayInBrazil(),
+      firstDate: recDueDate || todayInTz(timezone),
       amount,
       count,
       intervalMonths: freqOption?.months || 0,
     });
-  }, [recAmount, recDueDate, recFrequency, recInstallments, FREQUENCY_OPTIONS]);
+  }, [recAmount, recDueDate, recFrequency, recInstallments, FREQUENCY_OPTIONS, timezone]);
 
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
@@ -843,11 +843,9 @@ export default function ContractDetail() {
   // vencimento já passou (timezone Brasil: comparamos só a data, sem hora).
   const totalPending = totalReceivable - totalPaid;
   const todayLocal = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
-  // "Hoje" no fuso Brasil como YYYY-MM-DD (mesmo formato de scheduled_date),
+  // "Hoje" no fuso da empresa como YYYY-MM-DD (mesmo formato de scheduled_date),
   // pra comparar atraso por DIA — uma visita só atrasa a partir do dia seguinte.
-  const todaySP = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
+  const todaySP = todayInTz(timezone);
   const overdueTransactions = (linkedTransactions || []).filter(
     t => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal),
   );
