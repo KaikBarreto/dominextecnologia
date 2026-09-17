@@ -18,6 +18,9 @@ import {
   Calendar,
   Pencil,
   GripVertical,
+  ListChecks,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -25,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { FilterButton } from '@/components/ui/FilterButton';
 import {
@@ -35,6 +39,9 @@ import {
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
 import { useCrmPipelines } from '@/hooks/useCrmPipelines';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
+import { useProfiles } from '@/hooks/useProfiles';
+import { collapseRecurringOccurrences } from '@/lib/taskRecurrence';
 import { IconPreview } from '@/components/customers/originIcons';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
@@ -212,6 +219,72 @@ export default function CRM() {
 
   // Mobile-only: alternância List/Kanban. Default mobile = Lista; desktop = Kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+
+  // ── Onda E2 — terceira superfície da tela: Funil (kanban de sempre) x
+  // Tarefas (lista das tarefas vinculadas a oportunidades). Não persiste —
+  // reabrir a tela sempre volta pro Funil, que é o uso principal.
+  const [pageTab, setPageTab] = useState<'funil' | 'tarefas'>('funil');
+  const [taskSearch, setTaskSearch] = useState('');
+  const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string[]>([]);
+
+  const { serviceOrders } = useServiceOrders();
+  const { data: profiles = [] } = useProfiles();
+  const profileMap = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
+
+  // DECISÃO (pedida no briefing): a aba Tarefas mostra as tarefas de TODOS os
+  // funis da empresa, não só do funil selecionado no topo. Tarefa é uma lista
+  // de afazeres transversal (o vendedor quer ver tudo que tem pra fazer hoje,
+  // não só do funil que estava aberto por último) — e o próprio plano da Onda
+  // E (E0) descreve a aba como "todas as tarefas com lead_id não nulo", sem
+  // recorte por funil. `pipelineSelector` some quando pageTab==='tarefas'
+  // pra não sugerir um filtro que não existe.
+  const visibleLeadIds = useMemo(() => new Set(visibleLeads.map((l) => l.id)), [visibleLeads]);
+  const leadTitleMap = useMemo(() => new Map(visibleLeads.map((l) => [l.id, l.title])), [visibleLeads]);
+  const opportunityTasks = useMemo(
+    () => (serviceOrders as any[]).filter((o) => o.entry_type === 'tarefa' && o.lead_id && visibleLeadIds.has(o.lead_id)),
+    [serviceOrders, visibleLeadIds],
+  );
+  // Mesma função de colapso de série usada no card da oportunidade
+  // (LeadDetailModal) — as duas telas nunca podem divergir sobre "qual
+  // ocorrência mostrar" de uma mesma série recorrente.
+  const collapsedTasks = useMemo(() => collapseRecurringOccurrences(opportunityTasks), [opportunityTasks]);
+
+  const filteredTasks = useMemo(() => {
+    return collapsedTasks.filter((task: any) => {
+      if (taskSearch) {
+        const leadTitle = leadTitleMap.get(task.lead_id) || '';
+        const matchesTitle = fuzzyIncludes(task.task_title, taskSearch);
+        const matchesLead = fuzzyIncludes(leadTitle, taskSearch);
+        if (!matchesTitle && !matchesLead) return false;
+      }
+      if (taskAssigneeFilter.length > 0) {
+        const ids: string[] = task._assignee_user_ids || [];
+        if (!taskAssigneeFilter.some((id) => ids.includes(id))) return false;
+      }
+      return true;
+    });
+  }, [collapsedTasks, taskSearch, taskAssigneeFilter, leadTitleMap]);
+
+  // Ordena por data, vencidas primeiro: atrasada (não concluída, data < hoje)
+  // vem antes de futura/hoje; sem data fica por último.
+  const sortedTasks = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const rank = (task: any) => {
+      if (!task.scheduled_date) return 2;
+      const isDone = task.status === 'concluida';
+      return !isDone && task.scheduled_date < today ? 0 : 1;
+    };
+    return [...filteredTasks].sort((a: any, b: any) => {
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      if (!a.scheduled_date) return 1;
+      if (!b.scheduled_date) return -1;
+      return a.scheduled_date.localeCompare(b.scheduled_date);
+    });
+  }, [filteredTasks]);
+
+  const taskAssigneeOptions: FilterCheckboxOption[] = users.map((u) => ({ value: u.user_id, label: u.full_name }));
 
   // visibleLeads recortado só pelo funil selecionado (sem os demais filtros).
   // Existe pra distinguir, no empty-state, "este funil não tem NENHUMA
@@ -927,6 +1000,169 @@ export default function CRM() {
   );
 
   // ------------------------------------------------------------------
+  // ALTERNÂNCIA FUNIL ↔ TAREFAS — Onda E2, terceira superfície da tela.
+  // Mesmo padrão visual do seletor de funil acima (pills roláveis no mobile,
+  // pills num flex que quebra linha no desktop) — não inventa mecanismo novo.
+  // ------------------------------------------------------------------
+  const mainTabs = isMobile ? (
+    <MobilePillTabs
+      tabs={[
+        { value: 'funil', label: t.mainTabFunnel },
+        { value: 'tarefas', label: t.mainTabTasks },
+      ]}
+      activeTab={pageTab}
+      onTabChange={(v) => setPageTab(v as 'funil' | 'tarefas')}
+    />
+  ) : (
+    <div className="flex items-center gap-2">
+      {(['funil', 'tarefas'] as const).map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          onClick={() => setPageTab(tab)}
+          className={cn(
+            'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-medium transition-all',
+            pageTab === tab
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'bg-muted/50 text-muted-foreground hover:bg-muted',
+          )}
+        >
+          {tab === 'funil' ? <TrendingUp className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
+          {tab === 'funil' ? t.mainTabFunnel : t.mainTabTasks}
+        </button>
+      ))}
+    </div>
+  );
+
+  // ------------------------------------------------------------------
+  // ABA TAREFAS — Onda E2. Lista (não kanban) das tarefas vinculadas a
+  // oportunidades, com busca, filtro por responsável e ordenação por data
+  // (vencidas primeiro). Mesmo bloco pra mobile e desktop.
+  // ------------------------------------------------------------------
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const tasksBlock = (
+    <div className="space-y-4">
+      <div className={cn('flex gap-2', isMobile ? 'flex-col' : 'flex-row items-center')}>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={t.tasks.searchPlaceholder}
+            className="pl-10"
+            value={taskSearch}
+            onChange={(e) => setTaskSearch(e.target.value)}
+          />
+        </div>
+        {isMobile ? (
+          <FilterSheet
+            triggerLabel="Filtros"
+            activeCount={taskAssigneeFilter.length}
+            onClear={() => setTaskAssigneeFilter([])}
+          >
+            <FilterCheckboxGroup
+              label={t.tasks.filterAssignee}
+              options={taskAssigneeOptions}
+              selected={taskAssigneeFilter}
+              onChange={setTaskAssigneeFilter}
+              emptyLabel={t.tasks.filterAssigneeAll}
+            />
+          </FilterSheet>
+        ) : (
+          <FilterButton activeCount={taskAssigneeFilter.length} onClear={() => setTaskAssigneeFilter([])}>
+            <FilterCheckboxGroup
+              label={t.tasks.filterAssignee}
+              options={taskAssigneeOptions}
+              selected={taskAssigneeFilter}
+              onChange={setTaskAssigneeFilter}
+              emptyLabel={t.tasks.filterAssigneeAll}
+            />
+          </FilterButton>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-[72px] w-full" />
+          ))}
+        </div>
+      ) : sortedTasks.length === 0 ? (
+        <EmptyState
+          icon={<ListChecks className="h-12 w-12" />}
+          title={collapsedTasks.length === 0 ? t.tasks.emptyTitle : t.tasks.emptySearch}
+          description={collapsedTasks.length === 0 ? t.tasks.emptyDesc : t.tasks.emptySearchDesc}
+        />
+      ) : (
+        <div className="rounded-xl border bg-card divide-y overflow-hidden">
+          {sortedTasks.map((task: any) => {
+            const isDone = task.status === 'concluida';
+            const isOverdue = !isDone && !!task.scheduled_date && task.scheduled_date < todayStr;
+            const assigneeIds: string[] = task._assignee_user_ids || [];
+            return (
+              <button
+                key={task.id}
+                type="button"
+                onClick={() => {
+                  setDetailLeadId(task.lead_id);
+                  setDetailOpen(true);
+                }}
+                className="w-full text-left flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors"
+              >
+                {isDone ? (
+                  <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className={cn('text-sm font-medium truncate', isDone && 'line-through text-muted-foreground')}>
+                    {task.task_title}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 min-w-0 truncate max-w-[220px]">
+                      <TrendingUp className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{leadTitleMap.get(task.lead_id) || t.noStage}</span>
+                    </span>
+                    {task._isRecurring && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0">
+                        {t.tasks.recurringBadge}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {assigneeIds.length > 0 && (
+                    <span className="hidden sm:inline-flex items-center -space-x-1.5">
+                      {assigneeIds.slice(0, 3).map((uid) => {
+                        const p = profileMap.get(uid);
+                        return (
+                          <Avatar key={uid} className="h-6 w-6 border border-background">
+                            <AvatarImage src={p?.avatar_url || undefined} />
+                            <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                              {p?.full_name?.charAt(0)?.toUpperCase() || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                        );
+                      })}
+                    </span>
+                  )}
+                  <Badge
+                    variant={isOverdue ? 'destructive' : isDone ? 'success' : 'muted'}
+                    className="text-[10px] px-2 py-0.5 whitespace-nowrap"
+                  >
+                    {task.scheduled_date
+                      ? format(new Date(`${task.scheduled_date}T12:00:00`), 'dd/MM', { locale: dfLocale })
+                      : t.tasks.noDate}
+                    {isOverdue ? ` · ${t.tasks.overdueBadge}` : ''}
+                  </Badge>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  // ------------------------------------------------------------------
   // RENDER
   // ------------------------------------------------------------------
   if (isMobile) {
@@ -938,53 +1174,63 @@ export default function CRM() {
           icon={TrendingUp}
         />
 
-        {pipelineSelector}
+        {mainTabs}
 
-        {summaryRow}
+        {pageTab === 'tarefas' ? (
+          tasksBlock
+        ) : (
+          <>
+            {pipelineSelector}
 
-        {/* Busca + filtros */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t.searchPlaceholderMobile}
-              className="pl-10 h-10"
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            />
-          </div>
-          <FilterSheet
-            triggerLabel="Filtros"
-            activeCount={activeFiltersCount + (viewMode === 'list' ? 0 : 0)}
-            onClear={clearFilters}
-          >
-            {filterSheetContent}
-          </FilterSheet>
-        </div>
+            {summaryRow}
 
-        {/* StatCarousel — 1 chip por stage; tap filtra (apenas view lista). */}
-        {stages.length > 0 && viewMode === 'list' && (
-          <StatCarousel items={statItems} loading={isLoading || stagesLoading || pipelinesLoading} />
+            {/* Busca + filtros */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t.searchPlaceholderMobile}
+                  className="pl-10 h-10"
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                />
+              </div>
+              <FilterSheet
+                triggerLabel="Filtros"
+                activeCount={activeFiltersCount + (viewMode === 'list' ? 0 : 0)}
+                onClear={clearFilters}
+              >
+                {filterSheetContent}
+              </FilterSheet>
+            </div>
+
+            {/* StatCarousel — 1 chip por stage; tap filtra (apenas view lista). */}
+            {stages.length > 0 && viewMode === 'list' && (
+              <StatCarousel items={statItems} loading={isLoading || stagesLoading || pipelinesLoading} />
+            )}
+
+            {/* Indicador da stage filtrada (mobile lista) */}
+            {viewMode === 'list' && stageFilter && (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  {t.stageFilterLabel}: {stages.find(s => s.id === stageFilter)?.name}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => setStageFilter(null)} />
+                </Badge>
+              </div>
+            )}
+
+            {/* Conteúdo */}
+            {viewMode === 'list' ? mobileListBlock : kanbanBlock}
+          </>
         )}
 
-        {/* Indicador da stage filtrada (mobile lista) */}
-        {viewMode === 'list' && stageFilter && (
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="gap-1">
-              {t.stageFilterLabel}: {stages.find(s => s.id === stageFilter)?.name}
-              <X className="h-3 w-3 cursor-pointer" onClick={() => setStageFilter(null)} />
-            </Badge>
-          </div>
+        {pageTab === 'funil' && (
+          <FABButton
+            icon={<Plus className="h-5 w-5" />}
+            label={t.newOpportunityShort}
+            onClick={() => setDialogOpen(true)}
+          />
         )}
-
-        {/* Conteúdo */}
-        {viewMode === 'list' ? mobileListBlock : kanbanBlock}
-
-        <FABButton
-          icon={<Plus className="h-5 w-5" />}
-          label={t.newOpportunityShort}
-          onClick={() => setDialogOpen(true)}
-        />
 
         {/* Dialogs */}
         <LeadFormDialog
@@ -1057,6 +1303,12 @@ export default function CRM() {
         }
       />
 
+      {mainTabs}
+
+      {pageTab === 'tarefas' ? (
+        tasksBlock
+      ) : (
+      <>
       {pipelineSelector}
 
       {/* Stats Cards */}
@@ -1208,6 +1460,8 @@ export default function CRM() {
       )}
 
       {kanbanBlock}
+      </>
+      )}
 
       <LeadFormDialog
         open={dialogOpen}

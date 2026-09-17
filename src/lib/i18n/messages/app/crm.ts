@@ -62,6 +62,10 @@ export const crm = {
     // ── Seletor de funil (Onda D — multi-pipeline) ──
     pipelineSelectorLabel: 'Funil',
 
+    // ── Alternância Funil ↔ Tarefas (Onda E — terceira superfície) ──
+    mainTabFunnel: 'Funil',
+    mainTabTasks: 'Tarefas',
+
     // ── Kanban ──
     pipeline: 'Pipeline de Vendas',
     xOfY: '{filtered} de {total}',
@@ -117,6 +121,19 @@ export const crm = {
       claimHint: 'Você vira responsável e ela sai da fila compartilhada.',
       createOs: 'Criar OS',
       createTask: 'Criar Tarefa',
+      // ── Aba Tarefas do card (Onda E1) ──
+      tabTasks: 'Tarefas',
+      tasksNewButton: 'Nova tarefa',
+      tasksEmptyTitle: 'Nenhuma tarefa nesta oportunidade',
+      tasksEmptyDesc: 'Crie tarefas para acompanhar os próximos passos deste negócio.',
+      tasksNoDate: 'Sem data',
+      tasksRecurringBadge: 'Recorrente',
+      tasksNotOnScheduleBadge: 'Fora da agenda',
+      tasksDoneBadge: 'Concluída',
+      tasksMarkDone: 'Concluir',
+      tasksMarkPending: 'Reabrir',
+      tasksDeleteConfirm: 'Excluir esta tarefa?',
+      tasksDeleteSeriesNote: ' Ela faz parte de uma série recorrente, só esta ocorrência será excluída.',
       valueEstimated: 'Valor Estimado',
       valueNotSet: 'Não informado',
       probability: 'Probabilidade',
@@ -239,6 +256,37 @@ export const crm = {
       cancel: 'Cancelar',
     },
 
+    // ── PipelineAccessDialog (Onda D3 — ACL por funil) ──
+    pipelineAccess: {
+      menuLabel: 'Quem pode ver',
+      restrictedBadge: 'Restrito',
+      title: 'Acesso ao funil',
+      subtitle: 'Escolha quem enxerga este funil. Deixe a lista vazia para manter aberto a toda a empresa.',
+      openStateTitle: 'Aberto para toda a empresa',
+      openStateDesc: 'Todos os usuários da empresa podem ver este funil. Selecione pessoas abaixo para restringir o acesso.',
+      restrictedStateTitle: 'Restrito',
+      restrictedStateDesc: 'Só as pessoas selecionadas abaixo (e quem tem permissão de Gerenciar CRM) podem ver este funil.',
+      peopleLabel: 'Pessoas com acesso',
+      saveButton: 'Salvar acesso',
+      cancelButton: 'Cancelar',
+      confirmTitle: 'Restringir o acesso a este funil?',
+      confirmAction: 'Restringir mesmo assim',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const peopleWord = peopleCount === 1 ? 'pessoa' : 'pessoas';
+        const peopleVerb = peopleCount === 1 ? 'vai' : 'vão';
+        const peoplePart = `${peopleCount} ${peopleWord} ${peopleVerb} deixar de ver este funil`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const oppWord = opportunitiesCount === 1 ? 'oportunidade' : 'oportunidades';
+        const relArticle = opportunitiesCount === 1 ? 'a' : 'as';
+        const relSuffix = opportunitiesCount === 1 ? '' : 'is';
+        const pronounVerb = peopleCount === 1 ? 'ela é' : 'elas são';
+        const responsavel = peopleCount === 1 ? 'responsável' : 'responsáveis';
+        const oppVerb = opportunitiesCount === 1 ? 'vai' : 'vão';
+        const possessive = peopleCount === 1 ? 'dela' : 'delas';
+        return `${peoplePart}, e ${opportunitiesCount} ${oppWord} pel${relArticle} qual${relSuffix} ${pronounVerb} ${responsavel} ${oppVerb} sumir da tela ${possessive}.`;
+      },
+    },
+
     // ── WebhookManagerDialog ──
     webhooks: {
       title: 'Webhooks de Leads Externos',
@@ -262,6 +310,28 @@ export const crm = {
       docsRequired: 'Campos obrigatórios:',
       docsOptional: 'Campos opcionais:',
       docsPracticalExample: 'Exemplo prático:',
+    },
+
+    // ── Aba Tarefas da tela (Onda E2 — terceira superfície do CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Buscar tarefa ou oportunidade...',
+      filterAssignee: 'Responsável',
+      filterAssigneeAll: 'Todos',
+      colTask: 'Tarefa',
+      colOpportunity: 'Oportunidade',
+      colAssignees: 'Responsáveis',
+      colDate: 'Data',
+      colStatus: 'Status',
+      noDate: 'Sem data',
+      noAssignee: 'Sem responsável',
+      overdueBadge: 'Atrasada',
+      recurringBadge: 'Recorrente',
+      statusPending: 'Pendente',
+      statusDone: 'Concluída',
+      emptyTitle: 'Nenhuma tarefa vinculada a oportunidades',
+      emptyDesc: 'Crie tarefas dentro de uma oportunidade para acompanhá-las aqui.',
+      emptySearch: 'Nenhuma tarefa encontrada',
+      emptySearchDesc: 'Tente ajustar a busca ou os filtros.',
     },
 
     // ── Ações mobile lista ──
@@ -1107,6 +1177,9 @@ export const crm = {
 
     pipelineSelectorLabel: 'Pipeline',
 
+    mainTabFunnel: 'Pipeline',
+    mainTabTasks: 'Tasks',
+
     pipeline: 'Sales Pipeline',
     xOfY: '{filtered} of {total}',
 
@@ -1157,6 +1230,18 @@ export const crm = {
       claimHint: 'You become the owner and it leaves the shared queue.',
       createOs: 'Create work order',
       createTask: 'Create task',
+      tabTasks: 'Tasks',
+      tasksNewButton: 'New task',
+      tasksEmptyTitle: 'No tasks on this opportunity',
+      tasksEmptyDesc: 'Create tasks to track the next steps of this deal.',
+      tasksNoDate: 'No date',
+      tasksRecurringBadge: 'Recurring',
+      tasksNotOnScheduleBadge: 'Off schedule',
+      tasksDoneBadge: 'Done',
+      tasksMarkDone: 'Complete',
+      tasksMarkPending: 'Reopen',
+      tasksDeleteConfirm: 'Delete this task?',
+      tasksDeleteSeriesNote: ' It is part of a recurring series, only this occurrence will be deleted.',
       valueEstimated: 'Estimated Value',
       valueNotSet: 'Not provided',
       probability: 'Probability',
@@ -1275,6 +1360,29 @@ export const crm = {
       cancel: 'Cancel',
     },
 
+    pipelineAccess: {
+      menuLabel: 'Who can see',
+      restrictedBadge: 'Restricted',
+      title: 'Pipeline access',
+      subtitle: 'Choose who can see this pipeline. Leave the list empty to keep it open to the whole company.',
+      openStateTitle: 'Open to the whole company',
+      openStateDesc: 'Every company user can see this pipeline. Select people below to restrict access.',
+      restrictedStateTitle: 'Restricted',
+      restrictedStateDesc: 'Only the people selected below (plus anyone with the Manage CRM permission) can see this pipeline.',
+      peopleLabel: 'People with access',
+      saveButton: 'Save access',
+      cancelButton: 'Cancel',
+      confirmTitle: 'Restrict access to this pipeline?',
+      confirmAction: 'Restrict anyway',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const people = peopleCount === 1 ? '1 person' : `${peopleCount} people`;
+        const peoplePart = `${people} will lose access to this pipeline`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const opp = opportunitiesCount === 1 ? '1 opportunity' : `${opportunitiesCount} opportunities`;
+        return `${peoplePart}, and ${opp} they are responsible for will disappear from their view.`;
+      },
+    },
+
     webhooks: {
       title: 'External Lead Webhooks',
       createTitle: 'Create new webhook',
@@ -1297,6 +1405,28 @@ export const crm = {
       docsRequired: 'Required fields:',
       docsOptional: 'Optional fields:',
       docsPracticalExample: 'Practical example:',
+    },
+
+    // ── Tasks tab (Onda E2 — third surface of CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Search task or opportunity...',
+      filterAssignee: 'Assignee',
+      filterAssigneeAll: 'All',
+      colTask: 'Task',
+      colOpportunity: 'Opportunity',
+      colAssignees: 'Assignees',
+      colDate: 'Date',
+      colStatus: 'Status',
+      noDate: 'No date',
+      noAssignee: 'Unassigned',
+      overdueBadge: 'Overdue',
+      recurringBadge: 'Recurring',
+      statusPending: 'Pending',
+      statusDone: 'Done',
+      emptyTitle: 'No tasks linked to opportunities',
+      emptyDesc: 'Create tasks inside an opportunity to track them here.',
+      emptySearch: 'No tasks found',
+      emptySearchDesc: 'Try adjusting the search or filters.',
     },
 
     moveTo: 'Move to {stage}',
@@ -2079,6 +2209,9 @@ export const crm = {
 
     pipelineSelectorLabel: 'Embudo',
 
+    mainTabFunnel: 'Embudo',
+    mainTabTasks: 'Tareas',
+
     pipeline: 'Embudo de Ventas',
     xOfY: '{filtered} de {total}',
 
@@ -2129,6 +2262,18 @@ export const crm = {
       claimHint: 'Te conviertes en responsable y sale de la cola compartida.',
       createOs: 'Crear orden',
       createTask: 'Crear tarea',
+      tabTasks: 'Tareas',
+      tasksNewButton: 'Nueva tarea',
+      tasksEmptyTitle: 'Sin tareas en esta oportunidad',
+      tasksEmptyDesc: 'Crea tareas para seguir los próximos pasos de este negocio.',
+      tasksNoDate: 'Sin fecha',
+      tasksRecurringBadge: 'Recurrente',
+      tasksNotOnScheduleBadge: 'Fuera de la agenda',
+      tasksDoneBadge: 'Completada',
+      tasksMarkDone: 'Completar',
+      tasksMarkPending: 'Reabrir',
+      tasksDeleteConfirm: '¿Eliminar esta tarea?',
+      tasksDeleteSeriesNote: ' Es parte de una serie recurrente, solo se eliminará esta ocurrencia.',
       valueEstimated: 'Valor Estimado',
       valueNotSet: 'No informado',
       probability: 'Probabilidad',
@@ -2247,6 +2392,31 @@ export const crm = {
       cancel: 'Cancelar',
     },
 
+    pipelineAccess: {
+      menuLabel: 'Quién puede ver',
+      restrictedBadge: 'Restringido',
+      title: 'Acceso al embudo',
+      subtitle: 'Elige quién puede ver este embudo. Deja la lista vacía para mantenerlo abierto a toda la empresa.',
+      openStateTitle: 'Abierto para toda la empresa',
+      openStateDesc: 'Todos los usuarios de la empresa pueden ver este embudo. Selecciona personas abajo para restringir el acceso.',
+      restrictedStateTitle: 'Restringido',
+      restrictedStateDesc: 'Solo las personas seleccionadas abajo (más quien tenga el permiso de Gestionar CRM) pueden ver este embudo.',
+      peopleLabel: 'Personas con acceso',
+      saveButton: 'Guardar acceso',
+      cancelButton: 'Cancelar',
+      confirmTitle: '¿Restringir el acceso a este embudo?',
+      confirmAction: 'Restringir de todos modos',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const people = peopleCount === 1 ? '1 persona' : `${peopleCount} personas`;
+        const peopleVerb = peopleCount === 1 ? 'va a' : 'van a';
+        const peoplePart = `${people} ${peopleVerb} dejar de ver este embudo`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const opp = opportunitiesCount === 1 ? '1 oportunidad' : `${opportunitiesCount} oportunidades`;
+        const oppVerb = opportunitiesCount === 1 ? 'va a' : 'van a';
+        return `${peoplePart}, y ${opp} de las que son responsables ${oppVerb} desaparecer de su pantalla.`;
+      },
+    },
+
     webhooks: {
       title: 'Webhooks de Leads Externos',
       createTitle: 'Crear nuevo webhook',
@@ -2269,6 +2439,28 @@ export const crm = {
       docsRequired: 'Campos obligatorios:',
       docsOptional: 'Campos opcionales:',
       docsPracticalExample: 'Ejemplo práctico:',
+    },
+
+    // ── Pestaña Tareas de la pantalla (Onda E2 — tercera superficie del CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Buscar tarea u oportunidad...',
+      filterAssignee: 'Responsable',
+      filterAssigneeAll: 'Todos',
+      colTask: 'Tarea',
+      colOpportunity: 'Oportunidad',
+      colAssignees: 'Responsables',
+      colDate: 'Fecha',
+      colStatus: 'Estado',
+      noDate: 'Sin fecha',
+      noAssignee: 'Sin responsable',
+      overdueBadge: 'Atrasada',
+      recurringBadge: 'Recurrente',
+      statusPending: 'Pendiente',
+      statusDone: 'Completada',
+      emptyTitle: 'Sin tareas vinculadas a oportunidades',
+      emptyDesc: 'Crea tareas dentro de una oportunidad para verlas aquí.',
+      emptySearch: 'No se encontraron tareas',
+      emptySearchDesc: 'Intenta ajustar la búsqueda o los filtros.',
     },
 
     moveTo: 'Mover a {stage}',
@@ -3051,6 +3243,9 @@ export const crm = {
 
     pipelineSelectorLabel: 'Pipeline',
 
+    mainTabFunnel: 'Pipeline',
+    mainTabTasks: 'Tâches',
+
     pipeline: 'Pipeline Commercial',
     xOfY: '{filtered} sur {total}',
 
@@ -3101,6 +3296,18 @@ export const crm = {
       claimHint: `Vous devenez responsable et elle sort de la file partagée.`,
       createOs: 'Créer un bon',
       createTask: 'Créer une tâche',
+      tabTasks: 'Tâches',
+      tasksNewButton: 'Nouvelle tâche',
+      tasksEmptyTitle: `Aucune tâche pour cette opportunité`,
+      tasksEmptyDesc: `Créez des tâches pour suivre les prochaines étapes de cette affaire.`,
+      tasksNoDate: 'Sans date',
+      tasksRecurringBadge: 'Récurrente',
+      tasksNotOnScheduleBadge: `Hors agenda`,
+      tasksDoneBadge: 'Terminée',
+      tasksMarkDone: 'Terminer',
+      tasksMarkPending: 'Rouvrir',
+      tasksDeleteConfirm: `Supprimer cette tâche ?`,
+      tasksDeleteSeriesNote: ` Elle fait partie d'une série récurrente, seule cette occurrence sera supprimée.`,
       valueEstimated: 'Valeur Estimée',
       valueNotSet: 'Non renseigné',
       probability: 'Probabilité',
@@ -3219,6 +3426,29 @@ export const crm = {
       cancel: 'Annuler',
     },
 
+    pipelineAccess: {
+      menuLabel: 'Qui peut voir',
+      restrictedBadge: 'Restreint',
+      title: 'Accès au pipeline',
+      subtitle: `Choisissez qui peut voir ce pipeline. Laissez la liste vide pour le garder ouvert à toute l'entreprise.`,
+      openStateTitle: `Ouvert à toute l'entreprise`,
+      openStateDesc: `Tous les utilisateurs de l'entreprise peuvent voir ce pipeline. Sélectionnez des personnes ci-dessous pour restreindre l'accès.`,
+      restrictedStateTitle: 'Restreint',
+      restrictedStateDesc: `Seules les personnes sélectionnées ci-dessous (plus celles ayant la permission Gérer le CRM) peuvent voir ce pipeline.`,
+      peopleLabel: 'Personnes ayant accès',
+      saveButton: `Enregistrer l'accès`,
+      cancelButton: 'Annuler',
+      confirmTitle: `Restreindre l'accès à ce pipeline ?`,
+      confirmAction: 'Restreindre quand même',
+      confirmDescription: (peopleCount: number, opportunitiesCount: number) => {
+        const people = peopleCount === 1 ? '1 personne' : `${peopleCount} personnes`;
+        const peoplePart = `${people} ne pourront plus voir ce pipeline`;
+        if (opportunitiesCount === 0) return `${peoplePart}.`;
+        const opp = opportunitiesCount === 1 ? '1 opportunité' : `${opportunitiesCount} opportunités`;
+        return `${peoplePart}, et ${opp} dont elles sont responsables vont disparaître de leur écran.`;
+      },
+    },
+
     webhooks: {
       title: 'Webhooks de Leads Externes',
       createTitle: 'Créer un nouveau webhook',
@@ -3241,6 +3471,28 @@ export const crm = {
       docsRequired: 'Champs obligatoires :',
       docsOptional: 'Champs optionnels :',
       docsPracticalExample: 'Exemple pratique :',
+    },
+
+    // ── Onglet Tâches de l'écran (Onde E2 — troisième surface du CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Rechercher une tâche ou une opportunité...',
+      filterAssignee: 'Responsable',
+      filterAssigneeAll: 'Tous',
+      colTask: 'Tâche',
+      colOpportunity: 'Opportunité',
+      colAssignees: 'Responsables',
+      colDate: 'Date',
+      colStatus: 'Statut',
+      noDate: 'Sans date',
+      noAssignee: 'Sans responsable',
+      overdueBadge: 'En retard',
+      recurringBadge: 'Récurrente',
+      statusPending: 'En attente',
+      statusDone: 'Terminée',
+      emptyTitle: 'Aucune tâche liée à des opportunités',
+      emptyDesc: `Créez des tâches dans une opportunité pour les suivre ici.`,
+      emptySearch: 'Aucune tâche trouvée',
+      emptySearchDesc: `Essayez d'ajuster la recherche ou les filtres.`,
     },
 
     moveTo: 'Déplacer vers {stage}',

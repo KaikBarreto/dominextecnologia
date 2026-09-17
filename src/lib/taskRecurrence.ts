@@ -313,3 +313,67 @@ export function resolveEditingWeekdays(
     legacyCustomWithoutWeekdays: record?.recurrence_type === 'custom' && savedWeekdays.length === 0,
   };
 }
+
+/**
+ * Colapsa uma lista de tarefas (linhas de `service_orders`, `entry_type='tarefa'`)
+ * agrupando cada série recorrente (`recurrence_group_id`) numa ÚNICA linha: a
+ * próxima ocorrência ainda pendente. Sem isso, o card do CRM (Onda E1) e a aba
+ * Tarefas (Onda E2) virariam uma lista de dezenas de linhas da mesma cobrança
+ * semanal — em produção, 411 das 475 tarefas fazem parte de série.
+ *
+ * Regra de escolha dentro do grupo:
+ *  - Considera só as ocorrências NÃO concluídas (`status !== 'concluida'`).
+ *  - Se nenhuma sobrou (série 100% concluída), o grupo inteiro é omitido —
+ *    não há "próxima pendente" pra mostrar.
+ *  - Entre as pendentes, escolhe a de MENOR data (atrasada entra antes de
+ *    futura, porque `yyyy-MM-dd` ordena como string). Sem data fica por
+ *    último dentro do grupo (mas isso é raríssimo: recorrência exige data —
+ *    ver `findRecurrenceIssue` / TaskFormDialog).
+ *
+ * Tarefas SEM `recurrence_group_id` (avulsas) passam direto, uma a uma.
+ *
+ * Função PURA e compartilhada: usada tanto pelo card da oportunidade quanto
+ * pela aba Tarefas da tela do CRM, pra as duas nunca divergirem sobre "qual
+ * ocorrência mostrar" de uma mesma série (risco 3 do plano da Onda E).
+ */
+export interface CollapsibleTask {
+  id: string;
+  recurrence_group_id?: string | null;
+  scheduled_date?: string | null;
+  status?: string | null;
+  [key: string]: unknown;
+}
+
+export function collapseRecurringOccurrences<T extends CollapsibleTask>(
+  tasks: T[],
+): Array<T & { _isRecurring?: boolean; _occurrenceCount?: number }> {
+  const singles: T[] = [];
+  const groups = new Map<string, T[]>();
+
+  tasks.forEach((task) => {
+    if (task.recurrence_group_id) {
+      const arr = groups.get(task.recurrence_group_id) || [];
+      arr.push(task);
+      groups.set(task.recurrence_group_id, arr);
+    } else {
+      singles.push(task);
+    }
+  });
+
+  const collapsed: Array<T & { _isRecurring?: boolean; _occurrenceCount?: number }> = [...singles];
+
+  groups.forEach((occurrences) => {
+    const pending = occurrences.filter((o) => o.status !== 'concluida');
+    if (pending.length === 0) return; // série inteira concluída: nada a mostrar
+
+    const [next] = [...pending].sort((a, b) => {
+      if (!a.scheduled_date) return 1;
+      if (!b.scheduled_date) return -1;
+      return a.scheduled_date.localeCompare(b.scheduled_date);
+    });
+
+    collapsed.push({ ...next, _isRecurring: true, _occurrenceCount: occurrences.length });
+  });
+
+  return collapsed;
+}

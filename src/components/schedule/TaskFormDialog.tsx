@@ -40,6 +40,15 @@ export interface TaskFormData {
   recurrence_weekdays?: number[];
   /** true = "Contínua" (sem data para acabar). Ver src/lib/taskRecurrence.ts. */
   recurrence_indeterminate?: boolean;
+  // ── Onda E do overhaul do CRM — vínculo com o card da oportunidade ──
+  // `null`/undefined = tarefa comum (nascida na Agenda), comportamento
+  // idêntico ao de sempre pra todo chamador que não passa `defaultLeadId`.
+  // Sempre repassado pra useTaskSubmit (criação E "esta e as futuras" da
+  // série), pra editar uma série não apagar o vínculo em silêncio — ver o
+  // aviso em useTaskSubmit.ts.
+  lead_id?: string | null;
+  /** Checkbox "Mostrar na agenda". Default true — nunca muda o que já existe. */
+  show_in_schedule?: boolean;
 }
 
 // `resolveEditingWeekdays` foi extraída pra `src/lib/taskRecurrence.ts`
@@ -60,12 +69,20 @@ interface TaskFormDialogProps {
   defaultDescription?: string;
   /** Responsáveis pré-selecionados (ex: vendedor da oportunidade). Só criação. */
   defaultAssigneeUserIds?: string[];
+  /**
+   * Oportunidade do CRM (Onda E) a que esta tarefa deve ficar vinculada. Só
+   * criação — em edição, o vínculo vem do próprio `task.lead_id`. Presente
+   * (criação) ou truthy (edição) é o que decide se o bloco "Mostrar na
+   * agenda" aparece: tarefa comum (Schedule/CustomerDetail/Assinatura) nunca
+   * passa isso e continua 100% igual a antes.
+   */
+  defaultLeadId?: string;
   task?: any | null;
 }
 
 export function TaskFormDialog({
   open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultTitle,
-  defaultDescription, defaultAssigneeUserIds, task,
+  defaultDescription, defaultAssigneeUserIds, defaultLeadId, task,
 }: TaskFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.taskForm;
@@ -97,6 +114,15 @@ export function TaskFormDialog({
   // existir). Não dá pra adivinhar quais eram — mostramos um aviso em vez do
   // seletor abrir vazio sem explicação nenhuma.
   const [legacyCustomWithoutWeekdays, setLegacyCustomWithoutWeekdays] = useState(false);
+  // ── Onda E do overhaul do CRM ──────────────────────────────────────────
+  // `leadId` nunca é editado pelo usuário aqui — só espelha `task.lead_id`
+  // (edição) ou `defaultLeadId` (criação a partir do card). É ele que decide
+  // se o bloco "Mostrar na agenda" aparece (`isCrmTask` abaixo) e é sempre
+  // repassado no onSubmit, pra editar uma série nunca apagar o vínculo com o
+  // card em silêncio (ver useTaskSubmit.ts).
+  const [leadId, setLeadId] = useState<string | null>(null);
+  const [showInSchedule, setShowInSchedule] = useState(true);
+  const isCrmTask = !!leadId;
 
   useEffect(() => {
     if (open) {
@@ -106,10 +132,16 @@ export function TaskFormDialog({
         setTaskTypeId(task.task_type_id || '');
         setSelectedUserIds(task._assignee_user_ids || (task.technician_id ? [task.technician_id] : []));
         setSelectedTeamIds(task.team_id ? [task.team_id] : []);
-        setScheduledDate(task.scheduled_date || format(new Date(), 'yyyy-MM-dd'));
+        // Tarefa sem data (Onda E — fora da agenda) preserva vazio: nunca
+        // inventamos "hoje" pra uma data que o usuário deliberadamente não
+        // escolheu (diferente da criação, onde não há data anterior nenhuma
+        // pra respeitar).
+        setScheduledDate(task.scheduled_date || '');
         setScheduledTime(task.scheduled_time || '08:00');
         setDuration(task.duration_minutes || 60);
         setDescription(task.description || '');
+        setLeadId(task.lead_id ?? null);
+        setShowInSchedule(task.show_in_schedule ?? true);
         // Pré-preenche recorrência a partir da série (se a tarefa pertencer a uma).
         const hasSeries = !!task.recurrence_group_id;
         setRecurrenceEnabled(hasSeries);
@@ -134,6 +166,9 @@ export function TaskFormDialog({
         setScheduledTime(defaultTime || '08:00');
         setDuration(60);
         setDescription(defaultDescription || '');
+        setLeadId(defaultLeadId || null);
+        // Nasce ligado (mesmo default do banco) — desligar é escolha do usuário.
+        setShowInSchedule(true);
         setRecurrenceEnabled(false);
         setRecurrenceType('weekly');
         setRecurrenceInterval(1);
@@ -148,7 +183,7 @@ export function TaskFormDialog({
         setLegacyCustomWithoutWeekdays(false);
       }
     }
-  }, [open, defaultDate, defaultTime, defaultCustomerId, task]);
+  }, [open, defaultDate, defaultTime, defaultCustomerId, defaultLeadId, task]);
 
   const toggleWeekday = (day: number) => {
     setRecurrenceWeekdays(prev =>
@@ -159,6 +194,10 @@ export function TaskFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    // Onda E — data só é obrigatória pra tarefa do CRM quando "Mostrar na
+    // agenda" está ligado (tarefa comum sempre teve data pré-preenchida, então
+    // este bloqueio nunca alcança os outros chamadores).
+    if (isCrmTask && showInSchedule && !scheduledDate) return;
 
     await onSubmit({
       task_title: title.trim(),
@@ -183,9 +222,25 @@ export function TaskFormDialog({
         recurrenceEnabled && (recurrenceType === 'custom' || recurrenceType === 'weekly')
           ? recurrenceWeekdays
           : undefined,
+      // Onda E — sempre repassados (não só quando isCrmTask): tarefa comum
+      // nunca teve leadId, então isso vira `lead_id: null` sem efeito nenhum.
+      // Ver aviso em useTaskSubmit.ts sobre por que os dois têm que viajar
+      // juntos em toda chamada, inclusive na regeneração de série.
+      lead_id: leadId,
+      show_in_schedule: showInSchedule,
     });
     onOpenChange(false);
   };
+
+  // Recorrência exige uma data-base pra ancorar a série (generateRecurrenceDates).
+  // Tarefa sem data (só possível numa tarefa do CRM com "Mostrar na agenda"
+  // desligado) desliga a recorrência sozinha em vez de deixar o usuário topar
+  // com a mensagem genérica de "informe a data final" do findRecurrenceIssue.
+  useEffect(() => {
+    if (!scheduledDate && recurrenceEnabled) {
+      setRecurrenceEnabled(false);
+    }
+  }, [scheduledDate, recurrenceEnabled]);
 
   const technicianOptions = profiles.map(p => ({
     user_id: p.user_id,
@@ -196,7 +251,11 @@ export function TaskFormDialog({
   const footer = (
     <div className="flex justify-end gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.btnCancel}</Button>
-      <Button type="submit" form="task-form" disabled={isLoading || !title.trim()}>
+      <Button
+        type="submit"
+        form="task-form"
+        disabled={isLoading || !title.trim() || (isCrmTask && showInSchedule && !scheduledDate)}
+      >
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {isEditing ? t.btnSave : t.btnCreate}
       </Button>
@@ -258,10 +317,45 @@ export function TaskFormDialog({
           label={t.labelAssignees}
         />
 
+        {/* Onda E do overhaul do CRM — só aparece pra tarefa vinculada a uma
+            oportunidade (criação a partir do card ou edição de uma tarefa que
+            já nasceu lá). Tarefa comum (Agenda, ficha do cliente, assinatura)
+            nunca vê este bloco. */}
+        {isCrmTask && (
+          <div className="rounded-lg border p-3 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={showInSchedule}
+                onCheckedChange={(checked) => {
+                  setShowInSchedule(checked);
+                  // Desligar limpa a data (ela vira opcional); religar reoferece
+                  // hoje como ponto de partida, sem forçar o usuário a redigitar.
+                  if (!checked) setScheduledDate('');
+                  else if (!scheduledDate) setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
+                }}
+              />
+              <Label className="cursor-pointer">{t.labelShowInSchedule}</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.showInScheduleHint}</p>
+          </div>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
-            <Label>{t.labelDate}</Label>
-            <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+            <Label>
+              {t.labelDate}
+              {isCrmTask && showInSchedule && <span className="text-destructive"> *</span>}
+              {isCrmTask && !showInSchedule && (
+                <span className="text-muted-foreground font-normal"> {t.dateOptionalHint}</span>
+              )}
+            </Label>
+            <Input
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              required={isCrmTask && showInSchedule}
+              aria-invalid={isCrmTask && showInSchedule && !scheduledDate}
+            />
           </div>
           <div className="space-y-2">
             <Label>{t.labelTime}</Label>
@@ -283,12 +377,23 @@ export function TaskFormDialog({
           />
         </div>
 
-        {/* Recorrência — disponível ao criar e ao editar uma tarefa */}
+        {/* Recorrência — disponível ao criar e ao editar uma tarefa. Exige data
+            (o motor de recorrência ancora nela) — sem data (Onda E, tarefa
+            fora da agenda) o switch fica desabilitado com uma explicação em
+            vez de deixar o usuário esbarrar na mensagem genérica de "informe
+            a data final" só depois de tentar salvar. */}
         <div className="rounded-lg border p-3 space-y-3">
           <div className="flex items-center gap-2">
-            <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
-            <Label className="cursor-pointer">{t.labelRecurrence}</Label>
+            <Switch
+              checked={recurrenceEnabled}
+              onCheckedChange={setRecurrenceEnabled}
+              disabled={!scheduledDate}
+            />
+            <Label className={cn('cursor-pointer', !scheduledDate && 'text-muted-foreground')}>{t.labelRecurrence}</Label>
           </div>
+          {!scheduledDate && (
+            <p className="text-xs text-muted-foreground">{t.recurrenceNeedsDateHint}</p>
+          )}
           {isEditing && (
             <p className="text-xs text-muted-foreground">
               {isRecurringSeries ? t.recurrenceSeriesNote : t.recurrenceActivateNote}
