@@ -7772,6 +7772,7 @@ export type Database = {
           id: string
           labor_hours: number | null
           labor_value: number | null
+          lead_id: string | null
           notes: string | null
           order_number: number
           origin: string
@@ -7803,6 +7804,7 @@ export type Database = {
           service_state: string | null
           service_type_id: string | null
           service_zip_code: string | null
+          show_in_schedule: boolean
           snapshot_data: Json | null
           solution: string | null
           started_at: string | null
@@ -7843,6 +7845,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          lead_id?: string | null
           notes?: string | null
           order_number?: number
           origin?: string
@@ -7874,6 +7877,7 @@ export type Database = {
           service_state?: string | null
           service_type_id?: string | null
           service_zip_code?: string | null
+          show_in_schedule?: boolean
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null
@@ -7914,6 +7918,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          lead_id?: string | null
           notes?: string | null
           order_number?: number
           origin?: string
@@ -7945,6 +7950,7 @@ export type Database = {
           service_state?: string | null
           service_type_id?: string | null
           service_zip_code?: string | null
+          show_in_schedule?: boolean
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null
@@ -8001,6 +8007,13 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {

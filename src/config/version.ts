@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.37";
+export const APP_VERSION = "1.24.38";
 
-export const VERSION_NOTES = "Agora dá para escolher quem enxerga cada funil do CRM, com aviso claro de quem vai perder acesso antes de confirmar.";
+export const VERSION_NOTES = "A oportunidade do CRM agora tem tarefas próprias, com aba de lista, e a Agenda ganhou visão de lista e filtro entre tarefas e ordens de serviço.";

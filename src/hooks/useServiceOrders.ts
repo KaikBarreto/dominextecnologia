@@ -41,6 +41,13 @@ export interface ServiceOrderInput {
   equipment_items?: ServiceOrderEquipmentItem[];
   assignee_user_ids?: string[];
   assignee_team_ids?: string[];
+  // Onda E do overhaul do CRM — tarefa vinculada a uma oportunidade.
+  // `lead_id` liga a tarefa ao card do CRM (null = tarefa nascida na Agenda,
+  // relação de mão única). `show_in_schedule` é o checkbox "Mostrar na
+  // agenda": false = a tarefa existe e aparece no card/aba Tarefas, mas não
+  // no calendário. Ver migration 20260919100000_tarefa_do_crm_lead_id_e_show_in_schedule.sql.
+  lead_id?: string | null;
+  show_in_schedule?: boolean;
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
@@ -185,7 +192,7 @@ export function useServiceOrders() {
           created_by: user?.id,
           company_id,
         },
-        ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']
+        ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id', 'lead_id']
       );
       const { data, error } = await supabase
         .from('service_orders')
@@ -263,6 +270,7 @@ export function useServiceOrders() {
         'service_type_id',
         'form_template_id',
         'contract_id',
+        'lead_id',
       ] as Array<keyof typeof input>);
 
       const { data, error } = await supabase

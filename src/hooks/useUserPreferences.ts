@@ -2,13 +2,17 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ViewMode } from '@/components/schedule/ScheduleHeader';
 
 type ScheduleDevice = 'mobile' | 'desktop';
 
+// Valor cru persistido por slot (mobile/desktop). Historicamente era só o
+// período ('day' | 'week' | 'month'). A visão de lista (E4) reusa a MESMA
+// coluna/mecanismo em vez de nascer uma preferência nova: o próprio
+// Schedule.tsx codifica o par período+exibição num único texto (ex.:
+// "day::list") e decodifica na leitura — aqui o hook só guarda string.
 interface ScheduleViewModePref {
-  mobile: ViewMode;
-  desktop: ViewMode;
+  mobile: string;
+  desktop: string;
 }
 
 interface UserPreferencesData {
@@ -58,15 +62,15 @@ export function useUserPreferences() {
     () =>
       hasPrefs
         ? {
-            mobile: (mobileMode as ViewMode) ?? 'day',
-            desktop: (desktopMode as ViewMode) ?? 'month',
+            mobile: mobileMode ?? 'day',
+            desktop: desktopMode ?? 'month',
           }
         : null,
     [hasPrefs, mobileMode, desktopMode],
   );
 
   const scheduleViewModeMutation = useMutation({
-    mutationFn: async ({ device, mode }: { device: ScheduleDevice; mode: ViewMode }) => {
+    mutationFn: async ({ device, mode }: { device: ScheduleDevice; mode: string }) => {
       if (!user?.id) throw new Error('Usuário não autenticado.');
       const column =
         device === 'mobile' ? 'schedule_view_mode_mobile' : 'schedule_view_mode_desktop';
@@ -109,7 +113,7 @@ export function useUserPreferences() {
     },
   });
 
-  const setScheduleViewMode = (device: ScheduleDevice, mode: ViewMode) => {
+  const setScheduleViewMode = (device: ScheduleDevice, mode: string) => {
     scheduleViewModeMutation.mutate({ device, mode });
   };
 

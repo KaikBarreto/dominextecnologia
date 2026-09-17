@@ -62,6 +62,10 @@ export const crm = {
     // ── Seletor de funil (Onda D — multi-pipeline) ──
     pipelineSelectorLabel: 'Funil',
 
+    // ── Alternância Funil ↔ Tarefas (Onda E — terceira superfície) ──
+    mainTabFunnel: 'Funil',
+    mainTabTasks: 'Tarefas',
+
     // ── Kanban ──
     pipeline: 'Pipeline de Vendas',
     xOfY: '{filtered} de {total}',
@@ -117,6 +121,19 @@ export const crm = {
       claimHint: 'Você vira responsável e ela sai da fila compartilhada.',
       createOs: 'Criar OS',
       createTask: 'Criar Tarefa',
+      // ── Aba Tarefas do card (Onda E1) ──
+      tabTasks: 'Tarefas',
+      tasksNewButton: 'Nova tarefa',
+      tasksEmptyTitle: 'Nenhuma tarefa nesta oportunidade',
+      tasksEmptyDesc: 'Crie tarefas para acompanhar os próximos passos deste negócio.',
+      tasksNoDate: 'Sem data',
+      tasksRecurringBadge: 'Recorrente',
+      tasksNotOnScheduleBadge: 'Fora da agenda',
+      tasksDoneBadge: 'Concluída',
+      tasksMarkDone: 'Concluir',
+      tasksMarkPending: 'Reabrir',
+      tasksDeleteConfirm: 'Excluir esta tarefa?',
+      tasksDeleteSeriesNote: ' Ela faz parte de uma série recorrente, só esta ocorrência será excluída.',
       valueEstimated: 'Valor Estimado',
       valueNotSet: 'Não informado',
       probability: 'Probabilidade',
@@ -293,6 +310,28 @@ export const crm = {
       docsRequired: 'Campos obrigatórios:',
       docsOptional: 'Campos opcionais:',
       docsPracticalExample: 'Exemplo prático:',
+    },
+
+    // ── Aba Tarefas da tela (Onda E2 — terceira superfície do CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Buscar tarefa ou oportunidade...',
+      filterAssignee: 'Responsável',
+      filterAssigneeAll: 'Todos',
+      colTask: 'Tarefa',
+      colOpportunity: 'Oportunidade',
+      colAssignees: 'Responsáveis',
+      colDate: 'Data',
+      colStatus: 'Status',
+      noDate: 'Sem data',
+      noAssignee: 'Sem responsável',
+      overdueBadge: 'Atrasada',
+      recurringBadge: 'Recorrente',
+      statusPending: 'Pendente',
+      statusDone: 'Concluída',
+      emptyTitle: 'Nenhuma tarefa vinculada a oportunidades',
+      emptyDesc: 'Crie tarefas dentro de uma oportunidade para acompanhá-las aqui.',
+      emptySearch: 'Nenhuma tarefa encontrada',
+      emptySearchDesc: 'Tente ajustar a busca ou os filtros.',
     },
 
     // ── Ações mobile lista ──
@@ -1138,6 +1177,9 @@ export const crm = {
 
     pipelineSelectorLabel: 'Pipeline',
 
+    mainTabFunnel: 'Pipeline',
+    mainTabTasks: 'Tasks',
+
     pipeline: 'Sales Pipeline',
     xOfY: '{filtered} of {total}',
 
@@ -1188,6 +1230,18 @@ export const crm = {
       claimHint: 'You become the owner and it leaves the shared queue.',
       createOs: 'Create work order',
       createTask: 'Create task',
+      tabTasks: 'Tasks',
+      tasksNewButton: 'New task',
+      tasksEmptyTitle: 'No tasks on this opportunity',
+      tasksEmptyDesc: 'Create tasks to track the next steps of this deal.',
+      tasksNoDate: 'No date',
+      tasksRecurringBadge: 'Recurring',
+      tasksNotOnScheduleBadge: 'Off schedule',
+      tasksDoneBadge: 'Done',
+      tasksMarkDone: 'Complete',
+      tasksMarkPending: 'Reopen',
+      tasksDeleteConfirm: 'Delete this task?',
+      tasksDeleteSeriesNote: ' It is part of a recurring series, only this occurrence will be deleted.',
       valueEstimated: 'Estimated Value',
       valueNotSet: 'Not provided',
       probability: 'Probability',
@@ -1351,6 +1405,28 @@ export const crm = {
       docsRequired: 'Required fields:',
       docsOptional: 'Optional fields:',
       docsPracticalExample: 'Practical example:',
+    },
+
+    // ── Tasks tab (Onda E2 — third surface of CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Search task or opportunity...',
+      filterAssignee: 'Assignee',
+      filterAssigneeAll: 'All',
+      colTask: 'Task',
+      colOpportunity: 'Opportunity',
+      colAssignees: 'Assignees',
+      colDate: 'Date',
+      colStatus: 'Status',
+      noDate: 'No date',
+      noAssignee: 'Unassigned',
+      overdueBadge: 'Overdue',
+      recurringBadge: 'Recurring',
+      statusPending: 'Pending',
+      statusDone: 'Done',
+      emptyTitle: 'No tasks linked to opportunities',
+      emptyDesc: 'Create tasks inside an opportunity to track them here.',
+      emptySearch: 'No tasks found',
+      emptySearchDesc: 'Try adjusting the search or filters.',
     },
 
     moveTo: 'Move to {stage}',
@@ -2133,6 +2209,9 @@ export const crm = {
 
     pipelineSelectorLabel: 'Embudo',
 
+    mainTabFunnel: 'Embudo',
+    mainTabTasks: 'Tareas',
+
     pipeline: 'Embudo de Ventas',
     xOfY: '{filtered} de {total}',
 
@@ -2183,6 +2262,18 @@ export const crm = {
       claimHint: 'Te conviertes en responsable y sale de la cola compartida.',
       createOs: 'Crear orden',
       createTask: 'Crear tarea',
+      tabTasks: 'Tareas',
+      tasksNewButton: 'Nueva tarea',
+      tasksEmptyTitle: 'Sin tareas en esta oportunidad',
+      tasksEmptyDesc: 'Crea tareas para seguir los próximos pasos de este negocio.',
+      tasksNoDate: 'Sin fecha',
+      tasksRecurringBadge: 'Recurrente',
+      tasksNotOnScheduleBadge: 'Fuera de la agenda',
+      tasksDoneBadge: 'Completada',
+      tasksMarkDone: 'Completar',
+      tasksMarkPending: 'Reabrir',
+      tasksDeleteConfirm: '¿Eliminar esta tarea?',
+      tasksDeleteSeriesNote: ' Es parte de una serie recurrente, solo se eliminará esta ocurrencia.',
       valueEstimated: 'Valor Estimado',
       valueNotSet: 'No informado',
       probability: 'Probabilidad',
@@ -2348,6 +2439,28 @@ export const crm = {
       docsRequired: 'Campos obligatorios:',
       docsOptional: 'Campos opcionales:',
       docsPracticalExample: 'Ejemplo práctico:',
+    },
+
+    // ── Pestaña Tareas de la pantalla (Onda E2 — tercera superficie del CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Buscar tarea u oportunidad...',
+      filterAssignee: 'Responsable',
+      filterAssigneeAll: 'Todos',
+      colTask: 'Tarea',
+      colOpportunity: 'Oportunidad',
+      colAssignees: 'Responsables',
+      colDate: 'Fecha',
+      colStatus: 'Estado',
+      noDate: 'Sin fecha',
+      noAssignee: 'Sin responsable',
+      overdueBadge: 'Atrasada',
+      recurringBadge: 'Recurrente',
+      statusPending: 'Pendiente',
+      statusDone: 'Completada',
+      emptyTitle: 'Sin tareas vinculadas a oportunidades',
+      emptyDesc: 'Crea tareas dentro de una oportunidad para verlas aquí.',
+      emptySearch: 'No se encontraron tareas',
+      emptySearchDesc: 'Intenta ajustar la búsqueda o los filtros.',
     },
 
     moveTo: 'Mover a {stage}',
@@ -3130,6 +3243,9 @@ export const crm = {
 
     pipelineSelectorLabel: 'Pipeline',
 
+    mainTabFunnel: 'Pipeline',
+    mainTabTasks: 'Tâches',
+
     pipeline: 'Pipeline Commercial',
     xOfY: '{filtered} sur {total}',
 
@@ -3180,6 +3296,18 @@ export const crm = {
       claimHint: `Vous devenez responsable et elle sort de la file partagée.`,
       createOs: 'Créer un bon',
       createTask: 'Créer une tâche',
+      tabTasks: 'Tâches',
+      tasksNewButton: 'Nouvelle tâche',
+      tasksEmptyTitle: `Aucune tâche pour cette opportunité`,
+      tasksEmptyDesc: `Créez des tâches pour suivre les prochaines étapes de cette affaire.`,
+      tasksNoDate: 'Sans date',
+      tasksRecurringBadge: 'Récurrente',
+      tasksNotOnScheduleBadge: `Hors agenda`,
+      tasksDoneBadge: 'Terminée',
+      tasksMarkDone: 'Terminer',
+      tasksMarkPending: 'Rouvrir',
+      tasksDeleteConfirm: `Supprimer cette tâche ?`,
+      tasksDeleteSeriesNote: ` Elle fait partie d'une série récurrente, seule cette occurrence sera supprimée.`,
       valueEstimated: 'Valeur Estimée',
       valueNotSet: 'Non renseigné',
       probability: 'Probabilité',
@@ -3343,6 +3471,28 @@ export const crm = {
       docsRequired: 'Champs obligatoires :',
       docsOptional: 'Champs optionnels :',
       docsPracticalExample: 'Exemple pratique :',
+    },
+
+    // ── Onglet Tâches de l'écran (Onde E2 — troisième surface du CRM.tsx) ──
+    tasks: {
+      searchPlaceholder: 'Rechercher une tâche ou une opportunité...',
+      filterAssignee: 'Responsable',
+      filterAssigneeAll: 'Tous',
+      colTask: 'Tâche',
+      colOpportunity: 'Opportunité',
+      colAssignees: 'Responsables',
+      colDate: 'Date',
+      colStatus: 'Statut',
+      noDate: 'Sans date',
+      noAssignee: 'Sans responsable',
+      overdueBadge: 'En retard',
+      recurringBadge: 'Récurrente',
+      statusPending: 'En attente',
+      statusDone: 'Terminée',
+      emptyTitle: 'Aucune tâche liée à des opportunités',
+      emptyDesc: `Créez des tâches dans une opportunité pour les suivre ici.`,
+      emptySearch: 'Aucune tâche trouvée',
+      emptySearchDesc: `Essayez d'ajuster la recherche ou les filtres.`,
     },
 
     moveTo: 'Déplacer vers {stage}',

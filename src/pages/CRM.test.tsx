@@ -63,6 +63,21 @@ vi.mock('@/hooks/useLeadWonRevenuePrompt', () => ({
   }),
 }));
 vi.mock('@/hooks/useCanLaunchLeadRevenue', () => ({ useCanLaunchLeadRevenue: () => false }));
+// Onda E2 (aba Tarefas): CRM.tsx passou a chamar useServiceOrders/useProfiles
+// pra montar a lista de tarefas vinculadas a oportunidades. Sem mock, os dois
+// hooks reais (React Query) quebram o teste com "No QueryClient set" — e o
+// caso sob teste é o PASTE no filtro de valor da aba Funil, que não exercita
+// a aba Tarefas.
+vi.mock('@/hooks/useServiceOrders', () => ({
+  useServiceOrders: () => ({
+    serviceOrders: [],
+    isLoading: false,
+    createServiceOrder: { mutateAsync: vi.fn(), isPending: false },
+    updateServiceOrder: { mutateAsync: vi.fn() },
+    deleteServiceOrder: { mutateAsync: vi.fn() },
+  }),
+}));
+vi.mock('@/hooks/useProfiles', () => ({ useProfiles: () => ({ data: [] }) }));
 // A 1.24.32 (Onda C do CRM) passou a chamar useAuth DIRETO na tela, pra recortar
 // as oportunidades por responsável (`fn:manage_crm`). Sem este mock o teste morre
 // em "useAuth must be used within an AuthProvider" — e o caso sob teste é o PASTE

@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.38',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefas dentro da oportunidade do CRM',
+        description: 'Cada oportunidade do funil ganhou uma aba de Tarefas. Dá para criar, concluir e excluir tarefas do negócio, e cada tarefa tem o responsável dela, que não precisa ser o mesmo vendedor do card. Na hora de criar, um marcador decide se aquela tarefa também aparece na Agenda e em que data. Se ela se repete, o card mostra só a próxima, para não virar uma lista de doze linhas iguais.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aba de Tarefas na tela do CRM',
+        description: 'Além do funil, a tela do CRM tem agora uma aba com todas as tarefas ligadas a oportunidades, em lista, com busca e filtro por responsável. As vencidas aparecem primeiro, e clicar em uma delas abre a oportunidade de origem. A lista mostra as tarefas de todos os funis, porque afazer atrasado não pode sumir só porque você trocou de funil.',
+        category: 'recurso',
+      },
+      {
+        title: 'A Agenda agora também pode ser vista em lista',
+        description: 'Um botão alterna entre Calendário e Lista. Na lista, os compromissos do período aparecem em sequência, com os atrasados no topo, sem a grade do calendário. Os filtros e o período continuam sendo os mesmos dos dois lados, e a sua escolha fica guardada para a próxima vez, separadamente no computador e no celular.',
+        category: 'recurso',
+      },
+      {
+        title: 'Filtrar a Agenda entre tarefas e ordens de serviço',
+        description: 'Os filtros da Agenda ganharam a opção de mostrar só tarefas, só ordens de serviço, ou as duas coisas. Vale no calendário e na lista, no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.37',
     date: '18 de setembro de 2026',
     type: 'patch',

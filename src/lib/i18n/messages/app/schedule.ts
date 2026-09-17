@@ -38,6 +38,18 @@ export const schedule = {
       technician: 'Técnico',
       customer: 'Cliente',
       status: 'Status',
+      entryType: 'Tipo',
+    },
+    // Toggle Calendário / Lista (visão de lista da Agenda)
+    displayMode: {
+      calendar: 'Calendário',
+      list: 'Lista',
+    },
+    // Visão de lista: itens do período em lista corrida, atrasado primeiro
+    list: {
+      overdueSectionLabel: 'Atrasado',
+      emptyTitle: 'Nada por aqui',
+      emptyDescription: 'Nenhuma tarefa ou OS neste período.',
     },
     // Rótulos de status usados nos filtros da agenda (mesma semântica do os.statusFallback)
     statusLabels: {
@@ -218,6 +230,16 @@ export const schedule = {
       technician: 'Technician',
       customer: 'Customer',
       status: 'Status',
+      entryType: 'Type',
+    },
+    displayMode: {
+      calendar: 'Calendar',
+      list: 'List',
+    },
+    list: {
+      overdueSectionLabel: 'Overdue',
+      emptyTitle: 'Nothing here',
+      emptyDescription: 'No task or work order in this period.',
     },
     statusLabels: {
       pendente: 'Pending',
@@ -397,6 +419,16 @@ export const schedule = {
       technician: 'Técnico',
       customer: 'Cliente',
       status: 'Estado',
+      entryType: 'Tipo',
+    },
+    displayMode: {
+      calendar: 'Calendario',
+      list: 'Lista',
+    },
+    list: {
+      overdueSectionLabel: 'Atrasado',
+      emptyTitle: 'Nada por aquí',
+      emptyDescription: 'No hay tareas ni órdenes de servicio en este período.',
     },
     statusLabels: {
       pendente: 'Pendiente',
@@ -576,6 +608,16 @@ export const schedule = {
       technician: 'Technicien',
       customer: 'Client',
       status: 'Statut',
+      entryType: 'Type',
+    },
+    displayMode: {
+      calendar: 'Calendrier',
+      list: 'Liste',
+    },
+    list: {
+      overdueSectionLabel: 'En retard',
+      emptyTitle: 'Rien ici',
+      emptyDescription: 'Aucune tâche ni OT sur cette période.',
     },
     statusLabels: {
       pendente: 'En attente',
