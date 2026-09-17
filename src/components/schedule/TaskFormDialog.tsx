@@ -54,10 +54,19 @@ interface TaskFormDialogProps {
   defaultDate?: string;
   defaultTime?: string;
   defaultCustomerId?: string;
+  /** Título pré-preenchido (ex: título da oportunidade, ao criar tarefa a partir do CRM). Só criação. */
+  defaultTitle?: string;
+  /** Descrição pré-preenchida. Só criação. */
+  defaultDescription?: string;
+  /** Responsáveis pré-selecionados (ex: vendedor da oportunidade). Só criação. */
+  defaultAssigneeUserIds?: string[];
   task?: any | null;
 }
 
-export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, task }: TaskFormDialogProps) {
+export function TaskFormDialog({
+  open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultTitle,
+  defaultDescription, defaultAssigneeUserIds, task,
+}: TaskFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.taskForm;
   const { data: profiles = [] } = useProfiles();
@@ -116,15 +125,15 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         setRecurrenceWeekdays(weekdays);
         setLegacyCustomWithoutWeekdays(isLegacy);
       } else {
-        setTitle('');
+        setTitle(defaultTitle || '');
         setCustomerId(defaultCustomerId || '');
         setTaskTypeId('');
-        setSelectedUserIds([]);
+        setSelectedUserIds(defaultAssigneeUserIds && defaultAssigneeUserIds.length > 0 ? defaultAssigneeUserIds : []);
         setSelectedTeamIds([]);
         setScheduledDate(defaultDate || format(new Date(), 'yyyy-MM-dd'));
         setScheduledTime(defaultTime || '08:00');
         setDuration(60);
-        setDescription('');
+        setDescription(defaultDescription || '');
         setRecurrenceEnabled(false);
         setRecurrenceType('weekly');
         setRecurrenceInterval(1);

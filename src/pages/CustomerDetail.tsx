@@ -28,7 +28,7 @@ import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { ContactFormDialog } from '@/components/customers/ContactFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
-import { CreateOpportunityDialog } from '@/components/customers/CreateOpportunityDialog';
+import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useCustomerContacts } from '@/hooks/useCustomerContacts';
 import { osStatusLabels } from '@/types/database';
@@ -1897,11 +1897,12 @@ export default function CustomerDetail() {
         isLoading={updateCustomer.isPending}
       />
 
-      {/* Create Opportunity Dialog */}
-      <CreateOpportunityDialog
+      {/* Create Opportunity Dialog — cliente da ficha vem travado (B1 do
+          overhaul de CRM: formulário completo, não mais a versão reduzida). */}
+      <LeadFormDialog
         open={opportunityOpen}
         onOpenChange={setOpportunityOpen}
-        customer={customer}
+        presetCustomerId={customer?.id ?? null}
       />
 
       {/* Delete Confirmation */}

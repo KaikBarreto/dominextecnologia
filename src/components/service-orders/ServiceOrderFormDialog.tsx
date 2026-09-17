@@ -88,6 +88,10 @@ interface ServiceOrderFormDialogProps {
   // Status pré-preenchido quando a OS é criada via "+" de uma coluna do kanban.
   // Quando ausente, o backend usa o default do schema ('pendente').
   defaultStatus?: OsStatus;
+  /** Descrição pré-preenchida (ex: título da oportunidade, ao criar OS a partir do CRM). Só criação. */
+  defaultDescription?: string;
+  /** Responsáveis pré-selecionados (ex: vendedor da oportunidade, ao criar OS a partir do CRM). Só criação. */
+  defaultAssigneeUserIds?: string[];
 }
 
 const STEPS = [
@@ -98,6 +102,7 @@ const STEPS = [
 
 export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultStatus,
+  defaultDescription, defaultAssigneeUserIds,
 }: ServiceOrderFormDialogProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.form;
@@ -246,7 +251,7 @@ export function ServiceOrderFormDialog({
       scheduled_date: computedDate,
       scheduled_time: computedTime,
       duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
-      description: serviceOrder?.description ?? '',
+      description: serviceOrder?.description ?? defaultDescription ?? '',
       notes: serviceOrder?.notes ?? '',
       form_template_id: serviceOrder?.form_template_id ?? '',
     },
@@ -346,6 +351,9 @@ export function ServiceOrderFormDialog({
         setSelectedAssigneeUserIds(existingAssigneeIds);
       } else if (serviceOrder?.technician_id) {
         setSelectedAssigneeUserIds([serviceOrder.technician_id]);
+      } else if (!isEditing && defaultAssigneeUserIds && defaultAssigneeUserIds.length > 0) {
+        // Só na criação (ex: vendedor responsável da oportunidade, ao criar OS a partir do CRM).
+        setSelectedAssigneeUserIds(defaultAssigneeUserIds);
       } else {
         setSelectedAssigneeUserIds([]);
       }
@@ -381,7 +389,7 @@ export function ServiceOrderFormDialog({
           scheduled_date: computedDate,
           scheduled_time: computedTime,
           duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
-          description: serviceOrder?.description ?? '',
+          description: serviceOrder?.description ?? defaultDescription ?? '',
           notes: serviceOrder?.notes ?? '',
           form_template_id: serviceOrder?.form_template_id ?? '',
         });
