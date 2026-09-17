@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.31',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Valor colado com ponto de milhar não vira mais centavos',
+        description: 'Ao copiar um valor como R$ 4.550 e colar num campo do sistema, ele era gravado como R$ 4,55, mil vezes menor, sem nenhum aviso. Um contrato chegou a ficar com 72 parcelas de R$ 4,55. A causa era o ponto sendo lido como vírgula decimal. Agora o sistema entende a notação brasileira ao colar, em todos os campos de dinheiro: financeiro, contas a pagar e receber, contratos, orçamentos, CRM, custos de ordem de serviço, folha e painel administrativo. Digitar continua funcionando exatamente como antes.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cartão de crédito aparece só onde faz sentido',
+        description: 'Ao registrar um recebimento, os cartões de crédito apareciam como opção de conta, o que não faz sentido: dinheiro não entra num cartão. E ao lançar uma despesa no cartão, o cartão não aparecia na lista, então não dava para dizer em qual cartão a compra foi feita e ela nunca chegava na fatura. Os dois lados foram corrigidos, aqui e também ao aprovar um orçamento.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.30',
     date: '17 de setembro de 2026',
     type: 'patch',

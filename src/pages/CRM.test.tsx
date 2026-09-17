@@ -41,6 +41,19 @@ vi.mock('@/hooks/useCrmStages', () => ({
 }));
 
 // Componentes-filho irrelevantes pro filtro de valor sob teste.
+// A 1.24.30 (merge) ligou o prompt de receita ao ganhar a oportunidade, que puxa
+// useAuth via useCanLaunchLeadRevenue. Este teste é sobre o PASTE nos filtros de
+// valor, não sobre esse fluxo: mocamos o hook inteiro em vez de montar o
+// AuthProvider só para satisfazer uma dependência que o caso não exercita.
+vi.mock('@/hooks/useLeadWonRevenuePrompt', () => ({
+  useLeadWonRevenuePrompt: () => ({
+    pendingLead: null,
+    askForLead: () => false,
+    confirm: () => {},
+    dismiss: () => {},
+  }),
+}));
+vi.mock('@/hooks/useCanLaunchLeadRevenue', () => ({ useCanLaunchLeadRevenue: () => false }));
 vi.mock('@/components/crm/LeadFormDialog', () => ({ LeadFormDialog: () => null }));
 vi.mock('@/components/crm/LeadDetailModal', () => ({ LeadDetailModal: () => null }));
 vi.mock('@/components/crm/LeadCard', () => ({ LeadCard: () => null }));
