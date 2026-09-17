@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.40',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova permissão: Gerenciar Tarefas',
+        description: 'Em Configurações, as permissões ganharam "Gerenciar Tarefas". Quem tem essa permissão enxerga as tarefas de todo mundo. Quem não tem passa a ver apenas as tarefas em que é responsável, em que é o técnico, que criou, ou que são da equipe dele. Isso vale na Agenda e na aba de Tarefas do CRM, com a mesma regra nos dois lugares. Ordens de serviço não mudam em nada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Quem já tinha Ver Toda a Agenda não perde nada',
+        description: 'Quem já usa a permissão "Ver Toda a Agenda" continua enxergando todas as tarefas do calendário, exatamente como antes. A permissão nova só é necessária para as tarefas criadas dentro de uma oportunidade do CRM que você escolheu não mostrar na Agenda.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.39',
     date: '17 de setembro de 2026',
     type: 'patch',

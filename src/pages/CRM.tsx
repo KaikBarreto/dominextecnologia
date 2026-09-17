@@ -65,6 +65,8 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeams } from '@/hooks/useTeams';
+import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
@@ -118,7 +120,8 @@ export default function CRM() {
   // "Leads visiveis apenas ao responsavel") já é quem garante a segurança de
   // verdade. Mesma chave que a RLS espelha (public.user_has_permission),
   // pra tela e banco nunca discordarem sobre quem enxerga o quê.
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, roles, permissions, hasPermissionRecord } = useAuth();
+  const { teamsWithMembers } = useTeams();
   const canManageCrm = hasPermission('fn:manage_crm');
   const visibleLeads = useMemo(() => {
     if (canManageCrm) return leads;
@@ -240,9 +243,23 @@ export default function CRM() {
   // pra não sugerir um filtro que não existe.
   const visibleLeadIds = useMemo(() => new Set(visibleLeads.map((l) => l.id)), [visibleLeads]);
   const leadTitleMap = useMemo(() => new Map(visibleLeads.map((l) => [l.id, l.title])), [visibleLeads]);
+  const myTeamIds = useMemo(
+    () => (user?.id ? teamsWithMembers.filter((t) => t.members.some((m) => m.user_id === user.id)).map((t) => t.id) : []),
+    [teamsWithMembers, user?.id],
+  );
+  // Mesma régua da Agenda (src/lib/taskVisibility.ts). A RLS já recorta, mas as
+  // DUAS telas mostram a mesma tarefa: se a regra de filtro divergir, o usuário
+  // vê contagens diferentes pra mesma coisa e para de confiar nas duas.
+  const canSeeEveryTask = useMemo(
+    () => canSeeAllTasks({ roles, permissions, hasPermissionRecord }),
+    [roles, permissions, hasPermissionRecord],
+  );
   const opportunityTasks = useMemo(
-    () => (serviceOrders as any[]).filter((o) => o.entry_type === 'tarefa' && o.lead_id && visibleLeadIds.has(o.lead_id)),
-    [serviceOrders, visibleLeadIds],
+    () => (serviceOrders as any[]).filter((o) => {
+      if (o.entry_type !== 'tarefa' || !o.lead_id || !visibleLeadIds.has(o.lead_id)) return false;
+      return canSeeEveryTask || isMyTask(o, user?.id, myTeamIds);
+    }),
+    [serviceOrders, visibleLeadIds, canSeeEveryTask, user?.id, myTeamIds],
   );
   // Mesma função de colapso de série usada no card da oportunidade
   // (LeadDetailModal) — as duas telas nunca podem divergir sobre "qual

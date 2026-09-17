@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.39";
+export const APP_VERSION = "1.24.40";
 
-export const VERSION_NOTES = "Se o lançamento de uma cobrança online for apagado, o pagamento do cliente não some mais: o sistema recria o lançamento ao confirmar, explicando por que ele reapareceu.";
+export const VERSION_NOTES = "Nova permissão Gerenciar Tarefas: quem não tem passa a ver apenas as tarefas pelas quais é responsável.";

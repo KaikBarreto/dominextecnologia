@@ -26,6 +26,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
@@ -198,9 +199,10 @@ export default function Schedule() {
   // hasPermission — de propósito: hasPermission, sem registro de permissões,
   // libera tudo pelo role. Aqui queremos o oposto para tarefas: sem o acesso
   // explícito, a tarefa só aparece pra quem é responsável por ela.
-  const canViewAllSchedule =
-    roles.includes('admin') || roles.includes('super_admin') ||
-    (hasPermissionRecord && (permissions.includes('*') || permissions.includes('fn:view_all_schedule')));
+  // Régua compartilhada com a aba Tarefas do CRM (src/lib/taskVisibility.ts).
+  // As duas telas mostram a MESMA tarefa; divergir aqui faz o usuário ver
+  // contagens diferentes pra mesma coisa e perder a confiança nas duas.
+  const canViewAllSchedule = canSeeAllTasks({ roles, permissions, hasPermissionRecord });
 
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
@@ -209,10 +211,7 @@ export default function Schedule() {
       // aparece pra quem é responsável (assignee/técnico legado) ou pro time
       // dela. OS comuns (entry_type !== 'tarefa') não são afetadas.
       if (order.entry_type === 'tarefa' && !canViewAllSchedule) {
-        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
-        const isMine =
-          (!!user?.id && (assigneeIds?.includes(user.id) || order.technician_id === user.id)) ||
-          (!!order.team_id && myTeamIds.includes(order.team_id));
+        const isMine = isMyTask(order as any, user?.id, myTeamIds);
         if (!isMine) return false;
       }
 

@@ -78,13 +78,17 @@ vi.mock('@/hooks/useServiceOrders', () => ({
   }),
 }));
 vi.mock('@/hooks/useProfiles', () => ({ useProfiles: () => ({ data: [] }) }));
+// A régua compartilhada de visibilidade de tarefa (src/lib/taskVisibility.ts)
+// precisa saber de quais equipes o usuário é membro, então CRM.tsx passou a
+// chamar useTeams — que é React Query e derruba o teste sem QueryClient.
+vi.mock('@/hooks/useTeams', () => ({ useTeams: () => ({ teamsWithMembers: [] }) }));
 // A 1.24.32 (Onda C do CRM) passou a chamar useAuth DIRETO na tela, pra recortar
 // as oportunidades por responsável (`fn:manage_crm`). Sem este mock o teste morre
 // em "useAuth must be used within an AuthProvider" — e o caso sob teste é o PASTE
 // no filtro de valor, que não exercita permissão nenhuma. `hasPermission: true`
 // mantém a tela mostrando todas as oportunidades, como era antes do recorte.
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'user-teste' }, hasPermission: () => true }),
+  useAuth: () => ({ user: { id: 'user-teste' }, hasPermission: () => true, roles: ['admin'], permissions: ['*'], hasPermissionRecord: true }),
 }));
 vi.mock('@/components/crm/LeadFormDialog', () => ({ LeadFormDialog: () => null }));
 vi.mock('@/components/crm/LeadDetailModal', () => ({ LeadDetailModal: () => null }));
