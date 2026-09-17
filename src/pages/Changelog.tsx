@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.41',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A visão de Lista da Agenda voltava sozinha para o Calendário',
+        description: 'Ao trocar a Agenda para o modo Lista, ela mostrava a lista por um instante e voltava sozinha para o calendário, como se o clique não tivesse acontecido. O motivo era a sua preferência sendo lida de novo do servidor logo depois de ser gravada, e o valor antigo atropelava a escolha que você tinha acabado de fazer. Agora a Lista fica.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.40',
     date: '19 de setembro de 2026',
     type: 'patch',

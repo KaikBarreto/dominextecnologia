@@ -96,11 +96,22 @@ export default function Schedule() {
   // (compatível com todo mundo que já tinha preferência salva).
   const [displayMode, setDisplayMode] = useState<DisplayMode>('calendar');
 
+  // Slot de aparelho já hidratado. Sem isso, a escolha do usuário durava meio
+  // segundo e a tela voltava sozinha: `setScheduleViewMode` invalida a query de
+  // preferências, `scheduleViewMode` troca de identidade, este efeito roda de
+  // novo e reaplica o valor ANTIGO que acabou de voltar do servidor. Provado em
+  // produção na 1.24.38 (clicar em "Lista" voltava pro Calendário em ~2s).
+  // A hidratação tem que acontecer uma vez por aparelho, não a cada refetch —
+  // e continua reagindo ao resize que cruza o breakpoint, que troca o slot.
+  const hidratadoPara = useRef<'mobile' | 'desktop' | null>(null);
+
   // Hidrata o viewMode+displayMode a partir da preferência salva do aparelho
   // atual. Também reage ao redimensionamento que cruza o breakpoint (celular ↔
   // computador): ao trocar de slot lógico, relê a preferência daquele aparelho.
   useEffect(() => {
     if (isPrefsLoading) return;
+    if (hidratadoPara.current === scheduleDevice) return;
+    hidratadoPara.current = scheduleDevice;
     const saved = scheduleViewMode?.[scheduleDevice];
     if (!saved) {
       setViewMode(isMobile ? 'day' : 'month');
