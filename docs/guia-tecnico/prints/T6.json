@@ -7,19 +7,13 @@
       "legenda": "Agenda da Dominex na visão Lista, com os compromissos do período em sequência de cartões, sem a grade do calendário, e a seção Atrasado no topo quando existe compromisso vencido.",
       "passos": [
         {
-          "esperar": 2500
+          "esperar": 3000
         },
         {
-          "clicarSeletor": "[role=\"tab\"][value=\"list\"]"
+          "clicar": "Lista"
         },
         {
-          "esperar": 1200
-        },
-        {
-          "esperarSeletor": "[role=\"tab\"][value=\"list\"][data-state=\"active\"]"
-        },
-        {
-          "esperar": 1200
+          "esperar": 3000
         }
       ],
       "recorte": "main"
