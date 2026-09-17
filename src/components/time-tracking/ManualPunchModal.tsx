@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { PunchType } from '@/hooks/useTimeRecords';
+import type { PunchType, TimeRecord } from '@/hooks/useTimeRecords';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -14,12 +15,15 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   employeeId: string;
   employeeName: string;
+  /** Presente = modo edição (pré-preenche data/hora/tipo/observação do registro). */
+  record?: TimeRecord | null;
   onSubmit: (data: { employeeId: string; type: PunchType; recordedAt: string; notes: string }) => Promise<void>;
 }
 
-export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName, onSubmit }: Props) {
+export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName, record, onSubmit }: Props) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.timeclock.manualPunch;
+  const isEdit = !!record;
 
   const TYPE_OPTIONS: { value: PunchType; label: string }[] = [
     { value: 'clock_in', label: t.punchTypes.clock_in },
@@ -28,21 +32,26 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
     { value: 'clock_out', label: t.punchTypes.clock_out },
   ];
 
-  const [type, setType] = useState<PunchType>('clock_in');
-  const [time, setTime] = useState('');
-  const [notes, setNotes] = useState('');
+  const todayIso = () => new Date().toISOString().split('T')[0];
+
+  const [type, setType] = useState<PunchType>(record?.type ?? 'clock_in');
+  const [date, setDate] = useState(record ? record.date : todayIso());
+  const [time, setTime] = useState(record ? format(new Date(record.recorded_at), 'HH:mm') : '');
+  const [notes, setNotes] = useState(record?.notes ?? '');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!time || !notes.trim()) return;
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const recordedAt = new Date(`${today}T${time}`).toISOString();
+      const recordedAt = new Date(`${date}T${time}`).toISOString();
       await onSubmit({ employeeId, type, recordedAt, notes });
-      setType('clock_in');
-      setTime('');
-      setNotes('');
+      if (!isEdit) {
+        setType('clock_in');
+        setDate(todayIso());
+        setTime('');
+        setNotes('');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,13 +61,18 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
     <div className="flex justify-end gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
       <Button onClick={handleSubmit} disabled={!time || !notes.trim() || loading}>
-        {loading ? t.submitting : t.submit}
+        {loading ? t.submitting : isEdit ? t.submitEdit : t.submit}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`${t.titlePrefix} ${employeeName}`} footer={footer}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`${isEdit ? t.titlePrefixEdit : t.titlePrefix} ${employeeName}`}
+      footer={footer}
+    >
       <div className="space-y-4 py-2">
         <div className="space-y-2">
           <Label>{t.typeLabel}</Label>
@@ -69,13 +83,19 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
             </SelectContent>
           </Select>
         </div>
+        {isEdit && (
+          <div className="space-y-2">
+            <Label>{t.dateLabel}</Label>
+            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+        )}
         <div className="space-y-2">
           <Label>{t.timeLabel}</Label>
           <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>{t.notesLabel}</Label>
-          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.notesPlaceholder} />
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={isEdit ? t.notesPlaceholderEdit : t.notesPlaceholder} />
         </div>
       </div>
     </ResponsiveModal>

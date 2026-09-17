@@ -9007,12 +9007,17 @@ export type Database = {
           created_at: string | null
           date: string
           device_info: Json | null
+          edited_at: string | null
+          edited_by: string | null
           employee_id: string | null
           id: string
+          invalidated_at: string | null
+          invalidated_by: string | null
           is_valid: boolean | null
           latitude: number | null
           longitude: number | null
           notes: string | null
+          original_recorded_at: string | null
           photo_url: string | null
           recorded_at: string
           source: string | null
@@ -9025,12 +9030,17 @@ export type Database = {
           created_at?: string | null
           date: string
           device_info?: Json | null
+          edited_at?: string | null
+          edited_by?: string | null
           employee_id?: string | null
           id?: string
+          invalidated_at?: string | null
+          invalidated_by?: string | null
           is_valid?: boolean | null
           latitude?: number | null
           longitude?: number | null
           notes?: string | null
+          original_recorded_at?: string | null
           photo_url?: string | null
           recorded_at?: string
           source?: string | null
@@ -9043,12 +9053,17 @@ export type Database = {
           created_at?: string | null
           date?: string
           device_info?: Json | null
+          edited_at?: string | null
+          edited_by?: string | null
           employee_id?: string | null
           id?: string
+          invalidated_at?: string | null
+          invalidated_by?: string | null
           is_valid?: boolean | null
           latitude?: number | null
           longitude?: number | null
           notes?: string | null
+          original_recorded_at?: string | null
           photo_url?: string | null
           recorded_at?: string
           source?: string | null
