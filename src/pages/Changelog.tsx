@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.30',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ganhou a venda, o sistema já oferece lançar a receita',
+        description: 'Ao mover uma oportunidade para uma coluna de ganho, seja arrastando no funil ou trocando o estágio pelo próprio negócio, aparece o convite para lançar a receita daquele cliente, já com o valor da oportunidade preenchido. É um convite, não uma obrigação: dá para fechar e a venda continua ganha. E o sistema não oferece duas vezes para a mesma oportunidade, então não tem risco de lançar a receita repetida.',
+        category: 'recurso',
+      },
+      {
+        title: 'Transformar a oportunidade em ordem de serviço ou tarefa',
+        description: 'Ao abrir uma oportunidade no funil, agora existem os botões de criar ordem de serviço e criar tarefa, já com o cliente, o título e o responsável preenchidos. Antes era preciso sair do CRM, ir para outra tela e digitar tudo de novo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Criar oportunidade pelo cliente abre o formulário completo',
+        description: 'A ação de criar oportunidade a partir do cliente abria uma versão reduzida, que jogava o negócio sempre na primeira coluna do funil. Agora ela abre o mesmo formulário do CRM, onde dá para escolher a coluna de destino, a origem, o vendedor responsável e a probabilidade. O cliente já vem preenchido e fica travado, para não trocar sem querer.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.29',
     date: '17 de setembro de 2026',
     type: 'patch',

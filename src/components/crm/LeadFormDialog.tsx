@@ -33,9 +33,18 @@ interface LeadFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead?: Lead | null;
+  /**
+   * Cliente pré-selecionado quando o formulário é aberto a partir da ficha do
+   * cliente (Customers.tsx / CustomerDetail.tsx). O campo Cliente nasce
+   * preenchido e TRAVADO (não só pré-selecionado) — quem entrou por dentro da
+   * ficha do cliente pra criar uma oportunidade não tem intenção de trocar o
+   * cliente ali; permitir a troca seria abrir espaço pra acidente. Ignorado
+   * quando `lead` (edição) está presente.
+   */
+  presetCustomerId?: string | null;
 }
 
-export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps) {
+export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: LeadFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const tOrigins = MESSAGES[locale].app.equipment.origins;
@@ -76,7 +85,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
       const defaultStageId = stages.length > 0 ? stages[0].id : null;
       setFormData({
         title: '',
-        customer_id: null,
+        customer_id: presetCustomerId || null,
         value: 0,
         probability: 50,
         source: '',
@@ -88,7 +97,12 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     }
     // Depende do 1º estágio, não do array inteiro: o efeito só precisa rodar de
     // novo quando o default muda, e assim não depende da identidade da lista.
-  }, [lead, open, stages[0]?.id]);
+  }, [lead, open, stages[0]?.id, presetCustomerId]);
+
+  // Cliente travado: só quando vem pré-selecionado E não é edição (editar uma
+  // oportunidade existente nunca trava o cliente, mesmo que `presetCustomerId`
+  // tenha sido passado por engano pelo chamador).
+  const isCustomerLocked = !isEditing && !!presetCustomerId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,7 +157,11 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                 noneValue="none"
                 noneLabel={t.form.customerNone}
                 onCreated={(id) => handleChange('customer_id', id)}
+                disabled={isCustomerLocked}
               />
+              {isCustomerLocked && (
+                <p className="text-xs text-muted-foreground">{t.form.customerLockedHint}</p>
+              )}
             </div>
 
             <div className="space-y-2">

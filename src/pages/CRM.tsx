@@ -40,6 +40,8 @@ import { LeadCard } from '@/components/crm/LeadCard';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
 import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
+import { LeadWonRevenueDialog } from '@/components/financial/LeadWonRevenueDialog';
+import { useLeadWonRevenuePrompt } from '@/hooks/useLeadWonRevenuePrompt';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
@@ -92,6 +94,11 @@ export default function CRM() {
     () => leads.find((l) => l.id === detailLeadId) ?? null,
     [leads, detailLeadId],
   );
+
+  // Oferta de lançar a receita quando a oportunidade vai pro estágio de ganho.
+  // Só a oferta mora aqui; o gate de permissão, a trava de idempotência
+  // (leads.won_transaction_id) e o formulário ficam no hook/dialog.
+  const leadWonRevenue = useLeadWonRevenuePrompt();
 
   // Loss reason dialog
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
@@ -247,6 +254,7 @@ export default function CRM() {
   // destino é de perda (is_lost), abre o LossReasonDialog em vez de gravar direto.
   // `fromModal` fecha o modal de detalhe antes de abrir o LossReasonDialog pra
   // evitar dois Dialogs Radix empilhados (histórico de bug de foco/pointer-events).
+  // Se o destino é de ganho (is_won), grava e DEPOIS oferece lançar a receita.
   const requestStageChange = async (
     lead: Lead,
     stageId: string,
@@ -260,6 +268,27 @@ export default function CRM() {
       return;
     }
     await updateLead.mutateAsync({ id: lead.id, stage_id: stageId });
+
+    // Ganhou → oferece lançar a receita. É OFERTA, NUNCA BLOQUEIO: o estágio
+    // acima já foi gravado, e `maybeOpen` é no-op silencioso quando o usuário
+    // não pode lançar no Financeiro ou quando esta oportunidade já gerou
+    // receita. Vale pros três gatilhos que passam por aqui (arrastar no kanban,
+    // select do modal de detalhe e menu de ações do mobile).
+    if (targetStage?.is_won) {
+      await leadWonRevenue.maybeOpen(
+        {
+          leadId: lead.id,
+          leadTitle: lead.title,
+          customerId: lead.customer_id,
+          customerName: lead.customers?.name ?? null,
+          suggestedAmount: lead.value,
+        },
+        // Fecha o detalhe ANTES de a oferta abrir — dois Dialogs Radix
+        // empilhados já deram bug de foco/pointer-events (mesmo cuidado do
+        // LossReasonDialog logo acima).
+        { beforeOpen: opts?.fromModal ? () => setDetailOpen(false) : undefined },
+      );
+    }
   };
 
   const handleDrop = async (e: React.DragEvent, stageId: string) => {
@@ -793,6 +822,10 @@ export default function CRM() {
           onConfirm={handleLossConfirm}
           leadTitle={pendingLossDrop?.leadTitle}
         />
+        {/* Oferta de receita da oportunidade ganha (CRM → Financeiro).
+            Fica fora do modal de detalhe de propósito: a oferta também
+            nasce do arrastar no kanban e do menu de ações do mobile. */}
+        <LeadWonRevenueDialog {...leadWonRevenue.dialogProps} />
       </div>
     );
   }
@@ -998,6 +1031,10 @@ export default function CRM() {
         onConfirm={handleLossConfirm}
         leadTitle={pendingLossDrop?.leadTitle}
       />
+      {/* Oferta de receita da oportunidade ganha (CRM → Financeiro).
+          Fica fora do modal de detalhe de propósito: a oferta também
+          nasce do arrastar no kanban e do menu de ações do mobile. */}
+      <LeadWonRevenueDialog {...leadWonRevenue.dialogProps} />
     </div>
   );
 }

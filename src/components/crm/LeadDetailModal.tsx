@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   User, Phone, Mail, Calendar, DollarSign, TrendingUp,
-  MessageSquare, Clock, Plus, Send, Edit, Trash2, X
+  MessageSquare, Clock, Plus, Send, Edit, Trash2, X, Wrench, CalendarPlus
 } from 'lucide-react';
 import {
   useLeadInteractions,
@@ -28,6 +28,11 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { useAuth } from '@/contexts/AuthContext';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
+import { useTaskSubmit } from '@/hooks/useTaskSubmit';
+import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -53,7 +58,17 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const { stages, getStageHex } = useCrmStages();
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
   const { deleteLead } = useLeads();
-  
+
+  const { isAdminOrGestor, hasPermission } = useAuth();
+  const { createServiceOrder } = useServiceOrders();
+  const { submitTask } = useTaskSubmit();
+  // Tarefa ainda não tem permissão própria (fn:manage_tasks é Onda E do
+  // overhaul do CRM) — hoje o próprio Schedule.tsx usa o mesmo gate de OS
+  // pra oferecer a criação de tarefa (ver FAB "Nova Tarefa/OS"). Espelhamos
+  // o mesmo padrão aqui até a permissão dedicada existir.
+  const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
+  const canCreateTask = canCreateOS;
+
   const [newInteraction, setNewInteraction] = useState({
     type: '',
     description: '',
@@ -61,6 +76,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
     next_action_date: '',
   });
   const [isAddingInteraction, setIsAddingInteraction] = useState(false);
+  const [osFormOpen, setOsFormOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [creatingTask, setCreatingTask] = useState(false);
 
   if (!lead) return null;
 
@@ -108,6 +126,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
@@ -186,6 +205,24 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                 </Badge>
               )}
             </div>
+
+            {/* Atalhos: gerar OS ou Tarefa já com os dados desta oportunidade */}
+            {(canCreateOS || canCreateTask) && (
+              <div className="flex flex-wrap gap-2">
+                {canCreateOS && (
+                  <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setOsFormOpen(true)}>
+                    <Wrench className="h-4 w-4" />
+                    {t.detail.createOs}
+                  </Button>
+                )}
+                {canCreateTask && (
+                  <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setTaskFormOpen(true)}>
+                    <CalendarPlus className="h-4 w-4" />
+                    {t.detail.createTask}
+                  </Button>
+                )}
+              </div>
+            )}
 
             {/* Info Cards */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -440,5 +477,39 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    {/* Criar OS a partir da oportunidade — cliente, título e vendedor
+        responsável pré-preenchidos. Só criação (nunca edição aqui). */}
+    <ServiceOrderFormDialog
+      open={osFormOpen}
+      onOpenChange={setOsFormOpen}
+      defaultCustomerId={lead.customer_id ?? undefined}
+      defaultDescription={lead.title}
+      defaultAssigneeUserIds={lead.assigned_to ? [lead.assigned_to] : undefined}
+      onSubmit={async (data) => {
+        await createServiceOrder.mutateAsync(data as any);
+      }}
+      isLoading={createServiceOrder.isPending}
+    />
+
+    {/* Criar Tarefa a partir da oportunidade — mesmos dados pré-preenchidos. */}
+    <TaskFormDialog
+      open={taskFormOpen}
+      onOpenChange={setTaskFormOpen}
+      defaultCustomerId={lead.customer_id ?? undefined}
+      defaultTitle={lead.title}
+      defaultAssigneeUserIds={lead.assigned_to ? [lead.assigned_to] : undefined}
+      task={null}
+      isLoading={creatingTask}
+      onSubmit={async (data: TaskFormData) => {
+        setCreatingTask(true);
+        try {
+          await submitTask(data, null);
+        } finally {
+          setCreatingTask(false);
+        }
+      }}
+    />
+    </>
   );
 }

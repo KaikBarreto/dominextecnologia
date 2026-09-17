@@ -5085,6 +5085,7 @@ export type Database = {
           title: string
           updated_at: string
           value: number | null
+          won_transaction_id: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -5102,6 +5103,7 @@ export type Database = {
           title: string
           updated_at?: string
           value?: number | null
+          won_transaction_id?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -5119,6 +5121,7 @@ export type Database = {
           title?: string
           updated_at?: string
           value?: number | null
+          won_transaction_id?: string | null
         }
         Relationships: [
           {
@@ -5140,6 +5143,13 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_won_transaction_id_fkey"
+            columns: ["won_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
         ]
