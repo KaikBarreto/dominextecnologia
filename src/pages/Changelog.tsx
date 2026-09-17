@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.39',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Pagamento de cobrança online não some mais do Financeiro',
+        description: 'Se o lançamento a receber de uma cobrança online fosse apagado, por exemplo ao zerar as movimentações ou ao excluir a linha pela tela, a cobrança continuava valendo no gateway mas ficava sem espelho aqui. Quando o cliente pagasse, o dinheiro entrava e não aparecia em lugar nenhum. Agora, ao confirmar o pagamento, o sistema recria o lançamento sozinho, com uma observação explicando por que ele reapareceu. E se você tinha desmarcado a opção de lançar aquela cobrança no Financeiro, ela continua não sendo lançada: essa escolha passou a ser guardada.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.38',
     date: '19 de setembro de 2026',
     type: 'patch',

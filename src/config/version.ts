@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.38";
+export const APP_VERSION = "1.24.39";
 
-export const VERSION_NOTES = "A oportunidade do CRM agora tem tarefas próprias, com aba de lista, e a Agenda ganhou visão de lista e filtro entre tarefas e ordens de serviço.";
+export const VERSION_NOTES = "Se o lançamento de uma cobrança online for apagado, o pagamento do cliente não some mais: o sistema recria o lançamento ao confirmar, explicando por que ele reapareceu.";
