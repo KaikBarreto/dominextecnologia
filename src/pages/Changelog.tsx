@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.42',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Campos de valor não aceitavam a vírgula enquanto você digitava',
+        description: 'Ao digitar um valor como 17,99 no cadastro de material, na requisição de compra, na importação de nota fiscal, nos custos do serviço ou no cálculo de mão de obra, a vírgula era ignorada no meio da digitação e o valor acabava salvo como 1799. Só funcionava se você voltasse depois para colocar a vírgula no meio do número já digitado. Agora dá para digitar naturalmente, e apagar o campo deixa ele vazio em vez de travar em zero.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.41',
     date: '19 de setembro de 2026',
     type: 'patch',

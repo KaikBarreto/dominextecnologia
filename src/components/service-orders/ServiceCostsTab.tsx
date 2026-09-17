@@ -26,6 +26,9 @@ import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
 import { LinkedResourcesSection } from '@/components/service-orders/LinkedResourcesSection';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 
+/** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
+const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
+
 export function ServiceCostsTab() {
   const { locale, currency } = useAppLocaleContext();
   const tsc = MESSAGES[locale].app.crm.serviceCosts;
@@ -71,6 +74,7 @@ export function ServiceCostsTab() {
     if (!cost) {
       setHourlyRate(0);
       setHours(1);
+      setNumericText((prev) => ({ ...prev, hours: toNumericText(1) }));
       setNotes('');
       setExtraCosts([]);
       loadedRef.current = true;
@@ -78,6 +82,7 @@ export function ServiceCostsTab() {
     }
     setHourlyRate(Number(cost.hourly_rate ?? 0));
     setHours(Number(cost.hours ?? 1));
+    setNumericText((prev) => ({ ...prev, hours: toNumericText(Number(cost.hours ?? 1)) }));
     setNotes(cost.notes ?? '');
     setExtraCosts(((cost.extra_costs as any) ?? []) as ExtraCostLine[]);
     // Small delay to avoid triggering auto-save on load
@@ -108,12 +113,37 @@ export function ServiceCostsTab() {
   const [simAdmin, setSimAdmin] = useState<number>(defaultAdminRate);
   const [simProfit, setSimProfit] = useState<number>(defaultProfitRate);
 
+  // Texto cru dos campos decimais (horas + simulação de BDI). Existe porque um
+  // input controlado por NUMBER engole a vírgula no meio da digitação: "17,"
+  // volta pra 17, o campo re-renderiza "17" e o usuário, digitando 17,99
+  // naturalmente, acabava salvando 1799. Guardar a string crua no estado e
+  // parsear só no uso é a régua da casa (mesmo padrão do InventoryFormDialog).
+  const [numericText, setNumericText] = useState<Record<'hours' | 'simTax' | 'simAdmin' | 'simProfit', string>>({
+    hours: toNumericText(hours), simTax: toNumericText(simTax), simAdmin: toNumericText(simAdmin), simProfit: toNumericText(simProfit),
+  });
+
   useEffect(() => {
     // volta ao padrao quando os settings carregam ou troca de servico
     setSimTax(defaultTaxRate);
     setSimAdmin(defaultAdminRate);
     setSimProfit(defaultProfitRate);
+    setNumericText((prev) => ({
+      ...prev,
+      simTax: toNumericText(defaultTaxRate),
+      simAdmin: toNumericText(defaultAdminRate),
+      simProfit: toNumericText(defaultProfitRate),
+    }));
   }, [defaultTaxRate, defaultAdminRate, defaultProfitRate, serviceId]);
+
+  // Atualiza o texto exibido do campo E deriva o número usado no cálculo/salvo.
+  const handleNumericChange = (field: 'hours' | 'simTax' | 'simAdmin' | 'simProfit', raw: string) => {
+    setNumericText((prev) => ({ ...prev, [field]: raw }));
+    const num = raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0);
+    if (field === 'hours') setHours(num);
+    else if (field === 'simTax') setSimTax(num);
+    else if (field === 'simAdmin') setSimAdmin(num);
+    else setSimProfit(num);
+  };
 
   const isSimDirty = simTax !== defaultTaxRate || simAdmin !== defaultAdminRate || simProfit !== defaultProfitRate;
 
@@ -260,7 +290,7 @@ export function ServiceCostsTab() {
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">{tsc.laborHours}</Label>
-                          <NumericInput decimal value={String(hours ?? '')} onValueChange={(v) => setHours(Number(v.replace(',', '.')) || 0)} />
+                          <NumericInput decimal value={numericText.hours} onValueChange={(v) => handleNumericChange('hours', v)} />
                         </div>
                       </div>
                       <div className="rounded-lg border border-border p-3 bg-muted/30">
@@ -378,21 +408,31 @@ export function ServiceCostsTab() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div className="space-y-1.5">
                             <Label className="text-xs">{tsc.simTax}</Label>
-                            <NumericInput decimal value={String(simTax)} onValueChange={(v) => setSimTax(Number(v.replace(',', '.')) || 0)} />
+                            <NumericInput decimal value={numericText.simTax} onValueChange={(v) => handleNumericChange('simTax', v)} />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-xs">{tsc.simAdmin}</Label>
-                            <NumericInput decimal value={String(simAdmin)} onValueChange={(v) => setSimAdmin(Number(v.replace(',', '.')) || 0)} />
+                            <NumericInput decimal value={numericText.simAdmin} onValueChange={(v) => handleNumericChange('simAdmin', v)} />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-xs">{tsc.simProfit}</Label>
-                            <NumericInput decimal value={String(simProfit)} onValueChange={(v) => setSimProfit(Number(v.replace(',', '.')) || 0)} />
+                            <NumericInput decimal value={numericText.simProfit} onValueChange={(v) => handleNumericChange('simProfit', v)} />
                           </div>
                         </div>
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-xs text-muted-foreground">{tsc.simHint}</p>
                           {isSimDirty && (
-                            <Button variant="ghost" size="sm" onClick={() => { setSimTax(defaultTaxRate); setSimAdmin(defaultAdminRate); setSimProfit(defaultProfitRate); }}>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              setSimTax(defaultTaxRate);
+                              setSimAdmin(defaultAdminRate);
+                              setSimProfit(defaultProfitRate);
+                              setNumericText((prev) => ({
+                                ...prev,
+                                simTax: toNumericText(defaultTaxRate),
+                                simAdmin: toNumericText(defaultAdminRate),
+                                simProfit: toNumericText(defaultProfitRate),
+                              }));
+                            }}>
                               {tsc.simReset}
                             </Button>
                           )}
@@ -429,6 +469,7 @@ export function ServiceCostsTab() {
         onApply={(rate, h) => {
           setHourlyRate(rate);
           setHours(h);
+          setNumericText((prev) => ({ ...prev, hours: toNumericText(h) }));
         }}
       />
       <ExtraCostModal

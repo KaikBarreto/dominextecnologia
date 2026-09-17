@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,6 +35,33 @@ export function ServiceMaterialsList({ serviceId }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [purchasePrice, setPurchasePrice] = useState(0);
 
+  // Texto cru da quantidade (form de adicionar) e por linha da tabela. Existe
+  // porque um input controlado por NUMBER engole a vírgula no meio da digitação:
+  // "17," volta pra 17, o campo re-renderiza "17" e o usuário, digitando 17,99
+  // naturalmente, acabava salvando 1799. Guardar a string crua no estado e
+  // parsear só no uso é a régua da casa (mesmo padrão do InventoryFormDialog).
+  const [quantityText, setQuantityText] = useState('1');
+  const [rowQtyText, setRowQtyText] = useState<Record<string, string>>({});
+
+  // Sincroniza o texto por linha quando a lista de materiais carrega/muda, sem
+  // sobrescrever o que o usuário já está digitando numa linha rastreada.
+  useEffect(() => {
+    setRowQtyText((prev) => {
+      const next: Record<string, string> = {};
+      let changed = false;
+      for (const m of materials) {
+        if (prev[m.id] !== undefined) {
+          next[m.id] = prev[m.id];
+        } else {
+          next[m.id] = m.quantity != null ? String(m.quantity).replace('.', ',') : '';
+          changed = true;
+        }
+      }
+      if (!changed && Object.keys(prev).length === Object.keys(next).length) return prev;
+      return next;
+    });
+  }, [materials]);
+
   const inventoryOptions = useMemo(
     () => (items ?? []).map((i) => ({
       value: i.id,
@@ -70,7 +97,20 @@ export function ServiceMaterialsList({ serviceId }: Props) {
     setStockItemId('');
     setManualName('');
     setQuantity(1);
+    setQuantityText('1');
     setPurchasePrice(0);
+  };
+
+  // Atualiza o texto exibido do form de adicionar E deriva a quantidade numérica.
+  const handleQuantityText = (raw: string) => {
+    setQuantityText(raw);
+    setQuantity(raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0));
+  };
+
+  // Idem, por linha da tabela — mutate direto, igual ao comportamento anterior.
+  const handleRowQuantityChange = (id: string, raw: string) => {
+    setRowQtyText((prev) => ({ ...prev, [id]: raw }));
+    updateMaterial.mutate({ id, quantity: raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0) } as any);
   };
 
   return (
@@ -105,7 +145,7 @@ export function ServiceMaterialsList({ serviceId }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t.labelQuantity}</Label>
-            <NumericInput decimal value={String(quantity ?? '')} onValueChange={(v) => setQuantity(Number(v.replace(',', '.')) || 0)} />
+            <NumericInput decimal value={quantityText} onValueChange={handleQuantityText} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t.labelUnitCost}</Label>
@@ -155,8 +195,8 @@ export function ServiceMaterialsList({ serviceId }: Props) {
                     <TableCell>
                       <NumericInput
                         decimal
-                        value={m.quantity != null ? String(m.quantity) : ''}
-                        onValueChange={(v) => updateMaterial.mutate({ id: m.id, quantity: Number(v.replace(',', '.')) || 0 } as any)}
+                        value={rowQtyText[m.id] ?? (m.quantity != null ? String(m.quantity).replace('.', ',') : '')}
+                        onValueChange={(v) => handleRowQuantityChange(m.id, v)}
                       />
                     </TableCell>
                     <TableCell>
