@@ -4056,6 +4056,7 @@ export type Database = {
           accrual_amount: number | null
           amount: number
           amount_received: number
+          asaas_payment_id: string | null
           bill_id: string | null
           billing_reminder_resolved_at: string | null
           billing_reminder_resolved_by: string | null
@@ -4098,6 +4099,7 @@ export type Database = {
           accrual_amount?: number | null
           amount: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -4140,6 +4142,7 @@ export type Database = {
           accrual_amount?: number | null
           amount?: number
           amount_received?: number
+          asaas_payment_id?: string | null
           bill_id?: string | null
           billing_reminder_resolved_at?: string | null
           billing_reminder_resolved_by?: string | null
@@ -7772,6 +7775,7 @@ export type Database = {
           id: string
           labor_hours: number | null
           labor_value: number | null
+          lead_id: string | null
           notes: string | null
           order_number: number
           origin: string
@@ -7803,6 +7807,7 @@ export type Database = {
           service_state: string | null
           service_type_id: string | null
           service_zip_code: string | null
+          show_in_schedule: boolean
           snapshot_data: Json | null
           solution: string | null
           started_at: string | null
@@ -7843,6 +7848,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          lead_id?: string | null
           notes?: string | null
           order_number?: number
           origin?: string
@@ -7874,6 +7880,7 @@ export type Database = {
           service_state?: string | null
           service_type_id?: string | null
           service_zip_code?: string | null
+          show_in_schedule?: boolean
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null
@@ -7914,6 +7921,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          lead_id?: string | null
           notes?: string | null
           order_number?: number
           origin?: string
@@ -7945,6 +7953,7 @@ export type Database = {
           service_state?: string | null
           service_type_id?: string | null
           service_zip_code?: string | null
+          show_in_schedule?: boolean
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null
@@ -8001,6 +8010,13 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
@@ -8772,6 +8788,7 @@ export type Database = {
       }
       tenant_charges: {
         Row: {
+          asaas_installment_id: string | null
           asaas_payment_id: string | null
           billing_type: string | null
           boleto_url: string | null
@@ -8786,6 +8803,7 @@ export type Database = {
           net_value: number | null
           payment_date: string | null
           pix_copy_paste: string | null
+          post_to_finance: boolean
           public_short_code: string | null
           source_id: string | null
           source_type: string
@@ -8795,6 +8813,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -8809,6 +8828,7 @@ export type Database = {
           net_value?: number | null
           payment_date?: string | null
           pix_copy_paste?: string | null
+          post_to_finance?: boolean
           public_short_code?: string | null
           source_id?: string | null
           source_type?: string
@@ -8818,6 +8838,7 @@ export type Database = {
           value: number
         }
         Update: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
@@ -8832,6 +8853,7 @@ export type Database = {
           net_value?: number | null
           payment_date?: string | null
           pix_copy_paste?: string | null
+          post_to_finance?: boolean
           public_short_code?: string | null
           source_id?: string | null
           source_type?: string
@@ -9987,6 +10009,17 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: undefined
       }
+      apply_tenant_charge_installment_payment: {
+        Args: {
+          p_asaas_installment_id: string
+          p_asaas_payment_id: string
+          p_installment_number?: number
+          p_net_value?: number
+          p_paid_at?: string
+          p_value: number
+        }
+        Returns: Json
+      }
       apply_tenant_charge_payment: {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
         Returns: Json
@@ -10418,6 +10451,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      heal_orphan_tenant_charge_receivables: {
+        Args: { p_company_id: string; p_dry_run?: boolean }
+        Returns: Json
+      }
       immutable_unaccent:
         | { Args: { p_itens: string[] }; Returns: string }
         | { Args: { p_texto: string }; Returns: string }
@@ -10501,6 +10538,10 @@ export type Database = {
           p_technician_id: string
         }
         Returns: number
+      }
+      rebuild_tenant_charge_receivable: {
+        Args: { p_charge_id: string; p_reason?: string }
+        Returns: Json
       }
       recalc_amount_received: {
         Args: { p_parent_id: string }
@@ -10712,6 +10753,10 @@ export type Database = {
           p_nps: number
           p_os_id: string
         }
+        Returns: Json
+      }
+      tenant_charges_without_receivable: {
+        Args: { p_company_id: string }
         Returns: Json
       }
       transfer_stock_between: {

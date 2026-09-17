@@ -476,6 +476,16 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
+    // Lançar (ou não) no Financeiro é decisão POR COBRANÇA (pedido do CEO: "nem
+    // toda cobrança tem que necessariamente já criar a conta a receber"). O
+    // corpo manda um booleano explícito quando o front oferece a opção;
+    // ausência (frontend antigo, compatibilidade) cai no default histórico da
+    // conta (auto_post_to_finance, DEFAULT true).
+    const postToFinance =
+      typeof input.post_to_finance === "boolean"
+        ? input.post_to_finance
+        : account.auto_post_to_finance !== false;
+
     // 5) Grava tenant_charges (idempotência por asaas_payment_id UNIQUE).
     const shortCode = generateShortCode();
     const chargeRow = {
@@ -492,6 +502,11 @@ async function handleRequest(req: Request): Promise<Response> {
       due_date: dueDate,
       payment_date: null,
       description: description,
+      // Intenção de lançar (ou não) no Financeiro, gravada NA COBRANÇA. Sem
+      // isto, a auto-cura do recebível (RPC rebuild_tenant_charge_receivable)
+      // não teria como distinguir "o lançamento sumiu" de "o usuário recusou o
+      // lançamento nesta cobrança", e recriaria uma linha recusada de propósito.
+      post_to_finance: postToFinance,
       public_short_code: shortCode,
       invoice_url: payment?.invoiceUrl ?? null,
       pix_copy_paste: pixCopyPaste,
@@ -529,15 +544,8 @@ async function handleRequest(req: Request): Promise<Response> {
     }
     const finalShortCode = saved?.public_short_code ?? shortCode;
 
-    // Lançar (ou não) no Financeiro é decisão POR COBRANÇA (pedido do CEO: "nem
-    // toda cobrança tem que necessariamente já criar a conta a receber"). O
-    // corpo manda um booleano explícito quando o front oferece a opção;
-    // ausência (frontend antigo, compatibilidade) cai no default histórico da
-    // conta (auto_post_to_finance, DEFAULT true).
-    const postToFinance =
-      typeof input.post_to_finance === "boolean"
-        ? input.post_to_finance
-        : account.auto_post_to_finance !== false;
+    // `postToFinance` foi resolvido antes do INSERT de tenant_charges (a coluna
+    // post_to_finance grava a intenção; ver bloco acima).
 
     // Aviso pro usuário quando o lançamento no Financeiro falhar. A falha NUNCA
     // pode ser silenciosa (bug provado em produção: erro era só console.warn e

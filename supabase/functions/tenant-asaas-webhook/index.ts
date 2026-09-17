@@ -513,6 +513,48 @@ async function processPixAutoAuthEvent(
 }
 
 /**
+ * Grita quando o dinheiro entrou e o Financeiro NÃO refletiu.
+ *
+ * As RPCs de baixa devolvem `receivable_status`:
+ *   'ok'                      → o recebível espelho já existia e foi quitado
+ *   'healed'                  → estava faltando e foi recriado (auto-cura)
+ *   'missing' | 'skipped_*' | 'heal_failed'
+ *                             → NÃO há lançamento no Financeiro para este pagamento
+ *
+ * Tratar qualquer um dos últimos como sucesso silencioso foi exatamente o que
+ * fez R$ 3.683,00 de cobrança confirmada da Glacial não aparecer no Financeiro.
+ * `ok === false` (cobrança inexistente) continua avisando pelo mesmo caminho.
+ */
+function warnOnUnsettledCharge(
+  rpc: string,
+  paymentId: string,
+  data: unknown,
+  installmentId?: string,
+): void {
+  if (!data || typeof data !== "object") return;
+  const row = data as Record<string, unknown>;
+  const status = typeof row.receivable_status === "string" ? row.receivable_status : null;
+  // Campo ausente = RPC ainda na versão anterior à auto-cura (janela entre o
+  // deploy desta função e a aplicação da migration). Nesse caso NÃO inventa
+  // alarme: cai no comportamento antigo, que só avisa quando ok === false.
+  const settled = status === null || status === "ok" || status === "healed";
+  if (row.ok !== false && settled) return;
+
+  const where = installmentId ? `${paymentId} (installment ${installmentId})` : paymentId;
+  if (row.ok === false) {
+    console.warn(
+      `[tenant-webhook] ${rpc} não aplicou a baixa em ${where} — evento aceito sem efeito. ` +
+      `Resultado: ${JSON.stringify(data)}`,
+    );
+    return;
+  }
+  console.warn(
+    `[tenant-webhook] ${rpc}: pagamento ${where} confirmado SEM lançamento no Financeiro ` +
+    `(receivable_status=${status ?? "desconhecido"}). Resultado: ${JSON.stringify(data)}`,
+  );
+}
+
+/**
  * Processa o evento. Retorna true se concluiu (marcou 'processed'), false se falhou
  * (marcou 'error'). O caller usa o boolean pra decidir ACK 200 vs 500 (re-entrega).
  */
@@ -566,13 +608,7 @@ async function processEvent(
           p_installment_number: payment.installmentNumber ?? null,
         });
         if (error) throw new Error(error.message);
-        if (data && typeof data === "object" && (data as Record<string, unknown>).ok === false) {
-          console.warn(
-            `[tenant-webhook] apply_tenant_charge_installment_payment não encontrou a cobrança ` +
-            `(${payment.id}, installment ${payment.installment}) — evento aceito sem efeito. ` +
-            `Resultado: ${JSON.stringify(data)}`,
-          );
-        }
+        warnOnUnsettledCharge("apply_tenant_charge_installment_payment", payment.id, data, payment.installment);
         console.log(`[tenant-webhook] baixa de parcela aplicada ${payment.id}:`, JSON.stringify(data));
       } else {
         const { data, error } = await supabase.rpc("apply_tenant_charge_payment", {
@@ -581,12 +617,7 @@ async function processEvent(
           p_net: payment.netValue != null ? Number(payment.netValue) : null,
         });
         if (error) throw new Error(error.message);
-        if (data && typeof data === "object" && (data as Record<string, unknown>).ok === false) {
-          console.warn(
-            `[tenant-webhook] apply_tenant_charge_payment não encontrou a cobrança (${payment.id}) — ` +
-            `evento aceito sem efeito. Resultado: ${JSON.stringify(data)}`,
-          );
-        }
+        warnOnUnsettledCharge("apply_tenant_charge_payment", payment.id, data);
         console.log(`[tenant-webhook] baixa aplicada ${payment.id}:`, JSON.stringify(data));
       }
     } else if (
