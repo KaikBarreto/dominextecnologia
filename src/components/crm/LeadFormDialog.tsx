@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectSectionLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -26,6 +28,7 @@ import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { useCrmPipelines } from '@/hooks/useCrmPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -44,9 +47,18 @@ interface LeadFormDialogProps {
    * quando `lead` (edição) está presente.
    */
   presetCustomerId?: string | null;
+  /**
+   * Funil selecionado na tela de onde este formulário foi aberto (Onda D —
+   * multi-pipeline). Só usado pra escolher o ESTÁGIO PADRÃO de uma
+   * oportunidade NOVA: sem isso, "stages[0]" seria o primeiro estágio em
+   * ordem global da empresa, que pode pertencer a QUALQUER funil — criar uma
+   * oportunidade a partir do Funil B não pode fazer ela nascer no Funil A por
+   * acaso. Ignorado em edição (o estágio já vem do lead).
+   */
+  presetPipelineId?: string | null;
 }
 
-export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: LeadFormDialogProps) {
+export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, presetPipelineId }: LeadFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const tOrigins = MESSAGES[locale].app.equipment.origins;
@@ -55,7 +67,25 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
   const { customers } = useCustomers();
   const { users } = useUsers();
   const { stages, getStageHex } = useCrmStages();
+  // Onda D — multi-pipeline: com mais de um funil, as etapas do select
+  // aparecem agrupadas por funil (nome do funil como cabeçalho de seção).
+  // Escolher uma etapa de outro funil MOVE a oportunidade pra ele — o banco
+  // resolve pipeline_id sozinho a partir do stage_id (ver useLeads.ts / a
+  // migration do D1); esta tela só avisa que isso vai acontecer.
+  const { pipelines } = useCrmPipelines();
+  const hasMultiplePipelines = pipelines.length > 1;
   const isEditing = !!lead;
+
+  // Primeiro estágio do funil de onde a tela veio (presetPipelineId), se veio
+  // de algum; senão o primeiro em ordem global (comportamento pré-D2).
+  // Memoizado num id só (string) — não a lista inteira — porque o efeito de
+  // reset do formulário abaixo depende deste valor, e depender do array
+  // `stages` diretamente o rodaria de novo a cada refetch que troca a
+  // identidade do array sem trocar o conteúdo.
+  const defaultStageIdForNewLead = useMemo(() => {
+    const scoped = presetPipelineId ? stages.filter((s) => s.pipeline_id === presetPipelineId) : stages;
+    return (scoped.length > 0 ? scoped[0].id : stages[0]?.id) ?? null;
+  }, [stages, presetPipelineId]);
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
     title: '',
@@ -91,23 +121,22 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
         lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : []
       );
     } else {
-      // Set default stage to first stage if available
-      const defaultStageId = stages.length > 0 ? stages[0].id : null;
       setFormData({
         title: '',
         customer_id: presetCustomerId || null,
         value: 0,
         probability: 50,
         source: '',
-        stage_id: defaultStageId,
+        stage_id: defaultStageIdForNewLead,
         expected_close_date: null,
         notes: '',
       });
       setAssigneeUserIds([]);
     }
-    // Depende do 1º estágio, não do array inteiro: o efeito só precisa rodar de
-    // novo quando o default muda, e assim não depende da identidade da lista.
-  }, [lead, open, stages[0]?.id, presetCustomerId]);
+    // Depende do id do estágio padrão (primitivo), não do array inteiro: o
+    // efeito só precisa rodar de novo quando o default muda de fato, e assim
+    // não depende da identidade da lista (que troca a cada refetch).
+  }, [lead, open, defaultStageIdForNewLead, presetCustomerId]);
 
   // Cliente travado: só quando vem pré-selecionado E não é edição (editar uma
   // oportunidade existente nunca trava o cliente, mesmo que `presetCustomerId`
@@ -257,25 +286,55 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId }: L
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t.form.stageNone}</SelectItem>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      <div className="flex items-center gap-2">
-                        {stage.icon ? (
-                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
-                            <IconPreview name={stage.icon} className="h-3 w-3" />
-                          </span>
-                        ) : (
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: getStageHex(stage.color) }}
-                          />
-                        )}
-                        {stage.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {hasMultiplePipelines
+                    ? pipelines.map((pipeline) => {
+                        const stagesInPipeline = stages.filter((s) => s.pipeline_id === pipeline.id);
+                        if (stagesInPipeline.length === 0) return null;
+                        return (
+                          <SelectGroup key={pipeline.id}>
+                            <SelectSectionLabel>{pipeline.name}</SelectSectionLabel>
+                            {stagesInPipeline.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                <div className="flex items-center gap-2">
+                                  {stage.icon ? (
+                                    <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                                      <IconPreview name={stage.icon} className="h-3 w-3" />
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: getStageHex(stage.color) }}
+                                    />
+                                  )}
+                                  {stage.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        );
+                      })
+                    : stages.map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          <div className="flex items-center gap-2">
+                            {stage.icon ? (
+                              <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                                <IconPreview name={stage.icon} className="h-3 w-3" />
+                              </span>
+                            ) : (
+                              <span
+                                className="h-2.5 w-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: getStageHex(stage.color) }}
+                              />
+                            )}
+                            {stage.name}
+                          </div>
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
+              {hasMultiplePipelines && (
+                <p className="text-xs text-muted-foreground">{t.form.stagePipelineHint}</p>
+              )}
             </div>
           </div>
 

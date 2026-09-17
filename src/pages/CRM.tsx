@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -11,6 +11,7 @@ import {
   Target,
   Settings2,
   Webhook,
+  Workflow,
   LayoutList,
   LayoutGrid,
   User,
@@ -33,13 +34,16 @@ import {
 } from '@/hooks/useLeads';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { useCrmPipelines } from '@/hooks/useCrmPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
+import { PipelineManagerDialog } from '@/components/crm/PipelineManagerDialog';
 import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { LeadWonRevenueDialog } from '@/components/financial/LeadWonRevenueDialog';
 import { useLeadWonRevenuePrompt } from '@/hooks/useLeadWonRevenuePrompt';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -100,7 +104,8 @@ export default function CRM() {
   const dfLocale = DATE_FNS_LOCALES[locale];
   const { leads, isLoading, updateLead } = useLeads();
   const { users } = useUsers();
-  const { stages, isLoading: stagesLoading, seedDefaultStages, reorderStages } = useCrmStages();
+  const { stages: allStages, isLoading: stagesLoading, seedDefaultStages, reorderStages } = useCrmStages();
+  const { pipelines, isLoading: pipelinesLoading, defaultPipeline } = useCrmPipelines();
 
   // Onda C — "cada um vê as suas": filtro no client é UX, a RLS (policy
   // "Leads visiveis apenas ao responsavel") já é quem garante a segurança de
@@ -117,6 +122,64 @@ export default function CRM() {
       return (lead.assignees || []).some((a) => a.user_id === uid);
     });
   }, [leads, canManageCrm, user?.id]);
+
+  // Onda D — multi-pipeline: qual funil está selecionado no topo da tela.
+  // Persiste por USUÁRIO em localStorage, namespaced pelo user.id — mesmo
+  // padrão já usado em useDomiflixAvatar/useDomiflixDisplayName pra
+  // preferência que precisa sobreviver ao reload sem exigir uma coluna nova
+  // em user_preferences (fora do escopo do D2: mexer em schema é o D1/D3).
+  const pipelineStorageKey = user?.id ? `crm_selected_pipeline_${user.id}` : null;
+  const [storedPipelineId, setStoredPipelineId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pipelineStorageKey) {
+      setStoredPipelineId(null);
+      return;
+    }
+    try {
+      setStoredPipelineId(localStorage.getItem(pipelineStorageKey));
+    } catch {
+      setStoredPipelineId(null);
+    }
+  }, [pipelineStorageKey]);
+
+  // Tap num chip de estágio (StatCarousel, mobile) filtra a lista por aquele
+  // estágio. Declarado aqui (antes de selectPipeline) porque trocar de funil
+  // precisa limpar esse filtro — senão a lista mobile "trava vazia" mostrando
+  // um estágio que só existia no funil anterior.
+  const [stageFilter, setStageFilter] = useState<string | null>(null);
+
+  const selectPipeline = (id: string) => {
+    setStoredPipelineId(id);
+    if (pipelineStorageKey) {
+      try {
+        localStorage.setItem(pipelineStorageKey, id);
+      } catch {
+        // Storage indisponível (modo privado/quota) — a seleção some no reload,
+        // mas a tela segue funcionando normalmente nesta sessão.
+      }
+    }
+    // Filtro de estágio (lista mobile) pertence ao funil anterior — trocar de
+    // funil sem limpar deixaria a lista vazia "sem explicação" pro usuário.
+    setStageFilter(null);
+  };
+
+  // Funil resolvido: a preferência salva, se ainda pertencer à empresa (pode
+  // ter sido excluída); senão o padrão da empresa; senão o primeiro por posição.
+  const selectedPipelineId = useMemo(() => {
+    if (storedPipelineId && pipelines.some((p) => p.id === storedPipelineId)) return storedPipelineId;
+    return defaultPipeline?.id ?? pipelines[0]?.id ?? null;
+  }, [storedPipelineId, pipelines, defaultPipeline]);
+
+  const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
+
+  // Estágios do funil selecionado — nunca os de outro funil da mesma empresa.
+  // Fallback pro conjunto todo enquanto nenhum funil foi resolvido ainda
+  // (bootstrap raríssimo de empresa sem nenhum funil), pra não esconder o
+  // empty-state "Configure seu funil de vendas" atrás de uma lista vazia.
+  const stages = useMemo(
+    () => (selectedPipelineId ? allStages.filter((s) => s.pipeline_id === selectedPipelineId) : allStages),
+    [allStages, selectedPipelineId],
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -150,11 +213,25 @@ export default function CRM() {
   // Mobile-only: alternância List/Kanban. Default mobile = Lista; desktop = Kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
+  // visibleLeads recortado só pelo funil selecionado (sem os demais filtros).
+  // Existe pra distinguir, no empty-state, "este funil não tem NENHUMA
+  // oportunidade ainda" de "tem oportunidade, só não bate com o filtro" — se
+  // comparasse com visibleLeads (todos os funis), abrir um funil vazio
+  // enquanto outro funil tem leads mostraria a mensagem errada.
+  const pipelineLeads = useMemo(
+    () => (selectedPipelineId ? visibleLeads.filter((lead) => lead.pipeline_id === selectedPipelineId) : visibleLeads),
+    [visibleLeads, selectedPipelineId],
+  );
+
   // Apply filters — em cima de visibleLeads (já recortado por permissão),
   // nunca de `leads` cru, senão total/valor no topo mentiriam pra quem não
   // tem fn:manage_crm.
   const filteredLeads = useMemo(() => {
     return visibleLeads.filter(lead => {
+      // Onda D — multi-pipeline: só oportunidades do funil selecionado no
+      // topo. leads.pipeline_id é mantido por trigger a partir do stage_id
+      // (nunca escrito pelo client) — ver migration 20260918100000.
+      if (selectedPipelineId && lead.pipeline_id !== selectedPipelineId) return false;
       if (filters.search) {
         const matchesTitle = fuzzyIncludes(lead.title, filters.search);
         const matchesCustomer = fuzzyIncludes(lead.customers?.name, filters.search);
@@ -179,7 +256,7 @@ export default function CRM() {
       if (filters.maxValue && (lead.value || 0) > parseFloat(filters.maxValue)) return false;
       return true;
     });
-  }, [visibleLeads, filters]);
+  }, [visibleLeads, filters, selectedPipelineId]);
 
   // Group filtered leads by stage_id — assign leads without stage to the first stage
   const leadsByStage = useMemo(() => {
@@ -413,7 +490,6 @@ export default function CRM() {
 
   // Stat items pro StatCarousel: 1 chip por stage (count), com cor do stage.
   // Tap no chip filtra leads daquela stage (na view list só mostra essa stage).
-  const [stageFilter, setStageFilter] = useState<string | null>(null);
   const statItems: StatCarouselItem[] = stages.map((stage) => ({
     key: stage.id,
     label: stage.name,
@@ -501,12 +577,21 @@ export default function CRM() {
 
       <div className="pt-2 border-t space-y-2">
         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filterConfig}</label>
-        <StageManagerDialog>
+        <StageManagerDialog
+          pipelineId={selectedPipelineId ?? undefined}
+          pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
+        >
           <Button variant="outline" className="w-full justify-start gap-2" type="button">
             <Settings2 className="h-4 w-4" />
             {t.manageStages}
           </Button>
         </StageManagerDialog>
+        <PipelineManagerDialog>
+          <Button variant="outline" className="w-full justify-start gap-2" type="button">
+            <Workflow className="h-4 w-4" />
+            {t.managePipelines}
+          </Button>
+        </PipelineManagerDialog>
         <WebhookManagerDialog>
           <Button variant="outline" className="w-full justify-start gap-2" type="button">
             <Webhook className="h-4 w-4" />
@@ -559,15 +644,15 @@ export default function CRM() {
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="h-5 w-5" />
           <h2 className="text-lg font-semibold">{t.pipeline}</h2>
-          {filteredLeads.length !== visibleLeads.length && (
+          {filteredLeads.length !== pipelineLeads.length && (
             <Badge variant="outline" className="ml-2">
-              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(visibleLeads.length))}
+              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(pipelineLeads.length))}
             </Badge>
           )}
         </div>
       )}
 
-      {(isLoading || stagesLoading) ? (
+      {(isLoading || stagesLoading || pipelinesLoading) ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="min-w-[280px] flex-shrink-0">
@@ -590,12 +675,15 @@ export default function CRM() {
                 label: seedDefaultStages.isPending ? t.creatingStages : t.startDefaultStages,
                 onClick: () => {
                   if (seedDefaultStages.isPending) return;
-                  seedDefaultStages.mutate();
+                  seedDefaultStages.mutate(selectedPipelineId ?? undefined);
                 },
               }}
             />
             <div className="flex justify-center">
-              <StageManagerDialog>
+              <StageManagerDialog
+                pipelineId={selectedPipelineId ?? undefined}
+                pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
+              >
                 <Button variant="outline" size="sm" className="gap-2">
                   <Settings2 className="h-4 w-4" />
                   {t.customizeStages}
@@ -609,10 +697,10 @@ export default function CRM() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">
-              {visibleLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
+              {pipelineLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
             </h3>
             <p className="text-muted-foreground max-w-sm">
-              {visibleLeads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
+              {pipelineLeads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
             </p>
           </CardContent>
         </Card>
@@ -698,7 +786,7 @@ export default function CRM() {
   // ------------------------------------------------------------------
   const mobileListBlock = (
     <>
-      {isLoading || stagesLoading ? (
+      {isLoading || stagesLoading || pipelinesLoading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-[72px] w-full" />
@@ -707,8 +795,8 @@ export default function CRM() {
       ) : mobileListLeads.length === 0 ? (
         <EmptyState
           icon={<TrendingUp className="h-12 w-12" />}
-          title={visibleLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
-          description={visibleLeads.length === 0 ? t.emptyMobileLeadDesc : t.emptyMobileDesc}
+          title={pipelineLeads.length === 0 ? t.emptyOpportunities : t.emptySearch}
+          description={pipelineLeads.length === 0 ? t.emptyMobileLeadDesc : t.emptyMobileDesc}
         />
       ) : (
         <div className="rounded-xl border bg-card overflow-hidden">
@@ -798,6 +886,47 @@ export default function CRM() {
   );
 
   // ------------------------------------------------------------------
+  // SELETOR DE FUNIL — Onda D (multi-pipeline). Só aparece quando a empresa
+  // tem MAIS DE UM funil; empresa com um funil só (a maioria) nunca vê isso.
+  // Mobile reusa o padrão de pills roláveis com fade nas bordas (MobilePillTabs,
+  // já usado em FinanceContas/SettingsSidebarLayout); desktop usa o mesmo
+  // padrão visual que esses lugares usam fora do mobile: botões pill num flex
+  // que quebra linha (a empresa raramente tem mais funis do que cabe numa
+  // linha, e diferente da Agenda/Financeiro no mobile não precisa de scroll
+  // horizontal porque o desktop tem largura de sobra).
+  // ------------------------------------------------------------------
+  const pipelineSelector = pipelines.length > 1 && (
+    isMobile ? (
+      <MobilePillTabs
+        tabs={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+        activeTab={selectedPipelineId ?? ''}
+        onTabChange={selectPipeline}
+      />
+    ) : (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {t.pipelineSelectorLabel}
+        </span>
+        {pipelines.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => selectPipeline(p.id)}
+            className={cn(
+              'inline-flex items-center h-9 px-3.5 rounded-full text-sm font-medium transition-all',
+              selectedPipelineId === p.id
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted/50 text-muted-foreground hover:bg-muted',
+            )}
+          >
+            {p.name}
+          </button>
+        ))}
+      </div>
+    )
+  );
+
+  // ------------------------------------------------------------------
   // RENDER
   // ------------------------------------------------------------------
   if (isMobile) {
@@ -808,6 +937,8 @@ export default function CRM() {
           subtitle={t.subtitleMobile}
           icon={TrendingUp}
         />
+
+        {pipelineSelector}
 
         {summaryRow}
 
@@ -833,7 +964,7 @@ export default function CRM() {
 
         {/* StatCarousel — 1 chip por stage; tap filtra (apenas view lista). */}
         {stages.length > 0 && viewMode === 'list' && (
-          <StatCarousel items={statItems} loading={isLoading || stagesLoading} />
+          <StatCarousel items={statItems} loading={isLoading || stagesLoading || pipelinesLoading} />
         )}
 
         {/* Indicador da stage filtrada (mobile lista) */}
@@ -860,6 +991,7 @@ export default function CRM() {
           open={dialogOpen}
           onOpenChange={handleDialogClose}
           lead={editingLead}
+          presetPipelineId={selectedPipelineId}
         />
         <LeadDetailModal
           open={detailOpen}
@@ -899,11 +1031,19 @@ export default function CRM() {
         icon={TrendingUp}
         actions={
           <>
-            <StageManagerDialog>
+            <StageManagerDialog
+              pipelineId={selectedPipelineId ?? undefined}
+              pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
+            >
               <Button variant="outline" size="icon" title={t.manageStages}>
                 <Settings2 className="h-4 w-4" />
               </Button>
             </StageManagerDialog>
+            <PipelineManagerDialog>
+              <Button variant="outline" size="icon" title={t.managePipelines}>
+                <Workflow className="h-4 w-4" />
+              </Button>
+            </PipelineManagerDialog>
             <WebhookManagerDialog>
               <Button variant="outline" size="icon" title={t.configWebhooks}>
                 <Webhook className="h-4 w-4" />
@@ -916,6 +1056,8 @@ export default function CRM() {
           </>
         }
       />
+
+      {pipelineSelector}
 
       {/* Stats Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
@@ -1071,6 +1213,7 @@ export default function CRM() {
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         lead={editingLead}
+        presetPipelineId={selectedPipelineId}
       />
       <LeadDetailModal
         open={detailOpen}

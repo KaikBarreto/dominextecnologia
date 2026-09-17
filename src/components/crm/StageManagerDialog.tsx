@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Trophy, XCircle } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -27,13 +27,33 @@ import { MESSAGES } from '@/lib/i18n/messages';
 
 interface StageManagerDialogProps {
   children: React.ReactNode;
+  /**
+   * Funil dono das etapas gerenciadas aqui (Onda D — multi-pipeline). Toda
+   * etapa listada/criada/reordenada neste diálogo pertence a ESTE funil —
+   * outros funis da empresa não aparecem nem são afetados. Opcional só pro
+   * bootstrap raríssimo de empresa sem nenhum funil ainda (o trigger do
+   * banco cria o funil padrão sozinho nesse caso).
+   */
+  pipelineId?: string;
+  /** Nome do funil, só pra deixar claro no título do diálogo qual funil está
+   *  sendo editado quando a empresa tem mais de um. */
+  pipelineName?: string;
 }
 
-export function StageManagerDialog({ children }: StageManagerDialogProps) {
+export function StageManagerDialog({ children, pipelineId, pipelineName }: StageManagerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
-  const { stages, createStage, updateStage, deleteStage, reorderStages, getStageColorClass } =
+  const { stages: allStages, createStage, updateStage, deleteStage, reorderStages, getStageColorClass } =
     useCrmStages();
+  // Só as etapas do funil sendo gerenciado — dragar/reordenar aqui NUNCA deve
+  // reindexar a posição de etapas de OUTRO funil da mesma empresa.
+  const stages = useMemo(
+    () => (pipelineId ? allStages.filter((s) => s.pipeline_id === pipelineId) : allStages),
+    [allStages, pipelineId],
+  );
+  const dialogTitle = pipelineName
+    ? t.stages.titleWithPipeline.replace('{pipeline}', pipelineName)
+    : t.stages.title;
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -55,10 +75,19 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   const dragNodeRef = useRef<HTMLDivElement | null>(null);
 
   const handleCreateStage = () => {
-    if (!newStage.name.trim()) return;
-    createStage.mutate(newStage, {
-      onSuccess: () => setNewStage({ name: '', color: '#6B7280', icon: null, is_won: false, is_lost: false }),
-    });
+    // pipelineId é obrigatório pro insert (CrmStageInsert.pipeline_id não é
+    // mais opcional, espelhando a coluna NOT NULL do banco). Sem funil
+    // resolvido (bootstrap raríssimo de empresa sem nenhum pipeline ainda),
+    // este diálogo simplesmente não cria etapa avulsa — esse caso é coberto
+    // por "Começar com estágios padrão" (seedDefaultStages), que aceita
+    // funil ausente e deixa o trigger do banco criar um.
+    if (!newStage.name.trim() || !pipelineId) return;
+    createStage.mutate(
+      { ...newStage, pipeline_id: pipelineId },
+      {
+        onSuccess: () => setNewStage({ name: '', color: '#6B7280', icon: null, is_won: false, is_lost: false }),
+      },
+    );
   };
 
   const handleUpdateStage = (stage: CrmStage, updates: Partial<CrmStage>) => {
@@ -261,7 +290,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   return (
     <>
       <span onClick={() => setOpen(true)}>{children}</span>
-      <ResponsiveModal open={open} onOpenChange={setOpen} title={t.stages.title}>
+      <ResponsiveModal open={open} onOpenChange={setOpen} title={dialogTitle}>
         <div className="space-y-4">
           <div className="space-y-3 p-3 rounded-lg border-2 border-dashed border-muted">
             <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
@@ -300,7 +329,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
               />
               <Button
                 onClick={handleCreateStage}
-                disabled={!newStage.name.trim() || createStage.isPending}
+                disabled={!newStage.name.trim() || !pipelineId || createStage.isPending}
                 size="icon"
               >
                 <Plus className="h-4 w-4" />

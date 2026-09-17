@@ -7,7 +7,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectSectionLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   User, Phone, Mail, Calendar, DollarSign, TrendingUp,
@@ -21,6 +29,7 @@ import {
   useLeads
 } from '@/hooks/useLeads';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { useCrmPipelines } from '@/hooks/useCrmPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
 import { OriginBadge } from '@/components/crm/OriginBadge';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -58,6 +67,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const dfLocale = DATE_FNS_LOCALES[locale];
   const interactionTypes = getInteractionTypes(locale);
   const { stages, getStageHex } = useCrmStages();
+  // Onda D — multi-pipeline: mesmo agrupamento por funil do LeadFormDialog.
+  const { pipelines } = useCrmPipelines();
+  const hasMultiplePipelines = pipelines.length > 1;
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
   const { deleteLead, claimLead } = useLeads();
 
@@ -189,23 +201,50 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   <SelectValue placeholder={t.form.stagePlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      <div className="flex items-center gap-2">
-                        {stage.icon ? (
-                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
-                            <IconPreview name={stage.icon} className="h-3 w-3" />
-                          </span>
-                        ) : (
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: getStageHex(stage.color) }}
-                          />
-                        )}
-                        {stage.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {hasMultiplePipelines
+                    ? pipelines.map((pipeline) => {
+                        const stagesInPipeline = stages.filter((s) => s.pipeline_id === pipeline.id);
+                        if (stagesInPipeline.length === 0) return null;
+                        return (
+                          <SelectGroup key={pipeline.id}>
+                            <SelectSectionLabel>{pipeline.name}</SelectSectionLabel>
+                            {stagesInPipeline.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                <div className="flex items-center gap-2">
+                                  {stage.icon ? (
+                                    <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                                      <IconPreview name={stage.icon} className="h-3 w-3" />
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: getStageHex(stage.color) }}
+                                    />
+                                  )}
+                                  {stage.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        );
+                      })
+                    : stages.map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          <div className="flex items-center gap-2">
+                            {stage.icon ? (
+                              <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                                <IconPreview name={stage.icon} className="h-3 w-3" />
+                              </span>
+                            ) : (
+                              <span
+                                className="h-2.5 w-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: getStageHex(stage.color) }}
+                              />
+                            )}
+                            {stage.name}
+                          </div>
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
               {currentStage && (
@@ -216,6 +255,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   {currentStage.icon && <IconPreview name={currentStage.icon} className="h-3 w-3" />}
                   {currentStage.name}
                 </Badge>
+              )}
+              {hasMultiplePipelines && (
+                <p className="w-full text-xs text-muted-foreground">{t.detail.stagePipelineHint}</p>
               )}
             </div>
 
