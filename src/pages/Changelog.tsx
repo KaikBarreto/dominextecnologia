@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.43',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Montar a lista de materiais do orçamento ficou muito mais rápido',
+        description: 'Agora existe um botão "Adicionar materiais" que abre a busca já pronta para digitar, com o teclado subindo sozinho. Você digita parte do nome, do código ou da categoria, e cada material da lista aparece com a quantidade do lado. Dá para marcar vários de uma vez, com a quantidade de cada um, e incluir tudo no orçamento com um toque só. Antes era preciso repetir a busca inteira para cada item, o que atrapalhava quem monta orçamento pelo celular durante a visita.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Quantidade de material aceita valor quebrado',
+        description: 'Materiais vendidos por medida agora podem ser lançados como 2,5 metros ou 0,5 quilo. Antes o campo só aceitava número inteiro. A unidade de cada material aparece na busca e na lista, para não ter dúvida na hora de digitar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Lista de materiais do orçamento refeita para o celular',
+        description: 'Em telas pequenas os materiais já incluídos viram cartões, com nome, quantidade e preço legíveis, em vez de uma tabela espremida que cortava o nome do item. A observação de cada material agora fica recolhida e só aparece quando você pede.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.42',
     date: '17 de setembro de 2026',
     type: 'patch',
