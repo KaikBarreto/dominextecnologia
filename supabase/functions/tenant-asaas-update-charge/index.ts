@@ -4,6 +4,11 @@
 // VENCIMENTO e/ou DESCRIÇÃO de uma cobrança AINDA NÃO PAGA na conta Asaas DO
 // TENANT (chave BYO lida do Vault) e só depois alinha o nosso banco.
 //
+// VALOR DE PARCELA DE CONTRATO NÃO MUDA: cobrança com source_type
+// 'contract_installment' aceita alterar vencimento e descrição, mas recusa
+// alterar o valor. O valor tem que continuar igual ao da parcela, senão o
+// pagamento quita a parcela inteira por menos dinheiro.
+//
 // ORDEM É LEI: gateway PRIMEIRO, nosso banco depois.
 //   · gateway recusou  -> não encostamos no nosso banco (ok:false).
 //   · gateway aceitou e o nosso banco falhou -> ok:true + finance_warning.
@@ -15,9 +20,12 @@
 // e de novo dentro da RPC.
 //
 // ESPELHO NO FINANCEIRO: o "a receber" ligado por tenant_charge_id acompanha o
-// novo valor/vencimento/descrição — MENOS quando já tem baixa (is_paid ou
-// recebimento parcial). Nesse caso a linha fica intacta e o usuário é avisado
-// por finance_warning. Dinheiro baixado não é sobrescrito em silêncio.
+// novo valor/vencimento/descrição — MENOS em dois casos, em que a linha fica
+// intacta e o usuário é avisado por finance_warning:
+//   · já tem baixa (is_paid ou recebimento parcial) -> mirror_locked;
+//   · é PARCELA DE CONTRATO -> mirror_locked_contract (a parcela em aberto não
+//     é reescrita por uma cobrança: quem manda nela é o contrato).
+// Dinheiro baixado e parcela de contrato não são sobrescritos em silêncio.
 //
 // CONTRATO COM A UI (fixado):
 //   req  { charge_id, value?, due_date?, description? }
@@ -180,7 +188,8 @@ async function handleRequest(req: Request): Promise<Response> {
     const { data: chargeData } = await supabase
       .from("tenant_charges")
       .select(
-        "id, asaas_payment_id, status, value, due_date, description, billing_type, invoice_url, boleto_url, pix_copy_paste",
+        "id, asaas_payment_id, status, value, due_date, description, billing_type, " +
+          "invoice_url, boleto_url, pix_copy_paste, source_type, source_id",
       )
       .eq("id", chargeId)
       .eq("company_id", companyId)
@@ -197,6 +206,33 @@ async function handleRequest(req: Request): Promise<Response> {
         "not_editable",
         "Esta cobrança já foi paga ou estornada e não pode mais ser alterada.",
       );
+    }
+
+    // ---- 1.1 PARCELA DE CONTRATO: o VALOR é intocável.
+    //
+    // Na criação (tenant-asaas-create-charge) o valor da cobrança é obrigado a
+    // ser igual ao da parcela, porque a baixa do pagamento
+    // (apply_tenant_charge_payment) marca a parcela inteira como recebida SEM
+    // olhar quanto foi pago. Sem esta trava aqui, a porta do lado continuava
+    // aberta: cobrar R$ 480, editar para R$ 50, e o pagamento de R$ 50 quitaria
+    // os R$ 480 no Financeiro. R$ 430 sumiriam sem ninguém ver.
+    //
+    // O tipo da cobrança é lido do NOSSO BANCO, nunca do payload: quem chama
+    // não pode escolher de que tipo a cobrança é para escapar da regra.
+    //
+    // Reenviar o MESMO valor não é alteração (o front manda a imagem inteira do
+    // formulário quando o usuário só mexeu no vencimento). Tolerância de 1
+    // centavo, igual à da criação.
+    const isContractInstallment = String(charge.source_type ?? "") === "contract_installment";
+    if (isContractInstallment && wantsValue) {
+      const currentValue = Math.round(Number(charge.value) * 100) / 100;
+      if (Math.abs((newValue as number) - currentValue) > 0.005) {
+        return fail(
+          req,
+          "invalid_input",
+          "O valor de uma cobrança de parcela de contrato não pode ser alterado, porque ele precisa ser igual ao da parcela. Para cobrar outro valor, cancele esta cobrança e gere uma nova.",
+        );
+      }
     }
 
     const asaasPaymentId: string | null = charge.asaas_payment_id ?? null;
@@ -411,10 +447,24 @@ async function applyLocally(
     }, 200);
   }
 
+  // Os avisos SOMAM, nunca se substituem: a mesma cobrança pode ter um espelho
+  // já baixado E uma parcela de contrato presa. Cada chave abaixo descreve um
+  // conjunto DISJUNTO de linhas que a RPC decidiu não mexer.
   const warnings: string[] = [];
   if (Number(result.mirror_locked ?? 0) > 0) {
+    // Travado por DINHEIRO em cima (baixa total ou recebimento parcial).
     warnings.push(
       "A cobrança foi alterada, mas o lançamento no Financeiro já estava baixado e não foi mexido. Ajuste manualmente se o valor ou o vencimento mudaram.",
+    );
+  }
+  if (Number(result.mirror_locked_contract ?? 0) > 0) {
+    // Travado por ser PARCELA DE CONTRATO, sem baixa nenhuma. Precisa de frase
+    // própria: dizer "já estava baixado" aqui seria mentira (a parcela está em
+    // aberto), e o usuário sairia achando que a parcela acompanhou a alteração.
+    // A parcela é preservada de propósito — quem manda no valor e no vencimento
+    // dela é o contrato, não a cobrança.
+    warnings.push(
+      "A cobrança foi alterada. A parcela do contrato continua com o valor e o vencimento originais.",
     );
   }
   if (Number(result.mirror_nfse ?? 0) > 0) {

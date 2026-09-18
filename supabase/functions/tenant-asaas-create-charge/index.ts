@@ -12,6 +12,12 @@
 //   4. busca o pix copia-e-cola / linha do boleto quando aplicável;
 //   5. grava tenant_charges (idempotência por asaas_payment_id UNIQUE) + public_short_code.
 //
+// Origem da cobrança (source_type): 'avulso' (default histórico), 'quote'
+// (orçamento) e 'contract_installment' (parcela de contrato). A parcela de
+// contrato NÃO cria recebível espelho — ela JÁ É o recebível, então a cobrança
+// se liga à parcela existente (financial_transactions.tenant_charge_id). Criar
+// um lançamento novo ali dobraria a receita no DRE.
+//
 // Nunca retorna custo/margem interna.
 
 import { handleCors } from "../_shared/cors.ts";
@@ -81,8 +87,15 @@ function validateDueDate(due: string): { ok: true } | { ok: false; error: string
 }
 
 /** Origem da cobrança (allowlist estrita). 'avulso' é o default histórico. */
-type ChargeSourceType = "avulso" | "quote";
-const ALLOWED_SOURCE_TYPES: readonly ChargeSourceType[] = ["avulso", "quote"];
+type ChargeSourceType = "avulso" | "quote" | "contract_installment";
+const ALLOWED_SOURCE_TYPES: readonly ChargeSourceType[] = [
+  "avulso",
+  "quote",
+  "contract_installment",
+];
+
+/** Origens que EXIGEM source_id (o vínculo é a razão de existir da origem). */
+const SOURCE_TYPES_REQUIRING_ID: readonly ChargeSourceType[] = ["quote", "contract_installment"];
 
 /** Status que NÃO contam como cobrança válida no dedupe por orçamento (cobra de novo). */
 const DEDUPE_DEAD_STATUSES: readonly string[] = [
@@ -98,7 +111,12 @@ interface CreateChargeInput {
   due_date?: string;
   billing_type?: BillingType;
   description?: string;
-  // Origem da cobrança (Onda D — Orçamento → Cobrança). Opcionais; default 'avulso'.
+  // Origem da cobrança (Onda D — Orçamento → Cobrança; Onda E — Parcela de
+  // contrato → Cobrança). Opcionais; default 'avulso'.
+  //   'quote'                → source_id = quotes.id
+  //   'contract_installment' → source_id = financial_transactions.id da PARCELA
+  //                            já materializada pelo contrato (posse validada
+  //                            no servidor, nunca confiando no client).
   source_type?: ChargeSourceType;
   source_id?: string | null;
   // Overrides opcionais por cobrança (caem no default da conta quando ausentes).
@@ -284,24 +302,29 @@ async function handleRequest(req: Request): Promise<Response> {
     typeof input.source_id === "string" && input.source_id.trim()
       ? input.source_id.trim()
       : null;
-  if (sourceType === "quote" && !sourceId) {
+  if (SOURCE_TYPES_REQUIRING_ID.includes(sourceType) && !sourceId) {
     return jsonResponse(req, {
-      error: "Informe o orçamento de origem da cobrança.",
+      error: sourceType === "quote"
+        ? "Informe o orçamento de origem da cobrança."
+        : "Informe a parcela do contrato que será cobrada.",
     }, 400);
   }
 
   try {
-    // 0) Dedupe por orçamento (idempotência da Onda D). Se ESTE orçamento já tem uma
-    //    cobrança viva (não cancelada/estornada), NÃO cria outra na Asaas — devolve a
-    //    existente no mesmo shape de sucesso. Evita cobrança duplicada em duplo clique.
-    if (sourceType === "quote" && sourceId) {
+    // 0) Dedupe por ORIGEM (idempotência da Onda D, estendida à parcela de
+    //    contrato). Se ESTA origem já tem uma cobrança viva (não cancelada/
+    //    estornada), NÃO cria outra na Asaas — devolve a existente no mesmo shape
+    //    de sucesso. Evita cobrança duplicada em duplo clique.
+    //    Vale pra 'quote' e 'contract_installment'; 'avulso' nunca tem source_id
+    //    e passa direto (comportamento histórico, sem regressão).
+    if (sourceId && sourceType !== "avulso") {
       const { data: existingCharge } = await supabase
         .from("tenant_charges")
         .select(
           "id, public_short_code, invoice_url, pix_copy_paste, boleto_url, value, due_date, billing_type, status",
         )
         .eq("company_id", companyId)
-        .eq("source_type", "quote")
+        .eq("source_type", sourceType)
         .eq("source_id", sourceId)
         .not("status", "in", `(${DEDUPE_DEAD_STATUSES.join(",")})`)
         .order("created_at", { ascending: false })
@@ -323,6 +346,99 @@ async function handleRequest(req: Request): Promise<Response> {
           },
         }, 200);
       }
+    }
+
+    // 0.1) PARCELA DE CONTRATO — posse + estado, ANTES de tocar a Asaas.
+    //
+    //   Por que aqui e não lá embaixo: se a parcela for inválida (de outra
+    //   empresa, já paga, valor diferente), recusar DEPOIS de criar a cobrança
+    //   na Asaas deixaria cobrança órfã viva no gateway. Este bloco roda antes
+    //   do Vault, antes do cliente Asaas e antes do POST /payments.
+    //
+    //   RLS NÃO cobre esta edge (service-role client bypassa). A posse é
+    //   reaplicada à mão: company_id do PROFILE (nunca do payload) + a linha
+    //   tem que ser mesmo uma parcela de contrato (contract_id IS NOT NULL).
+    let contractInstallmentChargeId: string | null = null; // compare-and-swap do vínculo
+    if (sourceType === "contract_installment" && sourceId) {
+      const { data: installmentRow, error: installmentErr } = await supabase
+        .from("financial_transactions")
+        .select(
+          "id, company_id, contract_id, transaction_type, parent_transaction_id, " +
+            "is_paid, amount, amount_received, customer_id, tenant_charge_id",
+        )
+        .eq("id", sourceId)
+        .eq("company_id", companyId) // posse: parcela tem que ser do tenant
+        .not("contract_id", "is", null) // e ser mesmo parcela de contrato
+        .maybeSingle();
+
+      if (installmentErr) {
+        console.error(
+          "[create-charge] leitura da parcela de contrato falhou:",
+          installmentErr.message,
+        );
+        return jsonResponse(req, {
+          error: "Não foi possível verificar a parcela do contrato. Tente novamente.",
+        }, 500);
+      }
+      // Mesma mensagem pra "não existe" e "é de outra empresa": nunca vaza a
+      // existência de dado de outro tenant (mesmo padrão de ensureAsaasCustomer).
+      if (!installmentRow) {
+        return jsonResponse(req, {
+          error: "A parcela do contrato não foi encontrada na sua empresa.",
+        }, 404);
+      }
+      const parcel = installmentRow as any;
+
+      // Só o "a receber" MÃE vira cobrança. Linha de recebimento parcial
+      // (entrada com parent) e linha de saída não são parcela cobrável — e
+      // ligá-las quebraria o índice ux_financial_transactions_one_mother_per_charge.
+      if (parcel.transaction_type !== "entrada" || parcel.parent_transaction_id) {
+        return jsonResponse(req, {
+          error: "Só é possível gerar cobrança de uma parcela a receber do contrato.",
+        }, 400);
+      }
+      if (parcel.is_paid === true) {
+        return jsonResponse(req, {
+          error: "Esta parcela já consta como recebida. Não é possível gerar cobrança para ela.",
+        }, 400);
+      }
+      if (Number(parcel.amount_received ?? 0) > 0) {
+        return jsonResponse(req, {
+          error:
+            "Esta parcela já tem recebimento parcial lançado. Acerte o recebimento antes de gerar a cobrança online.",
+        }, 400);
+      }
+
+      // VALOR TEM QUE BATER COM A PARCELA. Quando o pagamento confirma, a baixa
+      // marca a parcela inteira como recebida (is_paid = true), sem olhar o valor
+      // pago. Cobrar R$ 100 de uma parcela de R$ 500 quitaria os R$ 500 no
+      // Financeiro — dinheiro errado no banco. Tolerância de 1 centavo pra
+      // arredondamento.
+      const parcelAmount = Math.round(Number(parcel.amount) * 100) / 100;
+      if (Math.abs(parcelAmount - chargeValue) > 0.005) {
+        return jsonResponse(req, {
+          error:
+            `O valor da cobrança precisa ser igual ao da parcela do contrato (R$ ${
+              parcelAmount.toFixed(2).replace(".", ",")
+            }).`,
+        }, 400);
+      }
+
+      // Cliente da cobrança tem que ser o da parcela: cobrar a pessoa errada e
+      // ainda assim dar baixa na parcela é erro que ninguém percebe depois.
+      if (parcel.customer_id && parcel.customer_id !== input.customer_id) {
+        return jsonResponse(req, {
+          error: "A parcela pertence a outro cliente. Selecione o cliente do contrato.",
+        }, 400);
+      }
+
+      // Guardado pro compare-and-swap do vínculo lá embaixo: normalmente null
+      // (parcela solta) ou o id de uma cobrança MORTA (cancelada/estornada — o
+      // dedupe acima já teria devolvido qualquer cobrança viva). Se outra
+      // requisição concorrente reatribuir a parcela nesse meio-tempo, o UPDATE
+      // final não pega linha nenhuma e o usuário é avisado, em vez de uma das
+      // duas cobranças roubar o vínculo em silêncio.
+      contractInstallmentChargeId = parcel.tenant_charge_id ?? null;
     }
 
     // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro +
@@ -486,6 +602,20 @@ async function handleRequest(req: Request): Promise<Response> {
         ? input.post_to_finance
         : account.auto_post_to_finance !== false;
 
+    // PARCELA DE CONTRATO: o espelho no Financeiro JÁ EXISTE (é a própria
+    // parcela que o contrato materializou). Esta cobrança NUNCA cria lançamento
+    // novo — ela se LIGA à parcela (UPDATE do tenant_charge_id, mais abaixo).
+    //
+    // Por isso gravamos post_to_finance = false NA COBRANÇA. Aqui `false` não
+    // quer dizer "essa cobrança não aparece no Financeiro"; quer dizer "NUNCA
+    // fabrique um lançamento para esta cobrança". É o que impede
+    // `rebuild_tenant_charge_receivable` (auto-cura do recebível, chamada pelas
+    // RPCs de baixa) de INSERIR uma segunda receita caso o vínculo se perca —
+    // a parcela viraria receita duas vezes e a DRE mentiria pra sempre.
+    // Trade-off aceito e deliberado: se o vínculo falhar, a parcela fica em
+    // aberto (visível, corrigível à mão) em vez de duplicar receita em silêncio.
+    const chargeCreatesReceivable = sourceType !== "contract_installment" && postToFinance;
+
     // 5) Grava tenant_charges (idempotência por asaas_payment_id UNIQUE).
     const shortCode = generateShortCode();
     const chargeRow = {
@@ -493,7 +623,10 @@ async function handleRequest(req: Request): Promise<Response> {
       asaas_payment_id: asaasPaymentId,
       asaas_installment_id: asaasInstallmentId,
       source_type: sourceType,
-      source_id: sourceType === "quote" ? sourceId : null,
+      // 'avulso' nunca tem origem; 'quote' e 'contract_installment' guardam o id
+      // da origem (sem ele a cobrança fica órfã do orçamento/parcela e o dedupe
+      // da próxima tentativa não acha nada).
+      source_id: sourceType === "avulso" ? null : sourceId,
       customer_id: input.customer_id,
       value: billedValue,
       net_value: payment?.netValue ?? null,
@@ -506,7 +639,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // isto, a auto-cura do recebível (RPC rebuild_tenant_charge_receivable)
       // não teria como distinguir "o lançamento sumiu" de "o usuário recusou o
       // lançamento nesta cobrança", e recriaria uma linha recusada de propósito.
-      post_to_finance: postToFinance,
+      post_to_finance: chargeCreatesReceivable,
       public_short_code: shortCode,
       invoice_url: payment?.invoiceUrl ?? null,
       pix_copy_paste: pixCopyPaste,
@@ -552,11 +685,69 @@ async function handleRequest(req: Request): Promise<Response> {
     // o usuário nunca ficava sabendo que o financeiro não bateu).
     let financeWarning: string | null = null;
 
-    // 6) Lançamento automático no Financeiro (a receber), se habilitado.
+    // 6-A) PARCELA DE CONTRATO: LIGA a parcela que já existe, NUNCA cria linha.
+    //      Este é o invariante da Onda E: a parcela do contrato já é uma
+    //      `entrada` em financial_transactions. Inserir um recebível espelho
+    //      aqui dobraria a receita no DRE (a mesma mensalidade contada duas
+    //      vezes). Então o "espelho" desta cobrança é a própria parcela, e o
+    //      elo é o UPDATE de tenant_charge_id abaixo.
+    //
+    //      Com o elo posto, tudo o que já existe passa a funcionar sozinho:
+    //        · apply_tenant_charge_payment dá baixa NA PARCELA quando pagar
+    //          (UPDATE ... WHERE tenant_charge_id = cobrança);
+    //        · delete_tenant_charge_local preserva a parcela ao cancelar a
+    //          cobrança (guarda r_contract, migration 20260919160000);
+    //        · a auto-cura não fabrica linha nenhuma (post_to_finance = false).
+    //
+    //      Compare-and-swap: só sobrescreve o tenant_charge_id que lemos na
+    //      validação (null, ou o de uma cobrança já morta). Se outra requisição
+    //      tiver ligado a parcela nesse meio-tempo, o UPDATE não pega linha e o
+    //      usuário recebe aviso — em vez de uma cobrança roubar o elo da outra.
+    //      NÃO-FATAL: a cobrança já existe na Asaas e não pode ser desfeita aqui.
+    if (sourceType === "contract_installment" && sourceId && saved?.id) {
+      try {
+        let linkQuery = supabase
+          .from("financial_transactions")
+          .update({ tenant_charge_id: saved.id })
+          .eq("id", sourceId)
+          .eq("company_id", companyId) // posse reaplicada no UPDATE também
+          .not("contract_id", "is", null)
+          .eq("transaction_type", "entrada")
+          .is("parent_transaction_id", null);
+        linkQuery = contractInstallmentChargeId
+          ? linkQuery.eq("tenant_charge_id", contractInstallmentChargeId)
+          : linkQuery.is("tenant_charge_id", null);
+        const { data: linked, error: linkErr } = await linkQuery.select("id");
+
+        if (linkErr || !linked || linked.length === 0) {
+          console.warn(
+            "[create-charge] vínculo cobrança ↔ parcela de contrato não aplicado:",
+            JSON.stringify({
+              charge_id: saved.id,
+              installment_id: sourceId,
+              company_id: companyId,
+              error: linkErr?.message ?? "nenhuma linha afetada",
+            }),
+          );
+          financeWarning =
+            "A cobrança foi criada, mas não conseguimos ligá-la à parcela do contrato. Quando o cliente pagar, dê baixa na parcela manualmente.";
+        }
+      } catch (linkException) {
+        console.warn(
+          "[create-charge] exceção ao ligar a parcela de contrato (não-fatal):",
+          (linkException as Error)?.message ?? String(linkException),
+        );
+        financeWarning =
+          "A cobrança foi criada, mas não conseguimos ligá-la à parcela do contrato. Quando o cliente pagar, dê baixa na parcela manualmente.";
+      }
+    }
+
+    // 6-B) Lançamento automático no Financeiro (a receber), se habilitado.
     //    NÃO-FATAL: a cobrança já existe no Asaas e em tenant_charges — um erro
     //    aqui não pode invalidar nem desfazer o que foi gerado.
     //    A baixa automática (webhook PAYMENT_RECEIVED) quitará o lançamento.
-    if (postToFinance && saved?.id) {
+    //    `chargeCreatesReceivable` já exclui a parcela de contrato (tratada em 6-A).
+    if (chargeCreatesReceivable && saved?.id) {
       try {
         const { error: rpcErr } = await supabase.rpc("create_tenant_charge_receivable", {
           p_company_id: companyId,
