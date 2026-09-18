@@ -100,6 +100,24 @@ export function timeInTz(date: Date | string | number, timeZone: string | null |
   });
 }
 
+/**
+ * Hora com segundos (HH:mm:ss, 24h) no fuso da empresa.
+ *
+ * Existe porque a timeline de batidas do ponto mostra o segundo — é o que
+ * diferencia duas batidas do mesmo minuto quando o gestor confere a jornada.
+ */
+export function timeWithSecondsInTz(
+  date: Date | string | number,
+  timeZone: string | null | undefined,
+): string {
+  return formatInTz(toDate(date), timeZone, 'pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+}
+
 // ─── Caminho inverso: hora do relógio da empresa  →  instante UTC ────────────
 
 /**

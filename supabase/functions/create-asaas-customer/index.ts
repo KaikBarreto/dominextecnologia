@@ -106,8 +106,14 @@ Deno.serve(async (req) => {
         name: company.name,
         email: company.email || undefined,
         cpfCnpj: cpfCnpjLimpo,
-        notificationDisabled: true,
+        // Interruptor por empresa (companies.billing_notifications_enabled).
+        // Fail-safe: false/null/undefined → notificationDisabled: true (comportamento
+        // histórico de toda a base: a Asaas NÃO manda e-mail de cobrança).
+        notificationDisabled: !company.billing_notifications_enabled,
       };
+      // E-mail do financeiro entra como ADICIONAL (o do cadastro segue sendo o principal).
+      const billingEmail = (company.billing_email || "").trim();
+      if (billingEmail) payload.additionalEmails = billingEmail;
       // Endereço FLAT no schema Dominex (não há company_fiscal_config).
       if (company.address) payload.address = company.address;
       if (company.address_number) payload.addressNumber = company.address_number;

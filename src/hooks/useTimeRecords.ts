@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { dateInTz, timeInTz, todayInTz } from '@/lib/timezone';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // ─── Types ───────────────────────────────────────────
 export type PunchType = 'clock_in' | 'break_start' | 'break_end' | 'clock_out';
@@ -29,6 +30,11 @@ export interface TimeRecord {
   notes: string | null;
   is_valid: boolean;
   created_at: string;
+  edited_at: string | null;
+  edited_by: string | null;
+  original_recorded_at: string | null;
+  invalidated_at: string | null;
+  invalidated_by: string | null;
 }
 
 export interface TimeSheet {
@@ -476,24 +482,40 @@ export function useAdminTimeSheet() {
         .single();
       if (!profile?.company_id) throw new Error('Empresa não encontrada');
 
+      // Batida manual é lançamento em documento de jornada: o dia sai do fuso
+      // da EMPRESA no instante que o admin informou, não do fuso do aparelho
+      // dele. Admin em Lisboa lançando 00:30 pra empresa em Cuiabá grava o dia
+      // de Cuiabá, que ainda é o dia anterior, e não o dia de Lisboa.
+      // O recompute abaixo tem que usar ESTE mesmo dia.
+      const punchDate = dateInTz(recordedAt, timezone);
+
       const { error } = await supabase.from('time_records').insert({
         company_id: profile.company_id,
         employee_id: employeeId,
-        // Batida manual é lançamento em documento de jornada: o dia sai do fuso
-        // da EMPRESA no instante que o admin informou, não do fuso do aparelho
-        // dele. Admin em Lisboa lançando 00:30 pra empresa em Cuiabá grava o dia
-        // de Cuiabá, que ainda é o dia anterior, e não o dia de Lisboa.
-        date: dateInTz(recordedAt, timezone),
+        date: punchDate,
         type,
         recorded_at: recordedAt,
         source: 'admin',
         notes,
       });
       if (error) throw error;
+
+      // Lançamento manual entra fora do fluxo normal de bater ponto — sem isso
+      // o time_sheets (Histórico/Relatório) nunca reflete a batida inserida.
+      const { error: recomputeError } = await supabase.rpc('recompute_time_sheet', {
+        p_company_id: profile.company_id,
+        p_employee_id: employeeId,
+        p_date: punchDate,
+      });
+      if (recomputeError) throw recomputeError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminTimeRecords'] });
       queryClient.invalidateQueries({ queryKey: ['adminTimeSheets'] });
+      queryClient.invalidateQueries({ queryKey: ['timeRecordsDay'] });
+      queryClient.invalidateQueries({ queryKey: ['timeHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['timeSheet'] });
+      queryClient.invalidateQueries({ queryKey: ['timeSheets'] });
     },
   });
 
@@ -612,10 +634,112 @@ export function useTimeRecordsForDay(employeeId: string | null, date: string | n
         .select('*')
         .eq('employee_id', employeeId)
         .eq('date', date)
+        // is_valid é nullable — null conta como válida (batida nunca excluída).
+        .or('is_valid.is.null,is_valid.eq.true')
         .order('recorded_at');
       if (error) throw error;
       return (data || []) as TimeRecord[];
     },
     enabled: !!employeeId && !!date,
   });
+}
+
+// ─── usePunchMutations (editar horário / excluir batida — TimeDayDetailModal) ───
+export function usePunchMutations() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.timeclock.dayDetail;
+
+  const invalidateAfterPunchChange = () => {
+    queryClient.invalidateQueries({ queryKey: ['timeRecordsDay'] });
+    queryClient.invalidateQueries({ queryKey: ['adminTimeRecords'] });
+    queryClient.invalidateQueries({ queryKey: ['adminTimeSheets'] });
+    queryClient.invalidateQueries({ queryKey: ['timeHistory'] });
+    queryClient.invalidateQueries({ queryKey: ['timeSheet'] });
+    queryClient.invalidateQueries({ queryKey: ['timeSheets'] });
+  };
+
+  const updatePunch = useMutation({
+    mutationFn: async ({ record, type, recordedAt, notes }: {
+      record: TimeRecord;
+      type: PunchType;
+      recordedAt: string;
+      notes: string;
+    }) => {
+      if (!record.employee_id) throw new Error('Batida sem funcionário vinculado');
+      const employeeId = record.employee_id;
+      // Dia-calendário no fuso da EMPRESA, igual o lançamento manual — no fuso do
+      // aparelho do gestor a edição de fim de noite cairia no dia errado.
+      const newDate = dateInTz(recordedAt, timezone);
+      const oldDate = record.date;
+
+      const { error } = await supabase
+        .from('time_records')
+        .update({
+          recorded_at: recordedAt,
+          date: newDate,
+          type,
+          notes,
+          edited_at: new Date().toISOString(),
+          edited_by: user?.id ?? null,
+          original_recorded_at: record.original_recorded_at ?? record.recorded_at,
+        })
+        .eq('id', record.id);
+      if (error) throw error;
+
+      // Recomputa o dia novo E o antigo quando a edição atravessa a virada do
+      // dia — recomputar só o novo deixa o espelho do dia antigo com saldo
+      // fantasma (a batida some de lá sem o time_sheets ser refeito).
+      const datesToRecompute = new Set([newDate, oldDate]);
+      for (const d of datesToRecompute) {
+        const { error: recomputeError } = await supabase.rpc('recompute_time_sheet', {
+          p_company_id: record.company_id,
+          p_employee_id: employeeId,
+          p_date: d,
+        });
+        if (recomputeError) throw recomputeError;
+      }
+    },
+    onSuccess: () => {
+      toast({ title: t.toastUpdated });
+      invalidateAfterPunchChange();
+    },
+    onError: (err: any) => {
+      toast({ title: t.toastUpdateError, description: getErrorMessage(err), variant: 'destructive' });
+    },
+  });
+
+  const deletePunch = useMutation({
+    mutationFn: async (record: TimeRecord) => {
+      if (!record.employee_id) throw new Error('Batida sem funcionário vinculado');
+
+      const { error } = await supabase
+        .from('time_records')
+        .update({
+          is_valid: false,
+          invalidated_at: new Date().toISOString(),
+          invalidated_by: user?.id ?? null,
+        })
+        .eq('id', record.id);
+      if (error) throw error;
+
+      const { error: recomputeError } = await supabase.rpc('recompute_time_sheet', {
+        p_company_id: record.company_id,
+        p_employee_id: record.employee_id,
+        p_date: record.date,
+      });
+      if (recomputeError) throw recomputeError;
+    },
+    onSuccess: () => {
+      toast({ title: t.toastDeleted });
+      invalidateAfterPunchChange();
+    },
+    onError: (err: any) => {
+      toast({ title: t.toastDeleteError, description: getErrorMessage(err), variant: 'destructive' });
+    },
+  });
+
+  return { updatePunch, deletePunch };
 }

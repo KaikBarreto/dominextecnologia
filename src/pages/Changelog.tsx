@@ -42,6 +42,69 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.43',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Montar a lista de materiais do orçamento ficou muito mais rápido',
+        description: 'Agora existe um botão "Adicionar materiais" que abre a busca já pronta para digitar, com o teclado subindo sozinho. Você digita parte do nome, do código ou da categoria, e cada material da lista aparece com a quantidade do lado. Dá para marcar vários de uma vez, com a quantidade de cada um, e incluir tudo no orçamento com um toque só. Antes era preciso repetir a busca inteira para cada item, o que atrapalhava quem monta orçamento pelo celular durante a visita.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Quantidade de material aceita valor quebrado',
+        description: 'Materiais vendidos por medida agora podem ser lançados como 2,5 metros ou 0,5 quilo. Antes o campo só aceitava número inteiro. A unidade de cada material aparece na busca e na lista, para não ter dúvida na hora de digitar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Lista de materiais do orçamento refeita para o celular',
+        description: 'Em telas pequenas os materiais já incluídos viram cartões, com nome, quantidade e preço legíveis, em vez de uma tabela espremida que cortava o nome do item. A observação de cada material agora fica recolhida e só aparece quando você pede.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.24.42',
+    date: '17 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Campos de valor não aceitavam a vírgula enquanto você digitava',
+        description: 'Ao digitar um valor como 17,99 no cadastro de material, na requisição de compra, na importação de nota fiscal, nos custos do serviço ou no cálculo de mão de obra, a vírgula era ignorada no meio da digitação e o valor acabava salvo como 1799. Só funcionava se você voltasse depois para colocar a vírgula no meio do número já digitado. Agora dá para digitar naturalmente, e apagar o campo deixa ele vazio em vez de travar em zero.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.41',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A visão de Lista da Agenda voltava sozinha para o Calendário',
+        description: 'Ao trocar a Agenda para o modo Lista, ela mostrava a lista por um instante e voltava sozinha para o calendário, como se o clique não tivesse acontecido. O motivo era a sua preferência sendo lida de novo do servidor logo depois de ser gravada, e o valor antigo atropelava a escolha que você tinha acabado de fazer. Agora a Lista fica.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.24.40',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova permissão: Gerenciar Tarefas',
+        description: 'Em Configurações, as permissões ganharam "Gerenciar Tarefas". Quem tem essa permissão enxerga as tarefas de todo mundo. Quem não tem passa a ver apenas as tarefas em que é responsável, em que é o técnico, que criou, ou que são da equipe dele. Isso vale na Agenda e na aba de Tarefas do CRM, com a mesma regra nos dois lugares. Ordens de serviço não mudam em nada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Quem já tinha Ver Toda a Agenda não perde nada',
+        description: 'Quem já usa a permissão "Ver Toda a Agenda" continua enxergando todas as tarefas do calendário, exatamente como antes. A permissão nova só é necessária para as tarefas criadas dentro de uma oportunidade do CRM que você escolheu não mostrar na Agenda.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.39',
     date: '17 de setembro de 2026',
     type: 'patch',

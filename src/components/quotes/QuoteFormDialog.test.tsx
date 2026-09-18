@@ -65,9 +65,23 @@ vi.mock('@/components/customers/CustomerSelectField', () => ({ CustomerSelectFie
 // isso nunca "termina" sozinho dentro de um `act()` síncrono, e o DOM fica
 // preso mostrando o step anterior. Mock trivial: sem animação, troca é
 // imediata (é só o carimbo de wizard/UX, irrelevante pro campo de dinheiro).
+// ATENÇÃO ao Proxy: devolver uma função NOVA a cada acesso (`get: () => (props) =>
+// ...`) faz o React enxergar um TIPO DE COMPONENTE diferente a cada render e
+// desmontar/remontar a subárvore inteira, zerando o estado local de qualquer
+// filho. Isso não acontece no app real (`motion.div` é estável) e mascara
+// justamente os bugs de estado que estes testes existem pra pegar. Por isso o
+// cache por tag: cada `motion.x` é sempre o MESMO componente.
+const motionComponentCache = new Map<string, any>();
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: any) => children,
-  motion: new Proxy({}, { get: () => ((props: any) => React.createElement('div', props, props.children)) }),
+  motion: new Proxy({}, {
+    get: (_target, tag: string) => {
+      if (!motionComponentCache.has(tag)) {
+        motionComponentCache.set(tag, (props: any) => React.createElement('div', props, props.children));
+      }
+      return motionComponentCache.get(tag);
+    },
+  }),
   useReducedMotion: () => false,
 }));
 
@@ -87,7 +101,7 @@ vi.mock('@/components/ui/SearchableSelect', () => ({
   },
 }));
 
-import { QuoteFormDialog } from './QuoteFormDialog';
+import { QuoteFormDialog, buildMaterialItem } from './QuoteFormDialog';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -196,22 +210,122 @@ describe('QuoteFormDialog — preço unitário do serviço na tabela (prova real
   });
 });
 
-describe('QuoteFormDialog — preço manual de material (prova real de DOM)', () => {
+describe('QuoteFormDialog — preço manual de material no MaterialBatchPicker (prova real de DOM)', () => {
   it('colar "4.550" dá 4550 (não 4.55, o bug do sócio)', async () => {
     mount();
     await goPastRecipient(); // "services"
     const nextBtn1 = findButtonByText(tq.next);
     await clickAsync(nextBtn1!); // "materials"
 
-    const manualNameInput = q('input[placeholder="' + tq.materialManualPlaceholder + '"]') as HTMLInputElement;
-    expect(manualNameInput).toBeTruthy();
-    typeInto(manualNameInput, 'Material Avulso');
+    // Um caminho só (desktop e celular): abre o picker em lote.
+    const openPickerBtn = findButtonByText(tq.materialPickerOpen);
+    expect(openPickerBtn).toBeTruthy();
+    await clickAsync(openPickerBtn!);
 
+    const searchInput = q('input[placeholder="' + tq.materialPickerSearch + '"]') as HTMLInputElement;
+    expect(searchInput).toBeTruthy();
+    typeInto(searchInput, 'Material Avulso');
+
+    // Sem correspondência exata no catálogo mockado ("Filtro") → nasce a linha
+    // "Criar ... como material avulso" com o campo de preço unitário.
     const priceInput = q('input[type="number"]') as HTMLInputElement;
     expect(priceInput).toBeTruthy();
     paste(priceInput, '4.550');
     const priceInputAfter = q('input[type="number"]') as HTMLInputElement;
     expect(priceInputAfter.value).toBe('4550');
+  });
+});
+
+describe('QuoteFormDialog — quantidade decimal do MaterialBatchPicker até o item (prova real de DOM)', () => {
+  it('"2,5" sobrevive do picker até a tabela de itens adicionados', async () => {
+    mount();
+    await goPastRecipient(); // "services"
+    await clickAsync(findButtonByText(tq.next)!); // "materials"
+
+    await clickAsync(findButtonByText(tq.materialPickerOpen)!);
+
+    // "Filtro" é o único material do catálogo mockado — aparece direto (busca
+    // vazia). O stepper de quantidade é o NumericInput com placeholder "0".
+    const qtyInput = qAll('input').find((i) => (i as HTMLInputElement).placeholder === '0') as HTMLInputElement;
+    expect(qtyInput).toBeTruthy();
+    typeInto(qtyInput, '2,5');
+
+    const confirmBtn = findButtonByText(tq.materialPickerConfirm);
+    expect(confirmBtn).toBeTruthy();
+    await clickAsync(confirmBtn!);
+
+    // Picker fechou e adicionou o item — a tabela/lista de materiais mostra a
+    // quantidade fracionada (não trunca pra inteiro).
+    const qtyCellAfter = qAll('input').find((i) => (i as HTMLInputElement).value === '2,5') as HTMLInputElement;
+    expect(qtyCellAfter).toBeTruthy();
+  });
+});
+
+// Prova de NÃO-REGRESSÃO DE PREÇO: o `MaterialBatchPicker` adiciona vários
+// materiais de uma vez chamando `buildMaterialItem` (função pura) uma vez por
+// seleção, num único `setItems` — a MESMA função que o fluxo antigo
+// (item-a-item) usava. Aqui testamos a função isolada: o valor devolvido tem
+// que ser byte a byte igual ao que o handler antigo produzia.
+describe('buildMaterialItem — prova de não-regressão de preço (função pura)', () => {
+  const invA = { id: 'inv-a', name: 'Tubo de cobre 3/8', sale_price: 45, cost_price: 30, sku: 'COB-38' } as any;
+  const invB = { id: 'inv-b', name: 'Gás R410a', sale_price: 120, cost_price: 90, sku: null } as any;
+
+  it('3 materiais em lote (2 do catálogo + 1 avulso) saem idênticos ao cálculo item-a-item de antes', () => {
+    const profitRate = 15;
+    const bdiFactor = 0.35;
+
+    const item1 = buildMaterialItem({ inv: invA, manualName: null, manualPrice: 0, quantity: 2, profitRate, bdiFactor });
+    const item2 = buildMaterialItem({ inv: invB, manualName: null, manualPrice: 0, quantity: 1, profitRate, bdiFactor });
+    const item3 = buildMaterialItem({ inv: null, manualName: 'Conexão avulsa', manualPrice: 12.5, quantity: 3, profitRate, bdiFactor });
+
+    // Item de catálogo: preço = sale_price (nunca manualPrice), custo = cost_price.
+    expect(item1).toMatchObject({
+      item_type: 'material',
+      description: 'Tubo de cobre 3/8',
+      quantity: 2,
+      unit_price: 45,
+      unit_total_cost: 30,
+      total_price: 90, // 45 * 2
+      inventory_id: 'inv-a',
+      profit_rate: 15,
+      bdi: 0.35,
+    });
+    expect(item2).toMatchObject({
+      description: 'Gás R410a',
+      quantity: 1,
+      unit_price: 120,
+      unit_total_cost: 90,
+      total_price: 120,
+      inventory_id: 'inv-b',
+    });
+    // Material avulso: preço e custo vêm do manualPrice (sem inventory_id).
+    expect(item3).toMatchObject({
+      description: 'Conexão avulsa',
+      quantity: 3,
+      unit_price: 12.5,
+      unit_total_cost: 12.5,
+      total_price: 37.5, // 12.5 * 3
+      inventory_id: null,
+    });
+  });
+
+  it('quantidade "2,5" (decimal) sobrevive intacta e o total é unit_price × 2,5 arredondado a 2 casas', () => {
+    const item = buildMaterialItem({
+      inv: { id: 'inv-c', name: 'Tubo 1/2', sale_price: 33.33, cost_price: 20 } as any,
+      manualName: null,
+      manualPrice: 0,
+      quantity: 2.5,
+      profitRate: 10,
+      bdiFactor: 0.3,
+    });
+    expect(item?.quantity).toBe(2.5);
+    expect(item?.unit_price).toBe(33.33);
+    expect(item?.total_price).toBe(Math.round(33.33 * 2.5 * 100) / 100);
+  });
+
+  it('sem nome (nem catálogo nem manual) devolve null — chamador filtra', () => {
+    const item = buildMaterialItem({ inv: null, manualName: '  ', manualPrice: 10, quantity: 1, profitRate: 10, bdiFactor: 0.3 });
+    expect(item).toBeNull();
   });
 });
 
@@ -227,5 +341,50 @@ describe('QuoteFormDialog — desconto em R$ (prova real de DOM)', () => {
     paste(discountInput, '4.550');
     const discountInputAfter = q('input[type="number"]') as HTMLInputElement;
     expect(discountInputAfter.value).toBe('4550');
+  });
+});
+
+// A quantidade do material vira DECIMAL (2,5 m de tubo, 0,5 kg de gás). O
+// `NumericInput` é controlado por STRING CRUA de propósito: o estado tem que
+// guardar o texto digitado, não o número reformatado. Se a tela reescrever o
+// input a partir do número a cada tecla, o separador decimal é engolido no
+// exato instante em que é digitado ("2," → 2 → "2") e fica IMPOSSÍVEL chegar
+// em "2,5" editando na lista de itens já adicionados.
+describe('QuoteFormDialog — editar quantidade decimal na lista de materiais (prova real de DOM)', () => {
+  async function addOneMaterial() {
+    mount();
+    await goPastRecipient(); // "services"
+    await clickAsync(findButtonByText(tq.next)!); // "materials"
+    await clickAsync(findButtonByText(tq.materialPickerOpen)!);
+    const pickerQty = qAll('input').find((i) => (i as HTMLInputElement).placeholder === '0') as HTMLInputElement;
+    typeInto(pickerQty, '1');
+    await clickAsync(findButtonByText(tq.materialPickerConfirm)!);
+  }
+
+  // A tabela (sm+) e os cards (mobile) coexistem no DOM — o corte é só CSS.
+  // Pegamos o campo da tabela pela largura própria dele (w-16).
+  const tableQtyInput = () =>
+    (qAll('input') as HTMLInputElement[]).find((i) => i.className.includes('w-16'));
+
+  it('digitar "2," mantém a vírgula no campo (não colapsa pra "2")', async () => {
+    await addOneMaterial();
+    const qtyInput = tableQtyInput();
+    expect(qtyInput).toBeTruthy();
+    typeInto(qtyInput!, '2,');
+    expect(tableQtyInput()!.value).toBe('2,');
+  });
+
+  it('digitar "2,5" chega em 2,5 no campo e no total', async () => {
+    await addOneMaterial();
+    typeInto(tableQtyInput()!, '2');
+    typeInto(tableQtyInput()!, '2,');
+    typeInto(tableQtyInput()!, '2,5');
+    expect(tableQtyInput()!.value).toBe('2,5');
+  });
+
+  it('apagar tudo deixa o campo vazio (não trava em "0,01")', async () => {
+    await addOneMaterial();
+    typeInto(tableQtyInput()!, '');
+    expect(tableQtyInput()!.value).toBe('');
   });
 });

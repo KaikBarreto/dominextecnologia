@@ -278,12 +278,14 @@ export const crm = {
         if (opportunitiesCount === 0) return `${peoplePart}.`;
         const oppWord = opportunitiesCount === 1 ? 'oportunidade' : 'oportunidades';
         const relArticle = opportunitiesCount === 1 ? 'a' : 'as';
-        const relSuffix = opportunitiesCount === 1 ? '' : 'is';
+        // "quais", não "qualis": o plural de "qual" é irregular, então não dá
+        // pra montar por sufixo como o resto da frase faz.
+        const relPronoun = opportunitiesCount === 1 ? 'qual' : 'quais';
         const pronounVerb = peopleCount === 1 ? 'ela é' : 'elas são';
         const responsavel = peopleCount === 1 ? 'responsável' : 'responsáveis';
         const oppVerb = opportunitiesCount === 1 ? 'vai' : 'vão';
         const possessive = peopleCount === 1 ? 'dela' : 'delas';
-        return `${peoplePart}, e ${opportunitiesCount} ${oppWord} pel${relArticle} qual${relSuffix} ${pronounVerb} ${responsavel} ${oppVerb} sumir da tela ${possessive}.`;
+        return `${peoplePart}, e ${opportunitiesCount} ${oppWord} pel${relArticle} ${relPronoun} ${pronounVerb} ${responsavel} ${oppVerb} sumir da tela ${possessive}.`;
       },
     },
 
@@ -539,6 +541,20 @@ export const crm = {
       materialColUnitPrice: 'Preço unit.',
       materialColTotal: 'Total',
       materialSubtotal: 'Subtotal Materiais',
+      materialPickerOpen: 'Adicionar materiais',
+      materialPickerTitle: 'Adicionar materiais',
+      materialPickerSearch: 'Buscar por nome, código ou categoria...',
+      materialPickerSelectedCountOne: '1 material',
+      materialPickerSelectedCount: '{count} materiais',
+      materialPickerSelectedTotal: 'Total: {total}',
+      materialPickerConfirm: 'Adicionar ao orçamento',
+      materialPickerManual: 'Criar "{name}" como material avulso',
+      materialPickerManualPrice: 'Preço unitário',
+      materialPickerEmpty: 'Nenhum material cadastrado ainda.',
+      materialPickerGroupFrequent: 'Mais usados',
+      materialPickerGroupAll: 'Todos',
+      materialColUnit: 'Unidade',
+      materialDetailsToggle: '+ detalhe',
 
       displacementHeader: 'Deslocamento',
       displacementPlaceholder: '0 km',
@@ -1610,6 +1626,20 @@ export const crm = {
       materialColUnitPrice: 'Unit price',
       materialColTotal: 'Total',
       materialSubtotal: 'Materials Subtotal',
+      materialPickerOpen: 'Add materials',
+      materialPickerTitle: 'Add materials',
+      materialPickerSearch: 'Search by name, code or category...',
+      materialPickerSelectedCountOne: '1 material',
+      materialPickerSelectedCount: '{count} materials',
+      materialPickerSelectedTotal: 'Total: {total}',
+      materialPickerConfirm: 'Add to quote',
+      materialPickerManual: 'Create "{name}" as a one-off material',
+      materialPickerManualPrice: 'Unit price',
+      materialPickerEmpty: 'No materials registered yet.',
+      materialPickerGroupFrequent: 'Most used',
+      materialPickerGroupAll: 'All',
+      materialColUnit: 'Unit',
+      materialDetailsToggle: '+ detail',
 
       displacementHeader: 'Travel',
       displacementPlaceholder: '0 km',
@@ -2644,6 +2674,20 @@ export const crm = {
       materialColUnitPrice: 'Precio unit.',
       materialColTotal: 'Total',
       materialSubtotal: 'Subtotal Materiales',
+      materialPickerOpen: 'Agregar materiales',
+      materialPickerTitle: 'Agregar materiales',
+      materialPickerSearch: 'Buscar por nombre, código o categoría...',
+      materialPickerSelectedCountOne: '1 material',
+      materialPickerSelectedCount: '{count} materiales',
+      materialPickerSelectedTotal: 'Total: {total}',
+      materialPickerConfirm: 'Agregar al presupuesto',
+      materialPickerManual: 'Crear "{name}" como material suelto',
+      materialPickerManualPrice: 'Precio unitario',
+      materialPickerEmpty: 'Todavía no hay materiales registrados.',
+      materialPickerGroupFrequent: 'Más usados',
+      materialPickerGroupAll: 'Todos',
+      materialColUnit: 'Unidad',
+      materialDetailsToggle: '+ detalle',
 
       displacementHeader: 'Desplazamiento',
       displacementPlaceholder: '0 km',
@@ -3676,6 +3720,20 @@ export const crm = {
       materialColUnitPrice: 'Prix unit.',
       materialColTotal: 'Total',
       materialSubtotal: 'Sous-total Matériaux',
+      materialPickerOpen: 'Ajouter des matériaux',
+      materialPickerTitle: 'Ajouter des matériaux',
+      materialPickerSearch: 'Rechercher par nom, code ou catégorie...',
+      materialPickerSelectedCountOne: '1 matériau',
+      materialPickerSelectedCount: '{count} matériaux',
+      materialPickerSelectedTotal: 'Total : {total}',
+      materialPickerConfirm: 'Ajouter au devis',
+      materialPickerManual: 'Créer "{name}" comme matériau ponctuel',
+      materialPickerManualPrice: 'Prix unitaire',
+      materialPickerEmpty: 'Aucun matériau enregistré pour le moment.',
+      materialPickerGroupFrequent: 'Les plus utilisés',
+      materialPickerGroupAll: 'Tous',
+      materialColUnit: 'Unité',
+      materialDetailsToggle: '+ détail',
 
       displacementHeader: 'Déplacement',
       displacementPlaceholder: '0 km',

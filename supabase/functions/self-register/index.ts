@@ -536,6 +536,11 @@ Deno.serve(async (req) => {
         email: company.email,
         cnpj: company.cnpj,
         asaas_customer_id: company.asaas_customer_id,
+        // Empresa recém-criada: a flag nasce false (default do banco) → notificação
+        // desligada, como sempre. Repassado explicitamente pra não depender de default
+        // implícito caso alguém passe a ligar a flag no cadastro.
+        billing_notifications_enabled: company.billing_notifications_enabled ?? false,
+        billing_email: company.billing_email ?? null,
       });
       if (provision.outcome === 'failed') {
         console.error('[self-register] Asaas customer não provisionado (não-fatal):', provision.error);

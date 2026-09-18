@@ -7,11 +7,11 @@
     <span><b>Onde fica:</b> Menu → CRM</span>
     <span><b>Rotas:</b> <code>/crm</code></span>
     <span><b>Depende de:</b> T3 (Clientes) e T9 (Orçamentos)</span>
-    <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">CRM</span> ligada no editor de permissões (grupo Comercial) <b>e</b> pertencer a uma empresa com o módulo CRM ativo. Admin e gestor têm a permissão por padrão.</span>
+    <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">CRM</span> ligada no editor de permissões (grupo Comercial) <b>e</b> pertencer a uma empresa com o módulo CRM ativo. Dentro da tela, quem tem a ação <span class="ui">Gerenciar CRM</span> vê o funil inteiro; quem não tem vê só as oportunidades das quais é responsável, co-responsável ou criador. Admin e gestor sempre veem tudo.</span>
     <span><b>Configuração ligada:</b> o catálogo de <span class="ui">Origens</span>, em Configurações → Usabilidade, é compartilhado entre o cadastro de clientes e as oportunidades do CRM.</span>
   </div>
 
-  <h2>1. Tela CRM: kanban × lista, e o empty-state "criar estágios padrão"</h2>
+  <h2>1. Tela CRM: Funil × Tarefas, kanban × lista, e o empty-state "criar estágios padrão"</h2>
 
   <p>O CRM abre em <span class="ui">Menu → CRM</span>. Duas coisas precisam estar verdadeiras para ele existir: o módulo CRM contratado e a permissão de tela ligada para o usuário.</p>
 
@@ -23,16 +23,26 @@
   </figure>
 
   <h3>O que tem na tela</h3>
-  <p>No topo, o cabeçalho <span class="ui">CRM</span> com o subtítulo <span class="ui">Gerencie oportunidades e leads</span> e três botões: dois ícones, <span class="ui">Gerenciar estágios</span> e <span class="ui">Configurar webhooks</span>, e o botão <span class="ui">Nova Oportunidade</span>.</p>
-  <p>Logo abaixo, os cartões de resumo. Sempre aparecem dois: <span class="ui">Total de Leads</span> e <span class="ui">Valor Total</span>. Quando o funil já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: <b>os cartões respeitam os filtros</b>. Se você filtrou por um vendedor, o Total de Leads é o total daquele vendedor, não da empresa.</p>
-  <p>Depois vêm a busca <span class="ui">Buscar por título ou cliente...</span>, o botão <span class="ui">Filtros</span> e o quadro <span class="ui">Pipeline de Vendas</span>, que é o kanban. Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades passaram pelo filtro.</p>
+  <p>No topo, o cabeçalho <span class="ui">CRM</span> com o subtítulo <span class="ui">Gerencie oportunidades e leads</span> e quatro ações: três ícones, <span class="ui">Gerenciar estágios</span>, <span class="ui">Gerenciar funis</span> e <span class="ui">Configurar webhooks</span>, e o botão <span class="ui">Nova Oportunidade</span>. No celular, os três ícones ficam dentro da gaveta <span class="ui">Filtros</span>, no bloco <span class="ui">Configurações</span>, cada um como uma linha de botão com texto.</p>
+
+  <p>Logo abaixo do cabeçalho, um alternador de duas abas comanda a tela inteira: <span class="ui">Funil</span>, que é o kanban de sempre, e <span class="ui">Tarefas</span>, uma lista com as tarefas vinculadas a oportunidades de qualquer funil da empresa. Essa segunda aba é explicada no capítulo 8. O restante deste capítulo trata da aba <span class="ui">Funil</span>, que é a que abre por padrão.</p>
+
+  <p>Dentro da aba <span class="ui">Funil</span>, se a empresa tem mais de um funil cadastrado, aparece um seletor de funil logo abaixo do alternador (capítulo 2). Com um funil só, esse seletor simplesmente não aparece, e a tela funciona exatamente como sempre funcionou.</p>
+
+  <p>Em seguida vêm os cartões de resumo. Sempre aparecem dois: <span class="ui">Total de Leads</span> e <span class="ui">Valor Total</span>. Quando o funil selecionado já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: <b>os cartões respeitam os filtros e a permissão de visibilidade</b>. Se você filtrou por um vendedor, ou se você não tem a ação <span class="ui">Gerenciar CRM</span> e só enxerga as suas próprias oportunidades, o Total de Leads reflete só o que está na sua tela, não o total da empresa.</p>
+
+  <p>Depois vêm a busca <span class="ui">Buscar por título ou cliente...</span>, o botão <span class="ui">Filtros</span> e o quadro <span class="ui">Pipeline de Vendas</span>, que é o kanban. Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades do funil selecionado passaram pelo filtro.</p>
 
   <h3>Kanban e lista</h3>
-  <p>No computador a visão é sempre o <b>kanban</b>: uma coluna por estágio, lado a lado, com rolagem horizontal quando há muitos estágios. Cada coluna tem um cabeçalho colorido com o nome do estágio, a quantidade de oportunidades e a soma dos valores, e uma área rolável com os cartões.</p>
-  <p>No celular você escolhe entre <span class="ui">Lista</span> e <span class="ui">Kanban</span> dentro da gaveta <span class="ui">Filtros</span>, no bloco <span class="ui">Visualização</span>. Na visão Lista, cada oportunidade vira uma linha com o círculo colorido do estágio, o título, o cliente, o valor e a previsão de fechamento, e aparece acima um carrossel com um chip por estágio: tocar no chip filtra a lista por aquele estágio, e um selo <span class="ui">Estágio: nome</span> mostra o filtro ativo, com um X para limpar. Criar é pelo botão redondo flutuante <span class="ui">Lead</span> no canto inferior.</p>
+  <p>No computador a visão é sempre o <b>kanban</b>: uma coluna por estágio, lado a lado, com rolagem horizontal quando há muitos estágios. Cada coluna tem um cabeçalho colorido com, opcionalmente, um ícone escolhido para o estágio, o nome do estágio, a quantidade de oportunidades e a soma dos valores (mesmo quando é R$ 0,00, a linha de valor sempre aparece, pra todas as colunas ficarem com a mesma altura de cabeçalho), e uma área rolável com os cartões, também padronizada na mesma altura entre as colunas.</p>
+  <p>No celular você escolhe entre <span class="ui">Lista</span> e <span class="ui">Kanban</span> dentro da gaveta <span class="ui">Filtros</span>, no bloco <span class="ui">Visualização</span>. Na visão Lista, cada oportunidade vira uma linha com o círculo colorido do estágio, o título, o cliente, o valor e a previsão de fechamento, e aparece acima um carrossel com um chip por estágio: tocar no chip filtra a lista por aquele estágio, e um selo <span class="ui">Estágio: nome</span> mostra o filtro ativo, com um X para limpar. Criar é pelo botão redondo flutuante <span class="ui">Lead</span> no canto inferior, visível só na aba <span class="ui">Funil</span>.</p>
+
+  <h3>O cartão da oportunidade</h3>
+  <p>Cada cartão do kanban mostra o título, o nome do cliente (quando tem), os responsáveis (avatares empilhados, até três, com "+N" quando passa disso, e o nome do responsável principal ao lado), o valor estimado, uma barra de probabilidade e, na parte de baixo, o selo de origem e a previsão de fechamento quando existem. Quando a oportunidade casa o nome salvo em <span class="ui">Origem</span> com uma origem ativa no catálogo da empresa, o selo aparece com o ícone e a cor daquela origem; senão, cai num selo neutro com o texto puro.</p>
+  <div class="aviso">Uma oportunidade <b>sem nenhum responsável</b> não mostra avatar nenhum: ela ganha um selo amarelo de atenção com o texto <span class="ui">Sem responsável</span>. São as oportunidades da fila compartilhada, explicadas no capítulo 9.</div>
 
   <h3>O funil vazio</h3>
-  <p>Empresa nova não tem nenhum estágio, e por isso o kanban mostra o convite <span class="ui">Configure seu funil de vendas</span>, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: <span class="ui">Começar com estágios padrão</span> e <span class="ui">Personalizar estágios</span>.</p>
+  <p>Um funil sem nenhum estágio mostra o convite <span class="ui">Configure seu funil de vendas</span>, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: <span class="ui">Começar com estágios padrão</span> e <span class="ui">Personalizar estágios</span>.</p>
   <p>O botão de estágios padrão cria cinco colunas de uma vez, prontas para uso, e mostra <span class="ui">Estágios padrão criados!</span>. É o caminho recomendado: dá para renomear e recolorir tudo depois.</p>
   <table class="dados">
     <thead><tr><th>Estágio padrão</th><th>Cor</th><th>Marcação</th></tr></thead>
@@ -44,62 +54,119 @@
       <tr><td><span class="ui">Fechado (Perdido)</span></td><td>Vermelho</td><td>Perdido</td></tr>
     </tbody>
   </table>
-  <p>Com os estágios criados mas nenhuma oportunidade, o quadro mostra <span class="ui">Nenhuma oportunidade</span> com a orientação de tocar em Nova Oportunidade. Se há oportunidades mas nenhuma passa pelo filtro, a mensagem vira <span class="ui">Nenhum resultado encontrado</span>, seguida de "Tente ajustar os filtros para encontrar as oportunidades desejadas". Coluna vazia mostra <span class="ui">Sem oportunidades</span>.</p>
+  <p>Com os estágios criados mas nenhuma oportunidade, o quadro mostra <span class="ui">Nenhuma oportunidade</span> com a orientação de tocar em Nova Oportunidade. Se há oportunidades mas nenhuma passa pelo filtro (ou pela sua permissão de visibilidade), a mensagem vira <span class="ui">Nenhum resultado encontrado</span>, seguida de "Tente ajustar os filtros para encontrar as oportunidades desejadas". Coluna vazia mostra <span class="ui">Sem oportunidades</span>.</p>
 
-  <h2>2. Montar o funil: criar, renomear, reordenar e colorir estágios</h2>
+  <h2>2. Vários funis: criar, trocar, tornar padrão, "quem pode ver" e excluir</h2>
 
-  <p>O botão de engrenagem <span class="ui">Gerenciar estágios</span> (no celular, dentro da gaveta de filtros, no bloco Configurações) abre a janela <span class="ui">Gerenciar Estágios do Pipeline</span>. Os estágios são <b>da sua empresa</b>: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.</p>
+  <p>A empresa pode ter mais de um funil comercial, por exemplo um para vendas novas e outro para pós-venda. O botão de ícone <span class="ui">Gerenciar funis</span> no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela <span class="ui">Gerenciar Funis</span>, descrita como "Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais."</p>
 
   <figure>
-    <img src="img/t10-gerenciar-estagios.png" alt="Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o bloco pontilhado Novo Estágio contendo o campo Nome do estágio, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios">
-    <figcaption>Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o bloco de criar um novo estágio, com nome e cor.</figcaption>
+    <img src="img/t10-gerenciar-funis.png" alt="Janela Gerenciar Funis com o bloco pontilhado Novo Funil contendo o campo Nome do funil e o botão de mais, e abaixo a lista de funis da empresa, cada linha com a alça de arrastar, o nome, o selo Padrão ou o botão Tornar padrão, e o menu de ações com Editar, Quem pode ver e Excluir">
+    <figcaption>Janela <span class="ui">Gerenciar Funis</span>: criar um funil novo, ver a lista, marcar o padrão e abrir <span class="ui">Quem pode ver</span> de cada um.</figcaption>
+  </figure>
+
+  <h3>Criar, renomear e reordenar</h3>
+  <p>No bloco pontilhado <span class="ui">Novo Funil</span>, digite o nome no campo <span class="ui">Nome do funil</span> e toque no botão de mais. Aparece <span class="ui">Funil criado com sucesso!</span> e o funil entra no fim da lista. A dica <span class="ui">Arraste para reordenar os funis</span> vale pra ordem em que os funis aparecem no seletor do topo da tela. Cada linha tem um menu com <span class="ui">Editar</span> (renomear), <span class="ui">Quem pode ver</span> e <span class="ui">Excluir</span>.</p>
+
+  <h3>Funil padrão</h3>
+  <p>Um dos funis é sempre o <b>padrão</b>, com o selo azul <span class="ui">Padrão</span>. É o funil que abre quando você entra no CRM pela primeira vez, ou quando a sua preferência de funil (guardada no seu navegador) aponta pra um funil que não existe mais. Qualquer outro funil vira padrão pelo botão <span class="ui">Tornar padrão</span> na própria linha, confirmado com <span class="ui">Funil padrão atualizado!</span>.</p>
+
+  <h3>Excluir um funil</h3>
+  <p>Excluir pede a confirmação genérica <span class="ui">Remover funil?</span> / "Esta ação não pode ser desfeita.". Só que o sistema recusa o pedido em três casos, cada um com uma mensagem específica em vez de deixar a exclusão pela metade:</p>
+  <table class="dados">
+    <thead><tr><th>Situação</th><th>Mensagem</th></tr></thead>
+    <tbody>
+      <tr><td>É o único funil da empresa</td><td><span class="ui">Não é possível excluir o único funil da empresa. Crie outro funil antes de remover este.</span></td></tr>
+      <tr><td>Tem etapas cadastradas</td><td><span class="ui">Este funil não pode ser excluído porque possui etapas vinculadas. Mova ou exclua as etapas antes.</span></td></tr>
+      <tr><td>Tem oportunidades nele</td><td><span class="ui">Este funil não pode ser excluído porque possui oportunidades vinculadas. Mova as oportunidades para outro funil antes.</span></td></tr>
+    </tbody>
+  </table>
+  <div class="regra">Um funil só sai do sistema depois de <b>esvaziado</b>: sem etapas e sem oportunidades dentro dele. Excluir o funil padrão promove automaticamente o próximo da lista a padrão, então a empresa nunca fica sem um funil padrão definido.</div>
+
+  <h3>Trocar de funil no dia a dia</h3>
+  <p>Com dois ou mais funis, o seletor aparece logo abaixo do alternador Funil/Tarefas: no computador, uma fileira de botões em pílula com o nome de cada funil; no celular, as mesmas pílulas em uma faixa rolável. Tocar num funil troca o kanban inteiro pra ele, e essa escolha fica lembrada no seu navegador da próxima vez que você abrir o CRM.</p>
+  <div class="aviso">Trocar de estágio pelo <span class="ui">Estágio</span> do detalhe da oportunidade, ou na criação, pra uma etapa que pertence a <b>outro funil</b>, move a oportunidade inteira pra esse outro funil. Quando a empresa tem mais de um funil, o select de estágio aparece agrupado por nome de funil, com um aviso abaixo: "Escolher uma etapa de outro funil move esta oportunidade para esse funil." Não é um jeito de "espiar" outro funil, é uma mudança real de dono.</div>
+
+  <h3>"Quem pode ver": restringir um funil a algumas pessoas</h3>
+  <p>No menu de ações de cada funil, o item <span class="ui">Quem pode ver</span> abre a janela <span class="ui">Acesso ao funil</span>, com o nome do funil no título. Ela só aparece pra administrador, gestor, ou quem tem a permissão <span class="ui">Gerenciar Configurações</span> ligada.</p>
+
+  <figure>
+    <img src="img/t10-quem-pode-ver.png" alt="Janela Acesso ao funil com a faixa verde Aberto para toda a empresa, o texto explicando que todos os usuários podem ver o funil, e o campo Pessoas com acesso para selecionar quem deve enxergar quando restringido">
+    <figcaption>Janela <span class="ui">Acesso ao funil</span> no estado padrão: aberto pra empresa inteira, até que alguém seja selecionado no campo <span class="ui">Pessoas com acesso</span>.</figcaption>
+  </figure>
+
+  <p>Por padrão, todo funil (inclusive os que você já tinha antes desta função existir) fica <b>aberto pra toda a empresa</b>: a faixa verde mostra <span class="ui">Aberto para toda a empresa</span> e a explicação "Todos os usuários da empresa podem ver este funil. Selecione pessoas abaixo para restringir o acesso.". Assim que você marca ao menos uma pessoa no campo <span class="ui">Pessoas com acesso</span>, a faixa vira amarela com <span class="ui">Restrito</span> e a explicação "Só as pessoas selecionadas abaixo (e quem tem permissão de Gerenciar CRM) podem ver este funil.". O botão <span class="ui">Salvar acesso</span> grava; <span class="ui">Cancelar</span> fecha sem mudar nada.</p>
+  <p>Um funil restrito ganha o selo laranja <span class="ui">Restrito</span> na própria linha, dentro de <span class="ui">Gerenciar Funis</span>, pra você identificar de longe quais funis não são abertos.</p>
+
+  <div class="aviso">
+    <b>Antes de salvar uma restrição que tira o acesso de alguém, o sistema avisa.</b> Se a nova lista deixaria de fora pessoas que hoje conseguem ver o funil, aparece a confirmação <span class="ui">Restringir o acesso a este funil?</span>, com uma frase calculada na hora dizendo quantas pessoas vão deixar de ver o funil e, quando é o caso, quantas oportunidades das quais elas são responsáveis vão sumir da tela delas. Só depois de confirmar em <span class="ui">Restringir mesmo assim</span> a mudança é gravada. É a forma de você perceber, antes de apertar salvar, que restringir um funil pode fazer um vendedor perder de vista negócios pelos quais ele é responsável.
+  </div>
+  <div class="regra">Quem tem a ação <span class="ui">Gerenciar CRM</span> ligada <b>nunca perde acesso</b> a um funil restrito, mesmo que não esteja na lista de pessoas selecionadas. A restrição por "Quem pode ver" é sobre visibilidade comum; quem administra o CRM continua enxergando tudo.</div>
+
+  <h2>3. Montar as etapas do funil: criar, renomear, reordenar, ícone e cor</h2>
+
+  <p>O botão de engrenagem <span class="ui">Gerenciar estágios</span> (no celular, dentro da gaveta de filtros, no bloco Configurações) abre a janela <span class="ui">Gerenciar Estágios do Pipeline</span>, que passa a operar dentro do funil selecionado no topo da tela. Com mais de um funil, o título da janela muda pra <span class="ui">Gerenciar Estágios do Funil "nome"</span>, deixando explícito qual funil está sendo editado. As etapas são <b>da sua empresa</b>: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.</p>
+
+  <figure>
+    <img src="img/t10-gerenciar-estagios.png" alt="Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o bloco pontilhado Novo Estágio contendo o campo Nome do estágio, um seletor de ícone, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios">
+    <figcaption>Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o bloco de criar um novo estágio, com nome, ícone e cor.</figcaption>
   </figure>
 
   <h3>Criar</h3>
-  <p>No bloco pontilhado <span class="ui">Novo Estágio</span>, digite o nome no campo <span class="ui">Nome do estágio</span>, escolha a cor no seletor de cores ao lado e toque no botão de mais. Aparece <span class="ui">Estágio criado com sucesso!</span> e o estágio entra no fim do funil. O botão fica travado enquanto o nome estiver vazio.</p>
+  <p>No bloco pontilhado <span class="ui">Novo Estágio</span>, digite o nome no campo <span class="ui">Nome do estágio</span>, escolha um ícone no seletor <span class="ui">Ícone</span> (ou deixe em <span class="ui">Sem ícone</span>) e a cor no seletor de cores, e toque no botão de mais. Aparece <span class="ui">Estágio criado com sucesso!</span> e o estágio entra no fim do funil selecionado. O botão fica travado enquanto o nome estiver vazio, ou enquanto nenhum funil estiver resolvido.</p>
 
-  <h3>Renomear, recolorir e marcar</h3>
-  <p>Cada linha da lista tem um menu com <span class="ui">Editar</span> (laranja) e <span class="ui">Excluir</span> (vermelho). Em <span class="ui">Editar</span>, a linha abre no modo de edição com o campo de nome, o seletor de cor e as duas chaves <span class="ui">Ganho</span> e <span class="ui">Perdido</span>. O X descarta e o visto confirma. Confirmando, aparece <span class="ui">Estágio atualizado!</span>.</p>
+  <h3>Renomear, recolorir, trocar o ícone e marcar</h3>
+  <p>Cada linha da lista tem um menu com <span class="ui">Editar</span> (laranja) e <span class="ui">Excluir</span> (vermelho). Em <span class="ui">Editar</span>, a linha abre no modo de edição com o campo de nome, o seletor de ícone, o seletor de cor e as duas chaves <span class="ui">Ganho</span> e <span class="ui">Perdido</span>. O X descarta e o visto confirma. Confirmando, aparece <span class="ui">Estágio atualizado!</span>.</p>
+  <div class="dica">O ícone é <b>opcional</b>: um estágio sem ícone continua funcionando normalmente, só com a bolinha colorida no lugar dele. Escolher um ícone ajuda a reconhecer a coluna de longe no kanban, principalmente quando o funil tem muitas colunas parecidas na cor.</div>
 
   <h3>Reordenar</h3>
-  <p>A lista mostra a dica <span class="ui">Arraste para reordenar os estágios</span>. Segure a alça de arrasto à esquerda da linha e solte na posição desejada. A nova ordem vale para o kanban imediatamente. É assim que se acerta o funil na ordem real da sua venda: primeiro contato, visita técnica, proposta enviada, negociação, fechamento.</p>
+  <p>A lista mostra a dica <span class="ui">Arraste para reordenar os estágios</span>. Segure a alça de arrasto à esquerda da linha e solte na posição desejada, dentro do mesmo funil. A nova ordem vale para o kanban imediatamente. É assim que se acerta o funil na ordem real da sua venda: primeiro contato, visita técnica, proposta enviada, negociação, fechamento. No computador, também dá pra reordenar arrastando o próprio <b>cabeçalho da coluna</b> direto no kanban, sem abrir esta janela.</p>
 
   <h3>Excluir</h3>
   <p>Ao excluir, o sistema pergunta <span class="ui">Remover estágio?</span> com o texto "Esta ação não pode ser desfeita. Leads neste estágio ficarão sem estágio atribuído." e os botões <span class="ui">Cancelar</span> e <span class="ui">Remover</span>. Confirmando, aparece <span class="ui">Estágio removido!</span>.</p>
-  <div class="aviso">Excluir um estágio <b>não apaga as oportunidades dele</b>: elas ficam sem estágio e passam a ser exibidas na <b>primeira coluna</b> do funil. Não é perda de dado, é realocação. Se você viu leads antigos aparecendo do nada na primeira coluna, quase sempre alguém apagou um estágio.</div>
+  <div class="aviso">Excluir um estágio <b>não apaga as oportunidades dele</b>: elas ficam sem estágio e passam a ser exibidas na <b>primeira coluna do mesmo funil</b>. Não é perda de dado, é realocação. Se você viu leads antigos aparecendo do nada na primeira coluna, quase sempre alguém apagou um estágio.</div>
 
   <div class="dica">Monte o funil com o menor número de colunas que você consegue explicar em voz alta. Funil com dez estágios ninguém mantém atualizado, e funil desatualizado não serve para decidir nada. Cinco ou seis colunas costumam dar conta de empresa de serviço técnico em campo.</div>
 
-  <h2>3. Marcar estágio como "ganho" e como "perdido" — e o que muda</h2>
+  <h2>4. Marcar etapa como "ganho" e como "perdido", e a oferta de lançar a receita</h2>
 
-  <p>Dentro da edição de cada estágio existem duas chaves: <span class="ui">Ganho</span>, com o ícone de troféu verde, e <span class="ui">Perdido</span>, com o ícone de X vermelho. Elas são <b>excludentes</b>: ligar uma desliga a outra automaticamente. Um estágio pode ser neutro (as duas desligadas), de ganho ou de perda.</p>
+  <p>Dentro da edição de cada etapa existem duas chaves: <span class="ui">Ganho</span>, com o ícone de troféu verde, e <span class="ui">Perdido</span>, com o ícone de X vermelho. Elas são <b>excludentes</b>: ligar uma desliga a outra automaticamente. Uma etapa pode ser neutra (as duas desligadas), de ganho ou de perda.</p>
 
   <table class="dados">
     <thead><tr><th>Marcação</th><th>O que muda de verdade</th></tr></thead>
     <tbody>
       <tr>
         <td><span class="ui">Ganho</span></td>
-        <td>O <b>primeiro</b> estágio marcado como ganho vira um cartão de resumo no topo da tela (no computador), mostrando o nome do estágio e a soma dos valores das oportunidades que estão nele. É o seu "quanto eu fechei". No gerenciador, o estágio ganha o troféu.</td>
+        <td>A <b>primeira</b> etapa de ganho do funil vira um cartão de resumo no topo da tela (no computador), mostrando o nome da etapa e a soma dos valores das oportunidades que estão nela. É o seu "quanto eu fechei". No gerenciador, a etapa ganha o troféu. Além disso, mover uma oportunidade para <b>qualquer</b> etapa marcada como ganho abre a oferta de lançar a receita, explicada logo abaixo.</td>
       </tr>
       <tr>
         <td><span class="ui">Perdido</span></td>
-        <td>Arrastar uma oportunidade para um estágio marcado como perdido <b>abre obrigatoriamente</b> a janela <span class="ui">Motivo da Perda</span>. Sem escolher um motivo, a oportunidade não se move. No gerenciador, o estágio ganha o X vermelho.</td>
+        <td>Arrastar uma oportunidade para uma etapa marcada como perdido <b>abre obrigatoriamente</b> a janela <span class="ui">Motivo da Perda</span>. Sem escolher um motivo, a oportunidade não se move. No gerenciador, a etapa ganha o X vermelho.</td>
       </tr>
       <tr>
         <td>Neutro</td>
-        <td>O <b>primeiro</b> estágio neutro também vira um cartão de resumo no topo, com a soma dos valores. É o seu "quanto está em andamento". Mover para um estágio neutro é direto, sem perguntas.</td>
+        <td>A <b>primeira</b> etapa neutra do funil também vira um cartão de resumo no topo, com a soma dos valores. É o seu "quanto está em andamento". Mover para uma etapa neutra é direto, sem perguntas.</td>
       </tr>
     </tbody>
   </table>
 
-  <div class="regra">As marcações <b>não</b> disparam nada além disso. Marcar um estágio como ganho não cria orçamento, não cria Ordem de Serviço, não lança nada no financeiro e não muda o cadastro do cliente. Elas servem para o resumo do topo e para forçar o registro do motivo da perda. Quem fecha negócio ainda precisa criar o orçamento em Orçamentos e, se for o caso, a OS.</div>
+  <h3>A oferta de lançar a receita</h3>
+  <p>Quando você move uma oportunidade (arrastando no kanban, pelo menu <span class="ui">Mover para</span> no celular, ou trocando o <span class="ui">Estágio</span> no detalhe) para uma etapa de ganho, o sistema pode perguntar <span class="ui">Quer lançar a receita desta venda?</span> na janela <span class="ui">Oportunidade ganha</span>, com o texto "Abrimos a conta a receber já com o cliente e o valor da oportunidade. Você confere e ajusta antes de salvar.".</p>
+  <p>Essa oferta só aparece pra administrador, gestor, ou pra quem tem a ação <span class="ui">Gerenciar Financeiro</span> marcada, <b>de propósito</b>, no editor de permissões daquela pessoa. É diferente da maioria das permissões do sistema: aqui não basta nunca ter mexido no editor de permissões da pessoa, é preciso a marca explícita. Se um vendedor com acesso normal ao sistema nunca vê essa pergunta, o motivo mais comum é esse: a ação Gerenciar Financeiro nunca foi ligada pra ele.</p>
+  <ul>
+    <li>Os botões são <span class="ui">Agora não</span> e <span class="ui">Sim, lançar receita</span>.</li>
+    <li>Escolhendo <span class="ui">Sim, lançar receita</span>, abre o formulário de nova conta a receber do Financeiro, já com o cliente e o valor estimado da oportunidade preenchidos (o valor é só sugestão, editável antes de salvar).</li>
+    <li>Escolhendo <span class="ui">Agora não</span>, ou fechando a janela, a oportunidade continua movida pro estágio de ganho normalmente. <b>A oferta nunca trava a mudança de estágio</b>: ela aparece depois que o estágio já foi gravado.</li>
+  </ul>
+  <div class="regra">A oferta só aparece <b>uma vez por oportunidade</b>. Depois que você lança a receita (ou ela já foi lançada de outro jeito e vinculada), mover a mesma oportunidade de novo por qualquer etapa de ganho não pergunta de novo, pra nunca duplicar o lançamento. Sem a ação Gerenciar Financeiro marcada pra você, a pergunta simplesmente não aparece, e mudar o estágio continua funcionando normal.</div>
+  <div class="regra">Fora dessa oferta pontual, as marcações de Ganho e Perdido <b>não</b> disparam mais nada sozinhas: elas não criam orçamento, não criam Ordem de Serviço e não mudam o cadastro do cliente. Servem para o resumo do topo, para forçar o registro do motivo da perda, e para oferecer o lançamento da receita.</div>
 
-  <h2>4. Criar oportunidade: título, cliente (ou criar na hora), vendedor, origem, valor, probabilidade, previsão</h2>
+  <h2>5. Criar oportunidade: título, cliente, responsáveis, origem, etapa, valor, probabilidade, previsão</h2>
 
-  <p>O botão <span class="ui">Nova Oportunidade</span> (no celular, o botão redondo flutuante <span class="ui">Lead</span>) abre a janela <span class="ui">Nova Oportunidade</span>. Editando uma existente, o título vira <span class="ui">Editar Oportunidade</span>.</p>
+  <p>O botão <span class="ui">Nova Oportunidade</span> (no celular, o botão redondo flutuante <span class="ui">Lead</span>) abre a janela <span class="ui">Nova Oportunidade</span>. Editando uma existente, o título vira <span class="ui">Editar Oportunidade</span>. Uma oportunidade nova nasce sempre no <b>funil que está selecionado no topo da tela</b> no momento da criação.</p>
 
   <figure>
-    <img src="img/t10-nova-oportunidade.png" alt="Janela Nova Oportunidade vazia, com o campo Título da Oportunidade, os seletores Cliente (Nenhum cliente) e Vendedor Responsável (Não atribuído), Origem (Não informado) e Estágio (Não atribuído), os campos Valor Estimado, Probabilidade e Previsão Fechamento, o campo Observações e os botões Cancelar e Salvar">
+    <img src="img/t10-nova-oportunidade.png" alt="Janela Nova Oportunidade vazia, com o campo Título da Oportunidade, os seletores Cliente (Nenhum cliente) e Vendedor Responsável com busca por múltiplos vendedores, Origem (Não informado) e Estágio (Não atribuído), os campos Valor Estimado, Probabilidade e Previsão Fechamento, o campo Observações e os botões Cancelar e Salvar">
     <figcaption>Janela Nova Oportunidade sem nada preenchido: só o título é obrigatório, todos os demais campos são opcionais.</figcaption>
   </figure>
 
@@ -114,27 +181,27 @@
       <tr>
         <td><span class="ui">Cliente</span></td>
         <td>Não</td>
-        <td>Seletor com busca (<span class="ui">Buscar cliente...</span>), com a opção <span class="ui">Nenhum cliente</span> e, embaixo do nome, o documento ou o e-mail para diferenciar homônimos. Digitando um nome que não existe, aparece <span class="ui">Cadastrar "&lt;nome&gt;"</span> para criar o cliente na hora, sem sair da tela.</td>
+        <td>Seletor com busca (<span class="ui">Buscar cliente...</span>), com a opção <span class="ui">Nenhum cliente</span> e, embaixo do nome, o documento ou o e-mail para diferenciar homônimos. Digitando um nome que não existe, aparece <span class="ui">Cadastrar "&lt;nome&gt;"</span> para criar o cliente na hora, sem sair da tela. Quando a oportunidade é criada a partir da ficha de um cliente (na tela de Clientes), este campo já vem preenchido e <b>travado</b>, com o aviso "Cliente definido pela ficha de onde você abriu esta oportunidade.".</td>
       </tr>
       <tr>
         <td><span class="ui">Vendedor Responsável</span></td>
         <td>Não</td>
-        <td>Lista dos usuários da empresa, mais a opção <span class="ui">Não atribuído</span>. O rosto e o nome do responsável aparecem no cartão do kanban.</td>
+        <td>Campo de múltipla escolha com busca (<span class="ui">Vendedores</span>), mostrando o rosto de cada usuário da empresa. Você pode marcar mais de um vendedor. O <b>primeiro selecionado vira o responsável principal</b>, com o selo <span class="ui">Principal</span> no chip dele; é o que entra nos filtros e nos relatórios. Os demais aparecem como responsáveis secundários. Sem ninguém marcado, a oportunidade nasce sem dono e entra na fila compartilhada explicada no capítulo 9.</td>
       </tr>
       <tr>
         <td><span class="ui">Origem</span></td>
         <td>Não</td>
-        <td>Seletor com busca alimentado pelo catálogo de <span class="ui">Origens</span> da empresa, com a bolinha da cor de cada origem, mais <span class="ui">Não informado</span>. Digitando uma origem nova, aparece <span class="ui">Adicionar "&lt;nome&gt;"</span> e ela nasce no catálogo, ficando disponível também no cadastro de clientes.</td>
+        <td>Seletor com busca alimentado pelo catálogo de <span class="ui">Origens</span> da empresa, com o ícone e a cor de cada origem, mais <span class="ui">Não informado</span>. Digitando uma origem nova, aparece <span class="ui">Adicionar "&lt;nome&gt;"</span> e ela nasce no catálogo, ficando disponível também no cadastro de clientes.</td>
       </tr>
       <tr>
         <td><span class="ui">Estágio</span></td>
         <td>Não</td>
-        <td>Em oportunidade nova já vem com o <b>primeiro</b> estágio do funil selecionado. Também aceita <span class="ui">Não atribuído</span>, e nesse caso o cartão aparece na primeira coluna.</td>
+        <td>Em oportunidade nova já vem com a <b>primeira</b> etapa do funil atual selecionada. Também aceita <span class="ui">Não atribuído</span>, e nesse caso o cartão aparece na primeira coluna. Quando a empresa tem mais de um funil, a lista aparece <b>agrupada por funil</b> (o nome do funil como cabeçalho de cada grupo), e escolher uma etapa de outro funil move a oportunidade pra ele.</td>
       </tr>
       <tr>
         <td><span class="ui">Valor Estimado (R$)</span></td>
         <td>Não</td>
-        <td>Número com centavos. Alimenta o Valor Total do topo, a soma por coluna do kanban e o filtro de faixa de valor.</td>
+        <td>Número com centavos. Alimenta o Valor Total do topo, a soma por coluna do kanban, o filtro de faixa de valor e o valor sugerido na oferta de lançar a receita quando a oportunidade é ganha.</td>
       </tr>
       <tr>
         <td><span class="ui">Probabilidade (%)</span></td>
@@ -160,32 +227,41 @@
 
   <div class="regra">Não existe <b>importação de leads em massa</b>. Não há botão de importar planilha, CSV ou lista de contatos no CRM. Lead entra de três formas: criado à mão nesta janela, recebido por um webhook de captação, ou digitado por outra pessoa da equipe. Uma base grande vinda de fora precisa ser lançada uma a uma, ou entrar pelo webhook.</div>
 
-  <div class="regra">Não existe <b>distribuição automática por vendedor</b>. O sistema não sorteia, não faz rodízio nem reveza os leads entre a equipe. Quem define o <span class="ui">Vendedor Responsável</span> é uma pessoa, na criação ou na edição. Lead que chega por webhook nasce <b>sem vendedor</b>, e alguém precisa atribuir.</div>
+  <div class="regra">Não existe <b>distribuição automática por vendedor</b>. O sistema não sorteia, não faz rodízio nem reveza os leads entre a equipe. Quem define o <span class="ui">Vendedor Responsável</span> é uma pessoa, na criação ou na edição. Lead que chega por webhook nasce <b>sem vendedor</b>, e alguém precisa assumir ou atribuir.</div>
 
-  <h2>5. Arrastar entre estágios e o motivo da perda obrigatório</h2>
+  <h2>6. Arrastar entre etapas e o motivo da perda obrigatório</h2>
 
   <p>No computador, mover uma oportunidade é arrastar o cartão de uma coluna e soltar em outra. O cartão fica com a mãozinha de arrastar, e ao soltar aparece <span class="ui">Lead atualizado com sucesso!</span>.</p>
-  <p>No celular não há arraste. Abra o menu de três pontinhos da linha e escolha <span class="ui">Mover para</span> seguido do nome do estágio: a lista traz todos os estágios menos aquele em que a oportunidade já está, cada um com sua bolinha colorida. O mesmo menu tem <span class="ui">Editar</span>.</p>
+  <p>No celular não há arraste. Abra o menu de três pontinhos da linha e escolha <span class="ui">Mover para</span> seguido do nome da etapa: a lista traz todas as etapas do funil atual menos aquela em que a oportunidade já está, cada uma com sua bolinha colorida. O mesmo menu tem <span class="ui">Editar</span>.</p>
 
-  <h3>Quando o destino é um estágio de perda</h3>
-  <p>Soltando o cartão num estágio marcado como <b>perdido</b>, o sistema abre a janela <span class="ui">Motivo da Perda</span>, com o texto <span class="ui">Registre o motivo da perda do negócio</span> e o nome da oportunidade. Os campos são:</p>
+  <h3>Quando o destino é uma etapa de perda</h3>
+  <p>Soltando o cartão numa etapa marcada como <b>perdido</b>, o sistema abre a janela <span class="ui">Motivo da Perda</span>, com o texto <span class="ui">Registre o motivo da perda do negócio</span> e o nome da oportunidade. Os campos são:</p>
   <ul>
     <li><span class="ui">Motivo *</span>: lista fixa com <span class="ui">Preço alto</span>, <span class="ui">Concorrente escolhido</span>, <span class="ui">Sem orçamento</span>, <span class="ui">Não respondeu</span>, <span class="ui">Projeto cancelado</span>, <span class="ui">Fora do escopo</span> e <span class="ui">Outro</span>. O botão de confirmar fica travado enquanto nada estiver escolhido.</li>
     <li><span class="ui">Detalhes (opcional)</span>: texto livre.</li>
   </ul>
-  <p>Os botões são <span class="ui">Cancelar</span> e <span class="ui">Confirmar Perda</span>. Cancelando, a oportunidade <b>não</b> muda de estágio: ela volta para onde estava.</p>
+  <p>Os botões são <span class="ui">Cancelar</span> e <span class="ui">Confirmar Perda</span>. Cancelando, a oportunidade <b>não</b> muda de etapa: ela volta para onde estava.</p>
 
-  <div class="aviso">O motivo da perda é gravado como <b>texto dentro das Observações</b> da oportunidade, no formato "Motivo da perda: Preço alto" seguido dos detalhes. Não é um campo estruturado: não existe relatório de motivos de perda, não dá para filtrar por motivo nem somar quantos negócios você perdeu por preço. E como ele é escrito no campo de Observações, <b>o texto que já estava lá é substituído</b>. Se a observação da oportunidade era importante, copie antes de mover o cartão para o estágio de perda.</div>
+  <div class="aviso">O motivo da perda é gravado como <b>texto dentro das Observações</b> da oportunidade, no formato "Motivo da perda: Preço alto" seguido dos detalhes. Não é um campo estruturado: não existe relatório de motivos de perda, não dá para filtrar por motivo nem somar quantos negócios você perdeu por preço. E como ele é escrito no campo de Observações, <b>o texto que já estava lá é substituído</b>. Se a observação da oportunidade era importante, copie antes de mover o cartão para a etapa de perda.</div>
 
-  <h2>6. Detalhe do lead: ligar, WhatsApp, e-mail e registrar interação com próxima ação</h2>
+  <h2>7. Detalhe da oportunidade: responsáveis, criar OS, criar Tarefa e registrar interação</h2>
 
-  <p>Tocar no cartão (ou na linha, no celular) abre o detalhe da oportunidade, com o título, o nome do cliente e dois botões no canto: <span class="ui">Editar</span>, em laranja, e a lixeira vermelha. A janela tem duas abas: <span class="ui">Detalhes</span> e <span class="ui">Histórico</span> com a quantidade de interações entre parênteses.</p>
+  <p>Tocar no cartão (ou na linha, no celular) abre o detalhe da oportunidade, com o título, o nome do cliente e dois botões no canto: <span class="ui">Editar</span>, em laranja, e a lixeira vermelha. A janela tem três abas: <span class="ui">Detalhes</span>, <span class="ui">Tarefas</span> (com a quantidade entre parênteses, capítulo 8) e <span class="ui">Histórico</span> (com a quantidade de interações entre parênteses).</p>
 
   <h3>Aba Detalhes</h3>
   <p>No topo, um seletor <span class="ui">Status:</span> com cinco opções: <span class="ui">Lead</span>, <span class="ui">Proposta</span>, <span class="ui">Negociação</span>, <span class="ui">Negócio Fechado (Ganho)</span> e <span class="ui">Negócio Perdido</span>. Mudar ali salva na hora.</p>
-  <div class="aviso">Esse <span class="ui">Status</span> é uma classificação <b>separada do estágio do funil</b>. Ele é uma lista fixa do sistema, não é configurável, e mover o cartão no kanban <b>não</b> muda o Status, assim como mudar o Status não move o cartão. Os cartões, as somas e os filtros do funil olham o <b>estágio</b>. Use o Status apenas se a sua equipe já se acostumou com ele; na dúvida, ignore e trabalhe pelo kanban.</div>
+  <div class="aviso">Esse <span class="ui">Status</span> é uma classificação <b>separada da etapa do funil</b>. Ele é uma lista fixa do sistema, não é configurável, e mover o cartão no kanban <b>não</b> muda o Status, assim como mudar o Status não move o cartão. Os cartões, as somas e os filtros do funil olham a <b>etapa</b>. Use o Status apenas se a sua equipe já se acostumou com ele; na dúvida, ignore e trabalhe pelo kanban.</div>
 
-  <p>Abaixo vêm quatro caixas: <span class="ui">Valor Estimado</span> (ou <span class="ui">Não informado</span>), <span class="ui">Probabilidade</span>, <span class="ui">Previsão Fechamento</span> (ou <span class="ui">Não definida</span>) e <span class="ui">Origem</span> (ou <span class="ui">Não informada</span>).</p>
+  <p>Logo abaixo, o campo <span class="ui">Estágio:</span> (mesmo select da criação, agrupado por funil quando a empresa tem mais de um) mostra a etapa atual com a bolinha ou o ícone da cor dela.</p>
+
+  <h3>Responsáveis</h3>
+  <p>Quando a oportunidade tem alguém atribuído, aparece a linha <span class="ui">Responsáveis:</span> com um chip por pessoa: o primeiro em destaque, com a foto e o selo <span class="ui">Principal</span>; os demais em chips neutros. Quando a oportunidade <b>não tem ninguém</b>, aparece o selo amarelo <span class="ui">Sem responsável</span> e o botão <span class="ui">Assumir oportunidade</span>, com a legenda "Você vira responsável e ela sai da fila compartilhada.". Clicar nele te torna o responsável principal na hora, sem pedir confirmação extra, e mostra o aviso <span class="ui">Oportunidade assumida!</span> / "Ela saiu da fila compartilhada e agora aparece só pra você.". Esse mecanismo é a fila explicada no capítulo 9.</p>
+
+  <h3>Atalhos: gerar OS ou Tarefa</h3>
+  <p>Logo abaixo dos responsáveis, dois botões (quando você tem a permissão correspondente): <span class="ui">Criar OS</span> abre o formulário de nova Ordem de Serviço com o cliente e o título já preenchidos, e os responsáveis da oportunidade pré-marcados como responsáveis da OS. <span class="ui">Criar Tarefa</span> abre o mesmo formulário de tarefa explicado no capítulo 8, já vinculada a esta oportunidade.</p>
+
+  <h3>Cartões de informação e origem</h3>
+  <p>Em seguida vêm quatro caixas: <span class="ui">Valor Estimado</span> (ou <span class="ui">Não informado</span>), <span class="ui">Probabilidade</span>, <span class="ui">Previsão Fechamento</span> (ou <span class="ui">Não definida</span>) e <span class="ui">Origem</span> (ou <span class="ui">Não informada</span>). Quando a origem casa com o catálogo da empresa, o selo aparece com o ícone e a cor daquela origem, do mesmo jeito que no cartão do kanban.</p>
 
   <h3>Falar com o cliente sem sair da tela</h3>
   <p>Quando a oportunidade tem cliente vinculado, aparece o bloco <span class="ui">Contato do Cliente</span> com atalhos diretos:</p>
@@ -210,30 +286,77 @@
   <p>O botão <span class="ui">Registrar</span> só libera com tipo e descrição preenchidos, e ao salvar aparece <span class="ui">Interação registrada!</span>. A interação entra na linha do tempo, da mais recente para a mais antiga, com ícone, tipo, data e hora, o texto da conversa e, quando existe, uma faixa amarela com <span class="ui">Próxima ação:</span> e a data.</p>
   <p>Sem nenhuma interação, aparece <span class="ui">Nenhuma interação registrada</span> com <span class="ui">Clique em "Nova Interação" para registrar o primeiro contato</span>.</p>
 
-  <div class="regra">A <span class="ui">Próxima Ação</span> e a sua data são apenas <b>anotações</b>. O sistema não envia lembrete, não notifica, não cria tarefa na agenda e não avisa quando a data chega. Quem confere é você, abrindo o lead. É por isso que a rotina diária de revisão do funil, no fim deste tutorial, é tão importante.</div>
+  <div class="regra">A <span class="ui">Próxima Ação</span> e a sua data são apenas <b>anotações</b>. O sistema não envia lembrete, não notifica e não avisa quando a data chega. Se você precisa de um lembrete de verdade, com data e responsável, use uma <b>Tarefa</b> (capítulo 8), que pode inclusive aparecer na Agenda.</div>
 
   <h3>Excluir a oportunidade</h3>
   <p>O botão de lixeira vermelha, no topo do detalhe, apaga a oportunidade. Confirmando, aparece <span class="ui">Lead removido com sucesso!</span>.</p>
-  <div class="aviso">A confirmação de exclusão de lead usa a <b>janelinha do próprio navegador</b>, com a pergunta <span class="ui">Tem certeza que deseja excluir este lead?</span> e os botões OK e Cancelar em inglês ou no idioma do navegador. É diferente do resto do sistema, que usa a caixa de confirmação padrão do Dominex. Não é falha nem site invadido: é só uma tela mais antiga. E não há desfazer: apagou, apagou, junto com o histórico de interações.</div>
+  <div class="aviso">A confirmação de exclusão de lead usa a <b>janelinha do próprio navegador</b>, com a pergunta <span class="ui">Tem certeza que deseja excluir este lead?</span> e os botões OK e Cancelar em inglês ou no idioma do navegador. É diferente do resto do sistema, que usa a caixa de confirmação padrão do Dominex. Não é falha nem site invadido: é só uma tela mais antiga. E não há desfazer: apagou, apagou, junto com o histórico de interações e das tarefas vinculadas a ela.</div>
 
   <!-- PRINT FALTANDO: detalhe de uma oportunidade aberto na aba Histórico, com o bloco "Registrar Interação" e a linha do tempo de interações. Exige um lead de teste já cadastrado na conta de demonstração. -->
 
-  <h2>7. Filtros: origem, vendedor, faixa de valor, busca</h2>
+  <h2>8. Tarefas da oportunidade: no card e na aba Tarefas da tela</h2>
 
-  <p>A busca <span class="ui">Buscar por título ou cliente...</span> procura ao mesmo tempo no <b>título da oportunidade</b> e no <b>nome do cliente vinculado</b>. Ela é tolerante a acento e a maiúscula, então "negociacao" acha "Negociação".</p>
-  <p>O botão <span class="ui">Filtros</span> abre quatro filtros que se combinam:</p>
+  <p>Uma tarefa do CRM é a <b>mesma coisa</b> que uma tarefa da Agenda (T6): mesmo cadastro, mesma tela de edição, mesma conclusão. A diferença é só o vínculo: uma tarefa criada dentro de uma oportunidade fica <b>ligada a ela</b>, e você escolhe se ela também aparece no calendário da Agenda ou só dentro do card do CRM.</p>
+
+  <div class="regra">A relação é de <b>mão única</b>. Toda tarefa nascida dentro de uma oportunidade pode aparecer na Agenda, mas uma tarefa comum, criada direto na Agenda ou na ficha do cliente, <b>nunca</b> aparece dentro de um card do CRM, porque ela não nasceu vinculada a nenhuma oportunidade.</div>
+
+  <h3>Criar uma tarefa a partir do card</h3>
+  <p>Dentro do detalhe da oportunidade, o botão <span class="ui">Criar Tarefa</span> (na aba Detalhes) ou <span class="ui">Nova tarefa</span> (dentro da própria aba <span class="ui">Tarefas</span>) abre o mesmo formulário de tarefa da Agenda, com o título e os responsáveis da oportunidade já sugeridos. Dois campos aparecem só porque a tarefa está sendo criada dentro de uma oportunidade:</p>
+  <ul>
+    <li><span class="ui">Mostrar na agenda</span>: uma chave. Ligada (padrão), a tarefa aparece no calendário da Agenda, como qualquer outra. Desligada, a legenda muda para "Desligado, a tarefa continua na oportunidade, mas não aparece no calendário.": a tarefa some do calendário mas continua valendo dentro do card e na aba Tarefas da tela do CRM.</li>
+    <li><span class="ui">Data</span>: obrigatória enquanto <span class="ui">Mostrar na agenda</span> está ligada. Com a chave desligada, a data fica marcada como "(opcional)" e pode ficar em branco, porque uma tarefa que não vai pro calendário não precisa de data pra existir.</li>
+  </ul>
+  <p>O responsável da tarefa <b>não precisa ser o mesmo responsável do card</b>: você pode delegar o follow-up pra outra pessoa da equipe sem trocar o dono da oportunidade.</p>
+
+  <figure>
+    <img src="img/t10-nova-tarefa-oportunidade.png" alt="Formulário Nova Tarefa aberto a partir de uma oportunidade do CRM, com a chave Mostrar na agenda ligada, o campo Data com asterisco obrigatório e o campo Responsáveis já sugerido">
+    <figcaption>Formulário de tarefa aberto de dentro de uma oportunidade: a chave <span class="ui">Mostrar na agenda</span> decide se ela também entra no calendário.</figcaption>
+  </figure>
+
+  <h3>A aba Tarefas do card</h3>
+  <p>Dentro do detalhe da oportunidade, a aba <span class="ui">Tarefas</span> lista todas as tarefas vinculadas àquele card. Cada linha mostra um círculo clicável pra marcar <span class="ui">Concluir</span> (ou <span class="ui">Reabrir</span>, se já está concluída), o título, a data (ou <span class="ui">Sem data</span>), os avatares dos responsáveis, e, quando for o caso, os selos <span class="ui">Recorrente</span> e <span class="ui">Fora da agenda</span> (esse último quando a chave <span class="ui">Mostrar na agenda</span> está desligada). Cada linha tem os ícones <span class="ui">Editar</span> (laranja) e excluir (vermelho).</p>
+  <p>Sem nenhuma tarefa, aparece <span class="ui">Nenhuma tarefa nesta oportunidade</span> com "Crie tarefas para acompanhar os próximos passos deste negócio.".</p>
+  <div class="aviso">Excluir uma tarefa também usa a <b>confirmação do navegador</b>, com o texto <span class="ui">Excluir esta tarefa?</span>. Se a tarefa faz parte de uma série recorrente, o texto ganha o complemento " Ela faz parte de uma série recorrente, só esta ocorrência será excluída.": apagar não mexe nas outras ocorrências da série.</div>
+  <div class="regra">Uma tarefa <b>recorrente</b> não aparece uma linha por ocorrência: o card mostra só a próxima ocorrência pendente, com o selo <span class="ui">Recorrente</span>, exatamente como a Agenda faz. É a mesma regra nos dois lugares, de propósito, pra não mostrar números diferentes de "quantas tarefas" conforme a tela.</div>
+
+  <h3>A aba Tarefas da tela do CRM</h3>
+  <p>No alternador do topo da tela (capítulo 1), a aba <span class="ui">Tarefas</span> é uma terceira superfície, ao lado do kanban. Ela lista, numa tabela corrida, as tarefas vinculadas a oportunidades de <b>qualquer funil</b> da empresa (não só do funil selecionado no seletor), combinando duas regras de visibilidade: só entram tarefas de oportunidades que você já enxerga (a regra do capítulo 9) e, dentro dessas, só as tarefas que a sua permissão de tarefa libera (a regra logo abaixo). Tem busca (<span class="ui">Buscar tarefa ou oportunidade...</span>) e um filtro por <span class="ui">Responsável</span>. A ordenação é por data, com as <b>vencidas primeiro</b> (selo <span class="ui">Atrasada</span>), depois as com data futura, e por último as sem data.</p>
+  <p>Cada linha mostra o título da tarefa, o nome da oportunidade de origem, os avatares dos responsáveis e a data (ou <span class="ui">Sem data</span>). Tocar numa linha abre o detalhe da oportunidade dona daquela tarefa (aba Detalhes); a partir daí, entre na aba Tarefas do próprio card pra ver ou editar a tarefa.</p>
+  <p>Sem nenhuma tarefa vinculada em nenhuma oportunidade, aparece <span class="ui">Nenhuma tarefa vinculada a oportunidades</span> com "Crie tarefas dentro de uma oportunidade para acompanhá-las aqui.". Com filtro sem resultado, é <span class="ui">Nenhuma tarefa encontrada</span> / "Tente ajustar a busca ou os filtros.".</p>
+
+  <div class="regra">Quem tem a permissão <span class="ui">Gerenciar Tarefas</span> vê as tarefas de todo mundo, tanto aqui quanto na Agenda. Quem não tem essa permissão (nem <span class="ui">Ver Toda a Agenda</span>) vê só as tarefas em que é responsável, é o técnico, foi quem criou, ou que pertencem à sua equipe. Os detalhes dessa permissão estão em T2 (Usuários e Permissões).</div>
+
+  <h2>9. Quem vê o quê: cada um vê as suas, e a fila sem responsável</h2>
+
+  <p>Sem nenhuma configuração de permissão explícita, o CRM continua exatamente como sempre foi: qualquer pessoa com a tela liberada vê o funil inteiro da empresa. A regra a seguir só entra em ação depois que um administrador começa a configurar permissões por pessoa.</p>
+
+  <h3>Cada um vê as suas</h3>
+  <p>Quem tem a ação <span class="ui">Gerenciar CRM</span> ligada enxerga <b>todo</b> o funil (do funil selecionado e dos outros), pode filtrar por qualquer vendedor, e vê os totais reais da empresa nos cartões do topo. Quem <b>não</b> tem essa ação vê só as oportunidades em que é responsável (principal ou secundário) ou foi quem criou. As demais oportunidades simplesmente não aparecem: nem no kanban, nem na lista, nem contam nos cartões de resumo. Não é uma tela de erro nem um "sem permissão", é a oportunidade não estar ali.</p>
+  <div class="regra">Essa regra também é aplicada por trás pelo banco de dados, não só pela tela: mesmo quem tentasse acessar uma oportunidade de outra pessoa por um link direto, sem ter <span class="ui">Gerenciar CRM</span> nem ser responsável por ela, receberia zero resultado.</div>
+
+  <h3>A fila "Sem responsável"</h3>
+  <p>Toda oportunidade sem nenhum responsável atribuído (o caso mais comum é lead recebido por webhook, que sempre nasce sem vendedor) fica visível pra <b>empresa inteira</b>, mesmo pra quem não tem <span class="ui">Gerenciar CRM</span>: é a fila compartilhada. No card, ela ganha o selo <span class="ui">Sem responsável</span>; no detalhe, o botão <span class="ui">Assumir oportunidade</span>. Assim que alguém assume, a oportunidade sai da fila e passa a valer a regra de "cada um vê as suas" normalmente, com quem assumiu como responsável principal.</p>
+  <p>Pra enxergar só a fila, use o filtro <span class="ui">Vendedor</span> e marque a opção <span class="ui">Sem responsável</span> (capítulo 10).</p>
+
+  <h3>Funil restrito</h3>
+  <p>Some-se a isso a restrição de "Quem pode ver" explicada no capítulo 2: um funil pode estar aberto pra empresa toda, ou restrito a uma lista de pessoas. As duas regras se combinam, sempre pelo caminho mais estreito: mesmo dentro de um funil aberto, quem não tem <span class="ui">Gerenciar CRM</span> ainda vê só as suas próprias oportunidades.</p>
+
+  <h2>10. Filtros: origem, vendedor, faixa de valor, busca</h2>
+
+  <p>A busca <span class="ui">Buscar por título ou cliente...</span> procura ao mesmo tempo no <b>título da oportunidade</b> e no <b>nome do cliente vinculado</b>, dentro do funil selecionado. Ela é tolerante a acento e a maiúscula, então "negociacao" acha "Negociação".</p>
+  <p>O botão <span class="ui">Filtros</span> abre os filtros que se combinam:</p>
   <ul>
     <li><span class="ui">Origem</span>: lista de marcação múltipla. Sem nada marcado, o rótulo é <span class="ui">Todas</span>.</li>
-    <li><span class="ui">Vendedor</span>: lista dos usuários da empresa, também de marcação múltipla. Sem nada marcado, <span class="ui">Todos</span>.</li>
+    <li><span class="ui">Vendedor</span>: lista dos usuários da empresa, também de marcação múltipla, mais a opção <span class="ui">Sem responsável</span>, que traz só as oportunidades da fila compartilhada do capítulo 9. Sem nada marcado, <span class="ui">Todos</span>.</li>
     <li><span class="ui">Valor Mínimo</span> e <span class="ui">Valor Máximo</span>: faixa de valor estimado, com os exemplos <span class="ui">R$ 0</span> e <span class="ui">R$ 999.999</span>.</li>
   </ul>
   <p>Com filtro ativo, aparecem selos escuros abaixo da busca, no formato <span class="ui">Origem: Site</span>, <span class="ui">Vendedor: Maria</span>, <span class="ui">Min</span> e <span class="ui">Max</span>, cada um com um X para remover só aquele. Com mais de uma opção marcada, o selo mostra "2 selecionadas". O botão de limpar zera tudo de uma vez, inclusive a busca.</p>
 
-  <div class="aviso">O filtro <span class="ui">Origem</span> usa uma <b>lista fixa</b> do sistema: Indicação, Site, Telefone, WhatsApp, Google, Instagram, Facebook, Parceiro, Feira/Evento e Outro. Já o campo Origem do cadastro da oportunidade usa o <b>catálogo de Origens da sua empresa</b>, que você edita em Configurações → Usabilidade → card <span class="ui">Origens</span>. As duas listas nascem iguais, mas se afastam assim que você cria uma origem própria: uma oportunidade marcada como "Meta Ads" existe, aparece no cartão e no detalhe, mas <b>não pode ser filtrada</b>, porque "Meta Ads" não está na lista fixa do filtro. Se você depende de filtrar por canal, o jeito de contornar hoje é manter as origens dentro dos dez nomes da lista fixa, ou usar a busca por título.</div>
+  <div class="aviso">O filtro <span class="ui">Origem</span> usa uma <b>lista fixa</b> do sistema: Indicação, Site, Telefone, WhatsApp, Google, Instagram, Facebook, Parceiro, Feira/Evento e Outro. Já o campo Origem do cadastro da oportunidade usa o <b>catálogo de Origens da sua empresa</b>, que você edita em Configurações → Usabilidade → card <span class="ui">Origens</span>. As duas listas nascem iguais, mas se afastam assim que você cria uma origem própria: uma oportunidade marcada como "Meta Ads" existe, aparece no cartão e no detalhe com o ícone e a cor certos, mas <b>não pode ser filtrada</b>, porque "Meta Ads" não está na lista fixa do filtro. Se você depende de filtrar por canal, o jeito de contornar hoje é manter as origens dentro dos dez nomes da lista fixa, ou usar a busca por título.</div>
 
   <div class="dica">Combinação que resolve a maior parte das perguntas do dia a dia: filtre por <span class="ui">Vendedor</span> e olhe o cartão <span class="ui">Valor Total</span>. Ele passa a mostrar o valor em aberto daquele vendedor, porque os cartões de resumo respeitam os filtros.</div>
 
-  <h2>8. Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar</h2>
+  <h2>11. Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar</h2>
 
   <p>Webhook é um endereço que outro sistema chama quando alguém preenche um formulário. Serve para o lead do seu site, do formulário de anúncio ou de uma ferramenta de automação cair direto no funil, sem ninguém digitar.</p>
   <p>O botão de webhook no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela <span class="ui">Webhooks de Leads Externos</span>.</p>
@@ -277,8 +400,8 @@
     <li>O <b>título</b> vira o que veio em <code>title</code>; sem isso, vira "Lead via" seguido do nome do webhook.</li>
     <li>A <b>origem</b> obedece a esta ordem: a origem fixa do webhook vence; sem ela, vale a que veio no envio; sem nenhuma das duas, fica "Webhook Externo".</li>
     <li>Nome, telefone, e-mail e a fonte são gravados nas <b>Observações</b> da oportunidade, uma informação por linha. O lead não fica vinculado a um cliente cadastrado.</li>
-    <li>A oportunidade entra no <b>primeiro estágio neutro</b> do funil, ou seja, o primeiro que não é de ganho nem de perda.</li>
-    <li>O <b>vendedor fica em branco</b>. Alguém precisa abrir e atribuir.</li>
+    <li>A oportunidade entra no <b>primeiro estágio neutro</b> do funil padrão da empresa, ou seja, o primeiro que não é de ganho nem de perda.</li>
+    <li>O lead nasce <b>sem responsável</b> e cai direto na fila compartilhada do capítulo 9, visível pra empresa inteira até alguém assumir.</li>
   </ul>
 
   <h3>Erros que o webhook devolve</h3>
@@ -290,28 +413,28 @@
   </ul>
   <p>Quando dá certo, a resposta traz <code>success</code> junto com o lead criado.</p>
 
-  <div class="aviso">Antes de apontar uma campanha paga para o webhook, faça um <b>envio de teste</b> com um nome fictício e confira se o cartão apareceu no funil. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave <span class="ui">Ativo</span> ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil tem pelo menos um estágio neutro criado.</div>
-  <!-- INCERTO: no código deste repositório, a função que recebe o lead externo não informa a empresa dona ao gravar a oportunidade, e a coluna de empresa é obrigatória na tabela de leads. Isso indica que a criação por webhook pode falhar com "Erro interno" em produção. Preciso de confirmação com um POST real antes de afirmar no guia que o webhook entrega o lead. -->
+  <div class="aviso">Antes de apontar uma campanha paga para o webhook, faça um <b>envio de teste</b> com um nome fictício e confira se o cartão apareceu no funil, na fila <span class="ui">Sem responsável</span>. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave <span class="ui">Ativo</span> ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil padrão tem pelo menos um estágio neutro criado.</div>
 
   <div class="regra">O <b>formulário público de cadastro de cliente</b> (o link de captação que você compartilha para o próprio cliente se cadastrar) <b>não cria lead no CRM</b>: ele cria um <b>cliente</b> na tela de Clientes, com a origem marcada como formulário público. São dois caminhos completamente separados. Se você espera ver no funil quem preencheu aquele formulário, não vai encontrar: procure em Clientes.</div>
 
   <div class="regra">A <b>avaliação DISC</b> (perfil comportamental) é do módulo de Funcionários e RH, aplicada a colaborador. Ela não tem nenhuma relação com o CRM, não avalia lead e não aparece no funil.</div>
 
-  <h2>9. Rotina sugerida: revisão diária do funil em 5 minutos</h2>
+  <h2>12. Rotina sugerida: revisão diária do funil em 5 minutos</h2>
 
   <p>O CRM só vale o que a disciplina de olhar para ele vale. Como o sistema não manda lembrete de próxima ação nem cobra ninguém, a rotina abaixo é o que transforma o funil numa ferramenta de verdade. Cinco minutos, todo dia, no mesmo horário.</p>
 
   <ol>
-    <li><b>Abra o CRM e olhe os quatro cartões do topo.</b> Total de Leads e Valor Total dão o tamanho da carteira; os cartões do estágio ganho e do estágio neutro dizem quanto já fechou e quanto está em jogo.</li>
-    <li><b>Varra a coluna da direita para a esquerda.</b> Comece pelo estágio mais perto do fechamento: são as oportunidades com maior chance de virar dinheiro esta semana.</li>
+    <li><b>Comece pela fila "Sem responsável".</b> Filtre por Vendedor → Sem responsável. Todo lead ali é oportunidade parada esperando alguém assumir; não deixe acumular.</li>
+    <li><b>Abra o CRM e olhe os quatro cartões do topo.</b> Total de Leads e Valor Total dão o tamanho da carteira; os cartões da etapa ganha e da etapa neutra dizem quanto já fechou e quanto está em jogo.</li>
+    <li><b>Varra a coluna da direita para a esquerda.</b> Comece pela etapa mais perto do fechamento: são as oportunidades com maior chance de virar dinheiro esta semana.</li>
     <li><b>Abra cada cartão parado e olhe a linha <span class="ui">Atualizado:</span></b>, que mostra há quanto tempo ninguém mexe naquela oportunidade. Passou de uma semana sem interação, ou está esperando resposta, ligue.</li>
-    <li><b>Registre toda conversa como interação</b>, mesmo a que não deu em nada, e sempre preencha a <span class="ui">Próxima Ação</span> com a data. Um lead sem próxima ação marcada é um lead que vai ser esquecido.</li>
-    <li><b>Mova o cartão na hora.</b> Falou com o cliente e ele pediu proposta? Arraste para o estágio de proposta ali mesmo. Funil que só é atualizado na sexta-feira não serve para decidir nada.</li>
+    <li><b>Registre toda conversa como interação</b>, mesmo a que não deu em nada. Se o próximo passo tem data marcada, crie uma <b>Tarefa</b> em vez de só anotar a Próxima Ação, pra ela aparecer na sua Agenda.</li>
+    <li><b>Mova o cartão na hora.</b> Falou com o cliente e ele pediu proposta? Arraste para a etapa de proposta ali mesmo. Funil que só é atualizado na sexta-feira não serve para decidir nada.</li>
     <li><b>Perdeu, marque como perdido e escolha o motivo.</b> É desconfortável e é o dado mais útil que existe: depois de trinta perdas registradas, o padrão aparece sozinho.</li>
     <li><b>Uma vez por semana, filtre por vendedor</b> e olhe o Valor Total de cada um. Cinco segundos por pessoa mostram quem está com a carteira cheia e quem precisa de mais lead.</li>
   </ol>
 
-  <div class="dica">Combine com a tela de Orçamentos: oportunidade que chegou ao estágio de proposta deve ter um orçamento correspondente, e o contador de visualizações da proposta diz se o cliente abriu. Funil no estágio de proposta há cinco dias, com a proposta aberta três vezes e sem resposta, é ligação pendente.</div>
+  <div class="dica">Combine com a tela de Orçamentos: oportunidade que chegou à etapa de proposta deve ter um orçamento correspondente, e o contador de visualizações da proposta diz se o cliente abriu. Funil na etapa de proposta há cinco dias, com a proposta aberta três vezes e sem resposta, é ligação pendente.</div>
 
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">
@@ -323,24 +446,54 @@
         <td>Sem o módulo, o item não aparece no menu para ninguém da empresa. Confirme a contratação com quem cuida da assinatura. Se o módulo está ativo e só uma pessoa não vê, um administrador liga a tela <span class="ui">CRM</span> para ela no editor de permissões.</td>
       </tr>
       <tr>
+        <td>"Sumiram oportunidades do meu funil, só sobraram poucas"</td>
+        <td>A pessoa não tem a ação Gerenciar CRM e passou a ver só as suas.</td>
+        <td>É esperado. Sem Gerenciar CRM, cada um vê só as oportunidades em que é responsável ou foi quem criou. Ligue a ação pra quem precisa ver o funil inteiro (gestor, coordenador comercial).</td>
+      </tr>
+      <tr>
+        <td>"Apareceram leads que eu nunca vi, numa fila diferente"</td>
+        <td>São oportunidades sem responsável, visíveis pra empresa toda.</td>
+        <td>É a fila compartilhada. Qualquer pessoa pode tocar em Assumir oportunidade dentro do card pra virar a responsável e tirá-la da fila.</td>
+      </tr>
+      <tr>
+        <td>"Criei um segundo funil e não sei onde ele foi parar"</td>
+        <td>O seletor de funil só aparece com dois ou mais funis, e a última escolha fica salva no navegador.</td>
+        <td>Olhe a fileira de pílulas logo abaixo do alternador Funil/Tarefas, no topo da tela, e toque no nome do funil novo.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo excluir um funil"</td>
+        <td>Ele ainda tem etapas ou oportunidades vinculadas, ou é o único funil da empresa.</td>
+        <td>A mensagem de erro diz exatamente qual dos três casos é. Mova as oportunidades e as etapas pra outro funil (ou apague as etapas) antes de excluir.</td>
+      </tr>
+      <tr>
+        <td>"Restringi um funil e um vendedor sumiu com as oportunidades dele"</td>
+        <td>O funil ficou restrito e a pessoa não estava na lista de acesso.</td>
+        <td>Abra Gerenciar Funis → Quem pode ver naquele funil e adicione a pessoa de volta à lista.</td>
+      </tr>
+      <tr>
+        <td>"Movi um lead pra Ganho e não apareceu nada sobre lançar receita"</td>
+        <td>A pessoa não tem a ação Gerenciar Financeiro marcada explicitamente, ou a oportunidade já teve receita lançada antes.</td>
+        <td>Confira os dois casos. Se já foi lançada uma vez, é esperado não perguntar de novo, pra não duplicar a receita. Se a pessoa é vendedor comum e não deve mexer no Financeiro, isso é esperado: só quem tem Gerenciar Financeiro recebe a oferta.</td>
+      </tr>
+      <tr>
         <td>"Abri o CRM e não tem coluna nenhuma"</td>
-        <td>A empresa ainda não criou os estágios do funil.</td>
-        <td>É o estado inicial. Toque em <span class="ui">Começar com estágios padrão</span> para criar as cinco colunas prontas, ou em <span class="ui">Personalizar estágios</span> para montar do seu jeito.</td>
+        <td>O funil selecionado ainda não tem etapas.</td>
+        <td>Toque em <span class="ui">Começar com estágios padrão</span> para criar as cinco colunas prontas, ou em <span class="ui">Personalizar estágios</span> para montar do seu jeito.</td>
       </tr>
       <tr>
         <td>"Criei uma origem nova e ela não aparece no filtro"</td>
         <td>O filtro de origem usa uma lista fixa do sistema; o cadastro usa o catálogo da empresa.</td>
-        <td>É uma limitação conhecida. A oportunidade fica marcada corretamente, mas não é filtrável por essa origem. Para filtrar, mantenha as origens dentro dos dez nomes da lista fixa, ou use a busca por título.</td>
+        <td>É uma limitação conhecida. A oportunidade fica marcada corretamente, com ícone e cor, mas não é filtrável por essa origem. Para filtrar, mantenha as origens dentro dos dez nomes da lista fixa, ou use a busca por título.</td>
       </tr>
       <tr>
-        <td>"Apareceu uma janelinha estranha, em inglês, quando fui excluir um lead"</td>
-        <td>A exclusão de lead usa a confirmação do próprio navegador.</td>
-        <td>É normal nessa tela e não é invasão. Confirme em OK para excluir ou em Cancelar para desistir. Lembre que não há desfazer.</td>
+        <td>"Apareceu uma janelinha estranha, em inglês, quando fui excluir um lead (ou uma tarefa dele)"</td>
+        <td>A exclusão de lead e de tarefa do card usa a confirmação do próprio navegador.</td>
+        <td>É normal nessas duas telas e não é invasão. Confirme em OK para excluir ou em Cancelar para desistir. Lembre que não há desfazer.</td>
       </tr>
       <tr>
-        <td>"Apaguei um estágio e os leads sumiram"</td>
-        <td>Eles não sumiram: ficaram sem estágio e aparecem na primeira coluna.</td>
-        <td>Olhe a primeira coluna do funil. Arraste cada cartão para o estágio certo, ou recrie o estágio e mova de volta.</td>
+        <td>"Apaguei uma etapa e os leads sumiram"</td>
+        <td>Eles não sumiram: ficaram sem etapa e aparecem na primeira coluna do mesmo funil.</td>
+        <td>Olhe a primeira coluna do funil. Arraste cada cartão para a etapa certa, ou recrie a etapa e mova de volta.</td>
       </tr>
       <tr>
         <td>"Quero um relatório de por que estou perdendo negócio"</td>
@@ -350,7 +503,7 @@
       <tr>
         <td>"Movi o lead para perdido e sumiu o que eu tinha escrito nas observações"</td>
         <td>O motivo da perda é gravado no campo de Observações e substitui o texto anterior.</td>
-        <td>É o comportamento atual. Oriente a copiar a observação antes de mover para um estágio de perda.</td>
+        <td>É o comportamento atual. Oriente a copiar a observação antes de mover para uma etapa de perda.</td>
       </tr>
       <tr>
         <td>"Tenho uma planilha com 300 contatos, como importo?"</td>
@@ -358,13 +511,23 @@
         <td>Não há botão de importar planilha. As opções são lançar um a um em <span class="ui">Nova Oportunidade</span> ou usar um webhook de captação, mandando os contatos por uma ferramenta de automação.</td>
       </tr>
       <tr>
+        <td>"Criei uma tarefa dentro de uma oportunidade e ela não aparece na Agenda"</td>
+        <td>A chave Mostrar na agenda estava desligada na criação.</td>
+        <td>Abra a tarefa dentro do card, na aba Tarefas, e ligue Mostrar na agenda. Ela precisa de uma data pra entrar no calendário.</td>
+      </tr>
+      <tr>
+        <td>"Criei uma tarefa na Agenda e ela não aparece na oportunidade"</td>
+        <td>Tarefa nascida na Agenda nunca fica vinculada a uma oportunidade.</td>
+        <td>A relação é de mão única: só tarefa criada de dentro do card do CRM pode aparecer na Agenda. O caminho é apagar e recriar a tarefa de dentro da oportunidade certa.</td>
+      </tr>
+      <tr>
         <td>"O sistema distribui os leads entre meus vendedores?"</td>
         <td>Não existe distribuição automática.</td>
-        <td>O <span class="ui">Vendedor Responsável</span> é sempre escolhido por uma pessoa. Lead que chega por webhook nasce sem vendedor e precisa ser atribuído na mão.</td>
+        <td>O <span class="ui">Vendedor Responsável</span> é sempre escolhido por uma pessoa (ou assumido da fila). Lead que chega por webhook nasce sem vendedor e cai na fila compartilhada.</td>
       </tr>
       <tr>
         <td>"Configurei o webhook e o lead não caiu no funil"</td>
-        <td>Webhook desligado, URL incompleta, chamada que não é POST, ou funil sem estágio neutro.</td>
+        <td>Webhook desligado, URL incompleta, chamada que não é POST, ou funil padrão sem etapa neutra.</td>
         <td>Confira a chave <span class="ui">Ativo</span>, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo pelo menos nome e telefone. Faça um envio de teste e confira no funil antes de ligar a campanha.</td>
       </tr>
       <tr>
@@ -373,14 +536,9 @@
         <td>Procure na tela de Clientes: o cadastro está lá, com a origem de formulário público. São dois caminhos diferentes e não existe ligação automática entre eles.</td>
       </tr>
       <tr>
-        <td>"O sistema não me avisou da próxima ação que eu marquei"</td>
-        <td>Próxima ação é só anotação.</td>
-        <td>Não há lembrete, notificação nem tarefa na agenda. A conferência é manual, na revisão diária do funil.</td>
-      </tr>
-      <tr>
         <td>"O Status do lead e a coluna do kanban estão diferentes"</td>
         <td>São dois campos independentes.</td>
-        <td>O Status é uma lista fixa dentro do detalhe; a coluna é o estágio configurável do funil. Um não mexe no outro. Os números e filtros da tela seguem o estágio.</td>
+        <td>O Status é uma lista fixa dentro do detalhe; a coluna é a etapa configurável do funil. Um não mexe no outro. Os números e filtros da tela seguem a etapa.</td>
       </tr>
       <tr>
         <td>"Não consigo cadastrar o cliente na hora, dentro da oportunidade"</td>
@@ -389,8 +547,8 @@
       </tr>
       <tr>
         <td>"O total de leads mudou sozinho"</td>
-        <td>Os cartões de resumo respeitam os filtros ativos.</td>
-        <td>Limpe os filtros no botão de limpar para voltar ao total da empresa. Com filtro ativo, aparece um selo ao lado de Pipeline de Vendas no formato "3 de 12".</td>
+        <td>Os cartões de resumo respeitam os filtros ativos e a sua permissão de visibilidade.</td>
+        <td>Limpe os filtros no botão de limpar para voltar ao total que você tem acesso. Com filtro ativo, aparece um selo ao lado de Pipeline de Vendas no formato "3 de 12".</td>
       </tr>
     </tbody>
   </table>
@@ -400,32 +558,50 @@
     <dt>Preciso pagar à parte para usar o CRM?</dt>
     <dd>Sim, o CRM é um módulo contratado à parte. Sem ele o item nem aparece no menu do sistema.</dd>
 
-    <dt>Posso montar o funil do meu jeito?</dt>
-    <dd>Pode, e é o recomendado. Os estágios são da sua empresa: você cria, renomeia, escolhe a cor, arrasta para reordenar e apaga. O conjunto padrão de cinco colunas é só um ponto de partida.</dd>
+    <dt>Posso ter mais de um funil de vendas?</dt>
+    <dd>Pode. Em Gerenciar Funis você cria quantos precisar, por exemplo um pra vendas novas e outro pra pós-venda. O seletor de funil só aparece quando há dois ou mais.</dd>
 
-    <dt>O que muda quando marco um estágio como ganho ou perdido?</dt>
-    <dd>Ganho faz o valor daquele estágio virar um cartão de resumo no topo. Perdido faz o sistema pedir obrigatoriamente o motivo quando você arrasta um cartão para lá. Nada mais é disparado: nem orçamento, nem OS, nem lançamento financeiro.</dd>
+    <dt>Dá pra restringir um funil a algumas pessoas?</dt>
+    <dd>Dá, pelo item "Quem pode ver" no menu do funil, dentro de Gerenciar Funis. Por padrão todo funil é aberto pra empresa inteira; selecionar alguém ali restringe.</dd>
+
+    <dt>Todo mundo vê todas as oportunidades do funil?</dt>
+    <dd>Depende da permissão de cada um. Quem tem Gerenciar CRM vê tudo. Quem não tem vê só as oportunidades em que é responsável ou foi quem criou, mais a fila de oportunidades sem responsável, que é visível pra todos.</dd>
+
+    <dt>Posso montar o funil do meu jeito?</dt>
+    <dd>Pode, e é o recomendado. As etapas são da sua empresa: você cria, renomeia, escolhe ícone e cor, arrasta para reordenar e apaga. O conjunto padrão de cinco colunas é só um ponto de partida.</dd>
+
+    <dt>O que muda quando marco uma etapa como ganho ou perdido?</dt>
+    <dd>Ganho faz o valor daquela etapa virar um cartão de resumo no topo e oferece lançar a receita da venda direto no Financeiro. Perdido faz o sistema pedir obrigatoriamente o motivo quando você arrasta um cartão para lá. Nada mais é disparado automaticamente: nem orçamento, nem OS.</dd>
+
+    <dt>Lançar a receita ao ganhar a oportunidade é obrigatório?</dt>
+    <dd>Não. É uma oferta: você pode responder "Agora não" e a mudança de etapa continua valendo do mesmo jeito.</dd>
+
+    <dt>Posso ter mais de um vendedor na mesma oportunidade?</dt>
+    <dd>Pode, no campo Vendedor Responsável. O primeiro que você selecionar vira o principal, que é o que aparece nos filtros e relatórios; os demais entram como responsáveis secundários.</dd>
 
     <dt>Preciso vincular um cliente cadastrado para criar uma oportunidade?</dt>
-    <dd>Não. Só o título é obrigatório. Cliente, vendedor, origem, valor, probabilidade, previsão e observações são todos opcionais.</dd>
+    <dd>Não. Só o título é obrigatório. Cliente, responsáveis, origem, valor, probabilidade, previsão e observações são todos opcionais.</dd>
 
     <dt>Dá para criar o cliente sem sair do CRM?</dt>
     <dd>Dá: digite o nome no campo Cliente e escolha <span class="ui">Cadastrar "&lt;nome&gt;"</span>. Essa janela rápida exige CPF ou CNPJ. Sem o documento em mãos, deixe em branco e vincule depois.</dd>
 
     <dt>Como movo um lead no celular, se não dá para arrastar?</dt>
-    <dd>Pelo menu de três pontinhos da linha, na opção <span class="ui">Mover para</span> seguida do nome do estágio.</dd>
+    <dd>Pelo menu de três pontinhos da linha, na opção <span class="ui">Mover para</span> seguida do nome da etapa.</dd>
 
     <dt>Onde fica registrado o motivo da perda?</dt>
     <dd>Dentro das Observações da própria oportunidade, como texto. Não é campo estruturado: não dá para filtrar nem gerar relatório por motivo, e o texto que estava nas Observações é substituído.</dd>
 
-    <dt>O CRM avisa quando chega a data da próxima ação?</dt>
-    <dd>Não. Próxima ação e data são anotações para você ler na revisão do funil. Não há notificação, e-mail nem tarefa na agenda.</dd>
+    <dt>Dá pra criar uma tarefa dentro de uma oportunidade?</dt>
+    <dd>Dá, na aba Tarefas do card ou pelo botão Criar Tarefa. Você escolhe se ela também aparece na Agenda pela chave Mostrar na agenda.</dd>
+
+    <dt>Uma tarefa da Agenda aparece automaticamente numa oportunidade?</dt>
+    <dd>Não. Só o caminho contrário existe: tarefa criada dentro de uma oportunidade pode aparecer na Agenda, mas tarefa da Agenda nunca vira item de um card do CRM.</dd>
 
     <dt>Consigo importar meus contatos de uma planilha?</dt>
     <dd>Não existe importação em massa. Ou você lança um a um, ou manda os contatos por um webhook de captação usando uma ferramenta de automação.</dd>
 
     <dt>O sistema divide os leads entre a equipe automaticamente?</dt>
-    <dd>Não. O vendedor responsável é sempre escolhido por uma pessoa, e lead vindo de webhook nasce sem vendedor.</dd>
+    <dd>Não. O responsável é sempre escolhido por uma pessoa, ou assumido por quem tocar em "Assumir oportunidade" na fila. Lead vindo de webhook sempre nasce sem responsável.</dd>
 
     <dt>O formulário público de cadastro cria lead no funil?</dt>
     <dd>Não. Aquele formulário cria um <b>cliente</b>, que aparece na tela de Clientes. Para o lead cair no funil, o caminho é o webhook de captação do CRM.</dd>
@@ -437,10 +613,10 @@
     <dd>Não. O DISC é do módulo de Funcionários e RH, aplicado a colaborador, e não tem nenhuma ligação com o CRM.</dd>
 
     <dt>Meu vendedor consegue ver os leads dos outros?</dt>
-    <dd>O acesso à tela é controlado pela permissão <span class="ui">CRM</span>. Quem tem a tela liberada enxerga o funil da empresa e pode usar o filtro <span class="ui">Vendedor</span> para ver só a própria carteira.</dd>
+    <dd>Só se tiver a ação Gerenciar CRM ligada. Sem ela, cada um vê apenas as oportunidades das quais é responsável ou criador, além da fila compartilhada de oportunidades sem responsável.</dd>
   </dl>
 
   <div class="glossario">
-    <b>Palavras que o cliente usa pra isso:</b> funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio
+    <b>Palavras que o cliente usa pra isso:</b> funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio, mais de um funil, vários funis, quem vê o quê, fila sem dono, oportunidade sem vendedor, tarefa da oportunidade
   </div>
 </section>

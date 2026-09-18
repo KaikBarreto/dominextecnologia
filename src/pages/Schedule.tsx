@@ -26,6 +26,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
@@ -95,11 +96,22 @@ export default function Schedule() {
   // (compatível com todo mundo que já tinha preferência salva).
   const [displayMode, setDisplayMode] = useState<DisplayMode>('calendar');
 
+  // Slot de aparelho já hidratado. Sem isso, a escolha do usuário durava meio
+  // segundo e a tela voltava sozinha: `setScheduleViewMode` invalida a query de
+  // preferências, `scheduleViewMode` troca de identidade, este efeito roda de
+  // novo e reaplica o valor ANTIGO que acabou de voltar do servidor. Provado em
+  // produção na 1.24.38 (clicar em "Lista" voltava pro Calendário em ~2s).
+  // A hidratação tem que acontecer uma vez por aparelho, não a cada refetch —
+  // e continua reagindo ao resize que cruza o breakpoint, que troca o slot.
+  const hidratadoPara = useRef<'mobile' | 'desktop' | null>(null);
+
   // Hidrata o viewMode+displayMode a partir da preferência salva do aparelho
   // atual. Também reage ao redimensionamento que cruza o breakpoint (celular ↔
   // computador): ao trocar de slot lógico, relê a preferência daquele aparelho.
   useEffect(() => {
     if (isPrefsLoading) return;
+    if (hidratadoPara.current === scheduleDevice) return;
+    hidratadoPara.current = scheduleDevice;
     const saved = scheduleViewMode?.[scheduleDevice];
     if (!saved) {
       setViewMode(isMobile ? 'day' : 'month');
@@ -198,9 +210,10 @@ export default function Schedule() {
   // hasPermission — de propósito: hasPermission, sem registro de permissões,
   // libera tudo pelo role. Aqui queremos o oposto para tarefas: sem o acesso
   // explícito, a tarefa só aparece pra quem é responsável por ela.
-  const canViewAllSchedule =
-    roles.includes('admin') || roles.includes('super_admin') ||
-    (hasPermissionRecord && (permissions.includes('*') || permissions.includes('fn:view_all_schedule')));
+  // Régua compartilhada com a aba Tarefas do CRM (src/lib/taskVisibility.ts).
+  // As duas telas mostram a MESMA tarefa; divergir aqui faz o usuário ver
+  // contagens diferentes pra mesma coisa e perder a confiança nas duas.
+  const canViewAllSchedule = canSeeAllTasks({ roles, permissions, hasPermissionRecord });
 
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
@@ -209,10 +222,7 @@ export default function Schedule() {
       // aparece pra quem é responsável (assignee/técnico legado) ou pro time
       // dela. OS comuns (entry_type !== 'tarefa') não são afetadas.
       if (order.entry_type === 'tarefa' && !canViewAllSchedule) {
-        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
-        const isMine =
-          (!!user?.id && (assigneeIds?.includes(user.id) || order.technician_id === user.id)) ||
-          (!!order.team_id && myTeamIds.includes(order.team_id));
+        const isMine = isMyTask(order as any, user?.id, myTeamIds);
         if (!isMine) return false;
       }
 

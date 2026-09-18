@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       // filtro (asaas_customer_id passa a NOT NULL), então o range avança naturalmente.
       const { data: batch, error: batchErr } = await supabase
         .from("companies")
-        .select("id, name, email, cnpj, asaas_customer_id, address, address_number, neighborhood, zip_code")
+        .select("id, name, email, cnpj, asaas_customer_id, address, address_number, neighborhood, zip_code, billing_notifications_enabled, billing_email")
         .is("asaas_customer_id", null)
         .order("created_at", { ascending: true })
         .limit(BATCH_SIZE);

@@ -316,6 +316,14 @@ Deno.serve(async (req) => {
     if (!validCpfCnpj) throw new ValidationError("CPF ou CNPJ é obrigatório para gerar cobranças.");
 
     // --- Get or create Asaas customer ---
+    // Interruptor de notificação por empresa (companies.billing_notifications_enabled).
+    // Fail-safe: false/null/undefined (inclusive coluna ausente) → notificationDisabled: true,
+    // que é o comportamento histórico de TODA a base (a Asaas não manda e-mail de cobrança).
+    // Só a empresa com a flag LIGADA recebe e-mail/boleto da Asaas.
+    const notificationDisabled = !company.billing_notifications_enabled;
+    // E-mail do financeiro entra como ADICIONAL — o e-mail do cadastro continua o principal.
+    const billingEmail = (company.billing_email || "").trim();
+
     let asaasCustomerId = company.asaas_customer_id;
     if (!asaasCustomerId) {
       try {
@@ -323,7 +331,8 @@ Deno.serve(async (req) => {
           name: company.name,
           email: company.email || undefined,
           cpfCnpj: validCpfCnpj,
-          notificationDisabled: true,
+          notificationDisabled,
+          ...(billingEmail ? { additionalEmails: billingEmail } : {}),
         });
         asaasCustomerId = created.id;
       } catch (e) {
@@ -343,9 +352,13 @@ Deno.serve(async (req) => {
     } else {
       // Garante CPF/CNPJ atualizado no customer existente.
       try {
+        // ATENÇÃO: este PUT roda a CADA cobrança. Enquanto era `true` fixo, ele desfazia
+        // qualquer ajuste de notificação feito à mão no painel da Asaas. Agora ele passa a
+        // refletir o interruptor da empresa — que é `false` para todo mundo por default.
         await asaas.put(`/customers/${asaasCustomerId}`, {
           cpfCnpj: validCpfCnpj,
-          notificationDisabled: true,
+          notificationDisabled,
+          ...(billingEmail ? { additionalEmails: billingEmail } : {}),
         });
       } catch (e) {
         if (e instanceof AsaasApiError && /já cadastrad/i.test(e.message)) {
@@ -390,6 +403,20 @@ Deno.serve(async (req) => {
 
     // --- Helper: cancela subscriptions ativas existentes (evita duplicidade) ---
     const cancelExistingSubscriptions = async (customerId: string) => {
+      // NÃO "simplifique" removendo esta guarda. Empresa em MODO E-MAIL (flag ligada) tem uma
+      // subscription criada FORA do checkout (forma de pagamento UNDEFINED, "o cliente escolhe")
+      // que é justamente o que gera a fatura mensal enviada por e-mail. Se o cliente abrir o
+      // checkout uma única vez, este helper apagaria essa subscription e a cobrança por e-mail
+      // pararia de sair, sem ninguém perceber. Comparação ESTRITA com true: null/undefined
+      // (coluna ausente / flag desligada) NUNCA pula o cancelamento — o padrão da base continua
+      // sendo cancelar as ativas antes de criar a nova.
+      if (company.billing_notifications_enabled === true) {
+        console.log(
+          `[create-asaas-payment] Empresa ${company_id} em modo e-mail (billing_notifications_enabled=true): ` +
+            `NÃO cancelando subscriptions ativas do customer ${customerId} para preservar a cobrança mensal automática.`,
+        );
+        return;
+      }
       try {
         const existing = await asaas.get(`/subscriptions`, buildQuery({ customer: customerId, status: "ACTIVE" }));
         const activeSubs = existing?.data || [];
@@ -404,6 +431,38 @@ Deno.serve(async (req) => {
         console.error("Erro ao verificar/cancelar subscriptions existentes:", e);
       }
     };
+
+    // ===================================================================
+    // MODO E-MAIL: recorrência NOVA é recusada (evita cobrança em dobro)
+    // -------------------------------------------------------------------
+    // Empresa com billing_notifications_enabled = true já tem UMA assinatura viva na
+    // Asaas (criada fora do checkout, forma "o cliente escolhe") que gera a fatura
+    // mensal enviada por e-mail. O helper cancelExistingSubscriptions é no-op pra ela
+    // — de propósito, pra não matar essa assinatura. A consequência é que, se
+    // deixássemos o checkout seguir, ele CRIARIA uma segunda assinatura ativa no mesmo
+    // customer: duas cobranças por mês num cliente pagante. Então recusamos aqui,
+    // ANTES de qualquer chamada que crie recorrência (PIX automático e cartão).
+    //
+    // Cobrança AVULSA continua liberada (PIX não-recorrente e BOLETO caem em
+    // POST /payments, cobrança única, não criam assinatura): serve pro cliente
+    // antecipar um pagamento sem bagunçar a mensalidade.
+    //
+    // Comparação ESTRITA: null/undefined (flag desligada/coluna ausente) não bloqueia
+    // nada — o checkout da base inteira segue exatamente como hoje.
+    if (company.billing_notifications_enabled === true) {
+      const creatingRecurring = (billing_type === "PIX" && pix_recurring === true) ||
+        (billing_type === "CREDIT_CARD" && !!body.card_number);
+      if (creatingRecurring) {
+        console.log(
+          `[create-asaas-payment] Empresa ${company_id} em modo e-mail: recusando criação de ` +
+            `recorrência (billing_type=${billing_type}) para não duplicar a assinatura mensal.`,
+        );
+        throw new ValidationError(
+          "A cobrança desta empresa é enviada automaticamente por e-mail todo mês. " +
+            "Para mudar a forma de pagamento, fale com o suporte.",
+        );
+      }
+    }
 
     // ===================================================================
     // PIX AUTOMÁTICO recorrente

@@ -10,16 +10,16 @@ import { useAdminTimeSheet, calculateWorkedMinutes, formatMinutes } from '@/hook
 import { TimeDayDetailModal } from './TimeDayDetailModal';
 import { ManualPunchModal } from './ManualPunchModal';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { timeInTz, todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 export function TimeToday() {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const tc = MESSAGES[locale].app.employees.timeclock;
 
   const STATUS_CONFIG = {
@@ -41,7 +41,9 @@ export function TimeToday() {
     return () => clearInterval(iv);
   }, []);
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+  // Mesmo dia que `useAdminTimeSheet` consulta (fuso da EMPRESA). Com o dia do
+  // aparelho, perto da meia-noite o modal abria um dia diferente do da tabela.
+  const today = todayInTz(timezone);
 
   if (isLoading) {
     return (
@@ -101,8 +103,8 @@ export function TimeToday() {
               ];
 
               const subtitleParts: string[] = [];
-              subtitleParts.push(`${tc.todaySubtitle.clockIn} ${clockIn ? format(new Date(clockIn.recorded_at), 'HH:mm') : '—'}`);
-              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${clockOut ? format(new Date(clockOut.recorded_at), 'HH:mm') : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockIn} ${clockIn ? timeInTz(clockIn.recorded_at, timezone) : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${clockOut ? timeInTz(clockOut.recorded_at, timezone) : '—'}`);
               subtitleParts.push(records.length > 0 ? formatMinutes(worked) : '—');
 
               return (
@@ -179,13 +181,13 @@ export function TimeToday() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 hidden sm:table-cell">{clockIn ? format(new Date(clockIn.recorded_at), 'HH:mm') : '—'}</td>
+                        <td className="px-4 py-3 hidden sm:table-cell">{clockIn ? timeInTz(clockIn.recorded_at, timezone) : '—'}</td>
                         <td className="px-4 py-3 hidden md:table-cell">
                           {breakStart && breakEnd
-                            ? `${format(new Date(breakStart.recorded_at), 'HH:mm')} – ${format(new Date(breakEnd.recorded_at), 'HH:mm')}`
-                            : breakStart ? `${tc.actions.onBreakSince} ${format(new Date(breakStart.recorded_at), 'HH:mm')}` : '—'}
+                            ? `${timeInTz(breakStart.recorded_at, timezone)} – ${timeInTz(breakEnd.recorded_at, timezone)}`
+                            : breakStart ? `${tc.actions.onBreakSince} ${timeInTz(breakStart.recorded_at, timezone)}` : '—'}
                         </td>
-                        <td className="px-4 py-3 hidden sm:table-cell">{clockOut ? format(new Date(clockOut.recorded_at), 'HH:mm') : '—'}</td>
+                        <td className="px-4 py-3 hidden sm:table-cell">{clockOut ? timeInTz(clockOut.recorded_at, timezone) : '—'}</td>
                         <td className="px-4 py-3">{records.length > 0 ? formatMinutes(worked) : '—'}</td>
                         <td className="px-4 py-3">
                           <Badge className={cn('text-xs gap-1', cfg.className)}>

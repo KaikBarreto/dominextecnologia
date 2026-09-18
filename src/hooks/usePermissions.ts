@@ -94,6 +94,12 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:reopen_os', label: 'Reabrir OS', description: 'Reabrir ordens de serviço concluídas para edição', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:service_orders' },
   { key: 'fn:view_all_schedule', label: 'Ver Toda a Agenda', description: 'Ver todas as tarefas da agenda, não apenas as próprias', group: 'Geral', category: 'geral', relatedScreen: 'screen:schedule' },
   { key: 'fn:editar_os_campo', label: 'Editar OS em campo', description: 'Editar equipamentos e checklists dentro de uma OS em andamento', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:service_orders' },
+  // Separada de 'fn:view_all_schedule' de propósito (decisão do CEO, Onda E do
+  // CRM): a agenda é um SUBCONJUNTO das tarefas. A tarefa da Agenda não está no
+  // CRM, mas a tarefa do CRM pode estar na Agenda — e existe tarefa de CRM que
+  // nunca aparece no calendário. Quem vê o calendário inteiro não
+  // necessariamente deve ver as tarefas de funil de todo mundo.
+  { key: 'fn:manage_tasks', label: 'Gerenciar Tarefas', description: 'Ver e gerenciar as tarefas de todos, não apenas as próprias', group: 'Geral', category: 'geral', relatedScreen: 'screen:schedule' },
 ] as const;
 
 export const ALL_PERMISSIONS = [...SCREEN_PERMISSIONS, ...FUNCTION_PERMISSIONS];
