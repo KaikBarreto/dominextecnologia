@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.44',
+    date: '18 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobrar uma parcela do contrato pela internet',
+        description: 'Na aba Financeiro do contrato, cada parcela agora tem a ação "Cobrar online". O sistema gera a cobrança e a envia ao cliente sem criar um lançamento novo: quando o cliente paga, a própria parcela é baixada. Parcela que já foi cobrada mostra "Ver cobrança" em vez de gerar outra, parcela paga não oferece a ação, e parcela com recebimento parcial explica na linha por que não pode.',
+        category: 'recurso',
+      },
+      {
+        title: 'Conta de recebimento escolhida já na criação do contrato',
+        description: 'O cadastro de contrato ganhou uma etapa Financeiro, onde você escolhe a conta que vai receber e a categoria. Assim as parcelas nascem com esse vínculo, em vez de precisarem do ajuste em massa depois.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O valor cobrado não pode mais divergir do valor da parcela',
+        description: 'Enquanto existir uma cobrança gerada, o valor da parcela fica travado, e o valor da cobrança também. Sem isso, cobrar um valor diferente do que está na parcela daria a parcela inteira como quitada quando o cliente pagasse, e a diferença sumiria da sua receita. Para mudar o valor, cancele a cobrança e gere outra. Vencimento e descrição continuam editáveis.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Cancelar uma cobrança nunca apaga a parcela do contrato',
+        description: 'Ao remover uma cobrança online, a parcela do contrato permanece no Financeiro e volta a poder ser cobrada. O aviso gravado no lançamento agora explica o motivo certo em cada caso, em vez de dizer que havia pagamento quando não havia.',
+        category: 'correcao',
+      },
+      {
+        title: 'Custo dos produtos vendidos agora se chama CSP',
+        description: 'As categorias que começavam com CMV passaram a se chamar CSP, junto com os lançamentos que usavam esse nome, para o relatório continuar somando tudo no mesmo lugar. Categorias criadas por você não foram alteradas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.43',
     date: '18 de setembro de 2026',
     type: 'patch',

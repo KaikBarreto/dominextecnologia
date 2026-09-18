@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.43";
+export const APP_VERSION = "1.24.44";
 
-export const VERSION_NOTES = "Montar a lista de materiais do orçamento ficou muito mais rápido pelo celular: busca pronta para digitar, quantidade ao lado de cada material e vários itens incluídos de uma vez. A quantidade passa a aceitar valor quebrado, como 2,5 metros.";
+export const VERSION_NOTES = "Agora dá para cobrar uma parcela do contrato pela internet: o sistema gera a cobrança e baixa a própria parcela quando o cliente paga, sem lançamento novo e sem contar a receita duas vezes.";
