@@ -229,6 +229,31 @@ export const pmoc = {
         tooltipMarkPaid: 'Marcar como pago',
         tooltipEdit: 'Editar',
         tooltipDelete: 'Excluir',
+        // ── Cobrança online da parcela (link de pagamento pro cliente) ──
+        onlineCharge: {
+          action: 'Cobrar online',
+          viewAction: 'Ver cobrança',
+          chargedBadge: 'Cobrança gerada',
+          noLink: 'O link de pagamento desta cobrança ainda não está disponível.',
+          blocked: {
+            notReceivable: 'Só parcela a receber do contrato pode ser cobrada online.',
+            paid: 'Parcela já recebida.',
+            partiallyReceived: 'Parcela com recebimento parcial, acerte o recebimento antes de cobrar online.',
+            invalidAmount: 'Informe um valor maior que zero na parcela para cobrar online.',
+            otherCustomer: 'Esta parcela é de outro cliente, ajuste o cliente antes de cobrar online.',
+            noCustomer: 'Vincule um cliente ao contrato para cobrar online.',
+          },
+          // Parcela com cobrança viva: mudar o valor sumiria com dinheiro. Quando
+          // o cliente paga o link antigo, a parcela é baixada inteira, no valor
+          // novo. Só o valor trava, e a saída vem escrita na tela.
+          valueLocked: {
+            single: 'Esta parcela já tem uma cobrança online gerada. Para mudar o valor, cancele a cobrança e gere outra.',
+            bulk: '{n} parcelas da seleção já têm cobrança online gerada. Para mudar o valor delas, cancele a cobrança e gere outra. Conta e categoria continuam valendo para todas.',
+            bulkSingle: '1 parcela da seleção já tem cobrança online gerada. Para mudar o valor dela, cancele a cobrança e gere outra. Conta e categoria continuam valendo para todas.',
+            applyAllSkipped: 'O valor de {n} parcelas com cobrança gerada foi mantido.',
+            applyAllSkippedSingle: 'O valor de 1 parcela com cobrança gerada foi mantido.',
+          },
+        },
         // ── Pré-preenchimento de nova receita ──
         defaultDescriptionPrefix: 'Mensalidade',
         descPlaceholder: 'Ex: Mensalidade Março',
@@ -1087,6 +1112,27 @@ export const pmoc = {
         tooltipMarkPaid: 'Mark as paid',
         tooltipEdit: 'Edit',
         tooltipDelete: 'Delete',
+        onlineCharge: {
+          action: 'Charge online',
+          viewAction: 'View charge',
+          chargedBadge: 'Charge created',
+          noLink: 'The payment link for this charge is not available yet.',
+          blocked: {
+            notReceivable: 'Only a contract receivable instalment can be charged online.',
+            paid: 'Instalment already received.',
+            partiallyReceived: 'This instalment has a partial payment, settle it before charging online.',
+            invalidAmount: 'Set an amount greater than zero on the instalment to charge online.',
+            otherCustomer: 'This instalment belongs to another customer, fix the customer before charging online.',
+            noCustomer: 'Link a customer to the contract to charge online.',
+          },
+          valueLocked: {
+            single: 'This instalment already has an online charge. To change the amount, cancel the charge and create a new one.',
+            bulk: '{n} selected instalments already have an online charge. To change their amount, cancel the charge and create a new one. Account and category still apply to all of them.',
+            bulkSingle: '1 selected instalment already has an online charge. To change its amount, cancel the charge and create a new one. Account and category still apply to all of them.',
+            applyAllSkipped: 'The amount of {n} instalments with an existing charge was kept as it was.',
+            applyAllSkippedSingle: 'The amount of 1 instalment with an existing charge was kept as it was.',
+          },
+        },
         defaultDescriptionPrefix: 'Monthly fee',
         descPlaceholder: 'E.g.: Monthly fee March',
         selection: {
@@ -1875,6 +1921,27 @@ export const pmoc = {
         tooltipMarkPaid: 'Marcar como pagado',
         tooltipEdit: 'Editar',
         tooltipDelete: 'Eliminar',
+        onlineCharge: {
+          action: 'Cobrar en línea',
+          viewAction: 'Ver cobro',
+          chargedBadge: 'Cobro generado',
+          noLink: 'El enlace de pago de este cobro todavía no está disponible.',
+          blocked: {
+            notReceivable: 'Solo una cuota por cobrar del contrato se puede cobrar en línea.',
+            paid: 'Cuota ya recibida.',
+            partiallyReceived: 'Esta cuota tiene un cobro parcial, ajústalo antes de cobrar en línea.',
+            invalidAmount: 'Indica un importe mayor que cero en la cuota para cobrar en línea.',
+            otherCustomer: 'Esta cuota es de otro cliente, ajusta el cliente antes de cobrar en línea.',
+            noCustomer: 'Vincula un cliente al contrato para cobrar en línea.',
+          },
+          valueLocked: {
+            single: 'Esta cuota ya tiene un cobro en línea generado. Para cambiar el importe, cancela el cobro y genera otro.',
+            bulk: '{n} cuotas de la selección ya tienen un cobro en línea generado. Para cambiar su importe, cancela el cobro y genera otro. La cuenta y la categoría siguen aplicándose a todas.',
+            bulkSingle: '1 cuota de la selección ya tiene un cobro en línea generado. Para cambiar su importe, cancela el cobro y genera otro. La cuenta y la categoría siguen aplicándose a todas.',
+            applyAllSkipped: 'El importe de {n} cuotas con cobro generado se mantuvo igual.',
+            applyAllSkippedSingle: 'El importe de 1 cuota con cobro generado se mantuvo igual.',
+          },
+        },
         defaultDescriptionPrefix: 'Mensualidad',
         descPlaceholder: 'Ej.: Mensualidad Marzo',
         selection: {
@@ -2663,6 +2730,27 @@ export const pmoc = {
         tooltipMarkPaid: 'Marquer comme payé',
         tooltipEdit: 'Modifier',
         tooltipDelete: 'Supprimer',
+        onlineCharge: {
+          action: 'Facturer en ligne',
+          viewAction: 'Voir la facture',
+          chargedBadge: 'Facture créée',
+          noLink: `Le lien de paiement de cette facture n'est pas encore disponible.`,
+          blocked: {
+            notReceivable: 'Seule une échéance à recevoir du contrat peut être facturée en ligne.',
+            paid: 'Échéance déjà encaissée.',
+            partiallyReceived: `Cette échéance a un encaissement partiel, régularisez-le avant de facturer en ligne.`,
+            invalidAmount: `Indiquez un montant supérieur à zéro sur l'échéance pour facturer en ligne.`,
+            otherCustomer: 'Cette échéance appartient à un autre client, corrigez le client avant de facturer en ligne.',
+            noCustomer: 'Associez un client au contrat pour facturer en ligne.',
+          },
+          valueLocked: {
+            single: `Cette échéance a déjà une facture en ligne. Pour changer le montant, annulez la facture et générez-en une autre.`,
+            bulk: `{n} échéances de la sélection ont déjà une facture en ligne. Pour changer leur montant, annulez la facture et générez-en une autre. Le compte et la catégorie s'appliquent toujours à toutes.`,
+            bulkSingle: `1 échéance de la sélection a déjà une facture en ligne. Pour changer son montant, annulez la facture et générez-en une autre. Le compte et la catégorie s'appliquent toujours à toutes.`,
+            applyAllSkipped: `Le montant de {n} échéances ayant déjà une facture a été conservé.`,
+            applyAllSkippedSingle: `Le montant d'1 échéance ayant déjà une facture a été conservé.`,
+          },
+        },
         defaultDescriptionPrefix: 'Mensualité',
         descPlaceholder: 'Ex. : Mensualité Mars',
         selection: {

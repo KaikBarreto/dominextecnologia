@@ -62,9 +62,19 @@ interface ChargeDialogProps {
   presetAmount?: number;
   /** Pré-preenche o campo de descrição. */
   presetDescription?: string;
+  /** Pré-preenche o vencimento (yyyy-mm-dd). Ausente → hoje. */
+  presetDueDate?: string;
   /** Origem da cobrança (repassada ao edge). Quando informada, flui para
-   *  createCharge como source_type + source_id (dedupe ativo para 'quote'). */
-  source?: { type: 'quote'; id: string };
+   *  createCharge como source_type + source_id (dedupe ativo para 'quote' e
+   *  'contract_installment').
+   *
+   *  'contract_installment' muda a tela em dois pontos, porque o servidor
+   *  impõe o resto:
+   *    · o VALOR é o da parcela e não pode ser editado (a edge recusa valor
+   *      diferente; e cobrar menos daria baixa na parcela inteira);
+   *    · não existe a opção "lançar no financeiro": o lançamento é a própria
+   *      parcela do contrato, que a cobrança só passa a acompanhar. */
+  source?: { type: 'quote' | 'contract_installment'; id: string };
 }
 
 // Meios de pagamento efetivos (respeitam as flags allow_* da conta).
@@ -103,11 +113,15 @@ const METHOD_TO_SIMULATOR: Record<Exclude<BillingMethod, 'UNDEFINED'>, Simulator
   CREDIT_CARD: 'card',
 };
 
-export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, source }: ChargeDialogProps) {
+export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, presetDueDate, source }: ChargeDialogProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
   const fin = MESSAGES[locale].app.finance;
   const { toast } = useToast();
+
+  // Cobrança de PARCELA DE CONTRATO: valor travado no valor da parcela e sem
+  // aba Financeiro (a parcela JÁ é o lançamento; a cobrança só se liga a ela).
+  const isContractInstallment = source?.type === 'contract_installment';
 
   const { customers, updateCustomer } = useCustomers();
   const { create } = useTenantCharges();
@@ -259,8 +273,13 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       if (presetAmount != null && presetAmount > 0) {
         setAmount(presetAmount);
       }
+      // Vencimento herdado da origem (ex.: a data da parcela do contrato). Quem
+      // chama já garante que não é data passada — a edge recusaria.
+      if (presetDueDate) {
+        setDueDate(presetDueDate);
+      }
     }
-  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription, autoPostToFinance, presetAmount, presetDescription]);
+  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription, autoPostToFinance, presetAmount, presetDescription, presetDueDate]);
 
   // Sincroniza o cliente pré-selecionado quando o dialog abre com novo preset.
   useEffect(() => {
@@ -295,9 +314,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
   const resetForm = () => {
     setCustomerId(presetCustomerId ?? '');
-    setAmount(0);
-    setDueDate(todayISO());
-    setDescription(defaultDescription ?? '');
+    // "Nova cobrança" a partir de uma origem (parcela/orçamento) volta pro
+    // valor da origem, nunca pra zero — no caso da parcela o valor é travado.
+    setAmount(presetAmount != null && presetAmount > 0 ? presetAmount : 0);
+    setDueDate(presetDueDate || todayISO());
+    setDescription(presetDescription ?? defaultDescription ?? '');
     setCategory('');
     setCostCenterId(null);
     setPostToFinance(autoPostToFinance);
@@ -505,8 +526,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         due_date: dueDate,
         billing_type: method,
         description: description.trim() || undefined,
-        category: category.trim() || undefined,
-        cost_center_id: costCenterId,
+        // Categoria/centro de custo só existem pro recebível que a cobrança
+        // cria. Parcela de contrato não cria recebível nenhum (o lançamento é
+        // a própria parcela), então mandar isso seria ruído ignorado.
+        category: isContractInstallment ? undefined : category.trim() || undefined,
+        cost_center_id: isContractInstallment ? null : costCenterId,
         fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
         interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
         discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
@@ -514,11 +538,13 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         installment_count: method === 'CREDIT_CARD' && installmentCount > 1 ? installmentCount : undefined,
         // Quem paga a taxa — só faz sentido no cartão; o edge ignora nos demais.
         fee_payer: method === 'CREDIT_CARD' ? feePayer : undefined,
-        // Origem da cobrança: ativa dedupe no edge quando source_type='quote'.
+        // Origem da cobrança: ativa o dedupe no edge (orçamento ou parcela).
         source_type: source?.type,
         source_id: source?.id ?? null,
         // Opção por cobrança (padrão vem da conta): lançar ou não no Financeiro.
-        post_to_finance: postToFinance,
+        // Parcela de contrato não tem essa escolha — o lançamento é a própria
+        // parcela, e a edge ignora o campo. Nem enviamos, pra não fingir opção.
+        post_to_finance: isContractInstallment ? undefined : postToFinance,
       });
       setResult(chargeResult);
       toast({ title: t.success.title, description: t.success.description });
@@ -528,7 +554,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       if (chargeResult.orphan === false && chargeResult.charge.financeWarning) {
         toast({
           variant: 'destructive',
-          title: t.financeWarning.title,
+          // Na parcela de contrato o aviso não é "não lançou no financeiro" (o
+          // lançamento é a parcela): é "não conseguimos ligar a cobrança à
+          // parcela". O texto vem pronto do servidor, só o título muda.
+          title: isContractInstallment ? t.contractInstallment.warningTitle : t.financeWarning.title,
           description: chargeResult.charge.financeWarning || t.financeWarning.description,
         });
       }
@@ -877,7 +906,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 },
                 { value: TAB_PAGAMENTO, label: t.tabs.payment },
                 { value: TAB_ENCARGOS, label: t.tabs.fees },
-                { value: TAB_FINANCEIRO, label: t.tabs.finance },
+                // Parcela de contrato não tem aba Financeiro: não existe escolha
+                // de lançamento (a parcela já é o lançamento), e uma aba que só
+                // mostra opção ignorada seria mentira na tela.
+                ...(isContractInstallment ? [] : [{ value: TAB_FINANCEIRO, label: t.tabs.finance }]),
               ]}
               activeTab={activeTab}
               onTabChange={(v) => setActiveTab(v as ChargeTabKey)}
@@ -885,6 +917,17 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
             {/* ── Aba: Cobrança (cliente, valor, vencimento, descrição) ────── */}
             <TabsContent value={TAB_COBRANCA} className="space-y-4">
+              {/* Parcela de contrato: diz o que vai acontecer quando o cliente
+                  pagar (a parcela é baixada sozinha) e por que não há opção de
+                  lançar no financeiro. Sem isso, o sumiço da aba parece bug. */}
+              {isContractInstallment && (
+                <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+                  <p className="text-xs leading-snug text-muted-foreground">
+                    {t.contractInstallment.notice}
+                  </p>
+                </div>
+              )}
+
               {/* Cliente */}
               <div className="space-y-2">
                 <Label
@@ -967,20 +1010,32 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 >
                   {t.fields.value}
                 </Label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    R$
-                  </span>
-                  <Input
-                    id="charge-amount"
-                    className={cn('pl-9', showAmountError && 'border-destructive ring-1 ring-destructive')}
-                    inputMode="numeric"
-                    placeholder={t.fields.valuePlaceholder}
-                    value={amountDisplay}
-                    onChange={handleAmountChange}
-                    onPaste={handleAmountPaste}
-                  />
-                </div>
+                {isContractInstallment ? (
+                  // Valor TRAVADO: a edge exige que a cobrança tenha o mesmo
+                  // valor da parcela (tolerância de 1 centavo). Se desse pra
+                  // digitar, o usuário só descobriria o erro depois de clicar.
+                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm font-medium text-foreground">
+                    R$ {amountDisplay || '0,00'}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      R$
+                    </span>
+                    <Input
+                      id="charge-amount"
+                      className={cn('pl-9', showAmountError && 'border-destructive ring-1 ring-destructive')}
+                      inputMode="numeric"
+                      placeholder={t.fields.valuePlaceholder}
+                      value={amountDisplay}
+                      onChange={handleAmountChange}
+                      onPaste={handleAmountPaste}
+                    />
+                  </div>
+                )}
+                {isContractInstallment && (
+                  <p className="text-xs text-muted-foreground">{t.contractInstallment.amountLockedHint}</p>
+                )}
               </div>
 
               {/* Vencimento */}
@@ -1152,6 +1207,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
             </TabsContent>
 
             {/* ── Aba: Financeiro (lançar no financeiro, categoria) ─────────── */}
+            {!isContractInstallment && (
             <TabsContent value={TAB_FINANCEIRO} className="space-y-4">
               {/* Lançar (ou não) esta cobrança no Financeiro — opção POR COBRANÇA
                   (pedido do CEO: nem toda cobrança precisa virar conta a
@@ -1205,6 +1261,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 </div>
               )}
             </TabsContent>
+            )}
           </Tabs>
         ) : (
           /* ── Sucesso: link + copiar + WhatsApp ─────────────────────────── */
@@ -1233,7 +1290,9 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
               <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning" />
                 <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">{t.financeWarning.title}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {isContractInstallment ? t.contractInstallment.warningTitle : t.financeWarning.title}
+                  </p>
                   <p className="text-xs text-muted-foreground">{financeWarning}</p>
                 </div>
               </div>

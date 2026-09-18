@@ -46,10 +46,12 @@ export interface CreateChargeInput {
   /** Quem paga a taxa do cartão nesta cobrança: 'company' (empresa absorve) ou
    *  'customer' (repasse ao cliente via gross-up). Ausente → default da conta. */
   fee_payer?: 'company' | 'customer';
-  /** Origem da cobrança. Quando 'quote', usar source_id com o UUID do orçamento.
-   *  A edge faz dedupe: chamar duas vezes pro mesmo source_id devolve a mesma cobrança. */
-  source_type?: 'avulso' | 'quote';
-  /** UUID do orçamento quando source_type === 'quote'. */
+  /** Origem da cobrança. Quando 'quote' ou 'contract_installment', usar
+   *  source_id com o UUID da origem. A edge faz dedupe: chamar duas vezes pro
+   *  mesmo source_id devolve a mesma cobrança, em vez de criar outra. */
+  source_type?: 'avulso' | 'quote' | 'contract_installment';
+  /** UUID da origem: orçamento ('quote') ou parcela do contrato
+   *  ('contract_installment' — id em financial_transactions, não do contrato). */
   source_id?: string | null;
   /** Categoria (nome) do recebível gerado no Financeiro. Ausente/vazio → a edge
    *  usa a categoria padrão da conta de pagamento (default_income_category). */

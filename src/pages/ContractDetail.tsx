@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -52,6 +52,16 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { useTenantSubscriptions, type TenantSubscription } from '@/hooks/useTenantSubscriptions';
 import { SubscriptionDialog } from '@/components/financial/SubscriptionDialog';
+import { ChargeDialog } from '@/components/financial/ChargeDialog';
+import { buildCheckoutUrl } from '@/hooks/useTenantCharges';
+import { useContractInstallmentCharges, type ContractInstallmentCharge } from '@/hooks/useContractInstallmentCharges';
+import {
+  getInstallmentChargeAvailability,
+  getInstallmentValueEditPolicy,
+  resolveChargeDueDate,
+  splitInstallmentsByValueLock,
+  type InstallmentChargeBlockReason,
+} from '@/lib/contract-installment-charge';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -78,6 +88,13 @@ import { readPastedCents } from '@/lib/money-paste-mask';
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
+}
+
+/** Hoje em yyyy-mm-dd no fuso LOCAL (toISOString sozinho vira o dia no Brasil). */
+function todayISODate(): string {
+  const d = new Date();
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 10);
 }
 
 const STATUS_VARIANTS: Record<string, 'success' | 'outline' | 'destructive' | 'secondary'> = {
@@ -407,6 +424,46 @@ export default function ContractDetail() {
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
 
+  // ── Cobrança online da parcela (Asaas BYO) ─────────────────────────────────
+  // Só a parcela-mãe a receber vira cobrança; o resto (saída, filha de
+  // recebimento parcial) nem entra na consulta. A cobrança NÃO cria lançamento
+  // novo: ela se liga à parcela que já existe, e a baixa vem sozinha no
+  // pagamento. Por isso a tela nunca oferece "lançar no financeiro" aqui.
+  const chargeableInstallmentIds = useMemo(
+    () =>
+      (linkedTransactions || [])
+        .filter((t: any) => t.transaction_type === 'entrada' && !t.parent_transaction_id)
+        .map((t: any) => t.id as string),
+    [linkedTransactions],
+  );
+  const { liveChargeByInstallment } = useContractInstallmentCharges(id, chargeableInstallmentIds);
+  // Parcela escolhida pra gerar a cobrança (abre o ChargeDialog).
+  const [chargeInstallment, setChargeInstallment] = useState<any | null>(null);
+  // Mesmo gate do faturamento recorrente: módulo de cobranças ligado + conta de
+  // recebimento ativa. Sem isso, cobrar online nem aparece.
+  const showOnlineCharge = hasCobrancas && isPaymentActive;
+  /**
+   * Parcela com cobrança online viva. Usado tanto pra oferecer "ver cobrança"
+   * quanto pra TRAVAR a mudança de valor: a baixa automática marca o recebível
+   * como recebido sem comparar valor, então editar de R$ 480 pra R$ 1.000 e
+   * receber os R$ 480 do link antigo quitaria a parcela inteira e sumiria com
+   * R$ 520 do financeiro, em silêncio. Vale pros três caminhos de edição
+   * (uma parcela, "aplicar a todas" e edição em massa).
+   */
+  const hasLiveChargeFor = (t: { id: string }) => liveChargeByInstallment.has(t.id);
+  const tCharge = td.financial.onlineCharge;
+  // Parcela que já tem cobrança viva: abre o link de pagamento que existe, em
+  // vez de mandar o usuário gerar de novo (a edge devolveria a mesma cobrança,
+  // e ele acharia que gerou uma segunda).
+  const handleViewInstallmentCharge = (charge: ContractInstallmentCharge) => {
+    const url = charge.publicShortCode ? buildCheckoutUrl(charge.publicShortCode) : charge.invoiceUrl;
+    if (!url) {
+      toast({ variant: 'destructive', title: tCharge.noLink });
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+  };
+
   // Atividades (serviços que cada visita carrega) — só das OSs visíveis na
   // página atual de ocorrências, pra não buscar o contrato inteiro de uma vez.
   // Hook próprio (escopo = OSs deste contrato), nunca via query de useContracts.
@@ -428,6 +485,14 @@ export default function ContractDetail() {
   // Parcela paga é dinheiro que JÁ entrou no caixa. Excluir em massa sem avisar
   // apagaria o recebimento junto, então a contagem alimenta o aviso do dialog.
   const selectedPaidCount = selectedRecTransactions.filter((t) => t.is_paid).length;
+  // Parcela com cobrança online viva não aceita mudança de VALOR (a baixa
+  // automática quitaria a parcela inteira pelo valor novo quando o cliente
+  // pagasse o link antigo). Conta e categoria seguem liberadas pra todas.
+  const bulkValueLockedCount = useMemo(
+    () => splitInstallmentsByValueLock(selectedRecTransactions, hasLiveChargeFor).valueLocked.length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedRecTransactions, liveChargeByInstallment],
+  );
   const allRecSelected =
     (linkedTransactions || []).length > 0 && selectedRecCount === (linkedTransactions || []).length;
 
@@ -473,7 +538,10 @@ export default function ContractDetail() {
     if (selectedRecCount === 0) return;
     const parsedAmount = bulkEditAmount ? parseFloat(bulkEditAmount.replace(',', '.')) : undefined;
     const changes: { amount?: number; account_id?: string; category?: string } = {};
-    if (typeof parsedAmount === 'number' && !Number.isNaN(parsedAmount) && parsedAmount > 0) changes.amount = parsedAmount;
+    // Seleção com parcela de cobrança viva: o campo de valor já vem
+    // desabilitado, e aqui o valor nem chega a entrar no lote. Conta e
+    // categoria continuam valendo pra todas.
+    if (bulkValueLockedCount === 0 && typeof parsedAmount === 'number' && !Number.isNaN(parsedAmount) && parsedAmount > 0) changes.amount = parsedAmount;
     if (bulkEditAccountId) changes.account_id = bulkEditAccountId;
     if (bulkEditCategory) changes.category = bulkEditCategory;
     if (Object.keys(changes).length === 0) return;
@@ -504,25 +572,56 @@ export default function ContractDetail() {
     setEditRecDescription(t.description);
     setEditRecAmount(String(t.amount));
     setEditRecDueDate(t.due_date || '');
-    setPendingEditData({ id: t.id, contract_id: id });
+    setPendingEditData({
+      id: t.id,
+      contract_id: id,
+      // Cobrança viva nesta parcela trava SÓ o valor (descrição e vencimento
+      // seguem livres). Guardado aqui pra o modal e o salvar enxergarem juntos.
+      valueLocked: !getInstallmentValueEditPolicy({ hasLiveCharge: hasLiveChargeFor(t) }).canEditValue,
+    });
     setShowEditRecModal(true);
   };
 
   const handleSaveEditRec = async (applyToAll: boolean) => {
     if (!pendingEditData) return;
+    // O campo de valor já vem desabilitado quando há cobrança viva; esta é a
+    // trava de verdade, pra estado velho não virar gravação de valor.
+    const editValueLocked = pendingEditData.valueLocked === true;
     setEditRecSaving(true);
     try {
+      let keptValueCount = 0;
       if (applyToAll) {
         const unpaidTxs = (linkedTransactions || []).filter((t: any) => !t.is_paid && t.id !== pendingEditData.id);
-        for (const tx of unpaidTxs) {
+        // "Aplicar a todas" também escreve VALOR nas outras parcelas: as que
+        // têm cobrança viva ficam de fora do valor e recebem só a descrição.
+        const { editable, valueLocked } = splitInstallmentsByValueLock(unpaidTxs, hasLiveChargeFor);
+        keptValueCount = valueLocked.length;
+        for (const tx of editable) {
           await updateTransaction.mutateAsync({ id: tx.id, description: editRecDescription, amount: Number(editRecAmount) } as any);
         }
+        for (const tx of valueLocked) {
+          await updateTransaction.mutateAsync({ id: tx.id, description: editRecDescription } as any);
+        }
       }
-      await updateTransaction.mutateAsync({ id: pendingEditData.id, description: editRecDescription, amount: Number(editRecAmount), due_date: editRecDueDate || undefined } as any);
+      await updateTransaction.mutateAsync({
+        id: pendingEditData.id,
+        description: editRecDescription,
+        ...(editValueLocked ? {} : { amount: Number(editRecAmount) }),
+        due_date: editRecDueDate || undefined,
+      } as any);
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       setShowEditRecModal(false);
       setShowBulkEditPrompt(false);
-      toast({ title: applyToAll ? td.toasts.allAccountsUpdated : td.toasts.accountUpdated });
+      toast({
+        title: applyToAll ? td.toasts.allAccountsUpdated : td.toasts.accountUpdated,
+        // Nada silencioso: se alguma parcela manteve o valor por ter cobrança
+        // gerada, o usuário fica sabendo na hora.
+        description: keptValueCount > 0
+          ? (keptValueCount === 1
+              ? tCharge.valueLocked.applyAllSkippedSingle
+              : tCharge.valueLocked.applyAllSkipped.replace('{n}', String(keptValueCount)))
+          : undefined,
+      });
     } catch (err: any) {
       toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     } finally { setEditRecSaving(false); }
@@ -1721,6 +1820,19 @@ export default function ContractDetail() {
                     {recPagination.paginatedItems.map(t => {
                       // Status da parcela: pago (verde) > atrasado (vermelho) > pendente (neutro).
                       const isOverdue = !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal);
+                      // Cobrança online desta parcela: regra espelhada da edge
+                      // (src/lib/contract-installment-charge.ts). Motivo de
+                      // bloqueio que o card NÃO deixa óbvio vira texto visível
+                      // (no toque não existe tooltip de `title`).
+                      const liveCharge = liveChargeByInstallment.get(t.id) ?? null;
+                      const chargeAvailability = getInstallmentChargeAvailability(t, {
+                        contractCustomerId: contract.customer_id ?? null,
+                        hasLiveCharge: !!liveCharge,
+                      });
+                      const chargeBlockedReason =
+                        chargeAvailability.kind === 'blocked' && !chargeAvailability.silent
+                          ? tCharge.blocked[chargeAvailability.reason as InstallmentChargeBlockReason]
+                          : null;
                       return (
                       <div key={t.id} className={cn(
                         'space-y-2 rounded-xl border p-3 text-sm min-w-0',
@@ -1740,13 +1852,70 @@ export default function ContractDetail() {
                               {t.due_date ? `${td.financial.duePrefix} ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
                             </p>
                           </div>
-                          <Badge variant={t.is_paid ? 'success' : isOverdue ? 'destructive' : 'outline'} className="shrink-0">
-                            {t.is_paid ? td.financial.paidBadge : isOverdue ? td.financial.overdueBadge : td.financial.pendingBadge}
-                          </Badge>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <Badge variant={t.is_paid ? 'success' : isOverdue ? 'destructive' : 'outline'} className="shrink-0">
+                              {t.is_paid ? td.financial.paidBadge : isOverdue ? td.financial.overdueBadge : td.financial.pendingBadge}
+                            </Badge>
+                            {/* Selo saturado (fundo + texto branco): esta parcela
+                                já tem link de pagamento vivo. */}
+                            {showOnlineCharge && chargeAvailability.kind === 'charged' && (
+                              <Badge variant="info" className="shrink-0 gap-1 whitespace-nowrap">
+                                <CreditCard className="h-3 w-3" />
+                                {tCharge.chargedBadge}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
+                        {/* Motivo de não dar pra cobrar online, quando o card não
+                            deixa isso óbvio sozinho. */}
+                        {showOnlineCharge && chargeBlockedReason && (
+                          <div className="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+                            <p className="text-xs leading-snug text-foreground">{chargeBlockedReason}</p>
+                          </div>
+                        )}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
                           <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
+                            {/* Cobrar online / ver a cobrança que já existe.
+                                Gate: módulo de cobranças + conta de recebimento
+                                ativa (mesmo gate do faturamento recorrente). */}
+                            {showOnlineCharge && chargeAvailability.kind === 'charged' && liveCharge && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-info active:scale-90 transition-transform rounded-xl"
+                                title={tCharge.viewAction}
+                                aria-label={tCharge.viewAction}
+                                onClick={() => handleViewInstallmentCharge(liveCharge)}
+                              >
+                                <CreditCard className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                              </Button>
+                            )}
+                            {showOnlineCharge && chargeAvailability.kind === 'chargeable' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-primary active:scale-90 transition-transform rounded-xl"
+                                title={tCharge.action}
+                                aria-label={tCharge.action}
+                                onClick={() => setChargeInstallment(t)}
+                              >
+                                <CreditCard className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                              </Button>
+                            )}
+                            {showOnlineCharge && chargeBlockedReason && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled
+                                className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 rounded-xl"
+                                title={chargeBlockedReason}
+                                aria-label={tCharge.action}
+                              >
+                                <CreditCard className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                              </Button>
+                            )}
                             {!t.is_paid && (
                               <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-success active:scale-90 transition-transform rounded-xl" title={td.financial.tooltipMarkPaid} onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
                                 <Check className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
@@ -2084,7 +2253,25 @@ export default function ContractDetail() {
       <ResponsiveModal open={showEditRecModal} onOpenChange={setShowEditRecModal} title={td.financial.editReceivableTitle}>
         <div className="space-y-4 p-1">
           <div><Label>{td.financial.descLabel}</Label><Input value={editRecDescription} onChange={e => setEditRecDescription(e.target.value)} /></div>
-          <div><Label>{td.financial.amountLabel}</Label><Input inputMode="numeric" value={editRecAmountDisplay} onChange={handleEditRecAmountChange} onPaste={handleEditRecAmountPaste} /></div>
+          <div>
+            <Label>{td.financial.amountLabel}</Label>
+            {/* Valor travado quando a parcela já tem cobrança online gerada:
+                mudar aqui sumiria com dinheiro quando o cliente pagasse o link
+                antigo. Descrição e vencimento continuam editáveis. */}
+            <Input
+              inputMode="numeric"
+              value={editRecAmountDisplay}
+              onChange={handleEditRecAmountChange}
+              onPaste={handleEditRecAmountPaste}
+              disabled={pendingEditData?.valueLocked === true}
+            />
+            {pendingEditData?.valueLocked === true && (
+              <div className="mt-2 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-2.5">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <p className="text-xs leading-snug text-foreground">{tCharge.valueLocked.single}</p>
+              </div>
+            )}
+          </div>
           <div><Label>{td.financial.dueDateLabel}</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
           <div className="flex flex-col gap-2 pt-2">
             <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
@@ -2268,7 +2455,21 @@ export default function ContractDetail() {
               onChange={handleBulkEditAmountChange}
               onPaste={handleBulkEditAmountPaste}
               placeholder="0,00"
+              disabled={bulkValueLockedCount > 0}
             />
+            {/* Alguma parcela da seleção já tem cobrança online: o valor do lote
+                inteiro fica travado (aplicar em algumas e pular outras seria
+                surpresa silenciosa). Conta e categoria seguem valendo. */}
+            {bulkValueLockedCount > 0 && (
+              <div className="mt-2 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-2.5">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <p className="text-xs leading-snug text-foreground">
+                  {bulkValueLockedCount === 1
+                    ? tCharge.valueLocked.bulkSingle
+                    : tCharge.valueLocked.bulk.replace('{n}', String(bulkValueLockedCount))}
+                </p>
+              </div>
+            )}
           </div>
           <div>
             <Label>{td.financial.accountLabel}</Label>
@@ -2293,7 +2494,12 @@ export default function ContractDetail() {
           <Button
             className="w-full min-h-11 rounded-xl bg-warning text-warning-foreground hover:bg-warning/90 active:scale-[0.98] transition-transform"
             onClick={handleBulkEditRec}
-            disabled={bulkEditSaving || (!bulkEditAmount && !bulkEditAccountId && !bulkEditCategory)}
+            // Com valor travado, só conta/categoria contam como mudança real —
+            // sem isso o botão ficaria ativo prometendo um valor que não grava.
+            disabled={
+              bulkEditSaving ||
+              ((bulkValueLockedCount > 0 || !bulkEditAmount) && !bulkEditAccountId && !bulkEditCategory)
+            }
           >
             {bulkEditSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pencil className="h-4 w-4 mr-2" />}
             {selectedRecCount === 1
@@ -2331,6 +2537,31 @@ export default function ContractDetail() {
           source={{ type: 'contract', id: contract.id }}
         />
       )}
+
+      {/* ── Cobrança online de UMA parcela do contrato ───────────────────────
+          Valor travado no valor da parcela (a edge recusa valor diferente, e
+          cobrar menos daria baixa na parcela inteira) e cliente travado no
+          cliente da parcela. A cobrança não gera lançamento novo: liga-se à
+          parcela que já existe e a baixa vem sozinha quando o cliente pagar. */}
+      {showOnlineCharge && chargeInstallment && (() => {
+        const availability = getInstallmentChargeAvailability(chargeInstallment, {
+          contractCustomerId: contract?.customer_id ?? null,
+          hasLiveCharge: false,
+        });
+        if (availability.kind !== 'chargeable') return null;
+        return (
+          <ChargeDialog
+            open={!!chargeInstallment}
+            onOpenChange={(v) => { if (!v) setChargeInstallment(null); }}
+            presetCustomerId={availability.customerId}
+            lockCustomer
+            presetAmount={Number(chargeInstallment.amount) || undefined}
+            presetDescription={chargeInstallment.description ?? undefined}
+            presetDueDate={resolveChargeDueDate(chargeInstallment.due_date, todayISODate())}
+            source={{ type: 'contract_installment', id: chargeInstallment.id }}
+          />
+        );
+      })()}
 
       {/* ── Faturamento Recorrente: confirmação de cancelamento ──────────────── */}
       {contract && (

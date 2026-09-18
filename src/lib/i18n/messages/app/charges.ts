@@ -180,6 +180,14 @@ export const charges = {
         hintOn: 'Ao gerar, esta cobrança já entra como uma conta a receber no seu financeiro.',
         hintOff: 'A cobrança é criada normalmente, mas não entra no financeiro. Lance manualmente se precisar.',
       },
+      // Cobrança gerada a partir de uma PARCELA DE CONTRATO: valor travado no
+      // valor da parcela e sem escolha de lançamento (a parcela já é o
+      // lançamento no financeiro).
+      contractInstallment: {
+        notice: 'Esta cobrança é da parcela do contrato. Quando o cliente pagar, a parcela é baixada automaticamente no seu financeiro, sem lançamento novo.',
+        amountLockedHint: 'O valor é o da parcela e não pode ser alterado.',
+        warningTitle: 'Cobrança criada, confira a parcela',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -756,6 +764,11 @@ export const charges = {
         hintOn: 'When generated, this charge is also created as a receivable in your finances.',
         hintOff: 'The charge is created normally, but it will not appear in your finances. Post it manually if needed.',
       },
+      contractInstallment: {
+        notice: 'This charge belongs to the contract instalment. When your customer pays, the instalment is settled automatically in your finances, with no extra entry.',
+        amountLockedHint: 'The amount comes from the instalment and cannot be changed.',
+        warningTitle: 'Charge created, check the instalment',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Bank slip',
@@ -1313,6 +1326,11 @@ export const charges = {
         hintOn: 'Al generarse, este cobro también se registra como una cuenta por cobrar en tus finanzas.',
         hintOff: 'El cobro se crea normalmente, pero no entra en tus finanzas. Regístralo manualmente si lo necesitas.',
       },
+      contractInstallment: {
+        notice: 'Este cobro es de la cuota del contrato. Cuando el cliente pague, la cuota se salda automáticamente en tus finanzas, sin un registro nuevo.',
+        amountLockedHint: 'El importe es el de la cuota y no se puede cambiar.',
+        warningTitle: 'Cobro creado, revisa la cuota',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -1869,6 +1887,11 @@ export const charges = {
         no: 'Non',
         hintOn: `Une fois générée, cette facture est aussi enregistrée comme une créance dans vos finances.`,
         hintOff: `La facture est créée normalement, mais n'apparaît pas dans vos finances. Enregistrez-la manuellement si besoin.`,
+      },
+      contractInstallment: {
+        notice: `Cette facture correspond à l'échéance du contrat. Quand le client paiera, l'échéance sera soldée automatiquement dans vos finances, sans nouvelle écriture.`,
+        amountLockedHint: `Le montant est celui de l'échéance et ne peut pas être modifié.`,
+        warningTitle: `Facture créée, vérifiez l'échéance`,
       },
       methods: {
         pix: 'Pix',
