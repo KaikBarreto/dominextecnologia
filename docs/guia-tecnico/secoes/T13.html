@@ -313,7 +313,7 @@
     <tbody>
       <tr><td><span class="ui">Nome</span></td><td>Sim</td><td>Validação "Nome é obrigatório". Exemplo sugerido na tela: "Serviços".</td></tr>
       <tr><td><span class="ui">Tipo</span></td><td>Sim</td><td>Receita, Despesa ou Ambos. Validação "Tipo é obrigatório".</td></tr>
-      <tr><td><span class="ui">Grupo DRE</span></td><td>Não</td><td>Impostos e Deduções, CMV (Custo do Serviço) ou Despesas Operacionais (OPEX). É o que decide em qual linha do resultado a categoria entra.</td></tr>
+      <tr><td><span class="ui">Grupo DRE</span></td><td>Não</td><td>Impostos e Deduções, CSP (Custo do Serviço Prestado) ou Despesas Operacionais (OPEX). É o que decide em qual linha do resultado a categoria entra.</td></tr>
       <tr><td><span class="ui">Cor</span></td><td>Sim</td><td>Validação "Cor é obrigatória". Usada nos gráficos.</td></tr>
       <tr><td><span class="ui">Ícone</span></td><td>Não</td><td>Só visual.</td></tr>
     </tbody>
@@ -337,7 +337,7 @@
   <h3>Excluir categoria</h3>
   <p>A confirmação é clara sobre o efeito: "Tem certeza? Transações com esta categoria não serão afetadas." Ou seja, os lançamentos antigos continuam com o nome da categoria gravado, eles não somem e não mudam de valor.</p>
 
-  <div class="regra"><b>Não existe subcategoria no financeiro do Dominex.</b> A lista de categorias é plana: não dá pra criar "Veículos" com "Combustível" e "Manutenção" dentro. Se você precisa desse detalhe, o caminho hoje é criar categorias irmãs com nome composto, como "Veículos, Combustível" e "Veículos, Manutenção", e usar a ordenação por arrastar pra deixá-las juntas na lista. O agrupamento contábil de verdade é feito pelo campo <span class="ui">Grupo DRE</span>, que junta várias categorias em Impostos, CMV ou OPEX.</div>
+  <div class="regra"><b>Não existe subcategoria no financeiro do Dominex.</b> A lista de categorias é plana: não dá pra criar "Veículos" com "Combustível" e "Manutenção" dentro. Se você precisa desse detalhe, o caminho hoje é criar categorias irmãs com nome composto, como "Veículos, Combustível" e "Veículos, Manutenção", e usar a ordenação por arrastar pra deixá-las juntas na lista. O agrupamento contábil de verdade é feito pelo campo <span class="ui">Grupo DRE</span>, que junta várias categorias em Impostos, CSP ou OPEX.</div>
 
   <h2>11. Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial</h2>
 
@@ -398,8 +398,8 @@
       <tr><td><span class="ui">(+) Receita Bruta</span></td><td>Todas as entradas.</td></tr>
       <tr><td><span class="ui">(-) Impostos e Deduções</span></td><td>Saídas cujas categorias estão no grupo DRE "Impostos".</td></tr>
       <tr><td><span class="ui">(=) Receita Líquida</span></td><td>Receita bruta menos impostos.</td></tr>
-      <tr><td><span class="ui">(-) CMV (Custo da Mercadoria/Serviço)</span></td><td>Saídas cujas categorias estão no grupo DRE "CMV".</td></tr>
-      <tr><td><span class="ui">(=) Lucro Bruto</span></td><td>Receita líquida menos CMV. Mostra também a margem em porcentagem.</td></tr>
+      <tr><td><span class="ui">(-) Custo dos Serviços Prestados (CSP)</span></td><td>Saídas cujas categorias estão no grupo DRE "CSP".</td></tr>
+      <tr><td><span class="ui">(=) Lucro Bruto</span></td><td>Receita líquida menos o CSP. Mostra também a margem em porcentagem.</td></tr>
       <tr><td><span class="ui">(-) Despesas Operacionais (OPEX)</span></td><td>Todo o resto das saídas.</td></tr>
       <tr><td><span class="ui">(=) Resultado Líquido (EBITDA)</span></td><td>O número final, com o rótulo <span class="ui">Superávit</span>, <span class="ui">Déficit</span> ou <span class="ui">Equilibrado</span>.</td></tr>
     </tbody>
@@ -538,7 +538,7 @@
       <tr>
         <td>"Quero criar uma subcategoria dentro de Veículos"</td>
         <td>Não existe hierarquia de categoria</td>
-        <td>A lista de categorias é plana. Crie categorias irmãs com nome composto ("Veículos, Combustível") e use o campo Grupo DRE para agrupar contabilmente em Impostos, CMV ou OPEX.</td>
+        <td>A lista de categorias é plana. Crie categorias irmãs com nome composto ("Veículos, Combustível") e use o campo Grupo DRE para agrupar contabilmente em Impostos, CSP ou OPEX.</td>
       </tr>
       <tr>
         <td>"O saldo da conta no sistema não bate com o do banco"</td>
@@ -591,7 +591,7 @@
     <dd>Porque o próprio dia do fechamento já pertence ao ciclo seguinte. Com fechamento no dia 20, a fatura acumula do dia 20 do mês anterior até o dia 19. O formulário do cartão avisa isso: "Compras feitas no dia do fechamento já entram na próxima fatura."</dd>
 
     <dt>Dá pra criar subcategoria de categoria financeira?</dt>
-    <dd>Não. A lista de categorias é plana, sem hierarquia. Para agrupar, use o campo Grupo DRE (Impostos, CMV ou OPEX) ou crie categorias irmãs com nome composto.</dd>
+    <dd>Não. A lista de categorias é plana, sem hierarquia. Para agrupar, use o campo Grupo DRE (Impostos, CSP ou OPEX) ou crie categorias irmãs com nome composto.</dd>
 
     <dt>Todo mundo que enxerga o Financeiro pode apagar lançamento?</dt>
     <dd>Não. Excluir lançamento financeiro é uma permissão separada, que não vem ligada por padrão. Administrador, gestor e quem tem acesso total sempre podem. Os demais só com a ação Excluir Lançamento Financeiro marcada no editor de permissões.</dd>

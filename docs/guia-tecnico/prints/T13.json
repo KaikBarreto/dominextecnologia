@@ -6,20 +6,32 @@
       "url": "/financeiro/movimentacoes",
       "legenda": "Modal Novo Cartão com Dia de fechamento, Dia de vencimento, Limite de crédito e a frase automática que explica a regra da fatura.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Novo Cartão" },
-        { "esperar": 1500 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Novo Cartão"
+        },
+        {
+          "esperar": 1500
+        }
       ],
       "recorte": "dialog"
     },
     {
       "id": "t13-nova-transacao-modal",
       "url": "/financeiro/movimentacoes",
-      "legenda": "Modal Nova Transação com Tipo de Movimentação, Categoria, Valor, Conta, Forma de pagamento, Descrição, Data e Parcelas.",
+      "legenda": "Modal Nova Transação organizado em seções: O que é (tipo, categoria, descrição, cliente e fornecedor vinculados), Dinheiro (valor, conta, forma de pagamento, Data do lançamento e Data do pagamento), Mais detalhes e Parcelas. As duas datas são diferentes de propósito: a Data do lançamento é quando o fato aconteceu e conta no Regime de Competência; a Data do pagamento é quando o dinheiro se moveu e conta no Regime de Caixa.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Transação" },
-        { "esperar": 1500 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Transação"
+        },
+        {
+          "esperar": 1500
+        }
       ],
       "recorte": "dialog"
     },
@@ -28,18 +40,27 @@
       "url": "/financeiro/relatorio?tab=categorias",
       "legenda": "Aba Categorias do Relatório, com as listas de Categorias de Receita e Categorias de Despesa e o selo Sistema nas categorias que não podem ser editadas.",
       "passos": [
-        { "esperar": 3000 }
+        {
+          "esperar": 3000
+        }
       ],
       "recorte": "main"
     },
     {
       "id": "t13-cobrar-modal",
       "url": "/financeiro/relatorio",
-      "legenda": "Modal Nova cobrança (recebimento do cliente pelo Asaas da própria empresa), com Cliente, Valor, Vencimento, Descrição e Forma de pagamento.",
+      "legenda": "Modal Nova cobrança (recebimento do cliente pelo Asaas da própria empresa), dividido em quatro abas: Cobrança (cliente, valor, vencimento, descrição), Pagamento (forma, parcelas, quem paga a taxa), Encargos (multa, juros, desconto) e Financeiro (lançar no Financeiro, categoria, centro de custo). O valor líquido que a empresa recebe fica fixo no rodapé, visível em qualquer aba.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Cobrar", "opcional": true },
-        { "esperar": 1500 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Cobrar",
+          "opcional": true
+        },
+        {
+          "esperar": 1500
+        }
       ],
       "recorte": "dialog"
     },
@@ -48,9 +69,16 @@
       "url": "/financeiro/movimentacoes",
       "legenda": "Tela de um cartão de crédito com a barra de limite, o valor da fatura em aberto e a lista de faturas com as situações Aberta, Fechada, Parcial e Paga.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Cartão Nubank PJ", "opcional": true },
-        { "esperar": 2000 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Cartão Nubank PJ",
+          "opcional": true
+        },
+        {
+          "esperar": 2000
+        }
       ],
       "recorte": "main"
     }
