@@ -54,6 +54,9 @@ function newKey(): string {
     : `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
+const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
+
 export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchaseEditor;
@@ -71,6 +74,14 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
   const [originToAdd, setOriginToAdd] = useState<Origin>('estoque');
   const [loading, setLoading] = useState(false);
 
+  // Texto CRU da quantidade, por linha (chave = MaterialRow.key). O número em
+  // rows.quantity segue sendo o que vai pro save; este espelho existe porque um
+  // input controlado por NUMBER engole o separador no meio da digitação: "17,"
+  // volta pra 17, o campo re-renderiza "17" e o usuário, digitando 17,99
+  // naturalmente, acabava salvando 1799. Régua: guardar string crua no estado,
+  // parsear só no uso — igual ao InventoryFormDialog.
+  const [qtyText, setQtyText] = useState<Record<string, string>>({});
+
   // ---- Estado do sub-dialog "Adicionar itens abaixo do mínimo" ----
   const [belowMinOpen, setBelowMinOpen] = useState(false);
   const [belowMinStockId, setBelowMinStockId] = useState<string>('');
@@ -83,6 +94,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
         setTitle('');
         setNotes('');
         setRows([]);
+        setQtyText({});
         setOriginToAdd('estoque');
         return;
       }
@@ -100,6 +112,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
           unit: m.unit ?? 'un',
           quantity: m.quantity,
         })));
+        setQtyText(Object.fromEntries(materials.map((m) => [m.id, toNumericText(m.quantity)])));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -141,32 +154,48 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
   const addStockItem = (inventoryId: string) => {
     if (!inventoryId || rows.some((r) => r.inventory_id === inventoryId)) return;
     const inv = inventoryById.get(inventoryId);
+    const key = newKey();
     setRows((prev) => [...prev, {
-      key: newKey(),
+      key,
       origin: 'estoque',
       inventory_id: inventoryId,
       material_name: inv?.name ?? '',
       unit: inv?.unit ?? 'un',
       quantity: 1,
     }]);
+    setQtyText((prev) => ({ ...prev, [key]: '1' }));
   };
 
   const addManualItem = () => {
+    const key = newKey();
     setRows((prev) => [...prev, {
-      key: newKey(),
+      key,
       origin: 'manual',
       inventory_id: null,
       material_name: '',
       unit: 'un',
       quantity: 1,
     }]);
+    setQtyText((prev) => ({ ...prev, [key]: '1' }));
   };
 
-  const removeItem = (key: string) =>
+  const removeItem = (key: string) => {
     setRows((prev) => prev.filter((r) => r.key !== key));
+    setQtyText((prev) => {
+      const { [key]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
 
   const patchItem = (key: string, patch: Partial<MaterialRow>) =>
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+
+  // Atualiza o texto exibido E o número salvo da quantidade (mesmo padrão do
+  // handleNumericChange do InventoryFormDialog, mas por linha/key).
+  const handleQtyChange = (key: string, raw: string) => {
+    setQtyText((prev) => ({ ...prev, [key]: raw }));
+    patchItem(key, { quantity: raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0) });
+  };
 
   /** Adiciona todos os itens abaixo do mínimo do local selecionado. */
   const handleAddBelowMin = () => {
@@ -181,6 +210,10 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
       quantity: 0,
     }));
     setRows((prev) => [...prev, ...newRows]);
+    setQtyText((prev) => ({
+      ...prev,
+      ...Object.fromEntries(newRows.map((r) => [r.key, ''])),
+    }));
     setBelowMinOpen(false);
     setBelowMinStockId('');
   };
@@ -368,8 +401,8 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
                             <NumericInput
                               decimal
                               className="h-8 w-24"
-                              value={r.quantity ? String(r.quantity) : ''}
-                              onValueChange={(v) => patchItem(r.key, { quantity: parseFloat(v.replace(',', '.')) || 0 })}
+                              value={qtyText[r.key] ?? toNumericText(r.quantity)}
+                              onValueChange={(v) => handleQtyChange(r.key, v)}
                             />
                           </div>
                           <div className="space-y-1">

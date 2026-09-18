@@ -11,6 +11,7 @@ import { exportToCSV } from '@/utils/exportTimesheets';
 import { TimeDayDetailModal } from './TimeDayDetailModal';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { format } from 'date-fns';
+import { timeInTz, todayInTz } from '@/lib/timezone';
 import { cn } from '@/lib/utils';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -226,8 +227,8 @@ export function TimeHistory() {
               ];
 
               const subtitleParts: string[] = [];
-              subtitleParts.push(`${tc.todaySubtitle.clockIn} ${sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}`);
-              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockIn} ${sh.first_clock_in ? timeInTz(sh.first_clock_in, timezone) : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${sh.last_clock_out ? timeInTz(sh.last_clock_out, timezone) : '—'}`);
               subtitleParts.push(sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—');
 
               return (
@@ -278,8 +279,8 @@ export function TimeHistory() {
                       <TableRow key={sh.id} className="hover:bg-muted/30">
                         <TableCell>{format(new Date(sh.date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
                         <TableCell className="font-medium">{sh._employee_name}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{sh.first_clock_in ? timeInTz(sh.first_clock_in, timezone) : '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{sh.last_clock_out ? timeInTz(sh.last_clock_out, timezone) : '—'}</TableCell>
                         <TableCell>{sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</TableCell>
                         <TableCell className={cn('hidden md:table-cell font-medium', (sh.balance_min ?? 0) >= 0 ? 'text-success' : 'text-destructive')}>
                           {sh.balance_min != null ? `${sh.balance_min >= 0 ? '+' : ''}${formatMinutes(sh.balance_min)}` : '—'}
@@ -330,7 +331,7 @@ export function TimeHistory() {
         onOpenChange={() => setDetailSheet(null)}
         employeeId={detailSheet?.employeeId || null}
         employeeName={detailSheet?.employeeName || ''}
-        date={detailSheet?.date || format(new Date(), 'yyyy-MM-dd')}
+        date={detailSheet?.date || todayInTz(timezone)}
       />
     </div>
   );

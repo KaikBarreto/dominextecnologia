@@ -14,10 +14,11 @@ import { cn } from '@/lib/utils';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { timeInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 export function TimeReport() {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const tc = MESSAGES[locale].app.employees.timeclock;
   const tf = tc.reportFilters;
   const cal = tc.reportCalendar;
@@ -212,8 +213,8 @@ export function TimeReport() {
                     <p className="font-semibold">{format(d, 'EEEE, dd MMM', { locale: ptBR })}</p>
                     {sh ? (
                       <>
-                        <p>{cal.popoverClockIn}: {sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}</p>
-                        <p>{cal.popoverClockOut}: {sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}</p>
+                        <p>{cal.popoverClockIn}: {sh.first_clock_in ? timeInTz(sh.first_clock_in, timezone) : '—'}</p>
+                        <p>{cal.popoverClockOut}: {sh.last_clock_out ? timeInTz(sh.last_clock_out, timezone) : '—'}</p>
                         <p>{cal.popoverWorked}: {sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</p>
                       </>
                     ) : <p className="text-muted-foreground">{cal.noRecord}</p>}
