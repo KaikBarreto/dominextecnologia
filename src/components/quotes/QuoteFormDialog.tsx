@@ -21,12 +21,14 @@ import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
 import { useProposalTemplates } from '@/hooks/useProposalTemplates';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-import { useInventory } from '@/hooks/useInventory';
+import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
 import { BDISummaryCard } from '@/components/quotes/BDISummaryCard';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { MaterialBatchPicker, type MaterialBatchSelection } from '@/components/inventory/MaterialBatchPicker';
+import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { supabase } from '@/integrations/supabase/client';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -37,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import {
   User, UserPlus, Palette, Wrench, MapPin, Package,
-  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
+  Calculator, Plus, Minus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
   ChevronLeft, ChevronRight, Check, Save, Loader2, Inbox,
 } from 'lucide-react';
 
@@ -61,6 +63,69 @@ interface FormQuoteItem {
   profit_rate: number;
   bdi: number;
   price_override?: number | null;
+}
+
+/** Arredonda pra 2 casas (evita flutuação de ponto). */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Lê "2,5" ou "2.5" (string crua do `NumericInput decimal`) como número. */
+function parseDecimalInput(raw: string): number {
+  if (!raw) return 0;
+  const n = parseFloat(raw.replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Monta um `FormQuoteItem` de MATERIAL — função pura, extraída do antigo
+ * `handleAddMaterial` byte a byte igual (nenhum cálculo novo). É a MESMA
+ * função usada tanto pelo item único quanto pelo lote do `MaterialBatchPicker`
+ * (regra de não-regressão de preço: um único lugar calcula `unit_price` /
+ * `unit_total_cost` / `total_price` / `bdi`).
+ *
+ * Quando `inv` está presente (material do catálogo), o preço SEMPRE vem do
+ * próprio item de estoque (`sale_price` ou, na falta, `cost_price`) — nunca
+ * de `manualPrice`. `manualPrice` só vale pro material avulso (`inv` nulo).
+ * Devolve `null` quando não há nome (nem catálogo nem manual) — chamador filtra.
+ */
+export function buildMaterialItem({
+  inv,
+  manualName,
+  manualPrice,
+  quantity,
+  profitRate,
+  bdiFactor,
+}: {
+  inv: InventoryItem | null | undefined;
+  manualName: string | null;
+  manualPrice: number;
+  quantity: number;
+  profitRate: number;
+  bdiFactor: number;
+}): FormQuoteItem | null {
+  const isFromStock = !!inv;
+  const name = isFromStock ? (inv?.name ?? '') : (manualName ?? '').trim();
+  if (!name) return null;
+  const unitPrice = isFromStock ? Number(inv?.sale_price ?? inv?.cost_price ?? 0) : manualPrice;
+  return {
+    item_type: 'material',
+    description: name,
+    details: '',
+    quantity,
+    unit_total_cost: isFromStock ? Number(inv?.cost_price ?? 0) : manualPrice,
+    unit_price: unitPrice,
+    total_price: Math.round(unitPrice * quantity * 100) / 100,
+    service_type_id: null,
+    inventory_id: isFromStock ? (inv!.id) : null,
+    unit_hourly_rate: 0,
+    unit_hours: 0,
+    unit_labor_cost: 0,
+    unit_materials_cost: 0,
+    unit_extras_cost: 0,
+    profit_rate: profitRate,
+    bdi: bdiFactor,
+  };
 }
 
 interface QuoteFormDialogProps {
@@ -306,11 +371,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [addSvcQty, setAddSvcQty] = useState(1);
   const [isFetchingSvc, setIsFetchingSvc] = useState(false);
 
-  // ── Add-material row state ──
-  const [addMatId, setAddMatId] = useState('');
-  const [addMatManualName, setAddMatManualName] = useState('');
-  const [addMatManualPrice, setAddMatManualPrice] = useState(0);
-  const [addMatQty, setAddMatQty] = useState(1);
+  // ── Seletor em lote de materiais (etapa Materiais) ──
+  const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
+  // Índices (globais em `items`) cujo campo de detalhe já foi revelado — nasce
+  // fechado, exceto quando o item já tem detalhe preenchido (ver `detailsOpen`).
+  const [openMaterialDetails, setOpenMaterialDetails] = useState<Set<number>>(new Set());
 
   type QuoteDraft = {
     customerMode: string; customerId: string; prospectName: string; prospectPhone: string; prospectEmail: string;
@@ -659,36 +724,26 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     }
   }, [createServiceType, addSvcQty, addServiceById]);
 
-  // ── Add material handler ──
-  const handleAddMaterial = useCallback(() => {
-    const isFromStock = !!addMatId;
-    const inv = isFromStock ? inventoryItems.find(i => i.id === addMatId) : null;
-    const name = isFromStock ? (inv?.name ?? '') : addMatManualName.trim();
-    if (!name) return;
-    const unitPrice = isFromStock ? Number(inv?.sale_price ?? inv?.cost_price ?? 0) : addMatManualPrice;
-    setItems(prev => [...prev, {
-      item_type: 'material',
-      description: name,
-      details: '',
-      quantity: addMatQty,
-      unit_total_cost: isFromStock ? Number(inv?.cost_price ?? 0) : addMatManualPrice,
-      unit_price: unitPrice,
-      total_price: Math.round(unitPrice * addMatQty * 100) / 100,
-      service_type_id: null,
-      inventory_id: isFromStock ? inv!.id : null,
-      unit_hourly_rate: 0,
-      unit_hours: 0,
-      unit_labor_cost: 0,
-      unit_materials_cost: 0,
-      unit_extras_cost: 0,
-      profit_rate: profitRate,
-      bdi: bdiFactor,
-    }]);
-    setAddMatId('');
-    setAddMatManualName('');
-    setAddMatManualPrice(0);
-    setAddMatQty(1);
-  }, [addMatId, addMatManualName, addMatManualPrice, addMatQty, inventoryItems, profitRate, bdiFactor]);
+  // ── Add materials handler (lote) ──
+  // Recebe a seleção inteira do `MaterialBatchPicker` e adiciona TODOS de uma
+  // vez, num único `setItems`. Cada item passa pela MESMA `buildMaterialItem`
+  // pura que o fluxo antigo usava (prova de não-regressão de preço/BDI).
+  const handleAddMaterialsBatch = useCallback((selections: MaterialBatchSelection[]) => {
+    const newItems = selections
+      .map((sel) =>
+        buildMaterialItem({
+          inv: sel.inventoryId ? inventoryItems.find((i) => i.id === sel.inventoryId) : null,
+          manualName: sel.manualName,
+          manualPrice: sel.unitPrice,
+          quantity: sel.quantity,
+          profitRate,
+          bdiFactor,
+        }),
+      )
+      .filter((it): it is FormQuoteItem => it != null);
+    if (newItems.length === 0) return;
+    setItems(prev => [...prev, ...newItems]);
+  }, [inventoryItems, profitRate, bdiFactor]);
 
   // ── Item price update ──
   const updateItemPrice = (idx: number, newPrice: number) => {
@@ -703,7 +758,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // unidade); mudar a quantidade não deve reprecificar via BDI, então marca
   // price_override quando o unit_price já existe pra não ser sobrescrito.
   const updateItemQty = (idx: number, newQty: number) => {
-    const qty = Math.max(1, Math.floor(newQty) || 1);
+    // Decimal liberado (não mais `Math.floor` com piso 1): material vendido
+    // fracionado (2,5 m de tubo, 0,5 kg de gás) precisa de casa decimal.
+    // O 0 é aceito porque é estado TRANSITÓRIO de digitação — apagar o campo
+    // pra redigitar não pode travar o input num piso. Quem restaura o piso é
+    // o `QuantityField` ao sair do foco (e o submit, como rede de segurança).
+    const qty = Math.max(0, Math.round((newQty || 0) * 100) / 100);
     setItems(prev => prev.map((it, i) =>
       i === idx
         ? {
@@ -765,15 +825,23 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     include_gifts: includeGifts,
     card_discount_rate: cardDiscountRateCfg,
     card_installments: cardInstallmentsCfg,
-    items: items.map((it, idx) => ({
+    // Rede de segurança pra quantidade: o campo aceita 0 como estado
+    // TRANSITÓRIO de digitação (apagar pra redigitar) e o `QuantityField`
+    // restaura o piso 1 ao sair do foco. Se alguém salvar sem tirar o foco do
+    // campo vazio, aqui garantimos que nenhuma linha vai pro banco com
+    // quantidade 0 (o que zeraria o valor da linha silenciosamente).
+    items: items.map((it, idx) => {
+      const quantity = it.quantity > 0 ? it.quantity : 1;
+      const total_price = it.quantity > 0 ? it.total_price : Math.round(it.unit_price * 100) / 100;
+      return {
       id: it.id,
       position: idx,
       item_type: it.item_type,
       description: it.description,
       details: it.details?.trim() ? it.details.trim() : null,
-      quantity: it.quantity,
+      quantity,
       unit_price: it.unit_price,
-      total_price: it.total_price,
+      total_price,
       service_type_id: it.service_type_id ?? null,
       inventory_id: it.inventory_id ?? null,
       unit_hourly_rate: it.unit_hourly_rate,
@@ -785,7 +853,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       profit_rate: it.profit_rate,
       bdi: it.bdi,
       price_override: it.price_override ?? null,
-    })),
+      };
+    }),
   });
 
   // ── Submit (finaliza: cria/atualiza com validação completa) ──
@@ -876,27 +945,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     return groups;
   }, [activeServices, usageFreq.svc, tq.serviceSelectRecents, tq.serviceSelectAll]);
 
-  const inventoryGroups = useMemo(() => {
-    const toOption = (i: typeof inventoryItems[number]) => ({
-      value: i.id,
-      label: `${i.name}${i.sku ? ` (${i.sku})` : ''}`,
-    });
+  // Top 5 materiais mais usados pelo tenant — alimenta o grupo "Mais usados"
+  // do `MaterialBatchPicker` (mesma fonte que o antigo `inventoryGroups` usava).
+  const materialFrequentIds = useMemo(() => {
     const all = inventoryItems ?? [];
-    const recentIds = [...usageFreq.inv.entries()]
+    return [...usageFreq.inv.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([id]) => id)
       .filter(id => all.some(i => i.id === id))
       .slice(0, 5);
-    if (recentIds.length === 0) {
-      return [{ options: all.map(toOption) }];
-    }
-    const recentSet = new Set(recentIds);
-    const recents = recentIds.map(id => all.find(i => i.id === id)!).map(toOption);
-    const rest = all.filter(i => !recentSet.has(i.id)).map(toOption);
-    const groups = [{ heading: tq.serviceSelectRecents, options: recents }];
-    if (rest.length > 0) groups.push({ heading: tq.serviceSelectAll, options: rest });
-    return groups;
-  }, [inventoryItems, usageFreq.inv, tq.serviceSelectRecents, tq.serviceSelectAll]);
+  }, [inventoryItems, usageFreq.inv]);
 
   const hasAnyService = activeServices.length > 0;
 
@@ -1168,89 +1226,70 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               <section className="space-y-3">
                 <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title={tq.materialsHeader} />
 
-                <div className="flex flex-col gap-2 p-3 bg-muted/30 rounded-lg">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="flex-1 min-w-0">
-                      <SearchableSelect
-                        groups={inventoryGroups}
-                        value={addMatId}
-                        onValueChange={(v) => { setAddMatId(v); setAddMatManualName(''); }}
-                        placeholder={tq.materialSelectPlaceholder}
-                      />
-                    </div>
-                    {!addMatId && (
-                      <div className="flex-1 min-w-0">
-                        <Input
-                          value={addMatManualName}
-                          onChange={e => setAddMatManualName(e.target.value)}
-                          placeholder={tq.materialManualPlaceholder}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {!addMatId && addMatManualName && (
-                      <>
-                        <Label className="text-xs whitespace-nowrap">{tq.materialUnitPriceLabel}</Label>
-                        <Input type="number" min={0} step="0.01" value={addMatManualPrice}
-                          onChange={e => setAddMatManualPrice(Number(e.target.value) || 0)}
-                          onPaste={e => {
-                            const cents = readPastedCents(e);
-                            if (cents == null) return;
-                            setAddMatManualPrice(cents / 100);
-                          }}
-                          className="h-9 w-24 text-sm" />
-                      </>
-                    )}
-                    <Label className="text-xs whitespace-nowrap">{tq.materialQtyLabel}</Label>
-                    <NumericInput value={String(addMatQty ?? '')}
-                      onValueChange={v => setAddMatQty(Math.max(1, Number(v) || 1))}
-                      className="h-9 w-16 text-sm" />
-                    <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId && !addMatManualName.trim()} className="h-9 shrink-0">
-                      <Plus className="h-3.5 w-3.5 mr-1" />{tq.materialAddButton}
-                    </Button>
-                  </div>
-                </div>
+                {/* Um caminho só, igual desktop/celular: abre o seletor em lote
+                    (foco automático na busca, marca quantidade na lista, um
+                    toque adiciona tudo). Substitui o combobox + input manual +
+                    qtd + "Adicionar" de antes (~6 toques por material). */}
+                <Button type="button" onClick={() => setMaterialPickerOpen(true)} className="h-11 w-full">
+                  <Plus className="mr-1.5 h-4 w-4" />{tq.materialPickerOpen}
+                </Button>
 
                 {materialItems.length > 0 ? (
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b bg-muted/30">
-                          <th className="text-left p-2 font-medium text-muted-foreground">{tq.materialColName}</th>
-                          <th className="text-center p-2 font-medium text-muted-foreground w-12">{tq.materialColQty}</th>
-                          <th className="text-right p-2 font-medium text-muted-foreground w-28">{tq.materialColUnitPrice}</th>
-                          <th className="text-right p-2 font-medium text-muted-foreground w-24">{tq.materialColTotal}</th>
-                          <th className="w-8 p-2" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {materialItems.map((item) => {
-                          const globalIdx = items.indexOf(item);
-                          return (
-                            <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
-                              <td className="p-2 font-medium align-top">
-                                <span>{item.description}</span>
-                                <Textarea
-                                  value={item.details ?? ''}
-                                  onChange={e => updateItemDetails(globalIdx, e.target.value)}
-                                  placeholder={tq.itemDetailsPlaceholder}
-                                  rows={1}
-                                  className="mt-1 min-h-0 h-7 py-1 text-[11px] font-normal text-muted-foreground resize-y w-full"
-                                />
-                              </td>
-                              <td className="p-2 text-center">
-                                <Input
-                                  type="number" min={1} step="1"
-                                  value={item.quantity || ''}
-                                  onChange={e => updateItemQty(globalIdx, Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                  className="h-7 w-14 text-xs text-center mx-auto px-1"
-                                />
-                              </td>
-                              <td className="p-2">
+                  <>
+                    {/* Mobile (abaixo de sm): lista de cards — a tabela espremida
+                        cortava o nome do material numa tela de 360px. */}
+                    <div className="space-y-2 sm:hidden">
+                      {materialItems.map((item) => {
+                        const globalIdx = items.indexOf(item);
+                        const unit = item.inventory_id
+                          ? inventoryItems.find(i => i.id === item.inventory_id)?.unit
+                          : null;
+                        const detailsOpen = openMaterialDetails.has(globalIdx) || !!item.details?.trim();
+                        return (
+                          <div key={globalIdx} className="space-y-2 rounded-lg border p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">{item.description}</p>
+                                {unit && (
+                                  <p aria-label={tq.materialColUnit} className="text-xs text-muted-foreground">{unit}</p>
+                                )}
+                              </div>
+                              <Button type="button" variant="destructive-ghost" size="icon"
+                                className="h-8 w-8 shrink-0"
+                                onClick={() => removeItem(globalIdx)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+
+                            {/* O card não tem cabeçalho de coluna como a tabela,
+                                então cada campo precisa do próprio rótulo: sem
+                                isso o preço de um material de valor 0 aparece
+                                como uma caixa vazia e sem sentido no celular
+                                (visto no QA). */}
+                            <div className="flex flex-wrap items-end gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[11px] text-muted-foreground">{tq.materialColQty}</Label>
+                                <div className="flex items-center gap-1">
+                                  <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                                    onClick={() => updateItemQty(globalIdx, round2(item.quantity - 1))}>
+                                    <Minus className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <QuantityField
+                                    quantity={item.quantity}
+                                    onCommit={qty => updateItemQty(globalIdx, qty)}
+                                    className="h-9 w-14 text-center px-1"
+                                  />
+                                  <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                                    onClick={() => updateItemQty(globalIdx, round2(item.quantity + 1))}>
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="ml-auto space-y-1">
+                                <Label className="block text-right text-[11px] text-muted-foreground">{tq.materialColUnitPrice}</Label>
                                 <Input
                                   type="number" min={0} step="0.01"
+                                  placeholder="0,00"
                                   value={item.unit_price || ''}
                                   onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
                                   onPaste={e => {
@@ -1258,35 +1297,141 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                                     if (cents == null) return;
                                     updateItemPrice(globalIdx, cents / 100);
                                   }}
-                                  className="h-7 w-24 text-xs text-right ml-auto"
+                                  className="h-9 w-24 text-sm"
                                 />
-                              </td>
-                              <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
-                              <td className="p-2">
-                                <Button type="button" variant="destructive-ghost" size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => removeItem(globalIdx)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        <tr className="bg-muted/30 border-t">
-                          <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
-                            {tq.materialSubtotal}
-                          </td>
-                          <td className="p-2 text-right font-bold">
-                            {fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}
-                          </td>
-                          <td />
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                              </div>
+                            </div>
+
+                            <p className="text-right text-sm font-semibold">{fmt(item.total_price)}</p>
+
+                            {detailsOpen ? (
+                              <Textarea
+                                value={item.details ?? ''}
+                                onChange={e => updateItemDetails(globalIdx, e.target.value)}
+                                placeholder={tq.itemDetailsPlaceholder}
+                                rows={1}
+                                className="min-h-0 h-8 w-full resize-y py-1 text-xs"
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-xs text-muted-foreground underline underline-offset-2"
+                                onClick={() => setOpenMaterialDetails(prev => new Set(prev).add(globalIdx))}
+                              >
+                                {tq.materialDetailsToggle}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-sm">
+                        <span className="text-muted-foreground">{tq.materialSubtotal}</span>
+                        <span className="font-bold">{fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}</span>
+                      </div>
+                    </div>
+
+                    {/* Desktop/tablet (sm+): tabela. `overflow-x-auto` (não
+                        `overflow-hidden`, que CORTA em vez de rolar). */}
+                    <div className="hidden overflow-x-auto rounded-lg border sm:block">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b bg-muted/30">
+                            <th className="p-2 text-left font-medium text-muted-foreground">{tq.materialColName}</th>
+                            <th className="w-24 p-2 text-center font-medium text-muted-foreground">{tq.materialColQty}</th>
+                            <th className="w-28 p-2 text-right font-medium text-muted-foreground">{tq.materialColUnitPrice}</th>
+                            <th className="w-24 p-2 text-right font-medium text-muted-foreground">{tq.materialColTotal}</th>
+                            <th className="w-8 p-2" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {materialItems.map((item) => {
+                            const globalIdx = items.indexOf(item);
+                            const unit = item.inventory_id
+                              ? inventoryItems.find(i => i.id === item.inventory_id)?.unit
+                              : null;
+                            const detailsOpen = openMaterialDetails.has(globalIdx) || !!item.details?.trim();
+                            return (
+                              <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
+                                <td className="p-2 align-top font-medium">
+                                  <span>{item.description}</span>
+                                  {detailsOpen ? (
+                                    <Textarea
+                                      value={item.details ?? ''}
+                                      onChange={e => updateItemDetails(globalIdx, e.target.value)}
+                                      placeholder={tq.itemDetailsPlaceholder}
+                                      rows={1}
+                                      className="mt-1 min-h-0 h-7 w-full resize-y py-1 text-[11px] font-normal text-muted-foreground"
+                                    />
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="mt-1 block text-[11px] text-muted-foreground underline underline-offset-2"
+                                      onClick={() => setOpenMaterialDetails(prev => new Set(prev).add(globalIdx))}
+                                    >
+                                      {tq.materialDetailsToggle}
+                                    </button>
+                                  )}
+                                </td>
+                                <td className="p-2 align-top">
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    <QuantityField
+                                      quantity={item.quantity}
+                                      onCommit={qty => updateItemQty(globalIdx, qty)}
+                                      className="mx-auto h-7 w-16 px-1 text-center text-xs"
+                                    />
+                                    {unit && (
+                                      <span aria-label={tq.materialColUnit} className="text-[10px] text-muted-foreground">{unit}</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-2 align-top">
+                                  <Input
+                                    type="number" min={0} step="0.01"
+                                    value={item.unit_price || ''}
+                                    onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
+                                    onPaste={e => {
+                                      const cents = readPastedCents(e);
+                                      if (cents == null) return;
+                                      updateItemPrice(globalIdx, cents / 100);
+                                    }}
+                                    className="ml-auto h-7 w-24 text-right text-xs"
+                                  />
+                                </td>
+                                <td className="p-2 text-right align-top font-semibold">{fmt(item.total_price)}</td>
+                                <td className="p-2 align-top">
+                                  <Button type="button" variant="destructive-ghost" size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => removeItem(globalIdx)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="border-t bg-muted/30">
+                            <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
+                              {tq.materialSubtotal}
+                            </td>
+                            <td className="p-2 text-right font-bold">
+                              {fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}
+                            </td>
+                            <td />
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <EmptyState>{tq.materialEmpty}</EmptyState>
                 )}
+
+                <MaterialBatchPicker
+                  open={materialPickerOpen}
+                  onOpenChange={setMaterialPickerOpen}
+                  items={inventoryItems}
+                  frequentIds={materialFrequentIds}
+                  onConfirm={handleAddMaterialsBatch}
+                />
               </section>
 
               {hasPricing && (
@@ -1520,6 +1665,43 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 }
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
+/**
+ * Campo de quantidade decimal dos itens de material.
+ *
+ * O `NumericInput` é controlado por STRING CRUA de propósito (ver
+ * `numeric-input.tsx`): quem guarda o TEXTO digitado tem que ser o pai.
+ * Ligá-lo direto no número do item (`formatQty(item.quantity)`) reescreve o
+ * input a cada tecla e engole o separador no instante exato em que ele é
+ * digitado: "2," volta como "2" e nunca se chega em "2,5" — ou seja, tubo por
+ * metro fica impossível de lançar editando na lista (provado em
+ * `QuoteFormDialog.test.tsx`).
+ *
+ * Por isso o texto vive aqui enquanto o campo está em uso. Ao sair do foco o
+ * campo volta a espelhar o item e, se ficou vazio/zerado, restaura o piso 1 —
+ * o mesmo piso que o fluxo antigo tinha.
+ */
+function QuantityField({ quantity, onCommit, className }: {
+  quantity: number;
+  onCommit: (qty: number) => void;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <NumericInput
+      decimal
+      maxDecimals={2}
+      inputMode="decimal"
+      value={draft ?? (quantity ? formatQty(quantity) : '')}
+      onValueChange={(v) => { setDraft(v); onCommit(parseDecimalInput(v)); }}
+      onBlur={() => {
+        setDraft(null);
+        if (!(quantity > 0)) onCommit(1);
+      }}
+      className={className}
+    />
+  );
+}
+
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-2">
