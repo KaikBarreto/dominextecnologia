@@ -64,13 +64,40 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
 import { autoGeneratePmocDocsV1 } from '@/hooks/useGeneratePmocDocument';
+// ── Etapa Financeiro (só na CRIAÇÃO) ────────────────────────────────────────
+// Reusa EXATAMENTE as peças da aba Financeiro do contrato (ContractDetail):
+// mesmo motor de repetição (`buildRepetitionPlan`, mês de calendário com clamp),
+// mesma máscara de dinheiro com colar, mesmos selects de conta/categoria/centro.
+// Nada de fórmula nova nem de campo novo em `contracts` (a tabela não tem
+// coluna de dinheiro — as parcelas SÃO os `financial_transactions`).
+// ATENÇÃO à PERFORMANCE: este dialog fica SEMPRE montado (Contratos e Detalhe
+// do Cliente renderizam <ContractFormDialog> fora do `open`). `useFinancial` e
+// `useFinancialAccounts` paginam `financial_transactions` inteira, então NÃO
+// podem ser chamados aqui no corpo. A gravação usa `createContractInstallments`
+// (mutation sem query nenhuma, em useContracts) e o select de conta vive no
+// ContractReceivingAccountField, que só monta com a etapa Financeiro na tela.
+import { useCostCenters } from '@/hooks/useCostCenters';
+import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { ContractReceivingAccountField } from '@/components/contracts/ContractReceivingAccountField';
+import {
+  buildRepetitionPlan,
+  repetitionTotal,
+  isTransactionYearInRange,
+  MAX_REPETITION_COUNT,
+  MIN_TRANSACTION_YEAR,
+  MAX_TRANSACTION_YEAR_AHEAD,
+} from '@/lib/finance-installments';
+import { readPastedCents } from '@/lib/money-paste-mask';
+import { todayInTz } from '@/lib/timezone';
+import { formatBRL } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2, Calculator } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2, Calculator, Wallet } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import {
@@ -101,6 +128,20 @@ interface ContractFormDialogProps {
 // 'E' (eventual) é registrado mas não entra no cronograma automático.
 // Labels traduzidos dentro do componente (ACTIVITY_FREQ_OPTIONS via useMemo).
 const ACTIVITY_FREQ_CODES: FreqCode[] = ['M', 'T', 'S', 'A', 'E'];
+
+// Cadência de COBRANÇA da etapa Financeiro (passo em MESES de calendário).
+// Mesmo mapa da aba Financeiro do contrato (ContractDetail) — os rótulos vêm
+// traduzidos de `pmoc.contractDetail.financial.frequencyOptions`, que já existe
+// nos 4 idiomas. Não confundir com a frequência das VISITAS (etapa Frequência):
+// um contrato pode ter visita trimestral e cobrança mensal.
+const FINANCE_FREQUENCY_MONTHS: Record<string, number> = {
+  unica: 0,
+  mensal: 1,
+  bimestral: 2,
+  trimestral: 3,
+  semestral: 6,
+  anual: 12,
+};
 
 // Rotina POR MÁQUINA (escopo/fase/checklists do catálogo) e helpers do plano
 // vivem em @/components/contracts/pmocMachineRoutine (fonte ÚNICA compartilhada
@@ -178,10 +219,10 @@ function newEnvRow(): EnvRow {
 }
 
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.contracts.contractForm;
 
-  const { createContract, updateContract } = useContracts();
+  const { createContract, updateContract, createContractInstallments } = useContracts();
   // Plano de serviços já persistido (só carrega em edição). Hook é a fronteira
   // do Supabase — o componente nunca lê contract_plan_activities direto.
   const { data: existingPlan } = useContractPlanActivities(editContract?.id);
@@ -250,6 +291,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [formTemplateId, setFormTemplateId] = useState('');
   const [notes, setNotes] = useState('');
   const [isActive, setIsActive] = useState(true);
+
+  // ── Etapa Financeiro (SÓ na criação) ──────────────────────────────────────
+  // Trata de COMO e QUANDO receber. Nada aqui vai pra tabela `contracts` (ela
+  // não tem coluna de dinheiro nenhuma): o que sai daqui são os
+  // `financial_transactions` do contrato, os MESMOS que a aba Financeiro do
+  // ContractDetail lista, edita e exclui. Por isso a etapa não existe em
+  // EDIÇÃO — reabrir o wizard e salvar de novo geraria a série uma segunda vez.
+  // Tudo é opcional: com o switch desligado (default) a etapa é um aviso e o
+  // contrato nasce exatamente como nascia antes.
+  const [finGenerate, setFinGenerate] = useState(false);
+  const [finDescription, setFinDescription] = useState('');
+  // String SEMPRE canônica ("4550.00"), nunca "4.550" — ver handler da máscara.
+  const [finAmount, setFinAmount] = useState('');
+  const [finFirstDueDate, setFinFirstDueDate] = useState('');
+  const [finFrequency, setFinFrequency] = useState<string>('mensal');
+  const [finCount, setFinCount] = useState('');
+  const [finAccountId, setFinAccountId] = useState('');
+  // Rótulo da conta escolhida, guardado junto do id: a Revisão precisa do NOME
+  // e o hook que sabe os nomes (`useFinancialAccounts`) é pesado demais pra
+  // viver no corpo deste dialog (ver nota de performance nos imports).
+  const [finAccountLabel, setFinAccountLabel] = useState('');
+  const [finCategory, setFinCategory] = useState('');
+  const [finCostCenterId, setFinCostCenterId] = useState<string | null>(null);
+  const [finPaymentMethod, setFinPaymentMethod] = useState('');
 
   // Step 2
   const [freqType, setFreqType] = useState<'months' | 'days'>('months');
@@ -420,25 +485,34 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   );
 
   // Wizard dinâmico: PMOC tem 6 etapas (info → unit → items → frequency → team →
-  // review); comum tem 5 (info → items → frequency → team → review). O conteúdo é
-  // renderizado pela KEY do step atual (nunca por índice numérico) pra não dar
-  // drift quando o PMOC liga/desliga.
+  // [finance] → review); comum tem 5 (info → items → frequency → team →
+  // [finance] → review). O conteúdo é renderizado pela KEY do step atual (nunca
+  // por índice numérico) pra não dar drift quando o PMOC liga/desliga.
+  // `finance` só entra na CRIAÇÃO — em edição o dono das parcelas é a aba
+  // Financeiro do contrato (que edita/exclui/aplica em massa). Repetir a etapa
+  // no editar geraria a série de novo a cada salvar.
   // Arrays traduzidos — derivados do locale ativo via i18n.
+  const financeStep = useMemo(
+    () => (isEditing ? [] : [{ key: 'finance', label: t.steps.finance }]),
+    [isEditing, t],
+  );
   const STEPS_COMMON = useMemo(() => [
     { key: 'info', label: t.steps.info },
     { key: 'items', label: t.steps.items },
     { key: 'frequency', label: t.steps.frequency },
     { key: 'team', label: t.steps.team },
+    ...financeStep,
     { key: 'review', label: t.steps.review },
-  ], [t]);
+  ], [t, financeStep]);
   const STEPS_PMOC = useMemo(() => [
     { key: 'info', label: t.steps.info },
     { key: 'unit', label: t.steps.unit },
     { key: 'items', label: t.steps.items },
     { key: 'frequency', label: t.steps.frequency },
     { key: 'team', label: t.steps.team },
+    ...financeStep,
     { key: 'review', label: t.steps.review },
-  ], [t]);
+  ], [t, financeStep]);
   const QUICK_MONTHS = useMemo(() => [
     { label: t.quickMonths.monthly, value: 1 },
     { label: t.quickMonths.bimonthly, value: 2 },
@@ -460,6 +534,80 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   const STEPS = isPmoc ? STEPS_PMOC : STEPS_COMMON;
   const currentStepKey = STEPS[step]?.key ?? 'info';
+
+  // ── Etapa Financeiro: dados, máscara e preview ────────────────────────────
+  // Hooks são a fronteira do Supabase (o componente nunca lê/escreve direto).
+  const tFin = t.finance;
+  const tfMethods = MESSAGES[locale].app.finance.transactionForm;
+  const tFreqOptions = MESSAGES[locale].app.pmoc.contractDetail.financial.frequencyOptions as Record<string, string>;
+  // `cost_centers` é tabela de config (query leve) — pode ficar aqui em cima.
+  const { activeCostCenters } = useCostCenters();
+
+  const FIN_FREQUENCY_OPTIONS = useMemo(
+    () => Object.entries(FINANCE_FREQUENCY_MONTHS).map(([value, months]) => ({
+      value,
+      months,
+      label: tFreqOptions[value] ?? value,
+    })),
+    [tFreqOptions],
+  );
+
+  // Máscara de dinheiro em CENTAVOS — nunca `type="number"` nem `NumericInput`.
+  // Bug real de produção (2026-09-17): o input nativo aceita colar "4.550" como
+  // texto válido (ponto = decimal no HTML) e `parseFloat` devolvia 4,55; 72
+  // parcelas nasceram com R$ 4,55 em vez de R$ 4.550,00. O `onPaste` cobre o
+  // residual: sem ele, colar cai na regra "2 últimos dígitos = centavos" e o
+  // valor fica 100x menor.
+  const handleFinAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(raw || '0', 10);
+    setFinAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const handleFinAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents == null) return;
+    setFinAmount(cents ? (cents / 100).toFixed(2) : '');
+  };
+  const finAmountDisplay = finAmount
+    ? Number(finAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
+  // Defaults sensatos, derivados do que o usuário JÁ preencheu em outras etapas
+  // (nunca duplicam o campo: são só o valor inicial). Primeiro vencimento = data
+  // de início do contrato; quantidade = horizonte do contrato em meses.
+  const finEffectiveFirstDue = finFirstDueDate || startDate || todayInTz(timezone);
+  const finDefaultCount = String(Math.max(1, Math.min(MAX_REPETITION_COUNT, horizonMonths || 12)));
+  const finEffectiveCount = finFrequency === 'unica'
+    ? 1
+    : Math.max(1, parseInt(finCount || finDefaultCount, 10) || 1);
+  const finEffectiveDescription = (finDescription.trim() || tFin.descPlaceholder);
+
+  const finCountExceedsMax = finFrequency !== 'unica' && finEffectiveCount > MAX_REPETITION_COUNT;
+  const finDueDateYearInvalid = !!finEffectiveFirstDue
+    && !isTransactionYearInRange(finEffectiveFirstDue, new Date().getFullYear());
+  const finDueDateMin = `${MIN_TRANSACTION_YEAR}-01-01`;
+  const finDueDateMax = `${new Date().getFullYear() + MAX_TRANSACTION_YEAR_AHEAD}-12-31`;
+
+  // Plano da série (data + valor de cada parcela). MESMA fonte pro preview da
+  // Revisão e pra gravação — quando as duas contas divergiam, o cliente via um
+  // número na tela e outro no extrato. REPETIÇÃO, não parcelamento: 12x R$ 450
+  // são 12 lançamentos de R$ 450 (R$ 5.400), nunca R$ 450 fatiados em 12.
+  const finPlan = useMemo(() => {
+    const amount = parseFloat(finAmount);
+    if (!finAmount || Number.isNaN(amount) || amount <= 0) return [];
+    const months = FIN_FREQUENCY_OPTIONS.find((f) => f.value === finFrequency)?.months ?? 1;
+    return buildRepetitionPlan({
+      firstDate: finEffectiveFirstDue,
+      amount,
+      count: finEffectiveCount,
+      intervalMonths: months,
+    });
+  }, [finAmount, finEffectiveFirstDue, finFrequency, finEffectiveCount, FIN_FREQUENCY_OPTIONS]);
+
+  // A etapa só "vale" quando o switch está ligado E o plano fechou. Sem isso o
+  // contrato é criado igualzinho, sem nenhuma parcela.
+  const finWillGenerate = !isEditing && finGenerate && finPlan.length > 0
+    && !finCountExceedsMax && !finDueDateYearInvalid;
 
   // Ligar/desligar PMOC muda a contagem de etapas (5 ↔ 6). Se o índice atual
   // estourar o novo array, recua pra última etapa válida (evita tela em branco).
@@ -523,6 +671,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     machineConfigs: Record<string, MachineConfig>;
     // Contrato comum: checklists (lista) por equipamento + exclusões da 1ª OS.
     commonChecklists: Record<string, { formTemplateIds: string[]; excluded: string[] }>;
+    // Etapa Financeiro (só criação). Fica no rascunho pra quem fechou o modal
+    // no meio não perder o valor/conta/categoria já escolhidos.
+    finGenerate: boolean; finDescription: string; finAmount: string;
+    finFirstDueDate: string; finFrequency: string; finCount: string;
+    finAccountId: string; finAccountLabel: string; finCategory: string; finCostCenterId: string | null;
+    finPaymentMethod: string;
   };
   const draft = useFormDraft<ContractDraft>({
     key: 'contract-form',
@@ -535,6 +689,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       'isActive', 'freqType', 'freqValue', 'startDate', 'horizonMonths', 'step',
       'unidadeNome', 'unidadeEndereco', 'unidadeNumero', 'unidadeComplemento',
       'unidadeBairro', 'unidadeCidade', 'unidadeUf', 'unidadeCep',
+      // Etapa Financeiro: `finGenerate` nasce false e `finFrequency` nasce
+      // 'mensal' — defaults, não preenchimento real. Sem ignorá-los, abrir e
+      // fechar o modal já dispararia o prompt de "retomar rascunho".
+      'finGenerate', 'finFrequency',
     ],
   });
 
@@ -546,6 +704,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento,
     unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
     environments, looseItems, machineConfigs, commonChecklists,
+    finGenerate, finDescription, finAmount, finFirstDueDate, finFrequency,
+    finCount, finAccountId, finAccountLabel, finCategory, finCostCenterId, finPaymentMethod,
   });
 
   // Persiste a cada mudança (só criação, e não enquanto o prompt de retomar está aberto).
@@ -553,7 +713,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (open && !isEditing && !draft.showResumePrompt) {
       draft.saveDraft(buildDraftSnapshot());
     }
-  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, commonChecklists, open, isEditing, draft.showResumePrompt]);
+  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, commonChecklists, finGenerate, finDescription, finAmount, finFirstDueDate, finFrequency, finCount, finAccountId, finAccountLabel, finCategory, finCostCenterId, finPaymentMethod, open, isEditing, draft.showResumePrompt]);
 
   // Espelho do snapshot atual num ref (atualizado a CADA render, sem gate). É a
   // fonte que o flush do UNMOUNT lê — cobre o mobile, onde o drawer vaul DESMONTA
@@ -609,6 +769,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setUnidadeCidade(d.unidadeCidade || '');
     setUnidadeUf(d.unidadeUf || '');
     setUnidadeCep(d.unidadeCep || '');
+    // Etapa Financeiro (rascunho antigo, sem estes campos → cai nos defaults).
+    setFinGenerate(!!d.finGenerate);
+    setFinDescription(d.finDescription || '');
+    setFinAmount(d.finAmount || '');
+    setFinFirstDueDate(d.finFirstDueDate || '');
+    setFinFrequency(d.finFrequency || 'mensal');
+    setFinCount(d.finCount || '');
+    setFinAccountId(d.finAccountId || '');
+    setFinAccountLabel(d.finAccountLabel || '');
+    setFinCategory(d.finCategory || '');
+    setFinCostCenterId(d.finCostCenterId ?? null);
+    setFinPaymentMethod(d.finPaymentMethod || '');
     // Ambientes — regenera a `key` (estável p/ React, mas não precisa sobreviver)
     // preservando o resto. Sem `id` (rascunho é sempre contrato novo).
     const restoredEnvs: EnvRow[] = (d.environments || []).map((e) => {
@@ -824,6 +996,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setUnidadeNome(''); setUnidadeEndereco(''); setUnidadeNumero('');
       setUnidadeComplemento(''); setUnidadeBairro(''); setUnidadeCidade('');
       setUnidadeUf(''); setUnidadeCep('');
+      // Etapa Financeiro — volta ao estado neutro (nada é gerado por default).
+      setFinGenerate(false); setFinDescription(''); setFinAmount('');
+      setFinFirstDueDate(''); setFinFrequency('mensal'); setFinCount('');
+      setFinAccountId(''); setFinAccountLabel(''); setFinCategory(''); setFinCostCenterId(null);
+      setFinPaymentMethod('');
       initialIsPmocRef.value = false;
     }
   }, [open, editContract]);
@@ -1869,6 +2046,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       case 'team':
         // Exige ao menos 1 responsável pela execução (técnico OU equipe).
         return (selectedUserIds?.length ?? 0) > 0 || (selectedTeamIds?.length ?? 0) > 0;
+      case 'finance':
+        // Etapa 100% opcional: só trava quando o usuário LIGOU a geração e
+        // deixou um valor impossível (ano fora de faixa, acima do teto de
+        // parcelas). Desligada ou incompleta, avança normalmente.
+        if (!finGenerate) return true;
+        return !finCountExceedsMax && !finDueDateYearInvalid;
       case 'items':
       case 'review':
       default:
@@ -2146,6 +2329,58 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               : `⚠️ ${isPmoc ? t.toasts.contractPmocCreatedWithOs : t.toasts.contractCreatedWithOs} ${generatedOsCount} ${t.toasts.contractPartialOs} ${expectedOsCount} ${t.toasts.contractOssGenerated}`
             : `✅ ${isPmoc ? t.toasts.contractPmocCreatedSuccess : t.toasts.contractCreatedSuccess}`,
         });
+        // ── Etapa Financeiro: lança as parcelas DEPOIS do contrato existir ──
+        // NÃO duplica receita: estas linhas SÃO o "a receber" do contrato, as
+        // mesmas que a aba Financeiro lista. Nenhuma outra peça cria recebível
+        // de contrato na criação, então não há segunda fonte pra somar.
+        //
+        // REPETIÇÃO, não parcelamento: 12x R$ 450 são 12 lançamentos de R$ 450
+        // (R$ 5.400), nunca R$ 450 fatiados em 12 — regra da 1.24.18, quem
+        // parcela é o cliente. O passo de mês vem do motor com clamp de fim de
+        // mês (31/01 → 28/02, nunca 03/03).
+        //
+        // NÃO-FATAL, com try/catch PRÓPRIO: o contrato já está criado e as OSs
+        // já foram geradas: um erro aqui não pode cair no catch de fora (que
+        // mostraria "erro ao criar contrato" pra um contrato que existe). O
+        // usuário é avisado com toast próprio e lança pela aba Financeiro.
+        if (finWillGenerate && newContractId) {
+          try {
+            const plan = finPlan;
+            const desc = finEffectiveDescription;
+            await createContractInstallments.mutateAsync({
+              contractId: newContractId,
+              customerId,
+              accountId: finAccountId || null,
+              category: finCategory || null,
+              costCenterId: finCostCenterId,
+              paymentMethod: finPaymentMethod || null,
+              notes: `Vinculado ao contrato: ${name.trim()}`,
+              rows: plan.map((row) => {
+                const suffix = plan.length > 1 ? ` (${row.number}/${plan.length})` : '';
+                const monthLabel = plan.length > 1
+                  ? ` - ${format(new Date(`${row.date}T12:00:00`), 'MMM/yyyy', { locale: ptBR })}`
+                  : '';
+                return {
+                  description: `${desc}${monthLabel}${suffix}`,
+                  amount: row.amount,
+                  date: row.date,
+                };
+              }),
+            });
+            toast({
+              title: plan.length > 1
+                ? t.toasts.financeCreated.replace('{n}', String(plan.length))
+                : t.toasts.financeCreatedSingle,
+            });
+          } catch (finErr: unknown) {
+            toast({
+              variant: 'destructive',
+              title: t.toasts.financeFailed,
+              description: `${t.toasts.financeFailedDesc} ${getErrorMessage(finErr)}`,
+            });
+          }
+        }
+
         // Criou com sucesso → descarta o rascunho persistido.
         draft.clearDraft();
         onOpenChange(false);
@@ -3580,6 +3815,206 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
+          {/* STEP: Financeiro (só na CRIAÇÃO) — COMO e QUANDO receber.
+              Não repete nada das outras etapas: quem cobra (responsáveis) está
+              em Equipe & Cobrança, e o contrato não guarda valor em lugar
+              nenhum. Tudo opcional: com o switch desligado, nada é criado. */}
+          {currentStepKey === 'finance' && (
+            <div className="space-y-4">
+              {/* On/off simples (não é escolha binária A/B) — mesmo padrão do
+                  "Contrato ativo" na etapa Equipe & Cobrança. */}
+              <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3.5">
+                <Switch
+                  className="mt-0.5"
+                  checked={finGenerate}
+                  onCheckedChange={(v) => {
+                    setFinGenerate(v);
+                    // Prefill só na primeira vez que liga, sem sobrescrever o
+                    // que o usuário já digitou.
+                    if (v && !finDescription.trim()) {
+                      setFinDescription(name.trim() ? `${tFin.descPlaceholder} - ${name.trim()}` : tFin.descPlaceholder);
+                    }
+                    if (v && !finCount) setFinCount(finDefaultCount);
+                  }}
+                />
+                <div className="min-w-0">
+                  <Label className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 shrink-0 text-primary" />
+                    {tFin.generateLabel}
+                  </Label>
+                  <p className="text-xs text-muted-foreground break-words">{tFin.generateHint}</p>
+                </div>
+              </div>
+
+              {!finGenerate ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-dashed p-3.5 text-sm text-muted-foreground">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 break-words">{tFin.offNote}</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">{tFin.intro}</p>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label>{tFin.descLabel}</Label>
+                      <Input
+                        value={finDescription}
+                        onChange={(e) => setFinDescription(e.target.value)}
+                        placeholder={tFin.descPlaceholder}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{tFin.amountLabel}</Label>
+                      {/* Dinheiro tem formatação própria: NÃO usa type="number"
+                          nem NumericInput (colar "4.550" viraria R$ 4,55). */}
+                      <Input
+                        inputMode="numeric"
+                        value={finAmountDisplay}
+                        onChange={handleFinAmountChange}
+                        onPaste={handleFinAmountPaste}
+                        placeholder="0,00"
+                      />
+                      <p className="text-xs text-muted-foreground">{tFin.amountHint}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{tFin.firstDueLabel}</Label>
+                      <Input
+                        type="date"
+                        min={finDueDateMin}
+                        max={finDueDateMax}
+                        value={finFirstDueDate || startDate}
+                        onChange={(e) => setFinFirstDueDate(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">{tFin.firstDueHint}</p>
+                      {finDueDateYearInvalid && (
+                        <p className="flex items-center gap-1.5 text-xs text-destructive">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                          {tFin.dateOutOfRange}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{tFin.frequencyLabel}</Label>
+                      <Select value={finFrequency} onValueChange={setFinFrequency}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {FIN_FREQUENCY_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {finFrequency !== 'unica' && (
+                      <div className="space-y-2">
+                        <Label>{tFin.countLabel}</Label>
+                        {/* Campo só-número → NumericInput (sem "0 travado",
+                            apagar deixa vazio). */}
+                        <NumericInput
+                          value={finCount}
+                          onValueChange={setFinCount}
+                          placeholder={finDefaultCount}
+                        />
+                        <p className="text-xs text-muted-foreground">{tFin.countHint}</p>
+                        {finCountExceedsMax && (
+                          <p className="flex items-center gap-1.5 text-xs text-destructive">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            {tFin.countTooHigh.replace('{max}', String(MAX_REPETITION_COUNT))}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>{tFin.accountLabel}</Label>
+                      <ContractReceivingAccountField
+                        value={finAccountId}
+                        onChange={(id, label) => { setFinAccountId(id); setFinAccountLabel(label); }}
+                        placeholder={tFin.accountPlaceholder}
+                        searchPlaceholder={tFin.accountSearch}
+                      />
+                      <p className="text-xs text-muted-foreground">{tFin.accountHint}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{tFin.categoryLabel}</Label>
+                      <CategorySelectField
+                        type="entrada"
+                        value={finCategory}
+                        onValueChange={setFinCategory}
+                        placeholder={tFin.categoryPlaceholder}
+                        searchPlaceholder={tFin.categorySearch}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{tFin.paymentMethodLabel}</Label>
+                      <Select
+                        value={finPaymentMethod || 'none'}
+                        onValueChange={(v) => setFinPaymentMethod(v === 'none' ? '' : v)}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{tFin.paymentMethodNone}</SelectItem>
+                          <SelectItem value="pix">{tfMethods.paymentMethods.pix}</SelectItem>
+                          <SelectItem value="boleto">{tfMethods.paymentMethods.boleto}</SelectItem>
+                          <SelectItem value="cartao_credito">{tfMethods.paymentMethods.cartao_credito}</SelectItem>
+                          <SelectItem value="cartao_debito">{tfMethods.paymentMethods.cartao_debito}</SelectItem>
+                          <SelectItem value="transferencia">{tfMethods.paymentMethods.transferencia}</SelectItem>
+                          <SelectItem value="dinheiro">{tfMethods.paymentMethods.dinheiro}</SelectItem>
+                          <SelectItem value="cheque">{tfMethods.paymentMethods.cheque}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Centro de custo — mesma régua do resto do domínio: sempre
+                        opcional e SOME da tela pra quem não usa (zero centros
+                        ativos). Herdado por todas as parcelas da série. */}
+                    {activeCostCenters.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>{MESSAGES[locale].app.finance.costCenters.fieldLabel}</Label>
+                        <CostCenterSelect value={finCostCenterId} onValueChange={setFinCostCenterId} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Preview — MESMO plano que será gravado (fonte única). */}
+                  {finPlan.length > 0 ? (
+                    <div className="rounded-lg border bg-muted/20 p-3.5 space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {tFin.summaryTitle}
+                      </p>
+                      <p className="text-sm text-foreground break-words">
+                        {finPlan.length > 1
+                          ? tFin.summaryLine
+                              .replace('{count}', String(finPlan.length))
+                              .replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)
+                              .replace('{total}', `R$ ${formatBRL(repetitionTotal(finPlan[0].amount, finPlan.length))}`)
+                          : tFin.summaryLineSingle.replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)}
+                      </p>
+                      {finPlan.length > 1 && (
+                        <p className="text-xs text-muted-foreground break-words">
+                          {tFin.summaryRange
+                            .replace('{first}', format(new Date(`${finPlan[0].date}T12:00:00`), 'dd/MM/yyyy'))
+                            .replace('{last}', format(new Date(`${finPlan[finPlan.length - 1].date}T12:00:00`), 'dd/MM/yyyy'))}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Info className="h-3.5 w-3.5 shrink-0" />
+                      {tFin.amountMissing}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* STEP: Revisão */}
           {currentStepKey === 'review' && (
             <div className="space-y-4 rounded-lg border p-4">
@@ -3797,6 +4232,63 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         ? <>{t.review.responsibleBy} <strong>{teamParts.join(' + ')}</strong>.</>
                         : <>{t.review.noTechnicanOrTeam}</>}
                     </Block>
+
+                    {/* Financeiro — só na criação (a etapa não existe em edição).
+                        Etapa que não aparece na revisão é etapa que o usuário
+                        esquece que preencheu; por isso o bloco mostra TAMBÉM o
+                        caso "não vou gerar nada". */}
+                    {!isEditing && (
+                      <Block title={t.review.blockFinance}>
+                        {finWillGenerate ? (
+                          <>
+                            {tFin.reviewPrefix}
+                            <span className="mt-1.5 block space-y-0.5">
+                              <span className="block text-xs text-muted-foreground">
+                                • <strong className="text-foreground">
+                                  {finPlan.length > 1
+                                    ? tFin.summaryLine
+                                        .replace('{count}', String(finPlan.length))
+                                        .replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)
+                                        .replace('{total}', `R$ ${formatBRL(repetitionTotal(finPlan[0].amount, finPlan.length))}`)
+                                    : tFin.summaryLineSingle.replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)}
+                                </strong>
+                              </span>
+                              {finPlan.length > 1 && (
+                                <span className="block text-xs text-muted-foreground">
+                                  • {tFin.summaryRange
+                                    .replace('{first}', format(new Date(`${finPlan[0].date}T12:00:00`), 'dd/MM/yyyy'))
+                                    .replace('{last}', format(new Date(`${finPlan[finPlan.length - 1].date}T12:00:00`), 'dd/MM/yyyy'))}
+                                </span>
+                              )}
+                              {finAccountId && (
+                                <span className="block text-xs text-muted-foreground">
+                                  • {tFin.reviewAccount} <strong className="text-foreground">{finAccountLabel || finAccountId}</strong>
+                                </span>
+                              )}
+                              {finCategory && (
+                                <span className="block text-xs text-muted-foreground">
+                                  • {tFin.reviewCategory} <strong className="text-foreground">{finCategory}</strong>
+                                </span>
+                              )}
+                              {finCostCenterId && (
+                                <span className="block text-xs text-muted-foreground">
+                                  • {tFin.reviewCostCenter} <strong className="text-foreground">{activeCostCenters.find((c: any) => c.id === finCostCenterId)?.name ?? finCostCenterId}</strong>
+                                </span>
+                              )}
+                              {finPaymentMethod && (
+                                <span className="block text-xs text-muted-foreground">
+                                  • {tFin.reviewPaymentMethod} <strong className="text-foreground">
+                                    {(tfMethods.paymentMethods as Record<string, string>)[finPaymentMethod] ?? finPaymentMethod}
+                                  </strong>
+                                </span>
+                              )}
+                            </span>
+                          </>
+                        ) : (
+                          <>{tFin.offNote}</>
+                        )}
+                      </Block>
+                    )}
                   </div>
                 );
               })()}

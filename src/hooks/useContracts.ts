@@ -2297,6 +2297,88 @@ export function useContracts() {
    * - `customer_id` é sempre garantido (todas as parcelas do contrato são do
    *   mesmo cliente do contrato).
    */
+  /**
+   * Cria as PARCELAS (contas a receber) de um contrato num único INSERT.
+   *
+   * Existe aqui, e não via `useFinancial().createTransactionsBatch`, por um
+   * motivo de PERFORMANCE, não de gosto: o `ContractFormDialog` fica SEMPRE
+   * montado nas telas de Contratos e Detalhe do Cliente (o `open` só controla a
+   * visibilidade). Chamar `useFinancial()`/`useFinancialAccounts()` no corpo
+   * dele faria as duas telas puxarem `financial_transactions` INTEIRA (as duas
+   * paginam a tabela toda) só para existir um botão. Esta mutation não tem
+   * query nenhuma: custo zero enquanto ninguém usa.
+   *
+   * REPETIÇÃO, não parcelamento: cada linha já chega com o seu próprio valor
+   * (12x R$ 450 = 12 linhas de R$ 450, nunca R$ 450 fatiado em 12). Quem monta
+   * o plano é `buildRepetitionPlan` (mês de calendário com clamp de fim de
+   * mês); aqui só gravamos o que veio.
+   *
+   * As linhas geradas SÃO o "a receber" do contrato — as mesmas que a aba
+   * Financeiro do ContractDetail lista, edita e exclui. Não existe segunda
+   * fonte de receita de contrato, então gerar aqui não duplica nada.
+   */
+  const createContractInstallments = useMutation({
+    mutationFn: async (input: {
+      contractId: string;
+      customerId: string;
+      accountId?: string | null;
+      category?: string | null;
+      costCenterId?: string | null;
+      paymentMethod?: string | null;
+      notes?: string | null;
+      rows: Array<{ description: string; amount: number; date: string }>;
+    }): Promise<number> => {
+      if (input.rows.length === 0) return 0;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user?.id || '')
+        .single();
+      if (!profile?.company_id) throw new Error('Empresa não encontrada');
+
+      const payload = input.rows.map((row) =>
+        normalizeOptionalForeignKeys(
+          {
+            company_id: profile.company_id,
+            created_by: user?.id || null,
+            transaction_type: 'entrada',
+            description: row.description,
+            amount: row.amount,
+            // transaction_date = mês DA PARCELA (não o dia da criação), pra a
+            // receita cair no mês certo em Movimentações/DRE.
+            transaction_date: row.date,
+            due_date: row.date,
+            is_paid: false,
+            customer_id: input.customerId,
+            contract_id: input.contractId,
+            account_id: input.accountId ?? null,
+            category: input.category ?? null,
+            cost_center_id: input.costCenterId ?? null,
+            payment_method: input.paymentMethod ?? null,
+            notes: input.notes ?? null,
+          } as any,
+          ['customer_id', 'contract_id', 'account_id', 'cost_center_id'],
+        ),
+      );
+
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .insert(payload as any)
+        .select('id');
+      if (error) throw error;
+      return (data || []).length;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    },
+  });
+
   const applyFinancialLinksToContractParcels = useMutation({
     mutationFn: async (input: {
       contractId: string;
@@ -3636,6 +3718,8 @@ export function useContracts() {
     updateContractEquipment,
     updateContractStatus,
     applyFinancialLinksToContractParcels,
+    /** Gera as parcelas (a receber) de um contrato recém-criado, num INSERT só. */
+    createContractInstallments,
     renewContract,
     setPortalDocumentsReleased,
     deleteContract,
