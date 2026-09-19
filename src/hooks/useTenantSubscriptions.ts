@@ -95,7 +95,15 @@ export interface CreateSubscriptionInput {
    *  ciclo. Ausente/null = sem centro (sempre opcional, sem default de conta).
    *  Ignorado no Pix Automático (fluxo próprio que ainda não lê nem categoria). */
   cost_center_id?: string | null;
+  /** Multa em % do valor de cada cobrança. Só faz sentido quando `fine_type`
+   *  é 'PERCENTAGE' (ou ausente). No modo 'FIXED' o valor vai em `fine_value`
+   *  e este campo NÃO é enviado. */
   fine_percent?: number;
+  /** Multa em R$ (valor fixo). Só é lida pela edge quando `fine_type` = 'FIXED'. */
+  fine_value?: number;
+  /** Como a Asaas cobra a multa (`fine.type`). Ausente = 'PERCENTAGE'
+   *  (comportamento histórico). */
+  fine_type?: 'PERCENTAGE' | 'FIXED';
   interest_percent?: number;
   /** Origem da assinatura: 'avulso' (padrão) | 'contract' | 'quote'. */
   source_type?: 'avulso' | 'contract' | 'quote';
@@ -119,6 +127,14 @@ export interface AuthorizePixAutoInput {
   cycle: SubscriptionCycle;
   next_due_date: string;
   description?: string;
+  /** Categoria do recebível recorrente no Financeiro, aplicada a CADA débito.
+   *  Destino contábil não depende do meio de pagamento: o Pix Automático grava
+   *  a mesma coluna `tenant_subscriptions.category` que a assinatura comum, e o
+   *  webhook lê de lá nos dois casos. */
+  category?: string;
+  /** Centro de custo do recebível recorrente. Mesma coluna e mesmo caminho de
+   *  webhook da assinatura comum. */
+  cost_center_id?: string | null;
   source_type?: 'avulso' | 'contract' | 'quote';
   source_id?: string;
 }
@@ -249,7 +265,16 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       // Centro de custo escolhido pelo usuário nesta assinatura. Sem default
       // de conta — ausente/null é "sem centro".
       if (input.cost_center_id) body.cost_center_id = input.cost_center_id;
+      // Multa: campos SEPARADOS de propósito (mesmo desenho da cobrança avulsa,
+      // release 1.24.51). Em % o payload é byte-a-byte o de antes (sem
+      // `fine_type`), então nada muda pra quem não usa multa em reais. Em R$ o
+      // percentual NÃO é enviado: se este front rodar contra uma edge antiga
+      // (janela de deploy), ela não acha `fine_percent`, cai no padrão da conta
+      // e a multa em reais é apenas ignorada. Reaproveitar `fine_percent` com
+      // um flag faria a edge antiga cobrar "R$ 50" como "50%".
       if (input.fine_percent !== undefined) body.fine_percent = input.fine_percent;
+      if (input.fine_value !== undefined) body.fine_value = input.fine_value;
+      if (input.fine_type !== undefined) body.fine_type = input.fine_type;
       if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
       if (input.source_type) body.source_type = input.source_type;
       if (input.source_id) body.source_id = input.source_id;
@@ -308,6 +333,12 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
         next_due_date: input.next_due_date,
       };
       if (input.description?.trim()) body.description = input.description.trim();
+      // Categoria e centro de custo viajam TAMBÉM no Pix Automático: eles são o
+      // destino contábil do recebível, não uma configuração do meio de
+      // pagamento. Antes a tela escondia os dois campos nesta forma e o que o
+      // usuário tinha digitado era descartado em silêncio no envio.
+      if (input.category?.trim()) body.category = input.category.trim();
+      if (input.cost_center_id) body.cost_center_id = input.cost_center_id;
       if (input.source_type) body.source_type = input.source_type;
       if (input.source_id) body.source_id = input.source_id;
 

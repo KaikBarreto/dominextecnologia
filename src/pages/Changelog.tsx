@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.52',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Categoria e centro de custo somiam no Pix Automático',
+        description: 'Ao criar uma assinatura no Pix Automático, os campos de categoria e centro de custo desapareciam, e o que você tinha preenchido antes era descartado sem aviso. Os dois campos agora aparecem em todas as formas de pagamento e são gravados de verdade.',
+        category: 'correcao',
+      },
+      {
+        title: 'Número de cobranças da assinatura agora tem limite',
+        description: 'A duração limitada aceitava qualquer número de cobranças. Agora vale o mesmo teto do resto do sistema, cento e vinte, que é dez anos de mensalidade. E escolher duração limitada sem informar a quantidade deixou de criar uma assinatura sem fim sem você pedir.',
+        category: 'correcao',
+      },
+      {
+        title: 'Resumo da assinatura mostra quanto cai por cobrança',
+        description: 'O modal de nova assinatura ganhou o mesmo resumo da cobrança avulsa: quanto entra na sua conta a cada cobrança, já com a taxa, e quanto o cliente paga com desconto ou em atraso. Fica escrito que os valores são de uma cobrança, não o total da assinatura, e quando a assinatura tem fim o total também aparece.',
+        category: 'recurso',
+      },
+      {
+        title: 'Multa em reais também na assinatura',
+        description: 'A multa por atraso da assinatura, que só aceitava porcentagem, agora aceita valor fixo em reais, igual à cobrança avulsa.',
+        category: 'recurso',
+      },
+      {
+        title: 'Assinaturas canceladas não deixam mais a tela com cara de vazia',
+        description: 'Assinatura cancelada não tem ação disponível, e uma tela só com canceladas parecia não ter nada para fazer. Agora elas ficam ocultas por padrão, com um botão para mostrar, e a tela vazia explica se você ainda não tem assinaturas ou se todas foram canceladas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.51',
     date: '19 de setembro de 2026',
     type: 'patch',

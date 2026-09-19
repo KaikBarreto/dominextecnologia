@@ -34,7 +34,7 @@ import {
 } from '@/hooks/useTenantSubscriptions';
 import { formatBRL } from '@/utils/currency';
 import { readPastedCents } from '@/lib/money-paste-mask';
-import { CalendarDays, Loader2, Pencil, Plus, RefreshCw, XCircle } from 'lucide-react';
+import { CalendarDays, Eye, EyeOff, Loader2, Pencil, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─── MRR: normaliza o valor de cada ciclo para mensal ────────────────────────
@@ -249,8 +249,31 @@ export function FinanceAssinaturas() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
 
+  // ── Canceladas ficam ocultas por padrão ───────────────────────────────────
+  // Uma assinatura cancelada não tem NENHUMA ação disponível (não pode editar
+  // nem cancelar de novo), então uma lista cheia delas parece "sem CRUD
+  // nenhum" pra quem olha. Escondendo por padrão, a tela mostra só o que dá
+  // pra agir; o histórico continua a 1 clique no toggle "Mostrar canceladas".
+  const [showCancelled, setShowCancelled] = useState(false);
+
   const manageableSubs = useMemo(() => subscriptions.filter(isManageable), [subscriptions]);
   const allSelected = manageableSubs.length > 0 && selectedIds.size === manageableSubs.length;
+
+  const cancelledCount = useMemo(
+    () => subscriptions.filter((s) => s.status === 'cancelled').length,
+    [subscriptions],
+  );
+  const visibleSubs = useMemo(() => {
+    if (showCancelled) {
+      // Canceladas por último, sem embaralhar a ordem dentro de cada grupo.
+      return [...subscriptions].sort((a, b) => {
+        const aC = a.status === 'cancelled' ? 1 : 0;
+        const bC = b.status === 'cancelled' ? 1 : 0;
+        return aC - bC;
+      });
+    }
+    return subscriptions.filter((s) => s.status !== 'cancelled');
+  }, [subscriptions, showCancelled]);
 
   const toggleSelect = (id: string) => {
     const next = new Set(selectedIds);
@@ -317,19 +340,39 @@ export function FinanceAssinaturas() {
 
       {/* ── Barra de ações ────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {selectedIds.size > 0 ? (
-          <Button
-            variant="destructive-ghost"
-            size="sm"
-            onClick={() => setBulkCancelOpen(true)}
-            disabled={bulkCancel.isPending}
-          >
-            <XCircle className="mr-2 h-4 w-4" />
-            {t.bulkCancel} ({selectedIds.size})
-          </Button>
-        ) : (
-          <span />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              variant="destructive-ghost"
+              size="sm"
+              onClick={() => setBulkCancelOpen(true)}
+              disabled={bulkCancel.isPending}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              {t.bulkCancel} ({selectedIds.size})
+            </Button>
+          )}
+          {cancelledCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => setShowCancelled((v) => !v)}
+            >
+              {showCancelled ? (
+                <>
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  {t.hideCancelled}
+                </>
+              ) : (
+                <>
+                  <Eye className="mr-2 h-4 w-4" />
+                  {t.showCancelled(cancelledCount)}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
         <Button size="sm" onClick={() => setDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           {t.newButton}
@@ -337,12 +380,16 @@ export function FinanceAssinaturas() {
       </div>
 
       {/* ── Lista ─────────────────────────────────────────────────────────── */}
-      {isLoading ? null : subscriptions.length === 0 ? (
+      {isLoading ? null : visibleSubs.length === 0 ? (
         <div className="rounded-xl border border-border bg-card">
           <EmptyState
             icon={<RefreshCw className="h-full w-full" />}
-            title={t.empty.title}
-            description={t.empty.description}
+            title={subscriptions.length === 0 ? t.empty.title : t.emptyAllCancelled.title}
+            description={
+              subscriptions.length === 0
+                ? t.empty.description
+                : t.emptyAllCancelled.description(cancelledCount)
+            }
             action={{ label: t.newButton, onClick: () => setDialogOpen(true) }}
           />
         </div>
@@ -371,7 +418,7 @@ export function FinanceAssinaturas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {subscriptions.map((sub) => (
+              {visibleSubs.map((sub) => (
                 <tr key={sub.id} className="bg-card transition-colors hover:bg-muted/20">
                   <td className="px-4 py-3">
                     {isManageable(sub) && (
@@ -435,7 +482,7 @@ export function FinanceAssinaturas() {
 
           {/* Lista mobile */}
           <div className="divide-y divide-border sm:hidden">
-            {subscriptions.map((sub) => (
+            {visibleSubs.map((sub) => (
               <div key={sub.id} className="bg-card px-4 py-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-start gap-2">

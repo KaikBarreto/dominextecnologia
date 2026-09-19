@@ -12,7 +12,8 @@
 //   1. lê a chave BYO do Vault (via tenant_payment_accounts.vault_secret_name);
 //   2. garante o asaas_customer_id do cliente final (dedupe por externalReference);
 //   3. POST /v3/subscriptions com externalReference = company_id (resolução multi-tenant),
-//      fine/interest do override → default da conta (juros clampado a 10%). No cartão,
+//      fine/interest do override → default da conta (juros clampado a 10%; a multa
+//      pode ser % ou valor fixo em R$, via fine_type/fine_value). No cartão,
 //      manda creditCard + creditCardHolderInfo + remoteIp e recebe o token de volta;
 //   4. no cartão, grava o token no Vault e a referência (+ last4/brand) na linha;
 //   5. grava tenant_subscriptions (status 'active', asaas_subscription_id, next_due_date...).
@@ -83,6 +84,25 @@ function toPositivePercent(raw: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/**
+ * Normaliza um valor em REAIS vindo do corpo: número finito > 0 arredondado a
+ * 2 casas (a Asaas recusa mais que isso), senão null.
+ */
+function toPositiveAmount(raw: unknown): number | null {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Como a multa por atraso é cobrada em CADA cobrança da assinatura. A Asaas
+ * aceita os dois em `fine.type` (enum ["FIXED","PERCENTAGE"]), igual à cobrança
+ * avulsa. Os JUROS não têm equivalente: o DTO de juros só tem `value` e é
+ * sempre percentual ao mês, por isso não existe `interest_type` aqui.
+ */
+type FineType = "PERCENTAGE" | "FIXED";
+const ALLOWED_FINE_TYPES: readonly FineType[] = ["PERCENTAGE", "FIXED"];
+
 /** Valida `next_due_date` no formato YYYY-MM-DD e não no passado (UTC, dia cheio). */
 function validateDueDate(due: string): { ok: true } | { ok: false; error: string } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
@@ -129,7 +149,15 @@ interface CreateSubscriptionInput {
   billing_type?: BillingType;
   next_due_date?: string;
   description?: string;
+  // Multa: `fine_type` escolhe COMO ela é cobrada nesta assinatura.
+  //   ausente | 'PERCENTAGE' → lê `fine_percent` (%), com fallback no
+  //                            default_fine_percent da conta (comportamento histórico)
+  //   'FIXED'                → lê `fine_value` (R$), SEM fallback: o default da
+  //                            conta é percentual, relê-lo como reais viraria
+  //                            "2%" → "R$ 2,00" sem ninguém pedir.
   fine_percent?: number;
+  fine_value?: number;
+  fine_type?: FineType;
   interest_percent?: number;
   // Origem opcional (avulso por padrão). source_id livre (fonte heterogênea).
   source_type?: "avulso" | "contract" | "quote";
@@ -155,8 +183,19 @@ interface CreateSubscriptionInput {
   max_payments?: number;
 }
 
-/** Teto de segurança pro número de ciclos (sanidade de input, não limite real da Asaas). */
-const MAX_PAYMENTS_CEILING = 999;
+/**
+ * Teto do número de ciclos. É o MESMO número do motor de parcelamento do
+ * Financeiro (`MAX_REPETITION_COUNT` em src/lib/finance-installments.ts): 120 =
+ * 10 anos de mensalidade, o teto de qualquer contrato real do cliente. Não
+ * inventar um limite próprio aqui — uma assinatura de 999 ciclos é sempre dedo
+ * errado, e a Asaas cobraria mesmo assim, todo mês, por décadas.
+ *
+ * O front valida antes e mostra a mensagem em PT-BR; este é o limite físico,
+ * que vale também pra quem chamar a edge direto. Um teste em
+ * `src/lib/subscriptionSummary.test.ts` lê este arquivo e trava o número, pra
+ * cliente e servidor não divergirem.
+ */
+const MAX_PAYMENTS_CEILING = 120;
 
 /** Valida `max_payments`: inteiro positivo, opcional. */
 function validateMaxPayments(raw: unknown): { ok: true; value: number | null } | { ok: false; error: string } {
@@ -166,7 +205,10 @@ function validateMaxPayments(raw: unknown): { ok: true; value: number | null } |
     return { ok: false, error: "O número de ciclos deve ser um número inteiro maior que zero." };
   }
   if (n > MAX_PAYMENTS_CEILING) {
-    return { ok: false, error: `O número de ciclos não pode ser maior que ${MAX_PAYMENTS_CEILING}.` };
+    return {
+      ok: false,
+      error: `O número de ciclos não pode ser maior que ${MAX_PAYMENTS_CEILING}. Para um prazo maior, deixe a assinatura contínua.`,
+    };
   }
   return { ok: true, value: n };
 }
@@ -329,6 +371,31 @@ async function handleRequest(req: Request): Promise<Response> {
     }, 400);
   }
 
+  // ── Multa: percentual (histórico) ou valor fixo em R$ ──────────────────────
+  // Validado AQUI no servidor, não só na tela: a tela esconde o campo errado,
+  // mas quem chama a edge direto continua podendo mandar qualquer coisa.
+  const fineType: FineType = input.fine_type ?? "PERCENTAGE";
+  if (!ALLOWED_FINE_TYPES.includes(fineType)) {
+    return jsonResponse(req, {
+      error: "Tipo de multa inválido. Use porcentagem ou valor em reais.",
+    }, 400);
+  }
+  if (input.fine_value !== undefined) {
+    const rawFineValue = Number(input.fine_value);
+    if (!Number.isFinite(rawFineValue) || rawFineValue < 0) {
+      return jsonResponse(req, { error: "Informe um valor válido para a multa." }, 400);
+    }
+    // Multa maior que a própria cobrança do ciclo é sempre erro de digitação (e
+    // não é permitida como multa moratória no Brasil). Recusar aqui é muito mais
+    // barato que descobrir depois, com a assinatura já viva na Asaas cobrando
+    // isso TODO MÊS.
+    if (fineType === "FIXED" && rawFineValue > subValue) {
+      return jsonResponse(req, {
+        error: "A multa em reais não pode ser maior que o valor da assinatura.",
+      }, 400);
+    }
+  }
+
   // No cartão, valida a presença dos blocos sensíveis ANTES de tocar o Asaas.
   // (O gate do flag card_recurring_enabled roda mais abaixo, junto com a conta.)
   const isCreditCard = billingType === "CREDIT_CARD";
@@ -484,10 +551,22 @@ async function handleRequest(req: Request): Promise<Response> {
 
     // Override por assinatura; senão default da conta. Persistimos SÓ o override
     // (null quando cai no default), como a coluna espera.
-    const fineOverride = toPositivePercent(input.fine_percent);
+    //
+    // A multa em REAIS não tem coluna própria em tenant_subscriptions (a tabela
+    // só tem `fine_percent`). Por isso, no modo FIXED, o override percentual
+    // persistido é NULL: gravar o valor em reais dentro de `fine_percent` faria
+    // qualquer tela futura ler "R$ 50" como "50%". A Asaas fica sendo a fonte da
+    // verdade da multa fixa (é ela quem aplica em cada ciclo), e o
+    // manage-subscription nunca reescreve fine/interest — então nada apaga o que
+    // foi configurado aqui.
+    const fineOverride = fineType === "FIXED" ? null : toPositivePercent(input.fine_percent);
     const interestOverride = toPositivePercent(input.interest_percent);
 
-    const fineValue = fineOverride ?? toPositivePercent(account.default_fine_percent) ?? 0;
+    // Em FIXED a multa é o valor em reais, SEM fallback pro default da conta
+    // (que é percentual). Vazio em FIXED = sem multa.
+    const fineValue = fineType === "FIXED"
+      ? toPositiveAmount(input.fine_value) ?? 0
+      : toPositivePercent(input.fine_percent ?? account.default_fine_percent) ?? 0;
     const rawInterest = interestOverride ?? toPositivePercent(account.default_interest_percent);
     const interestValue = rawInterest !== null ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT) : 0;
 
@@ -534,7 +613,7 @@ async function handleRequest(req: Request): Promise<Response> {
         cycle,
         description: description ?? undefined,
         externalReference: companyId,
-        ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
+        ...(fineValue > 0 ? { fine: { value: fineValue, type: fineType } } : {}),
         ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
         // Ausente = contínua (sem maxPayments a Asaas nunca para sozinha).
         ...(maxPayments !== null ? { maxPayments } : {}),

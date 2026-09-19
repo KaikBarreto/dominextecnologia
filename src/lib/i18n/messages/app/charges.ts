@@ -464,6 +464,7 @@ export const charges = {
         durationLimited: 'Número de ciclos',
         maxCycles: 'Quantas cobranças no total',
         maxCyclesHint: 'A assinatura se encerra sozinha depois dessa quantidade de cobranças.',
+        maxCyclesMaxHint: (max: number) => `No máximo ${max} cobranças, o equivalente a 10 anos de mensalidade.`,
         durationContinuousHint: 'A assinatura segue gerando cobranças até você cancelar.',
         next_due_date: 'Próximo vencimento',
         description: 'Descrição',
@@ -490,7 +491,23 @@ export const charges = {
       advanced: {
         toggle: 'Opções avançadas',
         finePercent: 'Multa (%)',
+        fineFixed: 'Multa (R$)',
+        fineTypeAria: 'Cobrar a multa em porcentagem ou em reais',
         interestPercent: 'Juros ao mês (%)',
+      },
+      // ── Resumo do recebimento POR COBRANÇA ───────────────────────────────────
+      // A assinatura tem dois números possíveis (uma cobrança x a assinatura
+      // inteira). O rótulo diz qual é qual em toda linha: um resumo que parece
+      // total numa assinatura de 12x mente feio.
+      net: {
+        title: 'Resumo por cobrança',
+        perCycleNote: (cycle: string) =>
+          `Valores de UMA cobrança (${cycle}), não o total da assinatura.`,
+        totalLimited: (n: number, total: string) =>
+          `Nas ${n} cobranças, você recebe ${total} no total, se todas forem pagas.`,
+        customerTotalLimited: (n: number, total: string) =>
+          `O cliente paga ${total} nas ${n} cobranças.`,
+        continuousNote: 'A assinatura não tem fim definido, então não existe total fechado.',
       },
       submit: 'Criar assinatura',
       submitting: 'Criando…',
@@ -498,6 +515,9 @@ export const charges = {
       validation: {
         customerRequired: 'Selecione um cliente.',
         valueRequired: 'Informe um valor maior que zero.',
+        maxCyclesRequired: 'Informe quantas cobranças a assinatura vai gerar.',
+        maxCyclesTooHigh: (max: number) =>
+          `O máximo é ${max} cobranças. Para um prazo maior, deixe a assinatura contínua.`,
       },
       // ── Campos de cartão recorrente (feature dormente) ────────────────────────
       card: {
@@ -608,6 +628,16 @@ export const charges = {
         title: 'Nenhuma assinatura',
         description: 'Crie a primeira assinatura recorrente do seu cliente.',
       },
+      // ── Todas as assinaturas estão canceladas e ficam ocultas por padrão ──────
+      // (nenhuma cobrança em andamento). Explica o "sumiço" e oferece o
+      // caminho pra ver o histórico, em vez de parecer que a tela é vazia.
+      emptyAllCancelled: {
+        title: 'Nenhuma assinatura ativa',
+        description: (n: number) =>
+          `Você tem ${n} assinatura${n !== 1 ? 's' : ''} cancelada${n !== 1 ? 's' : ''}, sem cobranças em andamento. Crie uma nova ou veja o histórico abaixo.`,
+      },
+      showCancelled: (n: number) => `Mostrar cancelada${n !== 1 ? 's' : ''} (${n})`,
+      hideCancelled: 'Ocultar canceladas',
       noCustomers: {
         title: 'Nenhum cliente cadastrado',
         description: 'Cadastre um cliente antes de criar uma assinatura.',
@@ -1051,6 +1081,7 @@ export const charges = {
         durationLimited: 'Number of cycles',
         maxCycles: 'How many charges in total',
         maxCyclesHint: 'The subscription ends on its own after this many charges.',
+        maxCyclesMaxHint: (max: number) => `Up to ${max} charges, the equivalent of 10 years of monthly billing.`,
         durationContinuousHint: 'The subscription keeps generating charges until you cancel it.',
         next_due_date: 'Next due date',
         description: 'Description',
@@ -1077,7 +1108,19 @@ export const charges = {
       advanced: {
         toggle: 'Advanced options',
         finePercent: 'Late fee (%)',
+        fineFixed: 'Late fee (R$)',
+        fineTypeAria: 'Charge the late fee as a percentage or as an amount',
         interestPercent: 'Monthly interest (%)',
+      },
+      net: {
+        title: 'Summary per charge',
+        perCycleNote: (cycle: string) =>
+          `Figures for ONE charge (${cycle}), not the subscription total.`,
+        totalLimited: (n: number, total: string) =>
+          `Across ${n} charges you receive ${total} in total, if all of them are paid.`,
+        customerTotalLimited: (n: number, total: string) =>
+          `The customer pays ${total} across the ${n} charges.`,
+        continuousNote: 'The subscription has no end date, so there is no final total.',
       },
       submit: 'Create subscription',
       submitting: 'Creating…',
@@ -1085,6 +1128,9 @@ export const charges = {
       validation: {
         customerRequired: 'Select a customer.',
         valueRequired: 'Enter an amount greater than zero.',
+        maxCyclesRequired: 'Enter how many charges the subscription will generate.',
+        maxCyclesTooHigh: (max: number) =>
+          `The maximum is ${max} charges. For a longer term, leave the subscription ongoing.`,
       },
       card: {
         sectionTitle: 'Card details',
@@ -1191,6 +1237,13 @@ export const charges = {
         title: 'No subscriptions',
         description: 'Create the first recurring subscription for your customer.',
       },
+      emptyAllCancelled: {
+        title: 'No active subscriptions',
+        description: (n: number) =>
+          `You have ${n} cancelled subscription${n !== 1 ? 's' : ''}, with no ongoing charges. Create a new one or view the history below.`,
+      },
+      showCancelled: (n: number) => `Show cancelled (${n})`,
+      hideCancelled: 'Hide cancelled',
       noCustomers: {
         title: 'No customers registered',
         description: 'Please register a customer before creating a subscription.',
@@ -1634,6 +1687,7 @@ export const charges = {
         durationLimited: 'Número de ciclos',
         maxCycles: 'Cuántos cobros en total',
         maxCyclesHint: 'La suscripción termina sola después de esa cantidad de cobros.',
+        maxCyclesMaxHint: (max: number) => `Como máximo ${max} cobros, el equivalente a 10 años de mensualidad.`,
         durationContinuousHint: 'La suscripción sigue generando cobros hasta que la canceles.',
         next_due_date: 'Próximo vencimiento',
         description: 'Descripción',
@@ -1660,7 +1714,19 @@ export const charges = {
       advanced: {
         toggle: 'Opciones avanzadas',
         finePercent: 'Mora (%)',
+        fineFixed: 'Mora (R$)',
+        fineTypeAria: 'Cobrar la mora en porcentaje o en importe',
         interestPercent: 'Interés mensual (%)',
+      },
+      net: {
+        title: 'Resumen por cobro',
+        perCycleNote: (cycle: string) =>
+          `Importes de UN cobro (${cycle}), no el total de la suscripción.`,
+        totalLimited: (n: number, total: string) =>
+          `En ${n} cobros recibes ${total} en total, si se pagan todos.`,
+        customerTotalLimited: (n: number, total: string) =>
+          `El cliente paga ${total} en los ${n} cobros.`,
+        continuousNote: 'La suscripción no tiene fin definido, así que no hay un total cerrado.',
       },
       submit: 'Crear suscripción',
       submitting: 'Creando…',
@@ -1668,6 +1734,9 @@ export const charges = {
       validation: {
         customerRequired: 'Selecciona un cliente.',
         valueRequired: 'Ingresa un importe mayor que cero.',
+        maxCyclesRequired: 'Ingresa cuántos cobros va a generar la suscripción.',
+        maxCyclesTooHigh: (max: number) =>
+          `El máximo es ${max} cobros. Para un plazo mayor, deja la suscripción continua.`,
       },
       card: {
         sectionTitle: 'Datos de la tarjeta',
@@ -1774,6 +1843,13 @@ export const charges = {
         title: 'Sin suscripciones',
         description: 'Crea la primera suscripción recurrente para tu cliente.',
       },
+      emptyAllCancelled: {
+        title: 'Sin suscripciones activas',
+        description: (n: number) =>
+          `Tienes ${n} suscripción${n !== 1 ? 'es' : ''} cancelada${n !== 1 ? 's' : ''}, sin cobros en curso. Crea una nueva o mira el historial abajo.`,
+      },
+      showCancelled: (n: number) => `Mostrar canceladas (${n})`,
+      hideCancelled: 'Ocultar canceladas',
       noCustomers: {
         title: 'Sin clientes registrados',
         description: 'Registra un cliente antes de crear una suscripción.',
@@ -2218,6 +2294,7 @@ export const charges = {
         durationLimited: `Nombre de cycles`,
         maxCycles: `Combien de paiements au total`,
         maxCyclesHint: `L'abonnement se termine tout seul après ce nombre de paiements.`,
+        maxCyclesMaxHint: (max: number) => `Au maximum ${max} paiements, soit 10 ans de mensualités.`,
         durationContinuousHint: `L'abonnement continue à générer des paiements jusqu'à ce que vous l'annuliez.`,
         next_due_date: `Prochaine échéance`,
         description: 'Description',
@@ -2244,7 +2321,19 @@ export const charges = {
       advanced: {
         toggle: 'Options avancées',
         finePercent: 'Pénalité de retard (%)',
+        fineFixed: 'Pénalité de retard (R$)',
+        fineTypeAria: 'Facturer la pénalité en pourcentage ou en montant',
         interestPercent: `Intérêt mensuel (%)`,
+      },
+      net: {
+        title: 'Récapitulatif par paiement',
+        perCycleNote: (cycle: string) =>
+          `Montants d'UN seul paiement (${cycle}), pas le total de l'abonnement.`,
+        totalLimited: (n: number, total: string) =>
+          `Sur ${n} paiements, vous recevez ${total} au total, si tous sont payés.`,
+        customerTotalLimited: (n: number, total: string) =>
+          `Le client paie ${total} sur les ${n} paiements.`,
+        continuousNote: `L'abonnement n'a pas de fin définie, il n'y a donc pas de total final.`,
       },
       submit: `Créer l'abonnement`,
       submitting: 'Création…',
@@ -2252,6 +2341,9 @@ export const charges = {
       validation: {
         customerRequired: 'Sélectionnez un client.',
         valueRequired: 'Saisissez un montant supérieur à zéro.',
+        maxCyclesRequired: `Indiquez combien de paiements l'abonnement va générer.`,
+        maxCyclesTooHigh: (max: number) =>
+          `Le maximum est de ${max} paiements. Pour une durée plus longue, laissez l'abonnement continu.`,
       },
       card: {
         sectionTitle: 'Données de la carte',
@@ -2358,6 +2450,13 @@ export const charges = {
         title: 'Aucun abonnement',
         description: `Créez un premier abonnement récurrent pour votre client.`,
       },
+      emptyAllCancelled: {
+        title: 'Aucun abonnement actif',
+        description: (n: number) =>
+          `Vous avez ${n} abonnement${n !== 1 ? 's' : ''} annulé${n !== 1 ? 's' : ''}, sans prélèvement en cours. Créez-en un nouveau ou consultez l'historique ci-dessous.`,
+      },
+      showCancelled: (n: number) => `Afficher les annulés (${n})`,
+      hideCancelled: 'Masquer les annulés',
       noCustomers: {
         title: 'Aucun client enregistré',
         description: `Enregistrez un client avant de créer un abonnement.`,

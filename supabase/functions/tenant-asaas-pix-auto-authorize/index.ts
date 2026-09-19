@@ -21,7 +21,8 @@
 //   5. POST /v3/pix/automatic/authorizations com o consentimento recorrente
 //      (frequency/startDate/value/customerId/contractId + immediateQrCode);
 //   6. grava tenant_subscriptions (billing_type='PIX_AUTO', status='pending',
-//      pix_auto_authorization_id, pix_auto_status='pending').
+//      pix_auto_authorization_id, pix_auto_status='pending', category e
+//      cost_center_id — o destino contábil vale em qualquer meio de pagamento).
 //
 // A ativação da recorrência e os débitos de cada ciclo chegam via webhook
 // (tenant-asaas-webhook): a autorização vira pix_auto_status='authorized' +
@@ -125,6 +126,14 @@ interface PixAutoAuthorizeInput {
   cycle?: Cycle;
   next_due_date?: string;
   description?: string;
+  // Categoria (nome) do recebível no Financeiro, aplicada a CADA débito recorrente.
+  // Ausente/null → cai no default_income_category da conta na hora de materializar.
+  // Mesma coluna (tenant_subscriptions.category) e mesmo caminho de webhook da
+  // assinatura comum: o destino contábil não depende do meio de pagamento.
+  category?: string;
+  // Centro de custo do recebível, aplicado a CADA débito. Ausente/null → sem
+  // centro (sempre opcional, sem default de conta). Posse validada na RPC.
+  cost_center_id?: string | null;
   source_type?: "avulso" | "contract" | "quote";
   source_id?: string;
 }
@@ -253,6 +262,21 @@ async function handleRequest(req: Request): Promise<Response> {
   const inputDescription =
     typeof input.description === "string" && input.description.trim()
       ? input.description.trim().slice(0, 500)
+      : null;
+
+  // Categoria escolhida nesta assinatura (opcional). Ausente → NULL na coluna,
+  // que significa "usa o default_income_category da conta" (lido no momento em
+  // que cada débito é materializado, no webhook).
+  const inputCategory =
+    typeof input.category === "string" && input.category.trim()
+      ? input.category.trim().slice(0, 120)
+      : null;
+
+  // Centro de custo escolhido (opcional). Ausente → NULL = sem centro (não
+  // existe default de conta pra centro, ao contrário da categoria).
+  const inputCostCenterId =
+    typeof input.cost_center_id === "string" && input.cost_center_id.trim()
+      ? input.cost_center_id.trim()
       : null;
 
   const sourceType =
@@ -433,6 +457,12 @@ async function handleRequest(req: Request): Promise<Response> {
       pix_auto_authorization_id: authorizationId,
       pix_auto_status: "pending",
       description,
+      // Destino contábil de CADA débito recorrente. O webhook lê estas duas
+      // colunas tanto no caminho da assinatura comum quanto no do Pix
+      // Automático (resolve por pix_auto_authorization_id), então gravar aqui
+      // é o que faz a escolha do usuário valer de verdade.
+      category: inputCategory,
+      cost_center_id: inputCostCenterId,
       created_by: userId,
     };
     const { data: saved, error: insertErr } = await supabase

@@ -1,12 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { formatMoney, toBcp47 } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NumericInput } from '@/components/ui/numeric-input';
 import {
   Select,
@@ -20,7 +23,7 @@ import { CustomerSelectField } from '@/components/customers/CustomerSelectField'
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
-import { ChevronDown, ChevronUp, Copy, ExternalLink, Info, Loader2, Users } from 'lucide-react';
+import { AlertTriangle, Calculator, ChevronDown, ChevronUp, Copy, ExternalLink, Info, Loader2, Users } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
   useTenantSubscriptions,
@@ -30,6 +33,20 @@ import {
   type PixAutoAuthorization,
 } from '@/hooks/useTenantSubscriptions';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { useTenantFees } from '@/hooks/useTenantCardFees';
+import {
+  simulateNetAmount,
+  type PaymentMethod as SimulatorMethod,
+  type SimulationResult,
+  type SimulatorFees,
+} from '@/lib/asaasFeeSimulator';
+import {
+  computeCustomerAmounts,
+  LATE_SCENARIO_DAYS,
+  type ChargeFineType,
+} from '@/lib/chargeCustomerAmounts';
+import { computeSubscriptionTotals } from '@/lib/subscriptionSummary';
+import { MAX_REPETITION_COUNT } from '@/lib/finance-installments';
 import { readPastedCents } from '@/lib/money-paste-mask';
 
 interface SubscriptionDialogProps {
@@ -52,6 +69,27 @@ function todayISO(): string {
   const off = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - off).toISOString().slice(0, 10);
 }
+
+/**
+ * Quantos dias faltam de hoje até `iso` (yyyy-mm-dd). Comparação dia-a-dia em
+ * UTC a partir dos componentes da data local, nunca vira o dia por fuso.
+ * Usado só pelo resumo (prazo de crédito da 1ª cobrança).
+ */
+function daysFromToday(iso: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  if (!m) return 0;
+  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((target - today) / 86400000));
+}
+
+/** Forma de pagamento da assinatura → meio entendido pelo simulador de taxas. */
+const METHOD_TO_SIMULATOR: Record<'PIX' | 'BOLETO' | 'CREDIT_CARD', SimulatorMethod> = {
+  PIX: 'pix',
+  BOLETO: 'boleto',
+  CREDIT_CARD: 'card',
+};
 
 const CYCLES: SubscriptionCycle[] = [
   'WEEKLY',
@@ -105,6 +143,11 @@ export function SubscriptionDialog({
 }: SubscriptionDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
+  // O resumo do recebimento reusa a copy da cobrança avulsa (taxa da Asaas,
+  // "você recebe", "quanto o cliente paga"): é a MESMA conta, com as mesmas
+  // palavras, já traduzida nos 4 idiomas. Só o que é específico de assinatura
+  // (por cobrança x total) vive em `t.net`.
+  const tCobrar = MESSAGES[locale].app.charges.cobrar;
   const fin = MESSAGES[locale].app.finance;
 
   const { customers } = useCustomers();
@@ -113,6 +156,20 @@ export function SubscriptionDialog({
   const { activeCostCenters } = useCostCenters();
 
   const { defaultFinePercent, defaultInterestPercent, cardRecurringEnabled, pixAutoEnabled } = paymentAccount;
+
+  // Taxas EFETIVAS da conta Asaas do tenant, usadas no RESUMO do líquido de
+  // CADA cobrança da assinatura. É estimativa mostrada antes de criar: o número
+  // contratual é o que a Asaas aplica em cada ciclo.
+  const {
+    card: cardFees,
+    pix: pixFee,
+    bankSlip: bankSlipFee,
+    anticipation: anticipationFee,
+    settlementDays: accountSettlementDays,
+    source: cardFeesSource,
+    extrasSource: feeExtrasSource,
+    isLoading: feesLoading,
+  } = useTenantFees({ enabled: open });
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [customerId, setCustomerId] = useState(presetCustomerId ?? '');
@@ -126,8 +183,17 @@ export function SubscriptionDialog({
   // Centro de custo do recebível recorrente. Sem default de conta (sempre null se não escolhido).
   const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // A multa tem DOIS campos e um seletor de unidade: a Asaas aceita
+  // `fine.type = PERCENTAGE | FIXED`. Os valores são guardados separados de
+  // propósito, alternar % ↔ R$ e voltar não reinterpreta "2" como "R$ 2,00"
+  // nem "50" como "50%" (mesmo desenho da cobrança avulsa).
+  const [fineType, setFineType] = useState<ChargeFineType>('PERCENTAGE');
+  const [fineAmount, setFineAmount] = useState(0); // em reais, máscara de centavos
   const [finePercent, setFinePercent] = useState('');
   const [interestPercent, setInterestPercent] = useState('');
+  // Resumo do recebimento: fica no rodapé do modal, sempre visível. Só a linha
+  // do líquido por cobrança aparece fechada; o detalhamento abre aqui.
+  const [netExpanded, setNetExpanded] = useState(false);
   // Duração: assinatura nasce CONTÍNUA (sem fim) — o oposto do padrão da
   // tarefa recorrente, que nasce COM fim. Ver TaskFormDialog.tsx.
   const [durationLimited, setDurationLimited] = useState(false);
@@ -180,8 +246,13 @@ export function SubscriptionDialog({
   // Inicializa os defaults ao abrir
   useEffect(() => {
     if (open) {
+      // O default da CONTA é percentual (default_fine_percent), então abrir
+      // sempre começa em %. A escolha de reais vale só para esta assinatura.
+      setFineType('PERCENTAGE');
+      setFineAmount(0);
       setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
       setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
+      setNetExpanded(false);
     }
   }, [open, defaultFinePercent, defaultInterestPercent]);
 
@@ -217,10 +288,13 @@ export function SubscriptionDialog({
     setCategory('');
     setCostCenterId(null);
     setShowAdvanced(false);
+    setFineType('PERCENTAGE');
+    setFineAmount(0);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
     setDurationLimited(false);
     setMaxCycles('');
+    setNetExpanded(false);
     // reset cartão (sem log)
     setCardHolderName('');
     setCardNumber('');
@@ -259,6 +333,21 @@ export function SubscriptionDialog({
     ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
+  // Multa em R$ usa a MESMA máscara canônica do valor (dígitos entram como
+  // centavos pela direita; colar passa por readPastedCents). Em %, o campo
+  // segue como texto decimal livre.
+  const handleFineAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setFineAmount(parseInt(raw || '0', 10) / 100);
+  };
+  const handleFineAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setFineAmount(cents / 100);
+  };
+  const fineAmountDisplay = fineAmount
+    ? fineAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
   // Verifica se o billingType selecionado é Pix Auto (sentinel string)
   const isPixAuto = billingType === ('PIX_AUTO' as SubscriptionBillingType);
   const isCreditCard = billingType === 'CREDIT_CARD';
@@ -267,13 +356,26 @@ export function SubscriptionDialog({
   // Asaas). Pix Automático usa outro recurso na Asaas (autorização, não
   // assinatura) que não aceita limitar por número de ciclos — por isso o
   // switch de Duração nem aparece nesse fluxo (ver JSX abaixo).
+  //
+  // O TETO é o mesmo do motor de parcelamento do Financeiro
+  // (`MAX_REPETITION_COUNT` = 120 = 10 anos de mensalidade): o limite físico
+  // mora no motor e a mensagem em PT-BR mora aqui. Sem teto, "1200" numa
+  // assinatura mensal vira cem anos de cobrança automática, e quem paga a
+  // conta é o cliente do cliente. A edge recusa o mesmo número, pra quem
+  // chamar direto.
   const parsedMaxCycles = parseInt(maxCycles, 10);
-  const maxCyclesValid = Number.isInteger(parsedMaxCycles) && parsedMaxCycles >= 1 && parsedMaxCycles <= 999;
+  const maxCyclesFilled = maxCycles.trim() !== '';
+  const maxCyclesTooHigh = maxCyclesFilled && Number.isFinite(parsedMaxCycles) && parsedMaxCycles > MAX_REPETITION_COUNT;
+  const maxCyclesValid =
+    Number.isInteger(parsedMaxCycles) && parsedMaxCycles >= 1 && parsedMaxCycles <= MAX_REPETITION_COUNT;
   const maxPayments = !isPixAuto && durationLimited && maxCyclesValid ? parsedMaxCycles : undefined;
+  // Duração limitada sem um número válido não pode sair: mandar sem
+  // `max_payments` criaria uma assinatura CONTÍNUA sem ninguém pedir.
+  const durationBlocked = !isPixAuto && durationLimited && !maxCyclesValid;
 
   const handleSubmit = async () => {
     if (!customerId || !amount || amount <= 0) return;
-    if (!isPixAuto && durationLimited && !maxCyclesValid) return;
+    if (durationBlocked) return;
 
     const parsedFine = parseFloat(finePercent.replace(',', '.'));
     const parsedInterest = parseFloat(interestPercent.replace(',', '.'));
@@ -287,6 +389,11 @@ export function SubscriptionDialog({
           cycle,
           next_due_date: firstDueDate,
           description: description.trim() || undefined,
+          // Destino contábil vale em QUALQUER forma de pagamento. Antes estes
+          // dois campos sumiam da tela no Pix Automático e o que o usuário
+          // tinha digitado era descartado aqui, em silêncio.
+          category: category.trim() || undefined,
+          cost_center_id: costCenterId,
           source_type: source?.type,
           source_id: source?.id,
         });
@@ -318,7 +425,13 @@ export function SubscriptionDialog({
           description: description.trim() || undefined,
           category: category.trim() || undefined,
           cost_center_id: costCenterId,
-          fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
+          // Multa: manda SÓ o campo do modo escolhido, nunca os dois. Em % o
+          // payload é o de sempre (sem `fine_type`); em R$ o percentual não vai,
+          // então uma edge antiga (janela de deploy) só ignora a multa fixa em
+          // vez de cobrar "R$ 50" como "50%" todo mês. Ver hook e 1.24.51.
+          fine_type: fineType === 'FIXED' ? 'FIXED' : undefined,
+          fine_value: fineType === 'FIXED' ? fineAmount : undefined,
+          fine_percent: fineType === 'FIXED' || isNaN(parsedFine) ? undefined : parsedFine,
           interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
           source_type: source?.type,
           source_id: source?.id,
@@ -362,7 +475,11 @@ export function SubscriptionDialog({
       description: description.trim() || undefined,
       category: category.trim() || undefined,
       cost_center_id: costCenterId,
-      fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
+      // Multa: manda SÓ o campo do modo escolhido, nunca os dois (ver o bloco
+      // do cartão acima e o hook `useTenantSubscriptions`).
+      fine_type: fineType === 'FIXED' ? 'FIXED' : undefined,
+      fine_value: fineType === 'FIXED' ? fineAmount : undefined,
+      fine_percent: fineType === 'FIXED' || isNaN(parsedFine) ? undefined : parsedFine,
       interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
       source_type: source?.type,
       source_id: source?.id,
@@ -386,7 +503,129 @@ export function SubscriptionDialog({
 
   const isPending = createSubscription.isPending || authorizePixAuto.isPending;
   const isSubmittingPixAuto = authorizePixAuto.isPending;
-  const isValid = !!customerId && amount > 0;
+  const isValid = !!customerId && amount > 0 && !durationBlocked;
+
+  // ── Resumo do recebimento POR COBRANÇA ──────────────────────────────────────
+  // Mesma régua da cobrança avulsa: a fórmula do líquido é a do
+  // `asaasFeeSimulator` e a do que o cliente paga é a do `chargeCustomerAmounts`
+  // — nenhuma conta de dinheiro nasce dentro deste componente. A diferença da
+  // assinatura é que TODO número aqui é de UMA cobrança: o que multiplica pelo
+  // número de ciclos (quando a assinatura tem fim) é o `subscriptionSummary`.
+  const dueDays = useMemo(() => daysFromToday(firstDueDate), [firstDueDate]);
+
+  const simulatorMethod: SimulatorMethod | null = isPixAuto
+    // Pix Automático é debitado por Pix: a taxa que a Asaas cobra é a do Pix.
+    ? 'pix'
+    : billingType === 'UNDEFINED'
+      ? null
+      : METHOD_TO_SIMULATOR[billingType as 'PIX' | 'BOLETO' | 'CREDIT_CARD'];
+
+  const tenantFees = useMemo<SimulatorFees | null>(() => {
+    if (!cardFees) return null;
+    return {
+      card: cardFees,
+      pix: pixFee,
+      bankSlip: bankSlipFee,
+      anticipation: anticipationFee,
+      settlementDays: accountSettlementDays,
+    };
+  }, [cardFees, pixFee, bankSlipFee, anticipationFee, accountSettlementDays]);
+
+  const simulation = useMemo<SimulationResult | null>(() => {
+    if (!simulatorMethod || !tenantFees || amount <= 0) return null;
+    return simulateNetAmount({
+      amount,
+      method: simulatorMethod,
+      // Uma cobrança por ciclo: assinatura não parcela no cartão, ela repete.
+      installments: 1,
+      // Não existe repasse de taxa na assinatura (a edge não infla o valor
+      // recorrente), então a empresa sempre absorve.
+      feePayer: 'company',
+      fees: tenantFees,
+      anticipate: false,
+      dueDays,
+    });
+  }, [simulatorMethod, tenantFees, amount, dueDays]);
+
+  // "Cliente escolhe": não dá pra saber a taxa antes, então mostramos quanto
+  // sobra por cobrança em cada meio habilitado.
+  const multiSimulation = useMemo(() => {
+    if (simulatorMethod !== null || !tenantFees || amount <= 0) return null;
+    const run = (m: SimulatorMethod) =>
+      simulateNetAmount({
+        amount,
+        method: m,
+        installments: 1,
+        feePayer: 'company',
+        fees: tenantFees,
+        anticipate: false,
+        dueDays,
+      });
+    const rows: { key: string; label: string; result: SimulationResult }[] = [];
+    if (paymentAccount.allowPix) rows.push({ key: 'pix', label: t.billing_types.PIX, result: run('pix') });
+    if (paymentAccount.allowBoleto) rows.push({ key: 'boleto', label: t.billing_types.BOLETO, result: run('boleto') });
+    return rows.length > 0 ? rows : null;
+  }, [simulatorMethod, tenantFees, amount, dueDays, paymentAccount.allowPix, paymentAccount.allowBoleto, t.billing_types]);
+
+  // Alguma taxa mostrada NÃO veio da conta do tenant (caiu na tabela de
+  // referência). Nesse caso o número é aproximado e a UI tem que dizer isso.
+  const feesAreReference =
+    (simulatorMethod === 'card'
+      ? cardFeesSource === 'fallback'
+      : simulatorMethod != null
+        ? feeExtrasSource === 'fallback'
+        : cardFeesSource === 'fallback' || feeExtrasSource === 'fallback') ||
+    simulation?.usedReferenceFees === true ||
+    multiSimulation?.some((r) => r.result.usedReferenceFees) === true;
+
+  // Quanto o CLIENTE paga numa cobrança atrasada. A assinatura não oferece
+  // desconto por antecipação hoje (não há campo), então só o lado do atraso
+  // aparece — o módulo já devolve `hasDiscount: false` e a UI não inventa linha.
+  const numOrZero = (raw: string) => {
+    const v = parseFloat(raw.replace(',', '.'));
+    return Number.isFinite(v) ? v : 0;
+  };
+  const finePercentValue = numOrZero(finePercent);
+  const interestPercentValue = numOrZero(interestPercent);
+
+  const customerAmounts = useMemo(
+    () =>
+      computeCustomerAmounts({
+        baseAmount: amount,
+        fineType,
+        finePercent: finePercentValue,
+        fineAmount,
+        interestPercent: interestPercentValue,
+        lateDays: LATE_SCENARIO_DAYS,
+      }),
+    [amount, fineType, finePercentValue, fineAmount, interestPercentValue],
+  );
+
+  // Por cobrança x total da assinatura. `cycles` só existe quando a duração é
+  // limitada E o número é válido: contínua não tem total, e mostrar um total
+  // chutado seria mentir sobre dinheiro.
+  const totals = useMemo(
+    () =>
+      computeSubscriptionTotals({
+        netPerCycle: simulation?.net ?? 0,
+        customerPerCycle: amount,
+        cycles: !isPixAuto && durationLimited && maxCyclesValid ? parsedMaxCycles : null,
+      }),
+    [simulation, amount, isPixAuto, durationLimited, maxCyclesValid, parsedMaxCycles],
+  );
+
+  const money = (v: number) => formatMoney(v, 'BRL', locale);
+  const percentLabel = (v: number) => {
+    try {
+      return `${v.toLocaleString(toBcp47(locale), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+    } catch {
+      return `${v.toFixed(2)}%`;
+    }
+  };
+
+  const netLoading = amount > 0 && feesLoading && !tenantFees;
+  const netFeesUnavailable = amount > 0 && !feesLoading && !tenantFees;
+  const netHasDetail = amount > 0 && !!tenantFees && (!!simulation || !!multiSimulation);
 
   // Label do botão de submit
   const submitLabel = () => {
@@ -401,12 +640,207 @@ export function SubscriptionDialog({
     return t.submit;
   };
 
+  // ── Rodapé (fora do scroll) ────────────────────────────────────────────────
+  // Só existe enquanto o formulário de criação está aberto: nas telas de QR do
+  // Pix Automático e de "método não habilitado" as ações já vêm embutidas no
+  // conteúdo. O resumo fica aqui, sempre visível, porque é a informação que
+  // decide o "criar ou não" e ninguém deveria precisar rolar pra achá-la.
+  const showForm = customers.length > 0 && !methodNotEnabled && !pixAuth;
+  const footer = showForm ? (
+    <div className="space-y-2">
+      {amount > 0 && (
+        <div className="overflow-hidden rounded-md border border-border bg-muted/40">
+          {netLoading && (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Calculator className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">{tCobrar.net.loading}</p>
+            </div>
+          )}
+
+          {netFeesUnavailable && (
+            <div className="flex items-start gap-2 px-3 py-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+              <p className="text-xs leading-snug text-foreground">{tCobrar.net.fallbackWarning}</p>
+            </div>
+          )}
+
+          {netHasDetail && (
+            <>
+              {/* Cabeçalho SEMPRE visível. O título diz "por cobrança" e o
+                  valor ao lado é o de UMA cobrança: numa assinatura de 12x,
+                  um número solto seria lido como o total do contrato. */}
+              <button
+                type="button"
+                onClick={() => setNetExpanded((v) => !v)}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                aria-expanded={netExpanded}
+              >
+                <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Calculator className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{t.net.title}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {simulation ? (
+                    <span className="text-sm font-bold tabular-nums text-success">
+                      {money(simulation.net)}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-muted-foreground">{tCobrar.net.chooseCompact}</span>
+                  )}
+                  {netExpanded ? (
+                    <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                </span>
+              </button>
+
+              {netExpanded && (
+                <div className="max-h-[42vh] space-y-2.5 overflow-y-auto border-t border-border px-3 pb-3 pt-3">
+                  {feesAreReference && (
+                    <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                      <p className="text-xs leading-snug text-foreground">{tCobrar.net.fallbackWarning}</p>
+                    </div>
+                  )}
+
+                  {simulation && (
+                    <dl className="space-y-1.5 text-sm">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-muted-foreground">{tCobrar.net.gross}</dt>
+                        <dd className="font-medium tabular-nums text-foreground">{money(amount)}</dd>
+                      </div>
+
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-muted-foreground">
+                          {tCobrar.net.fee}
+                          <span className="block text-[11px] leading-snug text-muted-foreground">
+                            {simulation.feeBreakdown.percent > 0
+                              ? tCobrar.net.feeComposition(
+                                  percentLabel(simulation.feeBreakdown.percent),
+                                  money(simulation.feeBreakdown.fixed),
+                                )
+                              : tCobrar.net.feeFixedOnly(money(simulation.feeBreakdown.fixed))}
+                          </span>
+                        </dt>
+                        <dd className="font-medium tabular-nums text-destructive">
+                          - {money(simulation.feeTotal)}
+                        </dd>
+                      </div>
+
+                      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                        <dt className="font-semibold text-foreground">{tCobrar.net.net}</dt>
+                        <dd className="text-base font-bold tabular-nums text-success">
+                          {money(simulation.net)}
+                        </dd>
+                      </div>
+                    </dl>
+                  )}
+
+                  {/* "Cliente escolhe": líquido POR COBRANÇA em cada meio. */}
+                  {multiSimulation && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">{tCobrar.net.chooseTitle}</p>
+                      <dl className="space-y-1 text-sm">
+                        {multiSimulation.map((row) => (
+                          <div key={row.key} className="flex items-baseline justify-between gap-3">
+                            <dt className="text-muted-foreground">{row.label}</dt>
+                            <dd className="font-semibold tabular-nums text-success">
+                              {money(row.result.net)}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )}
+
+                  {/* A premissa do resumo, escrita: é UMA cobrança, com a
+                      frequência escolhida. Sem esta linha o número de cima
+                      parece o total da assinatura. */}
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    {t.net.perCycleNote(t.cycles[cycle])}
+                  </p>
+
+                  {/* Total: só quando a assinatura TEM fim. Contínua não tem
+                      total fechado, e o texto diz isso em vez de omitir. */}
+                  {totals.isLimited && totals.netTotal != null && totals.cycles != null ? (
+                    <p className="text-xs leading-snug text-foreground">
+                      {t.net.totalLimited(totals.cycles, money(totals.netTotal))}
+                      {totals.customerTotal != null && (
+                        <span className="block text-[11px] text-muted-foreground">
+                          {t.net.customerTotalLimited(totals.cycles, money(totals.customerTotal))}
+                        </span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] leading-snug text-muted-foreground">{t.net.continuousNote}</p>
+                  )}
+
+                  {/* Quanto o CLIENTE paga atrasado. Só aparece quando há
+                      multa/juros de verdade configurados; o recorte de atraso
+                      vai escrito junto do número (juros da Asaas são ao mês e
+                      crescem por dia). Nunca no Pix Automático: aquele fluxo
+                      não manda multa nem juros pra Asaas (o formulário nem
+                      mostra os campos), então a linha seria mentira. */}
+                  {!isPixAuto && customerAmounts.hasLateCharges && (
+                    <div className="space-y-1.5 border-t border-border pt-2.5">
+                      <p className="text-xs font-medium text-muted-foreground">{tCobrar.net.customerTitle}</p>
+                      <dl className="space-y-1.5 text-sm">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="min-w-0 text-muted-foreground">
+                            {tCobrar.net.customerLate(customerAmounts.lateDays)}
+                            <span className="block text-[11px] leading-snug text-muted-foreground">
+                              {customerAmounts.fineAmount > 0 && customerAmounts.interestAmount > 0
+                                ? tCobrar.net.customerLateBoth(
+                                    money(customerAmounts.fineAmount),
+                                    money(customerAmounts.interestAmount),
+                                    percentLabel(interestPercentValue),
+                                  )
+                                : customerAmounts.fineAmount > 0
+                                  ? tCobrar.net.customerLateFine(money(customerAmounts.fineAmount))
+                                  : tCobrar.net.customerLateInterest(
+                                      money(customerAmounts.interestAmount),
+                                      percentLabel(interestPercentValue),
+                                    )}
+                            </span>
+                          </dt>
+                          <dd className="shrink-0 font-medium tabular-nums text-warning">
+                            {money(customerAmounts.amountWhenLate)}
+                          </dd>
+                        </div>
+                      </dl>
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        {tCobrar.net.customerLateHint(customerAmounts.lateDays)}
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] leading-snug text-muted-foreground">{tCobrar.net.estimate}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button variant="outline" onClick={() => handleClose(false)} disabled={isPending}>
+          {t.cancel}
+        </Button>
+        <Button onClick={handleSubmit} disabled={isPending || !isValid}>
+          {submitLabel()}
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={handleClose}
       title={t.dialogTitle}
       description={t.dialogDescription}
+      footer={footer}
     >
       <div className="space-y-4 px-4 pb-4 sm:px-1">
         {customers.length === 0 ? (
@@ -631,8 +1065,24 @@ export function SubscriptionDialog({
                           value={maxCycles}
                           onValueChange={setMaxCycles}
                           placeholder="12"
+                          className={maxCyclesTooHigh ? 'border-destructive ring-1 ring-destructive' : undefined}
+                          aria-invalid={maxCyclesTooHigh || undefined}
                         />
-                        <p className="text-xs text-muted-foreground">{t.fields.maxCyclesHint}</p>
+                        {/* Acima do teto, a mensagem em PT-BR aparece NO campo
+                            e o botão de criar fica desabilitado: nada de clamp
+                            silencioso trocando o número digitado sem avisar. */}
+                        {maxCyclesTooHigh ? (
+                          <p className="text-xs font-medium text-destructive">
+                            {t.validation.maxCyclesTooHigh(MAX_REPETITION_COUNT)}
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-xs text-muted-foreground">{t.fields.maxCyclesHint}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {t.fields.maxCyclesMaxHint(MAX_REPETITION_COUNT)}
+                            </p>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground rounded-md bg-muted/50 p-2.5">
@@ -671,28 +1121,29 @@ export function SubscriptionDialog({
 
                 {/* Categoria do recebível recorrente no Financeiro — opcional,
                     sobrescreve o default da conta de recebimento quando escolhida.
-                    Oculto no Pix Automático: essa forma de pagamento grava a
-                    assinatura por um fluxo próprio que ainda não lê categoria. */}
-                {!isPixAuto && (
-                  <div className="space-y-2">
-                    <Label htmlFor="sub-category" className="text-sm font-medium">
-                      {t.fields.category}
-                    </Label>
-                    <CategorySelectField
-                      id="sub-category"
-                      type="entrada"
-                      value={category}
-                      onValueChange={setCategory}
-                    />
-                    <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
-                  </div>
-                )}
+                    Aparece em TODAS as formas de pagamento, inclusive Pix e Pix
+                    Automático: categoria é destino contábil do recebível, não
+                    configuração do meio de pagamento. Escondê-la no Pix
+                    Automático (como era até aqui) fazia o valor já digitado ser
+                    descartado em silêncio no envio. */}
+                <div className="space-y-2">
+                  <Label htmlFor="sub-category" className="text-sm font-medium">
+                    {t.fields.category}
+                  </Label>
+                  <CategorySelectField
+                    id="sub-category"
+                    type="entrada"
+                    value={category}
+                    onValueChange={setCategory}
+                  />
+                  <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+                </div>
 
                 {/* Centro de custo do recebível recorrente — mesma régua do
                     resto do domínio: sempre opcional, some da tela pra quem
-                    não usa (zero centros ativos cadastrados). Oculto no Pix
-                    Automático pelo mesmo motivo da categoria acima. */}
-                {!isPixAuto && activeCostCenters.length > 0 && (
+                    não usa (zero centros ativos cadastrados). Também vale em
+                    qualquer forma de pagamento, pelo mesmo motivo da categoria. */}
+                {activeCostCenters.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{fin.costCenters.fieldLabel}</Label>
                     <CostCenterSelect
@@ -892,24 +1343,68 @@ export function SubscriptionDialog({
                       )}
                     </button>
 
+                    {/* Multa e juros de CADA cobrança da assinatura. A multa
+                        ganhou seletor de unidade (% ou R$) e ocupa a linha
+                        inteira no mobile: com o seletor ao lado do rótulo,
+                        meia largura em 390px espremia o campo de dinheiro. */}
                     {showAdvanced && (
-                      <div className="grid grid-cols-2 gap-3 border-t border-border px-3 pb-3 pt-3">
+                      <div className="grid grid-cols-1 gap-3 border-t border-border px-3 pb-3 pt-3 sm:grid-cols-2">
                         <div className="space-y-1.5">
-                          <Label htmlFor="sub-fine" className="text-xs font-medium">
-                            {t.advanced.finePercent}
-                          </Label>
-                          <Input
-                            id="sub-fine"
-                            inputMode="decimal"
-                            placeholder="2"
-                            value={finePercent}
-                            onChange={(e) => setFinePercent(e.target.value)}
-                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="sub-fine" className="text-xs font-medium">
+                              {fineType === 'FIXED' ? t.advanced.fineFixed : t.advanced.finePercent}
+                            </Label>
+                            {/* A Asaas aceita fine.type = PERCENTAGE ou FIXED; a
+                                escolha vale por assinatura (o padrão da conta
+                                segue percentual). */}
+                            <SegmentedControl
+                              size="sm"
+                              className="w-[96px] shrink-0"
+                              options={[
+                                { value: 'PERCENTAGE' as ChargeFineType, label: '%' },
+                                { value: 'FIXED' as ChargeFineType, label: 'R$' },
+                              ]}
+                              value={fineType}
+                              // Arrow (e não `setFineType` direto): passar o setter
+                              // cru faz o TS inferir T = string e perder a união.
+                              onValueChange={(v) => setFineType(v)}
+                              aria-label={t.advanced.fineTypeAria}
+                            />
+                          </div>
+                          {fineType === 'FIXED' ? (
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                R$
+                              </span>
+                              <Input
+                                id="sub-fine"
+                                className="pl-9"
+                                inputMode="numeric"
+                                placeholder="0,00"
+                                value={fineAmountDisplay}
+                                onChange={handleFineAmountChange}
+                                onPaste={handleFineAmountPaste}
+                              />
+                            </div>
+                          ) : (
+                            <Input
+                              id="sub-fine"
+                              inputMode="decimal"
+                              placeholder="2"
+                              value={finePercent}
+                              onChange={(e) => setFinePercent(e.target.value)}
+                            />
+                          )}
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="sub-interest" className="text-xs font-medium">
-                            {t.advanced.interestPercent}
-                          </Label>
+                          {/* min-h casa a altura com a linha do rótulo da multa
+                              (que carrega o seletor de unidade), senão os dois
+                              campos ficam desalinhados lado a lado no desktop. */}
+                          <div className="flex min-h-[30px] items-center">
+                            <Label htmlFor="sub-interest" className="text-xs font-medium">
+                              {t.advanced.interestPercent}
+                            </Label>
+                          </div>
                           <Input
                             id="sub-interest"
                             inputMode="decimal"
@@ -923,21 +1418,9 @@ export function SubscriptionDialog({
                   </div>
                 )}
 
-                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleClose(false)}
-                    disabled={isPending}
-                  >
-                    {t.cancel}
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isPending || !isValid}
-                  >
-                    {submitLabel()}
-                  </Button>
-                </div>
+                {/* As ações (Cancelar / Criar assinatura) moraram aqui até a
+                    chegada do resumo: agora vivem no rodapé do modal, junto
+                    dele, fora do scroll. */}
               </>
             )}
           </>
