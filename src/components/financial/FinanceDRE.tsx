@@ -35,6 +35,7 @@ import {
   type DreRegime,
 } from '@/lib/dre-regime';
 import { todayInTz } from '@/lib/timezone';
+import { buildCategoryTree, groupDreRowsByParent, type DreRowNode } from '@/lib/category-tree';
 import { getCategoryIcon } from './categoryIcons';
 import type { LucideIcon } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -235,6 +236,23 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     const map = new Map<string, string>();
     financialCategories.forEach((c: any) => {
       map.set(c.name, c.dre_group || 'opex');
+    });
+    return map;
+  }, [financialCategories]);
+
+  /**
+   * NOME da categoria → NOME do pai dela. Montado em memória sobre a lista que
+   * `useFinancialCategories` já traz inteira (O(n), sem consulta nova).
+   *
+   * É por NOME porque é o nome que o lançamento guarda
+   * (`financial_transactions.category` é `text`, não é FK).
+   */
+  const categoryParentNameMap = useMemo(() => {
+    const tree = buildCategoryTree(financialCategories as any[]);
+    const map = new Map<string, string>();
+    (financialCategories as any[]).forEach((c) => {
+      const parent = tree.parentOf(c);
+      if (parent) map.set(c.name, parent.name);
     });
     return map;
   }, [financialCategories]);
@@ -491,7 +509,16 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
    * custo") não ganha seta: abrir pra mostrar de novo o mesmo número já
    * visível na linha é barulho, não informação.
    */
-  const CategoryRow = ({ c, isRevenue }: { c: CategoryBreakdown; isRevenue: boolean }) => {
+  const CategoryRow = ({ c, isRevenue, label, caption, nested }: {
+    c: CategoryBreakdown;
+    isRevenue: boolean;
+    /** Rótulo alternativo (linha "lançado direto no pai"). Não muda a chave nem o valor. */
+    label?: string;
+    /** Segunda linha em cinza: explica por que a linha está aqui (filha de pai de outro grupo). */
+    caption?: string;
+    /** Linha dentro de um pai expandido: recuo maior e fundo já vem do contêiner. */
+    nested?: boolean;
+  }) => {
     const txns = categoryTxnsMap.get(c.key) ?? [];
     const breakdown = buildCostCenterBreakdown(txns, costCenterOrderIds);
     // Aberta a categoria, o que interessa é ONDE o dinheiro se concentrou —
@@ -527,14 +554,19 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             canExpand ? 'hover:bg-muted/40 transition-colors cursor-pointer' : 'cursor-default'
           )}
         >
-          <div className="flex items-center gap-2 pl-2 sm:pl-4 min-w-0 flex-1">
+          <div className={cn('flex items-center gap-2 min-w-0 flex-1', nested ? 'pl-4 sm:pl-6' : 'pl-2 sm:pl-4')}>
             <span
               className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
               style={{ backgroundColor: c.color }}
             >
               <Icon className="h-3 w-3 text-white" />
             </span>
-            <span className="text-xs text-foreground/70 truncate">{c.name}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs text-foreground/70 truncate">{label ?? c.name}</span>
+              {caption && (
+                <span className="block text-[10px] text-muted-foreground truncate">{caption}</span>
+              )}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
             <span className={cn('text-xs font-medium', valueColorClass)}>{valueLabel}</span>
@@ -571,14 +603,116 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     );
   };
 
-  const renderCategoryRows = (categories: CategoryBreakdown[], isRevenue: boolean) => (
-    <div className="divide-y divide-border/30">
-      {categories.map((c) => <CategoryRow key={c.key} c={c} isRevenue={isRevenue} />)}
-    </div>
-  );
+  /**
+   * Linha de uma categoria PAI, com as filhas DESTE MESMO grupo dentro.
+   *
+   * 🔴 REGRA ANTI DUPLA CONTAGEM: recolhido, o pai mostra o SUBTOTAL no lugar
+   * das filhas; expandido, mostra a linha própria dele + cada filha, e o
+   * subtotal continua sendo a soma exata dessas linhas. Nenhum valor aparece
+   * duas vezes porque cada lançamento guarda o nome de UMA categoria só, e o
+   * motor (`groupDreRowsByParent`) coloca cada linha em exatamente um nó.
+   *
+   * Filha cujo `dre_group` é DIFERENTE do pai NÃO entra aqui: ela continua
+   * sendo linha solta no grupo dela (com a legenda "Subcategoria de X"). Se
+   * entrasse, o total do grupo do pai deixaria de bater com a soma das linhas.
+   */
+  const ParentCategoryRow = ({ node, isRevenue }: { node: Extract<DreRowNode<CategoryBreakdown>, { kind: 'parent' }>; isRevenue: boolean }) => {
+    const childrenKey = `${node.key}#children`;
+    const isOpen = expandedCategoryKeys.has(childrenKey);
+    const meta = categoryMeta(node.name);
+    const Icon = meta.icon;
+    const valueColorClass = isRevenue ? 'text-success' : 'text-destructive';
+    const valueLabel = isRevenue ? fmt(node.total) : `-${fmt(node.total)}`;
+    const countLabel = node.children.length === 1
+      ? fin.categories.subcategories.countOne
+      : fin.categories.subcategories.count.replace('{count}', String(node.children.length));
 
-  const renderCategoryList = (categories: CategoryBreakdown[]) => renderCategoryRows(categories, false);
-  const renderReceitaList = (categories: CategoryBreakdown[]) => renderCategoryRows(categories, true);
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => toggleCategoryExpanded(childrenKey)}
+          aria-expanded={isOpen}
+          aria-label={fin.dre.categoryBreakdown.expandChildrenAriaLabel.replace('{category}', node.name)}
+          className="w-full px-3 sm:px-4 py-2 flex items-center justify-between text-left hover:bg-muted/40 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2 pl-2 sm:pl-4 min-w-0 flex-1">
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
+              style={{ backgroundColor: meta.color }}
+            >
+              <Icon className="h-3 w-3 text-white" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-medium text-foreground/80 truncate">{node.name}</span>
+              <span className="block text-[10px] text-muted-foreground">{countLabel}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+            <span className={cn('text-xs font-semibold', valueColorClass)}>{valueLabel}</span>
+            {isOpen
+              ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+              : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </div>
+        </button>
+
+        {isOpen && (
+          <div className="bg-muted/20">
+            <p className="px-3 sm:px-4 pt-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+              {fin.dre.categoryBreakdown.subcategoriesLabel}
+            </p>
+            <div className="divide-y divide-border/30">
+              {/* Lançamento feito DIRETO no pai continua sendo dele: vira uma
+                  linha própria, nunca some dentro do subtotal sem explicação. */}
+              {node.own && (
+                <CategoryRow
+                  c={node.own}
+                  isRevenue={isRevenue}
+                  nested
+                  label={fin.dre.categoryBreakdown.ownLine.replace('{category}', node.name)}
+                />
+              )}
+              {node.children.map((child) => (
+                <CategoryRow key={child.key} c={child} isRevenue={isRevenue} nested />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /**
+   * `groupKey` é o grupo do DRE desta lista ('impostos' | 'cmv' | 'opex' |
+   * 'receita'). É ele que decide se a filha entra debaixo do pai ou fica solta:
+   * a filha só é dobrada no pai quando os DOIS caem no mesmo grupo.
+   */
+  const renderCategoryRows = (categories: CategoryBreakdown[], isRevenue: boolean, groupKey: string) => {
+    const nodes = groupDreRowsByParent(categories, {
+      parentNameOf: (name) => categoryParentNameMap.get(name) ?? null,
+      // Receita não tem grupo do DRE (dre_group só classifica despesa): todas
+      // as linhas de receita vivem no mesmo balde.
+      parentInSameGroup: (parentName) => (isRevenue ? true : classifyCategory(parentName) === groupKey),
+      makeKey: (name) => `${groupKey}:${name}`,
+    });
+    return (
+      <div className="divide-y divide-border/30">
+        {nodes.map((node) => {
+          if (node.kind === 'parent') {
+            return <ParentCategoryRow key={node.key} node={node} isRevenue={isRevenue} />;
+          }
+          // Filha cujo pai vive em OUTRO grupo do DRE: linha normal, com a
+          // legenda dizendo de quem ela é. É o que reconcilia esta tela com a
+          // de categorias, onde ela aparece debaixo do pai.
+          const parentName = categoryParentNameMap.get(node.row.name);
+          const caption = parentName
+            ? fin.dre.categoryBreakdown.childOfOtherGroup.replace('{parent}', parentName)
+            : undefined;
+          return <CategoryRow key={node.key} c={node.row} isRevenue={isRevenue} caption={caption} />;
+        })}
+      </div>
+    );
+  };
 
   const CollapsibleSection = ({
     label,
@@ -587,7 +721,8 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     categories,
     open,
     onToggle,
-    renderList,
+    groupKey,
+    isRevenue = false,
   }: {
     label: string;
     total: number;
@@ -595,7 +730,9 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     categories: CategoryBreakdown[];
     open: boolean;
     onToggle: () => void;
-    renderList?: (cats: CategoryBreakdown[]) => React.ReactNode;
+    /** Grupo do DRE desta seção — manda na dobra pai/filha (ver renderCategoryRows). */
+    groupKey: string;
+    isRevenue?: boolean;
   }) => (
     <div>
       <button
@@ -609,7 +746,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
       </button>
       {open && (
         categories.length > 0
-          ? (renderList ? renderList(categories) : renderCategoryList(categories))
+          ? renderCategoryRows(categories, isRevenue, groupKey)
           : (
             // Seção sem nenhum lançamento no período. A linha some e o usuário
             // fica achando que o sistema não tem essa parte da DRE — por isso a
@@ -800,7 +937,8 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             categories={receitaCategories}
             open={showReceita}
             onToggle={() => setShowReceita(!showReceita)}
-            renderList={renderReceitaList}
+            groupKey="receita"
+            isRevenue
           />
 
           {/* Impostos e Deduções — renderizada SEMPRE, mesmo zerada: sumir a
@@ -812,6 +950,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             categories={impostosCategories}
             open={showImpostos}
             onToggle={() => setShowImpostos(!showImpostos)}
+            groupKey="impostos"
           />
 
           {/* Receita Líquida */}
@@ -827,6 +966,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             categories={cmvCategories}
             open={showCpv}
             onToggle={() => setShowCpv(!showCpv)}
+            groupKey="cmv"
           />
 
           {/* Lucro Bruto */}
@@ -845,6 +985,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             categories={opexCategories}
             open={showOpex}
             onToggle={() => setShowOpex(!showOpex)}
+            groupKey="opex"
           />
 
           {/* Resultado */}

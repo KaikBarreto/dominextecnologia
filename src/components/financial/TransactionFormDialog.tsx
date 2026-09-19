@@ -33,6 +33,7 @@ import { computeBillDate } from '@/hooks/useCreditCardBills';
 import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
+import { buildCategoryTree, resolveCategoryCascade } from '@/lib/category-tree';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { CostCenterSelect } from './CostCenterSelect';
@@ -216,6 +217,9 @@ const transactionSchema = makeTransactionSchema({
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
+
+/** Sentinela da opção "usar a categoria principal" no select de subcategoria. */
+const USE_PARENT_CATEGORY = '__parent__';
 
 const fallbackCategories = {
   entrada: ['Serviços', 'Venda de peças', 'Contratos PMOC', 'Outros recebimentos'],
@@ -1187,9 +1191,18 @@ export function TransactionFormDialog({
   // Opções do SearchableSelect de categoria — filtradas pelo tipo da transação
   // (o filtro já vem de getCategoriesForType). O `value` continua sendo o NOME
   // da categoria (contrato pré-existente do form). Ícone colorido no item.
+  /**
+   * Árvore pai → filhas do RECORTE visível, em memória (mesmo motor da tela de
+   * categorias e do `CategorySelectField`: `src/lib/category-tree.ts`). Nenhuma
+   * consulta nova: `dbCats` já é a lista que o hook trouxe.
+   */
+  const categoryTree = useMemo(() => buildCategoryTree(dbCats ?? []), [dbCats]);
+  const categoryCascade = resolveCategoryCascade(categoryTree, selectedCategory);
+
   const categoryOptions = useMemo(() => {
+    // Só RAÍZES no primeiro select: a subcategoria é escolhida no segundo.
     const opts = dbCats
-      ? dbCats.map((cat) => {
+      ? categoryTree.roots.map((cat) => {
           const Icon = getCategoryIcon(cat.icon);
           return {
             value: cat.name,
@@ -1206,11 +1219,35 @@ export function TransactionFormDialog({
 
     // Categoria apagada da tabela (não só desativada): sintetiza a opção pra o
     // valor gravado continuar visível em vez de sumir no placeholder.
-    if (selectedCategory && !opts.some((o) => o.value === selectedCategory)) {
-      opts.push({ value: selectedCategory, label: selectedCategory, sublabel: tf.categoryInactiveSuffix });
+    const parentName = categoryCascade.parentName;
+    if (parentName && !opts.some((o) => o.value === parentName)) {
+      opts.push({ value: parentName, label: parentName, sublabel: tf.categoryInactiveSuffix });
     }
     return opts;
-  }, [dbCats, transactionType, selectedCategory, tf.categoryInactiveSuffix]);
+  }, [dbCats, categoryTree, categoryCascade.parentName, transactionType, tf.categoryInactiveSuffix]);
+
+  /**
+   * Opções do SEGUNDO select (subcategoria). O que vai pro banco continua
+   * sendo UMA string, o nome da FOLHA escolhida, no mesmo campo `category` de
+   * sempre — nunca "Pai › Filha". Escolher "usar a categoria principal" grava
+   * o nome do pai (que aceita lançamento direto).
+   */
+  const subcategoryOptions = useMemo(() => ([
+    { value: USE_PARENT_CATEGORY, label: tf.subcategoryNone, sublabel: undefined as string | undefined, icon: undefined as React.ReactNode },
+    ...categoryCascade.children.map((cat) => {
+      const Icon = getCategoryIcon(cat.icon);
+      return {
+        value: cat.name,
+        label: cat.name,
+        sublabel: cat.is_active ? undefined : tf.categoryInactiveSuffix,
+        icon: (
+          <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
+            <Icon className="h-3 w-3 text-white" />
+          </span>
+        ) as React.ReactNode,
+      };
+    }),
+  ]), [categoryCascade.children, tf.subcategoryNone, tf.categoryInactiveSuffix]);
 
   // Opções do SearchableSelect de conta bancária / caixa.
   // Em RECEITA o cartão sai da lista: cartão de crédito é conta de SAÍDA (a
@@ -1318,7 +1355,7 @@ export function TransactionFormDialog({
               <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
                 <SearchableSelect
                   options={categoryOptions}
-                  value={field.value || ''}
+                  value={categoryCascade.parentName}
                   onValueChange={field.onChange}
                   onSearchChange={setCategoryQuery}
                   placeholder={tf.categoryPlaceholder}
@@ -1344,6 +1381,21 @@ export function TransactionFormDialog({
                   </Button>
                 )}
               </div>
+              {/* Subcategoria: só entra na tela quando a categoria escolhida TEM
+                  filhas. Quem não usa subcategoria não vê diferença nenhuma. */}
+              {categoryCascade.children.length > 0 && (
+                <div className="space-y-1 pt-2">
+                  <span className="block text-[11px] font-medium text-muted-foreground">{tf.subcategoryLabel}</span>
+                  <SearchableSelect
+                    options={subcategoryOptions}
+                    value={categoryCascade.childName || USE_PARENT_CATEGORY}
+                    onValueChange={(name) => field.onChange(name === USE_PARENT_CATEGORY ? categoryCascade.parentName : name)}
+                    placeholder={tf.subcategoryPlaceholder}
+                    searchPlaceholder={tf.subcategorySearchPlaceholder}
+                    className="w-full justify-between h-10 font-normal"
+                  />
+                </div>
+              )}
               <FormMessage />
             </FormItem>
           )} />
@@ -1785,6 +1837,7 @@ export function TransactionFormDialog({
       category={null}
       initialName={categoryInitialName}
       initialType={transactionType}
+      categories={dbCategories}
       onSubmit={handleCreateCategoryInline}
       isLoading={createCategory.isPending}
     />

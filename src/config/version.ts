@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.60";
+export const APP_VERSION = "1.24.61";
 
-export const VERSION_NOTES = "Dá para gerar as cobranças de várias parcelas do contrato de uma vez, e o cliente escolhe a forma de pagamento no próprio link."
+export const VERSION_NOTES = "Categorias financeiras agora podem ter subcategorias, e a tela de Categorias virou uma grade que cabe na tela em vez de uma lista comprida."

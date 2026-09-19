@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock, GripVertical, ChevronUp, ChevronDown, Tag } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock, GripVertical, ChevronUp, ChevronDown, ChevronRight, Tag, CornerUpLeft, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +21,9 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { groupByDre, shouldGroupByDre, type DreGroup } from '@/lib/dre-groups';
+import { groupByDre, shouldGroupByDre, getDreGroupKey, type DreGroup } from '@/lib/dre-groups';
 import { canRenameCategory, findCategoryNameConflict } from '@/lib/finance-system-categories';
+import { buildCategoryTree } from '@/lib/category-tree';
 
 type CategoryGroup = 'receitas' | 'despesas';
 
@@ -35,11 +36,14 @@ export function FinanceCategorias() {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
+  const tsub = fin.categories.subcategories;
   const { toast } = useToast();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialCategory | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [defaultType, setDefaultType] = useState<string>('entrada');
+  // Pai pré-selecionado ao criar ("Adicionar subcategoria"). `null` = categoria raiz.
+  const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   // Grupo (chave DRE, ou 'flat' quando a lista não está agrupada) de onde o
@@ -47,13 +51,48 @@ export function FinanceCategorias() {
   const [dragGroupKey, setDragGroupKey] = useState<string | null>(null);
   const [dragOverGroupKey, setDragOverGroupKey] = useState<string | null>(null);
   const [mobileGroup, setMobileGroup] = useState<CategoryGroup>('receitas');
+  // Categorias PAI abertas, por id. Vazio = tudo recolhido, que é o estado de
+  // quem não usa subcategoria (e aí nada na tela muda em relação a antes).
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  /**
+   * Árvore pai → filhas montada UMA vez, em memória, sobre a lista que o hook
+   * já traz inteira (`select('*')` por empresa, no máximo algumas dezenas de
+   * linhas). Nenhuma consulta nova, nenhuma contagem desnormalizada, nenhum
+   * N+1 — ver `src/lib/category-tree.ts`.
+   */
+  const tree = useMemo(() => buildCategoryTree(categories), [categories]);
 
   const receitas = categories.filter((c) => c.type === 'entrada' || c.type === 'ambos');
   const despesas = categories.filter((c) => c.type === 'saida' || c.type === 'ambos');
+  // Só as RAÍZES entram na grade/lista: a filha é desenhada dentro do pai.
+  // Assim nenhuma categoria aparece duas vezes na tela.
+  const receitaRoots = receitas.filter((c) => !c.parent_id || !tree.byId.has(c.parent_id));
+  const despesaRoots = despesas.filter((c) => !c.parent_id || !tree.byId.has(c.parent_id));
 
-  // Despesas agrupadas por dre_group, na ordem do DRE. Só grupos com pelo
-  // menos 1 item entram — evita divisória fantasma de grupo vazio.
-  const despesaGroups: DespesaGroup[] = groupByDre(despesas, {
+  /**
+   * 🔴 Hierarquia × grupo do DRE, a regra desta tela:
+   *
+   * o grupo do DRE agrupa apenas as RAÍZES. A filha aparece SEMPRE debaixo do
+   * pai, mesmo quando o `dre_group` dela é outro (o cliente classifica assim de
+   * propósito: `Salários, Administrativo` é opex e `Salários, Ajudantes` é cmv).
+   * Não existem duas árvores aninhadas: cada categoria aparece uma vez só.
+   *
+   * O preço disso é que uma filha pode estar sob um pai de CSP e mesmo assim
+   * entrar em OPEX no resultado. A tela não esconde isso: a filha de grupo
+   * diferente leva um selo com o grupo dela, e o bloco expandido explica a
+   * regra em uma linha (`dreMixedHint`).
+   */
+  const despesaGroups: DespesaGroup[] = groupByDre(despesaRoots, {
     impostos: fin.categoryForm.dreGroups.impostos,
     cmv: fin.categoryForm.dreGroups.cmv,
     opex: fin.categoryForm.dreGroups.opex,
@@ -63,6 +102,11 @@ export function FinanceCategorias() {
   // Requisito 3: só desenha divisória quando há 2+ grupos com item. Empresa
   // que nunca classificou (quase tudo em 'opex') continua vendo lista plana.
   const shouldGroupDespesas = shouldGroupByDre(despesaGroups);
+
+  // Contagem do divisor conta a raiz MAIS as filhas dela: assim a soma dos
+  // grupos continua batendo com o total do cabeçalho da seção.
+  const groupCount = (roots: FinancialCategory[]) =>
+    roots.reduce((acc, r) => acc + 1 + tree.childrenOf(r.id).length, 0);
 
   const handleSubmit = async (data: any) => {
     if (editing) {
@@ -76,15 +120,23 @@ export function FinanceCategorias() {
       });
     } else {
       await createCategory.mutateAsync(data);
+      // Criou subcategoria: abre o pai, senão ela nasce escondida e parece que
+      // nada aconteceu.
+      if (data?.parent_id) {
+        setExpandedIds((prev) => new Set(prev).add(data.parent_id));
+      }
     }
     setEditing(null);
+    setDefaultParentId(null);
     setFormOpen(false);
   };
 
   /**
    * Duas categorias com o mesmo nome ficariam indistinguíveis na lista e no
    * DRE, e a cascata do rename juntaria o histórico das duas num nome só, sem
-   * volta. Não existe índice único no banco: a trava é aqui.
+   * volta. Vale inclusive entre filhas de pais DIFERENTES: o lançamento guarda
+   * o nome em texto, então "Combustível" em dois pais tornaria a DRE ambígua.
+   * O banco também recusa (índice único por empresa).
    */
   const validateCategoryName = (name: string, type: string): string | null => {
     const conflict = findCategoryNameConflict(categories, { id: editing?.id, name, type });
@@ -108,13 +160,42 @@ export function FinanceCategorias() {
       return;
     }
     setEditing(cat);
+    setDefaultParentId(null);
     setFormOpen(true);
   };
 
   const handleNew = (type: string) => {
     setEditing(null);
     setDefaultType(type);
+    setDefaultParentId(null);
     setFormOpen(true);
+  };
+
+  /** "Adicionar subcategoria": nasce com o pai fixo e o tipo dele. */
+  const handleNewChild = (parent: FinancialCategory) => {
+    setEditing(null);
+    setDefaultType(parent.type);
+    setDefaultParentId(parent.id);
+    setFormOpen(true);
+  };
+
+  /**
+   * Solta a filha do pai: ela vira categoria RAIZ, com nome, grupo do DRE e
+   * histórico intactos (o lançamento guarda o nome, não o vínculo). É o mesmo
+   * efeito de excluir o pai, só que de propósito.
+   */
+  const handlePromote = async (cat: FinancialCategory) => {
+    await updateCategory.mutateAsync({
+      id: cat.id,
+      name: cat.name,
+      type: cat.type,
+      color: cat.color,
+      icon: cat.icon ?? 'Tag',
+      dre_group: cat.dre_group ?? 'opex',
+      parent_id: null,
+      is_system: cat.is_system,
+      previous_name: cat.name,
+    });
   };
 
   const handleAskDelete = (cat: FinancialCategory) => {
@@ -146,14 +227,17 @@ export function FinanceCategorias() {
   /**
    * `fullList` é a fonte da verdade do sort_order (todas as despesas, ou
    * todas as receitas — nunca só o grupo). `groupItems` é o subconjunto
-   * visualmente arrastado (um grupo do DRE, ou a lista inteira quando não
-   * está agrupada, quando `groupItems === fullList`).
+   * visualmente arrastado (as RAÍZES de um grupo do DRE, ou as raízes da lista
+   * inteira quando ela não está agrupada).
    *
    * Exemplo: fullList = [A(impostos), B(cmv), C(cmv), D(cmv), E(opex)],
    * grupo cmv = [B, C, D] ocupando as posições globais 1,2,3. Arrastar D
    * (idx local 2) pra idx local 0 dá [D, B, C]; reinserido nas MESMAS
    * posições globais 1,2,3 → fullList vira [A, D, B, C, E]. Só então
    * renumeramos sort_order 0..4. A(0) e E(4) nunca se movem.
+   *
+   * Subcategoria não é arrastável: ela ocupa a posição que já tem em
+   * `fullList` e é pulada pelo mapeamento (não está em `groupIds`).
    */
   const handleDrop = useCallback((fullList: FinancialCategory[], groupItems: FinancialCategory[], idx: number, groupKey: string) => {
     const originIdx = dragIdx;
@@ -202,18 +286,71 @@ export function FinanceCategorias() {
     reorderCategories.mutate(updates);
   }, [reorderCategories]);
 
-  // ─── DESKTOP: lista com drag-drop, escopado a um grupo ─────────────────────
-  // `fullList` é a lista completa (todas despesas, ou todas receitas) usada
-  // como fonte de verdade do sort_order. `groupItems` é o que é renderizado
-  // aqui (um grupo do DRE, ou a lista inteira quando `groupKey === 'flat'`).
-  const renderCategoryList = (fullList: FinancialCategory[], groupItems: FinancialCategory[], groupKey: string) => (
-    <div className="space-y-1.5">
+  // ─── Ações de uma linha (mesmas no card e no item mobile) ──────────────────
+  const rowActions = (cat: FinancialCategory) => {
+    const isSystem = cat.is_system;
+    const canRename = canRenameCategory(categories, cat);
+    const isChild = !!cat.parent_id && tree.byId.has(cat.parent_id);
+    const actions: { label: string; icon: any; variant: 'edit' | 'delete' | 'default'; onClick: () => void }[] = [];
+    if (!isSystem || canRename) {
+      actions.push({ label: fin.categories.actions.edit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) });
+    }
+    // Só RAIZ ganha filha: o banco recusa neto (hierarquia de dois níveis).
+    if (!isChild) {
+      actions.push({ label: tsub.addAction, icon: ListTree, variant: 'default', onClick: () => handleNewChild(cat) });
+    } else {
+      actions.push({ label: tsub.promoteAction, icon: CornerUpLeft, variant: 'default', onClick: () => void handlePromote(cat) });
+    }
+    if (!isSystem) {
+      actions.push({ label: fin.categories.actions.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) });
+    }
+    return actions;
+  };
+
+  /**
+   * Selo do grupo do DRE da FILHA, só quando ele difere do grupo do pai.
+   * Saturado com texto branco (nada de contorno dessaturado). É a resposta
+   * visual pra a pergunta "por que essa está aqui e no OPEX do resultado?".
+   */
+  const childDreBadge = (child: FinancialCategory, parent: FinancialCategory) => {
+    if (child.type === 'entrada' || parent.type === 'entrada') return null;
+    const childKey = getDreGroupKey(child);
+    if (childKey === getDreGroupKey(parent)) return null;
+    return (
+      <Badge className="bg-primary text-primary-foreground hover:bg-primary border-0 text-[10px] px-1.5 py-0 font-medium shrink-0">
+        {fin.categoryForm.dreGroups[childKey]}
+      </Badge>
+    );
+  };
+
+  const hasMixedDreGroups = (parent: FinancialCategory, children: readonly FinancialCategory[]) =>
+    parent.type !== 'entrada' && children.some((c) => getDreGroupKey(c) !== getDreGroupKey(parent));
+
+  // ─── DESKTOP: grade de cards enxutos, com drag-drop escopado a um grupo ────
+  //
+  // Grade em vez de pilha porque a empresa do cliente tem 42 categorias de
+  // despesa: empilhadas em linha única viravam uma rolagem enorme. O card é
+  // deliberadamente enxuto (ícone, nome, contagem de filhas) — é grade pra
+  // caber mais, não card grande.
+  //
+  // ⚠️ Expansível dentro de grade: o card cresce NA PRÓPRIA CÉLULA. Com
+  // `items-start` os vizinhos não esticam e nada muda de lugar: a linha só
+  // fica mais alta. Foi a escolha em vez de `col-span-full` (que abre buraco
+  // quando o card expandido não é o primeiro da linha) e em vez de popover
+  // (que tira o conteúdo do fluxo e some com a afordância de "expandiu aqui").
+  // A lista de filhas é limitada em altura pra um pai com muitas filhas não
+  // esticar a linha inteira.
+  const renderCategoryGrid = (fullList: FinancialCategory[], groupItems: FinancialCategory[], groupKey: string) => (
+    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
       {groupItems.map((cat, idx) => {
         const Icon = getCategoryIcon(cat.icon);
         const isSystem = cat.is_system;
         const canRename = canRenameCategory(categories, cat);
         const isDragging = dragIdx === idx && dragGroupKey === groupKey;
         const isDragOver = dragOverIdx === idx && dragOverGroupKey === groupKey && dragGroupKey === groupKey;
+        const children = tree.childrenOf(cat.id);
+        const hasChildren = children.length > 0;
+        const isOpen = hasChildren && expandedIds.has(cat.id);
         return (
           <div
             key={cat.id}
@@ -223,47 +360,108 @@ export function FinanceCategorias() {
             onDrop={() => handleDrop(fullList, groupItems, idx, groupKey)}
             onDragEnd={handleDragEnd}
             className={cn(
-              'group flex items-center justify-between rounded-xl border border-border px-4 py-3 transition-all duration-200',
+              'group rounded-xl border border-border px-3 py-2.5 transition-all duration-200',
               'hover:shadow-md hover:border-primary/20 hover:bg-accent/30',
               isDragging && 'opacity-40 scale-95',
               isDragOver && 'border-primary border-dashed bg-primary/5',
               !isSystem && 'cursor-grab active:cursor-grabbing',
             )}
           >
-            <div className="flex items-center gap-3">
+            <div
+              className={cn('flex items-center gap-2 min-w-0', hasChildren && 'cursor-pointer')}
+              onClick={hasChildren ? () => toggleExpanded(cat.id) : undefined}
+              role={hasChildren ? 'button' : undefined}
+              tabIndex={hasChildren ? 0 : undefined}
+              aria-expanded={hasChildren ? isOpen : undefined}
+              aria-label={hasChildren ? (isOpen ? tsub.collapseAria : tsub.expandAria).replace('{category}', cat.name) : undefined}
+              onKeyDown={hasChildren ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(cat.id); }
+              } : undefined}
+            >
               {!isSystem && (
                 <GripVertical className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
               )}
               <div
-                className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0 shadow-sm"
+                className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0 shadow-sm"
                 style={{ backgroundColor: cat.color }}
               >
                 <Icon className="h-4 w-4 text-white" />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">{cat.name}</span>
-                {isSystem && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Lock className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>{canRename ? fin.categories.systemRenameableTooltip : fin.categories.systemTooltip}</TooltipContent>
-                  </Tooltip>
+              {/* `min-w-0` é o que segura nome longo em card estreito: sem ele
+                  o flex item usa a largura do texto e estoura a célula. */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-medium text-sm truncate" title={cat.name}>{cat.name}</span>
+                  {isSystem && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
+                      </TooltipTrigger>
+                      <TooltipContent>{canRename ? fin.categories.systemRenameableTooltip : fin.categories.systemTooltip}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                {hasChildren && (
+                  <span className="block text-[11px] text-muted-foreground leading-tight">
+                    {children.length === 1
+                      ? tsub.countOne
+                      : tsub.count.replace('{count}', String(children.length))}
+                  </span>
                 )}
               </div>
+              {hasChildren && (
+                isOpen
+                  ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
+              {(!isSystem || canRename) && (
+                <div
+                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <RowActionsMenu actions={rowActions(cat)} />
+                </div>
+              )}
             </div>
-            {(!isSystem || canRename) && (
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <RowActionsMenu
-                  actions={[
-                    { label: fin.categories.actions.edit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) },
-                    // Categoria de sistema não oferece exclusão: o lançamento
-                    // automático depende dela existir.
-                    ...(isSystem
-                      ? []
-                      : [{ label: fin.categories.actions.delete, icon: Trash2, variant: 'delete' as const, onClick: () => setDeleteId(cat.id) }]),
-                  ]}
-                />
+
+            {isOpen && (
+              <div className="mt-2 border-t border-border/60 pt-2">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide pb-1">
+                  {tsub.sectionLabel}
+                </p>
+                <div className="space-y-0.5 max-h-56 overflow-y-auto">
+                  {children.map((child) => {
+                    const ChildIcon = getCategoryIcon(child.icon);
+                    return (
+                      <div key={child.id} className="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted/50 min-w-0">
+                        <span
+                          className="flex h-5 w-5 items-center justify-center rounded-md shrink-0"
+                          style={{ backgroundColor: child.color }}
+                        >
+                          <ChildIcon className="h-3 w-3 text-white" />
+                        </span>
+                        <span className="text-xs truncate min-w-0 flex-1" title={child.name}>{child.name}</span>
+                        {childDreBadge(child, cat)}
+                        <RowActionsMenu actions={rowActions(child)} />
+                      </div>
+                    );
+                  })}
+                </div>
+                {hasMixedDreGroups(cat, children) && (
+                  <p className="text-[10px] text-muted-foreground leading-snug pt-1.5">
+                    {tsub.dreMixedHint}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 h-7 w-full justify-start px-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => handleNewChild(cat)}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  {tsub.addAction}
+                </Button>
               </div>
             )}
           </div>
@@ -273,14 +471,18 @@ export function FinanceCategorias() {
   );
 
   // ─── MOBILE: item com MobileListItem + setas ↑↓ ────────────────────────────
-  // `fullList` é a fonte de verdade do sort_order; `groupItems` é o grupo em
-  // que o item está renderizado (um grupo do DRE, ou a lista inteira quando
-  // não agrupada). Primeiro/último item do GRUPO não pode sair dele.
+  // Mobile continua em LINHAS (não em grade): a grade é resposta pro volume no
+  // desktop. `fullList` é a fonte de verdade do sort_order; `groupItems` são as
+  // RAÍZES do grupo em que o item está renderizado. Primeiro/último item do
+  // GRUPO não pode sair dele.
   const renderMobileItem = (cat: FinancialCategory, idx: number, groupItems: FinancialCategory[], fullList: FinancialCategory[]) => {
     const Icon = getCategoryIcon(cat.icon);
     const isSystem = cat.is_system;
     const isFirst = idx === 0;
     const isLast = idx === groupItems.length - 1;
+    const children = tree.childrenOf(cat.id);
+    const hasChildren = children.length > 0;
+    const isOpen = hasChildren && expandedIds.has(cat.id);
 
     const actions: ItemAction[] = [];
     if (!isSystem && !isFirst) {
@@ -308,6 +510,12 @@ export function FinanceCategorias() {
         onClick: () => handleEdit(cat),
       });
     }
+    actions.push({
+      key: 'add-child',
+      label: tsub.addAction,
+      icon: <ListTree className="h-4 w-4" />,
+      onClick: () => handleNewChild(cat),
+    });
     if (!isSystem) {
       actions.push({
         key: 'delete',
@@ -319,27 +527,98 @@ export function FinanceCategorias() {
     }
 
     return (
-      <MobileListItem
-        key={cat.id}
-        actions={actions}
-        leading={
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 shadow-sm"
-            style={{ backgroundColor: cat.color }}
-          >
-            <Icon className="h-5 w-5 text-white" />
+      <div key={cat.id}>
+        <MobileListItem
+          actions={actions}
+          onClick={hasChildren ? () => toggleExpanded(cat.id) : undefined}
+          leading={
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 shadow-sm"
+              style={{ backgroundColor: cat.color }}
+            >
+              <Icon className="h-5 w-5 text-white" />
+            </div>
+          }
+          title={cat.name}
+          subtitle={
+            // `div` (não `span`): o Badge do design system renderiza um div, e
+            // div dentro de span é aninhamento inválido.
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {isSystem && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                  <Lock className="h-2.5 w-2.5" />
+                  {fin.categories.system}
+                </Badge>
+              )}
+              {hasChildren && (
+                <span className="text-[11px] text-muted-foreground">
+                  {children.length === 1 ? tsub.countOne : tsub.count.replace('{count}', String(children.length))}
+                </span>
+              )}
+            </div>
+          }
+          trailing={hasChildren ? (
+            isOpen
+              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          ) : undefined}
+        />
+        {isOpen && (
+          // Aninhado em 390px: o nível é sinalizado por FUNDO + barra lateral,
+          // não só por recuo — recuo sozinho fica ilegível em tela estreita.
+          <div className="bg-muted/30 border-l-2 border-primary/40 pl-2">
+            {children.map((child) => {
+              const ChildIcon = getCategoryIcon(child.icon);
+              const childActions: ItemAction[] = [];
+              if (!child.is_system || canRenameCategory(categories, child)) {
+                childActions.push({
+                  key: 'edit',
+                  label: fin.categories.actions.edit,
+                  icon: <Pencil className="h-4 w-4" />,
+                  variant: 'edit' as const,
+                  onClick: () => handleEdit(child),
+                });
+              }
+              childActions.push({
+                key: 'promote',
+                label: tsub.promoteAction,
+                icon: <CornerUpLeft className="h-4 w-4" />,
+                onClick: () => void handlePromote(child),
+              });
+              if (!child.is_system) {
+                childActions.push({
+                  key: 'delete',
+                  label: fin.categories.actions.delete,
+                  icon: <Trash2 className="h-4 w-4" />,
+                  variant: 'destructive' as const,
+                  onClick: () => handleAskDelete(child),
+                });
+              }
+              return (
+                <MobileListItem
+                  key={child.id}
+                  actions={childActions}
+                  leading={
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-full shrink-0"
+                      style={{ backgroundColor: child.color }}
+                    >
+                      <ChildIcon className="h-4 w-4 text-white" />
+                    </div>
+                  }
+                  title={child.name}
+                  subtitle={childDreBadge(child, cat) ?? undefined}
+                />
+              );
+            })}
+            {hasMixedDreGroups(cat, children) && (
+              <p className="px-3 py-2 text-[11px] text-muted-foreground leading-snug">
+                {tsub.dreMixedHint}
+              </p>
+            )}
           </div>
-        }
-        title={cat.name}
-        subtitle={
-          isSystem ? (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-              <Lock className="h-2.5 w-2.5" />
-              {fin.categories.system}
-            </Badge>
-          ) : undefined
-        }
-      />
+        )}
+      </div>
     );
   };
 
@@ -355,8 +634,8 @@ export function FinanceCategorias() {
   );
 
   // ─── MOBILE: lista completa, plana ou agrupada por DRE ─────────────────────
-  const renderMobileList = (fullList: FinancialCategory[], groups: DespesaGroup[] | null) => {
-    if (fullList.length === 0) {
+  const renderMobileList = (fullList: FinancialCategory[], roots: FinancialCategory[], groups: DespesaGroup[] | null) => {
+    if (roots.length === 0) {
       return (
         <EmptyState
           size="compact"
@@ -374,7 +653,7 @@ export function FinanceCategorias() {
     if (!groups) {
       return (
         <div className="rounded-xl border bg-card overflow-hidden">
-          {fullList.map((cat, idx) => renderMobileItem(cat, idx, fullList, fullList))}
+          {roots.map((cat, idx) => renderMobileItem(cat, idx, roots, fullList))}
         </div>
       );
     }
@@ -383,7 +662,7 @@ export function FinanceCategorias() {
       <div>
         {groups.map((g) => (
           <div key={g.key}>
-            {renderGroupDivider(g.label, g.items.length)}
+            {renderGroupDivider(g.label, groupCount(g.items))}
             <div className="rounded-xl border bg-card overflow-hidden">
               {g.items.map((cat, idx) => renderMobileItem(cat, idx, g.items, fullList))}
             </div>
@@ -393,9 +672,53 @@ export function FinanceCategorias() {
     );
   };
 
+  const categoryFormDialog = (
+    <CategoryFormDialog
+      open={formOpen}
+      onOpenChange={(open) => {
+        if (!open) setDefaultParentId(null);
+        setFormOpen(open);
+      }}
+      category={editing}
+      initialType={defaultType}
+      initialParentId={defaultParentId}
+      categories={categories}
+      onSubmit={handleSubmit}
+      validateName={validateCategoryName}
+      isLoading={createCategory.isPending || updateCategory.isPending}
+    />
+  );
+
+  const deletingCategory = deleteId ? tree.byId.get(deleteId) ?? null : null;
+  const deletingChildren = deletingCategory ? tree.childrenOf(deletingCategory.id) : [];
+
+  const deleteDialog = (
+    <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{fin.categories.deleteDialog.title}</AlertDialogTitle>
+          {/* Excluir o pai NÃO apaga a filha (o banco faz `SET NULL`): ela vira
+              categoria normal. O aviso muda de texto pra isso não ser surpresa. */}
+          <AlertDialogDescription>
+            {deletingChildren.length > 0
+              ? fin.categories.deleteDialog.descriptionWithChildren
+              : fin.categories.deleteDialog.description}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{fin.categories.deleteDialog.cancel}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {fin.categories.deleteDialog.confirm}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   // ─── MOBILE LAYOUT ─────────────────────────────────────────────────────────
   if (isMobile) {
-    const activeItems = mobileGroup === 'receitas' ? receitas : despesas;
+    const activeFull = mobileGroup === 'receitas' ? receitas : despesas;
+    const activeRoots = mobileGroup === 'receitas' ? receitaRoots : despesaRoots;
     const defaultTypeForNew = mobileGroup === 'receitas' ? 'entrada' : 'saida';
 
     return (
@@ -426,7 +749,7 @@ export function FinanceCategorias() {
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
           </div>
         ) : (
-          renderMobileList(activeItems, mobileGroup === 'despesas' && shouldGroupDespesas ? despesaGroups : null)
+          renderMobileList(activeFull, activeRoots, mobileGroup === 'despesas' && shouldGroupDespesas ? despesaGroups : null)
         )}
 
         <FABButton
@@ -435,62 +758,41 @@ export function FinanceCategorias() {
           onClick={() => handleNew(defaultTypeForNew)}
         />
 
-        <CategoryFormDialog
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          category={editing}
-          onSubmit={handleSubmit}
-          validateName={validateCategoryName}
-          isLoading={createCategory.isPending || updateCategory.isPending}
-        />
-
-        <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{fin.categories.deleteDialog.title}</AlertDialogTitle>
-              <AlertDialogDescription>{fin.categories.deleteDialog.description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{fin.categories.deleteDialog.cancel}</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {fin.categories.deleteDialog.confirm}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {categoryFormDialog}
+        {deleteDialog}
       </div>
     );
   }
 
   // ─── DESKTOP LAYOUT ────────────────────────────────────────────────────────
-  // Header próprio removido em v1.9.22 polish: hoje o componente só vive
-  // dentro de modal (FinanceBanks "Gerenciar Categorias"), que já tem seu
-  // próprio title — header interno era duplicado visualmente.
+  // Seções EMPILHADAS (receita em cima, despesa embaixo), cada uma ocupando a
+  // largura toda: é o que permite 3 a 4 cards por linha. Lado a lado, cada
+  // coluna teria metade da largura e o nome da categoria não caberia.
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {isLoading ? (
         <div className="p-6 space-y-3">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success">
+        <>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success shrink-0">
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="font-bold">{fin.categories.sections.revenueTitle}</h3>
-                  <p className="text-xs text-muted-foreground">{receitas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
+                  <p className="text-xs text-muted-foreground truncate">{receitas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleNew('entrada')}>
+              <Button variant="outline" size="sm" onClick={() => handleNew('entrada')} className="shrink-0">
                 <Plus className="mr-1 h-4 w-4" />
                 {fin.categories.sections.newButton}
               </Button>
             </div>
-            {receitas.length === 0 ? (
+            {receitaRoots.length === 0 ? (
               <EmptyState
                 size="compact"
                 icon={<Tag className="h-10 w-10" />}
@@ -498,26 +800,26 @@ export function FinanceCategorias() {
                 description={fin.categories.empty.noRevenueDescription}
                 action={{ label: fin.categories.actions.new, onClick: () => handleNew('entrada') }}
               />
-            ) : renderCategoryList(receitas, receitas, 'flat')}
+            ) : renderCategoryGrid(receitas, receitaRoots, 'flat')}
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive shrink-0">
                   <TrendingDown className="h-5 w-5 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="font-bold">{fin.categories.sections.expenseTitle}</h3>
-                  <p className="text-xs text-muted-foreground">{despesas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
+                  <p className="text-xs text-muted-foreground truncate">{despesas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleNew('saida')}>
+              <Button variant="outline" size="sm" onClick={() => handleNew('saida')} className="shrink-0">
                 <Plus className="mr-1 h-4 w-4" />
                 {fin.categories.sections.newButton}
               </Button>
             </div>
-            {despesas.length === 0 ? (
+            {despesaRoots.length === 0 ? (
               <EmptyState
                 size="compact"
                 icon={<Tag className="h-10 w-10" />}
@@ -529,39 +831,18 @@ export function FinanceCategorias() {
               <div>
                 {despesaGroups.map((g) => (
                   <div key={g.key}>
-                    {renderGroupDivider(g.label, g.items.length)}
-                    {renderCategoryList(despesas, g.items, g.key)}
+                    {renderGroupDivider(g.label, groupCount(g.items))}
+                    {renderCategoryGrid(despesas, g.items, g.key)}
                   </div>
                 ))}
               </div>
-            ) : renderCategoryList(despesas, despesas, 'flat')}
+            ) : renderCategoryGrid(despesas, despesaRoots, 'flat')}
           </div>
-        </div>
+        </>
       )}
 
-      <CategoryFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        category={editing}
-        onSubmit={handleSubmit}
-        validateName={validateCategoryName}
-        isLoading={createCategory.isPending || updateCategory.isPending}
-      />
-
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{fin.categories.deleteDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>{fin.categories.deleteDialog.description}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{fin.categories.deleteDialog.cancel}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {fin.categories.deleteDialog.confirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {categoryFormDialog}
+      {deleteDialog}
     </div>
   );
 }

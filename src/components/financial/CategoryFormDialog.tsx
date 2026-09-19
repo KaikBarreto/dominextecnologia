@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,12 +7,21 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Loader2 } from 'lucide-react';
-import { CATEGORY_ICONS, type CategoryIconKey } from './categoryIcons';
+import { CATEGORY_ICONS, getCategoryIcon, type CategoryIconKey } from './categoryIcons';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import type { FinancialCategory } from '@/hooks/useFinancialCategories';
+import { buildCategoryTree } from '@/lib/category-tree';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+
+/**
+ * Sentinela da opção "sem pai". Um `value=''` no combobox vira `key=''` no
+ * item do cmdk e confunde a comparação de selecionado com "nada escolhido";
+ * o valor que vai pro banco continua sendo `null`.
+ */
+const NO_PARENT = '__none__';
 
 const baseSchema = z.object({
   name: z.string().min(1),
@@ -20,6 +29,8 @@ const baseSchema = z.object({
   color: z.string().min(1),
   icon: z.string().default('Tag'),
   dre_group: z.string().default('opex'),
+  /** `''` = categoria principal (raiz). Vira `null` no submit. */
+  parent_id: z.string().default(''),
 });
 
 type FormData = z.infer<typeof baseSchema>;
@@ -40,9 +51,18 @@ interface CategoryFormDialogProps {
    * o formulário não é limpo.
    */
   validateName?: (name: string, type: string) => string | null;
+  /**
+   * Lista COMPLETA de categorias da empresa, usada só pra montar o campo
+   * "Categoria principal". Vem do `useFinancialCategories` de quem chama (a
+   * mesma consulta já em cache), nunca de uma consulta nova. Sem ela o campo
+   * simplesmente não aparece e o formulário é o de sempre.
+   */
+  categories?: FinancialCategory[];
+  /** Pai pré-selecionado ao criar (ação "Adicionar subcategoria"). Só vale na criação. */
+  initialParentId?: string | null;
 }
 
-export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading, initialName, initialType, validateName }: CategoryFormDialogProps) {
+export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading, initialName, initialType, validateName, categories, initialParentId }: CategoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.categoryForm;
   const tc = MESSAGES[locale].app.finance.categories;
@@ -61,6 +81,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       color: category?.color ?? '#00C597',
       icon: category?.icon ?? 'Tag',
       dre_group: (category as any)?.dre_group ?? 'opex',
+      parent_id: category?.parent_id ?? initialParentId ?? '',
     },
   });
 
@@ -74,13 +95,69 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
         color: category?.color ?? '#00C597',
         icon: category?.icon ?? 'Tag',
         dre_group: (category as any)?.dre_group ?? 'opex',
+        parent_id: category?.parent_id ?? initialParentId ?? '',
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, category?.id, initialName, initialType]);
+  }, [open, category?.id, initialName, initialType, initialParentId]);
 
   const selectedColor = form.watch('color');
   const selectedType = form.watch('type');
+  const selectedParentId = form.watch('parent_id');
+
+  /**
+   * Candidatas a PAI: só categorias RAIZ da empresa, tirando a própria.
+   * Subcategoria não pode ser pai de ninguém (o banco recusa neto), então ela
+   * nem entra na lista. Tudo em memória, sobre a lista que já veio.
+   */
+  const allCategories = useMemo(() => categories ?? [], [categories]);
+  const tree = useMemo(() => buildCategoryTree(allCategories), [allCategories]);
+  // Categoria que JÁ tem subcategoria não pode virar subcategoria de outra
+  // (o gatilho recusa). O campo aparece explicando, em vez de sumir sem motivo.
+  const hasOwnChildren = !!category && tree.hasChildren(category.id);
+  const parentCandidates = useMemo(
+    () => tree.roots.filter((c) => c.id !== category?.id),
+    [tree, category?.id],
+  );
+  const parentOptions = useMemo(
+    () => parentCandidates.map((c) => {
+      const Icon = getCategoryIcon(c.icon);
+      return {
+        value: c.id,
+        label: c.name,
+        icon: (
+          <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: c.color }}>
+            <Icon className="h-3 w-3 text-white" />
+          </span>
+        ),
+      };
+    }),
+    [parentCandidates],
+  );
+  const showParentField = parentCandidates.length > 0 || !!category?.parent_id;
+
+  /**
+   * Trocar o PAI pré-preenche `type` e `dre_group` com os dele. É só PADRÃO:
+   * os dois campos seguem editáveis, porque uma subcategoria tem grupo do DRE
+   * PRÓPRIO de propósito (um pai em CSP pode ter filha em OPEX, e é assim que
+   * a empresa do cliente já classifica).
+   *
+   * O `ref` guarda o último pai visto pra o efeito só reagir à MUDANÇA feita
+   * pelo usuário — sem ele, reabrir o formulário de uma categoria existente
+   * reescreveria o grupo dela com o do pai.
+   */
+  const lastParentRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) { lastParentRef.current = null; return; }
+    if (lastParentRef.current === null) { lastParentRef.current = selectedParentId ?? ''; return; }
+    if (lastParentRef.current === selectedParentId) return;
+    lastParentRef.current = selectedParentId ?? '';
+    const parent = selectedParentId ? tree.byId.get(selectedParentId) : null;
+    if (!parent) return;
+    form.setValue('type', parent.type, { shouldDirty: true });
+    form.setValue('dre_group', parent.dre_group ?? 'opex', { shouldDirty: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedParentId, open]);
 
   // Categoria de SISTEMA: nome, cor e ícone continuam livres; tipo e grupo do
   // DRE ficam travados. São eles que identificam o PAPEL da categoria (quem o
@@ -104,7 +181,8 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       form.setError('name', { type: 'manual', message: nameError });
       return;
     }
-    await onSubmit(data);
+    // `''` no select vira `null` no banco: é o que significa "categoria principal".
+    await onSubmit({ ...data, parent_id: data.parent_id ? data.parent_id : null } as any);
     form.reset();
   };
 
@@ -114,7 +192,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={category ? t.titleEdit : t.titleNew}
+      title={category ? t.titleEdit : (initialParentId ? t.titleNewChild : t.titleNew)}
       footer={
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
@@ -135,6 +213,29 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
               <FormMessage />
             </FormItem>
           )} />
+
+          {showParentField && (
+            <FormField control={form.control} name="parent_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t.parentLabel}</FormLabel>
+                <FormControl>
+                  <SearchableSelect
+                    options={[{ value: NO_PARENT, label: t.parentNone }, ...parentOptions]}
+                    value={field.value || NO_PARENT}
+                    onValueChange={(v) => field.onChange(v === NO_PARENT ? '' : v)}
+                    placeholder={t.parentNone}
+                    searchPlaceholder={t.parentSearchPlaceholder}
+                    disabled={hasOwnChildren}
+                    className="w-full justify-between font-normal"
+                  />
+                </FormControl>
+                <FormDescription>
+                  {hasOwnChildren ? t.parentLockedHint : (field.value ? t.parentDreHint : t.parentHint)}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
 
           <FormField control={form.control} name="type" render={({ field }) => (
             <FormItem>

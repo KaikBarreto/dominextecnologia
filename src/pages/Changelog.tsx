@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.61',
+    date: '19 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Subcategorias financeiras',
+        description: 'Uma categoria agora pode ter subcategorias. Ao escolher uma categoria que tenha subcategorias, aparece um segundo campo para escolher qual. É opcional: quem usa só categorias não vê diferença nenhuma, e nenhuma das suas categorias atuais foi alterada ou renomeada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tela de Categorias cabe na tela',
+        description: 'No computador, as categorias viraram uma grade de três a quatro por linha, em vez de uma lista comprida. Quem tem quarenta categorias deixa de rolar a página inteira para achar uma. No celular continua em linhas. Categoria com subcategorias abre ao clicar, e o card cresce sem empurrar os vizinhos.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A DRE não conta valor duas vezes',
+        description: 'Na DRE, a categoria com subcategorias mostra o subtotal quando recolhida e as linhas detalhadas quando aberta, sem nunca somar o mesmo valor duas vezes. Subcategoria que pertence a outro grupo da DRE aparece no grupo dela, identificada como subcategoria da categoria principal.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Excluir a categoria principal não apaga as subcategorias',
+        description: 'Se você excluir uma categoria que tem subcategorias, elas viram categorias comuns, com o nome e o histórico preservados. Nada do que já foi lançado se perde.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.60',
     date: '19 de setembro de 2026',
     type: 'patch',
