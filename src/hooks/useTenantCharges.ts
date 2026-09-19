@@ -38,7 +38,16 @@ export interface CreateChargeInput {
   due_date: string;
   billing_type: TenantChargeBillingType;
   description?: string;
+  /** Multa em % do valor. Só faz sentido quando `fine_type` é 'PERCENTAGE'
+   *  (ou ausente). No modo 'FIXED' o valor vai em `fine_value` e este campo
+   *  NÃO é enviado — ver a nota de compatibilidade no `create` abaixo. */
   fine_percent?: number;
+  /** Multa em R$ (valor fixo). Só é lido pela edge quando `fine_type` = 'FIXED'. */
+  fine_value?: number;
+  /** Como a multa é cobrada nesta cobrança. Ausente → 'PERCENTAGE' (histórico).
+   *  A Asaas aceita os dois em `fine.type`; o default da CONTA continua sendo
+   *  percentual, a escolha em reais vale só para esta cobrança. */
+  fine_type?: 'PERCENTAGE' | 'FIXED';
   interest_percent?: number;
   discount_percent?: number;
   discount_days?: number;
@@ -317,7 +326,18 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
         billing_type: input.billing_type,
         description: input.description ?? '',
       };
+      // Multa: dois campos SEPARADOS de propósito. `fine_percent` continua
+      // sendo "multa em %", e a multa em reais vai em `fine_value` + `fine_type`.
+      //
+      // Por que não reaproveitar `fine_percent` com um flag de tipo: uma edge
+      // ANTIGA (janela entre o deploy do front e o da função) ignoraria
+      // `fine_type` e mandaria o número pra Asaas como PERCENTAGE — "R$ 50 de
+      // multa" viraria "50% de multa" em produção. Com campos separados, a edge
+      // antiga simplesmente não acha `fine_percent`, cai no padrão da conta e a
+      // pior consequência é a multa em reais ser ignorada, nunca multiplicada.
       if (input.fine_percent !== undefined) body.fine_percent = input.fine_percent;
+      if (input.fine_value !== undefined) body.fine_value = input.fine_value;
+      if (input.fine_type !== undefined) body.fine_type = input.fine_type;
       if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
       if (input.discount_percent !== undefined) body.discount_percent = input.discount_percent;
       if (input.discount_days !== undefined) body.discount_days = input.discount_days;

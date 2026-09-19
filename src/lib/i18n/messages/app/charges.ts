@@ -238,6 +238,11 @@ export const charges = {
       advanced: {
         toggle: 'Opções avançadas',
         finePercent: 'Multa (%)',
+        // Multa em valor fixo: a Asaas aceita fine.type = FIXED além de
+        // PERCENTAGE, então a escolha é por cobrança (o padrão da conta
+        // continua sendo percentual).
+        fineFixed: 'Multa (R$)',
+        fineTypeAria: 'Cobrar a multa em porcentagem ou em reais',
         interestPercent: 'Juros ao mês (%)',
         discountPercent: 'Desconto (%)',
         discountDays: 'Desconto até X dias antes do vencimento',
@@ -286,6 +291,27 @@ export const charges = {
         chooseCardLabel: 'Cartão à vista',
         // Versão curta de "cliente escolhe", pro resumo compacto (sempre visível, fora das abas).
         chooseCompact: 'Cliente escolhe a forma',
+        // ── O outro lado do resumo: quanto SAI do bolso do cliente ───────────
+        // Só aparece o cenário que existe de verdade (sem desconto
+        // configurado, nenhuma linha de desconto é inventada). O recorte de
+        // atraso vai ESCRITO junto do número: os juros da Asaas são ao mês e
+        // crescem por dia, então valor de encargo sem premissa é reclamação.
+        customerTitle: 'Quanto o cliente paga',
+        customerOnTime: 'Pagando até o vencimento',
+        customerOnTimeUntil: (days: number) =>
+          days === 1
+            ? 'Pagando até 1 dia antes do vencimento'
+            : `Pagando até ${days} dias antes do vencimento`,
+        customerDiscountNote: (percent: string, value: string) =>
+          `Desconto de ${percent}, menos ${value}`,
+        customerLate: (days: number) => `Pagando ${days} dias depois do vencimento`,
+        customerLateFine: (fine: string) => `Multa de ${fine}`,
+        customerLateInterest: (interest: string, percent: string) =>
+          `Juros de ${interest} (${percent} ao mês)`,
+        customerLateBoth: (fine: string, interest: string, percent: string) =>
+          `Multa de ${fine} e juros de ${interest} (${percent} ao mês)`,
+        customerLateHint: (days: number) =>
+          `Estimativa para ${days} dias de atraso. A multa é cobrada uma vez e os juros crescem a cada dia, então o valor muda conforme a data em que o cliente pagar.`,
         estimate: 'Estimativa. O valor exato é confirmado pela Asaas na hora de gerar a cobrança.',
         fallbackWarning: 'Não foi possível ler as taxas da sua conta agora. Os valores abaixo usam a tabela padrão da Asaas e podem mudar.',
       },
@@ -822,6 +848,8 @@ export const charges = {
       advanced: {
         toggle: 'Advanced options',
         finePercent: 'Late fee (%)',
+        fineFixed: 'Late fee (R$)',
+        fineTypeAria: 'Charge the late fee as a percentage or as an amount',
         interestPercent: 'Monthly interest (%)',
         discountPercent: 'Discount (%)',
         discountDays: 'Discount up to X days before due date',
@@ -867,6 +895,22 @@ export const charges = {
         chooseTitle: 'The customer picks how to pay. See what is left with each option:',
         chooseCardLabel: 'Card in full',
         chooseCompact: 'Customer picks the method',
+        customerTitle: 'What the customer pays',
+        customerOnTime: 'Paying by the due date',
+        customerOnTimeUntil: (days: number) =>
+          days === 1
+            ? 'Paying up to 1 day before the due date'
+            : `Paying up to ${days} days before the due date`,
+        customerDiscountNote: (percent: string, value: string) =>
+          `${percent} discount, ${value} off`,
+        customerLate: (days: number) => `Paying ${days} days after the due date`,
+        customerLateFine: (fine: string) => `${fine} late fee`,
+        customerLateInterest: (interest: string, percent: string) =>
+          `${interest} in interest (${percent} per month)`,
+        customerLateBoth: (fine: string, interest: string, percent: string) =>
+          `${fine} late fee plus ${interest} in interest (${percent} per month)`,
+        customerLateHint: (days: number) =>
+          `Estimate for ${days} days late. The fee is charged once and interest builds up daily, so the amount changes with the date the customer pays.`,
         estimate: 'Estimate. The exact amount is confirmed by Asaas when the charge is created.',
         fallbackWarning: 'We could not read your account fees right now. The values below use the standard Asaas table and may change.',
       },
@@ -1387,6 +1431,8 @@ export const charges = {
       advanced: {
         toggle: 'Opciones avanzadas',
         finePercent: 'Mora (%)',
+        fineFixed: 'Mora (R$)',
+        fineTypeAria: 'Cobrar la mora en porcentaje o en importe',
         interestPercent: 'Interés mensual (%)',
         discountPercent: 'Descuento (%)',
         discountDays: 'Descuento hasta X días antes del vencimiento',
@@ -1432,6 +1478,22 @@ export const charges = {
         chooseTitle: 'El cliente elige cómo pagar. Mira cuánto queda con cada forma:',
         chooseCardLabel: 'Tarjeta en un pago',
         chooseCompact: 'El cliente elige la forma',
+        customerTitle: 'Cuánto paga el cliente',
+        customerOnTime: 'Pagando hasta el vencimiento',
+        customerOnTimeUntil: (days: number) =>
+          days === 1
+            ? 'Pagando hasta 1 día antes del vencimiento'
+            : `Pagando hasta ${days} días antes del vencimiento`,
+        customerDiscountNote: (percent: string, value: string) =>
+          `Descuento de ${percent}, menos ${value}`,
+        customerLate: (days: number) => `Pagando ${days} días después del vencimiento`,
+        customerLateFine: (fine: string) => `Mora de ${fine}`,
+        customerLateInterest: (interest: string, percent: string) =>
+          `Intereses de ${interest} (${percent} al mes)`,
+        customerLateBoth: (fine: string, interest: string, percent: string) =>
+          `Mora de ${fine} e intereses de ${interest} (${percent} al mes)`,
+        customerLateHint: (days: number) =>
+          `Estimación para ${days} días de atraso. La mora se cobra una sola vez y los intereses crecen cada día, así que el importe cambia según la fecha en que el cliente pague.`,
         estimate: 'Estimación. El importe exacto lo confirma Asaas al generar el cobro.',
         fallbackWarning: 'No pudimos leer las tarifas de tu cuenta ahora. Los valores de abajo usan la tabla estándar de Asaas y pueden cambiar.',
       },
@@ -1952,6 +2014,8 @@ export const charges = {
       advanced: {
         toggle: 'Options avancées',
         finePercent: 'Pénalité de retard (%)',
+        fineFixed: 'Pénalité de retard (R$)',
+        fineTypeAria: 'Facturer la pénalité en pourcentage ou en montant',
         interestPercent: `Intérêt mensuel (%)`,
         discountPercent: 'Remise (%)',
         discountDays: `Remise jusqu'à X jours avant l'échéance`,
@@ -1997,6 +2061,22 @@ export const charges = {
         chooseTitle: 'Le client choisit comment payer. Voyez ce qu\'il reste avec chaque moyen :',
         chooseCardLabel: 'Carte en une fois',
         chooseCompact: 'Le client choisit le mode',
+        customerTitle: 'Ce que le client paie',
+        customerOnTime: `Paiement jusqu'à l'échéance`,
+        customerOnTimeUntil: (days: number) =>
+          days === 1
+            ? `Paiement jusqu'à 1 jour avant l'échéance`
+            : `Paiement jusqu'à ${days} jours avant l'échéance`,
+        customerDiscountNote: (percent: string, value: string) =>
+          `Remise de ${percent}, soit ${value} en moins`,
+        customerLate: (days: number) => `Paiement ${days} jours après l'échéance`,
+        customerLateFine: (fine: string) => `Pénalité de ${fine}`,
+        customerLateInterest: (interest: string, percent: string) =>
+          `Intérêts de ${interest} (${percent} par mois)`,
+        customerLateBoth: (fine: string, interest: string, percent: string) =>
+          `Pénalité de ${fine} et intérêts de ${interest} (${percent} par mois)`,
+        customerLateHint: (days: number) =>
+          `Estimation pour ${days} jours de retard. La pénalité est prélevée une seule fois et les intérêts augmentent chaque jour, le montant change donc selon la date de paiement du client.`,
         estimate: 'Estimation. Le montant exact est confirmé par Asaas au moment de créer la facture.',
         fallbackWarning: `Impossible de lire les frais de votre compte pour l'instant. Les valeurs ci-dessous utilisent la grille standard Asaas et peuvent changer.`,
       },

@@ -189,6 +189,19 @@ function selectValue(select: HTMLSelectElement, value: string) {
     select.dispatchEvent(new Event('change', { bubbles: true }));
   });
 }
+/** O resumo do rodapé começa fechado: só a linha do líquido fica visível. */
+function expandNetSummary() {
+  const header = Array.from(document.querySelectorAll('button')).find(
+    (b) => b.hasAttribute('aria-expanded') && b.textContent?.includes('Resumo do recebimento'),
+  );
+  click(header);
+}
+/** Botão do seletor de unidade da multa (% ou R$), que é um radiogroup. */
+function fineUnitButton(label: string) {
+  return Array.from(document.querySelectorAll('button[role="radio"]')).find(
+    (b) => b.textContent?.trim() === label,
+  );
+}
 function paste(input: HTMLInputElement, text: string) {
   const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
   pasteEvent.clipboardData = { getData: () => text };
@@ -327,6 +340,12 @@ describe('ChargeDialog — reorganização em abas', () => {
     expect(payload.customer_id).toBe(CUSTOMER_OK.id);
     expect(payload.value).toBe(100);
     expect(payload.post_to_finance).toBe(true);
+    // Multa em % (padrão, vindo da conta) manda EXATAMENTE o payload histórico:
+    // `fine_percent` sozinho, sem `fine_type` nem `fine_value`. É o que garante
+    // que a edge antiga continua entendendo o front novo.
+    expect(payload.fine_percent).toBe(2);
+    expect(payload.fine_type).toBeUndefined();
+    expect(payload.fine_value).toBeUndefined();
   });
 
   /**
@@ -360,5 +379,106 @@ describe('ChargeDialog — reorganização em abas', () => {
     const amountInput = q('#charge-amount') as HTMLInputElement;
     paste(amountInput, 'R$ 4.550');
     expect(amountInput.value).toBe('4.550,00');
+  });
+});
+
+/**
+ * Multa fixa em R$ (pedido do CEO: "poderia ser possível botar uma multa fixa
+ * em R$ ao invés de % sempre"). A Asaas aceita `fine.type = FIXED`, e a escolha
+ * vale POR COBRANÇA — o padrão da conta continua sendo percentual.
+ */
+describe('ChargeDialog — multa em R$ ou em %', () => {
+  it('começa em % (padrão da conta) e o seletor troca o campo para máscara de dinheiro', () => {
+    mount();
+    click(pillByLabel('Encargos'));
+    // Modo % : rótulo e valor decimal livre, herdado da conta (2).
+    expect(text()).toContain('Multa (%)');
+    expect((q('#adv-fine') as HTMLInputElement).value).toBe('2');
+
+    click(fineUnitButton('R$'));
+    expect(text()).toContain('Multa (R$)');
+    // Campo de dinheiro começa vazio (não herda o "2" do percentual, que em
+    // reais seria R$ 2,00 e ninguém pediu isso).
+    const fineInput = q('#adv-fine') as HTMLInputElement;
+    expect(fineInput.value).toBe('');
+    setInputValue(fineInput, '5000');
+    expect((q('#adv-fine') as HTMLInputElement).value).toBe('50,00');
+
+    // Voltar pro % devolve o percentual intacto: alternar não estraga o que
+    // já estava digitado de cada lado.
+    click(fineUnitButton('%'));
+    expect((q('#adv-fine') as HTMLInputElement).value).toBe('2');
+  });
+
+  it('multa em R$ vai no payload como fine_type FIXED + fine_value, e NUNCA como fine_percent', async () => {
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000'); // R$ 1.000,00
+
+    click(pillByLabel('Encargos'));
+    click(fineUnitButton('R$'));
+    setInputValue(q('#adv-fine') as HTMLInputElement, '5000'); // R$ 50,00
+
+    createMutateAsync.mockResolvedValue({
+      orphan: false,
+      charge: { financeWarning: null, public_short_code: 'abc123', value: 1000 },
+    });
+
+    await act(async () => {
+      buttonByText('Gerar agora')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const payload = createMutateAsync.mock.calls[0][0];
+    expect(payload.fine_type).toBe('FIXED');
+    expect(payload.fine_value).toBe(50);
+    // Crítico: mandar 50 em `fine_percent` faria uma edge antiga (ou um
+    // fallback de tipo) cobrar 50% de multa em vez de R$ 50,00.
+    expect(payload.fine_percent).toBeUndefined();
+  });
+});
+
+/**
+ * "Quanto o cliente paga" — o outro lado do resumo do rodapé (que só mostrava
+ * o que SOBRA pra empresa). Pedido do CEO: ver quanto o cliente paga adiantado
+ * com desconto e atrasado com multa e juros.
+ */
+describe('ChargeDialog — resumo de quanto o cliente paga', () => {
+  it('mostra o cenário de atraso com a premissa de dias escrita junto do valor', () => {
+    mount();
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000'); // R$ 1.000,00
+    expandNetSummary();
+
+    expect(text()).toContain('Quanto o cliente paga');
+    // A premissa NUNCA pode faltar: juros da Asaas são ao mês e crescem por dia.
+    expect(text()).toContain('Pagando 30 dias depois do vencimento');
+    // Multa 2% (R$ 20) + juros 1% ao mês em 30 dias (R$ 10) = R$ 1.030,00.
+    expect(text()).toContain('1.030,00');
+    expect(text()).toContain('dias de atraso');
+  });
+
+  it('o cenário de atraso acompanha a multa em R$ digitada na aba Encargos', () => {
+    mount();
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000');
+    click(pillByLabel('Encargos'));
+    click(fineUnitButton('R$'));
+    setInputValue(q('#adv-fine') as HTMLInputElement, '15000'); // multa de R$ 150,00
+    expandNetSummary();
+
+    // 1.000 + 150 de multa + 10 de juros = 1.160,00 (e não 1.000 + 150% ).
+    expect(text()).toContain('1.160,00');
+  });
+
+  it('sem desconto configurado não existe linha de desconto (nada é inventado)', () => {
+    mount();
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000');
+    expandNetSummary();
+    expect(text()).not.toContain('Pagando até o vencimento');
+
+    // Configurando o desconto, a linha aparece com o valor já abatido.
+    click(pillByLabel('Encargos'));
+    setInputValue(q('#adv-discount') as HTMLInputElement, '5');
+    expect(text()).toContain('Pagando até o vencimento');
+    expect(text()).toContain('950,00');
   });
 });

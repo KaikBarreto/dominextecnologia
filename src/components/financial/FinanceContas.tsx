@@ -299,6 +299,29 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     });
   }, [allTransactions, transactions, subTab]);
 
+  /**
+   * Quantos resultados a MESMA busca teria na OUTRA sub-aba.
+   *
+   * A tela abre em "A Pagar" e a busca é escopada à sub-aba ativa. Quem procura
+   * um cliente que tem conta A RECEBER vê "nada encontrado" e conclui que o
+   * lançamento não foi criado — foi exatamente o que gerou o chamado de
+   * 19/09/2026 (duas cobranças existiam, corretas, na aba ao lado). Em vez de
+   * mudar o escopo da busca (que misturaria receita e despesa na mesma lista),
+   * a tela passa a DIZER que há resultado do outro lado.
+   */
+  const otherTabMatches = useMemo(() => {
+    if (!searchActive) return 0;
+    const pool = allTransactions ?? transactions;
+    return pool.filter((t) => {
+      const otherType = subTab === 'pagar' ? 'entrada' : 'saida';
+      if (t.transaction_type !== otherType) return false;
+      // Espelha a exclusão de despesa de cartão que a aba "A Pagar" faz.
+      if (subTab === 'receber' && t.credit_card_bill_date) return false;
+      return matchesSearch(t);
+    }).length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTransactions, transactions, subTab, searchActive, search]);
+
   const filtered = useMemo(() => {
     // Busca UNIVERSAL: com texto digitado, varre o dataset inteiro do subTab
     // (searchBase, todos os meses) IGNORANDO status/categoria/período — só texto.
@@ -805,6 +828,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         </div>
       ) : filtered.length === 0 && (searchActive || cardInvoices.length === 0 || categoryFilter.length > 0 || costCenterFilter.length > 0) ? (
         (searchActive || categoryFilter.length > 0 || costCenterFilter.length > 0 || filter !== 'pendentes') ? (
+          /* Nada nesta sub-aba: se a MESMA busca acha do outro lado, o vazio
+             deixa de ser beco sem saída e vira atalho ("Ver 2 resultados em A
+             Receber"). Ver `otherTabMatches`. */
           <EmptyState
             size="compact"
             icon={<DollarSign className="h-10 w-10" />}
@@ -816,6 +842,20 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 : categoryFilter.length > 1
                   ? fin.accounts.empty.nothingInCategories
                   : fin.accounts.empty.nothingInFilter}
+            action={otherTabMatches > 0
+              ? {
+                  label: (otherTabMatches === 1
+                    ? fin.accounts.empty.foundInOtherTabOne
+                    : fin.accounts.empty.foundInOtherTabMany
+                  )
+                    .replace('{count}', String(otherTabMatches))
+                    .replace(
+                      '{tab}',
+                      subTab === 'pagar' ? fin.accounts.subTabs.receivable : fin.accounts.subTabs.payable,
+                    ),
+                  onClick: () => setSubTab(subTab === 'pagar' ? 'receber' : 'pagar'),
+                }
+              : undefined}
           />
         ) : (
           <EmptyState

@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.51',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Multa da cobrança pode ser um valor fixo em reais',
+        description: 'Ao gerar uma cobrança, a multa por atraso deixou de ser só porcentagem: você escolhe entre por cento e reais. Os juros continuam sendo ao mês, em porcentagem, porque é assim que a cobrança online trabalha.',
+        category: 'recurso',
+      },
+      {
+        title: 'O resumo mostra quanto o cliente vai pagar',
+        description: 'No resumo da cobrança, além do quanto sobra para você, agora aparece quanto o cliente paga se quitar até o vencimento com desconto, e quanto pagaria em atraso, com multa e juros. O cenário de atraso usa trinta dias, e isso fica escrito na tela. Cada linha só aparece se você tiver configurado aquele encargo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Buscar em Contas a pagar e a receber não deixa mais você no escuro',
+        description: 'Ao procurar um cliente na aba errada, a tela dizia apenas que nada foi encontrado, mesmo existindo lançamentos do outro lado. Agora ela avisa quantos resultados existem na outra aba e leva você até lá com um clique.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aprovação de orçamento por link usa a categoria renomeada',
+        description: 'Quando o cliente aprova um orçamento pelo link público e o sistema lança a receita, ele passa a usar o nome atual da sua categoria de venda de serviço. Antes usava o nome original, então quem tivesse renomeado veria o lançamento cair numa categoria antiga.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.50',
     date: '19 de setembro de 2026',
     type: 'patch',

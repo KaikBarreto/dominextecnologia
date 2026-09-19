@@ -45,6 +45,11 @@ import {
   type SimulationResult,
   type SimulatorFees,
 } from '@/lib/asaasFeeSimulator';
+import {
+  computeCustomerAmounts,
+  LATE_SCENARIO_DAYS,
+  type ChargeFineType,
+} from '@/lib/chargeCustomerAmounts';
 import { getDocumentStatus } from '@/lib/documentValidation';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { formatBRL } from '@/utils/currency';
@@ -234,6 +239,13 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
 
   // Opções avançadas — inicializadas com o default da conta, editáveis por cobrança.
+  //
+  // A multa tem DOIS campos e um seletor de unidade: a Asaas aceita
+  // `fine.type = PERCENTAGE | FIXED`, e o CEO pediu multa em reais. Os valores
+  // são guardados separados de propósito — alternar % ↔ R$ e voltar não
+  // reinterpreta "2" como "R$ 2,00" nem "50" como "50%".
+  const [fineType, setFineType] = useState<ChargeFineType>('PERCENTAGE');
+  const [fineAmount, setFineAmount] = useState(0); // em reais, máscara de centavos
   const [finePercent, setFinePercent] = useState('');
   const [interestPercent, setInterestPercent] = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
@@ -262,6 +274,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // eles têm prioridade sobre os defaults da conta.
   useEffect(() => {
     if (open) {
+      // O default da CONTA é percentual (default_fine_percent), então abrir
+      // sempre começa em %. A escolha de reais vale só para a cobrança atual.
+      setFineType('PERCENTAGE');
+      setFineAmount(0);
       setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
       setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
       setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
@@ -330,6 +346,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setActiveTab(TAB_COBRANCA);
     setFieldErrors({});
     setNetExpanded(false);
+    setFineType('PERCENTAGE');
+    setFineAmount(0);
     setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
     setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
     setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
@@ -446,6 +464,46 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     simulation?.usedReferenceFees === true ||
     multiSimulation?.some((r) => r.result.usedReferenceFees) === true;
 
+  // ── Quanto o CLIENTE paga (adiantado com desconto / atrasado com encargos) ─
+  // O resumo do rodapé respondia só "quanto sobra pra empresa". O CEO pediu o
+  // outro lado: o que sai do bolso do cliente nos dois extremos. A conta mora
+  // num módulo puro com teste (`chargeCustomerAmounts`), nunca aqui dentro.
+  const numOrZero = (raw: string) => {
+    const v = parseDecimalInput(raw);
+    return Number.isFinite(v) ? v : 0;
+  };
+  const finePercentValue = numOrZero(finePercent);
+  const interestPercentValue = numOrZero(interestPercent);
+  const discountPercentValue = numOrZero(discountPercent);
+  const discountDaysValue = Number.isFinite(parseInt(discountDays, 10)) ? parseInt(discountDays, 10) : 0;
+
+  // Base = o que o cliente vê na cobrança. Com repasse da taxa do cartão é o
+  // valor JÁ inflado (`simulation.gross`), não o líquido que a empresa quer.
+  const customerBase = simulation?.gross ?? amount;
+
+  const customerAmounts = useMemo(
+    () =>
+      computeCustomerAmounts({
+        baseAmount: customerBase,
+        fineType,
+        finePercent: finePercentValue,
+        fineAmount,
+        interestPercent: interestPercentValue,
+        discountPercent: discountPercentValue,
+        discountDays: discountDaysValue,
+        lateDays: LATE_SCENARIO_DAYS,
+      }),
+    [
+      customerBase,
+      fineType,
+      finePercentValue,
+      fineAmount,
+      interestPercentValue,
+      discountPercentValue,
+      discountDaysValue,
+    ],
+  );
+
   const money = (v: number) => formatMoney(v, 'BRL', locale);
   const percentLabel = (v: number) => {
     try {
@@ -473,6 +531,21 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   };
   const amountDisplay = amount
     ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
+  // Multa em R$ usa a MESMA máscara canônica do valor (dígitos entram como
+  // centavos pela direita; colar passa por readPastedCents). Em %, o campo
+  // segue como texto decimal livre, como sempre foi.
+  const handleFineAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setFineAmount(parseInt(raw || '0', 10) / 100);
+  };
+  const handleFineAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setFineAmount(cents / 100);
+  };
+  const fineAmountDisplay = fineAmount
+    ? fineAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
   // Opções de parcelas (1..defaultMaxInstallments).
@@ -531,7 +604,17 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         // a própria parcela), então mandar isso seria ruído ignorado.
         category: isContractInstallment ? undefined : category.trim() || undefined,
         cost_center_id: isContractInstallment ? null : costCenterId,
-        fine_percent: isNaN(parsedFine) ? undefined : parsedFine,
+        // Multa: manda SÓ o campo do modo escolhido, nunca os dois.
+        //
+        // Em % o payload é byte-a-byte o de antes (sem `fine_type`), então
+        // nada muda pra quem não usa multa em reais. Em R$ o percentual NÃO é
+        // enviado: assim, se este front rodar contra uma edge antiga (janela de
+        // deploy), a edge não acha `fine_percent`, cai no padrão da conta e a
+        // multa em reais é só ignorada. Mandar o valor em `fine_percent` com um
+        // flag faria a edge antiga cobrar "R$ 50" como "50%".
+        fine_type: fineType === 'FIXED' ? 'FIXED' : undefined,
+        fine_value: fineType === 'FIXED' ? fineAmount : undefined,
+        fine_percent: fineType === 'FIXED' || isNaN(parsedFine) ? undefined : parsedFine,
         interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
         discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
         discount_days: isNaN(parsedDiscountDays) ? undefined : parsedDiscountDays,
@@ -872,6 +955,69 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     </div>
                   )}
 
+                  {/* ── Quanto o CLIENTE paga ──────────────────────────────
+                      Só desenha o cenário que EXISTE: sem desconto
+                      configurado não há linha de desconto, sem multa/juros não
+                      há linha de atraso. O recorte de atraso (30 dias) vai
+                      escrito no próprio rótulo, porque juros da Asaas são ao
+                      mês e crescem por dia: número de encargo sem premissa
+                      declarada vira discussão com o cliente final. */}
+                  {(customerAmounts.hasDiscount || customerAmounts.hasLateCharges) && (
+                    <div className="space-y-1.5 border-t border-border pt-2.5">
+                      <p className="text-xs font-medium text-muted-foreground">{t.net.customerTitle}</p>
+                      <dl className="space-y-1.5 text-sm">
+                        {customerAmounts.hasDiscount && (
+                          <div className="flex items-baseline justify-between gap-3">
+                            <dt className="min-w-0 text-muted-foreground">
+                              {customerAmounts.discountDays > 0
+                                ? t.net.customerOnTimeUntil(customerAmounts.discountDays)
+                                : t.net.customerOnTime}
+                              <span className="block text-[11px] leading-snug text-muted-foreground">
+                                {t.net.customerDiscountNote(
+                                  percentLabel(discountPercentValue),
+                                  money(customerAmounts.discountAmount),
+                                )}
+                              </span>
+                            </dt>
+                            <dd className="shrink-0 font-medium tabular-nums text-foreground">
+                              {money(customerAmounts.amountOnTime)}
+                            </dd>
+                          </div>
+                        )}
+
+                        {customerAmounts.hasLateCharges && (
+                          <div className="flex items-baseline justify-between gap-3">
+                            <dt className="min-w-0 text-muted-foreground">
+                              {t.net.customerLate(customerAmounts.lateDays)}
+                              <span className="block text-[11px] leading-snug text-muted-foreground">
+                                {customerAmounts.fineAmount > 0 && customerAmounts.interestAmount > 0
+                                  ? t.net.customerLateBoth(
+                                      money(customerAmounts.fineAmount),
+                                      money(customerAmounts.interestAmount),
+                                      percentLabel(interestPercentValue),
+                                    )
+                                  : customerAmounts.fineAmount > 0
+                                    ? t.net.customerLateFine(money(customerAmounts.fineAmount))
+                                    : t.net.customerLateInterest(
+                                        money(customerAmounts.interestAmount),
+                                        percentLabel(interestPercentValue),
+                                      )}
+                              </span>
+                            </dt>
+                            <dd className="shrink-0 font-medium tabular-nums text-warning">
+                              {money(customerAmounts.amountWhenLate)}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                      {customerAmounts.hasLateCharges && (
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          {t.net.customerLateHint(customerAmounts.lateDays)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <p className="text-[11px] leading-snug text-muted-foreground">{t.net.estimate}</p>
                 </div>
               )}
@@ -1197,24 +1343,66 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
             {/* ── Aba: Encargos (multa, juros, desconto, dias) ──────────────── */}
             <TabsContent value={TAB_ENCARGOS} className="space-y-3">
-              {/* Multa e Juros lado a lado */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Multa e Juros. A multa ganhou seletor de unidade (% ou R$) e
+                  passou a ocupar a linha inteira no mobile: com o seletor ao
+                  lado do rótulo, meia largura em 390px espremia o campo de
+                  dinheiro a ponto de esconder o valor digitado. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="adv-fine" className="text-xs font-medium">
-                    {t.advanced.finePercent}
-                  </Label>
-                  <Input
-                    id="adv-fine"
-                    inputMode="decimal"
-                    placeholder="2"
-                    value={finePercent}
-                    onChange={(e) => setFinePercent(e.target.value)}
-                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="adv-fine" className="text-xs font-medium">
+                      {fineType === 'FIXED' ? t.advanced.fineFixed : t.advanced.finePercent}
+                    </Label>
+                    {/* A Asaas aceita fine.type = PERCENTAGE ou FIXED; a escolha
+                        vale por cobrança (o padrão da conta segue percentual). */}
+                    <SegmentedControl
+                      size="sm"
+                      className="w-[96px] shrink-0"
+                      options={[
+                        { value: 'PERCENTAGE' as ChargeFineType, label: '%' },
+                        { value: 'FIXED' as ChargeFineType, label: 'R$' },
+                      ]}
+                      value={fineType}
+                      // Arrow (e não `setFineType` direto): passar o setter cru
+                      // faz o TS inferir T = string e perder o tipo da união.
+                      onValueChange={(v) => setFineType(v)}
+                      aria-label={t.advanced.fineTypeAria}
+                    />
+                  </div>
+                  {fineType === 'FIXED' ? (
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        R$
+                      </span>
+                      <Input
+                        id="adv-fine"
+                        className="pl-9"
+                        inputMode="numeric"
+                        placeholder="0,00"
+                        value={fineAmountDisplay}
+                        onChange={handleFineAmountChange}
+                        onPaste={handleFineAmountPaste}
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      id="adv-fine"
+                      inputMode="decimal"
+                      placeholder="2"
+                      value={finePercent}
+                      onChange={(e) => setFinePercent(e.target.value)}
+                    />
+                  )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="adv-interest" className="text-xs font-medium">
-                    {t.advanced.interestPercent}
-                  </Label>
+                  {/* min-h casa a altura com a linha do rótulo da multa (que
+                      carrega o seletor de unidade), senão os dois campos ficam
+                      desalinhados lado a lado no desktop. */}
+                  <div className="flex min-h-[30px] items-center">
+                    <Label htmlFor="adv-interest" className="text-xs font-medium">
+                      {t.advanced.interestPercent}
+                    </Label>
+                  </div>
                   <Input
                     id="adv-interest"
                     inputMode="decimal"

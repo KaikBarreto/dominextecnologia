@@ -50,6 +50,15 @@ const MIN_CHARGE_VALUE = 5;
 /** Asaas impõe teto de 10% ao mês nos juros; clampamos por segurança. */
 const ASAAS_MAX_INTEREST_PERCENT = 10;
 
+/**
+ * Como a multa por atraso é cobrada. A Asaas aceita os dois em `fine.type`
+ * (schema PaymentFineRequestFineType: enum ["FIXED","PERCENTAGE"]). Os JUROS
+ * NÃO têm equivalente: o DTO de juros da Asaas só tem `value` e é sempre
+ * percentual ao mês, por isso não existe `interest_type` aqui.
+ */
+type FineType = "PERCENTAGE" | "FIXED";
+const ALLOWED_FINE_TYPES: readonly FineType[] = ["PERCENTAGE", "FIXED"];
+
 /** hoje + `days` em UTC, formatado YYYY-MM-DD (usado quando due_date não vem no corpo). */
 function dueDateFromDays(days: number): string {
   const now = new Date();
@@ -66,6 +75,16 @@ function dueDateFromDays(days: number): string {
 function toPositivePercent(raw: unknown): number | null {
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Normaliza um valor em REAIS vindo do corpo: número finito > 0 arredondado a
+ * 2 casas (a Asaas recusa mais que isso), senão null.
+ */
+function toPositiveAmount(raw: unknown): number | null {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
 }
 
 /** Valida `due_date` no formato YYYY-MM-DD e não no passado (compara em UTC, dia cheio). */
@@ -120,7 +139,15 @@ interface CreateChargeInput {
   source_type?: ChargeSourceType;
   source_id?: string | null;
   // Overrides opcionais por cobrança (caem no default da conta quando ausentes).
+  // Multa: `fine_type` escolhe COMO ela é cobrada nesta cobrança.
+  //   'PERCENTAGE' (default, histórico) → lê `fine_percent`, com fallback no
+  //                                        default_fine_percent da conta;
+  //   'FIXED'                           → lê `fine_value` (R$), SEM fallback
+  //                                        (o default da conta é percentual e
+  //                                        não pode ser relido como reais).
   fine_percent?: number;
+  fine_value?: number;
+  fine_type?: FineType;
   interest_percent?: number;
   discount_percent?: number;
   discount_days?: number;
@@ -273,6 +300,29 @@ async function handleRequest(req: Request): Promise<Response> {
     return jsonResponse(req, {
       error: "Forma de pagamento inválida. Escolha Pix, boleto ou cartão.",
     }, 400);
+  }
+  // ── Multa: percentual (histórico) ou valor fixo em R$ ──────────────────────
+  // Validado AQUI no servidor, não só na tela: a tela esconde o campo errado,
+  // mas quem chama a edge direto continua podendo mandar qualquer coisa.
+  const fineType: FineType = input.fine_type ?? "PERCENTAGE";
+  if (!ALLOWED_FINE_TYPES.includes(fineType)) {
+    return jsonResponse(req, {
+      error: "Tipo de multa inválido. Use porcentagem ou valor em reais.",
+    }, 400);
+  }
+  if (input.fine_value !== undefined) {
+    const rawFineValue = Number(input.fine_value);
+    if (!Number.isFinite(rawFineValue) || rawFineValue < 0) {
+      return jsonResponse(req, { error: "Informe um valor válido para a multa." }, 400);
+    }
+    // Multa maior que a própria cobrança é sempre erro de digitação (e não é
+    // permitida como multa moratória no Brasil). Recusar aqui é muito mais
+    // barato que descobrir depois, com a cobrança já viva na Asaas.
+    if (fineType === "FIXED" && rawFineValue > chargeValue) {
+      return jsonResponse(req, {
+        error: "A multa em reais não pode ser maior que o valor da cobrança.",
+      }, 400);
+    }
   }
   // Descrição do corpo: opcional, limita (Asaas trunca em 500) e sanitiza tipo.
   // O fallback pro default_description da conta é aplicado após ler a conta.
@@ -498,7 +548,14 @@ async function handleRequest(req: Request): Promise<Response> {
 
     // Multa e juros por atraso (override por cobrança; senão default da conta).
     // Só envia quando > 0. Juros são clampados ao teto de 10% da Asaas.
-    const fineValue = toPositivePercent(input.fine_percent ?? account.default_fine_percent) ?? 0;
+    //
+    // A multa pode ser percentual (histórico) ou um valor fixo em reais. O
+    // default da CONTA (default_fine_percent) é percentual e por isso só serve
+    // de fallback no modo PERCENTAGE: relê-lo como reais transformaria "2%" em
+    // "R$ 2,00" sem ninguém pedir. No modo FIXED, multa vazia = sem multa.
+    const fineValue = fineType === "FIXED"
+      ? toPositiveAmount(input.fine_value) ?? 0
+      : toPositivePercent(input.fine_percent ?? account.default_fine_percent) ?? 0;
     const rawInterest = toPositivePercent(input.interest_percent ?? account.default_interest_percent);
     const interestValue = rawInterest !== null ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT) : 0;
 
@@ -560,7 +617,7 @@ async function handleRequest(req: Request): Promise<Response> {
       dueDate: dueDate,
       description: description ?? undefined,
       externalReference: companyId,
-      ...(fineValue > 0 ? { fine: { value: fineValue, type: "PERCENTAGE" } } : {}),
+      ...(fineValue > 0 ? { fine: { value: fineValue, type: fineType } } : {}),
       ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
       ...(discountPercent > 0
         ? { discount: { value: discountPercent, type: "PERCENTAGE", dueDateLimitDays: discountDays } }

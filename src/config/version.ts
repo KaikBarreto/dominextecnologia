@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.50";
+export const APP_VERSION = "1.24.51";
 
-export const VERSION_NOTES = "Observações da oportunidade salvam sozinhas, e trocar o estágio fica registrado no histórico. A busca da aba Tarefas agora acha por cliente e telefone."
+export const VERSION_NOTES = "A multa da cobrança agora pode ser um valor fixo em reais, e o resumo mostra quanto o cliente paga adiantado com desconto ou atrasado com multa e juros."

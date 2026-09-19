@@ -201,6 +201,8 @@ export const finance = {
       empty: {
         notFoundTitle: 'Nenhuma conta encontrada',
         nothingInSearch: 'Nada encontrado para',
+        foundInOtherTabOne: 'Ver 1 resultado em {tab}',
+        foundInOtherTabMany: 'Ver {count} resultados em {tab}',
         nothingInCategory: 'Nenhum registro na categoria',
         nothingInCategories: 'Nenhum registro nas categorias selecionadas',
         nothingInFilter: 'Nenhum registro para o filtro selecionado.',
@@ -1436,6 +1438,8 @@ export const finance = {
       empty: {
         notFoundTitle: 'No bills found',
         nothingInSearch: 'Nothing found for',
+        foundInOtherTabOne: 'See 1 result in {tab}',
+        foundInOtherTabMany: 'See {count} results in {tab}',
         nothingInCategory: 'No records in category',
         nothingInCategories: 'No records in selected categories',
         nothingInFilter: 'No records for the selected filter.',
@@ -2602,6 +2606,8 @@ export const finance = {
       empty: {
         notFoundTitle: 'Ninguna cuenta encontrada',
         nothingInSearch: 'Sin resultados para',
+        foundInOtherTabOne: 'Ver 1 resultado en {tab}',
+        foundInOtherTabMany: 'Ver {count} resultados en {tab}',
         nothingInCategory: 'Sin registros en la categoría',
         nothingInCategories: 'Sin registros en las categorías seleccionadas',
         nothingInFilter: 'Sin registros para el filtro seleccionado.',
@@ -3769,6 +3775,8 @@ export const finance = {
       empty: {
         notFoundTitle: 'Aucun compte trouvé',
         nothingInSearch: 'Aucun résultat pour',
+        foundInOtherTabOne: `Voir 1 résultat dans {tab}`,
+        foundInOtherTabMany: `Voir {count} résultats dans {tab}`,
         nothingInCategory: 'Aucun enregistrement dans la catégorie',
         nothingInCategories: 'Aucun enregistrement dans les catégories sélectionnées',
         nothingInFilter: 'Aucun enregistrement pour le filtre sélectionné.',
