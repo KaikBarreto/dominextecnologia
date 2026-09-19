@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.46";
+export const APP_VERSION = "1.24.47";
 
-export const VERSION_NOTES = "No funil do CRM, buscar um cliente agora deixa na tela só as etapas que têm resultado, sem precisar rolar de lado atrás do card."
+export const VERSION_NOTES = "Ao ganhar uma oportunidade, agora dá para corrigir o valor da receita na hora. O formulário de lançamento também ganhou categorias separadas por seção e o calendário do sistema no lugar do calendário do navegador."

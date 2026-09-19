@@ -3,13 +3,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Trophy } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { readPastedCents } from '@/lib/money-paste-mask';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { useFinancial } from '@/hooks/useFinancial';
 import { linkLeadWonTransaction } from '@/hooks/useLeadWonRevenue';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
 import type { LeadRevenueContext } from '@/hooks/useLeadWonRevenuePrompt';
 
 export interface LeadWonRevenueDialogProps {
@@ -89,7 +91,7 @@ interface FlowProps {
 }
 
 function LeadWonRevenueFlow({ open, onOpenChange, context }: FlowProps) {
-  const { locale, currency } = useAppLocaleContext();
+  const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.leadRevenue;
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -108,6 +110,40 @@ function LeadWonRevenueFlow({ open, onOpenChange, context }: FlowProps) {
       : null;
 
   /**
+   * Valor A LANÇAR, editável já neste primeiro passo.
+   *
+   * O valor da oportunidade é ESTIMADO e quase nunca é o que foi fechado. Antes
+   * ele aparecia aqui como texto fixo e só dava pra corrigir no passo 2, o que
+   * levava o usuário a achar que o sistema ia lançar o valor errado. Guardado em
+   * CENTAVOS (inteiro) pra não acumular erro de ponto flutuante.
+   */
+  const [amountCents, setAmountCents] = useState(0);
+
+  // Reancora no valor sugerido a cada abertura e a cada troca de oportunidade —
+  // este componente fica pendurado na tela do CRM e NÃO desmonta entre um lead e
+  // outro, então sem isso o valor digitado numa venda vazaria pra próxima.
+  useEffect(() => {
+    setAmountCents(suggestedAmount && suggestedAmount > 0 ? Math.round(suggestedAmount * 100) : 0);
+  }, [open, context.leadId, suggestedAmount]);
+
+  const amount = amountCents / 100;
+
+  // Máscara de dinheiro canônica da base: todo dígito digitado entra pela
+  // direita como centavos. Colar valor pronto ("4.550" de planilha) passa pelo
+  // `readPastedCents`, senão viraria R$ 45,50 (100x menor).
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    setAmountCents(parseInt(digits || '0', 10));
+  };
+  const handleAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const cents = readPastedCents(e);
+    if (cents != null) setAmountCents(cents);
+  };
+  const amountDisplay = amountCents
+    ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
+  /**
    * Pré-preenchimento do formulário. Memoizado porque `TransactionFormDialog`
    * usa o conteúdo do prefill pra montar os valores iniciais — objeto novo a
    * cada render seria trabalho repetido sem motivo.
@@ -120,10 +156,10 @@ function LeadWonRevenueFlow({ open, onOpenChange, context }: FlowProps) {
     () => ({
       transaction_type: 'entrada' as const,
       description: buildDescription(t, context),
-      amount: suggestedAmount && suggestedAmount > 0 ? suggestedAmount : 0,
+      amount,
       ...(context.customerId ? { customer_id: context.customerId } : {}),
     }),
-    [t, context, suggestedAmount],
+    [t, context, amount],
   );
 
   /**
@@ -220,19 +256,27 @@ function LeadWonRevenueFlow({ open, onOpenChange, context }: FlowProps) {
                 <dd className="min-w-0 truncate text-sm font-medium">{customerName}</dd>
               </div>
             )}
-            {suggestedAmount != null && suggestedAmount > 0 && (
-              <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-                <dt className="text-sm text-muted-foreground">{t.valueLabel}</dt>
-                <dd className="text-sm font-bold tabular-nums text-success">
-                  {formatMoney(suggestedAmount, currency, locale)}
-                </dd>
-              </div>
-            )}
           </dl>
 
-          <p className="text-xs text-muted-foreground">
-            {suggestedAmount != null && suggestedAmount > 0 ? t.valueHint : t.valueHintEmpty}
-          </p>
+          {/* Valor EDITÁVEL aqui mesmo. Antes era texto fixo e o usuário só
+              descobria que dava pra mudar depois de clicar em "Sim" — como o
+              valor da oportunidade é estimado e quase nunca é o fechado, isso
+              passava a impressão de que o sistema ia lançar errado. */}
+          <div className="space-y-1.5">
+            <Label htmlFor="lead-revenue-amount">{t.valueLabel}</Label>
+            <Input
+              id="lead-revenue-amount"
+              value={amountDisplay}
+              onChange={handleAmountChange}
+              onPaste={handleAmountPaste}
+              inputMode="numeric"
+              placeholder={t.valuePlaceholder}
+              className="text-base font-semibold tabular-nums"
+            />
+            <p className="text-xs text-muted-foreground">
+              {suggestedAmount != null && suggestedAmount > 0 ? t.valueHint : t.valueHintEmpty}
+            </p>
+          </div>
         </div>
       </ResponsiveModal>
 

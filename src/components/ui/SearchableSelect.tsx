@@ -258,7 +258,14 @@ export function SearchableSelect({
                 <CommandEmpty>{emptyMessage}</CommandEmpty>
                 {groups ? (
                   groups.map((group, idx) => (
-                    <CommandGroup key={group.heading ?? idx} heading={group.heading}>
+                    <CommandGroup
+                      key={group.heading ?? idx}
+                      heading={group.heading}
+                      // Divisor entre seções: sem ele os títulos de grupo ficam
+                      // soltos no meio da lista e as seções se misturam
+                      // visualmente. O primeiro grupo não leva borda.
+                      className={cn(idx > 0 && 'border-t border-border')}
+                    >
                       {group.options.map(renderOption)}
                     </CommandGroup>
                   ))

@@ -21,26 +21,13 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { groupByDre, shouldGroupByDre, type DreGroup } from '@/lib/dre-groups';
 
 type CategoryGroup = 'receitas' | 'despesas';
 
-// Grupos do DRE, na ordem em que aparecem na demonstração de resultado.
-// `dre_group` é `text` livre no banco (sem enum/check) — qualquer valor
-// fora dos 3 conhecidos (ou NULL) cai no bucket final "outros".
-type DreGroupKey = 'impostos' | 'cmv' | 'opex' | 'outros';
-const DRE_GROUP_ORDER: DreGroupKey[] = ['impostos', 'cmv', 'opex', 'outros'];
-
-function getDreGroupKey(cat: FinancialCategory): DreGroupKey {
-  return cat.dre_group === 'impostos' || cat.dre_group === 'cmv' || cat.dre_group === 'opex'
-    ? cat.dre_group
-    : 'outros';
-}
-
-interface DespesaGroup {
-  key: DreGroupKey;
-  label: string;
-  items: FinancialCategory[];
-}
+// A régua de grupo do DRE vive em `src/lib/dre-groups.ts` — compartilhada com o
+// select de categoria do lançamento, pra as duas telas agruparem igual.
+type DespesaGroup = DreGroup<FinancialCategory>;
 
 export function FinanceCategorias() {
   const { categories, isLoading, createCategory, updateCategory, deleteCategory, reorderCategories } = useFinancialCategories();
@@ -65,23 +52,16 @@ export function FinanceCategorias() {
 
   // Despesas agrupadas por dre_group, na ordem do DRE. Só grupos com pelo
   // menos 1 item entram — evita divisória fantasma de grupo vazio.
-  const despesaGroups: DespesaGroup[] = (() => {
-    const buckets: Record<DreGroupKey, FinancialCategory[]> = { impostos: [], cmv: [], opex: [], outros: [] };
-    despesas.forEach((cat) => buckets[getDreGroupKey(cat)].push(cat));
-    const labels: Record<DreGroupKey, string> = {
-      impostos: fin.categoryForm.dreGroups.impostos,
-      cmv: fin.categoryForm.dreGroups.cmv,
-      opex: fin.categoryForm.dreGroups.opex,
-      outros: fin.categoryForm.dreGroups.outros,
-    };
-    return DRE_GROUP_ORDER
-      .map((key) => ({ key, label: labels[key], items: buckets[key] }))
-      .filter((g) => g.items.length > 0);
-  })();
+  const despesaGroups: DespesaGroup[] = groupByDre(despesas, {
+    impostos: fin.categoryForm.dreGroups.impostos,
+    cmv: fin.categoryForm.dreGroups.cmv,
+    opex: fin.categoryForm.dreGroups.opex,
+    outros: fin.categoryForm.dreGroups.outros,
+  });
 
   // Requisito 3: só desenha divisória quando há 2+ grupos com item. Empresa
   // que nunca classificou (quase tudo em 'opex') continua vendo lista plana.
-  const shouldGroupDespesas = despesaGroups.length >= 2;
+  const shouldGroupDespesas = shouldGroupByDre(despesaGroups);
 
   const handleSubmit = async (data: any) => {
     if (editing) {

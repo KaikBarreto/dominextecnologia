@@ -34,6 +34,7 @@ import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCostCenters } from '@/hooks/useCostCenters';
@@ -1476,7 +1477,15 @@ export function TransactionFormDialog({
           <FormField control={form.control} name="transaction_date" render={({ field }) => (
             <FormItem>
               <FormLabel>{tf.dateLabel}</FormLabel>
-              <FormControl><Input type="date" min={dateInputMin} max={dateInputMax} {...field} /></FormControl>
+              <FormControl>
+                <DatePicker
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                  min={dateInputMin}
+                  max={dateInputMax}
+                  placeholder={tf.datePlaceholder}
+                />
+              </FormControl>
               <p className="text-xs text-muted-foreground">{tf.dateHint}</p>
               <FormMessage />
             </FormItem>
@@ -1554,16 +1563,15 @@ export function TransactionFormDialog({
                   <FormItem className="p-3">
                     <FormLabel>{isEntrada ? tf.paidDateLabelRevenue : tf.paidDateLabelExpense}</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
+                      <DatePicker
+                        value={field.value ?? ''}
+                        onValueChange={(next) => {
+                          paidDateTouched.current = true;
+                          field.onChange(next);
+                        }}
                         min={dateInputMin}
                         max={todayInTz(timezone)}
-                        {...field}
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          paidDateTouched.current = true;
-                          field.onChange(e);
-                        }}
+                        placeholder={tf.datePlaceholder}
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">{tf.paidDateHint}</p>

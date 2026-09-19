@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.47',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Corrigir o valor da receita ao ganhar a oportunidade',
+        description: 'Quando você move a oportunidade para o estágio de ganho, o sistema oferece lançar a receita. O valor agora é um campo editável ali mesmo: vem preenchido com o valor estimado da oportunidade e você corrige se o cliente fechou por outro. Antes o valor aparecia fixo e só dava para mudar na tela seguinte, o que passava a impressão de que seria lançado errado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Categorias de despesa separadas por seção',
+        description: 'No lançamento, a lista de categorias de despesa agora vem dividida em Impostos, CSP, Despesas operacionais e Outros, com divisória entre as seções, na mesma ordem da sua DRE. Era uma lista alfabética corrida, em que achar a categoria certa entre dezenas dava trabalho. Quem ainda não classificou as categorias continua vendo a lista simples.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Calendário do sistema nos campos de data do lançamento',
+        description: 'A data do lançamento e a data do recebimento passam a abrir o calendário do sistema, no tema do seu painel e no seu idioma. Antes abria o calendário do próprio navegador, com visual diferente em cada computador.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.46',
     date: '19 de setembro de 2026',
     type: 'patch',

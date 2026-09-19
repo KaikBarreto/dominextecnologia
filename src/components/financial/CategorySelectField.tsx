@@ -10,6 +10,7 @@ import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
+import { groupByDre, shouldGroupByDre } from '@/lib/dre-groups';
 
 export interface CategorySelectFieldProps {
   value: string;
@@ -47,7 +48,8 @@ export function CategorySelectField({
   id,
 }: CategorySelectFieldProps) {
   const { locale } = useAppLocaleContext();
-  const tf = MESSAGES[locale].app.finance.transactionForm;
+  const fin = MESSAGES[locale].app.finance;
+  const tf = fin.transactionForm;
   const { categories, createCategory } = useFinancialCategories();
   const canManage = useCanManageFinanceSettings();
 
@@ -55,7 +57,7 @@ export function CategorySelectField({
   const [searchQuery, setSearchQuery] = useState('');
 
   const filtered = filterCategoriesForSelect(categories, type, value);
-  const options = filtered.map((c) => {
+  const toOption = (c: (typeof filtered)[number]) => {
     const Icon = getCategoryIcon(c.icon);
     return {
       value: c.name,
@@ -67,12 +69,36 @@ export function CategorySelectField({
         </span>
       ),
     };
-  });
+  };
+  const options = filtered.map(toOption);
   // Categoria apagada da tabela (não só desativada): sintetiza a opção pra o
   // valor gravado continuar visível em vez de sumir no placeholder.
-  if (value && !options.some((o) => o.value === value)) {
-    options.push({ value, label: value, sublabel: tf.categoryInactiveSuffix, icon: undefined });
-  }
+  const orphanOption =
+    value && !options.some((o) => o.value === value)
+      ? { value, label: value, sublabel: tf.categoryInactiveSuffix, icon: undefined }
+      : null;
+  if (orphanOption) options.push(orphanOption);
+
+  /**
+   * DESPESA é lida em seções do DRE (Impostos, CSP, Despesas operacionais,
+   * Outros), com o mesmo recorte e a mesma ordem da tela de configuração de
+   * categorias — antes aqui era uma lista alfabética plana, e com ~30 categorias
+   * achar a certa virava rolagem no escuro.
+   *
+   * RECEITA continua plana de propósito: `dre_group` só classifica despesa.
+   * Empresa que nunca classificou (tudo em 'opex') também continua plana, senão
+   * sobraria um título de seção solitário em cima de tudo.
+   */
+  const dreGroups = type === 'saida' ? groupByDre(filtered, fin.categoryForm.dreGroups) : [];
+  const useGroups = type === 'saida' && shouldGroupByDre(dreGroups);
+  const groups = useGroups
+    ? [
+        ...dreGroups.map((g) => ({ heading: g.label, options: g.items.map(toOption) })),
+        // A categoria órfã não tem grupo confiável: fica numa seção própria no
+        // fim, em vez de ser enfiada num bucket do DRE que ela talvez não seja.
+        ...(orphanOption ? [{ heading: tf.categoryInactiveSuffix, options: [orphanOption] }] : []),
+      ]
+    : undefined;
 
   // `any` aqui espelha o mesmo contrato do `handleCreateCategoryInline` em
   // TransactionFormDialog: recebe o shape do CategoryFormDialog e repassa
@@ -94,6 +120,7 @@ export function CategorySelectField({
         <SearchableSelect
           id={id}
           options={options}
+          groups={groups}
           value={value}
           onValueChange={onValueChange}
           onSearchChange={setSearchQuery}
