@@ -3982,6 +3982,7 @@ export type Database = {
           is_active: boolean
           is_system: boolean
           name: string
+          parent_id: string | null
           sort_order: number | null
           type: string
           updated_at: string
@@ -3996,6 +3997,7 @@ export type Database = {
           is_active?: boolean
           is_system?: boolean
           name: string
+          parent_id?: string | null
           sort_order?: number | null
           type?: string
           updated_at?: string
@@ -4010,6 +4012,7 @@ export type Database = {
           is_active?: boolean
           is_system?: boolean
           name?: string
+          parent_id?: string | null
           sort_order?: number | null
           type?: string
           updated_at?: string
@@ -4020,6 +4023,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
             referencedColumns: ["id"]
           },
         ]

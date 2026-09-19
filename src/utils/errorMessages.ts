@@ -176,6 +176,41 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'Esta categoria não pode ser excluída porque está sendo usada em transações financeiras.',
   },
 
+  // ── Hierarquia de categoria financeira (gatilho
+  //    trg_financial_categories_valida_parent, migration 20260919260000).
+  //    O gatilho fala PT-BR mas sem acento, porque a mensagem viaja por SQL;
+  //    aqui ela vira a copy acentuada que o cliente lê. Casado por trecho
+  //    estável da frase — o gatilho usa SQLSTATE P0001, que não tem mensagem
+  //    genérica de SQLSTATE pra atropelar estas.
+  {
+    test: (m) => m.includes('subcategoria dela mesma'),
+    text: 'Uma categoria não pode ser subcategoria dela mesma.',
+  },
+  {
+    test: (m) => m.includes('ja e uma subcategoria'),
+    text: 'Essa categoria já é uma subcategoria. A hierarquia tem no máximo dois níveis: não existe subcategoria dentro de subcategoria.',
+  },
+  {
+    test: (m) => m.includes('nao pode virar subcategoria de outra'),
+    text: 'Esta categoria tem subcategorias e por isso não pode virar subcategoria de outra. Solte as subcategorias dela primeiro.',
+  },
+  {
+    test: (m) => m.includes('pertence a outra empresa'),
+    text: 'A categoria principal escolhida não é da sua empresa. Recarregue a tela e escolha de novo.',
+  },
+  {
+    test: (m) => m.includes('precisa ser do mesmo tipo do pai'),
+    text: 'A subcategoria precisa ser do mesmo tipo da categoria principal (entrada ou saída).',
+  },
+  {
+    test: (m) => m.includes('subcategoria(s) de outro tipo'),
+    text: 'Esta categoria tem subcategorias de outro tipo. Mude o tipo das subcategorias antes de mudar o tipo da categoria principal.',
+  },
+  {
+    test: (m) => m.includes('categoria pai selecionada nao existe'),
+    text: 'A categoria principal escolhida não existe mais. Recarregue a tela e escolha de novo.',
+  },
+
   // ── FK: Equipment Categories ──
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('equipment_category_id_fkey'),

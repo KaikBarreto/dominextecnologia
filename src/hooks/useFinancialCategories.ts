@@ -23,6 +23,22 @@ export interface FinancialCategory {
   is_system: boolean;
   company_id: string | null;
   sort_order?: number | null;
+  /**
+   * Categoria PAI, na mesma empresa. `null` = categoria raiz — é o que toda
+   * categoria existente é, e continua sendo.
+   *
+   * A hierarquia tem no máximo DOIS níveis, travado no banco pelo gatilho
+   * `trg_financial_categories_valida_parent` (migration 20260919260000), que
+   * também exige pai da mesma empresa e de `type` compatível.
+   *
+   * 🔴 A FILHA É UMA CATEGORIA COMPLETA: tem `name` próprio e ÚNICO na empresa
+   * (o índice `financial_categories_company_id_name_key` continua valendo),
+   * e `dre_group`, `color` e `icon` PRÓPRIOS — NÃO herda o grupo do pai. O
+   * lançamento grava em `financial_transactions.category` o NOME DA FOLHA
+   * escolhida (coluna `text`, não é FK), nunca o do pai. Por isso nenhum valor
+   * é contado duas vezes: cada lançamento pertence a exatamente uma linha.
+   */
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +50,8 @@ export interface CategoryInput {
   icon?: string;
   is_active?: boolean;
   dre_group?: string;
+  /** Pai da subcategoria. Ausente/`null` cria categoria raiz (comportamento de sempre). */
+  parent_id?: string | null;
 }
 
 /** Update aceita o contexto da linha pra travar campo de sistema e cascatear o rename. */
