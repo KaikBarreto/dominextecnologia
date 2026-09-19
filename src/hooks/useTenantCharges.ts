@@ -190,12 +190,22 @@ export interface UseTenantChargesOptions {
   /** Quando fornecido, a listagem filtra apenas cobranças deste cliente.
    *  Cache isolado por customerId (queryKey diferente). */
   customerId?: string;
+  /**
+   * Desliga a LISTAGEM, mantendo as mutations.
+   *
+   * Existe pra quem só precisa de `create`/`update` e não da lista: sem isso,
+   * montar este hook numa tela puxa `tenant_charges` da empresa INTEIRA só
+   * para existir um botão (mesmo motivo pelo qual `createContractInstallments`
+   * vive em useContracts e não em useFinancial). Default true: nenhum chamador
+   * existente muda de comportamento.
+   */
+  enabled?: boolean;
 }
 
 export function useTenantCharges(options?: UseTenantChargesOptions) {
   const queryClient = useQueryClient();
   const { companyId } = useUserCompany();
-  const { customerId } = options ?? {};
+  const { customerId, enabled = true } = options ?? {};
 
   // queryKey inclui customerId para que o cache seja isolado por cliente.
   const listKey = customerId
@@ -204,7 +214,7 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
 
   const list = useQuery({
     queryKey: listKey,
-    enabled: !!companyId,
+    enabled: !!companyId && enabled,
     staleTime: 30 * 1000,
     queryFn: async (): Promise<TenantCharge[]> => {
       if (!companyId) return [];

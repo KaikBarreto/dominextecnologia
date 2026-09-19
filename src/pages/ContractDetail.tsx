@@ -62,6 +62,17 @@ import {
   splitInstallmentsByValueLock,
   type InstallmentChargeBlockReason,
 } from '@/lib/contract-installment-charge';
+import {
+  CONSECUTIVE_FAILURES_TO_ABORT,
+  MAX_CHARGES_PER_BATCH,
+  batchFailureLabel,
+  countSkipReasons,
+  partitionInstallmentsForBatch,
+  shouldAbortBatch,
+  type BatchFailure,
+  type BatchRunResult,
+} from '@/lib/contractChargeBatch';
+import { useTenantCharges } from '@/hooks/useTenantCharges';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -456,6 +467,12 @@ export default function ContractDetail() {
   const { liveChargeByInstallment } = useContractInstallmentCharges(id, chargeableInstallmentIds);
   // Parcela escolhida pra gerar a cobrança (abre o ChargeDialog).
   const [chargeInstallment, setChargeInstallment] = useState<any | null>(null);
+  // ── Cobrança em LOTE das parcelas selecionadas ────────────────────────────
+  // Confirmação antes de tocar o gateway, progresso durante e resumo honesto
+  // depois. Nada disso é enfeite: cada volta do laço cria cobrança de verdade.
+  const [showBatchChargeConfirm, setShowBatchChargeConfirm] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [batchResult, setBatchResult] = useState<BatchRunResult | null>(null);
   // Mesmo gate do faturamento recorrente: módulo de cobranças ligado + conta de
   // recebimento ativa. Sem isso, cobrar online nem aparece.
   const showOnlineCharge = hasCobrancas && isPaymentActive;
@@ -510,6 +527,30 @@ export default function ContractDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedRecTransactions, liveChargeByInstallment],
   );
+  // Cobrança em LOTE: só as mutations, sem a LISTAGEM de tenant_charges da
+  // empresa inteira (`enabled: false`). Quem já sabe quais parcelas têm
+  // cobrança viva é `useContractInstallmentCharges`, escopado neste contrato.
+  const { create: createTenantCharge } = useTenantCharges({ enabled: false });
+
+  /**
+   * Quem entra na rodada de cobrança e quem fica de fora, com o motivo.
+   *
+   * A elegibilidade NÃO é decidida aqui: vem inteira de
+   * `getInstallmentChargeAvailability` (espelho das validações da edge), via
+   * `partitionInstallmentsForBatch`. Os números desta partição são os MESMOS
+   * que a confirmação mostra e que a execução percorre, de propósito: contar
+   * num lugar e executar noutro é como a tela promete 12 e o gateway cria 9.
+   */
+  const batchChargePartition = useMemo(
+    () =>
+      partitionInstallmentsForBatch(selectedRecTransactions as any[], {
+        contractCustomerId: contract?.customer_id ?? null,
+        hasLiveCharge: (t: any) => liveChargeByInstallment.has(t.id),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedRecTransactions, liveChargeByInstallment, contract?.customer_id],
+  );
+
   const allRecSelected =
     (linkedTransactions || []).length > 0 && selectedRecCount === (linkedTransactions || []).length;
 
@@ -968,6 +1009,93 @@ export default function ContractDetail() {
     } finally {
       setContSaving(false);
     }
+  };
+
+  /**
+   * Executa a rodada de cobrança em lote.
+   *
+   * SEQUENCIAL, um `await` por vez. N chamadas em paralelo (`Promise.all`)
+   * contra um gateway são o jeito de tomar rate limit no meio de uma operação
+   * IRREVERSÍVEL, e aí metade das cobranças existe e a outra metade não, sem
+   * ninguém saber quais.
+   *
+   * FALHA NO MEIO: CONTINUA. Cada parcela é uma cobrança independente; parar
+   * na 7a deixa 6 criadas e 6 não, que é o mesmo estado parcial de continuar,
+   * só que sem o trabalho feito. Continuando, uma rodada devolve o quadro
+   * inteiro e o botão pode ser clicado de novo (o dedupe por `source_id` na
+   * edge pula as que já existem). A exceção é `shouldAbortBatch`: três falhas
+   * SEGUIDAS não são três parcelas ruins, é a conta ou a Asaas.
+   *
+   * A forma de pagamento vai `UNDEFINED`: o cliente escolhe Pix, boleto ou
+   * cartão no próprio link. Nada fica fechado antes de ele decidir, e ele pode
+   * pagar um mês no Pix e o outro no cartão.
+   */
+  const handleRunBatchCharge = async () => {
+    const queue = batchChargePartition.queue;
+    if (queue.length === 0) return;
+    setShowBatchChargeConfirm(false);
+    setBatchProgress({ done: 0, total: queue.length });
+
+    const today = todayISODate();
+    const failures: BatchFailure[] = [];
+    let created = 0;
+    let orphans = 0;
+    let consecutiveFailures = 0;
+    let aborted = false;
+    let attempted = 0;
+
+    for (const entry of queue) {
+      const t = entry.installment as any;
+      try {
+        const result = await createTenantCharge.mutateAsync({
+          customer_id: entry.customerId,
+          // Valor da PARCELA, travado: a edge recusa valor diferente, e cobrar
+          // a menos daria baixa na parcela inteira quando o cliente pagasse.
+          value: entry.value,
+          // Vencimento da parcela, ou hoje se já venceu (a Asaas recusa data
+          // no passado). Mesma função do caminho individual.
+          due_date: resolveChargeDueDate(t.due_date, today),
+          billing_type: 'UNDEFINED',
+          description: t.description ?? undefined,
+          // Liga a cobrança à parcela que já existe (nenhum lançamento novo) e
+          // ativa o dedupe: clicar de novo devolve a mesma, não cria outra.
+          source_type: 'contract_installment',
+          source_id: t.id,
+        });
+        attempted += 1;
+        if (result.orphan) orphans += 1; else created += 1;
+        consecutiveFailures = 0;
+      } catch (err: unknown) {
+        attempted += 1;
+        failures.push({
+          installmentId: t.id,
+          label: batchFailureLabel(t, td.financial.descLabel),
+          // Mensagem da Asaas/edge sem reescrever: "não foi possível" genérico
+          // esconde justamente o que o gestor precisa pra resolver.
+          message: getErrorMessage(err),
+        });
+        consecutiveFailures += 1;
+        if (shouldAbortBatch(consecutiveFailures)) {
+          aborted = true;
+          break;
+        }
+      }
+      setBatchProgress({ done: attempted, total: queue.length });
+    }
+
+    setBatchProgress(null);
+    setBatchResult({
+      created,
+      orphans,
+      failures,
+      aborted,
+      notAttempted: queue.length - attempted,
+    });
+    // O selo "Cobrança gerada" e a trava de valor já se atualizam sozinhos: o
+    // `create` invalida o prefixo ['tenant-charges', companyId], que é onde a
+    // query de `useContractInstallmentCharges` vive. Aqui só falta a aba em si.
+    queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+    queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
   };
 
   const handleApplyLinksToAllParcels = async () => {
@@ -2040,16 +2168,54 @@ export default function ContractDetail() {
                               setBulkEditCategory('');
                               setShowBulkEditRec(true);
                             }}
+                            // Travado durante a rodada de cobrança: mudar o
+                            // valor de uma parcela cuja cobrança está sendo
+                            // criada neste instante é o furo que a trava de
+                            // valor por cobrança viva existe pra impedir.
+                            disabled={!!batchProgress}
                           >
                             <Pencil className="mr-1 h-4 w-4" />
                             {td.financial.selection.editBtn} ({selectedRecCount})
                           </Button>
+                          {/* Cobrar em lote as parcelas selecionadas. Só
+                              aparece com o módulo de cobranças ligado (mesmo
+                              gate do botão individual) e quando ao menos uma
+                              da seleção é cobrável: botão que não faz nada é
+                              pior que botão ausente. A contagem é a da FILA,
+                              não a da seleção, pra não prometer 12 e criar 9.
+                              O `!!batchProgress ||` segura o botão na tela
+                              durante a rodada: cada sucesso invalida as
+                              cobranças, a fila encolhe, e sem isso o progresso
+                              sumiria no meio da execução. */}
+                          {showOnlineCharge && (!!batchProgress || batchChargePartition.queue.length > 0) && (
+                            <Button
+                              size="sm"
+                              className="min-h-11 sm:min-h-9 rounded-xl active:scale-[0.98] transition-transform"
+                              onClick={() => { setBatchResult(null); setShowBatchChargeConfirm(true); }}
+                              disabled={!!batchProgress}
+                            >
+                              {batchProgress ? (
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                              ) : (
+                                <CreditCard className="mr-1 h-4 w-4" />
+                              )}
+                              {batchProgress
+                                ? tCharge.batch.progress
+                                    .replace('{done}', String(batchProgress.done))
+                                    .replace('{total}', String(batchProgress.total))
+                                : `${tCharge.batch.action} (${batchChargePartition.queue.length})`}
+                            </Button>
+                          )}
                           {canDeleteFinance && (
                             <Button
                               size="sm"
                               variant="destructive"
                               className="min-h-11 sm:min-h-9 rounded-xl active:scale-[0.98] transition-transform"
                               onClick={() => { setBulkDeletePaidAck(false); setShowBulkDeleteRec(true); }}
+                              // Mesma razão: apagar a parcela enquanto a
+                              // cobrança dela nasce deixaria cobrança órfã na
+                              // Asaas, cobrando um valor que não existe mais.
+                              disabled={!!batchProgress}
                             >
                               <Trash2 className="mr-1 h-4 w-4" />
                               {td.financial.selection.deleteBtn} ({selectedRecCount})
@@ -2058,6 +2224,27 @@ export default function ContractDetail() {
                         </div>
                       )}
                     </div>
+                    {/* Seleção inteira incobrável: o botão some (botão que não
+                        faz nada é pior que botão ausente), mas o usuário fica
+                        sem saber por quê. Esta linha responde, com o motivo de
+                        cada uma, sem ocupar espaço quando não é o caso. */}
+                    {showOnlineCharge
+                      && selectedRecCount > 0
+                      && !batchProgress
+                      && batchChargePartition.queue.length === 0
+                      && batchChargePartition.skipped.length > 0 && (
+                      <p className="px-2 text-xs text-muted-foreground break-words">
+                        {tCharge.batch.nothingTitle}
+                        {': '}
+                        {Object.entries(countSkipReasons(batchChargePartition.skipped))
+                          .map(([reason, n]) =>
+                            ((tCharge.batch.skip as Record<string, string>)[reason] ?? reason)
+                              .replace('{n}', String(n))
+                              .replace('{max}', String(MAX_CHARGES_PER_BATCH)))
+                          .join(', ')}
+                        .
+                      </p>
+                    )}
                     {recPagination.paginatedItems.map(t => {
                       // Status da parcela: pago (verde) > atrasado (vermelho) > pendente (neutro).
                       const isOverdue = !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal);
@@ -2462,6 +2649,119 @@ export default function ContractDetail() {
               : td.financial.applyBtnPlural.replace('{n}', String((linkedTransactions || []).length))}
           </Button>
         </div>
+      </ResponsiveModal>
+
+      {/* ── Cobrança em LOTE: confirmação ANTES de tocar o gateway ───────────
+          Cada linha deste dialog vira cobrança de verdade na Asaas, sem
+          desfazer em massa. Por isso a confirmação nomeia quantas e quanto, diz
+          que o cliente escolhe a forma no link, e LISTA o que ficou de fora com
+          o motivo: o usuário selecionou 12 e vai gerar 9, ele precisa saber por
+          quê antes, não depois. */}
+      <AlertDialog open={showBatchChargeConfirm} onOpenChange={setShowBatchChargeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {batchChargePartition.queue.length === 1
+                ? tCharge.batch.confirmTitleSingle
+                : tCharge.batch.confirmTitle.replace('{n}', String(batchChargePartition.queue.length))}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-left">
+                <p className="break-words">
+                  {tCharge.batch.confirmTotal.replace('{total}', formatBRL(batchChargePartition.total))}
+                </p>
+                <p className="break-words">{tCharge.batch.confirmIrreversible}</p>
+                {batchChargePartition.skipped.length > 0 && (
+                  <div className="rounded-xl border bg-muted/40 p-2.5">
+                    <p className="text-xs font-semibold">{tCharge.batch.confirmSkippedTitle}</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
+                      {Object.entries(countSkipReasons(batchChargePartition.skipped)).map(([reason, n]) => (
+                        <li key={reason} className="break-words">
+                          {((tCharge.batch.skip as Record<string, string>)[reason] ?? reason)
+                            .replace('{n}', String(n))
+                            .replace('{max}', String(MAX_CHARGES_PER_BATCH))}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCharge.batch.confirmCancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleRunBatchCharge(); }}>
+              {batchChargePartition.queue.length === 1
+                ? tCharge.batch.confirmBtnSingle
+                : tCharge.batch.confirmBtn.replace('{n}', String(batchChargePartition.queue.length))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Resumo da rodada: o que entrou, o que falhou e por quê ────────────
+          Toast não serve aqui: a informação é uma lista e some antes de ser
+          lida. Falha em dinheiro nunca pode ser silenciosa, então o resumo
+          nomeia QUAL parcela falhou com a mensagem que veio da Asaas, sem
+          reescrever pra "não foi possível". */}
+      <ResponsiveModal
+        open={!!batchResult}
+        onOpenChange={(v) => { if (!v) setBatchResult(null); }}
+        title={tCharge.batch.resultTitle}
+      >
+        {batchResult && (
+          <div className="space-y-3 p-1">
+            <p className="text-sm break-words">
+              {batchResult.created === 0
+                ? tCharge.batch.resultNone
+                : batchResult.created === 1
+                  ? tCharge.batch.resultCreatedSingle
+                  : tCharge.batch.resultCreated.replace('{n}', String(batchResult.created))}
+            </p>
+            {batchResult.orphans > 0 && (
+              <p className="flex items-start gap-1.5 text-sm text-warning">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="min-w-0 break-words">
+                  {tCharge.batch.resultOrphans.replace('{n}', String(batchResult.orphans))}
+                </span>
+              </p>
+            )}
+            {batchResult.aborted && (
+              <p className="flex items-start gap-1.5 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="min-w-0 break-words">
+                  {tCharge.batch.resultAborted
+                    .replace('{n}', String(CONSECUTIVE_FAILURES_TO_ABORT))
+                    .replace('{rest}', String(batchResult.notAttempted))}
+                </span>
+              </p>
+            )}
+            {batchResult.failures.length > 0 && (
+              <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-2.5">
+                <p className="text-xs font-semibold text-destructive">
+                  {tCharge.batch.resultFailuresTitle.replace('{n}', String(batchResult.failures.length))}
+                </p>
+                <ul className="mt-1 space-y-1.5 text-xs">
+                  {batchResult.failures.map((f) => (
+                    <li key={f.installmentId} className="min-w-0 break-words">
+                      <strong className="text-foreground">{f.label}</strong>
+                      <span className="text-muted-foreground"> {f.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {(batchResult.failures.length > 0 || batchResult.notAttempted > 0) && (
+              <p className="text-xs text-muted-foreground break-words">{tCharge.batch.resultRetryHint}</p>
+            )}
+            <Button
+              className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
+              onClick={() => setBatchResult(null)}
+            >
+              {tCharge.batch.close}
+            </Button>
+          </div>
+        )}
       </ResponsiveModal>
 
       {/* ── Cobrança contínua: alterar a REGRA (passo + âncora) ──────────────

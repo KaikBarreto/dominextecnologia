@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.59";
+export const APP_VERSION = "1.24.60";
 
-export const VERSION_NOTES = "Contrato pode ter cobrança sem prazo para terminar, que se renova sozinha, e contrato já criado agora tem por onde configurar a cobrança."
+export const VERSION_NOTES = "Dá para gerar as cobranças de várias parcelas do contrato de uma vez, e o cliente escolhe a forma de pagamento no próprio link."

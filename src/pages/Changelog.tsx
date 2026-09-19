@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.60',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Gerar cobrança de várias parcelas do contrato de uma vez',
+        description: 'Na aba Financeiro do contrato, selecione as parcelas e gere as cobranças todas juntas. Antes era uma por vez, o que em um contrato de dois anos significava clicar vinte e quatro vezes. Vale para qualquer contrato, não só PMOC, e as cobranças aparecem no portal do cliente com o vencimento de cada parcela.',
+        category: 'recurso',
+      },
+      {
+        title: 'O cliente escolhe a forma de pagamento no link',
+        description: 'As cobranças geradas em lote saem com a forma em aberto, então o cliente decide no próprio link se paga por Pix, boleto ou cartão, e pode escolher diferente a cada mês.',
+        category: 'melhoria',
+      },
+      {
+        title: 'O sistema avisa o que não foi cobrado, e por quê',
+        description: 'Antes de gerar, a tela mostra quantas cobranças serão criadas, o valor total e o que ficou de fora, separando o que já foi recebido do que já tinha cobrança. No fim, diz quantas foram criadas e qual falhou. Parcela já paga ou já cobrada nunca é cobrada de novo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.59',
     date: '19 de setembro de 2026',
     type: 'patch',
