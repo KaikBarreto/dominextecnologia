@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.57";
+export const APP_VERSION = "1.24.58";
 
-export const VERSION_NOTES = "Dá para editar e excluir cobrança direto na ficha do cliente, com as mesmas regras da Central de Cobranças."
+export const VERSION_NOTES = "Melhorias internas de confiabilidade no recebimento de pagamentos da assinatura."

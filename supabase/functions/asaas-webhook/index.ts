@@ -33,7 +33,23 @@
 //  pending_plan_code, aplicamos plano/ciclo/max_users/módulos alvo e limpamos pending_*.
 //
 // Cliente Supabase: service_role (RLS bloqueia tenant; aqui é fluxo de sistema).
-// Responde 200 rápido em todos os caminhos pra Asaas não re-enfileirar.
+//
+// RESPOSTA E RE-ENTREGA (mudou em 2026-09-19 — leia antes de "simplificar"):
+//  - O padrão anterior era 200 em TODO caminho, inclusive quando uma escrita de
+//    dinheiro falhava. Como o `supabase-js` NÃO lança em erro de banco (devolve
+//    `{ error }`), a falha sumia: o try/catch nunca disparava, a Asaas recebia
+//    200 e NUNCA mais re-entregava aquele evento. Renovação, receita e comissão
+//    viravam prejuízo silencioso.
+//  - Agora toda escrita passa por `_shared/db-write.ts` (`applyWrite` = fatal,
+//    `tryWrite` = não-fatal com linha de recuperação obrigatória), e a resposta
+//    é decidida por `webhookResponseFor`: erro marcado como retryable → 500
+//    `{ retry: true }` (a Asaas re-entrega); qualquer outro → 200 (payload ruim
+//    ou bug de código não melhora com re-entrega, e re-entregar trava a fila).
+//  - A FRONTEIRA é o mutex `credit_ltv_once_for_payment`: ANTES dele, falhar é
+//    barato (nada reivindicado) e a re-entrega conserta. DEPOIS dele, a
+//    re-entrega vira NO-OP (o mutex devolve FALSE) e lançar não repara nada —
+//    por isso o pós-mutex é `tryWrite` + alerta ao admin, exceto o UPDATE vital
+//    de `companies`, que DEVOLVE o mutex antes de lançar (ver releaseLtvClaim).
 //
 // Adaptado do EcoSistema (asaas-webhook/index.ts). Divergências de schema:
 //  - companies NÃO tem base_subscription_value, crm_lead_id, referral_discount_balance.
@@ -46,6 +62,19 @@ import {
   AsaasConfigError,
   listAnticipationsByPayment,
 } from "../_shared/asaas-client.ts";
+import {
+  applyWrite,
+  formatRecovery,
+  tryWrite,
+  WriteWarnings,
+} from "../_shared/db-write.ts";
+import {
+  computeLtvRollback,
+  retryableRethrow,
+  RetryableWebhookError,
+  splitRenewalCompanyUpdate,
+  webhookResponseFor,
+} from "../_shared/asaas-webhook-renewal.ts";
 
 // CORS permissivo: a Asaas chama server-to-server (sem Origin), então NÃO usamos
 // o allowlist de origem do _shared/cors.ts aqui. asaas-access-token liberado no header.
@@ -83,32 +112,139 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 /**
+ * Alerta o admin do painel master de que uma escrita de DINHEIRO não entrou.
+ *
+ * Existe porque, no pós-mutex, a re-entrega do evento é NO-OP: não há conserto
+ * automático possível. Sobra o conserto humano — e ele só acontece se alguém
+ * ficar sabendo. O `console.error` do `tryWrite` já guarda a linha de
+ * recuperação; isto põe a mesma informação na frente de quem pode agir.
+ *
+ * Best-effort de propósito (`tryWrite`): se o alerta falhar, o log continua
+ * sendo a fonte. Nunca lança — lançar aqui derrubaria um handler que já aplicou
+ * o efeito principal.
+ */
+async function alertAdmin(
+  supabase: any,
+  type: string,
+  title: string,
+  message: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  await tryWrite(
+    `alerta ao admin (${type})`,
+    supabase.from("admin_notifications").insert({ type, title, message, data }),
+    { recovery: { type, ...data } },
+  );
+}
+
+/**
+ * DEVOLVE o mutex `credit_ltv_once_for_payment` pra que a re-entrega do evento
+ * volte a ter efeito.
+ *
+ * ⚠️ O PORQUÊ, que é a decisão mais delicada deste arquivo: o mutex é a marca de
+ * "evento processado". Depois que ele foi reivindicado, re-entregar o mesmo
+ * pagamento faz a RPC devolver FALSE e o webhook vira no-op TOTAL. Ou seja:
+ * lançar depois do mutex, sem devolver o mutex, é responder 500 pra receber o
+ * evento de novo e jogá-lo fora — a renovação some do mesmo jeito.
+ *
+ * Desfaz as DUAS coisas que a RPC fez, nesta ordem de propósito:
+ *   1) tira o valor do `companies.ltv`;
+ *   2) só então limpa `subscription_payments.ltv_credited_at`.
+ * Invertido, uma falha no meio deixaria o mutex livre com o LTV já somado — e a
+ * re-entrega somaria de novo (LTV inflado, que já aconteceu no EcoSistema).
+ * Nesta ordem, uma falha no meio deixa o mutex preso (perdemos a re-entrega,
+ * que é o que já aconteceria) mas NUNCA infla o LTV.
+ *
+ * Devolve `true` só quando o mutex está de fato livre. Com `false`, o chamador
+ * NÃO deve lançar: não haveria conserto, só uma fila de webhook travada.
+ */
+async function releaseLtvClaim(
+  supabase: any,
+  asaasPaymentId: string,
+  companyId: string,
+  amount: number,
+): Promise<boolean> {
+  const { data: fresh, error: readErr } = await supabase
+    .from("companies")
+    .select("ltv")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (readErr) {
+    console.error(`[ltv-release] não consegui reler o LTV de ${companyId}:`, readErr.message);
+    return false;
+  }
+
+  const undone = await tryWrite(
+    "estorno do LTV creditado (devolução do mutex)",
+    supabase
+      .from("companies")
+      .update({ ltv: computeLtvRollback(fresh?.ltv, amount) })
+      .eq("id", companyId),
+    { recovery: { company_id: companyId, asaas_payment_id: asaasPaymentId, amount, ltv_antes: fresh?.ltv } },
+  );
+  if (!undone) return false;
+
+  return await tryWrite(
+    "liberação do mutex de LTV (ltv_credited_at = null)",
+    supabase
+      .from("subscription_payments")
+      .update({ ltv_credited_at: null })
+      .eq("asaas_payment_id", asaasPaymentId),
+    { recovery: { asaas_payment_id: asaasPaymentId, company_id: companyId, amount } },
+  );
+}
+
+/**
  * Detecta se este é o PRIMEIRO pagamento da company (primeira venda) vs renovação.
  * Sinais: ausência de company_payments do tipo venda/renovação + salesperson_sales +
  * admin_financial_transactions de first_sale/sale + LTV zero.
+ *
+ * Devolve `null` quando QUALQUER uma das leituras falha.
+ *
+ * ⚠️ O PORQUÊ: aqui a mentira é de LEITURA, não de escrita, mas o mecanismo é o
+ * mesmo — `const { data } = await …` descarta o `error` por construção. Com um
+ * SELECT recusado, `data` vem `undefined`, os três sinais dão "não encontrei" e
+ * uma RENOVAÇÃO é classificada como PRIMEIRA VENDA. Isso custa duas coisas de
+ * dinheiro de uma vez: gera comissão de venda pra um vendedor que não vendeu
+ * nada agora, e re-ancora o vencimento em HOJE em vez do vencimento vigente
+ * (quem pagou adiantado perde os dias acumulados). Melhor não decidir do que
+ * decidir errado — o chamador devolve o mutex e pede re-entrega.
  */
-async function detectIsFirstSale(supabase: any, companyId: string, ltv: number): Promise<boolean> {
-  const { data: prevPayments } = await supabase
+async function detectIsFirstSale(
+  supabase: any,
+  companyId: string,
+  ltv: number,
+): Promise<boolean | null> {
+  const { data: prevPayments, error: prevErr } = await supabase
     .from("company_payments")
     .select("id")
     .eq("company_id", companyId)
     .in("type", ["primeira_venda", "renovacao"])
     .limit(1);
 
-  const { data: existingSale } = await supabase
+  const { data: existingSale, error: saleErr } = await supabase
     .from("salesperson_sales")
     .select("id")
     .eq("company_id", companyId)
     .limit(1)
     .maybeSingle();
 
-  const { data: existingSaleTx } = await supabase
+  const { data: existingSaleTx, error: txErr } = await supabase
     .from("admin_financial_transactions")
     .select("id")
     .eq("reference_id", companyId)
     .in("category", ["sale", "first_sale"])
     .eq("type", "income")
     .limit(1);
+
+  const leituraFalhou = prevErr || saleErr || txErr;
+  if (leituraFalhou) {
+    console.error(
+      `[first-sale] leitura falhou p/ ${companyId}:`,
+      (prevErr || saleErr || txErr).message,
+    );
+    return null;
+  }
 
   const hasAnySaleRecord =
     (prevPayments?.length ?? 0) > 0 ||
@@ -124,7 +260,12 @@ async function detectIsFirstSale(supabase: any, companyId: string, ltv: number):
  * companies.subscription_plan e faz UPSERT em company_modules (sem apagar extras
  * já comprados — só garante que os do plano existam). Idempotente.
  */
-async function activatePlanModules(supabase: any, companyId: string, planCode: string | null) {
+async function activatePlanModules(
+  supabase: any,
+  companyId: string,
+  planCode: string | null,
+  warnings?: WriteWarnings,
+) {
   if (!planCode) return;
   try {
     const { data: plan } = await supabase
@@ -160,9 +301,16 @@ async function activatePlanModules(supabase: any, companyId: string, planCode: s
       }));
 
     if (toInsert.length > 0) {
-      const { error } = await supabase.from("company_modules").insert(toInsert);
-      if (error) console.error("[modules] insert falhou (não-fatal):", error.message);
-      else console.log(`[modules] ativados ${toInsert.length} módulo(s) do plano '${planCode}' para ${companyId}`);
+      // Não-fatal: roda DEPOIS do mutex (re-entrega seria no-op) e o cliente já
+      // está com a assinatura ativa. Um módulo do plano que não entrou é falta
+      // de acesso reclamável, não perda de dinheiro — a linha de recuperação
+      // tem os códigos pra reaplicar à mão.
+      const ok = await tryWrite(
+        "ativação dos módulos do plano (company_modules)",
+        supabase.from("company_modules").insert(toInsert),
+        { recovery: { company_id: companyId, plano: planCode, modulos: toInsert.map((m) => m.module_code).join("|") }, warnings },
+      );
+      if (ok) console.log(`[modules] ativados ${toInsert.length} módulo(s) do plano '${planCode}' para ${companyId}`);
     }
   } catch (e) {
     console.error("[modules] erro inesperado (engolido):", (e as Error).message);
@@ -176,7 +324,12 @@ async function activatePlanModules(supabase: any, companyId: string, planCode: s
  * sincronizado, vira no-op. Best-effort (erros logados, não-fatais) pra não travar
  * o caminho de pagamento já gated pelo mutex.
  */
-async function syncCompanyModulesExact(supabase: any, companyId: string, targetCodes: string[]) {
+async function syncCompanyModulesExact(
+  supabase: any,
+  companyId: string,
+  targetCodes: string[],
+  warnings?: WriteWarnings,
+) {
   try {
     const target = new Set(targetCodes);
     const { data: existing } = await supabase
@@ -188,13 +341,19 @@ async function syncCompanyModulesExact(supabase: any, companyId: string, targetC
     // Remove os que sobraram (não estão no alvo).
     const toRemove = [...existingSet].filter((code) => !target.has(code as string)) as string[];
     if (toRemove.length > 0) {
-      const { error } = await supabase
-        .from("company_modules")
-        .delete()
-        .eq("company_id", companyId)
-        .in("module_code", toRemove);
-      if (error) console.error("[modules-sync] delete falhou (não-fatal):", error.message);
-      else console.log(`[modules-sync] removidos [${toRemove.join(", ")}] de ${companyId}`);
+      // Não-fatal (pós-mutex). Falhar aqui deixa o cliente com módulo que ele
+      // não paga mais — vazamento de receita, não perda de acesso; o aviso vai
+      // pra resposta e a linha de recuperação diz o que remover.
+      const ok = await tryWrite(
+        "remoção dos módulos fora do plano (downgrade)",
+        supabase
+          .from("company_modules")
+          .delete()
+          .eq("company_id", companyId)
+          .in("module_code", toRemove),
+        { recovery: { company_id: companyId, remover: toRemove.join("|") }, warnings },
+      );
+      if (ok) console.log(`[modules-sync] removidos [${toRemove.join(", ")}] de ${companyId}`);
     }
 
     // Insere os que faltam.
@@ -207,9 +366,12 @@ async function syncCompanyModulesExact(supabase: any, companyId: string, targetC
         activated_at: new Date().toISOString(),
       }));
     if (toInsert.length > 0) {
-      const { error } = await supabase.from("company_modules").insert(toInsert);
-      if (error) console.error("[modules-sync] insert falhou (não-fatal):", error.message);
-      else console.log(`[modules-sync] adicionados [${toInsert.map((m) => m.module_code).join(", ")}] em ${companyId}`);
+      const ok = await tryWrite(
+        "inclusão dos módulos do plano-alvo (downgrade)",
+        supabase.from("company_modules").insert(toInsert),
+        { recovery: { company_id: companyId, incluir: toInsert.map((m) => m.module_code).join("|") }, warnings },
+      );
+      if (ok) console.log(`[modules-sync] adicionados [${toInsert.map((m) => m.module_code).join(", ")}] em ${companyId}`);
     }
   } catch (e) {
     console.error("[modules-sync] erro inesperado (engolido):", (e as Error).message);
@@ -228,17 +390,24 @@ async function recordRefundOrChargeback(
   companyName: string,
   kind: "refund" | "chargeback",
 ) {
-  try {
-    const amount = Number(payment.value || 0);
-    if (amount <= 0) return;
-    const label = kind === "refund" ? "Estorno" : "Chargeback";
-    // INSERT idempotente. O índice único de asaas_transaction_id é PARCIAL
-    // (WHERE asaas_transaction_id IS NOT NULL); o PostgREST não emite o predicado no
-    // onConflict, então UPSERT errava em SILÊNCIO e o estorno/chargeback não era gravado.
-    // Fazemos INSERT direto e tratamos 23505 (unique_violation) como sucesso/idempotente.
-    // asaas_transaction_id aqui é SEMPRE `${payment.id}_${kind}` (nunca null).
-    const txId = `${payment.id}_${kind}`;
-    const { error } = await supabase
+  const amount = Number(payment.value || 0);
+  if (amount <= 0) return;
+  const label = kind === "refund" ? "Estorno" : "Chargeback";
+
+  // INSERT idempotente. O índice único de asaas_transaction_id é PARCIAL
+  // (WHERE asaas_transaction_id IS NOT NULL); o PostgREST não emite o predicado no
+  // onConflict, então UPSERT errava em SILÊNCIO e o estorno/chargeback não era gravado.
+  // Fazemos INSERT direto e tratamos 23505 (unique_violation) como sucesso/idempotente.
+  // asaas_transaction_id aqui é SEMPRE `${payment.id}_${kind}` (nunca null).
+  const txId = `${payment.id}_${kind}`;
+  // FATAL (pede re-entrega): este INSERT é o único registro de que a Auctus
+  // devolveu dinheiro, é totalmente idempotente (23505 = já existe) e roda
+  // ANTES de qualquer mutex — a re-entrega conserta de graça. O `try/catch`
+  // que engolia tudo aqui foi removido de propósito: ele transformava "o
+  // estorno não entrou no consolidado" em silêncio.
+  const gravado = await tryWrite(
+    `lançamento de ${label.toLowerCase()} (admin_financial_transactions)`,
+    supabase
       .from("admin_financial_transactions")
       .insert({
         type: "expense",
@@ -249,14 +418,16 @@ async function recordRefundOrChargeback(
         reference_type: kind === "refund" ? "subscription_refund" : "subscription_chargeback",
         asaas_transaction_id: txId,
         transaction_date: new Date().toISOString(),
-      });
-    if (error && error.code !== "23505") {
-      console.error(`[${kind}] insert falhou (${txId}):`, error.message);
-    }
-    console.log(`[${kind}] registrado para ${companyName}: R$ ${amount} (${payment.id})`);
-  } catch (e) {
-    console.error(`[${kind}] erro (engolido):`, (e as Error).message);
+      }),
+    {
+      ignoreCodes: ["23505"], // já lançado: idempotente, não é erro.
+      recovery: { asaas_transaction_id: txId, empresa: companyName, company_id: companyId, valor: amount, tipo: kind },
+    },
+  );
+  if (!gravado) {
+    throw new RetryableWebhookError(`lançamento de ${kind} não gravado (${txId})`);
   }
+  console.log(`[${kind}] registrado para ${companyName}: R$ ${amount} (${payment.id})`);
 }
 
 /**
@@ -276,9 +447,12 @@ async function processConfirmedPayment(
     dueDate?: string | null;    // payment.dueDate da Asaas (YYYY-MM-DD) = vencimento REAL do ciclo
     matchedBy: string;          // diagnóstico: como a company foi encontrada
   },
-): Promise<{ processed: boolean; type?: string; reason?: string }> {
+): Promise<{ processed: boolean; type?: string; reason?: string; warnings?: string[] }> {
   const companyId = company.id;
   const paymentAmount = Number(opts.amount || 0);
+  // Coletor dos avisos de escrita não-fatal. Vai pro corpo da resposta: "deu
+  // certo com pendência" não pode se confundir com "deu certo".
+  const warnings = new WriteWarnings();
 
   if (paymentAmount <= 0) {
     return { processed: false, reason: "valor inválido" };
@@ -339,9 +513,17 @@ async function processConfirmedPayment(
       .maybeSingle();
 
     if (existErr) {
+      // FATAL (pede re-entrega). Antes isto só logava e seguia: sem a linha
+      // materializada, o mutex logo abaixo não acha o que reivindicar, devolve
+      // FALSE e o webhook trata como "já processado" — a renovação some inteira
+      // em silêncio. Nada foi reivindicado ainda, então a re-entrega conserta.
       console.error(
         `[materialize] falha ao checar subscription_payments de ${opts.asaasPaymentId}:`,
         existErr.message,
+      );
+      throw new RetryableWebhookError(
+        `checagem de subscription_payments falhou (${opts.asaasPaymentId}): ${existErr.message}`,
+        existErr,
       );
     } else if (!existingRow) {
       // Sem linha pra este pay_* → renovação recorrente que nunca materializou.
@@ -351,35 +533,48 @@ async function processConfirmedPayment(
       // já passou — é sempre um ciclo posterior.
       const materializedBillingCycle = company.billing_cycle === "yearly" ? "yearly" : "monthly";
       const nowIso = new Date().toISOString();
-      const { error: matErr } = await supabase.from("subscription_payments").insert({
-        company_id: companyId,
-        asaas_payment_id: opts.asaasPaymentId,
-        asaas_customer_id: opts.customerId ?? company.asaas_customer_id ?? null,
-        amount: paymentAmount,
-        status: "CONFIRMED",
-        billing_type: opts.billingType || "PIX",
-        billing_cycle: materializedBillingCycle,
-        type: "renovacao",
-        payment_method: (opts.billingType || "PIX").toLowerCase(),
-        due_date: effectiveDueDate,
-        paid_at: nowIso,
-        ltv_credited_at: null, // o mutex é quem credita — NÃO pré-creditar aqui.
-      });
-      // 23505 (unique_violation) = corrida entre RECEIVED e CONFIRMED do mesmo pay_*
-      // criando a linha ao mesmo tempo. É o "ON CONFLICT DO NOTHING" na prática:
-      // um ganha, o outro bate no UNIQUE e segue — idempotente, não é erro.
-      if (matErr && matErr.code !== "23505") {
-        console.error(
-          `[materialize] insert da renovação falhou (${opts.asaasPaymentId}):`,
-          matErr.message,
-        );
-      } else {
-        console.log(
-          `[materialize] linha de renovação criada p/ ${company.name} ` +
-            `(${opts.matchedBy}): ${opts.asaasPaymentId} R$ ${paymentAmount}` +
-            (matErr?.code === "23505" ? " [corrida — já criada, idempotente]" : ""),
+      // FATAL (pede re-entrega). Mesmo motivo do `existErr` acima: sem esta
+      // linha, o mutex não tem o que reivindicar e a renovação inteira vira
+      // no-op silencioso. É pré-mutex e idempotente (23505 tratado como
+      // sucesso), então re-entregar é barato e conserta.
+      // 23505 (unique_violation) = corrida entre RECEIVED e CONFIRMED do mesmo
+      // pay_* criando a linha ao mesmo tempo. É o "ON CONFLICT DO NOTHING" na
+      // prática: um ganha, o outro bate no UNIQUE e segue — não é erro.
+      const materializada = await tryWrite(
+        "materialização da linha de renovação (subscription_payments)",
+        supabase.from("subscription_payments").insert({
+          company_id: companyId,
+          asaas_payment_id: opts.asaasPaymentId,
+          asaas_customer_id: opts.customerId ?? company.asaas_customer_id ?? null,
+          amount: paymentAmount,
+          status: "CONFIRMED",
+          billing_type: opts.billingType || "PIX",
+          billing_cycle: materializedBillingCycle,
+          type: "renovacao",
+          payment_method: (opts.billingType || "PIX").toLowerCase(),
+          due_date: effectiveDueDate,
+          paid_at: nowIso,
+          ltv_credited_at: null, // o mutex é quem credita — NÃO pré-creditar aqui.
+        }),
+        {
+          ignoreCodes: ["23505"],
+          recovery: {
+            company_id: companyId,
+            asaas_payment_id: opts.asaasPaymentId,
+            valor: paymentAmount,
+            due_date: effectiveDueDate,
+          },
+        },
+      );
+      if (!materializada) {
+        throw new RetryableWebhookError(
+          `materialização da renovação não gravada (${opts.asaasPaymentId})`,
         );
       }
+      console.log(
+        `[materialize] linha de renovação garantida p/ ${company.name} ` +
+          `(${opts.matchedBy}): ${opts.asaasPaymentId} R$ ${paymentAmount}`,
+      );
     }
   }
 
@@ -399,8 +594,14 @@ async function processConfirmedPayment(
   });
   if (ltvError) {
     console.error(`[process] credit_ltv_once_for_payment falhou:`, ltvError.message);
-    // Sem mutex confiável, abortamos pra não duplicar. Asaas re-tenta o webhook.
-    return { processed: false, reason: "erro no mutex de LTV" };
+    // FATAL (pede re-entrega). O comentário antigo dizia "Asaas re-tenta o
+    // webhook", mas o `return` virava HTTP 200 — a Asaas NUNCA re-tentava e o
+    // pagamento ficava sem renovação nenhuma. A RPC falhou, então NADA foi
+    // reivindicado: reprocessar é seguro e é o único conserto.
+    throw new RetryableWebhookError(
+      `mutex de LTV falhou (${opts.asaasPaymentId}): ${ltvError.message}`,
+      ltvError,
+    );
   }
   if (!ltvClaimed) {
     // FALSE = já processado (outra confirmação do mesmo ciclo já creditou). PULA TODOS
@@ -410,8 +611,51 @@ async function processConfirmedPayment(
   }
   // A partir daqui somos o WINNER: extensão de vencimento + lançamentos rodam 1x só.
 
+  /**
+   * Aborta um pagamento JÁ reivindicado pelo mutex.
+   *
+   * Só pode ser usado ANTES da primeira escrita não-idempotente (hoje: o INSERT
+   * em company_payments). Devolve o mutex e lança pedindo re-entrega — sem a
+   * devolução, o 500 traria o evento de volta só pra ser descartado como "já
+   * processado". Se a devolução falhar, NÃO lança: vira alerta humano, porque
+   * insistir na re-entrega só trava a fila da Asaas sem consertar nada.
+   */
+  const abortarDevolvendoMutex = async (
+    motivo: string,
+    alerta: { type: string; title: string; message: string; data: Record<string, unknown> },
+  ): Promise<{ processed: boolean; reason: string; warnings?: string[] }> => {
+    const devolvido = await releaseLtvClaim(supabase, opts.asaasPaymentId, companyId, paymentAmount);
+    if (devolvido) {
+      throw new RetryableWebhookError(
+        `${motivo} (${opts.asaasPaymentId}) — mutex devolvido, pedindo re-entrega`,
+      );
+    }
+    console.error(
+      `[process] RENOVAÇÃO PERDIDA (${motivo}) — ${formatRecovery({
+        company_id: companyId,
+        empresa: company.name,
+        asaas_payment_id: opts.asaasPaymentId,
+        valor: paymentAmount,
+      })}`,
+    );
+    await alertAdmin(supabase, alerta.type, alerta.title, alerta.message, alerta.data);
+    return { processed: false, reason: motivo, warnings: warnings.list };
+  };
+
   // Tipo: primeira venda vs renovação.
   const isFirstSale = await detectIsFirstSale(supabase, companyId, company.ltv);
+  if (isFirstSale === null) {
+    // Sem saber o tipo, tudo o que vem depois sai errado (comissão e âncora do
+    // vencimento). Nada não-idempotente foi escrito ainda → devolve o mutex.
+    return await abortarDevolvendoMutex("tipo do pagamento não determinado", {
+      type: "subscription_renewal_failed",
+      title: "Pagamento recebido sem classificação",
+      message:
+        `A empresa ${company.name} pagou R$ ${paymentAmount.toFixed(2)} (${opts.asaasPaymentId}) mas não foi ` +
+        `possível saber se é primeira venda ou renovação. A renovação NÃO foi aplicada; confira manualmente.`,
+      data: { company_id: companyId, payment_id: opts.asaasPaymentId, amount: paymentAmount },
+    });
+  }
   const paymentType = isFirstSale ? "primeira_venda" : "renovacao";
   // "sale" e "renewal" existem em admin_financial_categories (labels "Vendas"/"Renovações").
   // NÃO usar "first_sale" aqui: foi consolidado em "sale" e a UI exibiria o name cru.
@@ -439,119 +683,180 @@ async function processConfirmedPayment(
     p_current: baseExpiration,
     p_cycle: billingCycle,
   });
-  if (expError) {
-    console.error(`[process] compute_next_expiration falhou:`, expError.message);
+  if (expError || !nextExpiration) {
+    // O fallback antigo era `nextExpiration ?? baseExpiration`: a empresa era
+    // renovada com o MESMO vencimento de antes — o cliente pagava e ganhava
+    // ZERO dia, com o mutex consumido e resposta 200. Silêncio caro.
+    // Aqui nada não-idempotente foi escrito ainda, então devolvemos o mutex e
+    // pedimos re-entrega.
+    console.error(
+      `[process] compute_next_expiration falhou (${billingCycle}, base ${baseExpiration}):`,
+      expError?.message ?? "sem data de retorno",
+    );
+    return await abortarDevolvendoMutex("novo vencimento não calculado", {
+      type: "subscription_renewal_failed",
+      title: "Pagamento recebido mas vencimento não calculado",
+      message:
+        `A empresa ${company.name} pagou R$ ${paymentAmount.toFixed(2)} (${opts.asaasPaymentId}) e o novo ` +
+        `vencimento não pôde ser calculado. Renove manualmente a partir de ${baseExpiration} (${billingCycle}).`,
+      data: {
+        company_id: companyId,
+        payment_id: opts.asaasPaymentId,
+        amount: paymentAmount,
+        base_expiration: baseExpiration,
+        cycle: billingCycle,
+      },
+    });
   }
-  const newExpiration: string = nextExpiration ?? baseExpiration;
+  const newExpiration: string = nextExpiration;
 
-  // Update da company: status active + nova expiração + pending value + custom price.
-  const companyUpdate: Record<string, any> = {
-    subscription_status: "active",
-    subscription_expires_at: newExpiration,
-  };
+  // ===== O UPDATE DA COMPANY, PARTIDO EM DOIS (VITAL x EXTRAS) =====
+  // Ver `_shared/asaas-webhook-renewal.ts`. Resumo: um único objeto carregava o
+  // `subscription_status: 'active'` (o gate de acesso de quem ACABOU de pagar)
+  // junto com `subscription_plan`/`billing_cycle`/`max_users` vindos dos
+  // `pending_*`. Um valor fora do CHECK em qualquer um deles faz o Postgres
+  // recusar o UPDATE INTEIRO, e o `supabase-js` devolve isso calado — cliente
+  // pagante sem acesso, em silêncio. Agora o vital vai sozinho.
+  const split = splitRenewalCompanyUpdate(company, newExpiration);
+  const hasPendingDowngrade = split.downgrade !== null;
 
-  if (company.pending_subscription_value !== null && company.pending_subscription_value !== undefined) {
-    companyUpdate.subscription_value = company.pending_subscription_value;
-    companyUpdate.pending_subscription_value = null;
-  }
-
-  // Preço promocional temporário (custom_price por N meses) — só progride se NÃO permanente.
-  if (
-    company.custom_price !== null &&
-    company.custom_price !== undefined &&
-    company.custom_price_months !== null &&
-    company.custom_price_months !== undefined &&
-    !company.custom_price_permanent
-  ) {
-    const paymentsMade = (company.custom_price_payments_made || 0) + 1;
-    companyUpdate.custom_price_payments_made = paymentsMade;
-    if (paymentsMade >= company.custom_price_months) {
-      // Fim do período promocional → volta ao subscription_value (Dominex não tem base_subscription_value).
-      companyUpdate.custom_price = null;
-      companyUpdate.custom_price_months = null;
-      companyUpdate.custom_price_payments_made = 0;
-    }
-  }
-
-  // ===== DOWNGRADE AGENDADO (MUDANÇA C) — gated pelo mutex (só roda no winner) =====
-  // Quando o cliente agenda um downgrade no painel, o alvo fica em pending_plan_code/
-  // pending_billing_cycle/pending_max_users/pending_modules (e o valor já vem por
-  // pending_subscription_value, aplicado acima). O downgrade só EFETIVA na próxima
-  // renovação confirmada — exatamente AQUI, abaixo do portão de idempotência.
-  // pendingModuleCodes (quando o downgrade aplica) define o conjunto-alvo de módulos.
-  let pendingModuleCodes: string[] | null = null;
-  const hasPendingDowngrade =
-    company.pending_plan_code !== null && company.pending_plan_code !== undefined;
-
-  if (hasPendingDowngrade) {
-    companyUpdate.subscription_plan = company.pending_plan_code;
-    if (company.pending_billing_cycle !== null && company.pending_billing_cycle !== undefined) {
-      companyUpdate.billing_cycle = company.pending_billing_cycle;
-    }
-    if (company.pending_max_users !== null && company.pending_max_users !== undefined) {
-      companyUpdate.max_users = company.pending_max_users;
-    }
-
-    // Conjunto-alvo de módulos: pending_modules explícito, senão os included do novo plano.
-    if (Array.isArray(company.pending_modules)) {
-      pendingModuleCodes = company.pending_modules.filter(
-        (m: unknown): m is string => typeof m === "string",
-      );
-    } else {
-      const { data: targetPlan } = await supabase
-        .from("subscription_plans")
-        .select("included_modules")
-        .eq("code", company.pending_plan_code)
-        .maybeSingle();
-      const inc: unknown = targetPlan?.included_modules;
-      pendingModuleCodes = Array.isArray(inc)
-        ? inc.filter((m): m is string => typeof m === "string")
-        : [];
-    }
-
-    // Limpa TODOS os pending_* nesta mesma atualização (downgrade consumido).
-    companyUpdate.pending_plan_code = null;
-    companyUpdate.pending_billing_cycle = null;
-    companyUpdate.pending_max_users = null;
-    companyUpdate.pending_modules = null;
-    companyUpdate.pending_subscription_value = null; // garante limpeza mesmo se valor não veio acima
+  // Conjunto-alvo de módulos do downgrade: `pending_modules` explícito, senão os
+  // included do plano-alvo. Resolvido aqui porque exige SELECT (o split é puro).
+  let pendingModuleCodes: string[] | null = split.downgrade?.explicitModules ?? null;
+  if (split.downgrade && pendingModuleCodes === null) {
+    const { data: targetPlan } = await supabase
+      .from("subscription_plans")
+      .select("included_modules")
+      .eq("code", split.downgrade.planCode)
+      .maybeSingle();
+    const inc: unknown = targetPlan?.included_modules;
+    pendingModuleCodes = Array.isArray(inc)
+      ? inc.filter((m): m is string => typeof m === "string")
+      : [];
   }
 
-  await supabase.from("companies").update(companyUpdate).eq("id", companyId);
+  // (1) VITAL — FATAL. Se não entrar, responder sucesso é mentira: o cliente
+  // pagou e continua bloqueado. Como estamos DEPOIS do mutex, a re-entrega
+  // sozinha seria no-op — por isso DEVOLVEMOS o mutex antes de lançar. E só
+  // lançamos se a devolução deu certo: 500 sem mutex devolvido é fila travada
+  // pra receber o mesmo evento e jogá-lo fora de novo.
+  const vitalOk = await tryWrite(
+    "renovação da empresa (companies: status + vencimento)",
+    supabase.from("companies").update(split.vital).eq("id", companyId),
+    {
+      recovery: {
+        company_id: companyId,
+        empresa: company.name,
+        asaas_payment_id: opts.asaasPaymentId,
+        novo_vencimento: newExpiration,
+        valor: paymentAmount,
+      },
+      warnings,
+    },
+  );
+  if (!vitalOk) {
+    return await abortarDevolvendoMutex("renovação não gravada", {
+      type: "subscription_renewal_failed",
+      title: "Pagamento recebido mas assinatura não renovada",
+      message:
+        `A empresa ${company.name} pagou R$ ${paymentAmount.toFixed(2)} (${opts.asaasPaymentId}) e a renovação ` +
+        `não foi gravada. Renove manualmente: status ativo e vencimento ${newExpiration}.`,
+      data: {
+        company_id: companyId,
+        payment_id: opts.asaasPaymentId,
+        amount: paymentAmount,
+        new_expiration: newExpiration,
+      },
+    });
+  }
 
-  if (hasPendingDowngrade) {
+  // (2) EXTRAS — NÃO-fatal. Promoção temporária, valor agendado e downgrade.
+  // Falhar aqui deixa o cliente no plano ANTIGO (mais caro / mais acesso), com
+  // os `pending_*` intactos — ou seja, o downgrade é reavaliado na próxima
+  // renovação em vez de sumir. É degradação segura; perder o acesso não seria.
+  let extrasOk = true;
+  if (split.hasExtras) {
+    extrasOk = await tryWrite(
+      "ajustes da renovação (companies: valor, promoção, downgrade)",
+      supabase.from("companies").update(split.extras).eq("id", companyId),
+      {
+        recovery: {
+          company_id: companyId,
+          empresa: company.name,
+          asaas_payment_id: opts.asaasPaymentId,
+          campos: Object.keys(split.extras).join("|"),
+        },
+        warnings,
+      },
+    );
+  }
+
+  if (hasPendingDowngrade && extrasOk) {
     // Sincroniza company_modules EXATAMENTE pro conjunto-alvo do downgrade:
     // remove os que não fazem mais parte e insere os que faltam. Reduz acesso
     // de verdade (diferente de activatePlanModules, que só adiciona).
-    await syncCompanyModulesExact(supabase, companyId, pendingModuleCodes ?? []);
+    // Só roda se os extras entraram: mexer nos módulos sem ter gravado o plano
+    // novo deixaria acesso e cobrança apontando pra planos diferentes.
+    await syncCompanyModulesExact(supabase, companyId, pendingModuleCodes ?? [], warnings);
     console.log(
-      `[downgrade] aplicado p/ ${company.name}: plano '${company.pending_plan_code}', ` +
+      `[downgrade] aplicado p/ ${company.name}: plano '${split.downgrade?.planCode}', ` +
         `módulos [${(pendingModuleCodes ?? []).join(", ")}]`,
     );
-  } else {
+  } else if (!hasPendingDowngrade) {
     // Sem downgrade pendente: mantém o comportamento aditivo (não remove extras pagos).
-    await activatePlanModules(supabase, companyId, company.subscription_plan ?? null);
+    await activatePlanModules(supabase, companyId, company.subscription_plan ?? null, warnings);
   }
 
-  // company_payments — coluna canônica asaas_payment_id pra idempotência futura.
-  await supabase.from("company_payments").insert({
-    company_id: companyId,
-    amount: paymentAmount,
-    type: paymentType,
-    payment_method: (opts.billingType || "PIX").toLowerCase(),
-    notes: `Pagamento via Asaas - ${opts.asaasPaymentId}`,
-    payment_date: new Date().toISOString(),
-    origin: company.origin || null,
-    asaas_payment_id: opts.asaasPaymentId,
-  });
+  // company_payments — histórico do valor recebido.
+  // NÃO-fatal e SEM re-entrega: a tabela não tem UNIQUE em asaas_payment_id
+  // (conferido na migration de fundação: "nullable, SEM unique"), então este
+  // INSERT NÃO é idempotente. Devolver o mutex e re-entregar duplicaria a linha
+  // E estenderia o vencimento uma segunda vez (mês grátis). A perda aqui é de
+  // histórico, não de acesso — vai pro log de recuperação e pro alerta.
+  const histOk = await tryWrite(
+    "histórico de pagamento da empresa (company_payments)",
+    supabase.from("company_payments").insert({
+      company_id: companyId,
+      amount: paymentAmount,
+      type: paymentType,
+      payment_method: (opts.billingType || "PIX").toLowerCase(),
+      notes: `Pagamento via Asaas - ${opts.asaasPaymentId}`,
+      payment_date: new Date().toISOString(),
+      origin: company.origin || null,
+      asaas_payment_id: opts.asaasPaymentId,
+    }),
+    {
+      recovery: {
+        company_id: companyId,
+        empresa: company.name,
+        valor: paymentAmount,
+        tipo: paymentType,
+        asaas_payment_id: opts.asaasPaymentId,
+      },
+      warnings,
+    },
+  );
+  if (!histOk) {
+    await alertAdmin(
+      supabase,
+      "company_payment_not_recorded",
+      "Pagamento recebido fora do histórico da empresa",
+      `A empresa ${company.name} pagou R$ ${paymentAmount.toFixed(2)} (${opts.asaasPaymentId}) e o lançamento ` +
+        `em histórico de pagamentos não entrou. A assinatura FOI renovada; falta só o registro.`,
+      { company_id: companyId, payment_id: opts.asaasPaymentId, amount: paymentAmount, type: paymentType },
+    );
+  }
 
   // admin_financial_transactions (receita) — INSERT idempotente.
   // O índice único é PARCIAL (WHERE asaas_transaction_id IS NOT NULL); o PostgREST não
   // emite o predicado no onConflict, então UPSERT errava em SILÊNCIO e a receita não era
   // gravada. Fazemos INSERT direto e tratamos 23505 (unique_violation no índice parcial)
   // como sucesso/idempotente. asaas_transaction_id aqui é SEMPRE o pay_* (nunca null).
-  {
-    const { error: incomeErr } = await supabase.from("admin_financial_transactions").insert({
+  // NÃO-fatal e SEM re-entrega: pós-mutex. A receita sumida é conserto humano
+  // (o alerta abaixo), não automático.
+  const receitaOk = await tryWrite(
+    "receita da assinatura (admin_financial_transactions)",
+    supabase.from("admin_financial_transactions").insert({
       type: "income",
       category: financialCategory,
       amount: paymentAmount,
@@ -560,10 +865,33 @@ async function processConfirmedPayment(
       reference_type: "subscription_payment",
       asaas_transaction_id: opts.asaasPaymentId,
       transaction_date: new Date().toISOString(),
-    });
-    if (incomeErr && incomeErr.code !== "23505") {
-      console.error(`[process] insert receita falhou (${opts.asaasPaymentId}):`, incomeErr.message);
-    }
+    }),
+    {
+      ignoreCodes: ["23505"], // já lançada: idempotente, não é erro.
+      recovery: {
+        asaas_transaction_id: opts.asaasPaymentId,
+        empresa: company.name,
+        company_id: companyId,
+        valor: paymentAmount,
+        categoria: financialCategory,
+      },
+      warnings,
+    },
+  );
+  if (!receitaOk) {
+    await alertAdmin(
+      supabase,
+      "subscription_income_not_recorded",
+      "Receita de assinatura não lançada",
+      `O pagamento de R$ ${paymentAmount.toFixed(2)} de ${company.name} (${opts.asaasPaymentId}) foi confirmado, ` +
+        `mas a receita não entrou no financeiro consolidado. Lance manualmente.`,
+      {
+        company_id: companyId,
+        payment_id: opts.asaasPaymentId,
+        amount: paymentAmount,
+        category: financialCategory,
+      },
+    );
   }
 
   // Tarifa Asaas (só quando netValue real veio e é menor que o bruto).
@@ -572,19 +900,26 @@ async function processConfirmedPayment(
     const asaasFee = Math.round((paymentAmount - netValue) * 100) / 100;
     // INSERT idempotente (mesmo motivo do índice parcial acima). 23505 = já existe → ok.
     const feeTxId = `${opts.asaasPaymentId}_fee`;
-    const { error: feeErr } = await supabase.from("admin_financial_transactions").insert({
-      type: "expense",
-      category: "asaas_fee",
-      amount: asaasFee,
-      description: `Tarifa Asaas - ${company.name} (${opts.billingType || "PIX"})`,
-      reference_id: companyId,
-      reference_type: "asaas_fee",
-      asaas_transaction_id: feeTxId,
-      transaction_date: new Date().toISOString(),
-    });
-    if (feeErr && feeErr.code !== "23505") {
-      console.error(`[process] insert tarifa falhou (${feeTxId}):`, feeErr.message);
-    }
+    // NÃO-fatal e SEM re-entrega (pós-mutex). Tarifa faltando subestima o custo
+    // no consolidado; a linha de recuperação tem tudo pra lançar à mão.
+    await tryWrite(
+      "tarifa Asaas (admin_financial_transactions)",
+      supabase.from("admin_financial_transactions").insert({
+        type: "expense",
+        category: "asaas_fee",
+        amount: asaasFee,
+        description: `Tarifa Asaas - ${company.name} (${opts.billingType || "PIX"})`,
+        reference_id: companyId,
+        reference_type: "asaas_fee",
+        asaas_transaction_id: feeTxId,
+        transaction_date: new Date().toISOString(),
+      }),
+      {
+        ignoreCodes: ["23505"],
+        recovery: { asaas_transaction_id: feeTxId, empresa: company.name, company_id: companyId, tarifa: asaasFee },
+        warnings,
+      },
+    );
   }
 
   // subscription_payments — garante rastro (UPSERT por asaas_payment_id UNIQUE).
@@ -592,23 +927,60 @@ async function processConfirmedPayment(
   // REAL da Asaas, HOJE só no fallback). NÃO trocar por "hoje" aqui: este UPSERT roda
   // DEPOIS do mutex e regrava a linha, então gravar "hoje" aqui desfaria a correção para
   // o PRÓXIMO pagamento que o Guard 2 comparar contra esta linha.
-  await supabase.from("subscription_payments").upsert(
+  //
+  // NÃO-fatal e SEM re-entrega (pós-mutex), MAS é a escrita mais perigosa de
+  // perder calada: `due_date` é a CHAVE DE CICLO do Guard 2 da RPC
+  // credit_ltv_once_for_payment. Falhar aqui não estraga ESTE pagamento (já
+  // renovado) — envenena o PRÓXIMO, que será comparado contra uma linha com
+  // due_date errado e pode ser descartado como duplicata. Por isso vai com
+  // alerta ao admin, não só com log.
+  const rastroOk = await tryWrite(
+    "rastro do pagamento (subscription_payments: paid_at + due_date do ciclo)",
+    supabase.from("subscription_payments").upsert(
+      {
+        company_id: companyId,
+        asaas_payment_id: opts.asaasPaymentId,
+        asaas_customer_id: opts.customerId ?? company.asaas_customer_id ?? null,
+        amount: paymentAmount,
+        status: "CONFIRMED",
+        billing_type: opts.billingType || "PIX",
+        billing_cycle: billingCycle,
+        type: paymentType,
+        payment_method: (opts.billingType || "PIX").toLowerCase(),
+        due_date: effectiveDueDate,
+        paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "asaas_payment_id" },
+    ),
     {
-      company_id: companyId,
-      asaas_payment_id: opts.asaasPaymentId,
-      asaas_customer_id: opts.customerId ?? company.asaas_customer_id ?? null,
-      amount: paymentAmount,
-      status: "CONFIRMED",
-      billing_type: opts.billingType || "PIX",
-      billing_cycle: billingCycle,
-      type: paymentType,
-      payment_method: (opts.billingType || "PIX").toLowerCase(),
-      due_date: effectiveDueDate,
-      paid_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      recovery: {
+        asaas_payment_id: opts.asaasPaymentId,
+        company_id: companyId,
+        empresa: company.name,
+        valor: paymentAmount,
+        due_date: effectiveDueDate,
+        tipo: paymentType,
+      },
+      warnings,
     },
-    { onConflict: "asaas_payment_id" },
   );
+  if (!rastroOk) {
+    await alertAdmin(
+      supabase,
+      "subscription_payment_trace_failed",
+      "Rastro do pagamento incompleto (risco no próximo ciclo)",
+      `A renovação de ${company.name} (${opts.asaasPaymentId}) foi aplicada, mas o registro do ciclo não ` +
+        `atualizou (vencimento ${effectiveDueDate}). Confira antes da próxima cobrança: o ciclo seguinte ` +
+        `pode ser lido como repetido.`,
+      {
+        company_id: companyId,
+        payment_id: opts.asaasPaymentId,
+        due_date: effectiveDueDate,
+        amount: paymentAmount,
+      },
+    );
+  }
 
   // salesperson_sales — SÓ na primeira venda e SÓ se houver vendedor.
   // FONTE DA VERDADE DA COMISSÃO (FURO 2): a comissão é criada EXCLUSIVAMENTE aqui no
@@ -617,14 +989,33 @@ async function processConfirmedPayment(
   // retorna cedo (linha do `if (!ltvClaimed) return`) quando o pagamento já foi processado,
   // então a comissão também roda no máximo 1x por pagamento.
   if (isFirstSale && company.salesperson_id) {
-    const { data: existingSale } = await supabase
+    // Esta leitura é a ÚNICA trava contra comissão em dobro. Com o `error`
+    // descartado, um SELECT recusado devolvia `undefined` — indistinguível de
+    // "não existe" — e o INSERT rodava por cima de uma comissão já paga. Na
+    // dúvida, NÃO paga: o admin é avisado e lança à mão (o inverso, pagar duas
+    // vezes, é dinheiro que sai e não volta).
+    const { data: existingSale, error: existingSaleErr } = await supabase
       .from("salesperson_sales")
       .select("id")
       .eq("company_id", companyId)
       .limit(1)
       .maybeSingle();
 
-    if (!existingSale) {
+    if (existingSaleErr) {
+      console.error(
+        `[salesperson] leitura de comissão existente falhou (${companyId}):`,
+        existingSaleErr.message,
+      );
+      warnings.add("comissão do vendedor: não foi possível conferir se já existia — não lançada.");
+      await alertAdmin(
+        supabase,
+        "salesperson_commission_not_recorded",
+        "Comissão não lançada por segurança",
+        `A primeira venda de ${company.name} (${opts.asaasPaymentId}) foi confirmada, mas não deu pra conferir ` +
+          `se a comissão já existia. Nada foi lançado pra não pagar em dobro; confira e lance à mão.`,
+        { company_id: companyId, payment_id: opts.asaasPaymentId, salesperson_id: company.salesperson_id },
+      );
+    } else if (!existingSale) {
       // REGRA DE COMISSÃO SDR/CLOSER — régua NOVA (CEO 2026-07-16), espelha
       // calculateCommission de src/hooks/useSalespersonData.ts (fonte da verdade
       // no painel master) e a RPC register_manual_company_payment.
@@ -657,38 +1048,85 @@ async function processConfirmedPayment(
         sdrCommission = 0;
       }
 
-      await supabase.from("salesperson_sales").insert({
-        salesperson_id: company.salesperson_id, // closer
-        sdr_id: sdrId,
-        company_id: companyId,
-        customer_name: company.name,
-        customer_origin: company.origin,
-        amount: commissionBase,
-        paid_amount: company.subscription_value ?? paymentAmount,
-        commission_amount: total,
-        closer_commission: closerCommission,
-        sdr_commission: sdrCommission,
-        billing_cycle: isYearly ? "annual" : "monthly",
-        // [LEAD SELF-SERVICE] segura a comissão só quando é lead self-service
-        // ainda não trabalhado (espelha a RPC register_manual_company_payment).
-        status: (!company.is_self_service || company.lead_worked_at)
-          ? "confirmed"
-          : "pending_work",
-      });
-      console.log(
-        `[salesperson] venda registrada p/ ${company.name}: comissão total R$ ${total} ` +
-          (sdrId
-            ? `(80/20 → closer R$ ${closerCommission} / sdr R$ ${sdrCommission})`
-            : `(100% closer R$ ${closerCommission})`),
+      // NÃO-fatal e SEM re-entrega (pós-mutex) — mas com ALERTA obrigatório.
+      // Este webhook é a fonte da verdade EXCLUSIVA da comissão: o
+      // confirm-sale-payment não cria comissão de propósito (pra não duplicar).
+      // Se esta linha não entrar, NÃO existe segundo caminho que a recupere; o
+      // vendedor simplesmente não recebe e ninguém descobre. Por isso o alerta
+      // carrega os valores já calculados, prontos pra lançar à mão.
+      const comissaoOk = await tryWrite(
+        "comissão do vendedor (salesperson_sales)",
+        supabase.from("salesperson_sales").insert({
+          salesperson_id: company.salesperson_id, // closer
+          sdr_id: sdrId,
+          company_id: companyId,
+          customer_name: company.name,
+          customer_origin: company.origin,
+          amount: commissionBase,
+          paid_amount: company.subscription_value ?? paymentAmount,
+          commission_amount: total,
+          closer_commission: closerCommission,
+          sdr_commission: sdrCommission,
+          billing_cycle: isYearly ? "annual" : "monthly",
+          // [LEAD SELF-SERVICE] segura a comissão só quando é lead self-service
+          // ainda não trabalhado (espelha a RPC register_manual_company_payment).
+          status: (!company.is_self_service || company.lead_worked_at)
+            ? "confirmed"
+            : "pending_work",
+        }),
+        {
+          recovery: {
+            company_id: companyId,
+            empresa: company.name,
+            closer_id: company.salesperson_id,
+            sdr_id: sdrId,
+            base: commissionBase,
+            comissao_total: total,
+            closer: closerCommission,
+            sdr: sdrCommission,
+            ciclo: isYearly ? "annual" : "monthly",
+            asaas_payment_id: opts.asaasPaymentId,
+          },
+          warnings,
+        },
       );
+      if (comissaoOk) {
+        console.log(
+          `[salesperson] venda registrada p/ ${company.name}: comissão total R$ ${total} ` +
+            (sdrId
+              ? `(80/20 → closer R$ ${closerCommission} / sdr R$ ${sdrCommission})`
+              : `(100% closer R$ ${closerCommission})`),
+        );
+      } else {
+        await alertAdmin(
+          supabase,
+          "salesperson_commission_not_recorded",
+          "Comissão de venda não registrada",
+          `A primeira venda de ${company.name} (${opts.asaasPaymentId}) foi confirmada, mas a comissão não ` +
+            `foi gravada. Lance manualmente: total R$ ${total.toFixed(2)}` +
+            (sdrId
+              ? ` (closer R$ ${closerCommission.toFixed(2)} / SDR R$ ${sdrCommission.toFixed(2)}).`
+              : ` (100% do closer).`),
+          {
+            company_id: companyId,
+            payment_id: opts.asaasPaymentId,
+            salesperson_id: company.salesperson_id,
+            sdr_id: sdrId,
+            commission_amount: total,
+            closer_commission: closerCommission,
+            sdr_commission: sdrCommission,
+          },
+        );
+      }
     }
   }
 
   console.log(
     `[process] ${paymentType} aplicada p/ ${company.name} (${opts.matchedBy}): R$ ${paymentAmount}, ` +
-      `nova expiração ${newExpiration}`,
+      `nova expiração ${newExpiration}` +
+      (warnings.hasAny ? ` | COM PENDÊNCIAS: ${warnings.list.join(" / ")}` : ""),
   );
-  return { processed: true, type: paymentType };
+  return { processed: true, type: paymentType, ...warnings.toBody() };
 }
 
 /** Colunas da company necessárias em todo caminho de ativação. */
@@ -765,12 +1203,26 @@ async function resolveCompany(
       const incomingCustomer: string | null =
         typeof payment.customer === "string" ? payment.customer : null;
       if (!match.asaas_customer_id && incomingCustomer) {
-        await supabase
-          .from("companies")
-          .update({ asaas_customer_id: incomingCustomer })
-          .eq("id", match.id);
-        match.asaas_customer_id = incomingCustomer; // reflete pro caller
-        console.log(`[resolve] backfill asaas_customer_id=${incomingCustomer} em ${match.name} (match por CPF/CNPJ)`);
+        // NÃO-fatal e SEM re-entrega: a company JÁ foi resolvida pelo CPF/CNPJ,
+        // então o pagamento processa normalmente e re-entregar o evento inteiro
+        // só pra backfillar um ponteiro seria desproporcional (a mesma cascata
+        // resolve o próximo evento do mesmo jeito).
+        // MAS não é inofensivo: `asaas_customer_id` vazio é o que faz outras
+        // rotas criarem um customer DUPLICADO na Asaas. Por isso vai com linha
+        // de recuperação, e o reflexo em memória só acontece se GRAVOU — antes
+        // o objeto passava a mentir pro chamador mesmo com a escrita recusada.
+        const backfilled = await tryWrite(
+          "backfill do asaas_customer_id (companies)",
+          supabase
+            .from("companies")
+            .update({ asaas_customer_id: incomingCustomer })
+            .eq("id", match.id),
+          { recovery: { company_id: match.id, empresa: match.name, asaas_customer_id: incomingCustomer } },
+        );
+        if (backfilled) {
+          match.asaas_customer_id = incomingCustomer; // reflete pro caller
+          console.log(`[resolve] backfill asaas_customer_id=${incomingCustomer} em ${match.name} (match por CPF/CNPJ)`);
+        }
       }
       return { company: match, matchedBy: "cpf_cnpj" };
     }
@@ -794,9 +1246,16 @@ async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void
   const occurredAt =
     payment.confirmedDate || payment.paymentDate || payment.dateCreated || new Date().toISOString();
 
-  try {
-    // 1) Ledger pendente de categorização (company_id NULL). ON CONFLICT DO NOTHING via upsert.
-    await supabase.from("ledger_asaas").upsert(
+  // 1) Ledger pendente de categorização (company_id NULL). ON CONFLICT DO NOTHING via upsert.
+  //
+  // FATAL (pede re-entrega). Esta linha é o ÚNICO lugar onde o dinheiro de um
+  // pagamento sem empresa fica registrado — perdê-la é perder a pista de uma
+  // entrada real de caixa. É idempotente (`ignoreDuplicates` no
+  // asaas_transaction_id UNIQUE) e roda ANTES de qualquer mutex, então a
+  // re-entrega conserta de graça. O `try/catch` que engolia isso foi removido.
+  await applyWrite(
+    "registro do pagamento órfão (ledger_asaas)",
+    supabase.from("ledger_asaas").upsert(
       {
         asaas_transaction_id: paymentId,
         asaas_payment_id: paymentId,
@@ -810,23 +1269,28 @@ async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void
         raw_payload: payment,
       },
       { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-    );
-  } catch (e) {
-    console.error("[unmatched] ledger_asaas falhou (não-fatal):", (e as Error).message);
-  }
+    ),
+    { rethrow: retryableRethrow("registro do pagamento órfão (ledger_asaas)") },
+  );
 
-  try {
-    // 2) Alerta ao admin — idempotente: só insere se não existe notificação pro mesmo payment.id.
-    const { data: existingNotif } = await supabase
-      .from("admin_notifications")
-      .select("id")
-      .eq("type", "unmatched_asaas_payment")
-      .eq("data->>payment_id", paymentId)
-      .limit(1)
-      .maybeSingle();
+  // 2) Alerta ao admin — idempotente: só insere se não existe notificação pro mesmo payment.id.
+  //
+  // NÃO-fatal de propósito, e é a única exceção consciente à régua "dinheiro é
+  // fatal": o dinheiro já está preservado no ledger acima (que É fatal), e a
+  // conciliação financeira lista o ledger pendente — o alerta é conveniência.
+  // Re-entregar o evento só pra repetir um aviso vira ruído na fila da Asaas.
+  const { data: existingNotif } = await supabase
+    .from("admin_notifications")
+    .select("id")
+    .eq("type", "unmatched_asaas_payment")
+    .eq("data->>payment_id", paymentId)
+    .limit(1)
+    .maybeSingle();
 
-    if (!existingNotif) {
-      await supabase.from("admin_notifications").insert({
+  if (!existingNotif) {
+    const avisado = await tryWrite(
+      "alerta de pagamento órfão (admin_notifications)",
+      supabase.from("admin_notifications").insert({
         type: "unmatched_asaas_payment",
         title: "Pagamento Asaas sem empresa vinculada",
         message:
@@ -838,13 +1302,12 @@ async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void
           customer,
           cpfCnpj,
         },
-      });
-      console.log(`[unmatched] alerta criado p/ pagamento órfão ${paymentId} (R$ ${amount})`);
-    } else {
-      console.log(`[unmatched] alerta já existente p/ ${paymentId} — não duplicado.`);
-    }
-  } catch (e) {
-    console.error("[unmatched] admin_notifications falhou (não-fatal):", (e as Error).message);
+      }),
+      { recovery: { payment_id: paymentId, valor: amount, customer, cpfCnpj } },
+    );
+    if (avisado) console.log(`[unmatched] alerta criado p/ pagamento órfão ${paymentId} (R$ ${amount})`);
+  } else {
+    console.log(`[unmatched] alerta já existente p/ ${paymentId} — não duplicado.`);
   }
 }
 
@@ -920,23 +1383,32 @@ async function recordAnticipationFee(
   const billingType = (payRow?.billing_type || "PIX").toString().toUpperCase();
 
   const antFeeTxId = `${paymentId}_anticipation_fee`;
-  const { error: feeErr } = await supabase.from("admin_financial_transactions").insert({
-    type: "expense",
-    category: "asaas_anticipation_fee",
-    amount: totalFee,
-    description: `Taxa de Antecipação Asaas - ${companyName} (${billingType})`,
-    reference_id: companyId,
-    reference_type: "asaas_anticipation_fee",
-    asaas_transaction_id: antFeeTxId,
-    transaction_date: new Date().toISOString(),
-  });
-  if (feeErr && feeErr.code !== "23505") {
-    console.error(`[anticipation] insert taxa de antecipação falhou (${antFeeTxId}):`, feeErr.message);
-    return { recorded: false, reason: "insert falhou" };
+  // FATAL (pede re-entrega). É despesa real já cobrada pela Asaas; não lançar
+  // subestima o custo no consolidado. Idempotente por `${pay_*}_anticipation_fee`
+  // (23505 = já existe = ok) e sem mutex envolvido, então a re-entrega conserta.
+  // Antes, o `return { recorded: false }` virava HTTP 200 e a taxa sumia.
+  const lancada = await tryWrite(
+    "taxa de antecipação (admin_financial_transactions)",
+    supabase.from("admin_financial_transactions").insert({
+      type: "expense",
+      category: "asaas_anticipation_fee",
+      amount: totalFee,
+      description: `Taxa de Antecipação Asaas - ${companyName} (${billingType})`,
+      reference_id: companyId,
+      reference_type: "asaas_anticipation_fee",
+      asaas_transaction_id: antFeeTxId,
+      transaction_date: new Date().toISOString(),
+    }),
+    {
+      ignoreCodes: ["23505"],
+      recovery: { asaas_transaction_id: antFeeTxId, empresa: companyName, company_id: companyId, taxa: totalFee },
+    },
+  );
+  if (!lancada) {
+    throw new RetryableWebhookError(`taxa de antecipação não lançada (${antFeeTxId})`);
   }
   console.log(
-    `[anticipation] taxa de antecipação R$ ${totalFee.toFixed(2)} lançada p/ ${companyName} (${antFeeTxId})` +
-      (feeErr?.code === "23505" ? " [já existia — idempotente]" : ""),
+    `[anticipation] taxa de antecipação R$ ${totalFee.toFixed(2)} lançada p/ ${companyName} (${antFeeTxId})`,
   );
   return { recorded: true, fee: totalFee };
 }
@@ -1091,10 +1563,19 @@ Deno.serve(async (req) => {
             .limit(1)
             .maybeSingle();
           if (linkable) {
-            await supabase
-              .from("subscription_payments")
-              .update({ asaas_payment_id: payment.id, updated_at: new Date().toISOString() })
-              .eq("id", linkable.id);
+            // FATAL (pede re-entrega). Sem o link, o pagamento que chegar depois
+            // não acha a linha, o mutex não tem o que reivindicar e a renovação
+            // vira no-op silencioso. Idempotente: o filtro
+            // `.is("asaas_payment_id", null)` faz a re-execução não achar nada
+            // quando o link já entrou. Nada reivindicado ainda.
+            await applyWrite(
+              "vínculo da cobrança à assinatura (subscription_payments)",
+              supabase
+                .from("subscription_payments")
+                .update({ asaas_payment_id: payment.id, updated_at: new Date().toISOString() })
+                .eq("id", linkable.id),
+              { rethrow: retryableRethrow("vínculo da cobrança à assinatura") },
+            );
             console.log(`[payment_created] linkado ${payment.id} ao subscription_payment ${linkable.id}`);
           }
         }
@@ -1114,10 +1595,16 @@ Deno.serve(async (req) => {
         kind,
       );
       // Atualiza status do pagamento local (sem desativar automaticamente — decisão manual do admin).
-      await supabase
-        .from("subscription_payments")
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq("asaas_payment_id", payment.id);
+      // FATAL (pede re-entrega): é o estado que diz que o dinheiro voltou.
+      // Idempotente (grava um valor fixo) e sem mutex — re-entregar conserta.
+      await applyWrite(
+        `status de ${kind} no pagamento (subscription_payments)`,
+        supabase
+          .from("subscription_payments")
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id),
+        { rethrow: retryableRethrow(`status de ${kind} no pagamento`) },
+      );
       return json({ received: true, recorded: kind });
     }
 
@@ -1128,10 +1615,16 @@ Deno.serve(async (req) => {
     // company (inactive) quando for 1ª venda nunca paga (LTV=0 e sem company_payments).
     // Renovação vencida NÃO derruba o cliente automaticamente.
     if (event === "PAYMENT_OVERDUE") {
-      await supabase
-        .from("subscription_payments")
-        .update({ status: "OVERDUE", updated_at: new Date().toISOString() })
-        .eq("asaas_payment_id", payment.id);
+      // FATAL (pede re-entrega): inadimplência registrada. Idempotente (valor
+      // fixo), sem mutex — re-entregar conserta e não duplica nada.
+      await applyWrite(
+        "marcação de inadimplência (subscription_payments)",
+        supabase
+          .from("subscription_payments")
+          .update({ status: "OVERDUE", updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id),
+        { rethrow: retryableRethrow("marcação de inadimplência") },
+      );
 
       const resolved = await resolveCompany(supabase, payment);
       if (resolved?.company && resolved.company.subscription_status === "active") {
@@ -1143,10 +1636,18 @@ Deno.serve(async (req) => {
           .limit(1);
         const neverPaid = (!confirmed || confirmed.length === 0) && (Number(resolved.company.ltv) || 0) === 0;
         if (neverPaid) {
-          await supabase
-            .from("companies")
-            .update({ subscription_status: "inactive" })
-            .eq("id", resolved.company.id);
+          // FATAL (pede re-entrega): é o gate de assinatura decidindo acesso.
+          // Falhar calado deixa uma 1ª venda nunca paga usando o sistema de
+          // graça. Idempotente: na re-execução o `subscription_status` já não é
+          // 'active', então o bloco inteiro é pulado. Sem mutex envolvido.
+          await applyWrite(
+            "desativação da empresa inadimplente (companies)",
+            supabase
+              .from("companies")
+              .update({ subscription_status: "inactive" })
+              .eq("id", resolved.company.id),
+            { rethrow: retryableRethrow("desativação da empresa inadimplente") },
+          );
           console.log(`[overdue] ${resolved.company.name} desativada (1ª venda nunca paga).`);
         }
       }
@@ -1179,9 +1680,18 @@ Deno.serve(async (req) => {
     console.log(`[webhook] evento ${event} (status ${status}) sem ação. Ack.`);
     return json({ received: true, handled: false });
   } catch (error) {
-    console.error("[webhook] erro inesperado:", (error as Error).message);
-    // Responde 200 mesmo em erro pra Asaas não re-enfileirar infinitamente um payload ruim.
-    // (Idempotência protege contra reprocessamento caso a Asaas re-tente.)
-    return json({ received: true, error: (error as Error).message });
+    // A resposta é decidida por `webhookResponseFor` (ver `_shared/asaas-webhook-renewal.ts`):
+    //  - erro marcado como retryable → 500 `{ retry: true }`: a Asaas RE-ENTREGA,
+    //    que é o único conserto automático que existe pra uma escrita idempotente
+    //    que o banco recusou. Antes isto respondia 200 e o evento sumia.
+    //  - qualquer outro erro → 200: payload ruim ou bug de código não melhora com
+    //    re-entrega, e insistir trava a fila de webhook da conta inteira.
+    // A mensagem interna vai só pro log — nunca no corpo de um endpoint público.
+    const plan = webhookResponseFor(error);
+    console.error(
+      `[webhook] erro ${plan.status === 500 ? "RETRYABLE (pedindo re-entrega)" : "não-retryable (ack)"}:`,
+      (error as Error).message,
+    );
+    return json(plan.body, plan.status);
   }
 });

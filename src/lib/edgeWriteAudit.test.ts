@@ -109,6 +109,10 @@ describe('edges de dinheiro — nenhuma escrita sem portão', () => {
     'change-subscription-plan',
     'create-asaas-payment',
     'cancel-pending-asaas-payments',
+    // O webhook que credita TODO pagamento de tenant da Auctus: renovação,
+    // receita, comissão de vendedor, desativação por inadimplência. Era o
+    // arquivo com mais ocorrências do padrão (11).
+    'asaas-webhook',
   ])(
     '%s não tem escrita de banco sem checagem de erro',
     (name) => {
