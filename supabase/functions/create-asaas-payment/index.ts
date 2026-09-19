@@ -29,6 +29,7 @@ import {
   assertAsaasConfigured,
 } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
+import { applyWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
 
 class ValidationError extends Error {}
 
@@ -103,6 +104,20 @@ Deno.serve(async (req) => {
 
     // Falha cedo e claro se a chave não estiver setada.
     assertAsaasConfigured();
+
+    // ===== POLÍTICA DE FALHA DE ESCRITA (incidente "supabase-js não lança", 2026-09-19) =====
+    // O `supabase-js` devolve `{ error }` em vez de lançar. Nesta função a fronteira
+    // é UMA SÓ e é a mais cara do sistema: a CRIAÇÃO DA COBRANÇA NA ASAAS.
+    //
+    //   ANTES de criar a cobrança → applyWrite (fatal). Nada foi cobrado; o usuário
+    //     repete e o pior que acontece é refazer a mesma escrita.
+    //
+    //   DEPOIS de criar a cobrança → tryWriteReturning (aviso). A cobrança JÁ existe
+    //     no gateway (no cartão, já foi capturada). Devolver erro faria o cliente
+    //     tentar de novo e gerar uma SEGUNDA cobrança — cobrar duas vezes é pior que
+    //     ficar sem a linha local, que o webhook ainda materializa quando o
+    //     PAYMENT_* chegar. Por isso a falha vira `warnings` + linha de recuperação.
+    const warnings = new WriteWarnings();
 
     const body: CreatePaymentRequest = await req.json();
     const { company_id, billing_type, amount, description, cpf_cnpj, pix_recurring, billing_cycle, plan_code } = body;
@@ -187,10 +202,17 @@ Deno.serve(async (req) => {
 
       // Mudança de modo recorrente → invalida a antiga pra não ser reusada.
       if (recurringMismatch && minutesAgo < 30) {
-        await supabase
-          .from("subscription_payments")
-          .update({ status: "CANCELLED" })
-          .eq("id", existing.id);
+        // FATAL: se esta linha não for invalidada, ela segue PENDING e disputa a
+        // reutilização com a cobrança que vamos criar logo abaixo. Ainda NÃO houve
+        // nenhuma chamada de criação no gateway neste ponto, então falhar aqui é
+        // barato: o usuário repete e nada foi cobrado.
+        await applyWrite(
+          "invalidação da cobrança anterior (subscription_payments CANCELLED)",
+          supabase
+            .from("subscription_payments")
+            .update({ status: "CANCELLED" })
+            .eq("id", existing.id),
+        );
       }
     }
 
@@ -380,7 +402,14 @@ Deno.serve(async (req) => {
           throw e;
         }
       }
-      await supabase.from("companies").update({ asaas_customer_id: asaasCustomerId }).eq("id", company_id);
+      // FATAL: sem gravar o customer, a PRÓXIMA cobrança não o encontra e cria OUTRO
+      // cliente na Asaas com o mesmo CPF/CNPJ — duplicando o cadastro do gateway, que
+      // é o que depois embaralha cobrança, notificação e conciliação. Nenhuma cobrança
+      // foi criada ainda neste ponto: falhar é barato, repetir é seguro.
+      await applyWrite(
+        "vínculo do cliente na Asaas (companies.asaas_customer_id)",
+        supabase.from("companies").update({ asaas_customer_id: asaasCustomerId }).eq("id", company_id),
+      );
     } else {
       // Garante CPF/CNPJ atualizado no customer existente.
       try {
@@ -397,7 +426,12 @@ Deno.serve(async (req) => {
           const searchData = await asaas.get(`/customers`, buildQuery({ cpfCnpj: validCpfCnpj }));
           if (searchData?.data?.length > 0) {
             asaasCustomerId = searchData.data[0].id;
-            await supabase.from("companies").update({ asaas_customer_id: asaasCustomerId }).eq("id", company_id);
+            // FATAL pelo mesmo motivo do ramo acima: o id reconciliado precisa ficar
+            // gravado, senão a próxima cobrança repete a busca e pode duplicar.
+            await applyWrite(
+              "vínculo do cliente na Asaas (companies.asaas_customer_id, reconciliado)",
+              supabase.from("companies").update({ asaas_customer_id: asaasCustomerId }).eq("id", company_id),
+            );
           }
         } else {
           throw e;
@@ -555,26 +589,43 @@ Deno.serve(async (req) => {
           console.error("Erro ao buscar QR Code do fallback PIX:", err);
         }
 
-        const { data: savedPayment } = await supabase
-          .from("subscription_payments")
-          .insert({
-            company_id,
-            asaas_payment_id: firstPaymentId,
-            asaas_customer_id: asaasCustomerId,
-            amount,
-            status: "PENDING",
-            payment_method: "pix",
-            billing_type: "PIX",
-            billing_cycle: cycleForDb,
-            type: paymentType,
-            pix_qr_code: pixQrCode,
-            pix_copy_paste: pixCopyPaste,
-            pix_expiration_date: pixExpirationDate,
-            invoice_url: subscriptionData.invoiceUrl,
-            due_date: dueDateStr,
-          })
-          .select()
-          .single();
+        // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
+        // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
+        // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
+        // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
+        const savedPayment = await tryWriteReturning<{ id: string }>(
+          "registro local da cobrança PIX de fallback (subscription_payments)",
+          supabase
+            .from("subscription_payments")
+            .insert({
+              company_id,
+              asaas_payment_id: firstPaymentId,
+              asaas_customer_id: asaasCustomerId,
+              amount,
+              status: "PENDING",
+              payment_method: "pix",
+              billing_type: "PIX",
+              billing_cycle: cycleForDb,
+              type: paymentType,
+              pix_qr_code: pixQrCode,
+              pix_copy_paste: pixCopyPaste,
+              pix_expiration_date: pixExpirationDate,
+              invoice_url: subscriptionData.invoiceUrl,
+              due_date: dueDateStr,
+            })
+            .select()
+            .single(),
+          {
+            warnings,
+            recovery: {
+              company_id,
+              asaas_payment_id: firstPaymentId ?? "-",
+              asaas_subscription_id: subscriptionData.id,
+              amount,
+              billing_type: "PIX",
+            },
+          },
+        );
 
         return new Response(
           JSON.stringify({
@@ -587,6 +638,7 @@ Deno.serve(async (req) => {
             pix_expiration_date: pixExpirationDate,
             due_date: dueDateStr,
             local_payment_id: savedPayment?.id,
+            ...warnings.toBody(),
             subscription_id: subscriptionData.id,
             is_recurring: true,
             pix_automatic: false,
@@ -619,25 +671,42 @@ Deno.serve(async (req) => {
       }
 
       const savedAsaasPaymentId = realFirstPaymentId || authData.id;
-      const { data: savedPayment } = await supabase
-        .from("subscription_payments")
-        .insert({
-          company_id,
-          asaas_payment_id: savedAsaasPaymentId,
-          asaas_customer_id: asaasCustomerId,
-          amount,
-          status: "PENDING",
-          payment_method: "pix",
-          billing_type: "PIX",
-          billing_cycle: cycleForDb,
-          type: paymentType,
-          pix_qr_code: pixQrCode,
-          pix_copy_paste: pixCopyPaste,
-          pix_expiration_date: pixExpirationDate,
-          due_date: dueDateStr,
-        })
-        .select()
-        .single();
+      // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
+      // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
+      // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
+      // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
+      const savedPayment = await tryWriteReturning<{ id: string }>(
+        "registro local da cobrança do Pix Automático (subscription_payments)",
+        supabase
+          .from("subscription_payments")
+          .insert({
+            company_id,
+            asaas_payment_id: savedAsaasPaymentId,
+            asaas_customer_id: asaasCustomerId,
+            amount,
+            status: "PENDING",
+            payment_method: "pix",
+            billing_type: "PIX",
+            billing_cycle: cycleForDb,
+            type: paymentType,
+            pix_qr_code: pixQrCode,
+            pix_copy_paste: pixCopyPaste,
+            pix_expiration_date: pixExpirationDate,
+            due_date: dueDateStr,
+          })
+          .select()
+          .single(),
+        {
+          warnings,
+          recovery: {
+            company_id,
+            asaas_payment_id: savedAsaasPaymentId,
+            asaas_authorization_id: authData.id,
+            amount,
+            billing_type: "PIX",
+          },
+        },
+      );
 
       return new Response(
         JSON.stringify({
@@ -649,6 +718,7 @@ Deno.serve(async (req) => {
           pix_expiration_date: pixExpirationDate,
           due_date: dueDateStr,
           local_payment_id: savedPayment?.id,
+          ...warnings.toBody(),
           authorization_id: authData.id,
           is_recurring: true,
           pix_automatic: true,
@@ -714,26 +784,42 @@ Deno.serve(async (req) => {
       // (PAYMENT_CREATED linka o pay_* nela; PAYMENT_CONFIRMED dá UPDATE pra CONFIRMED).
       const firstPaymentStatus = "PENDING";
 
-      const { data: savedPayment } = await supabase
-        .from("subscription_payments")
-        .insert({
-          company_id,
-          asaas_payment_id: null,
-          asaas_customer_id: asaasCustomerId,
-          // No cartão a cobrança é mensal: gravamos o valor mensal e o ciclo
-          // "monthly" pra refletir o que a Asaas vai cobrar de fato.
-          amount: monthlyCardValue,
-          status: firstPaymentStatus,
-          payment_method: "credit_card",
-          billing_type,
-          billing_cycle: "monthly",
-          type: paymentType,
-          invoice_url: subscriptionData.invoiceUrl,
-          // Cartão debita HOJE (BRT), igual ao nextDueDate enviado à Asaas.
-          due_date: todayBRT,
-        })
-        .select()
-        .single();
+      // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
+      // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
+      // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
+      // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
+      const savedPayment = await tryWriteReturning<{ id: string }>(
+        "registro local da cobrança no cartão (subscription_payments)",
+        supabase
+          .from("subscription_payments")
+          .insert({
+            company_id,
+            asaas_payment_id: null,
+            asaas_customer_id: asaasCustomerId,
+            // No cartão a cobrança é mensal: gravamos o valor mensal e o ciclo
+            // "monthly" pra refletir o que a Asaas vai cobrar de fato.
+            amount: monthlyCardValue,
+            status: firstPaymentStatus,
+            payment_method: "credit_card",
+            billing_type,
+            billing_cycle: "monthly",
+            type: paymentType,
+            invoice_url: subscriptionData.invoiceUrl,
+            // Cartão debita HOJE (BRT), igual ao nextDueDate enviado à Asaas.
+            due_date: todayBRT,
+          })
+          .select()
+          .single(),
+        {
+          warnings,
+          recovery: {
+            company_id,
+            asaas_subscription_id: subscriptionData.id,
+            amount: monthlyCardValue,
+            billing_type,
+          },
+        },
+      );
 
       return new Response(
         JSON.stringify({
@@ -743,6 +829,7 @@ Deno.serve(async (req) => {
           invoice_url: subscriptionData.invoiceUrl,
           due_date: todayBRT,
           local_payment_id: savedPayment?.id,
+          ...warnings.toBody(),
           subscription_id: subscriptionData.id,
           is_recurring: true,
         }),
@@ -790,26 +877,42 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: savedPayment } = await supabase
-      .from("subscription_payments")
-      .insert({
-        company_id,
-        asaas_payment_id: payment.id,
-        asaas_customer_id: asaasCustomerId,
-        amount,
-        status: payment.status || "PENDING",
-        payment_method: billing_type.toLowerCase(),
-        billing_type,
-        billing_cycle: cycleForDb,
-        type: paymentType,
-        pix_qr_code: pixQrCode,
-        pix_copy_paste: pixCopyPaste,
-        pix_expiration_date: pixExpirationDate,
-        invoice_url: payment.invoiceUrl,
-        due_date: dueDateStr,
-      })
-      .select()
-      .single();
+    // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
+    // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
+    // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
+    // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
+    const savedPayment = await tryWriteReturning<{ id: string }>(
+      "registro local da cobrança avulsa (subscription_payments)",
+      supabase
+        .from("subscription_payments")
+        .insert({
+          company_id,
+          asaas_payment_id: payment.id,
+          asaas_customer_id: asaasCustomerId,
+          amount,
+          status: payment.status || "PENDING",
+          payment_method: billing_type.toLowerCase(),
+          billing_type,
+          billing_cycle: cycleForDb,
+          type: paymentType,
+          pix_qr_code: pixQrCode,
+          pix_copy_paste: pixCopyPaste,
+          pix_expiration_date: pixExpirationDate,
+          invoice_url: payment.invoiceUrl,
+          due_date: dueDateStr,
+        })
+        .select()
+        .single(),
+      {
+        warnings,
+        recovery: {
+          company_id,
+          asaas_payment_id: payment.id,
+          amount,
+          billing_type,
+        },
+      },
+    );
 
     return new Response(
       JSON.stringify({
@@ -824,6 +927,7 @@ Deno.serve(async (req) => {
         pix_expiration_date: pixExpirationDate,
         due_date: dueDateStr,
         local_payment_id: savedPayment?.id,
+        ...warnings.toBody(),
         is_recurring: false,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

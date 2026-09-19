@@ -23,6 +23,13 @@ export interface ChangePlanResult {
   modules?: string[];
   asaas_updated?: boolean;
   asaas_warning?: string | null;
+  /**
+   * Pendências de gravação NÃO-fatais na edge (ex.: o histórico da assinatura não
+   * gravou). O valor/plano já foi aplicado; isto existe pra que "sucesso com
+   * pendência" não se confunda com sucesso limpo. Diagnóstico, não copy de tela:
+   * a edge só inclui a chave quando há algo a avisar.
+   */
+  warnings?: string[];
 }
 
 /**

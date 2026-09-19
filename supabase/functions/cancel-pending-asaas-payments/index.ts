@@ -17,6 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, buildQuery, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
+import { tryWrite, WriteWarnings } from "../_shared/db-write.ts";
 
 class ValidationError extends Error {}
 
@@ -75,6 +76,15 @@ Deno.serve(async (req) => {
     let deleted = 0;
     let failed = 0;
 
+    // ===== POLÍTICA DE FALHA DE ESCRITA (incidente "supabase-js não lança", 2026-09-19) =====
+    // O reflexo local roda DEPOIS de a cobrança já ter sido apagada na Asaas, que é
+    // irreversível. Se a escrita local falhar, a mentira é CONSERVADORA: a linha
+    // segue PENDING mostrando uma cobrança que não existe mais no gateway — ninguém
+    // é cobrado a mais. Abortar o laço aqui seria pior: pararia de cancelar as
+    // cobranças seguintes e devolveria erro para um cancelamento que já aconteceu.
+    // Por isso: aviso + linha de recuperação, e o laço continua.
+    const warnings = new WriteWarnings();
+
     for (const status of statuses) {
       const data = await asaas.get(
         `/payments`,
@@ -107,11 +117,22 @@ Deno.serve(async (req) => {
         }
 
         // Reflexo local: marca o pagamento como cancelado (só se ainda estava em aberto).
-        await supabase
-          .from("subscription_payments")
-          .update({ status: "CANCELLED", updated_at: new Date().toISOString() })
-          .eq("asaas_payment_id", payment.id)
-          .in("status", ["PENDING", "OVERDUE"]);
+        await tryWrite(
+          `reflexo local do cancelamento (${payment.id})`,
+          supabase
+            .from("subscription_payments")
+            .update({ status: "CANCELLED", updated_at: new Date().toISOString() })
+            .eq("asaas_payment_id", payment.id)
+            .in("status", ["PENDING", "OVERDUE"]),
+          {
+            warnings,
+            recovery: {
+              asaas_payment_id: payment.id,
+              asaas_customer_id: customerId,
+              acao: "apagada na Asaas, marcar CANCELLED à mão",
+            },
+          },
+        );
 
         deleted += 1;
       }
@@ -125,6 +146,7 @@ Deno.serve(async (req) => {
           : "Nenhuma cobrança em aberto da assinatura para cancelar.",
         deleted,
         failed,
+        ...warnings.toBody(),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

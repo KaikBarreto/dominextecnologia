@@ -35,6 +35,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasApiError } from "../_shared/asaas-client.ts";
+import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
 
 interface ConfirmRequest {
   company_id: string;
@@ -61,7 +62,12 @@ async function fetchAsaasPayment(paymentId?: string): Promise<any | null> {
 }
 
 /** Sincroniza company_modules com os módulos do plano (idempotente, additivo). */
-async function activatePlanModules(supabase: any, companyId: string, planCode: string | null) {
+async function activatePlanModules(
+  supabase: any,
+  companyId: string,
+  planCode: string | null,
+  warnings: WriteWarnings,
+) {
   if (!planCode) return;
   try {
     const { data: plan } = await supabase
@@ -89,7 +95,21 @@ async function activatePlanModules(supabase: any, companyId: string, planCode: s
         activated_at: new Date().toISOString(),
       }));
     if (toInsert.length > 0) {
-      await supabase.from("company_modules").insert(toInsert);
+      // NÃO-FATAL: o pagamento já foi aplicado e o acesso ao plano é reparável a
+      // qualquer momento pelo painel master (e pela própria renovação seguinte).
+      // Derrubar a confirmação do pagamento por causa disso seria pior.
+      await tryWrite(
+        "ativação de módulos do plano",
+        supabase.from("company_modules").insert(toInsert),
+        {
+          warnings,
+          recovery: {
+            company_id: companyId,
+            plan_code: planCode,
+            modules: toInsert.map((m: { module_code: string }) => m.module_code).join(","),
+          },
+        },
+      );
     }
   } catch (e) {
     console.error("[modules] erro (engolido):", (e as Error).message);
@@ -134,6 +154,11 @@ Deno.serve(async (req) => {
 
     const { company_id, payment_id }: ConfirmRequest = await req.json();
     if (!company_id) return json({ error: "company_id é obrigatório." }, 400);
+
+    // Avisos de escrita não-fatal que falhou DEPOIS do ponto sem volta (ver bloco
+    // "POLÍTICA DE FALHA DE ESCRITA" abaixo). Vão junto na resposta 200: sucesso
+    // com pendência NÃO pode se passar por sucesso limpo.
+    const warnings = new WriteWarnings();
 
     // ===== 1) Company =====
     const { data: company, error: companyError } = await supabase
@@ -182,16 +207,41 @@ Deno.serve(async (req) => {
       return json({ error: "Valor do pagamento inválido." }, 400);
     }
 
+    // ===== POLÍTICA DE FALHA DE ESCRITA (incidente "supabase-js não lança", 2026-09-19) =====
+    // O `supabase-js` devolve `{ error }` em vez de lançar. Toda escrita daqui pra
+    // baixo passa por applyWrite (fatal) ou tryWrite (aviso + linha de recuperação).
+    // A linha que divide as duas é o MUTEX `credit_ltv_once_for_payment` (passo 5):
+    //
+    //   ANTES do mutex  → applyWrite (falha = 500). Nada irreversível aconteceu, o
+    //     mutex segue NÃO reivindicado, e o asaas-webhook — que é a fonte da verdade
+    //     da renovação e repete o mesmo processamento — aplica tudo quando o evento
+    //     chegar. Falhar alto aqui NÃO cobra ninguém duas vezes: esta função não
+    //     cria cobrança, só LÊ a Asaas (GET /payments) e aplica estado local.
+    //
+    //   DEPOIS do mutex → tryWrite (falha = 200 com `warnings`). O mutex já foi
+    //     consumido: nem a retentativa do checkout nem o webhook refazem o trabalho
+    //     (ambos caem em `already_processed`). Então devolver 500 não repara nada,
+    //     e ainda faria o cliente ver "falhou" uma renovação que JÁ foi aplicada
+    //     (empresa ativa, vencimento estendido). O reparo é manual, e por isso cada
+    //     tryWrite loga a linha `RECUPERAR À MÃO: …` com tudo que refaz o lançamento.
+    //
     // ===== 4) Marca subscription_payment como CONFIRMED + paid_at =====
+    // FATAL, e de propósito: isto é literalmente "marcar como pago". Se falhar em
+    // silêncio, o passo 7 ativa a empresa e estende o vencimento enquanto a cobrança
+    // fica PENDING com paid_at nulo — o banco passa a dizer que o cliente não pagou
+    // o que ele pagou. Roda ANTES do mutex justamente pra que o 500 seja barato.
     if (subscriptionPayment) {
-      await supabase
-        .from("subscription_payments")
-        .update({
-          status: "CONFIRMED",
-          paid_at: subscriptionPayment.paid_at ?? new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", subscriptionPayment.id);
+      await applyWrite(
+        "marcação do pagamento como CONFIRMED",
+        supabase
+          .from("subscription_payments")
+          .update({
+            status: "CONFIRMED",
+            paid_at: subscriptionPayment.paid_at ?? new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", subscriptionPayment.id),
+      );
     }
 
     // ===== 5) Ganha a corrida do crédito de LTV (mutex idempotente) =====
@@ -271,17 +321,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { error: updateError } = await supabase
-      .from("companies")
-      .update(companyUpdate)
-      .eq("id", company_id);
-    if (updateError) {
-      console.error("Erro ao atualizar company:", updateError);
-      return json({ error: "Erro ao atualizar empresa." }, 500);
-    }
+    // FATAL (apesar de pós-mutex): esta é A renovação. Se falhar, o cliente pagou e
+    // NÃO recebeu acesso/vencimento novo. Não há reparo automático (mutex consumido),
+    // então o 500 aqui existe pra gritar — nunca pra fingir que renovou.
+    await applyWrite(
+      "renovação da empresa (companies)",
+      supabase.from("companies").update(companyUpdate).eq("id", company_id),
+    );
 
     // Ativa módulos do plano (idempotente).
-    await activatePlanModules(supabase, company_id, company.subscription_plan ?? null);
+    await activatePlanModules(supabase, company_id, company.subscription_plan ?? null, warnings);
 
     // ===== 8) company_payments (guard por dia pra não duplicar com o webhook) =====
     const today = new Date();
@@ -296,16 +345,35 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!existingCp) {
-      await supabase.from("company_payments").insert({
-        company_id,
-        amount: paymentAmount,
-        type: paymentType,
-        payment_method: billingType.toLowerCase(),
-        notes: payment_id ? `Pagamento via Asaas - ${payment_id}` : "Pagamento via link de venda",
-        payment_date: new Date().toISOString(),
-        origin: company.origin || null,
-        asaas_payment_id: payment_id ?? null,
-      });
+      // NÃO-FATAL (pós-mutex): é o histórico financeiro da empresa. Se falhar, o
+      // dinheiro NÃO some do mundo — ele está na Asaas e no LTV já creditado pelo
+      // mutex; o que falta é a linha do histórico. Um 500 aqui não a recria (o mutex
+      // já foi consumido, webhook e retentativa viram no-op) e ainda contradiria a
+      // renovação que já foi aplicada logo acima. Vai como aviso + linha de
+      // recuperação com tudo que o lançamento manual precisa.
+      await tryWrite(
+        "histórico de pagamento da empresa (company_payments)",
+        supabase.from("company_payments").insert({
+          company_id,
+          amount: paymentAmount,
+          type: paymentType,
+          payment_method: billingType.toLowerCase(),
+          notes: payment_id ? `Pagamento via Asaas - ${payment_id}` : "Pagamento via link de venda",
+          payment_date: new Date().toISOString(),
+          origin: company.origin || null,
+          asaas_payment_id: payment_id ?? null,
+        }),
+        {
+          warnings,
+          recovery: {
+            company_id,
+            asaas_payment_id: payment_id ?? "-",
+            amount: paymentAmount,
+            type: paymentType,
+            payment_method: billingType.toLowerCase(),
+          },
+        },
+      );
     }
 
     // ===== 9) admin_financial_transactions (receita) =====
@@ -313,50 +381,64 @@ Deno.serve(async (req) => {
     // e o PostgREST não emite o predicado no onConflict — UPSERT errava em SILÊNCIO e a
     // receita não era gravada. Com payment_id (sempre não-null), INSERT direto e tratamos
     // 23505 (unique_violation no índice parcial) como sucesso/idempotente.
-    if (payment_id) {
-      const { error: incomeErr } = await supabase.from("admin_financial_transactions").insert({
+    //
+    // O ramo `else` (sem payment_id) que existia aqui era CÓDIGO MORTO e por isso
+    // ninguém percebeu que ele não checava o erro: `isWinner` só vira true dentro de
+    // `if (payment_id)`, e o passo 5 já devolve `already_processed` quando não é
+    // winner. Chegar aqui implica payment_id. Um caminho só, checado.
+    //
+    // NÃO-FATAL (pós-mutex): é a receita da Auctus no DRE. O pagamento do cliente já
+    // foi confirmado e o mutex consumido; falhar alto não recria o lançamento e ainda
+    // marcaria como erro uma renovação bem-sucedida. Vira aviso + linha de recuperação.
+    await tryWrite(
+      "receita da assinatura (admin_financial_transactions)",
+      supabase.from("admin_financial_transactions").insert({
         type: "income",
         category: financialCategory,
         amount: paymentAmount,
         description: financialDescription,
         reference_id: company_id,
         reference_type: "subscription_payment",
-        asaas_transaction_id: payment_id,
+        asaas_transaction_id: payment_id ?? null,
         transaction_date: new Date().toISOString(),
-      });
-      if (incomeErr && incomeErr.code !== "23505") {
-        console.error(`[confirm-sale] insert receita falhou (${payment_id}):`, incomeErr.message);
-      }
-    } else {
-      await supabase.from("admin_financial_transactions").insert({
-        type: "income",
-        category: financialCategory,
-        amount: paymentAmount,
-        description: financialDescription,
-        reference_id: company_id,
-        reference_type: "subscription_payment",
-        transaction_date: new Date().toISOString(),
-      });
-    }
+      }),
+      {
+        warnings,
+        // 23505 = índice único parcial por asaas_transaction_id já tem a receita
+        // (o webhook chegou primeiro). Idempotente, não é falha.
+        ignoreCodes: ["23505"],
+        recovery: {
+          company_id,
+          asaas_transaction_id: payment_id ?? "-",
+          category: financialCategory,
+          amount: paymentAmount,
+        },
+      },
+    );
 
     // ===== 10) Tarifa Asaas (se netValue válido) =====
     if (payment_id && netValue > 0 && netValue < paymentAmount) {
       const asaasFee = Math.round((paymentAmount - netValue) * 100) / 100;
       // INSERT idempotente (mesmo motivo do índice parcial acima). 23505 = já existe → ok.
       const feeTxId = `${payment_id}_fee`;
-      const { error: feeErr } = await supabase.from("admin_financial_transactions").insert({
-        type: "expense",
-        category: "asaas_fee",
-        amount: asaasFee,
-        description: `Tarifa Asaas - ${company.name} (${billingType})`,
-        reference_id: company_id,
-        reference_type: "asaas_fee",
-        asaas_transaction_id: feeTxId,
-        transaction_date: new Date().toISOString(),
-      });
-      if (feeErr && feeErr.code !== "23505") {
-        console.error(`[confirm-sale] insert tarifa falhou (${feeTxId}):`, feeErr.message);
-      }
+      await tryWrite(
+        "tarifa da Asaas (admin_financial_transactions)",
+        supabase.from("admin_financial_transactions").insert({
+          type: "expense",
+          category: "asaas_fee",
+          amount: asaasFee,
+          description: `Tarifa Asaas - ${company.name} (${billingType})`,
+          reference_id: company_id,
+          reference_type: "asaas_fee",
+          asaas_transaction_id: feeTxId,
+          transaction_date: new Date().toISOString(),
+        }),
+        {
+          warnings,
+          ignoreCodes: ["23505"],
+          recovery: { company_id, asaas_transaction_id: feeTxId, amount: asaasFee },
+        },
+      );
     }
 
     // ===== 11) salesperson_sales — REMOVIDO (FURO 2) =====
@@ -373,6 +455,9 @@ Deno.serve(async (req) => {
       subscription_expires_at: newExpiration,
       payment_type: paymentType,
       idempotency_key: idempotencyKey,
+      // Presente SÓ quando alguma escrita pós-mutex falhou. Sucesso com pendência
+      // não pode se passar por sucesso limpo.
+      ...warnings.toBody(),
     });
   } catch (error) {
     console.error("confirm-sale-payment erro:", error);

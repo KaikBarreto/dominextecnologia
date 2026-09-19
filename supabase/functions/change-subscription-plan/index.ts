@@ -46,6 +46,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
+import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
 
 class ValidationError extends Error {}
 
@@ -83,6 +84,26 @@ Deno.serve(async (req) => {
 
     if (!company_id) throw new ValidationError("Empresa não informada.");
     if (!plan_code) throw new ValidationError("Plano não informado.");
+
+    // ===== POLÍTICA DE FALHA DE ESCRITA (incidente "supabase-js não lança", 2026-09-19) =====
+    // O `supabase-js` devolve `{ error }` em vez de lançar: um `await supabase…update()`
+    // sem checar engole a recusa do banco inteira. Aqui isso é caro porque a escrita
+    // que importa é VALOR DE ASSINATURA. Regra desta função:
+    //
+    //   applyWrite (fatal) → tudo que define quanto o cliente vai pagar: os campos
+    //     `pending_*` do downgrade e o `companies.update` do upgrade/igual. Nenhuma
+    //     chamada ao gateway acontece antes deles, então o erro é barato: o usuário
+    //     repete a mudança de plano e nada foi cobrado a mais.
+    //
+    //   tryWrite (aviso) → auditoria (`subscription_history`), que não muda o que é
+    //     cobrado. Falhar alto por causa do histórico faria o usuário repetir uma
+    //     mudança já aplicada; vira aviso + linha de recuperação no log.
+    //
+    // ORDEM IMPORTA: o valor é gravado ANTES do histórico. Nunca registramos um
+    // upgrade/downgrade que não chegou a ser persistido — era exatamente esse o furo
+    // (histórico dizendo "downgrade agendado" com os `pending_*` vazios, o webhook de
+    // renovação não achando nada e o cliente seguindo no valor antigo).
+    const warnings = new WriteWarnings();
 
     const cycleForDb: "monthly" | "yearly" =
       billing_cycle === "yearly" ? "yearly" : "monthly";
@@ -196,16 +217,24 @@ Deno.serve(async (req) => {
       // pending_*. NÃO mexe em subscription_value, plano, módulos, max_users nem no Asaas —
       // o cliente já pagou o ciclo atual e mantém o acesso integral. O webhook de renovação
       // lê esses pending_* e aplica a troca quando o próximo ciclo virar.
-      await supabase
-        .from("companies")
-        .update({
-          pending_subscription_value: targetMonthlyValue,
-          pending_plan_code: plan_code,
-          pending_billing_cycle: cycleForDb,
-          pending_modules: targetModules,
-          pending_max_users: targetMaxUsers,
-        })
-        .eq("id", company_id);
+      // FATAL: é o downgrade inteiro. Sem estes campos não existe downgrade nenhum —
+      // o webhook de renovação não acha o que aplicar e o cliente continua pagando o
+      // valor antigo, enquanto a tela diz "agendado". Nada foi tocado na Asaas neste
+      // ramo, então o erro é barato: o usuário repete e a escrita é idempotente.
+      await applyWrite(
+        "agendamento do downgrade (companies.pending_*)",
+        supabase
+          .from("companies")
+          .update({
+            pending_subscription_value: targetMonthlyValue,
+            pending_plan_code: plan_code,
+            pending_billing_cycle: cycleForDb,
+            pending_modules: targetModules,
+            pending_max_users: targetMaxUsers,
+          })
+          .eq("id", company_id),
+        { rethrow: () => new ValidationError("Não foi possível agendar a mudança de plano. Tente de novo.") },
+      );
 
       // Registra a INTENÇÃO de downgrade (plano + módulos + usuários alvo) pra um
       // passo futuro no webhook de renovação aplicar quando o ciclo virar.
@@ -217,17 +246,27 @@ Deno.serve(async (req) => {
         scheduled_billing_cycle: cycleForDb,
         scheduled_value: targetMonthlyValue,
       };
-      await supabase.from("subscription_history").insert({
-        company_id,
-        changed_by: auth.userId ?? null,
-        previous_plan: company.subscription_plan ?? null,
-        new_plan: company.subscription_plan ?? null, // plano só muda no próximo ciclo
-        previous_value: currentEffectiveValue,
-        new_value: company.subscription_value ?? currentEffectiveValue, // valor atual não muda agora
-        previous_status: company.subscription_status ?? null,
-        new_status: company.subscription_status ?? null,
-        reason: `Downgrade agendado para o próximo ciclo: ${JSON.stringify(intent)}`,
-      });
+      // NÃO-FATAL: os `pending_*` acima já estão gravados, então o downgrade VAI
+      // acontecer com ou sem esta linha. É auditoria; falhar alto faria o usuário
+      // repetir uma mudança já agendada.
+      await tryWrite(
+        "histórico da assinatura (downgrade agendado)",
+        supabase.from("subscription_history").insert({
+          company_id,
+          changed_by: auth.userId ?? null,
+          previous_plan: company.subscription_plan ?? null,
+          new_plan: company.subscription_plan ?? null, // plano só muda no próximo ciclo
+          previous_value: currentEffectiveValue,
+          new_value: company.subscription_value ?? currentEffectiveValue, // valor atual não muda agora
+          previous_status: company.subscription_status ?? null,
+          new_status: company.subscription_status ?? null,
+          reason: `Downgrade agendado para o próximo ciclo: ${JSON.stringify(intent)}`,
+        }),
+        {
+          warnings,
+          recovery: { company_id, change_kind: "downgrade", scheduled: JSON.stringify(intent) },
+        },
+      );
 
       return new Response(
         JSON.stringify({
@@ -237,6 +276,7 @@ Deno.serve(async (req) => {
           current_value: company.subscription_value ?? currentEffectiveValue,
           message:
             "Downgrade agendado. Você mantém o plano atual até o fim do período já pago; o novo valor passa a valer na próxima cobrança.",
+          ...warnings.toBody(),
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -260,37 +300,64 @@ Deno.serve(async (req) => {
       pending_modules: null,
       pending_max_users: null,
     };
-    const { error: updErr } = await supabase
-      .from("companies")
-      .update(companyUpdate)
-      .eq("id", company_id);
-    if (updErr) throw new ValidationError("Não foi possível atualizar a assinatura.");
+    // FATAL: define quanto o cliente passa a pagar. Roda ANTES de qualquer chamada
+    // ao gateway (o PUT no Asaas está no passo 4), então falhar aqui não cobra nada.
+    await applyWrite(
+      "atualização da assinatura (companies)",
+      supabase.from("companies").update(companyUpdate).eq("id", company_id),
+      { rethrow: () => new ValidationError("Não foi possível atualizar a assinatura.") },
+    );
 
     // 2) Sincroniza company_modules: remove os atuais e insere os do plano alvo.
-    await supabase.from("company_modules").delete().eq("company_id", company_id);
+    //    FATAL nos dois passos. O DELETE também: se ele falhar em silêncio, o INSERT
+    //    logo abaixo tenta recriar módulos que continuam lá — ou esbarra no índice
+    //    único (e aí o erro aparece no lugar errado), ou duplica a linha. O par
+    //    delete+insert é idempotente, então a retentativa do usuário conserta.
+    await applyWrite(
+      "limpeza dos módulos atuais (company_modules)",
+      supabase.from("company_modules").delete().eq("company_id", company_id),
+      { rethrow: () => new ValidationError("Não foi possível sincronizar os módulos do plano.") },
+    );
     if (targetModules.length > 0) {
       const inserts = targetModules.map((module_code) => ({
         company_id,
         module_code,
       }));
-      const { error: insErr } = await supabase.from("company_modules").insert(inserts);
-      if (insErr) throw new ValidationError("Não foi possível sincronizar os módulos do plano.");
+      await applyWrite(
+        "módulos do plano alvo (company_modules)",
+        supabase.from("company_modules").insert(inserts),
+        { rethrow: () => new ValidationError("Não foi possível sincronizar os módulos do plano.") },
+      );
     }
 
-    // 3) Registra no histórico.
-    await supabase.from("subscription_history").insert({
-      company_id,
-      changed_by: auth.userId ?? null,
-      previous_plan: company.subscription_plan ?? null,
-      new_plan: plan_code,
-      previous_value: currentEffectiveValue,
-      new_value: targetMonthlyValue,
-      previous_status: company.subscription_status ?? null,
-      new_status: company.subscription_status ?? null,
-      reason: changeKind === "upgrade"
-        ? "Upgrade de plano (valor novo na próxima cobrança)"
-        : "Reorganização de módulos sem mudança de valor",
-    });
+    // 3) Registra no histórico. NÃO-FATAL: o plano e o valor já estão aplicados;
+    //    o histórico é auditoria e não muda o que é cobrado.
+    await tryWrite(
+      "histórico da assinatura (mudança aplicada)",
+      supabase.from("subscription_history").insert({
+        company_id,
+        changed_by: auth.userId ?? null,
+        previous_plan: company.subscription_plan ?? null,
+        new_plan: plan_code,
+        previous_value: currentEffectiveValue,
+        new_value: targetMonthlyValue,
+        previous_status: company.subscription_status ?? null,
+        new_status: company.subscription_status ?? null,
+        reason: changeKind === "upgrade"
+          ? "Upgrade de plano (valor novo na próxima cobrança)"
+          : "Reorganização de módulos sem mudança de valor",
+      }),
+      {
+        warnings,
+        recovery: {
+          company_id,
+          change_kind: changeKind,
+          previous_value: currentEffectiveValue,
+          new_value: targetMonthlyValue,
+          new_plan: plan_code,
+        },
+      },
+    );
 
     // 4) Atualiza a assinatura recorrente no Asaas (só em upgrade, só se houver sub_*).
     //    O teste por `sub_` é identificação POSITIVA de assinatura: autorização de
@@ -333,6 +400,7 @@ Deno.serve(async (req) => {
         message: changeKind === "upgrade"
           ? "Plano atualizado! O novo valor já entra na próxima cobrança e os recursos estão liberados."
           : "Plano atualizado com sucesso.",
+        ...warnings.toBody(),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
