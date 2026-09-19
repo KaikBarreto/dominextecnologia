@@ -12,6 +12,9 @@ export const charges = {
     central: {
       tabLabel: 'Cobranças',
       newButton: 'Nova cobrança',
+      // Cobrança antiga sem descrição: nomear a linha sem inventar um texto
+      // que o cliente nunca digitou (usado na confirmação de exclusão).
+      noDescription: 'Cobrança sem descrição',
       // Cards de totais
       cards: {
         pending: 'A receber',
@@ -695,6 +698,7 @@ export const charges = {
     central: {
       tabLabel: 'Charges',
       newButton: 'New charge',
+      noDescription: 'Charge with no description',
       cards: {
         pending: 'To receive',
         paid: 'Received',
@@ -1322,6 +1326,7 @@ export const charges = {
     central: {
       tabLabel: 'Cobros',
       newButton: 'Nuevo cobro',
+      noDescription: 'Cobro sin descripción',
       cards: {
         pending: 'Por cobrar',
         paid: 'Cobrado',
@@ -1949,6 +1954,7 @@ export const charges = {
     central: {
       tabLabel: 'Encaissements',
       newButton: 'Nouvel encaissement',
+      noDescription: `Encaissement sans description`,
       cards: {
         pending: `À encaisser`,
         paid: 'Encaissé',

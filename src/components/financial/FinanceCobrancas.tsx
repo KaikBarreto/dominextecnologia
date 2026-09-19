@@ -4,8 +4,6 @@ import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -18,19 +16,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
+import { useChargeActions } from '@/components/financial/useChargeActions';
 import {
-  useTenantCharges,
-  buildCheckoutUrl,
-  TenantChargeApiError,
-  type TenantCharge,
-} from '@/hooks/useTenantCharges';
+  ChargeActionDialogs,
+  ChargeFinanceWarningBanner,
+} from '@/components/financial/ChargeActionDialogs';
+import { canManageCharge, canRefundCharge } from '@/lib/tenantChargeRules';
+import { buildCheckoutUrl } from '@/hooks/useTenantCharges';
 import { useCustomers } from '@/hooks/useCustomers';
 import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 import { formatBRL } from '@/utils/currency';
-import { readPastedCents } from '@/lib/money-paste-mask';
 import {
   Copy,
   RotateCcw,
@@ -42,20 +39,9 @@ import {
   AlertCircle,
   Pencil,
   Trash2,
-  AlertTriangle,
-  X,
-  Loader2,
 } from 'lucide-react';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-
-/** Cobrança ainda não paga/estornada — só nela faz sentido editar ou excluir.
- *  Cobrança paga (CONFIRMED/RECEIVED/RECEIVED_IN_CASH) segue o caminho do
- *  estorno; a edge é quem valida de verdade (`not_editable`). */
-function canManageCharge(status: string): boolean {
-  const cls = classifyTenantChargeStatus(status);
-  return cls === 'pending' || cls === 'overdue';
-}
 
 /** Formata data yyyy-mm-dd sem travar UTC/BRT. */
 function fmtDate(iso: string | null, locale: string): string {
@@ -92,8 +78,19 @@ export function FinanceCobrancas() {
   const t = MESSAGES[locale].app.charges.central;
   const { toast } = useToast();
 
-  // Hook sem filtro de cliente — busca TODAS as cobranças da empresa (RLS escopa por company_id)
-  const { charges, isLoading, refund, update, remove } = useTenantCharges();
+  // Editar/excluir cobrança: MESMO motor da ficha do cliente
+  // (`useChargeActions`). Sem filtro de cliente aqui — busca TODAS as cobranças
+  // da empresa (RLS escopa por company_id).
+  // `onDeleted` só limpa a seleção em lote desta tela.
+  const actions = useChargeActions({
+    onDeleted: (chargeId) =>
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(chargeId);
+        return next;
+      }),
+  });
+  const { charges, isLoading, refund, remove } = actions;
   const { customers } = useCustomers();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -101,22 +98,10 @@ export function FinanceCobrancas() {
   const [search, setSearch] = useState('');
   const [refundTargetId, setRefundTargetId] = useState<string | null>(null);
 
-  // ── Editar cobrança (valor, vencimento, descrição) ──────────────────────────
-  const [editTarget, setEditTarget] = useState<TenantCharge | null>(null);
-  const [editAmount, setEditAmount] = useState(0);
-  const [editDueDate, setEditDueDate] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-
-  // ── Excluir cobrança (individual e em lote) ─────────────────────────────────
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  // ── Excluir em lote (a exclusão individual mora no useChargeActions) ────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  // Aviso PERSISTENTE (faixa que não some sozinha): a cobrança foi alterada ou
-  // removida no gateway, mas o lançamento no Financeiro ficou para trás (ex.:
-  // já estava baixado). Some só quando o usuário dispensa.
-  const [warningBanner, setWarningBanner] = useState<string | null>(null);
 
   // Mapa customer_id → nome para evitar N buscas
   const customerMap = useMemo(() => {
@@ -203,89 +188,6 @@ export function FinanceCobrancas() {
     });
   };
 
-  /** Mensagem final ao usuário: prioriza o `message` do servidor (já em
-   *  PT-BR); cai no fallback TRADUZIDO por código quando ele vier vazio. */
-  const errorMessage = (err: unknown): string => {
-    if (err instanceof TenantChargeApiError) {
-      if (err.message) return err.message;
-      return t.errors[err.code] ?? t.errors.unknown;
-    }
-    return err instanceof Error && err.message ? err.message : t.errors.unknown;
-  };
-
-  const showFinanceWarning = (warning: string | null) => {
-    if (!warning) return;
-    toast({ variant: 'destructive', title: t.financeWarning.title, description: warning });
-    setWarningBanner(warning);
-  };
-
-  const openEditDialog = (charge: TenantCharge) => {
-    setEditTarget(charge);
-    setEditAmount(charge.value);
-    setEditDueDate(charge.due_date ?? '');
-    setEditDescription(charge.description ?? '');
-  };
-
-  const handleEditAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '');
-    setEditAmount(parseInt(raw || '0', 10) / 100);
-  };
-  // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela regra de
-  // centavos comum: daria R$ 45,50 (100x menor). Ver `money-paste-mask.ts`.
-  const handleEditAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const cents = readPastedCents(e);
-    if (cents != null) setEditAmount(cents / 100);
-  };
-  const editAmountDisplay = editAmount
-    ? editAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : '';
-
-  const handleSubmitEdit = async () => {
-    if (!editTarget) return;
-    if (!editAmount || editAmount <= 0) {
-      toast({ variant: 'destructive', title: t.editDialog.validation.valueRequired });
-      return;
-    }
-    if (!editDueDate) {
-      toast({ variant: 'destructive', title: t.editDialog.validation.dueDateRequired });
-      return;
-    }
-    // Contrato da edge é parcial: só envia o que realmente mudou.
-    const patch: { charge_id: string; value?: number; due_date?: string; description?: string } = {
-      charge_id: editTarget.id,
-    };
-    if (editAmount !== editTarget.value) patch.value = editAmount;
-    if (editDueDate !== (editTarget.due_date ?? '')) patch.due_date = editDueDate;
-    if (editDescription !== (editTarget.description ?? '')) patch.description = editDescription;
-
-    try {
-      const result = await update.mutateAsync(patch);
-      toast({ title: t.editDialog.success });
-      showFinanceWarning(result.financeWarning);
-      setEditTarget(null);
-    } catch (err) {
-      toast({ variant: 'destructive', title: t.editDialog.errorTitle, description: errorMessage(err) });
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteTargetId) return;
-    try {
-      const result = await remove.mutateAsync({ charge_id: deleteTargetId });
-      toast({ title: t.deleteDialog.success });
-      showFinanceWarning(result.financeWarning);
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(deleteTargetId);
-        return next;
-      });
-    } catch (err) {
-      toast({ variant: 'destructive', title: t.deleteDialog.errorTitle, description: errorMessage(err) });
-    } finally {
-      setDeleteTargetId(null);
-    }
-  };
-
   const handleConfirmBulkDelete = async () => {
     if (deletableSelected.length === 0) {
       setBulkDeleteOpen(false);
@@ -312,7 +214,7 @@ export function FinanceCobrancas() {
         });
       }
       if (warnings.length > 0) {
-        showFinanceWarning(warnings.join('\n'));
+        actions.showFinanceWarning(warnings.join('\n'));
       }
       // Limpa da seleção só as que foram processadas nesta rodada (excluídas ou
       // que falharam) — o que ficou bloqueado por já estar pago continua
@@ -377,24 +279,7 @@ export function FinanceCobrancas() {
       {/* ── Aviso persistente: cobrança alterada/excluída no gateway, mas o
           lançamento no Financeiro ficou para trás. NÃO some sozinho — só
           quando o usuário dispensa. */}
-      {warningBanner && (
-        <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <p className="text-sm font-medium text-foreground">{t.financeWarning.title}</p>
-            <p className="whitespace-pre-line text-xs text-muted-foreground">{warningBanner}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0"
-            onClick={() => setWarningBanner(null)}
-            aria-label={t.financeWarning.dismiss}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
+      <ChargeFinanceWarningBanner actions={actions} />
 
       {/* ── Cards de totais ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -523,14 +408,9 @@ export function FinanceCobrancas() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((charge) => {
-                // Estorno só faz sentido quando pago via Asaas (há asaas_payment_id)
-                // e o status não é RECEIVED_IN_CASH (dinheiro em espécie — fora do Asaas).
-                const isPaid =
-                  classifyTenantChargeStatus(charge.status) === 'paid' &&
-                  charge.status.toUpperCase() !== 'RECEIVED_IN_CASH' &&
-                  !!charge.asaas_payment_id;
-                // Editar/excluir só faz sentido para cobrança ainda não paga/estornada
-                // (o caminho da paga é o estorno, acima).
+                // Estorno / editar / excluir: MESMAS travas da ficha do cliente
+                // (`@/lib/tenantChargeRules`).
+                const isPaid = canRefundCharge(charge);
                 const canManage = canManageCharge(charge.status);
                 const customerName = charge.customer_id ? (customerMap[charge.customer_id] ?? '—') : '—';
                 return (
@@ -576,7 +456,7 @@ export function FinanceCobrancas() {
                               variant="edit-ghost"
                               size="sm"
                               className="h-8 px-2"
-                              onClick={() => openEditDialog(charge)}
+                              onClick={() => actions.openEditDialog(charge)}
                               title={t.actions.edit}
                             >
                               <Pencil className="h-4 w-4" />
@@ -586,7 +466,7 @@ export function FinanceCobrancas() {
                               variant="destructive-ghost"
                               size="sm"
                               className="h-8 px-2"
-                              onClick={() => setDeleteTargetId(charge.id)}
+                              onClick={() => actions.requestDelete(charge)}
                               disabled={remove.isPending}
                               title={t.actions.delete}
                             >
@@ -619,12 +499,7 @@ export function FinanceCobrancas() {
           {/* Lista mobile — cards */}
           <div className="divide-y divide-border sm:hidden">
             {filtered.map((charge) => {
-              // Estorno só faz sentido quando pago via Asaas (há asaas_payment_id)
-              // e o status não é RECEIVED_IN_CASH (dinheiro em espécie — fora do Asaas).
-              const isPaid =
-                classifyTenantChargeStatus(charge.status) === 'paid' &&
-                charge.status.toUpperCase() !== 'RECEIVED_IN_CASH' &&
-                !!charge.asaas_payment_id;
+              const isPaid = canRefundCharge(charge);
               const canManage = canManageCharge(charge.status);
               const customerName = charge.customer_id ? (customerMap[charge.customer_id] ?? '—') : '—';
               return (
@@ -668,7 +543,7 @@ export function FinanceCobrancas() {
                               variant="edit-ghost"
                               size="sm"
                               className="h-7 px-2"
-                              onClick={() => openEditDialog(charge)}
+                              onClick={() => actions.openEditDialog(charge)}
                               title={t.actions.edit}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -677,7 +552,7 @@ export function FinanceCobrancas() {
                               variant="destructive-ghost"
                               size="sm"
                               className="h-7 px-2"
-                              onClick={() => setDeleteTargetId(charge.id)}
+                              onClick={() => actions.requestDelete(charge)}
                               disabled={remove.isPending}
                               title={t.actions.delete}
                             >
@@ -735,102 +610,10 @@ export function FinanceCobrancas() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Editar cobrança (valor, vencimento, descrição) — só PENDING/OVERDUE ── */}
-      <ResponsiveModal
-        open={!!editTarget}
-        onOpenChange={(open) => !open && setEditTarget(null)}
-        title={t.editDialog.title}
-        description={t.editDialog.description}
-        footer={
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setEditTarget(null)} disabled={update.isPending}>
-              {t.editDialog.cancel}
-            </Button>
-            <Button onClick={handleSubmitEdit} disabled={update.isPending}>
-              {update.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t.editDialog.submitting}
-                </>
-              ) : (
-                t.editDialog.submit
-              )}
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-4 px-4 pb-4 sm:px-1">
-          {/* Valor (máscara de dinheiro — NÃO NumericInput, é campo monetário) */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-charge-amount" className="text-sm font-medium">
-              {t.editDialog.fields.value}
-            </Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                R$
-              </span>
-              <Input
-                id="edit-charge-amount"
-                className="pl-9"
-                inputMode="numeric"
-                placeholder={t.editDialog.fields.valuePlaceholder}
-                value={editAmountDisplay}
-                onChange={handleEditAmountChange}
-                onPaste={handleEditAmountPaste}
-              />
-            </div>
-          </div>
-
-          {/* Vencimento */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-charge-due" className="text-sm font-medium">
-              {t.editDialog.fields.dueDate}
-            </Label>
-            <Input
-              id="edit-charge-due"
-              type="date"
-              value={editDueDate}
-              onChange={(e) => setEditDueDate(e.target.value)}
-            />
-          </div>
-
-          {/* Descrição */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-charge-desc" className="text-sm font-medium">
-              {t.editDialog.fields.description}
-            </Label>
-            <Textarea
-              id="edit-charge-desc"
-              rows={2}
-              placeholder={t.editDialog.fields.descriptionPlaceholder}
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-            />
-          </div>
-        </div>
-      </ResponsiveModal>
-
-      {/* ── Confirmação de exclusão individual ──────────────────────────────── */}
-      <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => !open && setDeleteTargetId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.deleteDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>{t.deleteDialog.description}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteTargetId(null)}>
-              {t.deleteDialog.cancel}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={handleConfirmDelete}
-              disabled={remove.isPending}
-            >
-              {t.deleteDialog.confirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* ── Editar cobrança + confirmar exclusão (mesmos diálogos da ficha do
+          cliente — a trava de quem pode ser editada/excluída mora em
+          `@/lib/tenantChargeRules`, não aqui). */}
+      <ChargeActionDialogs actions={actions} />
 
       {/* ── Confirmação de exclusão em lote ─────────────────────────────────── */}
       <AlertDialog open={bulkDeleteOpen} onOpenChange={(open) => !open && setBulkDeleteOpen(false)}>

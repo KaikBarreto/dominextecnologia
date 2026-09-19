@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.57',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Editar e excluir cobrança na ficha do cliente',
+        description: 'Nas abas Financeiro e Cobranças de um cliente, agora dá para editar e excluir a cobrança sem precisar ir até a Central de Cobranças procurar a mesma linha. As regras são exatamente as mesmas dos dois lugares: cobrança paga ou estornada continua protegida.',
+        category: 'recurso',
+      },
+      {
+        title: 'Estorno aparecia onde não devia',
+        description: 'Na ficha do cliente, a opção de estornar aparecia até para cobrança recebida em dinheiro e para cobrança sem registro no banco, situações em que o estorno não existe. A Central de Cobranças nunca ofereceu isso. Agora as duas telas seguem a mesma regra.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.55',
     date: '19 de setembro de 2026',
     type: 'patch',

@@ -63,7 +63,13 @@ import type { FinancialTransaction } from '@/types/database';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { useTenantCharges, buildCheckoutUrl, type TenantCharge } from '@/hooks/useTenantCharges';
+import { buildCheckoutUrl, type TenantCharge } from '@/hooks/useTenantCharges';
+import { useChargeActions } from '@/components/financial/useChargeActions';
+import {
+  ChargeActionDialogs,
+  ChargeFinanceWarningBanner,
+} from '@/components/financial/ChargeActionDialogs';
+import { buildChargeRowActions, type ChargeRowActionKey } from '@/lib/chargeRowActions';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
@@ -83,6 +89,17 @@ type FinanceSubTab = 'tudo' | 'a_vencer' | 'pagas';
 function parseLocalFinanceDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
 }
+
+/** Ícone de cada ação de cobrança. A LISTA de ações (e as travas) vem de
+ *  `buildChargeRowActions`; aqui só decoramos. */
+const CHARGE_ACTION_ICONS: Record<ChargeRowActionKey, LucideIcon> = {
+  copy: Copy,
+  whatsapp: WhatsAppIcon as unknown as LucideIcon,
+  checkout: ExternalLink,
+  edit: Pencil,
+  delete: Trash2,
+  refund: RotateCcw,
+};
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -273,10 +290,12 @@ export default function CustomerDetail() {
   }, [manualCustomerTransactions, financeSubTab]);
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
-  // Cobranças do cliente (hook só faz a query quando showCobrancasTab e id disponíveis).
-  const { charges: customerCharges, isLoading: chargesLoading, refund: refundCharge } = useTenantCharges(
-    showCobrancasTab && id ? { customerId: id } : undefined,
-  );
+  // Cobranças do cliente (hook só faz a query quando showCobrancasTab e id
+  // disponíveis). `useChargeActions` é o MESMO motor da Central de Cobranças
+  // (FinanceCobrancas): editar e excluir aqui passam pelas mesmas travas e
+  // pelos mesmos diálogos, em vez de um caminho paralelo desta tela.
+  const chargeActions = useChargeActions(showCobrancasTab && id ? { customerId: id } : undefined);
+  const { charges: customerCharges, isLoading: chargesLoading, refund: refundCharge } = chargeActions;
   const [refundConfirmChargeId, setRefundConfirmChargeId] = useState<string | null>(null);
   const chargesSummary = useMemo(() => {
     const open = customerCharges
@@ -331,6 +350,76 @@ export default function CustomerDetail() {
     if (cls === 'refunded') return 'bg-slate-500 text-white';
     if (cls === 'pending') return 'bg-amber-500 text-white';
     return 'bg-slate-400 text-white'; // other (status nao reconhecido)
+  };
+
+  /**
+   * Ações de uma linha de cobrança, usadas nas TRÊS superfícies desta ficha
+   * (tabela da aba Financeiro, tabela da aba Cobranças e cards do mobile).
+   *
+   * Quem decide o que aparece é `buildChargeRowActions` → `tenantChargeRules`,
+   * o mesmo módulo da Central de Cobranças. Cobrança paga/estornada não oferece
+   * editar nem excluir aqui, igual lá; estorno só quando o dinheiro passou pelo
+   * Asaas (tem `asaas_payment_id` e não é recebimento em espécie).
+   */
+  const chargeRowActions = (charge: TenantCharge) => {
+    const checkoutUrl = charge.public_short_code
+      ? buildCheckoutUrl(charge.public_short_code)
+      : charge.invoice_url ?? '';
+    const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
+    const phone = customer?.celular || customer?.phone || '';
+    const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
+    return buildChargeRowActions(
+      charge,
+      {
+        copyLink: t.chargeCopyLink,
+        whatsapp: t.chargeWhatsapp,
+        openCheckout: t.chargeOpenCheckout,
+        edit: tCustomers.edit,
+        delete: tCustomers.delete,
+        refund: t.chargeRefundButton,
+      },
+      {
+        onCopyLink: () => {
+          if (!checkoutUrl) return;
+          navigator.clipboard.writeText(checkoutUrl);
+          toast({ title: t.chargeLinkCopied });
+        },
+        onWhatsapp: () => {
+          const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
+          window.open(link, '_blank', 'noopener,noreferrer');
+        },
+        onOpenCheckout: () => {
+          if (checkoutUrl) window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+        },
+        onEdit: () => chargeActions.openEditDialog(charge),
+        onDelete: () => chargeActions.requestDelete(charge),
+        onRefund: () => setRefundConfirmChargeId(charge.id),
+      },
+    );
+  };
+
+  /** Mesmas ações, no formato do menu de tabela (desktop). */
+  const chargeMenuActions = (charge: TenantCharge) =>
+    chargeRowActions(charge).map((a) => ({
+      label: a.label,
+      icon: CHARGE_ACTION_ICONS[a.key],
+      variant: a.variant,
+      onClick: a.onClick,
+    }));
+
+  /** Mesmas ações, no formato do card mobile (swipe + menu). */
+  const chargeItemActions = (charge: TenantCharge): ItemAction[] => {
+    const Icon = (key: ChargeRowActionKey) => CHARGE_ACTION_ICONS[key];
+    return chargeRowActions(charge).map((a) => {
+      const ActionIcon = Icon(a.key);
+      return {
+        key: a.key,
+        label: a.label,
+        icon: <ActionIcon className="h-4 w-4" />,
+        variant: a.variant === 'delete' ? ('destructive' as const) : a.variant,
+        onClick: a.onClick,
+      };
+    });
   };
 
   // Linha única da aba Financeiro: lançamento manual OU cobrança (nunca as
@@ -1372,6 +1461,9 @@ export default function CustomerDetail() {
 
       {activeTab === 'financeiro' && (
         <div className="space-y-4">
+          {/* Cobrança alterada/excluída no gateway com o lançamento do
+              Financeiro para trás: mesma faixa persistente da Central. */}
+          <ChargeFinanceWarningBanner actions={chargeActions} />
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.financialHeading}</h2>
             {showCobrancasTab && (
@@ -1446,15 +1538,6 @@ export default function CustomerDetail() {
                   </TableHeader>
                   <TableBody>
                     {transactionsPagination.paginatedItems.map((row) => {
-                      const checkoutUrl = row.charge
-                        ? (row.charge.public_short_code ? buildCheckoutUrl(row.charge.public_short_code) : row.charge.invoice_url ?? '')
-                        : '';
-                      const whatsappMsg = row.charge
-                        ? t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(row.charge.value)}`)
-                        : '';
-                      const phone = customer.celular || customer.phone || '';
-                      const whatsappLink = row.charge ? buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`) : null;
-                      const isChargePaid = row.charge ? classifyTenantChargeStatus(row.charge.status) === 'paid' : false;
                       return (
                         <TableRow key={row.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
                           <TableCell>
@@ -1492,35 +1575,7 @@ export default function CustomerDetail() {
                                 ]}
                               />
                             ) : (
-                              <RowActionsMenu
-                                actions={[
-                                  {
-                                    label: t.chargeCopyLink,
-                                    icon: Copy,
-                                    onClick: () => { if (checkoutUrl) { navigator.clipboard.writeText(checkoutUrl); toast({ title: t.chargeLinkCopied }); } },
-                                  },
-                                  {
-                                    label: t.chargeWhatsapp,
-                                    icon: WhatsAppIcon as unknown as LucideIcon,
-                                    onClick: () => {
-                                      const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
-                                      window.open(link, '_blank', 'noopener,noreferrer');
-                                    },
-                                  },
-                                  {
-                                    label: t.chargeOpenCheckout,
-                                    icon: ExternalLink,
-                                    onClick: () => checkoutUrl && window.open(checkoutUrl, '_blank', 'noopener,noreferrer'),
-                                  },
-                                  {
-                                    label: t.chargeRefundButton,
-                                    icon: RotateCcw,
-                                    variant: 'delete',
-                                    onClick: () => setRefundConfirmChargeId(row.charge!.id),
-                                    hidden: !isChargePaid,
-                                  },
-                                ]}
-                              />
+                              <RowActionsMenu actions={chargeMenuActions(row.charge!)} />
                             )}
                           </TableCell>
                         </TableRow>
@@ -1548,6 +1603,9 @@ export default function CustomerDetail() {
         // que agora também lista cobranças.
         return (
           <div className="space-y-4">
+            {/* Cobrança alterada/excluída no gateway com o lançamento do
+                Financeiro para trás: mesma faixa persistente da Central. */}
+            <ChargeFinanceWarningBanner actions={chargeActions} />
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
                 {t.chargesHeading}
@@ -1599,51 +1657,10 @@ export default function CustomerDetail() {
             ) : isMobile ? (
               <div className="rounded-xl border bg-card overflow-hidden">
                 {customerCharges.map((charge) => {
-                  const checkoutUrl = charge.public_short_code
-                    ? buildCheckoutUrl(charge.public_short_code)
-                    : charge.invoice_url ?? '';
-                  const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
-                  const phone = customer.celular || customer.phone || '';
-                  const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
-                  const isPaid = classifyTenantChargeStatus(charge.status) === 'paid';
-                  const itemActions: ItemAction[] = [
-                    {
-                      key: 'copy',
-                      label: t.chargeCopyLink,
-                      icon: <Copy className="h-4 w-4" />,
-                      onClick: () => {
-                        if (checkoutUrl) {
-                          navigator.clipboard.writeText(checkoutUrl);
-                          toast({ title: t.chargeLinkCopied });
-                        }
-                      },
-                    },
-                    {
-                      key: 'whatsapp',
-                      label: t.chargeWhatsapp,
-                      icon: <WhatsAppIcon className="h-4 w-4" />,
-                      onClick: () => {
-                        const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
-                        window.open(link, '_blank', 'noopener,noreferrer');
-                      },
-                    },
-                    {
-                      key: 'checkout',
-                      label: t.chargeOpenCheckout,
-                      icon: <ExternalLink className="h-4 w-4" />,
-                      onClick: () => checkoutUrl && window.open(checkoutUrl, '_blank', 'noopener,noreferrer'),
-                    },
-                    ...(isPaid ? [{
-                      key: 'refund',
-                      label: t.chargeRefundButton,
-                      icon: <RotateCcw className="h-4 w-4" />,
-                      onClick: () => setRefundConfirmChargeId(charge.id),
-                    }] : []),
-                  ];
                   return (
                     <MobileListItem
                       key={charge.id}
-                      actions={itemActions}
+                      actions={chargeItemActions(charge)}
                       title={
                         <span className="truncate">
                           {getChargeDescription(charge)}
@@ -1682,13 +1699,6 @@ export default function CustomerDetail() {
                       </TableHeader>
                       <TableBody>
                         {customerCharges.map((charge) => {
-                          const checkoutUrl = charge.public_short_code
-                            ? buildCheckoutUrl(charge.public_short_code)
-                            : charge.invoice_url ?? '';
-                          const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
-                          const phone = customer.celular || customer.phone || '';
-                          const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
-                          const isChargePaid = classifyTenantChargeStatus(charge.status) === 'paid';
                           return (
                             <TableRow key={charge.id}>
                               <TableCell>
@@ -1708,55 +1718,11 @@ export default function CustomerDetail() {
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="min-h-[44px] min-w-[44px]"
-                                    title={t.chargeCopyLink}
-                                    onClick={() => {
-                                      if (checkoutUrl) {
-                                        navigator.clipboard.writeText(checkoutUrl);
-                                        toast({ title: t.chargeLinkCopied });
-                                      }
-                                    }}
-                                  >
-                                    <Copy className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="min-h-[44px] min-w-[44px] text-[#25D366]"
-                                    title={t.chargeWhatsapp}
-                                    onClick={() => {
-                                      const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
-                                      window.open(link, '_blank', 'noopener,noreferrer');
-                                    }}
-                                  >
-                                    <WhatsAppIcon className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="min-h-[44px] min-w-[44px]"
-                                    title={t.chargeOpenCheckout}
-                                    onClick={() => checkoutUrl && window.open(checkoutUrl, '_blank', 'noopener,noreferrer')}
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </Button>
-                                  {isChargePaid && (
-                                    <Button
-                                      variant="destructive-ghost"
-                                      size="icon"
-                                      className="min-h-[44px] min-w-[44px]"
-                                      title={t.chargeRefundButton}
-                                      disabled={refundCharge.isPending && refundConfirmChargeId === charge.id}
-                                      onClick={() => setRefundConfirmChargeId(charge.id)}
-                                    >
-                                      <RotateCcw className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </div>
+                                {/* Menu único (copiar link, WhatsApp, checkout,
+                                    editar, excluir, estornar). A lista sai de
+                                    `chargeMenuActions` — mesma trava da Central
+                                    de Cobranças. */}
+                                <RowActionsMenu actions={chargeMenuActions(charge)} />
                               </TableCell>
                             </TableRow>
                           );
@@ -1973,6 +1939,10 @@ export default function CustomerDetail() {
         open={!!previewImage}
         onClose={() => setPreviewImage(null)}
       />
+
+      {/* Editar cobrança + confirmar exclusão: MESMOS diálogos da Central de
+          Cobranças (`useChargeActions`), com as mesmas travas. */}
+      <ChargeActionDialogs actions={chargeActions} />
 
       <CustomerTransactionDetailModal
         open={!!viewingTxn}
