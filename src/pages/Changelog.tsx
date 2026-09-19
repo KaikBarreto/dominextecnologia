@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.46',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Buscar no funil do CRM não exige mais rolar atrás do card',
+        description: 'Ao buscar um cliente no funil, agora ficam na tela só as etapas que têm resultado. Antes, todas as etapas continuavam aparecendo vazias e a oportunidade encontrada podia ficar na oitava coluna, escondida fora da tela. Uma linha acima do funil avisa quantas etapas foram escondidas, e o botão "Mostrar todas" traz elas de volta sem apagar a busca, para quando você quiser arrastar o card para outra etapa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.45',
     date: '19 de setembro de 2026',
     type: 'patch',

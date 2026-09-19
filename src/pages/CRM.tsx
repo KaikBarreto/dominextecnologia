@@ -228,6 +228,11 @@ export default function CRM() {
   // reabrir a tela sempre volta pro Funil, que é o uso principal.
   const [pageTab, setPageTab] = useState<'funil' | 'tarefas'>('funil');
   const [taskSearch, setTaskSearch] = useState('');
+  // Com busca digitada, o funil esconde as etapas que ficaram sem nenhum card —
+  // senão o único resultado fica na 8ª coluna e o usuário precisa rolar até
+  // achar. Este estado é o escape pra quem quiser as etapas vazias de volta
+  // (pra arrastar o card pro próximo estágio sem limpar a busca).
+  const [showEmptyStages, setShowEmptyStages] = useState(false);
   const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string[]>([]);
 
   const { serviceOrders } = useServiceOrders();
@@ -378,6 +383,25 @@ export default function CRM() {
       return acc;
     }, {} as Record<string, number>);
   }, [leadsByStage]);
+
+  // Etapas exibidas no funil. Só a BUSCA digitada esconde etapa vazia: filtro de
+  // origem/responsável sem busca mantém tudo, porque aí o usuário está
+  // trabalhando o funil e precisa das colunas vazias como alvo de arraste.
+  // Trocar a busca volta a esconder as etapas vazias: o "mostrar todas" vale
+  // pra busca atual, não pra sempre.
+  useEffect(() => {
+    setShowEmptyStages(false);
+  }, [filters.search]);
+
+  const hidesEmptyStages = !!filters.search.trim() && !showEmptyStages;
+  const visibleStages = useMemo(
+    () =>
+      hidesEmptyStages
+        ? stages.filter((stage) => (leadsByStage[stage.id]?.length || 0) > 0)
+        : stages,
+    [hidesEmptyStages, stages, leadsByStage],
+  );
+  const hiddenStagesCount = stages.length - visibleStages.length;
 
   // Compute stats from filtered leads (not all leads)
   const filteredStats = useMemo(() => ({
@@ -807,9 +831,28 @@ export default function CRM() {
           </CardContent>
         </Card>
       ) : (
-        <div className="overflow-x-auto pb-4 -mx-1 px-1">
-          <div className="flex items-stretch gap-3 sm:gap-4" style={{ minWidth: `${stages.length * 280}px` }}>
-            {stages.map((stage) => (
+        <div className="space-y-2">
+          {hiddenStagesCount > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>
+                {(hiddenStagesCount === 1 ? t.stages.hiddenEmptyOne : t.stages.hiddenEmptyMany).replace(
+                  '{count}',
+                  String(hiddenStagesCount),
+                )}
+              </span>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                onClick={() => setShowEmptyStages(true)}
+              >
+                {t.stages.showAllStages}
+              </Button>
+            </div>
+          )}
+          <div className="overflow-x-auto pb-4 -mx-1 px-1">
+          <div className="flex items-stretch gap-3 sm:gap-4" style={{ minWidth: `${visibleStages.length * 280}px` }}>
+            {visibleStages.map((stage) => (
               <div
                 key={stage.id}
                 className={cn(
@@ -823,19 +866,24 @@ export default function CRM() {
                 <div
                   className={cn(
                     'rounded-t-lg p-3 text-white shrink-0',
-                    !isMobile && 'cursor-grab active:cursor-grabbing',
+                    !isMobile && !hidesEmptyStages && 'cursor-grab active:cursor-grabbing',
                     dragOverStageId === stage.id && 'ring-2 ring-inset ring-white',
                     getStageHeaderStyle(stage.color).className,
                   )}
                   style={getStageHeaderStyle(stage.color).style}
-                  draggable={!isMobile}
+                  // Reordenar etapa fica desligado enquanto o funil esconde as
+                  // vazias: arrastar aqui reordenaria uma lista PARCIAL e
+                  // gravaria a ordem errada pra todo mundo.
+                  draggable={!isMobile && !hidesEmptyStages}
                   onDragStart={(e) => handleStageDragStart(e, stage.id)}
                   onDragEnd={handleStageDragEnd}
-                  title={!isMobile ? t.stages.dragHint : undefined}
+                  title={!isMobile && !hidesEmptyStages ? t.stages.dragHint : undefined}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      {!isMobile && <GripVertical className="h-3.5 w-3.5 text-white/60 shrink-0" />}
+                      {!isMobile && !hidesEmptyStages && (
+                        <GripVertical className="h-3.5 w-3.5 text-white/60 shrink-0" />
+                      )}
                       {stage.icon && <IconPreview name={stage.icon} className="h-3.5 w-3.5 shrink-0" />}
                       <span className="font-semibold text-sm truncate">{stage.name}</span>
                     </div>
@@ -876,6 +924,7 @@ export default function CRM() {
                 </ScrollArea>
               </div>
             ))}
+          </div>
           </div>
         </div>
       )}

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.45";
+export const APP_VERSION = "1.24.46";
 
-export const VERSION_NOTES = "A busca ficou mais esperta em todo o sistema: agora você acha o cliente pelo telefone, digita o nome sem acento ou só as duas palavras que lembra, e ainda assim encontra."
+export const VERSION_NOTES = "No funil do CRM, buscar um cliente agora deixa na tela só as etapas que têm resultado, sem precisar rolar de lado atrás do card."
