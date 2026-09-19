@@ -344,12 +344,21 @@ export function FinanceCategorias() {
   // lado (ver layout desktop abaixo), cada seção passou a ter METADE da
   // largura da tela, e breakpoint de viewport não sabe disso — daria 4 cards
   // por linha numa coluna que não tem espaço pra 4. `auto-fill` conta o
-  // espaço de verdade do próprio grid (cheio quando a seção está empilhada,
-  // pela metade quando está lado a lado) e decide sozinho quantos cards de
-  // ~220 a ~460px cabem por linha — 1 na faixa "tela média", 2 a 3 em tela
-  // larga, sem card esticando feio quando sobra pouco item na linha.
+  // espaço de verdade do próprio grid e decide sozinho quantos cabem.
+  //
+  // 🔴 O MAX TEM QUE SER `1fr`, NUNCA UM px. Medido no navegador em 2026-09-19:
+  // com `minmax(220px, 460px)` a coluna media 468px de `clientWidth` e o
+  // `grid-template-columns` computado saía **`460px`** — UMA track só, 1 card
+  // por linha. Motivo: pra contar as repetições do `auto-fill` o CSS usa a
+  // função de tamanho MÁXIMA quando ela é definida (460px), e só cai na mínima
+  // quando a máxima é indefinida. Ou seja, os 220px do min nunca foram
+  // consultados; o grid perguntava "cabem quantas tracks de 460?" → 1.
+  // Com `1fr` (máxima indefinida) a conta passa a ser pela mínima: na mesma
+  // coluna de 468px cabem 2 tracks de 210px, que esticam pra 229px cada.
+  // 210px (e não 220) é o que faz 3 caberem em monitor largo (coluna ~672px
+  // em viewport 1920) sem quebrar os 2 da coluna de 468px.
   const renderCategoryGrid = (fullList: FinancialCategory[], groupItems: FinancialCategory[], groupKey: string) => (
-    <div className="grid gap-2.5 items-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 460px))' }}>
+    <div className="grid gap-2.5 items-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))' }}>
       {groupItems.map((cat, idx) => {
         const Icon = getCategoryIcon(cat.icon);
         const isSystem = cat.is_system;
@@ -637,8 +646,17 @@ export function FinanceCategorias() {
 
   // Divisória discreta reutilizada no desktop e no mobile: nome do grupo do
   // DRE + contagem, sem card, sem travessão.
-  const renderGroupDivider = (label: string, count: number) => (
-    <div className="flex items-center gap-2 px-0.5 pb-3 pt-6 first:pt-0">
+  //
+  // 🔴 `spacing` é obrigatório porque desktop e mobile precisam de valores
+  // DIFERENTES e o par certo só se descobre medindo. O desktop usa `py-4`:
+  // medido no navegador, dá 16px do card de cima até o rótulo e 16px do rótulo
+  // até o card de baixo — simétrico.
+  // O que havia antes (`pb-3 pt-6 first:pt-0`) NUNCA aplicava o `pt-6`: a
+  // divisória é sempre o PRIMEIRO filho do `<div key={g.key}>` do grupo, então
+  // `first:pt-0` vencia toda vez. Medição de 2026-09-19: 0px acima / 12px
+  // abaixo — era por isso que o rótulo grudava no card de cima.
+  const renderGroupDivider = (label: string, count: number, spacing: string) => (
+    <div className={cn('flex items-center gap-2 px-0.5', spacing)}>
       <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
         {label} <span className="normal-case font-normal text-muted-foreground/70">({count})</span>
       </span>
@@ -675,7 +693,8 @@ export function FinanceCategorias() {
       <div>
         {groups.map((g) => (
           <div key={g.key}>
-            {renderGroupDivider(g.label, groupCount(g.items))}
+            {/* Mobile mantém o espaçamento que já estava em produção. */}
+            {renderGroupDivider(g.label, groupCount(g.items), 'pb-3 pt-6 first:pt-0')}
             <div className="rounded-xl border bg-card overflow-hidden">
               {g.items.map((cat, idx) => renderMobileItem(cat, idx, g.items, fullList))}
             </div>
@@ -793,20 +812,29 @@ export function FinanceCategorias() {
       ) : (
         <div className="grid gap-6 xl:grid-cols-2 items-start">
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success shrink-0">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-bold">{fin.categories.sections.revenueTitle}</h3>
-                  <p className="text-xs text-muted-foreground truncate">{receitas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
-                </div>
+            {/* Botão colado no TÍTULO, não jogado no fim de um
+                `justify-between`: com Receita e Despesa lado a lado a coluna é
+                larga, e o botão empurrado pra borda direita ficava boiando no
+                meio da tela, sem dono visível. */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success shrink-0">
+                <TrendingUp className="h-5 w-5 text-white" />
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleNew('entrada')} className="shrink-0">
-                <Plus className="mr-1 h-4 w-4" />
-                {fin.categories.sections.newButton}
-              </Button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="font-bold truncate">{fin.categories.sections.revenueTitle}</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleNew('entrada')}
+                    className="h-7 shrink-0 px-2 text-xs"
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    {fin.categories.sections.newButton}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{receitas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
+              </div>
             </div>
             {receitaRoots.length === 0 ? (
               <EmptyState
@@ -820,20 +848,29 @@ export function FinanceCategorias() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive shrink-0">
-                  <TrendingDown className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-bold">{fin.categories.sections.expenseTitle}</h3>
-                  <p className="text-xs text-muted-foreground truncate">{despesas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
-                </div>
+            {/* Botão colado no TÍTULO, não jogado no fim de um
+                `justify-between`: com Receita e Despesa lado a lado a coluna é
+                larga, e o botão empurrado pra borda direita ficava boiando no
+                meio da tela, sem dono visível. */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive shrink-0">
+                <TrendingDown className="h-5 w-5 text-white" />
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleNew('saida')} className="shrink-0">
-                <Plus className="mr-1 h-4 w-4" />
-                {fin.categories.sections.newButton}
-              </Button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="font-bold truncate">{fin.categories.sections.expenseTitle}</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleNew('saida')}
+                    className="h-7 shrink-0 px-2 text-xs"
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    {fin.categories.sections.newButton}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{despesas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
+              </div>
             </div>
             {despesaRoots.length === 0 ? (
               <EmptyState
@@ -847,7 +884,7 @@ export function FinanceCategorias() {
               <div>
                 {despesaGroups.map((g) => (
                   <div key={g.key}>
-                    {renderGroupDivider(g.label, groupCount(g.items))}
+                    {renderGroupDivider(g.label, groupCount(g.items), 'py-4')}
                     {renderCategoryGrid(despesas, g.items, g.key)}
                   </div>
                 ))}

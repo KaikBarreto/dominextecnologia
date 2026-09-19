@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.63',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Categorias agora cabem de verdade duas a três por linha',
+        description: 'A versão anterior prometia dois a três cards por linha no computador, mas na prática continuava um só. A conta da largura estava errada e a grade nunca quebrava. Agora quebra: duas por linha em notebook e três em monitor grande. Em telas menores e no celular nada mudou.',
+        category: 'correcao',
+      },
+      {
+        title: 'Título de grupo colado na categoria de cima',
+        description: 'Os títulos como CSP (Custo do Serviço Prestado) ficavam mais perto da categoria acima do que da de baixo, e pareciam legenda dela. Agora a distância é igual dos dois lados.',
+        category: 'correcao',
+      },
+      {
+        title: 'Botão de criar categoria ao lado do título',
+        description: 'O botão ficava na ponta direita da seção, longe do que ele cria, e se chamava só Nova. Agora fica colado no título de cada lista e se chama Nova categoria.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Quem não foi liberado num funil não entra por brecha',
+        description: 'No controle de quem pode ver cada funil do CRM havia uma exceção herdada: usuário que nunca teve permissões configuradas individualmente passava por cima da lista montada pelo gestor. A liberação do funil agora vale sem exceção. Nenhum acesso atual foi alterado.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.62',
     date: '19 de setembro de 2026',
     type: 'patch',
