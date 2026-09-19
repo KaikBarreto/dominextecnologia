@@ -160,6 +160,18 @@ export const crm = {
       noInteractions: 'Nenhuma interação registrada',
       noInteractionsDesc: 'Clique em "Nova Interação" para registrar o primeiro contato',
       nextActionPrefix: 'Próxima ação:',
+      // ── Autosave de Observações (digita direto, sem entrar em modo Editar) ──
+      notesPlaceholder: 'Adicione observações sobre esta oportunidade...',
+      notesSaving: 'Salvando...',
+      notesSaved: 'Salvo',
+      notesUnsaved: 'Não salvo',
+      notesSaveError: 'Não foi possível salvar, tente novamente.',
+      // ── Registro automático de mudança de estágio no Histórico ──
+      stageChangeLabel: 'Mudança de estágio',
+      stageChangeFromTo: 'De "{from}" para "{to}"',
+      stageChangeToOnly: 'Movido para "{to}"',
+      stageChangeUnknownStage: 'Estágio removido',
+      stageChangeBy: 'por {name}',
     },
 
     // ── LeadFormDialog ──
@@ -1288,6 +1300,16 @@ export const crm = {
       noInteractions: 'No interactions logged',
       noInteractionsDesc: 'Click "New Interaction" to log the first contact',
       nextActionPrefix: 'Next action:',
+      notesPlaceholder: 'Add notes about this opportunity...',
+      notesSaving: 'Saving...',
+      notesSaved: 'Saved',
+      notesUnsaved: 'Unsaved',
+      notesSaveError: 'Could not save, please try again.',
+      stageChangeLabel: 'Stage change',
+      stageChangeFromTo: 'From "{from}" to "{to}"',
+      stageChangeToOnly: 'Moved to "{to}"',
+      stageChangeUnknownStage: 'Stage removed',
+      stageChangeBy: 'by {name}',
     },
 
     form: {
@@ -2338,6 +2360,16 @@ export const crm = {
       noInteractions: 'Sin interacciones registradas',
       noInteractionsDesc: 'Haz clic en "Nueva Interacción" para registrar el primer contacto',
       nextActionPrefix: 'Próxima acción:',
+      notesPlaceholder: 'Agrega observaciones sobre esta oportunidad...',
+      notesSaving: 'Guardando...',
+      notesSaved: 'Guardado',
+      notesUnsaved: 'Sin guardar',
+      notesSaveError: 'No se pudo guardar, intenta de nuevo.',
+      stageChangeLabel: 'Cambio de etapa',
+      stageChangeFromTo: 'De "{from}" a "{to}"',
+      stageChangeToOnly: 'Movido a "{to}"',
+      stageChangeUnknownStage: 'Etapa eliminada',
+      stageChangeBy: 'por {name}',
     },
 
     form: {
@@ -3390,6 +3422,16 @@ export const crm = {
       noInteractions: 'Aucune interaction enregistrée',
       noInteractionsDesc: 'Cliquez sur « Nouvelle Interaction » pour enregistrer le premier contact',
       nextActionPrefix: 'Prochaine action :',
+      notesPlaceholder: `Ajoutez des remarques sur cette opportunité...`,
+      notesSaving: 'Enregistrement...',
+      notesSaved: 'Enregistré',
+      notesUnsaved: 'Non enregistré',
+      notesSaveError: `Échec de l'enregistrement, réessayez.`,
+      stageChangeLabel: `Changement d'étape`,
+      stageChangeFromTo: 'De « {from} » à « {to} »',
+      stageChangeToOnly: 'Déplacé vers « {to} »',
+      stageChangeUnknownStage: 'Étape supprimée',
+      stageChangeBy: 'par {name}',
     },
 
     form: {

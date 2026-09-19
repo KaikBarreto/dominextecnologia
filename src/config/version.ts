@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.49";
+export const APP_VERSION = "1.24.50";
 
-export const VERSION_NOTES = "Tarefas internas não aparecem mais no portal do cliente. Também dá para renomear as categorias que o sistema cria, a DRE mostra todas as linhas e o lançamento ficou mais claro."
+export const VERSION_NOTES = "Observações da oportunidade salvam sozinhas, e trocar o estágio fica registrado no histórico. A busca da aba Tarefas agora acha por cliente e telefone."

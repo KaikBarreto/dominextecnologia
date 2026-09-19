@@ -274,10 +274,25 @@ export default function CRM() {
   const filteredTasks = useMemo(() => {
     return collapsedTasks.filter((task: any) => {
       if (taskSearch) {
+        // Mesma régua de busca do resto do sistema: o cliente e o telefone já
+        // vêm carregados com a tarefa, então quem tem só o número do WhatsApp
+        // na mão acha a tarefa por ele. Antes olhava só o nome da tarefa e o
+        // título da oportunidade.
         const leadTitle = leadTitleMap.get(task.lead_id) || '';
-        const matchesTitle = fuzzyIncludes(task.task_title, taskSearch);
-        const matchesLead = fuzzyIncludes(leadTitle, taskSearch);
-        if (!matchesTitle && !matchesLead) return false;
+        const customer = (task as any).customer;
+        const matches = fuzzyIncludesAny(
+          [
+            task.task_title,
+            leadTitle,
+            task.description,
+            customer?.name,
+            customer?.phone,
+            customer?.celular,
+            customer?.email,
+          ],
+          taskSearch,
+        );
+        if (!matches) return false;
       }
       if (taskAssigneeFilter.length > 0) {
         const ids: string[] = task._assignee_user_ids || [];
@@ -448,8 +463,16 @@ export default function CRM() {
     if (!open) setEditingLead(null);
   };
 
+  /**
+   * Aba em que o modal de detalhe abre. Clicar numa tarefa na aba Tarefas tem
+   * que cair em "tarefas" — abrir em "detalhes" obrigava a clicar de novo pra
+   * ver justamente a tarefa que a pessoa acabou de clicar.
+   */
+  const [detailInitialTab, setDetailInitialTab] = useState<'detalhes' | 'tarefas' | 'historico'>('detalhes');
+
   const handleLeadClick = (lead: Lead) => {
     setDetailLeadId(lead.id);
+    setDetailInitialTab('detalhes');
     setDetailOpen(true);
   };
 
@@ -1181,6 +1204,7 @@ export default function CRM() {
                 type="button"
                 onClick={() => {
                   setDetailLeadId(task.lead_id);
+                  setDetailInitialTab('tarefas');
                   setDetailOpen(true);
                 }}
                 className="w-full text-left flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors"
@@ -1326,6 +1350,7 @@ export default function CRM() {
             handleEdit(lead);
           }}
           onStageChange={handleModalStageChange}
+          initialTab={detailInitialTab}
         />
         <LossReasonDialog
           open={lossDialogOpen}
@@ -1359,18 +1384,26 @@ export default function CRM() {
               pipelineId={selectedPipelineId ?? undefined}
               pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
             >
-              <Button variant="outline" size="icon" title={t.manageStages}>
+              {/* Os três eram só ícone, com o nome escondido no `title` (o
+                  tooltip do navegador, que no celular nem existe): ninguém
+                  sabia o que cada um fazia sem clicar. Agora o rótulo aparece
+                  no desktop; no celular fica só o ícone, senão três botões com
+                  texto estouram a faixa do cabeçalho. */}
+              <Button variant="outline" size={isMobile ? 'icon' : 'sm'} className="gap-2" title={t.manageStages}>
                 <Settings2 className="h-4 w-4" />
+                {!isMobile && t.manageStages}
               </Button>
             </StageManagerDialog>
             <PipelineManagerDialog>
-              <Button variant="outline" size="icon" title={t.managePipelines}>
+              <Button variant="outline" size={isMobile ? 'icon' : 'sm'} className="gap-2" title={t.managePipelines}>
                 <Workflow className="h-4 w-4" />
+                {!isMobile && t.managePipelines}
               </Button>
             </PipelineManagerDialog>
             <WebhookManagerDialog>
-              <Button variant="outline" size="icon" title={t.configWebhooks}>
+              <Button variant="outline" size={isMobile ? 'icon' : 'sm'} className="gap-2" title={t.configWebhooks}>
                 <Webhook className="h-4 w-4" />
+                {!isMobile && t.configWebhooks}
               </Button>
             </WebhookManagerDialog>
             <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -1556,6 +1589,7 @@ export default function CRM() {
           handleEdit(lead);
         }}
         onStageChange={handleModalStageChange}
+        initialTab={detailInitialTab}
       />
       <LossReasonDialog
         open={lossDialogOpen}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   User, Phone, Mail, Calendar, DollarSign, TrendingUp,
   MessageSquare, Clock, Plus, Send, Edit, Trash2, X, Wrench, CalendarPlus,
-  UserX, UserPlus, CheckCircle2, Circle, Repeat,
+  UserX, UserPlus, CheckCircle2, Circle, Repeat, Loader2, AlertTriangle,
 } from 'lucide-react';
 import {
   useLeadInteractions,
@@ -28,6 +28,7 @@ import {
   getInteractionTypes,
   useLeads
 } from '@/hooks/useLeads';
+import { STAGE_CHANGE_INTERACTION_TYPE, parseStageChangeDescription } from '@/lib/leadStageHistory';
 import { useCrmStages } from '@/hooks/useCrmStages';
 import { useCrmPipelines } from '@/hooks/useCrmPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
@@ -62,9 +63,15 @@ interface LeadDetailModalProps {
   onEdit: (lead: Lead) => void;
   /** Centralizado no CRM.tsx (requestStageChange): decide se pede motivo de perda antes de gravar. */
   onStageChange: (lead: Lead, stageId: string) => void;
+  /**
+   * Aba em que o modal abre. Quem vem da aba Tarefas do CRM entra direto em
+   * "tarefas": abrir em "detalhes" obrigava a clicar de novo pra ver a tarefa
+   * que a pessoa acabou de clicar.
+   */
+  initialTab?: 'detalhes' | 'tarefas' | 'historico';
 }
 
-export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChange }: LeadDetailModalProps) {
+export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChange, initialTab = 'detalhes' }: LeadDetailModalProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const dfLocale = DATE_FNS_LOCALES[locale];
@@ -74,7 +81,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const { pipelines } = useCrmPipelines();
   const hasMultiplePipelines = pipelines.length > 1;
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
-  const { deleteLead, claimLead } = useLeads();
+  const { deleteLead, claimLead, updateLeadNotes } = useLeads();
 
   const { user, isAdminOrGestor, hasPermission } = useAuth();
   const { createServiceOrder, serviceOrders, deleteServiceOrder, updateServiceOrder } = useServiceOrders();
@@ -125,6 +132,74 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
     [profiles],
   );
 
+  // ── Autosave de "Observações" (pedido do CEO: digitar direto, sem entrar
+  // em modo Editar) ───────────────────────────────────────────────────────
+  // Mesmo padrão de auto-save com debounce + indicador visual já usado em
+  // Configurações (SettingsRegionalContent.tsx): baseline "último salvo" +
+  // debounce curto + flush ao desmontar, pra nunca perder o que foi digitado.
+  // Reidrata só quando troca de LEAD (o modal fecha antes de abrir o form de
+  // edição — nunca os dois escrevem `notes` ao mesmo tempo, ver handleEditClick).
+  const [notesValue, setNotesValue] = useState(lead?.notes ?? '');
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [notesSaveError, setNotesSaveError] = useState(false);
+  const notesLeadIdRef = useRef<string | null>(lead?.id ?? null);
+  const notesLastSavedRef = useRef<string>(lead?.notes ?? '');
+  const notesValueRef = useRef(notesValue);
+  const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  notesValueRef.current = notesValue;
+
+  useEffect(() => {
+    if (notesLeadIdRef.current === (lead?.id ?? null)) return;
+    notesLeadIdRef.current = lead?.id ?? null;
+    notesLastSavedRef.current = lead?.notes ?? '';
+    setNotesValue(lead?.notes ?? '');
+    setNotesDirty(false);
+    setNotesSaveError(false);
+    if (notesTimerRef.current) { clearTimeout(notesTimerRef.current); notesTimerRef.current = null; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead?.id]);
+
+  const saveNotesNow = useCallback((value: string) => {
+    if (!lead) return;
+    if (notesTimerRef.current) { clearTimeout(notesTimerRef.current); notesTimerRef.current = null; }
+    if (value === notesLastSavedRef.current) { setNotesDirty(false); return; }
+    updateLeadNotes.mutate(
+      { id: lead.id, notes: value || null },
+      {
+        onSuccess: () => {
+          // Só confirma "Salvo" se nada novo foi digitado enquanto a request
+          // estava em voo — senão o indicador mentiria "Salvo" com uma
+          // edição mais nova ainda pendente.
+          if (notesValueRef.current === value) {
+            notesLastSavedRef.current = value;
+            setNotesDirty(false);
+            setNotesSaveError(false);
+          }
+        },
+        onError: () => setNotesSaveError(true),
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead?.id]);
+
+  useEffect(() => {
+    if (!lead) return;
+    if (notesValue === notesLastSavedRef.current) { setNotesDirty(false); return; }
+    setNotesDirty(true);
+    setNotesSaveError(false);
+    if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
+    notesTimerRef.current = setTimeout(() => saveNotesNow(notesValue), 800);
+    return () => { if (notesTimerRef.current) clearTimeout(notesTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notesValue, lead?.id]);
+
+  // Flush ao desmontar (fechar o modal antes do debounce dar tempo) — igual
+  // ao flushRef de SettingsRegionalContent.tsx.
+  useEffect(() => () => {
+    if (notesTimerRef.current) saveNotesNow(notesValueRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!lead) return null;
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
@@ -136,6 +211,16 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
 
   const handleStageChange = (stageId: string) => {
     onStageChange(lead, stageId);
+  };
+
+  // Botão "Editar" do header: dispara o flush do autosave de Observações na
+  // hora (sem esperar a resposta do servidor) e repassa pro form de edição o
+  // valor mais atual DIGITADO (não o `lead.notes` do servidor, que pode
+  // ainda não refletir a última tecla) — assim o form nunca sobrescreve o
+  // que o usuário acabou de escrever aqui.
+  const handleEditClick = () => {
+    if (notesTimerRef.current) saveNotesNow(notesValueRef.current);
+    onEdit({ ...lead, notes: notesValue });
   };
 
   const handleAddInteraction = async () => {
@@ -202,6 +287,19 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
     return found?.label || type;
   };
 
+  // Registro automático de mudança de estágio (aba Histórico) — grava um JSON
+  // dos nomes no momento da troca (leadStageHistory.ts). Se o parse falhar
+  // (formato inesperado), cai pro texto cru em vez de sumir com o registro.
+  const renderStageChangeText = (raw: string | null) => {
+    const snapshot = parseStageChangeDescription(raw);
+    if (!snapshot) return raw || '';
+    const toName = snapshot.to_stage_name || t.detail.stageChangeUnknownStage;
+    if (snapshot.from_stage_name) {
+      return t.detail.stageChangeFromTo.replace('{from}', snapshot.from_stage_name).replace('{to}', toName);
+    }
+    return t.detail.stageChangeToOnly.replace('{to}', toName);
+  };
+
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,7 +321,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="edit-ghost" size="sm" onClick={() => onEdit(lead)}>
+              <Button variant="edit-ghost" size="sm" onClick={handleEditClick}>
                 <Edit className="h-4 w-4 mr-1" />
                 {t.detail.edit}
               </Button>
@@ -234,7 +332,11 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="detalhes" className="flex-1 overflow-hidden flex flex-col">
+        {/* `key` força remontar quando a aba de entrada muda: `defaultValue` do
+            Radix só vale na primeira montagem, e o modal é reaproveitado entre
+            aberturas (não desmonta ao fechar). Sem isso, abrir pela aba
+            Tarefas continuaria caindo em Detalhes a partir da segunda vez. */}
+        <Tabs key={`${lead?.id ?? 'none'}-${initialTab}`} defaultValue={initialTab} className="flex-1 overflow-hidden flex flex-col">
           <TabsList className="flex-shrink-0">
             <TabsTrigger value="detalhes">{t.detail.tabDetails}</TabsTrigger>
             <TabsTrigger value="tarefas">
@@ -487,13 +589,45 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
               </div>
             )}
 
-            {/* Notes */}
-            {lead.notes && (
-              <div className="rounded-lg border p-4">
-                <h4 className="font-semibold mb-2">{t.detail.notes}</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lead.notes}</p>
+            {/* Observações: editável direto, com autosave (pedido do CEO, sem
+                precisar clicar em "Editar"). Indicador inline avisa se está
+                salvando, salvo, pendente ou se falhou — sem toast a cada
+                debounce, que seria spam. */}
+            <div className="rounded-lg border p-4 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-semibold">{t.detail.notes}</h4>
+                <span className="flex items-center gap-1.5 text-xs shrink-0">
+                  {updateLeadNotes.isPending ? (
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {t.detail.notesSaving}
+                    </span>
+                  ) : notesSaveError ? (
+                    <span className="flex items-center gap-1.5 text-destructive">
+                      <AlertTriangle className="h-3 w-3" />
+                      {t.detail.notesSaveError}
+                    </span>
+                  ) : notesDirty ? (
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                      {t.detail.notesUnsaved}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-success">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {t.detail.notesSaved}
+                    </span>
+                  )}
+                </span>
               </div>
-            )}
+              <Textarea
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
+                placeholder={t.detail.notesPlaceholder}
+                rows={3}
+                className="resize-none text-sm"
+              />
+            </div>
 
             {/* Timeline info */}
             <div className="text-xs text-muted-foreground space-y-1">
@@ -706,44 +840,58 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {interactions.map((interaction, index) => (
-                    <div key={interaction.id} className="relative">
-                      {index < interactions.length - 1 && (
-                        <div className="absolute left-4 top-10 bottom-0 w-px bg-border" />
-                      )}
-                      <div className="flex gap-4">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-lg">
-                          {getInteractionIcon(interaction.interaction_type)}
-                        </div>
-                        <div className="flex-1 pb-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-medium text-sm">
-                                {getInteractionLabel(interaction.interaction_type)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(interaction.created_at), 'dd/MM/yyyy HH:mm', { locale: dfLocale })}
-                              </p>
-                            </div>
+                  {interactions.map((interaction, index) => {
+                    const isStageChange = interaction.interaction_type === STAGE_CHANGE_INTERACTION_TYPE;
+                    // "Quem" só pro registro automático de mudança de estágio
+                    // (pedido do CEO) — interação manual já mostra a autoria
+                    // pelo contexto de quem está logado registrando.
+                    const byName = isStageChange && interaction.created_by
+                      ? profileMap.get(interaction.created_by)?.full_name
+                      : null;
+                    return (
+                      <div key={interaction.id} className="relative">
+                        {index < interactions.length - 1 && (
+                          <div className="absolute left-4 top-10 bottom-0 w-px bg-border" />
+                        )}
+                        <div className="flex gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-lg">
+                            {isStageChange ? (
+                              <Repeat className="h-4 w-4 text-primary" />
+                            ) : (
+                              getInteractionIcon(interaction.interaction_type)
+                            )}
                           </div>
-                          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-                            {interaction.description}
-                          </p>
-                          {interaction.next_action && (
-                            <div className="mt-2 flex items-center gap-2 text-xs bg-warning/10 text-warning p-2 rounded">
-                              <Clock className="h-3 w-3" />
-                              <span>{t.detail.nextActionPrefix} {interaction.next_action}</span>
-                              {interaction.next_action_date && (
-                                <span>
-                                  ({format(new Date(interaction.next_action_date), 'dd/MM/yyyy', { locale: dfLocale })})
-                                </span>
-                              )}
+                          <div className="flex-1 pb-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {isStageChange ? t.detail.stageChangeLabel : getInteractionLabel(interaction.interaction_type)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(interaction.created_at), 'dd/MM/yyyy HH:mm', { locale: dfLocale })}
+                                  {byName && ` · ${t.detail.stageChangeBy.replace('{name}', byName)}`}
+                                </p>
+                              </div>
                             </div>
-                          )}
+                            <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+                              {isStageChange ? renderStageChangeText(interaction.description) : interaction.description}
+                            </p>
+                            {!isStageChange && interaction.next_action && (
+                              <div className="mt-2 flex items-center gap-2 text-xs bg-warning/10 text-warning p-2 rounded">
+                                <Clock className="h-3 w-3" />
+                                <span>{t.detail.nextActionPrefix} {interaction.next_action}</span>
+                                {interaction.next_action_date && (
+                                  <span>
+                                    ({format(new Date(interaction.next_action_date), 'dd/MM/yyyy', { locale: dfLocale })})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

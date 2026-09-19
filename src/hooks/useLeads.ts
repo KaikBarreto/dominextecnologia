@@ -6,6 +6,11 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import {
+  STAGE_CHANGE_INTERACTION_TYPE,
+  shouldLogStageChange,
+  buildStageChangeDescription,
+} from '@/lib/leadStageHistory';
 
 /**
  * Um responsável da oportunidade (Onda C do overhaul de CRM). `is_primary`
@@ -234,6 +239,19 @@ export function useLeads() {
         delete updateFields.assigned_to;
       }
       const sanitized = normalizeOptionalForeignKeys(updateFields, ['customer_id', 'assigned_to', 'stage_id']);
+
+      // Snapshot do estágio ANTES do update. Este é o ÚNICO caminho de escrita
+      // de `leads.stage_id` no app (drag-and-drop do kanban, menu de 3 pontos
+      // mobile, select do modal de detalhe, form de edição e confirmação de
+      // perda passam todos por aqui) — centralizar o registro de histórico
+      // aqui garante que nenhum caminho fica de fora. Usa o cache de `leads`
+      // (já carregado pra renderizar a tela) em vez de nova query.
+      const isStageUpdate = 'stage_id' in sanitized;
+      const nextStageId = sanitized.stage_id as string | null | undefined;
+      const previousStageId = isStageUpdate
+        ? ((queryClient.getQueryData<Lead[]>(['leads']) || []).find((l) => l.id === id)?.stage_id ?? null)
+        : null;
+
       const { data, error } = await supabase
         .from('leads')
         .update(sanitized)
@@ -247,14 +265,70 @@ export function useLeads() {
         await replaceLeadAssignees(id, assignee_user_ids);
       }
 
+      // Só grava quando o estágio de fato mudou — soltar o card na mesma
+      // coluna, ou salvar o form sem mexer no estágio, não pode virar ruído
+      // na aba Histórico. Falha aqui não derruba o update do lead (que já
+      // foi commitado acima): só loga no console, o card já mudou de estágio
+      // pro usuário de qualquer forma.
+      if (isStageUpdate && shouldLogStageChange(previousStageId, nextStageId)) {
+        try {
+          const idsToFetch = previousStageId ? [previousStageId, nextStageId] : [nextStageId];
+          const { data: stagesData } = await supabase
+            .from('crm_stages')
+            .select('id, name')
+            .in('id', idsToFetch);
+          const nameById = new Map((stagesData || []).map((s) => [s.id, s.name]));
+          const { data: userData } = await supabase.auth.getUser();
+          await supabase.from('lead_interactions').insert({
+            lead_id: id,
+            interaction_type: STAGE_CHANGE_INTERACTION_TYPE,
+            description: buildStageChangeDescription({
+              from_stage_id: previousStageId,
+              from_stage_name: previousStageId ? nameById.get(previousStageId) ?? null : null,
+              to_stage_id: nextStageId,
+              to_stage_name: nameById.get(nextStageId) ?? null,
+            }),
+            created_by: userData.user?.id,
+          });
+        } catch (logError) {
+          console.error('Falha ao registrar mudança de estágio no histórico da oportunidade', logError);
+        }
+      }
+
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead_interactions', variables.id] });
       toast({ title: 'Lead atualizado com sucesso!' });
     },
     onError: (error) => {
       toast({ title: 'Erro ao atualizar lead', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+
+  // Autosave silencioso pra campos digitados no modal de detalhe (hoje só
+  // Observações — LeadDetailModal). Mesma escrita de `updateLead`, mas SEM
+  // toast de sucesso: um "Lead atualizado com sucesso!" a cada 800ms de
+  // debounce enquanto o usuário digita seria ruído — o indicador inline
+  // ("Salvando…" → "Salvo") já avisa. Erro ainda avisa, porque autosave que
+  // falha em silêncio faz o usuário perder confiança no campo.
+  const updateLeadNotes = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string | null }) => {
+      const { data, error } = await supabase
+        .from('leads')
+        .update({ notes })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (error) => {
+      toast({ title: 'Erro ao salvar observações', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -329,6 +403,7 @@ export function useLeads() {
     error,
     createLead,
     updateLead,
+    updateLeadNotes,
     claimLead,
     deleteLead,
     leadsByStatus,

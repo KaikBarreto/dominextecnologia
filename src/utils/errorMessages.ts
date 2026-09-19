@@ -267,7 +267,30 @@ export async function getInvokeErrorMessage(error: unknown): Promise<string | nu
   return null;
 }
 
+/**
+ * Violações de unicidade em que o SQLSTATE genérico ("Já existe um registro com
+ * esses dados") não basta: o usuário precisa saber QUAL campo repetiu pra poder
+ * consertar. Casadas pelo nome do índice, ANTES do mapa de SQLSTATE — senão o
+ * `23505` resolveria primeiro e a mensagem específica nunca seria alcançada.
+ */
+const CONSTRAINT_MESSAGES: Array<{ constraint: string; text: string }> = [
+  {
+    constraint: 'financial_categories_company_id_name_key',
+    text: 'Já existe uma categoria com esse nome. Escolha outro nome.',
+  },
+];
+
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
+  // 0) Constraint nomeada: mais específica que o SQLSTATE, então vem antes.
+  if (error && typeof error === 'object') {
+    const e = error as ErrorLike;
+    const haystack = [e.message, e.details, e.hint]
+      .filter((v): v is string => typeof v === 'string')
+      .join(' | ');
+    const named = CONSTRAINT_MESSAGES.find((c) => haystack.includes(c.constraint));
+    if (named) return named.text;
+  }
+
   // 1) SQLSTATE / PostgREST code primeiro — mais confiável que substring.
   //    Erros do Supabase tipicamente vêm como { code, message, details, hint }.
   if (error && typeof error === 'object') {

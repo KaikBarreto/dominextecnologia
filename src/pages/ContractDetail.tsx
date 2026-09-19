@@ -1747,6 +1747,22 @@ export default function ContractDetail() {
                   }}>
                     <Plus className="mr-1 h-4 w-4" /> {td.financial.newRevenueBtn}
                   </Button>
+                  {/* "Nova assinatura" ao lado de "Nova receita": as duas são a
+                      mesma decisão ("como esse contrato vira dinheiro"), e a
+                      cobrança recorrente estava enterrada num card no fim da
+                      aba, onde ninguém achava. Só aparece quando ainda NÃO há
+                      assinatura ativa — com assinatura, o card abaixo é que
+                      mostra status e ações dela. */}
+                  {showBillingSection && !activeContractSubscription && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl"
+                      onClick={() => setShowBillingDialog(true)}
+                    >
+                      <RefreshCw className="mr-1 h-4 w-4" /> {tdBilling.activateBtn}
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="min-w-0">
@@ -1946,8 +1962,12 @@ export default function ContractDetail() {
               </CardContent>
             </Card>
 
-            {/* Faturamento Recorrente — visível quando módulo cobrancas + conta ativa + cliente */}
-            {billingSection}
+            {/* Faturamento Recorrente — o card completo (status, valor, ciclo,
+                ações) só entra quando JÁ existe assinatura. Sem assinatura, a
+                entrada é o botão "Nova assinatura" lá em cima, ao lado de
+                "Nova receita": o card vazio no fim da aba era invisível na
+                prática. */}
+            {activeContractSubscription && billingSection}
           </div>
         );
 

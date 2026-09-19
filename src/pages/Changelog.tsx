@@ -42,6 +42,48 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.50',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Observações da oportunidade salvam sozinhas',
+        description: 'No CRM, o campo de observações da oportunidade ficou sempre editável: você digita e ele salva sozinho, mostrando "Salvando" e depois "Salvo". Não precisa mais entrar no modo de edição. Se o salvamento falhar, o que você escreveu continua na tela e o aviso aparece.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mudança de etapa fica registrada no histórico',
+        description: 'Ao arrastar o card para outra etapa do funil, ou trocar a etapa por qualquer outro caminho, a oportunidade passa a registrar no histórico de qual etapa para qual, quem fez e quando. Soltar o card na mesma coluna não gera registro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Buscar tarefa pelo cliente ou pelo telefone',
+        description: 'Na aba Tarefas do CRM, a busca agora encontra também pelo nome do cliente, pelo telefone e pela descrição, além do nome da tarefa. E clicar numa tarefa abre a oportunidade já na aba Tarefas, em vez de cair nos detalhes.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botões do CRM com o nome à mostra',
+        description: 'Gerenciar etapas, gerenciar funis e configurar webhooks eram três botões só de ícone, e não dava para saber o que cada um fazia sem clicar. Agora mostram o nome no computador.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Faturamento recorrente mais fácil de achar no contrato',
+        description: 'O botão para ativar a cobrança recorrente do contrato estava dentro de um bloco no fim da aba Financeiro, onde quase ninguém chegava. Agora fica no topo, ao lado de Nova receita. O bloco completo continua aparecendo quando já existe uma assinatura.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Formulário público de cadastro parou de expor dados da empresa',
+        description: 'O formulário público de captação de clientes enviava para o navegador dados da sua empresa que não tinham nada a ver com o formulário, entre eles documento, contato e endereço. Agora ele recebe apenas o necessário para exibir sua marca.',
+        category: 'seguranca',
+      },
+      {
+        title: 'O link público de ordem de serviço mostra só o que deve',
+        description: 'O link público de OS enviava para o navegador campos internos que não aparecem na tela, incluindo valores de mão de obra e de peças. Agora envia apenas o que o relatório usa. Tarefas internas também deixaram de ser acessíveis por esse link.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.49',
     date: '19 de setembro de 2026',
     type: 'patch',
