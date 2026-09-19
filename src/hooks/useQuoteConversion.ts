@@ -9,6 +9,7 @@ import type { ApproveQuoteResult } from '@/components/financial/ApproveQuoteModa
 import { buildInstallmentPlan } from '@/lib/finance-installments';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
 
 interface ApproveQuoteParams {
   quote: Quote;
@@ -22,6 +23,134 @@ interface ApproveQuoteOutcome {
   count: number;
   /** Id da linha-âncora (a receita, ou a 1a parcela). */
   primaryId: string;
+}
+
+/**
+ * ── Construtores PUROS das linhas geradas pela aprovação do orçamento ────────
+ *
+ * Ficam fora do hook de propósito: a categoria deixou de ser literal e passou a
+ * vir resolvida por PAPEL (`resolveSystemCategoryNameFresh`), e é exatamente
+ * esse fio que precisa de teste — renomear "Vendas de Serviços" na tela de
+ * Categorias tem que fazer a receita nascer com o nome NOVO, sem tocar em mais
+ * nada.
+ */
+
+/** Parcelas PENDENTES de "vou receber depois". Uma linha por item do plano. */
+export function buildQuoteReceivableRows(args: {
+  plan: Array<{ number: number; date: string; amount: number }>;
+  quoteNumber: number | string;
+  revenueCategory: string;
+  customerId?: string | null;
+  expectedAccountId?: string | null;
+  costCenterId?: string | null;
+  notes?: string | null;
+  createdBy: string;
+  companyId: string;
+  groupId: string | null;
+}): Record<string, any>[] {
+  const { plan, quoteNumber, revenueCategory, createdBy, companyId, groupId } = args;
+  const isParcelado = plan.length > 1;
+  return plan.map(({ number, date, amount }) => normalizeOptionalForeignKeys(
+    {
+      transaction_type: 'entrada',
+      amount,
+      description: isParcelado
+        ? `Orçamento #${quoteNumber} (${number}/${plan.length})`
+        : `Orçamento #${quoteNumber}`,
+      category: revenueCategory,
+      customer_id: args.customerId ?? null,
+      // Conta PREVISTA do recebimento. Inofensiva enquanto pendente:
+      // saldo de conta só soma linha paga (useFinancialAccounts).
+      account_id: args.expectedAccountId ?? null,
+      // TODAS as parcelas levam o mesmo centro de custo — parcela sem ele
+      // fura a quebra por centro de custo em silêncio.
+      cost_center_id: args.costCenterId ?? null,
+      // `transaction_date` = mês em que o caixa VAI mover, nunca a data da
+      // geração (bug histórico das mensalidades de contrato).
+      transaction_date: date,
+      due_date: date,
+      paid_date: null,
+      is_paid: false,
+      notes: args.notes,
+      created_by: createdBy,
+      company_id: companyId,
+      installment_group_id: groupId,
+      installment_number: isParcelado ? number : null,
+      installment_total: isParcelado ? plan.length : null,
+    } as any,
+    ['customer_id', 'account_id', 'cost_center_id']
+  ));
+}
+
+/** Receita JÁ PAGA do modo "já recebi". */
+export function buildQuoteRevenueRow(args: {
+  quoteNumber: number | string;
+  amount: number;
+  revenueCategory: string;
+  customerId?: string | null;
+  accountId?: string | null;
+  costCenterId?: string | null;
+  paymentMethod?: string | null;
+  paidDate: string;
+  notes?: string | null;
+  createdBy: string;
+  companyId: string;
+}): Record<string, any> {
+  return normalizeOptionalForeignKeys(
+    {
+      transaction_type: 'entrada',
+      amount: args.amount,
+      description: `Orçamento #${args.quoteNumber}`,
+      category: args.revenueCategory,
+      customer_id: args.customerId ?? null,
+      account_id: args.accountId,
+      cost_center_id: args.costCenterId ?? null,
+      payment_method: args.paymentMethod,
+      transaction_date: args.paidDate,
+      paid_date: args.paidDate,
+      is_paid: true,
+      notes: args.notes,
+      created_by: args.createdBy,
+      company_id: args.companyId,
+    } as any,
+    ['customer_id', 'account_id', 'cost_center_id']
+  );
+}
+
+/** Despesa da tarifa do recebimento, filha da receita. */
+export function buildQuoteFeeRow(args: {
+  quoteNumber: number | string;
+  feeAmount: number;
+  feeCategory: string;
+  customerId?: string | null;
+  accountId?: string | null;
+  costCenterId?: string | null;
+  paymentMethod?: string | null;
+  paidDate: string;
+  createdBy: string;
+  companyId: string;
+  revenueId: string;
+}): Record<string, any> {
+  return normalizeOptionalForeignKeys(
+    {
+      transaction_type: 'saida',
+      amount: args.feeAmount,
+      description: `Tarifa do recebimento — Orçamento #${args.quoteNumber}`,
+      category: args.feeCategory,
+      customer_id: args.customerId ?? null,
+      account_id: args.accountId,
+      // A tarifa é despesa do MESMO fato: segue o centro de custo da receita.
+      cost_center_id: args.costCenterId ?? null,
+      payment_method: args.paymentMethod,
+      transaction_date: args.paidDate,
+      paid_date: args.paidDate,
+      is_paid: true,
+      created_by: args.createdBy,
+      company_id: args.companyId,
+      parent_transaction_id: args.revenueId,
+    } as any,
+    ['customer_id', 'account_id', 'cost_center_id']
+  );
 }
 
 export function useQuoteConversion() {
@@ -144,41 +273,30 @@ export function useQuoteConversion() {
         // superfícies precisam mostrar/gravar exatamente os mesmos números.
         const plan = buildInstallmentPlan(firstDueDate, grossAmount, installments);
         const isParcelado = plan.length > 1;
+        // Nome ATUAL da categoria de receita de serviço desta empresa.
+        // Resolvido por papel (is_system + type + dre_group), nunca pelo
+        // literal: se o cliente renomeou a categoria, a parcela nasce com o
+        // nome novo e continua dentro do grupo certo do DRE.
+        const revenueCategory = await resolveSystemCategoryNameFresh(
+          queryClient, company_id, 'service_revenue',
+        );
         // Só parcelado ganha grupo. À vista, os três campos ficam NULL — é como
         // o lançamento manual nasce, e o badge "x/y" da listagem só aparece
         // quando `installment_number` existe: um "1/1" denunciaria a origem.
         const groupId = isParcelado ? crypto.randomUUID() : null;
 
-        const rows = plan.map(({ number, date, amount }) => normalizeOptionalForeignKeys(
-          {
-            transaction_type: 'entrada',
-            amount,
-            description: isParcelado
-              ? `Orçamento #${quote.quote_number} (${number}/${plan.length})`
-              : `Orçamento #${quote.quote_number}`,
-            category: 'Vendas de Serviços',
-            customer_id: quote.customer_id,
-            // Conta PREVISTA do recebimento. Inofensiva enquanto pendente:
-            // saldo de conta só soma linha paga (useFinancialAccounts).
-            account_id: approval.expected_account_id ?? null,
-            // TODAS as parcelas levam o mesmo centro de custo — parcela sem ele
-            // fura a quebra por centro de custo em silêncio.
-            cost_center_id: approval.cost_center_id ?? null,
-            // `transaction_date` = mês em que o caixa VAI mover, nunca a data da
-            // geração (bug histórico das mensalidades de contrato).
-            transaction_date: date,
-            due_date: date,
-            paid_date: null,
-            is_paid: false,
-            notes: approval.notes,
-            created_by: user.id,
-            company_id,
-            installment_group_id: groupId,
-            installment_number: isParcelado ? number : null,
-            installment_total: isParcelado ? plan.length : null,
-          } as any,
-          ['customer_id', 'account_id', 'cost_center_id']
-        ));
+        const rows = buildQuoteReceivableRows({
+          plan,
+          quoteNumber: quote.quote_number,
+          revenueCategory,
+          customerId: quote.customer_id,
+          expectedAccountId: approval.expected_account_id ?? null,
+          costCenterId: approval.cost_center_id ?? null,
+          notes: approval.notes,
+          createdBy: user.id,
+          companyId: company_id,
+          groupId,
+        });
 
         const { data: inserted, error: insErr } = await supabase
           .from('financial_transactions')
@@ -208,30 +326,28 @@ export function useQuoteConversion() {
       }
 
       // ═══════════════════════════ MODO "JÁ RECEBI" ════════════════════════════
-      // 1. Revenue (entrada)
-      const revenuePayload = normalizeOptionalForeignKeys(
-        {
-          transaction_type: 'entrada',
-          amount: grossAmount,
-          description: `Orçamento #${quote.quote_number}`,
-          category: 'Vendas de Serviços',
-          customer_id: quote.customer_id,
-          account_id: approval.account_id,
-          cost_center_id: approval.cost_center_id ?? null,
-          payment_method: approval.payment_method,
-          transaction_date: approval.paid_date,
-          paid_date: approval.paid_date,
-          is_paid: true,
-          notes: approval.notes,
-          created_by: user.id,
-          company_id,
-        } as any,
-        ['customer_id', 'account_id', 'cost_center_id']
+      // 1. Revenue (entrada) — categoria pelo PAPEL, com o nome que a empresa
+      //    usa hoje (pode ter sido renomeada na tela de Categorias).
+      const revenueCategoryPaid = await resolveSystemCategoryNameFresh(
+        queryClient, company_id, 'service_revenue',
       );
+      const revenuePayload = buildQuoteRevenueRow({
+        quoteNumber: quote.quote_number,
+        amount: grossAmount,
+        revenueCategory: revenueCategoryPaid,
+        customerId: quote.customer_id,
+        accountId: approval.account_id,
+        costCenterId: approval.cost_center_id ?? null,
+        paymentMethod: approval.payment_method,
+        paidDate: approval.paid_date,
+        notes: approval.notes,
+        createdBy: user.id,
+        companyId: company_id,
+      });
 
       const { data: revenue, error: revErr } = await supabase
         .from('financial_transactions')
-        .insert(revenuePayload)
+        .insert(revenuePayload as any)
         .select()
         .single();
       if (revErr) throw revErr;
@@ -260,25 +376,24 @@ export function useQuoteConversion() {
       // `approval.account_id`: essas duas são movimento de caixa de verdade.
       const expensesToInsert: any[] = [];
 
-      // 3. Tarifa do recebimento (Tarifas e Taxas)
+      // 3. Tarifa do recebimento — categoria do papel "tarifa", nome atual.
       if ((approval.fee_amount ?? 0) > 0) {
-        expensesToInsert.push(normalizeOptionalForeignKeys({
-          transaction_type: 'saida',
-          amount: approval.fee_amount,
-          description: `Tarifa do recebimento — Orçamento #${quote.quote_number}`,
-          category: 'Tarifas e Taxas',
-          customer_id: quote.customer_id,
-          account_id: approval.account_id,
-          // A tarifa é despesa do MESMO fato: segue o centro de custo da receita.
-          cost_center_id: approval.cost_center_id ?? null,
-          payment_method: approval.payment_method,
-          transaction_date: approval.paid_date,
-          paid_date: approval.paid_date,
-          is_paid: true,
-          created_by: user.id,
-          company_id,
-          parent_transaction_id: revenue.id,
-        } as any, ['customer_id', 'account_id', 'cost_center_id']));
+        const feeCategory = await resolveSystemCategoryNameFresh(
+          queryClient, company_id, 'receipt_fee',
+        );
+        expensesToInsert.push(buildQuoteFeeRow({
+          quoteNumber: quote.quote_number,
+          feeAmount: approval.fee_amount as number,
+          feeCategory,
+          customerId: quote.customer_id,
+          accountId: approval.account_id,
+          costCenterId: approval.cost_center_id ?? null,
+          paymentMethod: approval.payment_method,
+          paidDate: approval.paid_date,
+          createdBy: user.id,
+          companyId: company_id,
+          revenueId: revenue.id,
+        }));
       }
 
       if (expensesToInsert.length > 0) {

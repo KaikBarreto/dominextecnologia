@@ -1348,6 +1348,26 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
+          {/* Centro de custo — fica logo depois de Categoria de propósito: as
+              duas respondem "em que isso se encaixa", e enterrado dentro de
+              "Mais detalhes" ninguém achava o campo. SEMPRE opcional: sem
+              nenhum centro ativo cadastrado o campo nem é renderizado (não
+              poluir o form de quem não organiza por obra/projeto). A exceção é
+              editar um lançamento que JÁ tem centro: aí ele aparece mesmo que o
+              centro tenha sido desativado depois. */}
+          {showCostCenter && (
+            <FormField control={form.control} name="cost_center_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{fin.costCenters.fieldLabel}</FormLabel>
+                <CostCenterSelect
+                  value={field.value ?? null}
+                  onValueChange={(v) => field.onChange(v)}
+                />
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
+
           {/* Description — sobe pra cá (era mostrada mais abaixo): a ordem
               "tipo, categoria, descrição, cliente, fornecedor" é a leitura
               natural de "o que é" o lançamento. */}
@@ -1633,24 +1653,6 @@ export function TransactionFormDialog({
             collapsible
             defaultOpen={isEditing || !!defaults.cost_center_id || !!(defaults.notes && defaults.notes.trim())}
           >
-            {/* Centro de custo — SEMPRE opcional. Só aparece pra quem usa: sem
-                nenhum centro ativo cadastrado, o campo nem é renderizado (não
-                poluir o form de quem não organiza por obra/projeto). A exceção é
-                editar um lançamento que JÁ tem centro: aí ele aparece mesmo que o
-                centro tenha sido desativado depois. */}
-            {showCostCenter && (
-              <FormField control={form.control} name="cost_center_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{fin.costCenters.fieldLabel}</FormLabel>
-                  <CostCenterSelect
-                    value={field.value ?? null}
-                    onValueChange={(v) => field.onChange(v)}
-                  />
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
-
             {/* Notes */}
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem className="lg:col-span-2">

@@ -502,7 +502,14 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     const expandedRows = breakdown.rows
       .slice()
       .sort((a, b) => (isRevenue ? b.revenue - a.revenue : b.expense - a.expense));
-    const canExpand = breakdown.rows.length > 1;
+    // Abre quando há 2+ centros OU quando há UM centro de custo de verdade.
+    // Antes exigia 2+, então a categoria inteira alocada num único centro não
+    // ganhava seta — e era justamente aí que o nome do centro ("Obra do
+    // Junior") não aparecia em lugar nenhum: a linha mostra só o valor. O que
+    // continua sem seta é o caso em que a única linha é o balde "Sem centro de
+    // custo", porque aí abrir repete o número que já está na frente.
+    const hasNamedCostCenter = breakdown.rows.some((r) => r.id !== NO_COST_CENTER && r.id !== null);
+    const canExpand = breakdown.rows.length > 1 || hasNamedCostCenter;
     const isOpen = expandedCategoryKeys.has(c.key);
     const Icon = c.icon;
     const valueColorClass = isRevenue ? 'text-success' : 'text-destructive';
@@ -600,7 +607,18 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
         </span>
         {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
       </button>
-      {open && categories.length > 0 && (renderList ? renderList(categories) : renderCategoryList(categories))}
+      {open && (
+        categories.length > 0
+          ? (renderList ? renderList(categories) : renderCategoryList(categories))
+          : (
+            // Seção sem nenhum lançamento no período. A linha some e o usuário
+            // fica achando que o sistema não tem essa parte da DRE — por isso a
+            // seção continua na tela, zerada e com o motivo escrito.
+            <p className="px-3 sm:px-4 py-3 pl-6 sm:pl-10 text-xs text-muted-foreground">
+              {fin.dre.table.emptySection}
+            </p>
+          )
+      )}
       <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between border-t border-border/30">
         <span className="text-sm text-foreground/80 pl-2 sm:pl-4 font-medium">{fin.dre.table.total}</span>
         <span className={cn('text-sm font-medium', isNegative ? 'text-destructive' : 'text-success')}>
@@ -785,16 +803,16 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             renderList={renderReceitaList}
           />
 
-          {/* Impostos e Deduções */}
-          {impostosCategories.length > 0 && (
-            <CollapsibleSection
-              label={fin.dre.table.taxes}
-              total={dre.impostos}
-              categories={impostosCategories}
-              open={showImpostos}
-              onToggle={() => setShowImpostos(!showImpostos)}
-            />
-          )}
+          {/* Impostos e Deduções — renderizada SEMPRE, mesmo zerada: sumir a
+              seção fazia o usuário achar que a DRE do sistema não tem essa
+              linha. Pedido do CEO. */}
+          <CollapsibleSection
+            label={fin.dre.table.taxes}
+            total={dre.impostos}
+            categories={impostosCategories}
+            open={showImpostos}
+            onToggle={() => setShowImpostos(!showImpostos)}
+          />
 
           {/* Receita Líquida */}
           <div className={cn('px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between', dre.receitaLiquida >= 0 ? 'bg-success' : 'bg-destructive')}>
@@ -802,16 +820,14 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             <span className="text-base font-bold text-white">{fmt(dre.receitaLiquida)}</span>
           </div>
 
-          {/* CMV - Custo de Mercadoria/Serviço Vendido */}
-          {cmvCategories.length > 0 && (
-            <CollapsibleSection
-              label={fin.dre.table.cogs}
-              total={dre.cmv}
-              categories={cmvCategories}
-              open={showCpv}
-              onToggle={() => setShowCpv(!showCpv)}
-            />
-          )}
+          {/* CSP - Custo do Serviço Prestado — idem: sempre na tela. */}
+          <CollapsibleSection
+            label={fin.dre.table.cogs}
+            total={dre.cmv}
+            categories={cmvCategories}
+            open={showCpv}
+            onToggle={() => setShowCpv(!showCpv)}
+          />
 
           {/* Lucro Bruto */}
           <div className={cn('px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between', getGrossProfitBg())}>

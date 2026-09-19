@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildPartialReceiptRow, buildReceiptFeeRow } from './useFinancial';
+import { resolveSystemCategoryName, type SystemCategoryLike } from '@/lib/finance-system-categories';
 
 /**
  * Baixa de recebimento cria LINHAS FILHAS (recebimento parcial e tarifa). Se a
@@ -113,6 +114,44 @@ describe('buildReceiptFeeRow', () => {
     });
 
     expect(fee.cost_center_id).toBe('cc-obra-shopping');
+  });
+
+  /**
+   * A categoria da tarifa deixou de ser literal: quem chama resolve o PAPEL e
+   * passa o nome ATUAL. Se voltar a chumbar 'Tarifas e Taxas' aqui, a empresa
+   * que renomeou a categoria volta a gerar lançamento órfão, sem cor, sem
+   * ícone e fora do grupo do DRE — sem erro nenhum na tela.
+   */
+  it('categoria da tarifa usa o nome ATUAL depois de renomeada', () => {
+    const renomeadas: SystemCategoryLike[] = [
+      { id: 'c1', name: 'Taxas da maquininha', type: 'saida', dre_group: 'impostos', is_system: true, is_active: true },
+    ];
+    const fee = buildReceiptFeeRow({
+      parent,
+      sourceRow: { id: 'txn-mae', description: parent.description, cost_center_id: parent.cost_center_id },
+      cfg: { fee_amount: 12.5, account_id: 'acc-1' },
+      paidDate: '2026-03-05',
+      companyId: 'co-1',
+      feeCategory: resolveSystemCategoryName(renomeadas, 'receipt_fee'),
+    });
+
+    expect(fee.category).toBe('Taxas da maquininha');
+    // Nada mais muda por causa do rename.
+    expect(fee.transaction_type).toBe('saida');
+    expect(fee.cost_center_id).toBe('cc-obra-shopping');
+  });
+
+  it('empresa sem a categoria cadastrada: cai no nome de semente (comportamento de antes)', () => {
+    const fee = buildReceiptFeeRow({
+      parent,
+      sourceRow: { id: 'txn-mae' },
+      cfg: { fee_amount: 1 },
+      paidDate: '2026-03-05',
+      companyId: 'co-1',
+      feeCategory: resolveSystemCategoryName([], 'receipt_fee'),
+    });
+
+    expect(fee.category).toBe('Tarifas e Taxas');
   });
 
   it('nem origem nem mãe com centro: null explícito', () => {

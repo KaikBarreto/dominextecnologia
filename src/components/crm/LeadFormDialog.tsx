@@ -104,18 +104,27 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
   // nunca via `leads.assigned_to` direto (ver useLeads.ts).
   const [assigneeUserIds, setAssigneeUserIds] = useState<string[]>([]);
 
+  /**
+   * Texto CRU do campo Probabilidade. Existe separado de
+   * `formData.probability` (number) porque o campo precisa aceitar o estado
+   * intermediário "vazio" enquanto o usuário apaga os dígitos — um number não
+   * representa vazio, e era por isso que o 50 voltava sozinho.
+   */
+  const [probabilityText, setProbabilityText] = useState('50');
+
   useEffect(() => {
     if (lead) {
       setFormData({
         title: lead.title,
         customer_id: lead.customer_id,
         value: lead.value || 0,
-        probability: lead.probability || 50,
+        probability: lead.probability ?? 50,
         source: lead.source || '',
         stage_id: lead.stage_id,
         expected_close_date: lead.expected_close_date,
         notes: lead.notes || '',
       });
+      setProbabilityText(String(lead.probability ?? 50));
       // lead.assignees já vem ordenado com o principal primeiro (useLeads).
       setAssigneeUserIds(
         lead.assignees?.length ? lead.assignees.map((a) => a.user_id) : lead.assigned_to ? [lead.assigned_to] : []
@@ -131,6 +140,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
         expected_close_date: null,
         notes: '',
       });
+      setProbabilityText('50');
       setAssigneeUserIds([]);
     }
     // Depende do id do estágio padrão (primitivo), não do array inteiro: o
@@ -364,13 +374,38 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
 
             <div className="space-y-2">
               <Label htmlFor="probability">{t.form.probability}</Label>
+              {/* Probabilidade é PORCENTAGEM: 0 a 100, e o campo precisa poder
+                  ficar vazio enquanto se digita.
+
+                  Antes era `type="number"` com `value={x || 50}`:
+                  (1) o `max="100"` do HTML é só dica visual, então dava pra
+                      gravar 500% de probabilidade;
+                  (2) apagar o último dígito fazia o valor cair em NaN, o `|| 50`
+                      repunha 50 na hora e era literalmente impossível apagar o
+                      primeiro dígito.
+                  Agora o estado é a string crua digitada, o clamp acontece na
+                  entrada e o campo vazio só vira número ao sair do campo. */}
               <Input
                 id="probability"
-                type="number"
-                min="0"
-                max="100"
-                value={formData.probability || 50}
-                onChange={(e) => handleChange('probability', parseInt(e.target.value) || 50)}
+                inputMode="numeric"
+                value={probabilityText}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '');
+                  if (digits === '') {
+                    setProbabilityText('');
+                    return;
+                  }
+                  const clamped = Math.min(100, parseInt(digits, 10));
+                  setProbabilityText(String(clamped));
+                  handleChange('probability', clamped);
+                }}
+                onBlur={() => {
+                  // Sair do campo vazio grava 0, não repõe um palpite.
+                  if (probabilityText === '') {
+                    setProbabilityText('0');
+                    handleChange('probability', 0);
+                  }
+                }}
               />
             </div>
 

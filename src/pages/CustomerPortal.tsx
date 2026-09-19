@@ -213,6 +213,20 @@ const BUILT_IN_KEYS_SET = new Set(Object.keys(BUILT_IN_FIELD_KEYS));
 // Outer shell: carrega dados, resolve locale, envolve no PublicAppLocaleProvider
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Tira do payload do portal o que é NOTA INTERNA da equipe. Tarefa mora na
+ * mesma tabela da OS (`service_orders`), separada só por `entry_type`. OS
+ * antiga pode ter `entry_type` nulo, então o default é tratá-la como OS.
+ */
+function isInternalTask(order: unknown): boolean {
+  const entryType = (order as { entry_type?: string | null } | null)?.entry_type;
+  return (entryType ?? 'os') === 'tarefa';
+}
+
+function filterOutInternalTasks<T>(orders: T[] | null | undefined): T[] {
+  return (orders ?? []).filter((o) => !isInternalTask(o));
+}
+
 export default function CustomerPortal() {
   const { token } = useParams<{ token: string }>();
 
@@ -268,7 +282,13 @@ export default function CustomerPortal() {
       setCompanySettings(payload.company_settings ?? null);
       setEquipment(payload.equipment ?? []);
       setEquipmentFieldConfig(payload.equipment_field_config ?? []);
-      setServiceOrders(payload.service_orders ?? []);
+      // TAREFA INTERNA NUNCA VAI PRO PORTAL. Tarefa é uma linha de
+      // `service_orders` com `entry_type = 'tarefa'` (nota interna da equipe,
+      // "lembrar de mandar orçamento"), e estava aparecendo pro cliente final
+      // junto das OS. O filtro de verdade é no SQL do `get_portal_data`, que é
+      // a fronteira; este aqui é a segunda trava, pra nenhuma tarefa chegar à
+      // tela nem por payload antigo em cache nem por realtime.
+      setServiceOrders(filterOutInternalTasks(payload.service_orders));
       setContracts(payload.contracts ?? []);
       setCharges(payload.charges ?? []);
     } catch {

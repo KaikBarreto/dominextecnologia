@@ -42,6 +42,7 @@ import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 // Collapsible removido: guia agora é sempre visível
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { resolveSystemCategoryName } from '@/lib/finance-system-categories';
 import { useTenantFees } from '@/hooks/useTenantCardFees';
 import { AsaasFeesCard } from '@/components/settings/AsaasFeesCard';
 import { Link } from 'react-router-dom';
@@ -78,6 +79,10 @@ export function SettingsAsaasContent() {
   } = useTenantPaymentAccount();
 
   const { accounts: financialAccounts } = useFinancialAccounts();
+  // Nome ATUAL da categoria de tarifa desta empresa (pode ter sido renomeada).
+  // É ele que vira o padrão do campo, nunca um literal chumbado.
+  const { categories: financialCategories } = useFinancialCategories();
+  const feeCategoryDefault = resolveSystemCategoryName(financialCategories, 'receipt_fee');
 
   // Taxas REAIS da conta Asaas do tenant (substituem o texto fixo antigo).
   const tenantFees = useTenantFees();
@@ -242,7 +247,7 @@ export function SettingsAsaasContent() {
       await setChargePreferences.mutateAsync({
         default_finance_account_id: financeAccountId || null,
         default_income_category: incomeCategoryInput.trim() || null,
-        default_fee_category: feeCategoryInput.trim() || 'Tarifas e Taxas',
+        default_fee_category: feeCategoryInput.trim() || feeCategoryDefault,
       });
       toast({ title: t.activeState.financeConfigToastOk });
     } catch {
@@ -989,7 +994,7 @@ export function SettingsAsaasContent() {
                     value={feeCategoryInput}
                     onChange={(e) => setFeeCategoryInput(e.target.value)}
                     disabled={setChargePreferences.isPending}
-                    placeholder="Tarifas e Taxas"
+                    placeholder={feeCategoryDefault}
                     className="h-9 text-sm"
                   />
                   <p className="text-xs text-muted-foreground">{t.activeState.feeCategoryHint}</p>

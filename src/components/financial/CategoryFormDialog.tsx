@@ -34,11 +34,18 @@ interface CategoryFormDialogProps {
   initialName?: string;
   /** Tipo pré-selecionado ao criar (entrada/saida/ambos). Só vale na criação. */
   initialType?: string;
+  /**
+   * Validação extra do nome (colisão com outra categoria). Devolve a mensagem
+   * de erro ou `null`. Roda ANTES do submit: o erro aparece embaixo do campo e
+   * o formulário não é limpo.
+   */
+  validateName?: (name: string, type: string) => string | null;
 }
 
-export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading, initialName, initialType }: CategoryFormDialogProps) {
+export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading, initialName, initialType, validateName }: CategoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.categoryForm;
+  const tc = MESSAGES[locale].app.finance.categories;
 
   const schema = baseSchema.extend({
     name: z.string().min(1, t.validations.nameRequired),
@@ -74,6 +81,12 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
 
   const selectedColor = form.watch('color');
   const selectedType = form.watch('type');
+
+  // Categoria de SISTEMA: nome, cor e ícone continuam livres; tipo e grupo do
+  // DRE ficam travados. São eles que identificam o PAPEL da categoria (quem o
+  // lançamento automático procura) e a linha dela no resultado, e trocá-los
+  // arrancaria a categoria do papel sem aviso nenhum.
+  const isSystem = category?.is_system === true;
   const showDreGroup = selectedType === 'saida' || selectedType === 'ambos';
 
   // Grupo DRE só se aplica a despesa (classifyCategory só roda no ramo de saída).
@@ -86,6 +99,11 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   }, [showDreGroup]);
 
   const handleSubmit = async (data: FormData) => {
+    const nameError = validateName?.(data.name, data.type);
+    if (nameError) {
+      form.setError('name', { type: 'manual', message: nameError });
+      return;
+    }
     await onSubmit(data);
     form.reset();
   };
@@ -113,6 +131,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
             <FormItem>
               <FormLabel>{t.nameLabel}</FormLabel>
               <FormControl><Input placeholder={t.namePlaceholder} {...field} /></FormControl>
+              {isSystem && <FormDescription>{tc.systemLockedHint}</FormDescription>}
               <FormMessage />
             </FormItem>
           )} />
@@ -120,7 +139,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
           <FormField control={form.control} name="type" render={({ field }) => (
             <FormItem>
               <FormLabel>{t.typeLabel}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSystem}>
                 <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent>
                   <SelectItem value="entrada">{t.types.entrada}</SelectItem>
@@ -136,7 +155,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
             <FormField control={form.control} name="dre_group" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t.dreGroupLabel}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSystem}>
                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                   <SelectContent>
                     <SelectItem value="impostos">{t.dreGroups.impostos}</SelectItem>

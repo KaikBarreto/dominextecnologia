@@ -22,6 +22,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { groupByDre, shouldGroupByDre, type DreGroup } from '@/lib/dre-groups';
+import { canRenameCategory, findCategoryNameConflict } from '@/lib/finance-system-categories';
 
 type CategoryGroup = 'receitas' | 'despesas';
 
@@ -65,7 +66,14 @@ export function FinanceCategorias() {
 
   const handleSubmit = async (data: any) => {
     if (editing) {
-      await updateCategory.mutateAsync({ ...data, id: editing.id });
+      // `previous_name` é o que permite cascatear o rename pros lançamentos que
+      // já guardam o nome antigo; `is_system` é o que trava tipo e grupo do DRE.
+      await updateCategory.mutateAsync({
+        ...data,
+        id: editing.id,
+        is_system: editing.is_system,
+        previous_name: editing.name,
+      });
     } else {
       await createCategory.mutateAsync(data);
     }
@@ -73,8 +81,29 @@ export function FinanceCategorias() {
     setFormOpen(false);
   };
 
+  /**
+   * Duas categorias com o mesmo nome ficariam indistinguíveis na lista e no
+   * DRE, e a cascata do rename juntaria o histórico das duas num nome só, sem
+   * volta. Não existe índice único no banco: a trava é aqui.
+   */
+  const validateCategoryName = (name: string, type: string): string | null => {
+    const conflict = findCategoryNameConflict(categories, { id: editing?.id, name, type });
+    return conflict ? fin.categories.nameConflict : null;
+  };
+
+  /**
+   * Categoria de sistema passou a ser editável em NOME, cor e ícone — mas só a
+   * que o lançamento automático encontra por PAPEL (`canRenameCategory`).
+   * Tipo e grupo do DRE continuam travados sempre: é por eles que o papel é
+   * identificado e é neles que a categoria se apoia no resultado. A trava vive
+   * no formulário e também no hook.
+   *
+   * As outras de sistema ('Impostos e Taxas', 'Pagamento de Fatura',
+   * 'Transferência entre contas', linhas de CSP) seguem com cadeado, porque
+   * ainda são procuradas pelo nome literal — aqui ou dentro do banco.
+   */
   const handleEdit = (cat: FinancialCategory) => {
-    if (cat.is_system) {
+    if (!canRenameCategory(categories, cat)) {
       toast({ title: fin.categories.systemEditWarning });
       return;
     }
@@ -182,6 +211,7 @@ export function FinanceCategorias() {
       {groupItems.map((cat, idx) => {
         const Icon = getCategoryIcon(cat.icon);
         const isSystem = cat.is_system;
+        const canRename = canRenameCategory(categories, cat);
         const isDragging = dragIdx === idx && dragGroupKey === groupKey;
         const isDragOver = dragOverIdx === idx && dragOverGroupKey === groupKey && dragGroupKey === groupKey;
         return (
@@ -217,17 +247,21 @@ export function FinanceCategorias() {
                     <TooltipTrigger>
                       <Lock className="h-3 w-3 text-muted-foreground" />
                     </TooltipTrigger>
-                    <TooltipContent>{fin.categories.systemTooltip}</TooltipContent>
+                    <TooltipContent>{canRename ? fin.categories.systemRenameableTooltip : fin.categories.systemTooltip}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
             </div>
-            {!isSystem && (
+            {(!isSystem || canRename) && (
               <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <RowActionsMenu
                   actions={[
                     { label: fin.categories.actions.edit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) },
-                    { label: fin.categories.actions.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) },
+                    // Categoria de sistema não oferece exclusão: o lançamento
+                    // automático depende dela existir.
+                    ...(isSystem
+                      ? []
+                      : [{ label: fin.categories.actions.delete, icon: Trash2, variant: 'delete' as const, onClick: () => setDeleteId(cat.id) }]),
                   ]}
                 />
               </div>
@@ -265,20 +299,24 @@ export function FinanceCategorias() {
         onClick: () => moveCategory(fullList, groupItems, idx, 1),
       });
     }
-    actions.push({
-      key: 'edit',
-      label: fin.categories.actions.edit,
-      icon: <Pencil className="h-4 w-4" />,
-      variant: 'edit' as const,
-      onClick: () => handleEdit(cat),
-    });
-    actions.push({
-      key: 'delete',
-      label: fin.categories.actions.delete,
-      icon: <Trash2 className="h-4 w-4" />,
-      variant: 'destructive' as const,
-      onClick: () => handleAskDelete(cat),
-    });
+    if (!isSystem || canRenameCategory(categories, cat)) {
+      actions.push({
+        key: 'edit',
+        label: fin.categories.actions.edit,
+        icon: <Pencil className="h-4 w-4" />,
+        variant: 'edit' as const,
+        onClick: () => handleEdit(cat),
+      });
+    }
+    if (!isSystem) {
+      actions.push({
+        key: 'delete',
+        label: fin.categories.actions.delete,
+        icon: <Trash2 className="h-4 w-4" />,
+        variant: 'destructive' as const,
+        onClick: () => handleAskDelete(cat),
+      });
+    }
 
     return (
       <MobileListItem
@@ -402,6 +440,7 @@ export function FinanceCategorias() {
           onOpenChange={setFormOpen}
           category={editing}
           onSubmit={handleSubmit}
+          validateName={validateCategoryName}
           isLoading={createCategory.isPending || updateCategory.isPending}
         />
 
@@ -505,6 +544,7 @@ export function FinanceCategorias() {
         onOpenChange={setFormOpen}
         category={editing}
         onSubmit={handleSubmit}
+        validateName={validateCategoryName}
         isLoading={createCategory.isPending || updateCategory.isPending}
       />
 

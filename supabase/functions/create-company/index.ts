@@ -254,9 +254,22 @@ Deno.serve(async (req) => {
       { name: 'Ferramentas e Equipamentos', type: 'saida', color: '#64748b', icon: 'Hammer', dre_group: 'opex', is_system: false },
       { name: 'Outros', type: 'ambos', color: '#6b7280', icon: 'Tag', dre_group: 'opex', is_system: false },
     ]
+    // ⚠️ ORDEM DE DEPLOY: este trecho só pode ir pro ar DEPOIS da migration
+    //    20260919190000 (que cria o UNIQUE (company_id, name)). Sem o índice,
+    //    ON CONFLICT (company_id, name) estoura 42P10 e derruba o cadastro.
+    // upsert + ignoreDuplicates (nao insert cego): `financial_categories` tem
+    // UNIQUE (company_id, name). O gatilho trg_seed_system_financial_categories
+    // ja semeou as categorias de sistema no INSERT da empresa, e esta funcao
+    // pode ser reexecutada (retry do cliente, timeout, reenvio do formulario).
+    // Com .insert() puro, a segunda passada estouraria 23505 e derrubaria o
+    // cadastro de empresa nova — caminho critico. ignoreDuplicates = ON CONFLICT
+    // DO NOTHING: nao sobrescreve o que ja existe, nao duplica, nao quebra.
     await supabaseAdmin
       .from('financial_categories')
-      .insert(defaultCategories.map(c => ({ ...c, company_id: company.id })))
+      .upsert(
+        defaultCategories.map(c => ({ ...c, company_id: company.id })),
+        { onConflict: 'company_id,name', ignoreDuplicates: true },
+      )
 
     // 8. Seed default financial accounts
     await supabaseAdmin

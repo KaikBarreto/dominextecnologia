@@ -281,11 +281,13 @@ describe('ChargeDialog — reorganização em abas', () => {
     const dueDateInput = q('#charge-due') as HTMLInputElement;
     setInputValue(dueDateInput, '');
 
-    // Usuário estava em outra aba quando tentou salvar.
+    // Usuário estava em outra aba quando tentou salvar. Fora da última aba a
+    // ação principal é "Avançar"; quem quer gerar sem passar pelas outras usa
+    // o atalho "Gerar agora", e é ele que exercita o handleSubmit daqui.
     click(pillByLabel('Pagamento'));
     expect(text()).toContain('Forma de pagamento');
 
-    click(buttonByText('Gerar cobrança'));
+    click(buttonByText('Gerar agora'));
 
     // Voltou pra Cobrança — o erro nunca fica preso numa aba escondida.
     expect(text()).not.toContain('Forma de pagamento');
@@ -315,7 +317,8 @@ describe('ChargeDialog — reorganização em abas', () => {
     });
 
     await act(async () => {
-      buttonByText('Gerar cobrança')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      // Aba Cobrança (a primeira): o botão que gera é o atalho "Gerar agora".
+      buttonByText('Gerar agora')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await Promise.resolve();
     });
 
@@ -324,6 +327,32 @@ describe('ChargeDialog — reorganização em abas', () => {
     expect(payload.customer_id).toBe(CUSTOMER_OK.id);
     expect(payload.value).toBe(100);
     expect(payload.post_to_finance).toBe(true);
+  });
+
+  /**
+   * O modal tem 4 abas e o botão "Gerar cobrança" aparecia já na primeira: o
+   * usuário gerava sem nunca descobrir que Pagamento, Encargos e Financeiro
+   * existiam. Fora da última aba a ação principal passa a ser "Avançar", com
+   * "Gerar agora" como atalho pra quem não quer configurar o resto.
+   */
+  it('fora da última aba a ação principal é Avançar, e ela caminha pelas abas', () => {
+    mount();
+    // Aba 1 (Cobrança): avançar, não gerar.
+    expect(buttonByText('Avançar')).toBeTruthy();
+    expect(buttonByText('Gerar cobrança')).toBeFalsy();
+    // O atalho de gerar continua disponível pra quem não quer as outras abas.
+    expect(buttonByText('Gerar agora')).toBeTruthy();
+
+    click(buttonByText('Avançar'));
+    expect(text()).toContain('Forma de pagamento');
+
+    click(buttonByText('Avançar'));
+    click(buttonByText('Avançar'));
+
+    // Última aba: a ação principal vira gerar, e o atalho some (seria duplicado).
+    expect(buttonByText('Gerar cobrança')).toBeTruthy();
+    expect(buttonByText('Avançar')).toBeFalsy();
+    expect(buttonByText('Gerar agora')).toBeFalsy();
   });
 
   it('colar "R$ 4.550" no campo de valor dá R$ 4.550,00, não R$ 45,50 (defeito residual da máscara de centavos no paste)', () => {

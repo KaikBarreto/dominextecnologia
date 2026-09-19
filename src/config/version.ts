@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.48";
+export const APP_VERSION = "1.24.49";
 
-export const VERSION_NOTES = "Venda parcelada marcada como já recebida agora respeita a data que você informou e explica o que ficou quitado. O filtro de período foi para o canto direito das telas, o criar na hora virou botão em todos os campos e os campos de conta mostram o banco."
+export const VERSION_NOTES = "Tarefas internas não aparecem mais no portal do cliente. Também dá para renomear as categorias que o sistema cria, a DRE mostra todas as linhas e o lançamento ficou mais claro."

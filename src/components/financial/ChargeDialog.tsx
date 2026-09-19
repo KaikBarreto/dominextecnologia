@@ -28,7 +28,7 @@ import { useCostCenters } from '@/hooks/useCostCenters';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
-import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Calculator, UserCog } from 'lucide-react';
+import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Calculator, UserCog, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
 import {
@@ -604,6 +604,23 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // sucesso os botões já vêm embutidos no conteúdo, como antes). Contém o
   // resumo do líquido — sempre visível, reage a forma/parcelas/taxa/
   // antecipação independente da aba ativa — e as ações Cancelar/Gerar.
+  /**
+   * Abas VISÍVEIS, na ordem. Contrato-parcela não mostra a aba Financeiro (a
+   * parcela já tem destino financeiro), então a "última aba" muda de acordo.
+   */
+  const visibleTabKeys: ChargeTabKey[] = [
+    TAB_COBRANCA,
+    TAB_PAGAMENTO,
+    TAB_ENCARGOS,
+    ...(isContractInstallment ? [] : [TAB_FINANCEIRO as ChargeTabKey]),
+  ];
+  const activeTabIndex = visibleTabKeys.indexOf(activeTab);
+  const isLastTab = activeTabIndex === visibleTabKeys.length - 1;
+  const goToNextTab = () => {
+    const next = visibleTabKeys[activeTabIndex + 1];
+    if (next) setActiveTab(next);
+  };
+
   const netLoading = amount > 0 && feesLoading && !tenantFees;
   const netFeesUnavailable = amount > 0 && !feesLoading && !tenantFees;
   const netHasDetail = amount > 0 && !!tenantFees && (!!simulation || !!multiSimulation);
@@ -863,21 +880,44 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         </div>
       )}
 
+      {/* Fora da última aba, a ação principal é AVANÇAR: gerar a cobrança já na
+          primeira aba fazia o usuário passar direto por Pagamento, Encargos e
+          Financeiro sem nem saber que existiam. Quem não precisa configurar o
+          resto continua com o atalho de gerar agora, em botão secundário, pra
+          não trocar um incômodo por três cliques obrigatórios. */}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => handleClose(false)} disabled={create.isPending}>
           {t.cancel}
         </Button>
+        {!isLastTab && (
+          <Button
+            variant="ghost"
+            onClick={handleSubmit}
+            disabled={create.isPending || !customerId || !amount || amount <= 0 || documentBlocked}
+          >
+            {t.submitNow}
+          </Button>
+        )}
         <Button
-          onClick={handleSubmit}
-          disabled={create.isPending || !customerId || !amount || amount <= 0 || documentBlocked}
+          onClick={isLastTab ? handleSubmit : goToNextTab}
+          disabled={
+            isLastTab
+              ? create.isPending || !customerId || !amount || amount <= 0 || documentBlocked
+              : create.isPending
+          }
         >
           {create.isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               {t.submitting}
             </>
-          ) : (
+          ) : isLastTab ? (
             t.submit
+          ) : (
+            <>
+              {t.nextStep}
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </>
           )}
         </Button>
       </div>
@@ -1054,6 +1094,14 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   onChange={(e) => setDueDate(e.target.value)}
                   className={showDueDateError ? 'border-destructive ring-1 ring-destructive' : undefined}
                 />
+                {/* Vencimento e competência são coisas diferentes e o usuário
+                    confundia as duas: o vencimento é quando o cliente tem que
+                    pagar; a competência (o mês em que a receita aparece na DRE
+                    por Regime de Competência) é a data de HOJE, porque é hoje
+                    que a venda está sendo registrada. */}
+                <p className="text-xs text-muted-foreground">
+                  {t.fields.dueDateAccrualHint.replace('{date}', formatDate(todayISO(), locale, timezone))}
+                </p>
               </div>
 
               {/* Descrição */}

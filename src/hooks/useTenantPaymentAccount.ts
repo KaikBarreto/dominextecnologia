@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useToast } from '@/hooks/use-toast';
+import { SYSTEM_CATEGORY_ROLES } from '@/lib/finance-system-categories';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useTenantPaymentAccount — fronteira do Supabase para a conta de recebimentos
@@ -265,8 +266,15 @@ export function useTenantPaymentAccount() {
     defaultFinanceAccountId: account?.default_finance_account_id ?? null,
     /** Categoria de receita padrão para lançamentos (NULL = sem categoria). */
     defaultIncomeCategory: account?.default_income_category ?? null,
-    /** Categoria de despesa para as taxas da Asaas (DEFAULT 'Tarifas e Taxas'). */
-    defaultFeeCategory: account?.default_fee_category ?? 'Tarifas e Taxas',
+    /**
+     * Categoria de despesa para as taxas da Asaas. Espelha a coluna
+     * `default_fee_category` (NOT NULL DEFAULT no banco) — o fallback aqui só
+     * dispara quando a empresa ainda não tem conta de recebimento, e repete o
+     * nome de SEMENTE da categoria de tarifa. Quando o cliente renomeia essa
+     * categoria, a coluna é atualizada junto (cascata em useFinancialCategories),
+     * então o valor gravado continua apontando pro nome certo.
+     */
+    defaultFeeCategory: account?.default_fee_category ?? SYSTEM_CATEGORY_ROLES.receipt_fee.seedName,
     setChargePreferences: setChargePreferencesMutation,
     // ── Flags de meios recorrentes avançados (feature dormente — DEFAULT false) ────
     /** Cartão recorrente (assinatura tokenizada) habilitado para este tenant. */

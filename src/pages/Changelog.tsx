@@ -42,6 +42,53 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.49',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefas internas não aparecem mais no Portal do Cliente',
+        description: 'As tarefas da sua equipe ficam na mesma lista das ordens de serviço, e por isso apareciam para o cliente dentro do portal dele, junto das ordens. Agora só ordens de serviço aparecem lá. Seus recados internos voltam a ser internos.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Agora dá para renomear as categorias que o sistema cria',
+        description: 'As categorias de venda de serviço e de tarifas vinham travadas porque os lançamentos automáticos dependiam do nome delas. Agora você pode renomear, e todo o histórico já lançado acompanha o nome novo. O tipo e o grupo da DRE continuam travados, porque mudá-los quebraria seus relatórios.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A DRE mostra todas as linhas, mesmo zeradas',
+        description: 'Impostos e Deduções e Custo do Serviço Prestado desapareciam da DRE quando não tinham lançamento no período, e dava a impressão de que o relatório não tinha essas linhas. Agora elas continuam na tela, zeradas, explicando que não houve movimento no período.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Abrir uma categoria da DRE com um único centro de custo',
+        description: 'Categoria com um centro de custo só não abria, então o nome do centro não aparecia em lugar nenhum: você via o valor sem saber a qual obra pertencia. Agora abre e mostra.',
+        category: 'correcao',
+      },
+      {
+        title: 'Centro de custo saiu de "Mais detalhes"',
+        description: 'No lançamento, o centro de custo agora fica logo abaixo da categoria, porque as duas respondem à mesma pergunta. Escondido dentro de "Mais detalhes", quase ninguém achava o campo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Nova cobrança: vencimento e competência explicados',
+        description: 'Abaixo do vencimento, o sistema agora explica que aquela é a data em que o cliente deve pagar, e que na DRE por competência a receita entra na data de hoje, quando a venda está sendo registrada. Eram duas datas diferentes sem nenhuma explicação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Nova cobrança: avançar pelas etapas',
+        description: 'O botão de gerar aparecia já na primeira aba e muita gente gerava a cobrança sem saber que existiam as abas de Pagamento, Encargos e Financeiro. Agora o botão principal leva para a próxima etapa, e quem não precisa do resto usa o atalho de gerar agora.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Probabilidade da oportunidade aceita só de 0 a 100',
+        description: 'No cadastro de oportunidade era possível digitar uma probabilidade acima de 100 por cento, e apagar o último dígito fazia o valor voltar sozinho para 50, sem deixar você digitar outro. Os dois problemas foram corrigidos.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.48',
     date: '19 de setembro de 2026',
     type: 'patch',

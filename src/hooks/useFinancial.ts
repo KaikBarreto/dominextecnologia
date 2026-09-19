@@ -12,6 +12,8 @@ import { buildInstallmentPlan } from '@/lib/finance-installments';
 import { todayInTz } from '@/lib/timezone';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
+import { SYSTEM_CATEGORY_ROLES } from '@/lib/finance-system-categories';
+import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
 
 export interface TransactionCreator {
   full_name: string | null;
@@ -207,6 +209,12 @@ export function buildPartialReceiptRow(args: {
  * atualizada. Por isso o centro de custo herda de `sourceRow` com fallback na
  * mãe — o par tarifa/recebimento tem que cair no MESMO centro, senão a receita
  * entra numa obra e o custo dela em nenhuma.
+ *
+ * `feeCategory` é o NOME ATUAL da categoria do papel "tarifa de recebimento",
+ * resolvido por quem chama (`resolveSystemCategoryNameFresh`). Nunca chumbe o
+ * literal aqui: a empresa pode ter renomeado a categoria, e o lançamento
+ * precisa cair no nome que ela usa HOJE. O default existe só pra chamada
+ * legada/teste e repete o nome de semente.
  */
 export function buildReceiptFeeRow(args: {
   parent: MarkAsPaidParentRow;
@@ -220,14 +228,17 @@ export function buildReceiptFeeRow(args: {
   paidDate: string;
   companyId: string;
   createdBy?: string;
+  /** Nome atual da categoria de tarifa desta empresa. */
+  feeCategory?: string;
 }): Record<string, any> {
   const { parent, sourceRow, cfg, paidDate, companyId, createdBy } = args;
+  const feeCategory = args.feeCategory?.trim() || SYSTEM_CATEGORY_ROLES.receipt_fee.seedName;
   return normalizeOptionalForeignKeys(
     {
       transaction_type: 'saida',
       amount: cfg.fee_amount,
       description: `Tarifa do recebimento — ${sourceRow.description || parent.description || 'transação'}`,
-      category: 'Tarifas e Taxas',
+      category: feeCategory,
       customer_id: cfg.customer_id ?? sourceRow.customer_id ?? parent.customer_id ?? null,
       account_id: cfg.account_id,
       cost_center_id: sourceRow.cost_center_id ?? parent.cost_center_id ?? null,
@@ -892,12 +903,15 @@ export function useFinancial() {
         dataRow = data;
       }
 
-      // If a fee was reported, create a "Tarifas e Taxas" expense.
+      // Se houve tarifa, nasce a despesa na categoria do papel "tarifa de
+      // recebimento" — resolvida por is_system + type + dre_group, nunca pelo
+      // nome literal. Empresa que renomeou a categoria recebe o nome NOVO.
       // Em recebimento parcial: tarifa vincula à FILHA (preserva rastreamento de qual recebimento gerou).
       // Em quitação total: mantém comportamento atual (filha da mãe).
       if (cfg.fee_amount && cfg.fee_amount > 0) {
         const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
         const company_id = await getCurrentUserCompanyId();
+        const feeCategory = await resolveSystemCategoryNameFresh(queryClient, company_id, 'receipt_fee');
         // Em recebimento parcial `dataRow` é a FILHA parcial (que já carrega o
         // centro de custo da mãe); em quitação total é a própria mãe. O fallback
         // em `parent` cobre a linha antiga que ainda não tinha centro.
@@ -908,6 +922,7 @@ export function useFinancial() {
           paidDate,
           companyId: company_id,
           createdBy: user?.id,
+          feeCategory,
         });
         const { error: feeErr } = await supabase.from('financial_transactions').insert(feePayload as any);
         if (feeErr) throw feeErr;
