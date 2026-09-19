@@ -50,8 +50,35 @@ export interface TenantSubscription {
   created_at: string;
   source_type: string | null;
   source_id: string | null;
+  /** Preenchida = assinatura arquivada (sumiu da lista, mas continua no histórico). */
+  archived_at: string | null;
+  /**
+   * Consentimento de Pix Automático. `pix_auto_status` fora de
+   * cancelled/expired/rejected com `pix_auto_authorization_id` preenchido = o
+   * cliente AINDA pode ser debitado, mesmo com a assinatura cancelada aqui.
+   */
+  pix_auto_authorization_id: string | null;
+  pix_auto_status: string | null;
   // joined
   customers: { id: string; name: string } | null;
+}
+
+/** `pix_auto_status` que já significam consentimento morto (espelha a edge e a RPC). */
+const CLOSED_PIX_AUTO_STATUSES = new Set(['cancelled', 'expired', 'rejected']);
+
+/**
+ * A assinatura ainda tem um consentimento de Pix Automático VIVO na Asaas?
+ *
+ * Cancelar antes da correção de 2026-09-19 marcava 'cancelled' aqui sem revogar
+ * nada lá — o cliente seguia debitável por uma assinatura que sumiu da tela.
+ * Quando isto é true, a saída é cancelar de novo (o cancel corrigido revoga),
+ * não arquivar: arquivar esconderia justamente o que precisa ser resolvido.
+ */
+export function hasLivePixConsent(sub: TenantSubscription): boolean {
+  return (
+    !!sub.pix_auto_authorization_id &&
+    !CLOSED_PIX_AUTO_STATUSES.has(sub.pix_auto_status ?? 'pending')
+  );
 }
 
 /** Dados do cartão de crédito para assinatura recorrente (NUNCA logar). */
@@ -201,6 +228,8 @@ export interface UseTenantSubscriptionsOptions {
   /** Quando fornecido, filtra assinaturas desta origem (ex: contrato específico). */
   sourceType?: string;
   sourceId?: string;
+  /** true = lista SÓ as arquivadas (aba "Arquivadas"). Padrão: só as não arquivadas. */
+  includeArchived?: boolean;
 }
 
 export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) {
@@ -209,13 +238,16 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
-  const { customerId, sourceType, sourceId } = options ?? {};
+  const { customerId, sourceType, sourceId, includeArchived } = options ?? {};
 
+  // `includeArchived` entra na CHAVE: sem isso a aba "Arquivadas" serviria o
+  // cache da lista normal (e vice-versa) e pareceria que arquivar não fez nada.
+  const archivedKey = includeArchived ? 'archived' : 'active';
   const listKey = sourceType && sourceId
-    ? ['tenant-subscriptions', companyId, 'source', sourceType, sourceId]
+    ? ['tenant-subscriptions', companyId, 'source', sourceType, sourceId, archivedKey]
     : customerId
-      ? ['tenant-subscriptions', companyId, 'customer', customerId]
-      : ['tenant-subscriptions', companyId];
+      ? ['tenant-subscriptions', companyId, 'customer', customerId, archivedKey]
+      : ['tenant-subscriptions', companyId, archivedKey];
 
   const list = useQuery({
     queryKey: listKey,
@@ -226,9 +258,14 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       let query = supabase
         .from('tenant_subscriptions')
         .select(
-          'id, company_id, customer_id, asaas_subscription_id, cycle, value, billing_type, next_due_date, status, fine_percent, interest_percent, description, created_by, created_at, source_type, source_id, customers(id, name)',
+          'id, company_id, customer_id, asaas_subscription_id, cycle, value, billing_type, next_due_date, status, fine_percent, interest_percent, description, created_by, created_at, source_type, source_id, archived_at, pix_auto_authorization_id, pix_auto_status, customers(id, name)',
         )
         .eq('company_id', companyId);
+      // Arquivada some da lista principal. Sem este filtro, arquivar não muda
+      // nada na tela e a função simplesmente não existe pro usuário.
+      query = includeArchived
+        ? query.not('archived_at', 'is', null)
+        : query.is('archived_at', null);
       if (customerId) {
         query = query.eq('customer_id', customerId);
       }
@@ -245,7 +282,9 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
   });
 
   const invalidate = () => {
-    // Invalida TODAS as queries de assinaturas desta empresa (lista geral + filtros).
+    // Invalida TODAS as queries de assinaturas desta empresa (lista geral +
+    // filtros + as duas abas, ativa e arquivada). O prefixo cobre o sufixo
+    // archivedKey, então arquivar/desarquivar atualiza os dois lados de uma vez.
     queryClient.invalidateQueries({ queryKey: ['tenant-subscriptions', companyId] });
   };
 
@@ -405,6 +444,49 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
     },
   });
 
+  // ── archive / unarchive: some da lista SEM destruir a linha. ────────────────
+  // Arquivar (e não excluir) porque esta tabela é o ÚNICO lugar que guarda o
+  // pix_auto_authorization_id, e o webhook resolve o tenant POR ELE: apagar a
+  // linha deixaria um evento atrasado da Asaas sem casa. A edge ainda revoga o
+  // consentimento antes de arquivar, se ainda houver um vivo.
+  const archiveSubscription = useMutation({
+    mutationFn: async (
+      input: { subscription_id: string; action: 'archive' | 'unarchive' },
+    ): Promise<void> => {
+      const { data, error } = await supabase.functions.invoke(
+        'tenant-asaas-manage-subscription',
+        { body: { subscription_id: input.subscription_id, action: input.action } },
+      );
+      if (error || (data && typeof data === 'object' && 'error' in data && (data as EdgeErrorBody).error)) {
+        const { message } = await extractEdgeError(
+          error,
+          data,
+          input.action === 'archive'
+            ? t.toast.archiveErrorDescription
+            : t.toast.unarchiveErrorDescription,
+        );
+        throw new Error(message);
+      }
+    },
+    onSuccess: (_, vars) => {
+      invalidate();
+      toast({
+        title: vars.action === 'archive' ? t.toast.archiveSuccessTitle : t.toast.unarchiveSuccessTitle,
+        description:
+          vars.action === 'archive'
+            ? t.toast.archiveSuccessDescription
+            : t.toast.unarchiveSuccessDescription,
+      });
+    },
+    onError: (err, vars) => {
+      toast({
+        variant: 'destructive',
+        title: vars.action === 'archive' ? t.toast.archiveErrorTitle : t.toast.unarchiveErrorTitle,
+        description: err instanceof Error ? err.message : t.toast.genericError,
+      });
+    },
+  });
+
   // ── bulkCancel: cancela várias assinaturas de uma vez (seleção múltipla). ────
   // Chama a mesma edge (uma requisição por assinatura, em paralelo) e devolve
   // um resumo. NÃO usa manageSubscription.mutateAsync diretamente pra não
@@ -449,6 +531,7 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
     companyId,
     createSubscription,
     manageSubscription,
+    archiveSubscription,
     authorizePixAuto,
     bulkCancel,
   };

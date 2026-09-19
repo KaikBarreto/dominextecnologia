@@ -68,7 +68,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTeams } from '@/hooks/useTeams';
 import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatDate } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { readPastedCents } from '@/lib/money-paste-mask';
 
@@ -108,7 +108,7 @@ const UNASSIGNED_FILTER_VALUE = '__unassigned__';
 
 export default function CRM() {
   const isMobile = useIsMobile();
-  const { locale, currency } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const dfLocale = DATE_FNS_LOCALES[locale];
   const { leads, isLoading, updateLead } = useLeads();
@@ -1223,6 +1223,21 @@ export default function CRM() {
                       <TrendingUp className="h-3 w-3 shrink-0" />
                       <span className="truncate">{leadTitleMap.get(task.lead_id) || t.noStage}</span>
                     </span>
+                    {/* Cliente e data na própria linha: antes a linha só dizia o
+                        nome da tarefa e a oportunidade, e pra saber DE QUEM era
+                        ou QUANDO vencia o usuário tinha que abrir o card. */}
+                    {task.customer?.name && (
+                      <span className="inline-flex items-center gap-1 min-w-0 truncate max-w-[180px]">
+                        <User className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{task.customer.name}</span>
+                      </span>
+                    )}
+                    {task.scheduled_date && (
+                      <span className={cn('inline-flex items-center gap-1 shrink-0', isOverdue && 'text-destructive font-medium')}>
+                        <Calendar className="h-3 w-3 shrink-0" />
+                        {formatDate(task.scheduled_date, locale, timezone)}
+                      </span>
+                    )}
                     {task._isRecurring && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0">
                         {t.tasks.recurringBadge}

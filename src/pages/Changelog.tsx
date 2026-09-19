@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.53',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cancelar assinatura de Pix Automático agora encerra a autorização de verdade',
+        description: 'Ao cancelar uma assinatura de Pix Automático, o sistema marcava como cancelada aqui mas não encerrava a autorização no banco do cliente, que continuava valendo e podia voltar a debitar. Agora a autorização é encerrada primeiro e, se isso falhar, a assinatura não é dada como cancelada e você é avisado. Vale também para o cancelamento em massa.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Arquivar assinatura cancelada',
+        description: 'Assinatura cancelada agora pode ser arquivada para sair da lista, com uma aba para ver as arquivadas e trazer de volta. Assinatura cujo Pix Automático ainda está autorizado não pode ser arquivada: nesse caso aparece a ação de cancelar de novo, para não esconder justamente o que ainda pode gerar cobrança.',
+        category: 'recurso',
+      },
+      {
+        title: 'Avisos do banco que falhavam em silêncio',
+        description: 'Quando o banco enviava um aviso de pagamento, estorno ou cobrança vencida, havia casos em que a atualização falhava e mesmo assim o aviso era dado como processado. Um estorno nessa situação deixaria a cobrança marcada como recebida. Agora toda falha é detectada e o aviso é reprocessado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.52',
     date: '19 de setembro de 2026',
     type: 'patch',

@@ -222,6 +222,30 @@ function mapSubscriptionStatus(event: string, asaasStatus: string): string | nul
 }
 
 /**
+ * Aplica uma escrita do supabase-js e LANÇA se o banco recusar.
+ *
+ * ⚠️ REGRA-LEI (incidente Pix Automático, 2026-09-19). O supabase-js NÃO lança em
+ * erro de banco: devolve `{ error }`. Um `await supabase.from(...).update(...)`
+ * sem checar `error` engole a falha INTEIRA — o try/catch em volta nunca dispara,
+ * o evento é marcado 'processed' e o estado se perde PRA SEMPRE (sem re-entrega).
+ *
+ * Foi exatamente assim que o patch de um evento de Pix Automático sumiu em
+ * silêncio: o `pix_auto_status: 'rejected'` violava o CHECK da coluna e derrubava
+ * o objeto todo, inclusive o `status: 'cancelled'` que viajava junto — a
+ * assinatura ficava registrada como se o consentimento seguisse vivo.
+ *
+ * Com o throw, o catch do processador marca o evento 'error' e devolve false,
+ * que é o caminho de RE-ENTREGA. Perder o evento é pior que reprocessar.
+ */
+async function applyWrite(
+  label: string,
+  query: PromiseLike<{ error: { message: string } | null }>,
+): Promise<void> {
+  const { error } = await query;
+  if (error) throw new Error(`${label} falhou: ${error.message}`);
+}
+
+/**
  * Processa um evento SUBSCRIPTION_* — só atualiza o status da assinatura local por
  * asaas_subscription_id (posse por company_id reaplicada). Idempotente. Retorna true
  * mesmo quando não há assinatura local (nada a fazer ≠ erro).
@@ -236,16 +260,25 @@ async function processSubscriptionEvent(
   try {
     const newStatus = mapSubscriptionStatus(event, String(subscription?.status || ""));
     if (newStatus) {
-      await supabase
-        .from("tenant_subscriptions")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq("asaas_subscription_id", subscription.id)
-        .eq("company_id", companyId);
+      await applyWrite(
+        "assinatura SUBSCRIPTION_*",
+        supabase
+          .from("tenant_subscriptions")
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq("asaas_subscription_id", subscription.id)
+          .eq("company_id", companyId),
+      );
     }
-    await supabase
+    // Marcação de bookkeeping: NÃO lança de propósito. O estado já foi aplicado;
+    // se só o carimbo falhar, o evento fica 'pending' e o reconcile reprocessa
+    // (idempotente). Mas não pode sumir do log.
+    const { error: ackErr } = await supabase
       .from("tenant_payment_webhook_events")
       .update({ status: "processed", last_error: null })
       .eq("event_id", eventId);
+    if (ackErr) {
+      console.error(`[tenant-webhook] não consegui marcar ${eventId} como processed:`, ackErr.message);
+    }
     return true;
   } catch (e) {
     console.error(`[tenant-webhook] subscription event falhou (${eventId}):`, (e as Error).message);
@@ -490,17 +523,26 @@ async function processPixAutoAuthEvent(
         updated_at: new Date().toISOString(),
       };
       if (mapped.subStatus) patch.status = mapped.subStatus;
-      await supabase
-        .from("tenant_subscriptions")
-        .update(patch)
-        .eq("pix_auto_authorization_id", authId)
-        .eq("company_id", companyId);
+      await applyWrite(
+        "autorizacao Pix Automatico",
+        supabase
+          .from("tenant_subscriptions")
+          .update(patch)
+          .eq("pix_auto_authorization_id", authId)
+          .eq("company_id", companyId),
+      );
       console.log(`[tenant-webhook] pix-auto ${authId} → ${mapped.pixStatus}/${mapped.subStatus ?? "-"}`);
     }
-    await supabase
+    // Marcação de bookkeeping: NÃO lança de propósito. O estado já foi aplicado;
+    // se só o carimbo falhar, o evento fica 'pending' e o reconcile reprocessa
+    // (idempotente). Mas não pode sumir do log.
+    const { error: ackErr } = await supabase
       .from("tenant_payment_webhook_events")
       .update({ status: "processed", last_error: null })
       .eq("event_id", eventId);
+    if (ackErr) {
+      console.error(`[tenant-webhook] não consegui marcar ${eventId} como processed:`, ackErr.message);
+    }
     return true;
   } catch (e) {
     console.error(`[tenant-webhook] pix-auto auth event falhou (${eventId}):`, (e as Error).message);
@@ -638,11 +680,14 @@ async function processEvent(
           : event === "PAYMENT_REFUND_IN_PROGRESS"
             ? "REFUND_IN_PROGRESS"
             : "CHARGEBACK";
-      await supabase
-        .from("tenant_charges")
-        .update({ status: newStatus, payment_date: null, updated_at: new Date().toISOString() })
-        .eq("asaas_payment_id", payment.id)
-        .eq("company_id", companyId);
+      await applyWrite(
+        "reversao de baixa na cobranca",
+        supabase
+          .from("tenant_charges")
+          .update({ status: newStatus, payment_date: null, updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id)
+          .eq("company_id", companyId),
+      );
       // Reabre o recebível vinculado (mesma company).
       const { data: charge } = await supabase
         .from("tenant_charges")
@@ -651,37 +696,49 @@ async function processEvent(
         .eq("company_id", companyId)
         .maybeSingle();
       if (charge?.id) {
-        await supabase
-          .from("financial_transactions")
-          .update({ is_paid: false, paid_date: null, amount_received: 0, updated_at: new Date().toISOString() })
-          .eq("tenant_charge_id", charge.id)
-          .eq("company_id", companyId)
-          .eq("transaction_type", "entrada");
+        await applyWrite(
+          "reabertura do recebivel",
+          supabase
+            .from("financial_transactions")
+            .update({ is_paid: false, paid_date: null, amount_received: 0, updated_at: new Date().toISOString() })
+            .eq("tenant_charge_id", charge.id)
+            .eq("company_id", companyId)
+            .eq("transaction_type", "entrada"),
+        );
       }
       console.log(`[tenant-webhook] baixa revertida (${newStatus}) ${payment.id}`);
     } else if (event === "PAYMENT_OVERDUE") {
       // VENCIDO. Marca a própria cobrança OVERDUE (posse por company_id). Se for ciclo
       // de uma assinatura, marca também a assinatura 'overdue' (só se ainda ativa —
       // não sobrescreve cancelada/pausada).
-      await supabase
-        .from("tenant_charges")
-        .update({ status: "OVERDUE", updated_at: new Date().toISOString() })
-        .eq("asaas_payment_id", payment.id)
-        .eq("company_id", companyId);
+      await applyWrite(
+        "cobranca OVERDUE",
+        supabase
+          .from("tenant_charges")
+          .update({ status: "OVERDUE", updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id)
+          .eq("company_id", companyId),
+      );
       if (typeof payment?.subscription === "string" && payment.subscription) {
-        await supabase
-          .from("tenant_subscriptions")
-          .update({ status: "overdue", updated_at: new Date().toISOString() })
-          .eq("asaas_subscription_id", payment.subscription)
-          .eq("company_id", companyId)
-          .eq("status", "active");
+        await applyWrite(
+          "assinatura overdue (assinatura comum)",
+          supabase
+            .from("tenant_subscriptions")
+            .update({ status: "overdue", updated_at: new Date().toISOString() })
+            .eq("asaas_subscription_id", payment.subscription)
+            .eq("company_id", companyId)
+            .eq("status", "active"),
+        );
         // Pix Automático: o vínculo do ciclo vem em pix_auto_authorization_id.
-        await supabase
-          .from("tenant_subscriptions")
-          .update({ status: "overdue", updated_at: new Date().toISOString() })
-          .eq("pix_auto_authorization_id", payment.subscription)
-          .eq("company_id", companyId)
-          .eq("status", "active");
+        await applyWrite(
+          "assinatura overdue (Pix Automatico)",
+          supabase
+            .from("tenant_subscriptions")
+            .update({ status: "overdue", updated_at: new Date().toISOString() })
+            .eq("pix_auto_authorization_id", payment.subscription)
+            .eq("company_id", companyId)
+            .eq("status", "active"),
+        );
         console.log(`[tenant-webhook] assinatura ${payment.subscription} marcada overdue`);
       }
       console.log(`[tenant-webhook] cobrança ${payment.id} marcada OVERDUE`);
@@ -689,20 +746,26 @@ async function processEvent(
       // Cobrança REMOVIDA no Asaas → marca DELETED (não apaga: preserva histórico/auditoria).
       // NÃO reverte baixa de cobrança já paga (delete no Asaas de cobrança quitada é raro;
       // se houver estorno, virá um evento de refund/chargeback próprio).
-      await supabase
-        .from("tenant_charges")
-        .update({ status: "DELETED", updated_at: new Date().toISOString() })
-        .eq("asaas_payment_id", payment.id)
-        .eq("company_id", companyId);
+      await applyWrite(
+        "cobranca DELETED",
+        supabase
+          .from("tenant_charges")
+          .update({ status: "DELETED", updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id)
+          .eq("company_id", companyId),
+      );
       console.log(`[tenant-webhook] cobrança ${payment.id} marcada DELETED`);
     } else if (event === "PAYMENT_RESTORED") {
       // Cobrança RESTAURADA (undo do delete) → volta ao status atual do Asaas.
       const restored = status || "PENDING";
-      await supabase
-        .from("tenant_charges")
-        .update({ status: restored, updated_at: new Date().toISOString() })
-        .eq("asaas_payment_id", payment.id)
-        .eq("company_id", companyId);
+      await applyWrite(
+        "cobranca RESTORED",
+        supabase
+          .from("tenant_charges")
+          .update({ status: restored, updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id)
+          .eq("company_id", companyId),
+      );
       console.log(`[tenant-webhook] cobrança ${payment.id} restaurada (${restored})`);
     } else if (event === "PAYMENT_CREATED" || event === "PAYMENT_UPDATED") {
       // ESPELHO best-effort: se a cobrança já existe localmente, atualiza status/valor/
@@ -723,11 +786,14 @@ async function processEvent(
         if (typeof payment?.dueDate === "string" && payment.dueDate) patch.due_date = payment.dueDate;
         if (typeof payment?.invoiceUrl === "string" && payment.invoiceUrl) patch.invoice_url = payment.invoiceUrl;
         if (typeof payment?.bankSlipUrl === "string" && payment.bankSlipUrl) patch.boleto_url = payment.bankSlipUrl;
-        await supabase
-          .from("tenant_charges")
-          .update(patch)
-          .eq("asaas_payment_id", payment.id)
-          .eq("company_id", companyId);
+        await applyWrite(
+          "espelho PAYMENT_CREATED/UPDATED",
+          supabase
+            .from("tenant_charges")
+            .update(patch)
+            .eq("asaas_payment_id", payment.id)
+            .eq("company_id", companyId),
+        );
         console.log(`[tenant-webhook] espelho ${event} aplicado ${payment.id}`);
       } else {
         console.log(`[tenant-webhook] ${event} sem charge local (${payment.id}) — ignorado`);
@@ -740,10 +806,16 @@ async function processEvent(
       console.log(`[tenant-webhook] payment event não mapeado (${event}, ${payment.id}) — ack`);
     }
 
-    await supabase
+    // Marcação de bookkeeping: NÃO lança de propósito. O estado já foi aplicado;
+    // se só o carimbo falhar, o evento fica 'pending' e o reconcile reprocessa
+    // (idempotente). Mas não pode sumir do log.
+    const { error: ackErr } = await supabase
       .from("tenant_payment_webhook_events")
       .update({ status: "processed", last_error: null })
       .eq("event_id", eventId);
+    if (ackErr) {
+      console.error(`[tenant-webhook] não consegui marcar ${eventId} como processed:`, ackErr.message);
+    }
     return true;
   } catch (e) {
     console.error(`[tenant-webhook] processamento falhou (${eventId}):`, (e as Error).message);

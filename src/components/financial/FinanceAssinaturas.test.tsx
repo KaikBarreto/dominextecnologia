@@ -28,10 +28,11 @@ class ResizeObserverStub {
 }
 (globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
 
-const { toastSpy, cancelMutateAsync, bulkCancelMutateAsync } = vi.hoisted(() => ({
+const { toastSpy, cancelMutateAsync, bulkCancelMutateAsync, archiveMutate } = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   cancelMutateAsync: vi.fn().mockResolvedValue(undefined),
   bulkCancelMutateAsync: vi.fn().mockResolvedValue({ ok: 1, fail: 0 }),
+  archiveMutate: vi.fn(),
 }));
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
@@ -63,6 +64,9 @@ type Sub = {
   billing_type: string;
   next_due_date: string | null;
   description: string | null;
+  archived_at?: string | null;
+  pix_auto_authorization_id?: string | null;
+  pix_auto_status?: string | null;
   customers: { id: string; name: string } | null;
 };
 
@@ -73,8 +77,14 @@ vi.mock('@/hooks/useTenantSubscriptions', () => ({
     subscriptions: subsState.list,
     isLoading: false,
     manageSubscription: { mutateAsync: cancelMutateAsync, isPending: false },
+    archiveSubscription: { mutate: archiveMutate, isPending: false },
     bulkCancel: { mutateAsync: bulkCancelMutateAsync, isPending: false },
   }),
+  // MESMA regra do hook real: consentimento de Pix Automático fora de
+  // cancelled/expired/rejected ainda pode debitar o cliente.
+  hasLivePixConsent: (sub: Sub) =>
+    !!sub.pix_auto_authorization_id &&
+    !['cancelled', 'expired', 'rejected'].includes(sub.pix_auto_status ?? 'pending'),
 }));
 
 import { FinanceAssinaturas } from './FinanceAssinaturas';
@@ -126,11 +136,25 @@ function activeSub(id: string): Sub {
 function cancelledSub(id: string): Sub {
   return { ...activeSub(id), status: 'cancelled' };
 }
+/**
+ * Cancelada AQUI, mas com a autorização de Pix Automático ainda viva na Asaas —
+ * o estado exato do incidente de 2026-09-19, em que o cliente seguia debitável
+ * por uma assinatura que o gestor já não via.
+ */
+function cancelledWithLivePixConsent(id: string): Sub {
+  return {
+    ...cancelledSub(id),
+    billing_type: 'PIX_AUTO',
+    pix_auto_authorization_id: `aut-${id}`,
+    pix_auto_status: 'pending',
+  };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
   cancelMutateAsync.mockResolvedValue(undefined);
   bulkCancelMutateAsync.mockResolvedValue({ ok: 1, fail: 0 });
+  archiveMutate.mockReset();
   subsState.list = [];
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -163,19 +187,59 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     expect(revealBtn!.textContent).toContain('2');
   });
 
-  it('revelar canceladas mostra as linhas, mas SEM nenhuma ação (não fazem sentido em algo já terminal)', () => {
+  it('revelar canceladas: sem editar/cancelar (é terminal), mas COM "Arquivar" — senão a linha fica sem saída', () => {
     subsState.list = [cancelledSub('a')];
     mount();
 
     click(buttonContaining('Mostrar cancelada'));
 
     expect(text()).toContain('Cliente a');
+    // Terminal: não dá pra editar nem cancelar de novo.
     expect(buttonByText('Editar')).toBeFalsy();
     expect(buttonByText('Cancelar')).toBeFalsy();
     expect(qa('[role="checkbox"]').length).toBe(0);
+    // Mas precisa ter COMO sumir com ela da lista.
+    expect(buttonContaining('Arquivar')).toBeTruthy();
 
     // E o toggle vira "ocultar".
     expect(buttonContaining('Ocultar canceladas')).toBeTruthy();
+  });
+
+  it('arquivar dispara a mutação com action archive', () => {
+    subsState.list = [cancelledSub('a')];
+    mount();
+    click(buttonContaining('Mostrar cancelada'));
+    click(buttonContaining('Arquivar'));
+
+    expect(archiveMutate).toHaveBeenCalledWith({ subscription_id: 'a', action: 'archive' });
+  });
+
+  // ── Regressão do incidente de 2026-09-19 ───────────────────────────────────
+  // Cancelar Pix Automático não revogava o consentimento na Asaas: a linha ficava
+  // 'cancelled' aqui e o cliente seguia debitável lá. Arquivar essa linha
+  // ESCONDERIA justamente o problema. A saída é cancelar de novo (o cancel
+  // corrigido revoga a autorização), então é essa a ação que tem que aparecer.
+  it('cancelada COM consentimento Pix vivo oferece "Cancelar de novo" e NÃO oferece arquivar', () => {
+    subsState.list = [cancelledWithLivePixConsent('zumbi')];
+    mount();
+
+    click(buttonContaining('Mostrar cancelada'));
+
+    expect(text()).toContain('Cliente zumbi');
+    expect(buttonContaining('Cancelar de novo')).toBeTruthy();
+    expect(buttonContaining('Arquivar')).toBeFalsy();
+  });
+
+  it('consentimento Pix JÁ morto volta a permitir arquivar', () => {
+    subsState.list = [
+      { ...cancelledWithLivePixConsent('curada'), pix_auto_status: 'cancelled' },
+    ];
+    mount();
+
+    click(buttonContaining('Mostrar cancelada'));
+
+    expect(buttonContaining('Arquivar')).toBeTruthy();
+    expect(buttonContaining('Cancelar de novo')).toBeFalsy();
   });
 
   it('lista vazia de verdade (conta nova, zero assinaturas) usa o vazio genérico de sempre', () => {

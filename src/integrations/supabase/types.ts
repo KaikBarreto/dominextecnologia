@@ -9067,6 +9067,7 @@ export type Database = {
       }
       tenant_subscriptions: {
         Row: {
+          archived_at: string | null
           asaas_subscription_id: string | null
           billing_type: string
           category: string | null
@@ -9093,6 +9094,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          archived_at?: string | null
           asaas_subscription_id?: string | null
           billing_type: string
           category?: string | null
@@ -9119,6 +9121,7 @@ export type Database = {
           value: number
         }
         Update: {
+          archived_at?: string | null
           asaas_subscription_id?: string | null
           billing_type?: string
           category?: string | null
@@ -10045,6 +10048,10 @@ export type Database = {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
         Returns: Json
       }
+      archive_tenant_subscription: {
+        Args: { p_company_id: string; p_subscription_id: string }
+        Returns: Json
+      }
       asaas_reconciliation_alert: { Args: never; Returns: number }
       asaas_reconciliation_check: {
         Args: never
@@ -10084,6 +10091,10 @@ export type Database = {
       }
       can_access_pipeline: {
         Args: { _pipeline_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_access_service_order: {
+        Args: { _service_order_id: string; _user_id: string }
         Returns: boolean
       }
       can_access_stock: {
@@ -10497,6 +10508,14 @@ export type Database = {
         Args: { _lead_id: string; _user_id: string }
         Returns: boolean
       }
+      is_service_order_assignee: {
+        Args: { _service_order_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_service_order_team_member: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
       lead_valida_cnpj: { Args: { p_doc: string }; Returns: boolean }
@@ -10697,6 +10716,10 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: undefined
       }
+      resolve_system_category_name: {
+        Args: { p_company_id: string; p_role: string }
+        Returns: string
+      }
       respond_quote_public: {
         Args: { _status: string; _token: string }
         Returns: Json
@@ -10708,6 +10731,10 @@ export type Database = {
       seed_company_catalog: {
         Args: { p_company_id: string; p_language?: string }
         Returns: undefined
+      }
+      service_order_has_any_assignee: {
+        Args: { _service_order_id: string }
+        Returns: boolean
       }
       set_default_stock: {
         Args: { p_stock_id: string }
@@ -10813,6 +10840,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      unarchive_tenant_subscription: {
+        Args: { p_company_id: string; p_subscription_id: string }
+        Returns: Json
       }
       unresolve_billing_reminder: {
         Args: { p_transaction_id: string }

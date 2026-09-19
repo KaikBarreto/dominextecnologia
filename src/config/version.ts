@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.52";
+export const APP_VERSION = "1.24.53";
 
-export const VERSION_NOTES = "Assinaturas: categoria e centro de custo deixaram de sumir no Pix Automático, o número de cobranças passou a ter limite e o resumo mostra quanto cai por cobrança."
+export const VERSION_NOTES = "Cancelar assinatura de Pix Automático agora encerra a autorização de verdade no banco, e assinatura cancelada pode ser arquivada para sumir da lista."

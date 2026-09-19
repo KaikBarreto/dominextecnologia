@@ -29,12 +29,13 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { SubscriptionDialog } from '@/components/financial/SubscriptionDialog';
 import {
   useTenantSubscriptions,
+  hasLivePixConsent,
   type TenantSubscription,
   type SubscriptionCycle,
 } from '@/hooks/useTenantSubscriptions';
 import { formatBRL } from '@/utils/currency';
 import { readPastedCents } from '@/lib/money-paste-mask';
-import { CalendarDays, Eye, EyeOff, Loader2, Pencil, Plus, RefreshCw, XCircle } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, CalendarDays, Eye, EyeOff, Loader2, Pencil, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─── MRR: normaliza o valor de cada ciclo para mensal ────────────────────────
@@ -239,7 +240,14 @@ export function FinanceAssinaturas() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
 
-  const { subscriptions, isLoading, manageSubscription, bulkCancel } = useTenantSubscriptions();
+  // ── Aba "Arquivadas" ──────────────────────────────────────────────────────
+  // Arquivar é reversível de propósito (não excluímos a linha: ela é o único
+  // lugar que guarda o vínculo do consentimento na Asaas). Então precisa existir
+  // um caminho de volta, senão arquivar vira exclusão disfarçada.
+  const [showArchived, setShowArchived] = useState(false);
+
+  const { subscriptions, isLoading, manageSubscription, archiveSubscription, bulkCancel } =
+    useTenantSubscriptions({ includeArchived: showArchived });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<TenantSubscription | null>(null);
@@ -256,6 +264,14 @@ export function FinanceAssinaturas() {
   // pra agir; o histórico continua a 1 clique no toggle "Mostrar canceladas".
   const [showCancelled, setShowCancelled] = useState(false);
 
+  // Linha cancelada ganha ações próprias: arquivar (some da lista) e, quando o
+  // consentimento de Pix Automático ainda está vivo na Asaas, "Cancelar de novo"
+  // — que é o caminho de auto-cura (o cancel corrigido revoga a autorização).
+  const canArchive = (sub: TenantSubscription) =>
+    !showArchived && sub.status === 'cancelled' && !hasLivePixConsent(sub);
+  const needsRetryCancel = (sub: TenantSubscription) =>
+    sub.status === 'cancelled' && hasLivePixConsent(sub);
+
   const manageableSubs = useMemo(() => subscriptions.filter(isManageable), [subscriptions]);
   const allSelected = manageableSubs.length > 0 && selectedIds.size === manageableSubs.length;
 
@@ -264,6 +280,9 @@ export function FinanceAssinaturas() {
     [subscriptions],
   );
   const visibleSubs = useMemo(() => {
+    // Aba "Arquivadas": a query já traz só arquivadas (todas canceladas por
+    // definição). Esconder por status aqui deixaria a aba sempre vazia.
+    if (showArchived) return subscriptions;
     if (showCancelled) {
       // Canceladas por último, sem embaralhar a ordem dentro de cada grupo.
       return [...subscriptions].sort((a, b) => {
@@ -273,7 +292,7 @@ export function FinanceAssinaturas() {
       });
     }
     return subscriptions.filter((s) => s.status !== 'cancelled');
-  }, [subscriptions, showCancelled]);
+  }, [subscriptions, showCancelled, showArchived]);
 
   const toggleSelect = (id: string) => {
     const next = new Set(selectedIds);
@@ -372,6 +391,27 @@ export function FinanceAssinaturas() {
               )}
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={() => {
+              setShowArchived((v) => !v);
+              setSelectedIds(new Set());
+            }}
+          >
+            {showArchived ? (
+              <>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {t.hideArchived}
+              </>
+            ) : (
+              <>
+                <Archive className="mr-2 h-4 w-4" />
+                {t.showArchived}
+              </>
+            )}
+          </Button>
         </div>
         <Button size="sm" onClick={() => setDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -382,16 +422,25 @@ export function FinanceAssinaturas() {
       {/* ── Lista ─────────────────────────────────────────────────────────── */}
       {isLoading ? null : visibleSubs.length === 0 ? (
         <div className="rounded-xl border border-border bg-card">
-          <EmptyState
-            icon={<RefreshCw className="h-full w-full" />}
-            title={subscriptions.length === 0 ? t.empty.title : t.emptyAllCancelled.title}
-            description={
-              subscriptions.length === 0
-                ? t.empty.description
-                : t.emptyAllCancelled.description(cancelledCount)
-            }
-            action={{ label: t.newButton, onClick: () => setDialogOpen(true) }}
-          />
+          {showArchived ? (
+            <EmptyState
+              icon={<Archive className="h-full w-full" />}
+              title={t.emptyArchived.title}
+              description={t.emptyArchived.description}
+              action={{ label: t.hideArchived, onClick: () => setShowArchived(false) }}
+            />
+          ) : (
+            <EmptyState
+              icon={<RefreshCw className="h-full w-full" />}
+              title={subscriptions.length === 0 ? t.empty.title : t.emptyAllCancelled.title}
+              description={
+                subscriptions.length === 0
+                  ? t.empty.description
+                  : t.emptyAllCancelled.description(cancelledCount)
+              }
+              action={{ label: t.newButton, onClick: () => setDialogOpen(true) }}
+            />
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
@@ -452,28 +501,70 @@ export function FinanceAssinaturas() {
                     {statusBadge(sub.status, t.status)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {isManageable(sub) && (
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="edit-ghost"
-                          size="sm"
-                          onClick={() => setEditTarget(sub)}
-                          disabled={manageSubscription.isPending}
-                        >
-                          <Pencil className="mr-1 h-3.5 w-3.5" />
-                          {t.actions.edit}
-                        </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      {isManageable(sub) && (
+                        <>
+                          <Button
+                            variant="edit-ghost"
+                            size="sm"
+                            onClick={() => setEditTarget(sub)}
+                            disabled={manageSubscription.isPending}
+                          >
+                            <Pencil className="mr-1 h-3.5 w-3.5" />
+                            {t.actions.edit}
+                          </Button>
+                          <Button
+                            variant="destructive-ghost"
+                            size="sm"
+                            onClick={() => setCancelTarget(sub)}
+                            disabled={manageSubscription.isPending}
+                          >
+                            <XCircle className="mr-1 h-3.5 w-3.5" />
+                            {t.actions.cancel}
+                          </Button>
+                        </>
+                      )}
+                      {needsRetryCancel(sub) && (
                         <Button
                           variant="destructive-ghost"
                           size="sm"
                           onClick={() => setCancelTarget(sub)}
                           disabled={manageSubscription.isPending}
+                          title={t.pixConsentLive.tooltip}
                         >
                           <XCircle className="mr-1 h-3.5 w-3.5" />
-                          {t.actions.cancel}
+                          {t.actions.retryCancel}
                         </Button>
-                      </div>
-                    )}
+                      )}
+                      {canArchive(sub) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground"
+                          onClick={() =>
+                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'archive' })
+                          }
+                          disabled={archiveSubscription.isPending}
+                        >
+                          <Archive className="mr-1 h-3.5 w-3.5" />
+                          {t.actions.archive}
+                        </Button>
+                      )}
+                      {showArchived && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground"
+                          onClick={() =>
+                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'unarchive' })
+                          }
+                          disabled={archiveSubscription.isPending}
+                        >
+                          <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
+                          {t.actions.unarchive}
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -515,17 +606,30 @@ export function FinanceAssinaturas() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     {statusBadge(sub.status, t.status)}
-                    {isManageable(sub) && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="edit-ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => setEditTarget(sub)}
-                          disabled={manageSubscription.isPending}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                    <div className="flex items-center gap-1">
+                      {isManageable(sub) && (
+                        <>
+                          <Button
+                            variant="edit-ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={() => setEditTarget(sub)}
+                            disabled={manageSubscription.isPending}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="destructive-ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={() => setCancelTarget(sub)}
+                            disabled={manageSubscription.isPending}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {needsRetryCancel(sub) && (
                         <Button
                           variant="destructive-ghost"
                           size="sm"
@@ -533,10 +637,37 @@ export function FinanceAssinaturas() {
                           onClick={() => setCancelTarget(sub)}
                           disabled={manageSubscription.isPending}
                         >
-                          <XCircle className="h-3.5 w-3.5" />
+                          <XCircle className="mr-1 h-3.5 w-3.5" />
+                          {t.actions.retryCancel}
                         </Button>
-                      </div>
-                    )}
+                      )}
+                      {canArchive(sub) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-muted-foreground"
+                          onClick={() =>
+                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'archive' })
+                          }
+                          disabled={archiveSubscription.isPending}
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {showArchived && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-muted-foreground"
+                          onClick={() =>
+                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'unarchive' })
+                          }
+                          disabled={archiveSubscription.isPending}
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -582,6 +582,9 @@ export const charges = {
       actions: {
         cancel: 'Cancelar',
         edit: 'Editar',
+        archive: 'Arquivar',
+        unarchive: 'Desarquivar',
+        retryCancel: 'Cancelar de novo',
       },
       cancelDialog: {
         title: 'Cancelar assinatura',
@@ -623,6 +626,14 @@ export const charges = {
         bulkCancelPartialTitle: 'Cancelamento parcial',
         bulkCancelPartialDescription: (ok: number, fail: number) =>
           `${ok} cancelada(s) com sucesso, ${fail} não puderam ser canceladas. Tente novamente.`,
+        archiveSuccessTitle: 'Assinatura arquivada',
+        archiveSuccessDescription: 'Ela saiu da lista, mas continua no histórico. Você pode desarquivar quando quiser.',
+        archiveErrorTitle: 'Erro ao arquivar',
+        archiveErrorDescription: 'Não foi possível arquivar a assinatura.',
+        unarchiveSuccessTitle: 'Assinatura de volta à lista',
+        unarchiveSuccessDescription: 'A assinatura voltou a aparecer na lista.',
+        unarchiveErrorTitle: 'Erro ao desarquivar',
+        unarchiveErrorDescription: 'Não foi possível devolver a assinatura para a lista.',
       },
       empty: {
         title: 'Nenhuma assinatura',
@@ -638,6 +649,16 @@ export const charges = {
       },
       showCancelled: (n: number) => `Mostrar cancelada${n !== 1 ? 's' : ''} (${n})`,
       hideCancelled: 'Ocultar canceladas',
+      showArchived: 'Ver arquivadas',
+      hideArchived: 'Voltar para a lista',
+      emptyArchived: {
+        title: 'Nenhuma assinatura arquivada',
+        description: 'Assinaturas canceladas que você arquivar aparecem aqui.',
+      },
+      pixConsentLive: {
+        badge: 'Autorização ativa no banco',
+        tooltip: 'Esta assinatura foi cancelada aqui, mas a autorização de Pix Automático continua ativa no banco do cliente, então ele ainda pode ser debitado. Use "Cancelar de novo" para encerrar a autorização.',
+      },
       noCustomers: {
         title: 'Nenhum cliente cadastrado',
         description: 'Cadastre um cliente antes de criar uma assinatura.',
@@ -1193,6 +1214,9 @@ export const charges = {
       actions: {
         cancel: 'Cancel',
         edit: 'Edit',
+        archive: 'Archive',
+        unarchive: 'Unarchive',
+        retryCancel: 'Cancel again',
       },
       cancelDialog: {
         title: 'Cancel subscription',
@@ -1232,6 +1256,14 @@ export const charges = {
         bulkCancelPartialTitle: 'Partial cancellation',
         bulkCancelPartialDescription: (ok: number, fail: number) =>
           `${ok} cancelled successfully, ${fail} could not be cancelled. Please try again.`,
+        archiveSuccessTitle: 'Subscription archived',
+        archiveSuccessDescription: 'It left the list but stays in your history. You can unarchive it whenever you want.',
+        archiveErrorTitle: 'Could not archive',
+        archiveErrorDescription: 'We could not archive this subscription.',
+        unarchiveSuccessTitle: 'Subscription back on the list',
+        unarchiveSuccessDescription: 'The subscription shows up on the list again.',
+        unarchiveErrorTitle: 'Could not unarchive',
+        unarchiveErrorDescription: 'We could not bring this subscription back to the list.',
       },
       empty: {
         title: 'No subscriptions',
@@ -1244,6 +1276,16 @@ export const charges = {
       },
       showCancelled: (n: number) => `Show cancelled (${n})`,
       hideCancelled: 'Hide cancelled',
+      showArchived: 'View archived',
+      hideArchived: 'Back to the list',
+      emptyArchived: {
+        title: 'No archived subscriptions',
+        description: 'Cancelled subscriptions you archive show up here.',
+      },
+      pixConsentLive: {
+        badge: 'Authorisation active at the bank',
+        tooltip: 'This subscription was cancelled here, but the Automatic Pix authorisation is still active at the customer\'s bank, so they can still be charged. Use "Cancel again" to end the authorisation.',
+      },
       noCustomers: {
         title: 'No customers registered',
         description: 'Please register a customer before creating a subscription.',
@@ -1799,6 +1841,9 @@ export const charges = {
       actions: {
         cancel: 'Cancelar',
         edit: 'Editar',
+        archive: 'Archivar',
+        unarchive: 'Desarchivar',
+        retryCancel: 'Cancelar de nuevo',
       },
       cancelDialog: {
         title: 'Cancelar suscripción',
@@ -1838,6 +1883,14 @@ export const charges = {
         bulkCancelPartialTitle: 'Cancelación parcial',
         bulkCancelPartialDescription: (ok: number, fail: number) =>
           `${ok} cancelada(s) correctamente, ${fail} no se pudieron cancelar. Inténtalo de nuevo.`,
+        archiveSuccessTitle: 'Suscripción archivada',
+        archiveSuccessDescription: 'Salió de la lista, pero sigue en el historial. Puedes desarchivarla cuando quieras.',
+        archiveErrorTitle: 'Error al archivar',
+        archiveErrorDescription: 'No se pudo archivar la suscripción.',
+        unarchiveSuccessTitle: 'Suscripción de vuelta en la lista',
+        unarchiveSuccessDescription: 'La suscripción volvió a aparecer en la lista.',
+        unarchiveErrorTitle: 'Error al desarchivar',
+        unarchiveErrorDescription: 'No se pudo devolver la suscripción a la lista.',
       },
       empty: {
         title: 'Sin suscripciones',
@@ -1850,6 +1903,16 @@ export const charges = {
       },
       showCancelled: (n: number) => `Mostrar canceladas (${n})`,
       hideCancelled: 'Ocultar canceladas',
+      showArchived: 'Ver archivadas',
+      hideArchived: 'Volver a la lista',
+      emptyArchived: {
+        title: 'Ninguna suscripción archivada',
+        description: 'Las suscripciones canceladas que archives aparecen aquí.',
+      },
+      pixConsentLive: {
+        badge: 'Autorización activa en el banco',
+        tooltip: 'Esta suscripción se canceló aquí, pero la autorización de Pix Automático sigue activa en el banco del cliente, así que todavía se le puede cobrar. Usa "Cancelar de nuevo" para terminar la autorización.',
+      },
       noCustomers: {
         title: 'Sin clientes registrados',
         description: 'Registra un cliente antes de crear una suscripción.',
@@ -2405,6 +2468,9 @@ export const charges = {
       },
       actions: {
         cancel: 'Résilier',
+        archive: `Archiver`,
+        unarchive: `Désarchiver`,
+        retryCancel: `Résilier à nouveau`,
         edit: 'Modifier',
       },
       cancelDialog: {
@@ -2445,6 +2511,14 @@ export const charges = {
         bulkCancelPartialTitle: `Résiliation partielle`,
         bulkCancelPartialDescription: (ok: number, fail: number) =>
           `${ok} résilié(s) avec succès, ${fail} n'ont pas pu être résiliés. Veuillez réessayer.`,
+        archiveSuccessTitle: `Abonnement archivé`,
+        archiveSuccessDescription: `Il a quitté la liste, mais reste dans l'historique. Vous pouvez le désarchiver quand vous voulez.`,
+        archiveErrorTitle: `Erreur lors de l'archivage`,
+        archiveErrorDescription: `Impossible d'archiver cet abonnement.`,
+        unarchiveSuccessTitle: `Abonnement de retour dans la liste`,
+        unarchiveSuccessDescription: `L'abonnement réapparaît dans la liste.`,
+        unarchiveErrorTitle: `Erreur lors du désarchivage`,
+        unarchiveErrorDescription: `Impossible de remettre cet abonnement dans la liste.`,
       },
       empty: {
         title: 'Aucun abonnement',
@@ -2457,6 +2531,16 @@ export const charges = {
       },
       showCancelled: (n: number) => `Afficher les annulés (${n})`,
       hideCancelled: 'Masquer les annulés',
+      showArchived: `Voir les archivés`,
+      hideArchived: `Revenir à la liste`,
+      emptyArchived: {
+        title: `Aucun abonnement archivé`,
+        description: `Les abonnements résiliés que vous archivez apparaissent ici.`,
+      },
+      pixConsentLive: {
+        badge: `Autorisation active à la banque`,
+        tooltip: `Cet abonnement a été résilié ici, mais l'autorisation de Pix Automatique reste active à la banque du client, qui peut donc encore être débité. Utilisez « Résilier à nouveau » pour mettre fin à l'autorisation.`,
+      },
       noCustomers: {
         title: 'Aucun client enregistré',
         description: `Enregistrez un client avant de créer un abonnement.`,
