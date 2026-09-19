@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, ChevronsUpDown, Search, Users } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -59,15 +59,11 @@ export function AssigneeMultiSelect({
   const activeTeams = useMemo(() => teams.filter(t => t.is_active), [teams]);
 
   const filteredTechnicians = useMemo(() => {
-    if (!search) return technicians;
-    const q = search.toLowerCase();
-    return technicians.filter(t => t.full_name.toLowerCase().includes(q));
+    return technicians.filter(t => fuzzyIncludes(t.full_name, search));
   }, [technicians, search]);
 
   const filteredTeams = useMemo(() => {
-    if (!search) return activeTeams;
-    const q = search.toLowerCase();
-    return activeTeams.filter(t => t.name.toLowerCase().includes(q));
+    return activeTeams.filter(t => fuzzyIncludes(t.name, search));
   }, [activeTeams, search]);
 
   const toggleUser = (userId: string) => {

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { APP_VERSION } from '@/config/version';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -41,6 +41,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 
 export const changelog: ChangelogEntry[] = [
+  {
+    version: '1.24.45',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Achar o cliente pelo telefone, em qualquer tela',
+        description: 'Quando você só tem o número do WhatsApp na mão, agora é só digitar. A busca encontra o cliente no CRM, na lista de Clientes, nas Ordens de Serviço, nos Orçamentos, nos Contratos, no PMOC, nas Cobranças e em todo campo de escolher cliente. Tanto faz digitar com parêntese e traço ou só os números. Buscar por CPF ou CNPJ também parou de exigir a pontuação exata.',
+        category: 'recurso',
+      },
+      {
+        title: 'A busca agora perdoa acento, ordem e nome do meio',
+        description: 'Procurar por "Helio" encontra "Hélio", e procurar por "Marcos Braga" encontra "Marcos Antônio Moraes Braga", mesmo sem digitar o nome do meio. A ordem das palavras também deixou de importar. Antes, a busca só achava quem você digitasse exatamente igual ao cadastro.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mais campos entram na busca de cada tela',
+        description: 'Equipamento agora também é encontrado pelo número de série e pela identificação, funcionário pelo cargo e pela matrícula, e material pelo código. A mesma forma de buscar passou a valer em todas as telas do sistema, então o que funciona em uma funciona na outra.',
+        category: 'melhoria',
+      },
+    ],
+  },
   {
     version: '1.24.44',
     date: '18 de setembro de 2026',
@@ -9169,10 +9191,7 @@ export default function Changelog() {
       .map((entry) => {
         const filtered = entry.changes.filter((change) => {
           const matchesFilter = activeFilter === 'all' || change.category === activeFilter;
-          const matchesSearch =
-            !searchTerm ||
-            change.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            change.description.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchesSearch = fuzzyIncludesAny([change.title, change.description], searchTerm);
           return matchesFilter && matchesSearch;
         });
         return { ...entry, changes: filtered };

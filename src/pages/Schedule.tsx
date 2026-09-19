@@ -766,7 +766,14 @@ export default function Schedule() {
               />
               <FilterCheckboxGroup
                 label={t.filters.customer}
-                options={customers.map((c) => ({ value: c.id, label: c.name }))}
+                options={customers.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  // Telefone/documento entram como termo de busca do filtro.
+                  keywords: [c.phone, c.celular, c.document, c.company_name].filter(
+                    (k): k is string => !!k,
+                  ),
+                }))}
                 selected={customerFilter}
                 onChange={setCustomerFilter}
               />

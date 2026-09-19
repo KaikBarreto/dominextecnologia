@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Wrench, Search, Tags } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { fuzzyIncludesAny } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -129,11 +130,7 @@ export function ServiceTypesPanel({
 
   // Busca universal (ignora filtros) + filtro por categoria (vazio = todos).
   const filteredTypes = serviceTypes.filter((st) => {
-    const q = searchQuery.trim().toLowerCase();
-    const matchesSearch = !q || (
-      st.name.toLowerCase().includes(q) ||
-      (st.description ?? '').toLowerCase().includes(q)
-    );
+    const matchesSearch = fuzzyIncludesAny([st.name, st.description], searchQuery);
     const matchesCategory =
       categoryFilter.length === 0 ||
       (categoryFilter.includes('__none__') && !st.category_id) ||

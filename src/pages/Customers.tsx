@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fuzzyIncludes, cn } from '@/lib/utils';
+import { fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -158,24 +158,22 @@ export default function Customers() {
   // Telefone é gravado em 2 formatos no banco: mascarado ("(21) 99518-5142")
   // quando cadastrado pelo admin, e só dígitos ("21995185142") quando veio do
   // formulário público de captação (submit_lead_capture_form normaliza assim).
-  // Por isso a comparação de telefone normaliza os dois lados pra dígitos —
-  // normaliza SÓ o campo telefone, não a busca inteira, senão buscar por nome
-  // quebraria.
-  const searchDigits = searchTerm.replace(/\D/g, '');
-  const filteredCustomers = customers.filter((customer) => {
-    if (
-      fuzzyIncludes(customer.name, searchTerm) ||
-      fuzzyIncludes(customer.email, searchTerm) ||
-      fuzzyIncludes(customer.document, searchTerm) ||
-      fuzzyIncludes(customer.company_name, searchTerm)
-    ) {
-      return true;
-    }
-    if (!searchDigits) return false;
-    const phoneDigits = (customer.phone || '').replace(/\D/g, '');
-    const celularDigits = (customer.celular || '').replace(/\D/g, '');
-    return phoneDigits.includes(searchDigits) || celularDigits.includes(searchDigits);
-  });
+  // `fuzzyIncludesAny` cobre os dois: quando a busca é só número ele compara
+  // dígito a dígito, e quando tem letra volta a ser busca de texto.
+  const filteredCustomers = customers.filter((customer) =>
+    fuzzyIncludesAny(
+      [
+        customer.name,
+        customer.company_name,
+        customer.nome_fantasia,
+        customer.email,
+        customer.document,
+        customer.phone,
+        customer.celular,
+      ],
+      searchTerm,
+    ),
+  );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);
   const pagination = useDataPagination(sortedItems, 10, 'customers-list');

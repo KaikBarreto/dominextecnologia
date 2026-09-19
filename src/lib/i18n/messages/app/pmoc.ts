@@ -17,8 +17,8 @@ export const pmoc = {
       newContract: 'Novo Contrato',
       newContractShort: 'Contrato',
       contractSettings: 'Configurações de Contrato',
-      searchPlaceholderMobile: 'Buscar contrato ou cliente...',
-      searchPlaceholder: 'Buscar por nome ou cliente...',
+      searchPlaceholderMobile: 'Buscar contrato, cliente ou telefone...',
+      searchPlaceholder: 'Buscar por nome, cliente ou telefone...',
       filters: 'Filtros',
       // ── Status de contrato ──
       status: {
@@ -926,8 +926,8 @@ export const pmoc = {
       newContract: 'New Contract',
       newContractShort: 'Contract',
       contractSettings: 'Contract Settings',
-      searchPlaceholderMobile: 'Search contract or customer...',
-      searchPlaceholder: 'Search by name or customer...',
+      searchPlaceholderMobile: 'Search contract, customer or phone...',
+      searchPlaceholder: 'Search by name, customer or phone...',
       filters: 'Filters',
       status: {
         active: 'Active',
@@ -1735,8 +1735,8 @@ export const pmoc = {
       newContract: 'Nuevo Contrato',
       newContractShort: 'Contrato',
       contractSettings: 'Ajustes de Contrato',
-      searchPlaceholderMobile: 'Buscar contrato o cliente...',
-      searchPlaceholder: 'Buscar por nombre o cliente...',
+      searchPlaceholderMobile: 'Buscar contrato, cliente o teléfono...',
+      searchPlaceholder: 'Buscar por nombre, cliente o teléfono...',
       filters: 'Filtros',
       status: {
         active: 'Activo',
@@ -2544,8 +2544,8 @@ export const pmoc = {
       newContract: 'Nouveau Contrat',
       newContractShort: 'Contrat',
       contractSettings: 'Paramètres de Contrat',
-      searchPlaceholderMobile: 'Rechercher contrat ou client...',
-      searchPlaceholder: 'Rechercher par nom ou client...',
+      searchPlaceholderMobile: `Rechercher contrat, client ou téléphone...`,
+      searchPlaceholder: `Rechercher par nom, client ou téléphone...`,
       filters: 'Filtres',
       status: {
         active: 'Actif',

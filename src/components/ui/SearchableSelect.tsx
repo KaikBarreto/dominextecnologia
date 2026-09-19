@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { searchableSelectFilter, CREATE_ITEM_PREFIX } from '@/components/ui/searchableSelectFilter';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -167,6 +168,12 @@ export function SearchableSelect({
     setOpen(false);
   };
 
+  // Filtro do cmdk trocado pela régua de busca do sistema (ver
+  // `searchableSelectFilter`), pra o combobox buscar igual a toda listagem:
+  // sem acento, palavras fora de ordem e, quando o que se digita é só número,
+  // comparando dígito a dígito (telefone/CPF com ou sem máscara).
+  const filterOption = React.useCallback(searchableSelectFilter, []);
+
   const renderOption = (option: SearchableSelectOption) => (
     <CommandItem
       key={option.value}
@@ -196,7 +203,7 @@ export function SearchableSelect({
   const createItem = canCreate ? (
     // Valor com sentinela estável (mesmo com query vazia) pra cmdk não filtrar o item.
     <CommandItem
-      value={`__create__ ${createLabel}`}
+      value={`${CREATE_ITEM_PREFIX} ${createLabel}`}
       onSelect={handleCreate}
       className="text-primary"
     >
@@ -232,7 +239,7 @@ export function SearchableSelect({
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <Command>
+        <Command filter={filterOption}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={query}

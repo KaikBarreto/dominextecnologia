@@ -8,7 +8,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny, fuzzyIncludesPhone } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { getStatusBadgeClass } from '@/components/schedule/EventCard';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -30,7 +30,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 const PAGE_SIZE = 10;
 
 export type AgendaSearchOrder = ServiceOrder & {
-  customer?: { name?: string | null } | null;
+  customer?: { name?: string | null; phone?: string | null; celular?: string | null } | null;
   equipment?: { name?: string | null } | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _assignees?: { id: string; name: string }[];
@@ -47,14 +47,8 @@ export interface OsSearchDialogProps {
   onSelect: (order: AgendaSearchOrder) => void;
 }
 
-function normalize(s: string | null | undefined): string {
-  return (s ?? '').toLowerCase().trim();
-}
-
 function matchesQuery(order: AgendaSearchOrder, query: string): boolean {
-  if (!query) return true;
-  const q = normalize(query);
-  if (!q) return true;
+  if (!query.trim()) return true;
 
   const haystack: string[] = [];
   if (order.order_number !== undefined && order.order_number !== null) {
@@ -71,7 +65,17 @@ function matchesQuery(order: AgendaSearchOrder, query: string): boolean {
     for (const a of order._assignees) haystack.push(a.name);
   }
 
-  return haystack.some((field) => normalize(field).includes(q));
+  // Telefone do cliente vai por `fuzzyIncludesPhone` (6+ dígitos) pra não
+  // competir com a busca por número de OS: digitar "123" tem que trazer a OS
+  // 123, não todo cliente com "123" no celular.
+  if (
+    fuzzyIncludesPhone(order.customer?.phone, query) ||
+    fuzzyIncludesPhone(order.customer?.celular, query)
+  ) {
+    return true;
+  }
+
+  return fuzzyIncludesAny(haystack, query);
 }
 
 function formatScheduledDate(date: string | null | undefined, noDateLabel: string, locale: LocaleCode): string {

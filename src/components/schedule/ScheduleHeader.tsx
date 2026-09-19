@@ -33,7 +33,16 @@ interface ScheduleHeaderProps {
   technicians: { user_id: string; full_name: string }[];
   customerFilter: string[];
   onCustomerFilterChange: (val: string[]) => void;
-  customers: { id: string; name: string }[];
+  // Campos de contato são opcionais e servem só pra busca do filtro (achar o
+  // cliente pelo telefone, não só pelo nome).
+  customers: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    celular?: string | null;
+    document?: string | null;
+    company_name?: string | null;
+  }[];
   statusFilter: string[];
   onStatusFilterChange: (val: string[]) => void;
   // Tarefa x OS (E5) — filtra por entry_type
@@ -163,7 +172,14 @@ export function ScheduleHeader({
             />
             <FilterCheckboxGroup
               label={t.filterCustomer}
-              options={customers.map((c) => ({ value: c.id, label: c.name }))}
+              options={customers.map((c) => ({
+                value: c.id,
+                label: c.name,
+                // Telefone/documento entram como termo de busca do filtro.
+                keywords: [c.phone, c.celular, c.document, c.company_name].filter(
+                  (k): k is string => !!k,
+                ),
+              }))}
               selected={customerFilter}
               onChange={onCustomerFilterChange}
             />

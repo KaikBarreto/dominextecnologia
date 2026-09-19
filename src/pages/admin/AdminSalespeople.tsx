@@ -14,7 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import {
   useSalespeople, useAllSalespersonSales, useAllSalespersonAdvances,
   useDeleteSalesperson, salesForPerson, commissionForPerson, type Salesperson,
@@ -65,10 +65,7 @@ export default function AdminSalespeople() {
 
   const filtered = useMemo(
     () =>
-      salespeople.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.email || '').toLowerCase().includes(search.toLowerCase()),
-      ),
+      salespeople.filter((p) => fuzzyIncludesAny([p.name, p.email], search)),
     [salespeople, search],
   );
 

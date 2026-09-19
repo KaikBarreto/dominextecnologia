@@ -46,7 +46,7 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 /** Cobrança ainda não paga/estornada — só nela faz sentido editar ou excluir.
@@ -127,6 +127,18 @@ export function FinanceCobrancas() {
     return map;
   }, [customers]);
 
+  // Mapa customer_id → campos buscáveis (nome + contato). A busca da tela
+  // precisa achar o cliente pelo telefone, não só pelo nome.
+  const customerSearchMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const c of customers) {
+      map[c.id] = [c.name, c.company_name, c.document, c.email, c.phone, c.celular].filter(
+        (v): v is string => !!v,
+      );
+    }
+    return map;
+  }, [customers]);
+
   // Cards de totais
   const totals = useMemo(() => {
     let pending = 0;
@@ -149,14 +161,14 @@ export function FinanceCobrancas() {
         const cls = classifyTenantChargeStatus(c.status);
         if (cls !== statusFilter) return false;
       }
-      // Busca por nome do cliente
+      // Busca por nome, telefone, e-mail ou documento do cliente
       if (search.trim()) {
-        const name = (c.customer_id ? customerMap[c.customer_id] : '') ?? '';
-        if (!name.toLowerCase().includes(search.trim().toLowerCase())) return false;
+        const fields = c.customer_id ? (customerSearchMap[c.customer_id] ?? []) : [];
+        if (!fuzzyIncludesAny(fields, search)) return false;
       }
       return true;
     });
-  }, [charges, statusFilter, search, customerMap]);
+  }, [charges, statusFilter, search, customerSearchMap]);
 
   // ── Seleção múltipla (exclusão em lote) ─────────────────────────────────────
   // Seleção é livre em qualquer linha (mesmo paga) — o filtro de quem pode

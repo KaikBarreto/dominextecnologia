@@ -18,7 +18,7 @@ export const os = {
       nps: 'NPS e Satisfação',
     },
     search: {
-      placeholderFull: 'Buscar por cliente ou número...',
+      placeholderFull: 'Buscar por cliente, número ou telefone...',
       placeholderShort: 'Buscar OS...',
       pausedFilters: 'Mostrando resultados de todas as OS (filtros pausados)',
     },
@@ -1676,7 +1676,7 @@ export const os = {
       nps: 'NPS & Satisfaction',
     },
     search: {
-      placeholderFull: 'Search by customer or number...',
+      placeholderFull: 'Search by customer, number or phone...',
       placeholderShort: 'Search work orders...',
       pausedFilters: 'Showing results from all work orders (filters paused)',
     },
@@ -3214,7 +3214,7 @@ export const os = {
       nps: 'NPS y satisfacción',
     },
     search: {
-      placeholderFull: 'Buscar por cliente o número...',
+      placeholderFull: 'Buscar por cliente, número o teléfono...',
       placeholderShort: 'Buscar órdenes...',
       pausedFilters: 'Mostrando resultados de todas las órdenes (filtros en pausa)',
     },
@@ -4752,7 +4752,7 @@ export const os = {
       nps: 'NPS et satisfaction',
     },
     search: {
-      placeholderFull: 'Rechercher par client ou numéro...',
+      placeholderFull: `Rechercher par client, numéro ou téléphone...`,
       placeholderShort: 'Rechercher des bons...',
       pausedFilters: 'Affichage des résultats de tous les bons (filtres en pause)',
     },

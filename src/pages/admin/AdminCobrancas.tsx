@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CreditCard, Building2, TrendingUp, DollarSign, BarChart3, Search } from 'lucide-react';
 import { ContentLoading } from '@/components/ui/page-loading';
 import { typography } from '@/lib/typography';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Tipos que espelham o contrato da RPC get_admin_cobrancas_overview()
@@ -84,9 +84,7 @@ export default function AdminCobrancas() {
 
   const { totals, tenants } = data;
 
-  const filteredTenants = tenants.filter((t) =>
-    t.company_name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredTenants = tenants.filter((t) => fuzzyIncludes(t.company_name, search));
 
   // Cards de totais — seguem o mesmo padrão visual de AdminDashboardStats
   const summaryCards = [

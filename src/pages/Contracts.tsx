@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { fuzzyIncludes, cn } from '@/lib/utils';
+import { fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -164,8 +164,19 @@ export default function Contracts() {
   const filtered = useMemo(
     () =>
       contracts.filter((c) => {
-        const matchesSearch =
-          fuzzyIncludes(c.name, search) || fuzzyIncludes(c.customers?.name, search);
+        // Nome do contrato ou qualquer dado de contato do cliente — telefone
+        // inclusive, que é o que se tem em mãos quando o cliente liga.
+        const matchesSearch = fuzzyIncludesAny(
+          [
+            c.name,
+            c.customers?.name,
+            (c.customers as any)?.phone,
+            (c.customers as any)?.celular,
+            (c.customers as any)?.email,
+            (c.customers as any)?.document,
+          ],
+          search,
+        );
         const matchesStatus = statusFilter.length === 0 || statusFilter.includes(c.status);
 
         // Tipo: PMOC vs comum. Vazio = mostra tudo.

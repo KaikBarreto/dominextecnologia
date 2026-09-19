@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { cn, fuzzyIncludes } from '@/lib/utils';
+import { cn, fuzzyIncludes, fuzzyIncludesPhone } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -285,7 +285,12 @@ function QuotesList() {
         (q) =>
           fuzzyIncludes(q.customers?.name, search) ||
           fuzzyIncludes(q.prospect_name, search) ||
-          fuzzyIncludes(String(q.quote_number), search)
+          fuzzyIncludes(String(q.quote_number), search) ||
+          // Idem OS: telefone só com 6+ dígitos, pra não competir com o nº do
+          // orçamento.
+          fuzzyIncludesPhone((q.customers as any)?.phone, search) ||
+          fuzzyIncludesPhone((q.customers as any)?.celular, search) ||
+          fuzzyIncludesPhone((q as any).prospect_phone, search)
       );
     }
     return list;

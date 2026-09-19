@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { fuzzyIncludes, cn } from '@/lib/utils';
+import { fuzzyIncludes, fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   TrendingUp,
@@ -323,9 +323,21 @@ export default function CRM() {
       // (nunca escrito pelo client) — ver migration 20260918100000.
       if (selectedPipelineId && lead.pipeline_id !== selectedPipelineId) return false;
       if (filters.search) {
-        const matchesTitle = fuzzyIncludes(lead.title, filters.search);
-        const matchesCustomer = fuzzyIncludes(lead.customers?.name, filters.search);
-        if (!matchesTitle && !matchesCustomer) return false;
+        // Busca pelo título da oportunidade OU por qualquer dado de contato do
+        // cliente — telefone/celular são o que o vendedor tem na mão quando só
+        // conhece o número do WhatsApp.
+        const matches = fuzzyIncludesAny(
+          [
+            lead.title,
+            lead.customers?.name,
+            lead.customers?.phone,
+            lead.customers?.celular,
+            lead.customers?.email,
+            lead.customers?.document,
+          ],
+          filters.search,
+        );
+        if (!matches) return false;
       }
       if (filters.source.length > 0 && !filters.source.includes(lead.source ?? '')) return false;
       if (filters.assignedTo.length > 0) {

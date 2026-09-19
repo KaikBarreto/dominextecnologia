@@ -21,8 +21,8 @@ export const crm = {
     totalValue: 'Valor Total',
 
     // ── Busca ──
-    searchPlaceholder: 'Buscar por título ou cliente...',
-    searchPlaceholderMobile: 'Buscar lead ou cliente...',
+    searchPlaceholder: 'Buscar por título, cliente, telefone ou documento...',
+    searchPlaceholderMobile: 'Buscar lead, cliente ou telefone...',
 
     // ── Filtros ──
     filterOrigin: 'Origem',
@@ -361,7 +361,7 @@ export const crm = {
       kpiAvgTicket: 'Ticket Médio',
 
       // Busca / filtros
-      searchPlaceholder: 'Buscar por cliente ou número...',
+      searchPlaceholder: 'Buscar por cliente, número ou telefone...',
       searchPlaceholderMobile: 'Buscar orçamento...',
       filterStatus: 'Status',
       filterAll: 'Todos',
@@ -1158,8 +1158,8 @@ export const crm = {
     totalLeads: 'Total Leads',
     totalValue: 'Total Value',
 
-    searchPlaceholder: 'Search by title or customer...',
-    searchPlaceholderMobile: 'Search lead or customer...',
+    searchPlaceholder: 'Search by title, customer, phone or tax ID...',
+    searchPlaceholderMobile: 'Search lead, customer or phone...',
 
     filterOrigin: 'Source',
     filterOriginAll: 'All',
@@ -1462,7 +1462,7 @@ export const crm = {
       kpiConversion: 'Conversion',
       kpiAvgTicket: 'Avg. Ticket',
 
-      searchPlaceholder: 'Search by customer or number...',
+      searchPlaceholder: 'Search by customer, number or phone...',
       searchPlaceholderMobile: 'Search quote...',
       filterStatus: 'Status',
       filterAll: 'All',
@@ -2204,8 +2204,8 @@ export const crm = {
     totalLeads: 'Total de Leads',
     totalValue: 'Valor Total',
 
-    searchPlaceholder: 'Buscar por título o cliente...',
-    searchPlaceholderMobile: 'Buscar lead o cliente...',
+    searchPlaceholder: 'Buscar por título, cliente, teléfono o documento...',
+    searchPlaceholderMobile: 'Buscar lead, cliente o teléfono...',
 
     filterOrigin: 'Origen',
     filterOriginAll: 'Todas',
@@ -2510,7 +2510,7 @@ export const crm = {
       kpiConversion: 'Conversión',
       kpiAvgTicket: 'Ticket Promedio',
 
-      searchPlaceholder: 'Buscar por cliente o número...',
+      searchPlaceholder: 'Buscar por cliente, número o teléfono...',
       searchPlaceholderMobile: 'Buscar presupuesto...',
       filterStatus: 'Estado',
       filterAll: 'Todos',
@@ -3252,8 +3252,8 @@ export const crm = {
     totalLeads: 'Total Leads',
     totalValue: 'Valeur Totale',
 
-    searchPlaceholder: 'Rechercher par titre ou client...',
-    searchPlaceholderMobile: 'Rechercher lead ou client...',
+    searchPlaceholder: `Rechercher par titre, client, téléphone ou document...`,
+    searchPlaceholderMobile: `Rechercher lead, client ou téléphone...`,
 
     filterOrigin: 'Source',
     filterOriginAll: 'Toutes',
@@ -3556,7 +3556,7 @@ export const crm = {
       kpiConversion: 'Conversion',
       kpiAvgTicket: 'Ticket Moyen',
 
-      searchPlaceholder: 'Rechercher par client ou numéro...',
+      searchPlaceholder: `Rechercher par client, numéro ou téléphone...`,
       searchPlaceholderMobile: 'Rechercher devis...',
       filterStatus: 'Statut',
       filterAll: 'Tous',

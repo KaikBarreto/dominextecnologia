@@ -14,7 +14,7 @@ import {
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
 
-import { cn } from "@/lib/utils";
+import { cn, fuzzyIncludesAny } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
@@ -85,25 +85,19 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
   // Busca em títulos + episódios (mesma lógica do dropdown desktop)
   const navSearchResults = useMemo(() => {
     if (navSearchQuery.trim().length < 2) return [];
-    const q = navSearchQuery.trim().toLowerCase();
+    const q = navSearchQuery.trim();
 
     const matchedTitleIds = new Set<string>();
     const episodesByTitle = allEpisodesData?.byTitle ?? {};
     Object.entries(episodesByTitle).forEach(([titleId, eps]) => {
-      const hit = eps.some(
-        (ep) =>
-          ep.title?.toLowerCase().includes(q) ||
-          ep.description?.toLowerCase().includes(q),
-      );
+      const hit = eps.some((ep) => fuzzyIncludesAny([ep.title, ep.description], q));
       if (hit) matchedTitleIds.add(titleId);
     });
 
     return titles
       .filter(
         (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.description?.toLowerCase().includes(q) ||
-          t.tags?.some((tag) => tag.toLowerCase().includes(q)) ||
+          fuzzyIncludesAny([t.title, t.description, ...(t.tags ?? [])], q) ||
           matchedTitleIds.has(t.id),
       )
       .slice(0, 6);
@@ -265,15 +259,11 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                     {navSearchResults.map((title) => {
                       const eps = allEpisodesData?.byTitle?.[title.id] ?? [];
                       const seasonMap = allEpisodesData?.seasonMap ?? {};
-                      const q = navSearchQuery.trim().toLowerCase();
+                      const q = navSearchQuery.trim();
                       const matchingEps =
                         q.length >= 2
                           ? eps
-                              .filter(
-                                (ep) =>
-                                  ep.title?.toLowerCase().includes(q) ||
-                                  ep.description?.toLowerCase().includes(q),
-                              )
+                              .filter((ep) => fuzzyIncludesAny([ep.title, ep.description], q))
                               .slice(0, 3)
                           : [];
                       return (

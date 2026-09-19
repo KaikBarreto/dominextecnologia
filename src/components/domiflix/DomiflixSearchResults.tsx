@@ -3,7 +3,7 @@ import { Play, Film, Tv, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { DomiflixTitle, DomiflixEpisode } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
-import { cn } from "@/lib/utils";
+import { cn, fuzzyIncludesAny } from "@/lib/utils";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
 
@@ -27,7 +27,7 @@ export function DomiflixSearchResults({
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.domiflix;
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
 
   if (results.length === 0) {
     return (
@@ -50,7 +50,7 @@ export function DomiflixSearchResults({
       {results.map((title) => {
         const eps = episodesByTitle[title.id] ?? [];
         const matchingEps = q.length >= 2
-          ? eps.filter((ep) => ep.title?.toLowerCase().includes(q) || ep.description?.toLowerCase().includes(q))
+          ? eps.filter((ep) => fuzzyIncludesAny([ep.title, ep.description], q))
           : [];
 
         return (

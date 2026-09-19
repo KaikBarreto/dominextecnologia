@@ -19,7 +19,7 @@ import { useEditOsScope, type EditOsScopeItem } from '@/hooks/useEditOsScope';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 
 /** Item de escopo que já veio na OS (leitura da junção service_order_equipment). */
 export interface EditOsScopeSeedItem {
@@ -420,10 +420,8 @@ export function EditOsScopeDrawer({
         }
       >
         {(() => {
-          const norm = (s: string) =>
-            (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
           const filteredTemplates = pickerSearch.trim()
-            ? activeTemplates.filter((tpl: any) => norm(tpl.name).includes(norm(pickerSearch)))
+            ? activeTemplates.filter((tpl: any) => fuzzyIncludes(tpl.name, pickerSearch))
             : activeTemplates;
 
           return (

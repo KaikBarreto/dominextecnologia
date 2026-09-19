@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -101,8 +101,7 @@ export const StateCitySelector = ({
 
   const filteredCities = useMemo(() => {
     if (!citySearch) return cities;
-    const q = citySearch.toLowerCase();
-    return cities.filter((c) => c.name.toLowerCase().includes(q));
+    return cities.filter((c) => fuzzyIncludes(c.name, citySearch));
   }, [cities, citySearch]);
 
   const handleStateChange = (value: string) => {

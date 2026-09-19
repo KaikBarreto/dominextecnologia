@@ -74,6 +74,10 @@ export function useResponsibleTechnicians(options: UseResponsibleTechniciansOpti
         query = query.eq('is_active', true);
       }
 
+      // ATENÇÃO: `ilike` ignora caixa mas NÃO ignora acento — "helio" não acha
+      // "Hélio". Hoje nenhuma tela passa `search` (a página de Técnicos
+      // Responsáveis filtra no client com `fuzzyIncludes`, que trata acento).
+      // Se for usar este parâmetro, prefira filtrar no client pelo mesmo helper.
       if (search && search.trim().length > 0) {
         query = query.ilike('full_name', `%${search.trim()}%`);
       }

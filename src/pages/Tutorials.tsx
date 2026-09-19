@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -133,11 +133,10 @@ export default function Tutorials() {
   const filtered = useMemo(() => {
     return modules.filter((m) => {
       const matchCategory = selectedCategory === 'Todos' || m.category === selectedCategory;
-      const matchSearch =
-        !search ||
-        m.title.toLowerCase().includes(search.toLowerCase()) ||
-        m.description.toLowerCase().includes(search.toLowerCase()) ||
-        m.lessons.some((l) => l.title.toLowerCase().includes(search.toLowerCase()));
+      const matchSearch = fuzzyIncludesAny(
+        [m.title, m.description, ...m.lessons.map((l) => l.title)],
+        search,
+      );
       return matchCategory && matchSearch;
     });
   }, [search, selectedCategory]);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { typography } from "@/lib/typography";
+import { fuzzyIncludes } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -140,7 +141,7 @@ function PostsTab() {
   });
 
   const filteredPosts = posts?.filter((post) => {
-    const matchSearch = post.title.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = fuzzyIncludes(post.title, search);
     const matchStatus = statusFilter === "all" || post.status === statusFilter;
     const matchCategory = categoryFilter === "all" || post.category === categoryFilter;
     const matchLocale = localeFilter === "all" || post.locale === localeFilter;

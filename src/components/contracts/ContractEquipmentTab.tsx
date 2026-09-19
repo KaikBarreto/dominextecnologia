@@ -22,7 +22,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useContracts, REGENERABLE_OS_STATUSES, type Contract, type ContractItem } from '@/hooks/useContracts';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -95,14 +95,12 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   const displayedItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return workingItems;
+    if (!search.trim()) return workingItems;
     return workingItems.filter((item) => {
       const eq = item.equipment_id ? equipmentById.get(item.equipment_id) : undefined;
-      return (
-        item.item_name?.toLowerCase().includes(q) ||
-        eq?.brand?.toLowerCase().includes(q) ||
-        eq?.model?.toLowerCase().includes(q)
+      return fuzzyIncludesAny(
+        [item.item_name, eq?.brand, eq?.model, eq?.serial_number, eq?.identifier],
+        search,
       );
     });
   }, [workingItems, search, equipmentById]);
@@ -132,15 +130,9 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
 
   // Equipamentos do cliente ainda NÃO vinculados, filtrados pela busca.
   const pickerEquipment = useMemo(() => {
-    const q = pickerSearch.trim().toLowerCase();
     return activeEquipment.filter((eq: any) => {
       if (usedEquipmentIds.has(eq.id)) return false;
-      if (!q) return true;
-      return (
-        eq.name?.toLowerCase().includes(q) ||
-        eq.brand?.toLowerCase().includes(q) ||
-        eq.model?.toLowerCase().includes(q)
-      );
+      return fuzzyIncludesAny([eq.name, eq.brand, eq.model, eq.serial_number, eq.identifier], pickerSearch);
     });
   }, [activeEquipment, usedEquipmentIds, pickerSearch]);
 

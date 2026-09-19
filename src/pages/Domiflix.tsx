@@ -17,6 +17,7 @@ import { DomiflixSearchResults } from "@/components/domiflix/DomiflixSearchResul
 import { DomiflixPageSkeleton, DomiflixFilteredPageSkeleton } from "@/components/domiflix/DomiflixSkeletons";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
+import { fuzzyIncludesAny } from "@/lib/utils";
 
 export default function DomiflixHome() {
   const [searchParams] = useSearchParams();
@@ -110,21 +111,15 @@ export default function DomiflixHome() {
   const isSearching = effectiveSearch.trim().length >= 2;
   const searchResults = useMemo(() => {
     if (!isSearching) return [];
-    const q = effectiveSearch.trim().toLowerCase();
+    const q = effectiveSearch.trim();
     const matchedTitleIds = new Set<string>();
     Object.entries(episodesByTitle).forEach(([titleId, eps]) => {
-      const hit = eps.some(
-        (ep) =>
-          ep.title?.toLowerCase().includes(q) ||
-          ep.description?.toLowerCase().includes(q),
-      );
+      const hit = eps.some((ep) => fuzzyIncludesAny([ep.title, ep.description], q));
       if (hit) matchedTitleIds.add(titleId);
     });
     return visibleTitles.filter(
       (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.description?.toLowerCase().includes(q) ||
-        t.tags?.some((tag) => tag.toLowerCase().includes(q)) ||
+        fuzzyIncludesAny([t.title, t.description, ...(t.tags ?? [])], q) ||
         matchedTitleIds.has(t.id),
     );
   }, [visibleTitles, effectiveSearch, isSearching, episodesByTitle]);

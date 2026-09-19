@@ -26,7 +26,7 @@ import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAva
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
@@ -231,14 +231,15 @@ function CrmTab() {
   };
 
   const filteredLeads = useMemo(() => {
-    const q = search.toLowerCase();
     const { from, to } = computeDateRange(filterDatePreset, filterDateFrom, filterDateTo);
     return leads.filter(l => {
-      if (search && !(
-        l.title.toLowerCase().includes(q) ||
-        l.company_name?.toLowerCase().includes(q) ||
-        l.contact_name?.toLowerCase().includes(q)
-      )) return false;
+      if (
+        search &&
+        !fuzzyIncludesAny(
+          [l.title, l.company_name, l.contact_name, l.phone, l.email],
+          search,
+        )
+      ) return false;
       if (filterOrigin.length > 0 && (!l.source || !filterOrigin.includes(l.source))) return false;
       if (filterSegment.length > 0 && (!l.segment || !filterSegment.includes(l.segment))) return false;
       if (filterResponsible.length > 0 && (!l.responsible_id || !filterResponsible.includes(l.responsible_id))) return false;

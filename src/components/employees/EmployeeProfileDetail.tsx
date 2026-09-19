@@ -54,7 +54,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { generateDiscDossierPdf } from '@/utils/discDossierPdf';
 import { generateDiscComparisonPdf } from '@/utils/discComparisonPdf';
 import { openPdfInTab, openPendingPdfTab } from '@/utils/openPdfInTab';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
 import { relationshipKey } from '@/lib/disc/relationships';
 import type { DiscFactor } from '@/lib/disc/questions';
@@ -291,7 +291,7 @@ function InteractionsTab({
                 filter={(value, search) => {
                   const emp = others.find((e) => e.id === value);
                   if (!emp) return 0;
-                  return emp.name.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                  return fuzzyIncludesAny([emp.name, emp.position, emp.matricula], search) ? 1 : 0;
                 }}
               >
                 <CommandInput placeholder={p.interactionsSearchPlaceholder} />
@@ -1027,7 +1027,7 @@ export function EmployeeProfileDetail({
                   filter={(value, search) => {
                     const emp = employees.find((e) => e.id === value);
                     if (!emp) return 0;
-                    return emp.name.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                    return fuzzyIncludesAny([emp.name, emp.position, emp.matricula], search) ? 1 : 0;
                   }}
                 >
                   <CommandInput placeholder={p.switchSearchPlaceholder} />

@@ -2,7 +2,7 @@ import { Outlet, NavLink, useLocation, useNavigate, useSearchParams } from "reac
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, Search, X, Play, ChevronRight } from "lucide-react";
 import logoWhite from "@/assets/domiflix-logo-horizontal.png";
-import { cn } from "@/lib/utils";
+import { cn, fuzzyIncludesAny } from "@/lib/utils";
 import { useDomiflixTitles, useDomiflixAllEpisodes } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
 import { useAuth } from "@/contexts/AuthContext";
@@ -107,25 +107,19 @@ export function DomiflixLayout() {
   // Search results for dropdown — searches titles AND episodes.
   const navSearchResults = useMemo(() => {
     if (navSearchQuery.trim().length < 2) return [];
-    const q = navSearchQuery.trim().toLowerCase();
+    const q = navSearchQuery.trim();
 
     const matchedTitleIds = new Set<string>();
     const episodesByTitle = allEpisodesData?.byTitle ?? {};
     Object.entries(episodesByTitle).forEach(([titleId, eps]) => {
-      const hit = eps.some(
-        (ep) =>
-          ep.title?.toLowerCase().includes(q) ||
-          ep.description?.toLowerCase().includes(q),
-      );
+      const hit = eps.some((ep) => fuzzyIncludesAny([ep.title, ep.description], q));
       if (hit) matchedTitleIds.add(titleId);
     });
 
     return titles
       .filter(
         (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.description?.toLowerCase().includes(q) ||
-          t.tags?.some((tag) => tag.toLowerCase().includes(q)) ||
+          fuzzyIncludesAny([t.title, t.description, ...(t.tags ?? [])], q) ||
           matchedTitleIds.has(t.id),
       )
       .slice(0, 8);
@@ -342,13 +336,9 @@ export function DomiflixLayout() {
                       {navSearchResults.map((title) => {
                         const eps = allEpisodesData?.byTitle?.[title.id] ?? [];
                         const seasonMap = allEpisodesData?.seasonMap ?? {};
-                        const q = navSearchQuery.trim().toLowerCase();
+                        const q = navSearchQuery.trim();
                         const matchingEps = q.length >= 2
-                          ? eps.filter(
-                              (ep) =>
-                                ep.title?.toLowerCase().includes(q) ||
-                                ep.description?.toLowerCase().includes(q),
-                            )
+                          ? eps.filter((ep) => fuzzyIncludesAny([ep.title, ep.description], q))
                           : [];
                         const epLabel = title.type === "series" ? t.browse.episodes : t.browse.recordings;
                         return (

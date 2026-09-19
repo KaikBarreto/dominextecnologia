@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { fuzzyIncludes } from '@/lib/utils';
+import { fuzzyIncludes, fuzzyIncludesPhone } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ClipboardList,
@@ -183,7 +183,12 @@ export default function ServiceOrders() {
           fuzzyIncludes(orderNum, searchTermNoLeadingZeros) ||
           fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
           fuzzyIncludes((os as any).task_title, searchTerm) ||
-          fuzzyIncludes((os as any).equipment?.name, searchTerm)
+          fuzzyIncludes((os as any).equipment?.name, searchTerm) ||
+          // Telefone do cliente: só entra quando a busca é um telefone de
+          // verdade (6+ dígitos), senão "123" traria toda OS cujo cliente tem
+          // "123" no celular e afundaria a busca por número de OS.
+          fuzzyIncludesPhone(os.customer?.phone, searchTerm) ||
+          fuzzyIncludesPhone((os.customer as any)?.celular, searchTerm)
         );
       });
     }

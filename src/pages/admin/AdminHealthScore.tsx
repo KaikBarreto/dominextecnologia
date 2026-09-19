@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { typography } from '@/lib/typography';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -80,7 +80,7 @@ export default function AdminHealthScore() {
   const filteredData = useMemo<CompanyHealthData[]>(() => {
     if (!healthData) return [];
     return healthData.filter((d) => {
-      const matchSearch = d.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = fuzzyIncludes(d.company_name, searchTerm);
       const matchStatus = statusFilter === 'all' || d.health_status === statusFilter;
       return matchSearch && matchStatus;
     });

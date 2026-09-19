@@ -201,7 +201,7 @@ export function useQuotes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, customers(name, email, phone, document, address, address_number, complement, neighborhood, city, state, zip_code), quote_items(*), proposal_templates(slug, name)')
+        .select('*, customers(name, email, phone, celular, document, address, address_number, complement, neighborhood, city, state, zip_code), quote_items(*), proposal_templates(slug, name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -368,7 +368,7 @@ export function useQuotes() {
   const fetchQuoteByToken = async (token: string) => {
     const { data, error } = await supabase
       .from('quotes')
-      .select('*, customers(name, email, phone, document, address, address_number, complement, neighborhood, city, state, zip_code), quote_items(*)')
+      .select('*, customers(name, email, phone, celular, document, address, address_number, complement, neighborhood, city, state, zip_code), quote_items(*)')
       .eq('token', token)
       .single();
 

@@ -37,7 +37,7 @@ import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { ToolDisclaimer } from './ToolDisclaimer';
@@ -981,8 +981,7 @@ function BrandsList({
     if (!gasFilterEnabled) setSelectedGases([]);
   }, [gasFilterEnabled]);
 
-  const q = norm(termo);
-  const searching = q.length > 0;
+  const searching = termo.length > 0;
 
   // Opções de Potência derivadas de TODOS os modelos (BTU distintos, crescente).
   const btuOptions = useMemo(() => {
@@ -1039,15 +1038,8 @@ function BrandsList({
   // Modelos que casam por nome do modelo, código do modelo OU nome da marca.
   const modelHits = useMemo(() => {
     if (!searching) return [];
-    return allModels.filter((m) => {
-      const brandName = m.brand?.name ?? '';
-      return (
-        norm(m.name).includes(q) ||
-        norm(m.code).includes(q) ||
-        norm(brandName).includes(q)
-      );
-    });
-  }, [allModels, q, searching]);
+    return allModels.filter((m) => fuzzyIncludesAny([m.name, m.code, m.brand?.name], termo));
+  }, [allModels, termo, searching]);
 
   // Códigos de erro que casam por code/título/descrição, agrupados por `code`.
   // Só nos domínios com códigos, e restritos aos modelos do domínio atual.
@@ -1056,9 +1048,7 @@ function BrandsList({
     const hits = allErrorCodes.filter(
       (ec) =>
         (domainModelIds.size === 0 || (ec.model && domainModelIds.has(ec.model.id))) &&
-        (norm(ec.code).includes(q) ||
-          norm(ec.title).includes(q) ||
-          norm(ec.description).includes(q)),
+        fuzzyIncludesAny([ec.code, ec.title, ec.description], termo),
     );
 
     const byCode = new Map<string, GroupedErrorCode>();
@@ -1098,7 +1088,7 @@ function BrandsList({
       }
     }
     return Array.from(byCode.values()).sort((a, b) => a.code.localeCompare(b.code));
-  }, [allErrorCodes, q, searching, errorSearchEnabled, domainModelIds, domain]);
+  }, [allErrorCodes, termo, searching, errorSearchEnabled, domainModelIds, domain]);
 
   const loadingSearch = loadingModels || (errorSearchEnabled && loadingCodes);
   const nadaEncontrado =
@@ -1507,8 +1497,6 @@ function ModelosList({
     if (!gasFilterEnabled) setSelectedGases([]);
   }, [gasFilterEnabled]);
 
-  const q = norm(termo);
-
   // Opções de Potência derivadas dos modelos desta marca (BTU distintos, crescente).
   const btuOptions = useMemo(() => {
     const set = new Set<number>();
@@ -1550,11 +1538,7 @@ function ModelosList({
   // Lista final: busca + filtros (vazio = todos), ordenada por BTU crescente.
   const modelosVisiveis = useMemo(() => {
     const filtrados = models.filter((m) => {
-      const buscaOk =
-        q.length === 0 ||
-        norm(m.name).includes(q) ||
-        norm(m.code).includes(q) ||
-        norm(extrairBtu(m.name)).includes(q);
+      const buscaOk = fuzzyIncludesAny([m.name, m.code, extrairBtu(m.name)], termo);
       const btuOk =
         selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)));
       const tipoOk =
@@ -1563,7 +1547,7 @@ function ModelosList({
       return buscaOk && btuOk && tipoOk && gasOk;
     });
     return ordenarPorBtu(filtrados);
-  }, [models, q, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
+  }, [models, termo, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
 
   const semResultado =
     !isLoading && models.length > 0 && modelosVisiveis.length === 0;
@@ -1807,15 +1791,9 @@ function RemotesList({
     return () => clearTimeout(id);
   }, [termoRaw]);
 
-  const q = norm(termo);
-
   // Filtra por nome do controle OU nome da marca; ordena por marca, depois nome.
   const visiveis = useMemo(() => {
-    const filtrados = models.filter((m) => {
-      if (q.length === 0) return true;
-      const brandName = m.brand?.name ?? '';
-      return norm(m.name).includes(q) || norm(brandName).includes(q);
-    });
+    const filtrados = models.filter((m) => fuzzyIncludesAny([m.name, m.brand?.name], termo));
     return [...filtrados].sort((a, b) => {
       const ba = a.brand?.name ?? '';
       const bb = b.brand?.name ?? '';
@@ -1823,7 +1801,7 @@ function RemotesList({
       if (cmp !== 0) return cmp;
       return a.name.localeCompare(b.name, 'pt-BR');
     });
-  }, [models, q]);
+  }, [models, termo]);
 
   const semResultado = !isLoading && models.length > 0 && visiveis.length === 0;
 
@@ -1996,13 +1974,10 @@ function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => v
     return () => clearTimeout(id);
   }, [termoRaw]);
 
-  const q = norm(termo);
-
   // Filtra por code OU name; mantém a ordem de `sort` que veio do hook.
   const visiveis = useMemo(() => {
-    if (q.length === 0) return gases;
-    return gases.filter((g) => norm(g.code).includes(q) || norm(g.name).includes(q));
-  }, [gases, q]);
+    return gases.filter((g) => fuzzyIncludesAny([g.code, g.name], termo));
+  }, [gases, termo]);
 
   const semResultado = !isLoading && gases.length > 0 && visiveis.length === 0;
 
@@ -2866,10 +2841,7 @@ function CodigosErro({
       brandName: brandName || 'Marca',
     });
 
-  const filtroNorm = filtro.trim().toLowerCase();
-  const filtrados = filtroNorm
-    ? codes.filter((c) => c.code.toLowerCase().includes(filtroNorm))
-    : codes;
+  const filtrados = codes.filter((c) => fuzzyIncludesAny([c.code, c.title, c.description], filtro));
 
   return (
     <div className="space-y-6 pb-8">

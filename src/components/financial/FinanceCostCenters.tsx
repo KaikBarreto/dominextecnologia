@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludesAny } from '@/lib/utils';
 import { Plus, Pencil, Trash2, Power, PowerOff, Search, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,11 +60,7 @@ export function FinanceCostCenters() {
   // formulário pra aplicar na reativação.
   const [reactivateTarget, setReactivateTarget] = useState<{ existing: CostCenter; input: CostCenterInput } | null>(null);
 
-  const filtered = costCenters.filter((c) => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q);
-  });
+  const filtered = costCenters.filter((c) => fuzzyIncludesAny([c.name, c.description], searchQuery));
 
   const handleNew = () => {
     setEditing(null);

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { fuzzyIncludesAny } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 // ── Tipos do domínio (vêm dos enums gerados em types.ts) ───────────────────
@@ -104,6 +105,13 @@ interface UseAdminTasksOptions {
  * Reusada pela query principal E pela contagem de resolvidas (mesmo `.or()`).
  * Retorna `null` quando a busca está vazia.
  */
+type AdminLeadSearchRow = {
+  id: string;
+  company_name: string | null;
+  contact_name: string | null;
+  title: string | null;
+};
+
 async function buildSearchOrFilter(search: string | undefined): Promise<string | null> {
   const rawTerm = search?.trim();
   if (!rawTerm) return null;
@@ -112,12 +120,21 @@ async function buildSearchOrFilter(search: string | undefined): Promise<string |
   if (!term) return null;
 
   // 1) Leads (admin_leads) cujo nome atual casa o termo → coleta IDs pro `.in()`.
-  const { data: matchingLeads } = await supabase
+  // O casamento do NOME é feito no client com `fuzzyIncludesAny`, não com
+  // `ilike`: o `ilike` do Postgres ignora caixa mas NÃO ignora acento, então
+  // "helio" não achava "Hélio". admin_leads é uma lista curta (leads de venda
+  // da Auctus), então trazer os nomes e filtrar aqui é barato — diferente de
+  // admin_tasks, que passa de 1000 rows e obriga filtro server-side.
+  // `returns<>` explícito: sem ele o TS tenta inferir o shape do select e
+  // estoura o orçamento de inferência do arquivo (TS2589 nas queries vizinhas).
+  const { data: candidateLeads } = await supabase
     .from('admin_leads')
-    .select('id')
-    .or(`company_name.ilike.%${term}%,contact_name.ilike.%${term}%,title.ilike.%${term}%`);
+    .select('id, company_name, contact_name, title')
+    .returns<AdminLeadSearchRow[]>();
 
-  let leadIds = (matchingLeads || []).map(l => l.id);
+  let leadIds = (candidateLeads || [])
+    .filter(l => fuzzyIncludesAny([l.company_name, l.contact_name, l.title], term))
+    .map(l => l.id);
   // Guarda de segurança: limita a 200 IDs pra não estourar o tamanho da URL do
   // PostgREST. Na prática a busca por nome dificilmente retorna tantos leads.
   const MAX_LEAD_IDS = 200;

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, Layers, ListTree, Search, StickyNote, X } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import type { OrgChart, OrgNode } from '@/hooks/useOrgCharts';
 import { OrgChartCanvas } from './OrgChartCanvas';
 import { OrgChartTreeView } from './OrgChartTreeView';
@@ -39,14 +39,6 @@ type ToolEntry =
       icon: typeof ListTree;
       labelKey: 'treeTool' | 'highlightTool' | 'searchTool';
     };
-
-// Normaliza string para busca: lower-case + remove acentos.
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
-}
 
 /**
  * Editor de organograma em TELA CHEIA.
@@ -295,12 +287,11 @@ export function OrgChartFullscreen({
   }, [activeTool]);
 
   const searchResults = useMemo(() => {
-    const q = normalize(searchQuery.trim());
+    const q = searchQuery.trim();
     if (!q) return [];
-    return chart.data.nodes.filter((n) => {
-      const hay = normalize(`${n.data.name ?? ''} ${n.data.role ?? ''}`);
-      return hay.includes(q);
-    });
+    return chart.data.nodes.filter((n) =>
+      fuzzyIncludes(`${n.data.name ?? ''} ${n.data.role ?? ''}`, q)
+    );
   }, [searchQuery, chart.data.nodes]);
 
   if (!rect) return null;

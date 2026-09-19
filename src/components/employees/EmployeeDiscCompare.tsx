@@ -41,7 +41,7 @@ import {
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
 import { relationshipKey } from '@/lib/disc/relationships';
 import type { DiscFactor } from '@/lib/disc/questions';
@@ -162,7 +162,7 @@ function EmployeePicker({
             filter={(value, search) => {
               const emp = employees.find((e) => e.id === value);
               if (!emp) return 0;
-              return emp.name.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+              return fuzzyIncludesAny([emp.name, emp.position, emp.matricula], search) ? 1 : 0;
             }}
           >
             <CommandInput placeholder={searchPlaceholder} />

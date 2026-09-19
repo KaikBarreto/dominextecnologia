@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -43,9 +43,7 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
   const appliesToAll = selectedIds.length === 0;
 
   const filtered = useMemo(() => {
-    if (!search) return activeServices;
-    const q = search.toLowerCase();
-    return activeServices.filter(s => s.name.toLowerCase().includes(q));
+    return activeServices.filter(s => fuzzyIncludes(s.name, search));
   }, [activeServices, search]);
 
   // "Todos marcados" pra UI = aplica a todos (vazio) OU tem todos os ids.

@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { GLOSSARIO } from '@/lib/glossario';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { GLOSSARIO_ELETRICA } from '@/lib/glossarioEletrica';
@@ -68,16 +68,6 @@ interface InicioProps {
   onNavigate: (id: ToolNavId, payload?: ToolNavPayload) => void;
 }
 
-/** Normaliza pra busca: minúsculas, sem acento, espaços colapsados. */
-function semAcento(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 export function Inicio({ onNavigate }: InicioProps) {
   const { locale } = useAppLocaleContext();
   const tTools = MESSAGES[locale].app.technicianTools;
@@ -95,12 +85,9 @@ export function Inicio({ onNavigate }: InicioProps) {
   );
 
   const secoesFiltradas = useMemo(() => {
-    const q = semAcento(buscaGlossario);
-    const casa = (termo: string, descricao: string) =>
-      !q || semAcento(termo).includes(q) || semAcento(descricao).includes(q);
     return GLOSSARIO_SECOES.map((s) => ({
       ...s,
-      termos: s.termos.filter((item) => casa(item.termo, item.descricao)),
+      termos: s.termos.filter((item) => fuzzyIncludesAny([item.termo, item.descricao], buscaGlossario)),
     })).filter((s) => s.termos.length > 0);
   }, [buscaGlossario, GLOSSARIO_SECOES]);
   const semResultado = secoesFiltradas.length === 0;

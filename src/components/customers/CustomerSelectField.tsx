@@ -69,6 +69,12 @@ export function CustomerSelectField({
       value: c.id,
       label: c.name,
       sublabel: c.document || c.email || c.phone || c.celular || undefined,
+      // O sublabel mostra só UM dado (o primeiro preenchido), mas a busca tem
+      // que enxergar todos — quem tem só o telefone do cliente na mão precisa
+      // achar ele aqui. Razão social entra junto pro mesmo motivo.
+      keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular].filter(
+        (k): k is string => !!k,
+      ),
     })),
   ];
 

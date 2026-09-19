@@ -51,7 +51,7 @@ import {
   useUpdateSectionTitles,
 } from "@/hooks/useDomiflixSections";
 import { useDomiflixTitles, DomiflixTitle } from "@/hooks/useDomiflix";
-import { cn } from "@/lib/utils";
+import { cn, fuzzyIncludesAny } from "@/lib/utils";
 
 // ─── Title picker (multi-select within a section) ────────────────────────────
 
@@ -66,13 +66,9 @@ function TitlePicker({
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     if (!q) return titles;
-    return titles.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.description?.toLowerCase().includes(q),
-    );
+    return titles.filter((t) => fuzzyIncludesAny([t.title, t.description], q));
   }, [titles, search]);
 
   const toggle = (id: string) => {

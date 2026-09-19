@@ -96,7 +96,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2, Calculator, Wallet } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -4508,18 +4508,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         const inTarget = memberPickerEnvKey === LOOSE_ENV_KEY
           ? new Set(looseItems.map(it => it.equipment_id).filter(Boolean) as string[])
           : new Set(environments.find(e => e.key === memberPickerEnvKey)?.equipment_ids ?? []);
-        const q = memberPickerSearch.trim().toLowerCase();
         const pickerAvailable = activeEquipment.filter((eq: any) => {
           if (inTarget.has(eq.id)) return false;
           // Exclusividade entre ambientes: oculta o que já está em OUTRO ambiente.
           const ownerKey = equipmentOwnerEnvKey.get(eq.id);
           if (ownerKey && ownerKey !== memberPickerEnvKey) return false;
-          if (!q) return true;
-          return (
-            eq.name?.toLowerCase().includes(q) ||
-            eq.brand?.toLowerCase().includes(q) ||
-            eq.model?.toLowerCase().includes(q)
-          );
+          return fuzzyIncludesAny([eq.name, eq.brand, eq.model, eq.serial_number, eq.identifier], memberPickerSearch);
         });
         return (
           <div className="space-y-3 p-1">

@@ -1867,7 +1867,7 @@ export function useContracts() {
         .from('contracts')
         .select(`
           *,
-          customers (id, name, document, address, city, state),
+          customers (id, name, document, phone, celular, email, address, city, state),
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, form_template_ids, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),

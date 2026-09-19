@@ -112,7 +112,7 @@ export function useLeads() {
         .from('leads')
         .select(`
           *,
-          customers (id, name, phone, celular, email),
+          customers (id, name, phone, celular, email, document),
           crm_stages (id, name, color),
           lead_assignees (user_id, is_primary)
         `)

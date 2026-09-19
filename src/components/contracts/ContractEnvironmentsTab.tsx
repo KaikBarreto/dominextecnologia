@@ -75,7 +75,7 @@ import {
 } from '@/components/contracts/pmocMachineRoutine';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -1106,15 +1106,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       const env = envs.find((e) => e.key === memberPickerEnvKey);
       inTarget = new Set(env?.equipment_ids ?? []);
     }
-    const q = memberPickerSearch.trim().toLowerCase();
     return activeEquipment.filter((eq: any) => {
       if (inTarget.has(eq.id)) return false;
-      if (!q) return true;
-      return (
-        eq.name?.toLowerCase().includes(q) ||
-        eq.brand?.toLowerCase().includes(q) ||
-        eq.model?.toLowerCase().includes(q)
-      );
+      return fuzzyIncludesAny([eq.name, eq.brand, eq.model, eq.serial_number, eq.identifier], memberPickerSearch);
     });
   }, [memberPickerEnvKey, envs, activeEquipment, memberPickerSearch]);
 

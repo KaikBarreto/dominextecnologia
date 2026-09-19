@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Check, ChevronsUpDown, Loader2, RefreshCw, Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -193,17 +193,11 @@ export function TaxCodeCombobox({
   // Filtro client-side do catálogo de `servico`.
   const filtered = React.useMemo(() => {
     if (type !== 'servico') return items;
-    const q = query.trim().toLowerCase();
     // Sem teto de 100: a lista (~337) é capada só por segurança em 400 e a
     // rolagem interna (max-h + overflow-y) dá conta de navegar tudo.
-    if (!q) return items.slice(0, 400);
+    if (!query.trim()) return items.slice(0, 400);
     return items
-      .filter(
-        (it) =>
-          it.codigo.toLowerCase().includes(q) ||
-          it.descricao.toLowerCase().includes(q) ||
-          (it.itemLc116 ?? '').toLowerCase().includes(q),
-      )
+      .filter((it) => fuzzyIncludesAny([it.codigo, it.descricao, it.itemLc116], query))
       .slice(0, 400);
   }, [items, query, type]);
 

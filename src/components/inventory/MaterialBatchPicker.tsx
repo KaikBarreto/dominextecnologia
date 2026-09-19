@@ -11,7 +11,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { readPastedCents } from '@/lib/money-paste-mask';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import type { InventoryItem } from '@/hooks/useInventory';
 
 /**
@@ -108,12 +108,9 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
   const normalizedSearch = normalize(trimmedSearch);
 
   const filteredItems = useMemo(() => {
-    if (!normalizedSearch) return items;
-    return items.filter((i) => {
-      const haystacks = [i.name, i.sku, i.category].filter((v): v is string => !!v).map(normalize);
-      return haystacks.some((h) => h.includes(normalizedSearch));
-    });
-  }, [items, normalizedSearch]);
+    if (!trimmedSearch) return items;
+    return items.filter((i) => fuzzyIncludesAny([i.name, i.sku, i.category], trimmedSearch));
+  }, [items, trimmedSearch]);
 
   const hasExactMatch = useMemo(() => {
     if (!normalizedSearch) return false;

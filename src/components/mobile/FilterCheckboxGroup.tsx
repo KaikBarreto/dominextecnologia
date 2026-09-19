@@ -3,13 +3,9 @@ import { Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
-
-/** Normaliza para busca: ignora acentos e caixa. */
-const normalize = (s: string) =>
-  s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
 export interface FilterCheckboxOption {
   value: string;
@@ -18,6 +14,11 @@ export interface FilterCheckboxOption {
   color?: string;
   /** Nó opcional renderizado depois do rótulo (ex.: ícone de inflamabilidade do gás). */
   suffix?: ReactNode;
+  /**
+   * Termos EXTRA que a busca também considera, além do rótulo. Ex.: telefone e
+   * documento do cliente, pra achar quem só tem o número do WhatsApp em mãos.
+   */
+  keywords?: string[];
 }
 
 interface FilterCheckboxGroupProps {
@@ -87,11 +88,13 @@ export function FilterCheckboxGroup({
   const selectAll = () => onChange(options.map((o) => o.value));
   const clearAll = () => onChange([]);
 
-  // Filtro puramente visual.
-  const normalizedQuery = normalize(query.trim());
+  // Filtro puramente visual. `fuzzyIncludesAny` é a mesma régua de busca do
+  // resto do sistema: sem acento, palavras fora de ordem e, quando o que se
+  // digita é só número, comparando dígito a dígito (telefone com ou sem máscara).
+  const trimmedQuery = query.trim();
   const visibleOptions =
-    showSearch && searchOpen && normalizedQuery
-      ? options.filter((o) => normalize(o.label).includes(normalizedQuery))
+    showSearch && searchOpen && trimmedQuery
+      ? options.filter((o) => fuzzyIncludesAny([o.label, ...(o.keywords ?? [])], trimmedQuery))
       : options;
 
   return (
