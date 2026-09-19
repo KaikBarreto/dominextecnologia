@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.55',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cancelar assinatura recorrente avisa quando não dá certo',
+        description: 'O cancelamento de assinatura recorrente podia dar a assinatura como cancelada mesmo sem conseguir encerrar no banco, e a cobrança automática continuava valendo. Agora, se o encerramento falhar, a assinatura não é dada como cancelada e você recebe o aviso, com a orientação de tentar de novo.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.54',
     date: '19 de setembro de 2026',
     type: 'patch',

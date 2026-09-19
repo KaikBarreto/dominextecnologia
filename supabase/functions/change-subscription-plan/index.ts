@@ -293,7 +293,9 @@ Deno.serve(async (req) => {
     });
 
     // 4) Atualiza a assinatura recorrente no Asaas (só em upgrade, só se houver sub_*).
-    //    PIX Automático (aut_*) e ausência de recorrência não são atualizados aqui — o
+    //    O teste por `sub_` é identificação POSITIVA de assinatura: autorização de
+    //    Pix Automático vem como UUID (não `aut_*`), então cai fora por construção.
+    //    PIX Automático e ausência de recorrência não são atualizados aqui — o
     //    novo valor passa a valer na próxima cobrança gerada pela recorrência.
     let asaasUpdated = false;
     let asaasWarning: string | null = null;

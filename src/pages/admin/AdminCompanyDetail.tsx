@@ -107,14 +107,16 @@ export default function AdminCompanyDetail() {
 
   // ===== Recorrência automática (Asaas) =====
   // Presença de companies.asaas_subscription_id => há renovação automática ativa.
-  // Tipo pelo prefixo: aut_ = Pix Automático, sub_ = Cartão recorrente.
+  // Tipo pelo id: só a ASSINATURA tem prefixo estável (`sub_`). A autorização de
+  // Pix Automático vem como UUID, NÃO como `aut_*` (provado em 2026-09-19 na
+  // autorização real 01cf93fd-...). Por isso identificamos `sub_` positivamente e
+  // tratamos o resto como Pix Automático — o contrário rotulava errado.
   const asaasSubscriptionId = company?.asaas_subscription_id ?? null;
   const hasRecurrence = !!asaasSubscriptionId;
   const recurrenceLabel = (() => {
     if (!asaasSubscriptionId) return 'Sem recorrência automática';
-    if (asaasSubscriptionId.startsWith('aut_')) return 'Pix Automático ativo';
     if (asaasSubscriptionId.startsWith('sub_')) return 'Cartão recorrente ativo';
-    return 'Recorrência ativa';
+    return 'Pix Automático ativo';
   })();
 
   // ===== Módulos do Plano (empresa arbitrária vista no admin) =====

@@ -43,7 +43,11 @@ interface ConfirmRequest {
 
 /** Busca o pagamento na Asaas (pra valor/netValue/billingType). Não-fatal. */
 async function fetchAsaasPayment(paymentId?: string): Promise<any | null> {
-  if (!paymentId || paymentId.startsWith("sub_") || paymentId.startsWith("aut_")) return null;
+  // Só cobrança avulsa tem /payments/{id}. Identificação POSITIVA por `pay_`:
+  // assinatura é `sub_*` e autorização de Pix Automático é UUID (NÃO `aut_*` —
+  // provado em 2026-09-19). Com a lista negativa antiga, um UUID passava e virava
+  // um GET /payments/<uuid> → 404 inútil a cada confirmação de venda.
+  if (!paymentId || !paymentId.startsWith("pay_")) return null;
   try {
     return await asaas.get(`/payments/${paymentId}`);
   } catch (e) {

@@ -57,6 +57,38 @@ interface CreatePaymentRequest {
   card_holder_address_number?: string;
 }
 
+/**
+ * Grava em `companies` o vínculo da recorrência recém-criada na Asaas.
+ *
+ * ⚠️ O supabase-js NÃO lança em erro: sem checar `{ error }`, uma falha de escrita
+ * aqui deixava a recorrência VIVA na Asaas (cobrando) e INVISÍVEL pra nós — o mesmo
+ * defeito do consentimento órfão que o cancelamento tinha. Não dá pra desfazer com
+ * segurança no meio do checkout, então o mínimo é gritar no log com o id, que é o
+ * que torna o caso recuperável à mão.
+ */
+async function linkRecurrenceToCompany(
+  // `any` de propósito: a assinatura genérica do SupabaseClient muda entre versões
+  // do supabase-js e não vale acoplar o helper a ela (mesma convenção de
+  // confirm-sale-payment). O que importa aqui é destruturar o `{ error }`.
+  supabase: any,
+  companyId: string,
+  recurrenceId: string,
+  paymentMethod: "pix" | "credit_card",
+): Promise<void> {
+  const { error } = await supabase
+    .from("companies")
+    .update({ asaas_subscription_id: recurrenceId, payment_method: paymentMethod })
+    .eq("id", companyId);
+  if (error) {
+    console.error(
+      `[create-asaas-payment] RECORRÊNCIA ÓRFÃ: ${recurrenceId} foi criada na Asaas para a ` +
+        `empresa ${companyId}, mas companies.asaas_subscription_id NÃO foi gravado. ` +
+        `Ela vai cobrar sem nada apontando pra ela daqui:`,
+      error,
+    );
+  }
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -501,10 +533,7 @@ Deno.serve(async (req) => {
           externalReference: company_id,
         });
 
-        await supabase.from("companies").update({
-          asaas_subscription_id: subscriptionData.id,
-          payment_method: "pix",
-        }).eq("id", company_id);
+        await linkRecurrenceToCompany(supabase, company_id, subscriptionData.id, "pix");
 
         // Busca primeiro payment real (pay_*) da subscription pro QR Code.
         let firstPaymentId: string | null = null;
@@ -574,10 +603,11 @@ Deno.serve(async (req) => {
         ? new Date(authData.immediateQrCode.expirationDate).toISOString()
         : (() => { const d = new Date(); d.setHours(d.getHours() + 24); return d.toISOString(); })();
 
-      await supabase.from("companies").update({
-        asaas_subscription_id: authData.id, // aut_* / id da authorization
-        payment_method: "pix",
-      }).eq("id", company_id);
+      // Grava o id da AUTORIZAÇÃO de Pix Automático. ⚠️ É UUID, não `aut_*` (provado
+      // em 2026-09-19 na autorização real 01cf93fd-6634-43c4-894b-5bfeef52c1dc).
+      // Quem lê esta coluna deve identificar `sub_` positivamente e tratar todo o
+      // resto como autorização — ver cancel-asaas-subscription.
+      await linkRecurrenceToCompany(supabase, company_id, authData.id, "pix");
 
       // Busca primeiro payment real (pay_*) da authorization — o webhook chega com pay_*.
       let realFirstPaymentId: string | null = null;
@@ -672,10 +702,7 @@ Deno.serve(async (req) => {
         },
       });
 
-      await supabase.from("companies").update({
-        asaas_subscription_id: subscriptionData.id,
-        payment_method: "credit_card",
-      }).eq("id", company_id);
+      await linkRecurrenceToCompany(supabase, company_id, subscriptionData.id, "credit_card");
 
       // sub_* não é payment.id — webhook PAYMENT_CREATED preenche pay_* depois e
       // PAYMENT_CONFIRMED/RECEIVED é quem confirma de fato (ativa a empresa + credita LTV

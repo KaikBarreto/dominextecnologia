@@ -298,6 +298,14 @@ verify_jwt = false
 [functions.tenant-asaas-delete-charge]
 verify_jwt = false
 
+# tenant-asaas-pix-auto-authorize: cria a AUTORIZAÇÃO de Pix Automático (consentimento
+# de débito recorrente) na conta Asaas do tenant. Mesmo gate das irmãs (Bearer +
+# módulo 'cobrancas' + can_manage_system) na própria função, via authorizePaymentsManager
+# — por isso verify_jwt=false. Sem esta entrada ela caía no default verify_jwt=true e um
+# token ruim virava 401 genérico do gateway, engolindo a mensagem PT-BR do error.context.
+[functions.tenant-asaas-pix-auto-authorize]
+verify_jwt = false
+
 # tenant-asaas-webhook: recepção de eventos da Asaas da conta do TENANT. SEM JWT de
 # usuário — segurança é o header asaas-access-token, validado timing-safe contra o token
 # daquele tenant (resolvido por externalReference → Vault). Fail-closed 401.

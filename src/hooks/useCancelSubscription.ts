@@ -11,10 +11,12 @@ interface CancelSubscriptionInput {
  * Cancela a recorrência da assinatura SaaS Auctus de uma empresa.
  *
  * Chama as DUAS edge functions em sequência (igual ao fluxo de referência):
- *  1. `cancel-asaas-subscription` — para a recorrência na Asaas (sub_* / aut_*),
- *     zera companies.asaas_subscription_id e registra em
- *     subscription_cancellation_requests. NÃO corta o acesso na hora:
- *     o cliente mantém acesso até subscription_expires_at.
+ *  1. `cancel-asaas-subscription` — para a recorrência na Asaas (assinatura `sub_*`
+ *     OU autorização de Pix Automático, que vem como UUID), e só então zera
+ *     companies.asaas_subscription_id. Se a Asaas não confirmar o encerramento, a
+ *     edge devolve ERRO e MANTÉM o ponteiro (apagar deixaria o consentimento vivo
+ *     lá e invisível aqui). Registra em subscription_cancellation_requests.
+ *     NÃO corta o acesso na hora: o cliente mantém acesso até subscription_expires_at.
  *  2. `cancel-pending-asaas-payments` — apaga cobranças PENDING/OVERDUE futuras
  *     pra evitar PIX automático saindo depois.
  *

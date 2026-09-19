@@ -46,7 +46,7 @@ import { asaas, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
 
 /** Marcador de build — usado pra conferir QUAL versão está no ar (header x-dmx-fn). */
-const FN_MARKER = "cancel-single-asaas-payment@2026-09-07.1";
+const FN_MARKER = "cancel-single-asaas-payment@2026-09-19.1";
 
 class ValidationError extends Error {}
 
@@ -153,11 +153,19 @@ Deno.serve(async (req) => {
 
     /** Marca o reflexo local como cancelado — só se ainda estava em aberto. */
     const reflectLocalCancelled = async () => {
-      await supabase
+      // O supabase-js NÃO lança em erro: sem checar `{ error }`, uma falha de
+      // escrita sumia e a cobrança seguia PENDING aqui com a Asaas já cancelada.
+      const { error: reflectError } = await supabase
         .from("subscription_payments")
         .update({ status: "CANCELLED", updated_at: new Date().toISOString() })
         .eq("asaas_payment_id", payment_id)
         .in("status", ["PENDING", "OVERDUE"]);
+      if (reflectError) {
+        console.error(
+          `[cancel-single] cancelada na Asaas, mas falhou ao refletir localmente ${payment_id}:`,
+          reflectError,
+        );
+      }
     };
 
     /** Recusa por posse: o id existe na Asaas mas não é desta empresa. */
@@ -170,6 +178,14 @@ Deno.serve(async (req) => {
       return json(403, { status: "nao_autorizado", message: msg, error: msg });
     };
 
+    // ---- Qual dos dois recursos é este id? ----
+    // `pay_` é a ÚNICA identificação POSITIVA aqui (cobrança avulsa). Autorização de
+    // Pix Automático NÃO tem prefixo estável: a Asaas devolve UUID (provado em
+    // 2026-09-19 na autorização real 01cf93fd-6634-43c4-894b-5bfeef52c1dc). Por isso
+    // o teste é pelo `pay_` e o ramo B é o "resto" — NÃO inverter pra
+    // `startsWith("aut_")`, que é o bug que a cancel-asaas-subscription tinha
+    // (UUID caía no endpoint errado, 404, e o ponteiro era apagado).
+    // O `else` cobrir autorização é DE PROPÓSITO, não coincidência.
     const isPayment = payment_id.startsWith("pay_");
 
     // =================================================================
@@ -261,7 +277,7 @@ Deno.serve(async (req) => {
     }
 
     // =================================================================
-    // B) Autorização de Pix Automático (id sem prefixo pay_)
+    // B) Autorização de Pix Automático (id sem prefixo pay_ — na prática, UUID)
     // =================================================================
     let authorization: { status?: string; customerId?: string } | null = null;
     try {
