@@ -9,7 +9,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Card } from '@/components/ui/card';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
-import { Wallet, Landmark, CreditCard, Info, AlertTriangle } from 'lucide-react';
+import { Wallet, Landmark, CreditCard, Info, AlertTriangle, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -20,6 +20,7 @@ import { CostCenterSelect } from './CostCenterSelect';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
+import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
 
 /**
  * Modal de APROVAÇÃO de orçamento.
@@ -131,19 +132,8 @@ export function ApproveQuoteModal({
   const { activeCostCenters } = useCostCenters();
 
   const accountOptions = useMemo(
-    () => activeAccounts.map((a) => {
-      const Icon = getAccIcon(a.type);
-      return {
-        value: a.id,
-        label: a.name,
-        icon: (
-          <span className="rounded-full p-1" style={{ backgroundColor: a.color }}>
-            <Icon className="h-3 w-3 text-white" />
-          </span>
-        ),
-      };
-    }),
-    [activeAccounts],
+    () => buildAccountOptions(activeAccounts as any, { includeCard: true }),
+    [activeAccounts]
   );
 
   // Conta prevista é OPCIONAL: a primeira opção limpa a escolha.
@@ -174,6 +164,8 @@ export function ApproveQuoteModal({
   const [accountInitialName, setAccountInitialName] = useState('');
   /** Qual campo abriu o quick-create — pra auto-selecionar a conta certa. */
   const [accountFormTarget, setAccountFormTarget] = useState<'paid' | 'expected'>('paid');
+  const [paidAccountQuery, setPaidAccountQuery] = useState('');
+  const [expectedAccountQuery, setExpectedAccountQuery] = useState('');
 
   // ── modo 'a_receber' ──────────────────────────────────────────────────────
   const [installments, setInstallments] = useState(defaultInstallments);
@@ -335,20 +327,36 @@ export function ApproveQuoteModal({
 
               <div>
                 <Label>{t.accountLabel}</Label>
-                <SearchableSelect
-                  options={accountOptions}
-                  value={accountId}
-                  onValueChange={setAccountId}
-                  placeholder={t.accountPlaceholder}
-                  searchPlaceholder={t.accountSearchPlaceholder}
-                  onCreateOption={canManageFinanceSettings ? (query) => {
-                    setAccountFormTarget('paid');
-                    setAccountInitialName(query);
-                    setAccountFormOpen(true);
-                  } : undefined}
-                  createOptionLabel={t.accountCreateLabel}
-                  createAlwaysLabel={t.accountCreateAlwaysLabel}
-                />
+                <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+                  <SearchableSelect
+                    options={accountOptions}
+                    value={accountId}
+                    onValueChange={setAccountId}
+                    onSearchChange={setPaidAccountQuery}
+                    placeholder={t.accountPlaceholder}
+                    searchPlaceholder={t.accountSearchPlaceholder}
+                    className={cn(
+                      'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                      canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                    )}
+                  />
+                  {canManageFinanceSettings && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setAccountFormTarget('paid');
+                        setAccountInitialName(paidAccountQuery);
+                        setAccountFormOpen(true);
+                      }}
+                      className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label={t.accountCreateAlwaysLabel}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
                 {activeAccounts.length === 0 && (
                   <p className="text-xs text-destructive mt-1">{t.noAccountHint}</p>
                 )}
@@ -427,20 +435,36 @@ export function ApproveQuoteModal({
 
               <div>
                 <Label>{t.expectedAccountLabel}</Label>
-                <SearchableSelect
-                  options={expectedAccountOptions}
-                  value={expectedAccountId}
-                  onValueChange={setExpectedAccountId}
-                  placeholder={t.expectedAccountPlaceholder}
-                  searchPlaceholder={t.accountSearchPlaceholder}
-                  onCreateOption={canManageFinanceSettings ? (query) => {
-                    setAccountFormTarget('expected');
-                    setAccountInitialName(query);
-                    setAccountFormOpen(true);
-                  } : undefined}
-                  createOptionLabel={t.accountCreateLabel}
-                  createAlwaysLabel={t.accountCreateAlwaysLabel}
-                />
+                <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+                  <SearchableSelect
+                    options={expectedAccountOptions}
+                    value={expectedAccountId}
+                    onValueChange={setExpectedAccountId}
+                    onSearchChange={setExpectedAccountQuery}
+                    placeholder={t.expectedAccountPlaceholder}
+                    searchPlaceholder={t.accountSearchPlaceholder}
+                    className={cn(
+                      'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                      canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                    )}
+                  />
+                  {canManageFinanceSettings && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setAccountFormTarget('expected');
+                        setAccountInitialName(expectedAccountQuery);
+                        setAccountFormOpen(true);
+                      }}
+                      className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label={t.accountCreateAlwaysLabel}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
                 {/* Invariante: saldo de conta só conta linha PAGA. Enquanto a
                     parcela estiver pendente, essa conta é só previsão. */}
                 <p className="text-xs text-muted-foreground mt-1">{t.expectedAccountHint}</p>

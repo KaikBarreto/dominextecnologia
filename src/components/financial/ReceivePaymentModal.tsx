@@ -9,7 +9,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
-import { Wallet, Landmark, CreditCard } from 'lucide-react';
+import { Wallet, Landmark, CreditCard, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -17,6 +17,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { todayInTz } from '@/lib/timezone';
 import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
+import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
 
 export interface ReceivePaymentResult {
   account_id: string;
@@ -117,20 +118,11 @@ export function ReceivePaymentModal({
   const activeAccounts = useMemo(() => filterAccountsForReceivable(accounts), [accounts]);
 
   // Opções do SearchableSelect de conta (busca por nome + ícone por tipo).
+  // Logo do banco + cor da conta: régua única de `accountSelectOptions`. O
+  // operador reconhece a conta pela marca, não lendo o nome.
   const accountOptions = useMemo(
-    () => activeAccounts.map(a => {
-      const Icon = getAccIcon(a.type);
-      return {
-        value: a.id,
-        label: a.name,
-        icon: (
-          <span className="rounded-full p-1" style={{ backgroundColor: a.color }}>
-            <Icon className="h-3 w-3 text-white" />
-          </span>
-        ),
-      };
-    }),
-    [activeAccounts],
+    () => buildAccountOptions(activeAccounts as any, { includeCard: true }),
+    [activeAccounts]
   );
 
   // Vocabulário canônico (src/lib/finance-payment-methods.ts) — antes deste form
@@ -161,6 +153,7 @@ export function ReceivePaymentModal({
   // Quick-create de conta bancária inline.
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountInitialName, setAccountInitialName] = useState('');
+  const [accountQuery, setAccountQuery] = useState('');
   const [method, setMethod] = useState(defaultMethod);
   // Fuso DA EMPRESA: `paid_date` define o mês da movimentação no regime de
   // Caixa. `toISOString()` gravava amanhã a partir das 21h locais (UTC-3), e
@@ -303,19 +296,35 @@ export function ReceivePaymentModal({
 
         <div>
           <Label>{t.accountLabel}</Label>
-          <SearchableSelect
-            options={accountOptions}
-            value={accountId}
-            onValueChange={setAccountId}
-            placeholder={t.accountPlaceholder}
-            searchPlaceholder={t.accountSearchPlaceholder}
-            onCreateOption={canManageFinanceSettings ? (query) => {
-              setAccountInitialName(query);
-              setAccountFormOpen(true);
-            } : undefined}
-            createOptionLabel={t.accountCreateLabel}
-            createAlwaysLabel={t.accountCreateAlwaysLabel}
-          />
+          <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+            <SearchableSelect
+              options={accountOptions}
+              value={accountId}
+              onValueChange={setAccountId}
+              onSearchChange={setAccountQuery}
+              placeholder={t.accountPlaceholder}
+              searchPlaceholder={t.accountSearchPlaceholder}
+              className={cn(
+                'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+              )}
+            />
+            {canManageFinanceSettings && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setAccountInitialName(accountQuery);
+                  setAccountFormOpen(true);
+                }}
+                className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                aria-label={t.accountCreateAlwaysLabel}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           {activeAccounts.length === 0 && (
             <p className="text-xs text-destructive mt-1">{t.noAccountHint}</p>
           )}

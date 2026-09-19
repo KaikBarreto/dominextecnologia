@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers, Calculator, AlertTriangle } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers, Calculator, AlertTriangle, Plus } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { AccountFormDialog } from './AccountFormDialog';
@@ -810,9 +810,11 @@ export function TransactionFormDialog({
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   // Nome pré-preenchido no quick-create de categoria (texto digitado no SearchableSelect).
   const [categoryInitialName, setCategoryInitialName] = useState('');
+  const [categoryQuery, setCategoryQuery] = useState('');
   // Quick-create de conta bancária inline.
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountInitialName, setAccountInitialName] = useState('');
+  const [accountQuery, setAccountQuery] = useState('');
   const uploadSharedMutation = useUploadTransactionAttachmentShared();
 
   // `selectedName` mantém na lista a categoria JÁ escolhida mesmo que ela tenha
@@ -1313,19 +1315,35 @@ export function TransactionFormDialog({
           <FormField control={form.control} name="category" render={({ field }) => (
             <FormItem>
               <FormLabel>{tf.categoryLabel}</FormLabel>
-              <SearchableSelect
-                options={categoryOptions}
-                value={field.value || ''}
-                onValueChange={field.onChange}
-                placeholder={tf.categoryPlaceholder}
-                searchPlaceholder={tf.categorySearchPlaceholder}
-                onCreateOption={canManageFinanceSettings ? (query) => {
-                  setCategoryInitialName(query);
-                  setCategoryFormOpen(true);
-                } : undefined}
-                createOptionLabel={tf.categoryCreateLabel}
-                createAlwaysLabel={tf.categoryCreateAlwaysLabel}
-              />
+              <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+                <SearchableSelect
+                  options={categoryOptions}
+                  value={field.value || ''}
+                  onValueChange={field.onChange}
+                  onSearchChange={setCategoryQuery}
+                  placeholder={tf.categoryPlaceholder}
+                  searchPlaceholder={tf.categorySearchPlaceholder}
+                  className={cn(
+                    'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                    canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                  )}
+                />
+                {canManageFinanceSettings && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setCategoryInitialName(categoryQuery);
+                      setCategoryFormOpen(true);
+                    }}
+                    className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                    aria-label={tf.categoryCreateAlwaysLabel}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               <FormMessage />
             </FormItem>
           )} />
@@ -1429,19 +1447,35 @@ export function TransactionFormDialog({
             <FormField control={form.control} name="account_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>{tf.accountLabel} <span className="text-destructive">*</span></FormLabel>
-                <SearchableSelect
-                  options={accountOptions}
-                  value={field.value || ''}
-                  onValueChange={field.onChange}
-                  placeholder={tf.accountPlaceholder}
-                  searchPlaceholder={tf.accountSearchPlaceholder}
-                  onCreateOption={canManageFinanceSettings ? (query) => {
-                    setAccountInitialName(query);
-                    setAccountFormOpen(true);
-                  } : undefined}
-                  createOptionLabel={tf.accountCreateLabel}
-                  createAlwaysLabel={tf.accountCreateAlwaysLabel}
-                />
+                <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+                  <SearchableSelect
+                    options={accountOptions}
+                    value={field.value || ''}
+                    onValueChange={field.onChange}
+                    onSearchChange={setAccountQuery}
+                    placeholder={tf.accountPlaceholder}
+                    searchPlaceholder={tf.accountSearchPlaceholder}
+                    className={cn(
+                      'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                      canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                    )}
+                  />
+                  {canManageFinanceSettings && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setAccountInitialName(accountQuery);
+                        setAccountFormOpen(true);
+                      }}
+                      className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label={tf.accountCreateAlwaysLabel}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
                 <FormMessage />
               </FormItem>
             )} />
@@ -1693,17 +1727,47 @@ export function TransactionFormDialog({
             {/* Installment info — shown for non-card transactions only (card gets breakdown above).
                 Vale também na edição "à vista → parcelada" (transação JÁ parcelada nunca chega aqui
                 porque o campo vira badge read-only). */}
-            {!isEditingInstallmentGroup && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (
-              <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
-                {tf.installmentInfo
-                  .replace('{count}', String(form.watch('installment_count')))
-                  .replace('{amount}', formatMoney(
-                    (form.watch('amount') || 0) / (form.watch('installment_count') || 1),
-                    currency,
-                    locale,
-                  ))}
-              </p>
-            )}
+            {!isEditingInstallmentGroup && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (() => {
+              const count = form.watch('installment_count') || 1;
+              const perInstallment = buildInstallmentPlan(
+                form.watch('transaction_date') || todayInTz(timezone),
+                form.watch('amount') || 0,
+                count,
+              );
+              const firstAmount = perInstallment[0]?.amount ?? 0;
+              const firstDue = perInstallment[0]?.date;
+              const lastDue = perInstallment[count - 1]?.date;
+              return (
+                <div className="text-xs text-muted-foreground bg-muted p-2 rounded-md space-y-1">
+                  <p>
+                    {tf.installmentInfo
+                      .replace('{count}', String(count))
+                      .replace('{amount}', formatMoney(firstAmount, currency, locale))}
+                  </p>
+                  {/* Primeiro e último vencimento explícitos: "vencimentos mensais
+                      a partir da data informada" não responde "até quando vai". */}
+                  {firstDue && lastDue && (
+                    <p>
+                      {tf.installmentRange
+                        .replace('{first}', formatDate(firstDue, locale, timezone))
+                        .replace('{last}', formatDate(lastDue, locale, timezone))}
+                    </p>
+                  )}
+                  {/* "Já foi pago/recebido" + parcelado: o sistema quita SÓ a 1a
+                      parcela. Isso já era o comportamento, mas em lugar nenhum
+                      estava escrito — quem ligava o toggle achava que a venda
+                      inteira entrava como recebida. */}
+                  {isPaid && (
+                    <p className="font-medium text-foreground">
+                      {(isEntrada ? tf.installmentFirstPaidRevenue : tf.installmentFirstPaidExpense)
+                        .replace('{amount}', formatMoney(firstAmount, currency, locale))
+                        .replace('{date}', formatDate(form.watch("paid_date") || firstDue || "", locale, timezone))
+                        .replace('{rest}', String(count - 1))}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </ModalFormSection>
 
         </form>

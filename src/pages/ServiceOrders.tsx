@@ -475,6 +475,16 @@ export default function ServiceOrders() {
         title={t.header.title}
         subtitle={t.header.subtitle}
         icon={ClipboardList}
+        actions={
+          !isMobile && activeTab === 'orders' && (
+            <DateRangeFilter
+              value={range}
+              preset={preset}
+              onPresetChange={setPreset}
+              onRangeChange={setRange}
+            />
+          )
+        }
       />
 
       <SettingsSidebarLayout tabs={sidebarTabs} activeTab={activeTab} onTabChange={setActiveTab}>
@@ -531,13 +541,6 @@ export default function ServiceOrders() {
               </>
             ) : (
               <>
-                <DateRangeFilter
-                  value={range}
-                  preset={preset}
-                  onPresetChange={setPreset}
-                  onRangeChange={setRange}
-                />
-
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2 flex-1">
                     <div className="relative flex-1 sm:max-w-sm">

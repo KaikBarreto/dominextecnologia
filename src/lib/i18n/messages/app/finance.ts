@@ -591,6 +591,9 @@ export const finance = {
       installmentSingle: 'À vista',
       installmentBadgePrefix: 'Parcela',
       installmentInfo: 'Serão geradas {count} parcelas de {amount} com vencimentos mensais a partir da data informada.',
+      installmentRange: 'A primeira vence em {first} e a última em {last}.',
+      installmentFirstPaidRevenue: 'A 1ª parcela ({amount}) já entra como recebida em {date}. As outras {rest} ficam em aberto, cada uma na data de vencimento dela.',
+      installmentFirstPaidExpense: 'A 1ª parcela ({amount}) já entra como paga em {date}. As outras {rest} ficam em aberto, cada uma na data de vencimento dela.',
       cardReceipt: {
         title: 'Como esse dinheiro entra na sua conta?',
         subtitle: 'Seu cliente paga em {count}x no cartão. Isso não muda o valor da sua receita, muda só quando o dinheiro cai na sua conta. Escolha uma opção para continuar.',
@@ -1790,6 +1793,9 @@ export const finance = {
       installmentSingle: 'One-time',
       installmentBadgePrefix: 'Installment',
       installmentInfo: '{count} installments of {amount} will be created with monthly due dates from the given date.',
+      installmentRange: 'The first is due on {first} and the last on {last}.',
+      installmentFirstPaidRevenue: 'Installment 1 ({amount}) is recorded as received on {date}. The other {rest} stay open, each on its own due date.',
+      installmentFirstPaidExpense: 'Installment 1 ({amount}) is recorded as paid on {date}. The other {rest} stay open, each on its own due date.',
       cardReceipt: {
         title: 'How does this money reach your account?',
         subtitle: 'Your customer pays in {count} card installments. That does not change your revenue, only when the money lands in your account. Pick one option to continue.',
@@ -2950,6 +2956,9 @@ export const finance = {
       installmentSingle: 'Pago único',
       installmentBadgePrefix: 'Cuota',
       installmentInfo: 'Se crearán {count} cuotas de {amount} con vencimientos mensuales a partir de la fecha indicada.',
+      installmentRange: 'La primera vence el {first} y la última el {last}.',
+      installmentFirstPaidRevenue: 'La 1ª cuota ({amount}) ya entra como cobrada el {date}. Las otras {rest} quedan abiertas, cada una en su fecha de vencimiento.',
+      installmentFirstPaidExpense: 'La 1ª cuota ({amount}) ya entra como pagada el {date}. Las otras {rest} quedan abiertas, cada una en su fecha de vencimiento.',
       cardReceipt: {
         title: '¿Cómo entra ese dinero en su cuenta?',
         subtitle: 'Su cliente paga en {count} cuotas con tarjeta. Eso no cambia el valor de su ingreso, solo cambia cuándo entra el dinero en su cuenta. Elija una opción para continuar.',
@@ -4110,6 +4119,9 @@ export const finance = {
       installmentSingle: 'Paiement unique',
       installmentBadgePrefix: 'Versement',
       installmentInfo: '{count} versements de {amount} seront créés avec des échéances mensuelles à partir de la date indiquée.',
+      installmentRange: `Le premier est dû le {first} et le dernier le {last}.`,
+      installmentFirstPaidRevenue: `Le 1er versement ({amount}) est enregistré comme encaissé le {date}. Les {rest} autres restent ouverts, chacun à sa propre échéance.`,
+      installmentFirstPaidExpense: `Le 1er versement ({amount}) est enregistré comme payé le {date}. Les {rest} autres restent ouverts, chacun à sa propre échéance.`,
       cardReceipt: {
         title: `Comment cet argent arrive-t-il sur votre compte ?`,
         subtitle: `Votre client paie en {count} versements par carte. Cela ne change pas le montant de votre recette, seulement le moment où l'argent arrive sur votre compte. Choisissez une option pour continuer.`,

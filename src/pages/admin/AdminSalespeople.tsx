@@ -153,13 +153,21 @@ export default function AdminSalespeople() {
         }
         icon={Users}
         actions={
-          isMobile
-            ? undefined
-            : canSeeAll ? (
+          isMobile ? undefined : (
+            <div className="flex flex-wrap items-center gap-2">
+              <DateRangeFilter
+                value={range}
+                preset={preset}
+                onPresetChange={setPreset}
+                onRangeChange={setRange}
+              />
+              {canSeeAll && (
                 <Button onClick={openNew} className="gap-2">
                   <Plus className="h-4 w-4" /> Novo Vendedor
                 </Button>
-              ) : undefined
+              )}
+            </div>
+          )
         }
       />
 
@@ -312,12 +320,6 @@ export default function AdminSalespeople() {
                       className="pl-9"
                     />
                   </div>
-                  <DateRangeFilter
-                    value={range}
-                    preset={preset}
-                    onPresetChange={setPreset}
-                    onRangeChange={setRange}
-                  />
                 </div>
                 {filtered.length > 0 ? (
                   <SalespersonPerformanceTable

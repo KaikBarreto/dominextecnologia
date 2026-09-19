@@ -269,36 +269,37 @@ export default function Finance() {
         subtitle={screenSubtitle}
         icon={DollarSign}
         actions={
-          showChargeButton ? (
-            <Button size="sm" onClick={() => setChargeOpen(true)}>
-              <Wallet className="mr-2 h-4 w-4" />
-              {MESSAGES[locale].app.charges.cobrar.button}
-            </Button>
-          ) : showChargeInactiveHint ? (
-            // Módulo contratado mas conta Asaas não ativa: botão direcional
-            // (não some silenciosamente — orienta o usuário).
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                navigate(localizeAppPath('/configuracoes/integracoes', locale))
-              }
-            >
-              <Wallet className="mr-2 h-4 w-4" />
-              {MESSAGES[locale].app.charges.cobrar.notActivated.cta}
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <DateRangeFilter
+              value={range}
+              preset={preset}
+              onPresetChange={setPreset}
+              onRangeChange={setRange}
+            />
+            {showChargeButton ? (
+              <Button size="sm" onClick={() => setChargeOpen(true)}>
+                <Wallet className="mr-2 h-4 w-4" />
+                {MESSAGES[locale].app.charges.cobrar.button}
+              </Button>
+            ) : showChargeInactiveHint ? (
+              // Módulo contratado mas conta Asaas não ativa: botão direcional
+              // (não some silenciosamente — orienta o usuário).
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  navigate(localizeAppPath('/configuracoes/integracoes', locale))
+                }
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {MESSAGES[locale].app.charges.cobrar.notActivated.cta}
+              </Button>
+            ) : undefined}
+          </div>
         }
       />
 
       <div className="space-y-4">
-        <DateRangeFilter
-          value={range}
-          preset={preset}
-          onPresetChange={setPreset}
-          onRangeChange={setRange}
-        />
-
         {screen === 'relatorio' && (
           <FinanceRelatorio
             transactions={filteredTransactions}

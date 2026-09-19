@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Plus, Loader2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
 import { useStocks } from '@/hooks/useStocks';
@@ -46,6 +47,9 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '',
   });
   const [isSkuGenerating, setIsSkuGenerating] = useState(false);
+  // Quick-create de grupo de material (botão "+" ao lado do seletor).
+  const [groupFormOpen, setGroupFormOpen] = useState(false);
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
 
   // Texto CRU dos campos numéricos (quantidade e preços). O número em formData segue
   // sendo o que vai pro save; este espelho existe porque um input controlado por NUMBER
@@ -253,6 +257,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   const isPending = createItem.isPending || updateItem.isPending || updateStockLevelMinQuantity.isPending || setInventoryPresence.isPending;
 
   return (
+    <>
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
@@ -288,32 +293,36 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>{t.fields.group}</Label>
-            <SearchableSelect
-              value={formData.group_id ?? ''}
-              onValueChange={(value) => handleChange('group_id', value || null)}
-              placeholder={t.fields.groupPlaceholder}
-              searchPlaceholder={t.fields.groupSearchPlaceholder}
-              createOptionLabel={t.fields.groupCreateLabel}
-              createAlwaysLabel={t.fields.groupCreateAlways}
-              onCreateOption={async (query) => {
-                // Sem nome digitado → no-op (o "+" com busca vazia é só affordance;
-                // não cria grupo "Novo grupo" lixo). Digite o nome pra criar.
-                const name = query.trim();
-                if (!name) return;
-                const created = await createGroup.mutateAsync({ name });
-                if (created) handleChange('group_id', created.id);
-              }}
-              options={groups.map((g) => ({
-                value: g.id,
-                label: g.name,
-                icon: (
-                  <div
-                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: g.color ?? '#6B7280' }}
-                  />
-                ),
-              }))}
-            />
+            <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+              <SearchableSelect
+                value={formData.group_id ?? ''}
+                onValueChange={(value) => handleChange('group_id', value || null)}
+                onSearchChange={setGroupSearchQuery}
+                placeholder={t.fields.groupPlaceholder}
+                searchPlaceholder={t.fields.groupSearchPlaceholder}
+                className="flex-1 min-w-0 justify-between rounded-none rounded-l-md border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal"
+                options={groups.map((g) => ({
+                  value: g.id,
+                  label: g.name,
+                  icon: (
+                    <div
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: g.color ?? '#6B7280' }}
+                    />
+                  ),
+                }))}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setGroupFormOpen(true)}
+                className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                aria-label={t.fields.groupCreateAlways}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>{t.fields.supplier}</Label>
@@ -441,6 +450,124 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
           </div>
         )}
       </form>
+    </ResponsiveModal>
+
+    {/* Quick-create de grupo — auto-seleciona o grupo novo no campo que abriu. */}
+    <QuickGroupDialog
+      open={groupFormOpen}
+      onOpenChange={setGroupFormOpen}
+      initialName={groupSearchQuery}
+      createGroup={createGroup}
+      onCreated={(id) => handleChange('group_id', id)}
+      title={t.fields.groupCreateAlways}
+      nameLabel={t.fields.groupNameLabel}
+      namePlaceholder={t.fields.groupNamePlaceholder}
+      colorLabel={t.fields.groupColorLabel}
+      submitLabel={t.save}
+      cancelLabel={t.cancel}
+    />
+    </>
+  );
+}
+
+interface QuickGroupDialogProps {
+  open: boolean;
+  initialName: string;
+  onOpenChange: (open: boolean) => void;
+  createGroup: ReturnType<typeof useMaterialGroups>['createGroup'];
+  onCreated: (id: string) => void;
+  title: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  colorLabel: string;
+  submitLabel: string;
+  cancelLabel: string;
+}
+
+const DEFAULT_GROUP_COLOR = '#6B7280';
+
+/**
+ * Quick-create MÍNIMO de grupo de material, aberto pelo botão "+" do seletor
+ * de Grupo. Só nome (obrigatório) + cor — o CRUD completo continua em
+ * Configurações (`InventorySettingsDialog`), essa é só a criação rápida.
+ *
+ * Radix Dialog controlado por prop `open` NÃO sincroniza estado na abertura
+ * por código (só em fechamento por interação do usuário) — por isso o reset
+ * dos campos mora num `useEffect([open, initialName])`, nunca no handler que
+ * abre o dialog. Mesmo padrão do `QuickOriginDialog`.
+ */
+function QuickGroupDialog({
+  open,
+  initialName,
+  onOpenChange,
+  createGroup,
+  onCreated,
+  title,
+  nameLabel,
+  namePlaceholder,
+  colorLabel,
+  submitLabel,
+  cancelLabel,
+}: QuickGroupDialogProps) {
+  const [name, setName] = useState(initialName);
+  const [color, setColor] = useState(DEFAULT_GROUP_COLOR);
+
+  useEffect(() => {
+    if (open) {
+      setName(initialName);
+      setColor(DEFAULT_GROUP_COLOR);
+    }
+  }, [open, initialName]);
+
+  const handleCreate = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    try {
+      const created = await createGroup.mutateAsync({ name: trimmed, color });
+      if (created) onCreated(created.id);
+      onOpenChange(false);
+    } catch {
+      // O hook já dispara o toast de erro — mantém o dialog aberto pro usuário tentar de novo.
+    }
+  };
+
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={title}>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">{nameLabel}</Label>
+          <Input
+            placeholder={namePlaceholder}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">{colorLabel}</Label>
+          <ColorPicker value={color} onChange={setColor} />
+        </div>
+
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="destructive-ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={createGroup.isPending}
+          >
+            {cancelLabel}
+          </Button>
+          <Button
+            type="button"
+            onClick={handleCreate}
+            disabled={createGroup.isPending || !name.trim()}
+          >
+            {createGroup.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {submitLabel}
+          </Button>
+        </div>
+      </div>
     </ResponsiveModal>
   );
 }

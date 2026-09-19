@@ -176,7 +176,9 @@ export function OsReportDashboard() {
 
   return (
     <div className="space-y-6">
-      <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+      </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">

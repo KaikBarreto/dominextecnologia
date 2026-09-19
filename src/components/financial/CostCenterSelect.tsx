@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
 import { useCostCenters, CostCenterInactiveDuplicateError, type CostCenter, type CostCenterInput } from '@/hooks/useCostCenters';
 import { filterCostCentersForSelect } from '@/lib/cost-center-filter';
@@ -7,6 +9,7 @@ import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { cn } from '@/lib/utils';
 
 /** Sentinela do "nenhum centro de custo". Radix proíbe value="" (crasha). */
 const NONE = '__none__';
@@ -38,7 +41,7 @@ export function CostCenterSelect({
   const canManage = useCanManageFinanceSettings();
   const { costCenters, createCostCenter } = useCostCenters();
   const [createOpen, setCreateOpen] = useState(false);
-  const [initialName, setInitialName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Só ativos na lista, mas o selecionado NUNCA some — senão o campo aparece
   // vazio ao editar um lançamento antigo cujo centro de custo foi desativado
@@ -63,33 +66,49 @@ export function CostCenterSelect({
     })),
   ];
 
-  const handleCreate = (query: string) => {
-    setInitialName(query);
-    setCreateOpen(true);
-  };
-
   const showCreate = allowCreate && canManage;
 
   return (
     <>
-      <SearchableSelect
-        options={options}
-        value={value ?? NONE}
-        onValueChange={(v) => onValueChange(v === NONE ? null : v)}
-        placeholder={placeholder ?? t.fieldPlaceholder}
-        searchPlaceholder={t.selectSearchPlaceholder}
-        emptyMessage={t.selectEmptyMessage}
-        className={className}
-        disabled={disabled}
-        onCreateOption={showCreate ? handleCreate : undefined}
-        createOptionLabel={t.selectCreateWithName}
-        createAlwaysLabel={showCreate ? t.selectCreateLabel : undefined}
-      />
+      <div
+        className={cn(
+          'flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0',
+          className,
+        )}
+      >
+        <SearchableSelect
+          options={options}
+          value={value ?? NONE}
+          onValueChange={(v) => onValueChange(v === NONE ? null : v)}
+          onSearchChange={setSearchQuery}
+          placeholder={placeholder ?? t.fieldPlaceholder}
+          searchPlaceholder={t.selectSearchPlaceholder}
+          emptyMessage={t.selectEmptyMessage}
+          disabled={disabled}
+          className={cn(
+            'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+            showCreate ? 'rounded-l-md' : 'rounded-md',
+          )}
+        />
+        {showCreate && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            onClick={() => setCreateOpen(true)}
+            className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+            aria-label={t.selectCreateLabel}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
       {showCreate && (
         <CostCenterFormDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
-          initialName={initialName}
+          initialName={searchQuery}
           isLoading={createCostCenter.isPending}
           onSubmit={async (data: CostCenterInput) => {
             try {

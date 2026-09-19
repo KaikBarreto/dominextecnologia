@@ -30,6 +30,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { MaterialBatchPicker, type MaterialBatchSelection } from '@/components/inventory/MaterialBatchPicker';
 import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
@@ -309,7 +310,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { createQuote, updateQuote, quotes } = useQuotes();
   const { templates } = useProposalTemplates();
   const { settings: pricing } = usePricingSettings();
-  const { serviceTypes, createServiceType } = useServiceTypes();
+  const { serviceTypes } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
   const { profile } = useAuth();
   const isEditing = !!quote;
@@ -370,6 +371,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [addSvcId, setAddSvcId] = useState('');
   const [addSvcQty, setAddSvcQty] = useState(1);
   const [isFetchingSvc, setIsFetchingSvc] = useState(false);
+  // Quick-create de tipo de serviço inline (botão "+" ao lado do seletor).
+  const [serviceFormOpen, setServiceFormOpen] = useState(false);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
 
   // ── Seletor em lote de materiais (etapa Materiais) ──
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
@@ -696,33 +700,22 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setAddSvcQty(1);
   }, [addSvcId, addSvcQty, addServiceById]);
 
-  // ── Criar tipo de serviço na hora (inline) ──
-  // Espelha o campo livre de MATERIAL: usuário digita um nome inexistente no
-  // seletor, escolhe "Criar '<nome>'", e o serviço nasce (is_active) já entrando
-  // no orçamento com a quantidade atual. Preço/qtd seguem editáveis inline.
-  const handleCreateService = useCallback(async (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed || createServiceType.isPending) return;
+  // ── Criar tipo de serviço na hora (botão "+" do seletor) ──
+  // Abre o `QuickServiceTypeDialog` (mesmo quick-create de OS) pré-preenchido
+  // com o texto digitado na busca; ao criar, o serviço já entra no orçamento
+  // com a quantidade atual. Preço/qtd seguem editáveis inline.
+  const handleServiceTypeCreated = useCallback(async (created: { id: string; name: string }) => {
+    setServiceFormOpen(false);
     setIsFetchingSvc(true);
     try {
-      const created = await createServiceType.mutateAsync({
-        name: trimmed,
-        color: '#00C597',
-        is_active: true,
-      });
-      // invalidate + toast "Tipo de serviço criado!" já ocorrem no onSuccess do hook.
-      if (created?.id) {
-        // Serviço novo não tem custos cadastrados → cai no fluxo preço 0/editável.
-        await addServiceById(created.id, addSvcQty, { name: trimmed, description: null });
-      }
-    } catch {
-      // erro já toasteado pelo hook (onError).
+      // Serviço novo não tem custos cadastrados → cai no fluxo preço 0/editável.
+      await addServiceById(created.id, addSvcQty, { name: created.name, description: null });
     } finally {
       setAddSvcId('');
       setAddSvcQty(1);
       setIsFetchingSvc(false);
     }
-  }, [createServiceType, addSvcQty, addServiceById]);
+  }, [addSvcQty, addServiceById]);
 
   // ── Add materials handler (lote) ──
   // Recebe a seleção inteira do `MaterialBatchPicker` e adiciona TODOS de uma
@@ -1183,15 +1176,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title={tq.servicesHeader} />
 
                 <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/30 rounded-lg">
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
                     <SearchableSelect
                       groups={serviceGroups}
                       value={addSvcId}
                       onValueChange={setAddSvcId}
+                      onSearchChange={setServiceSearchQuery}
                       placeholder={tq.serviceSelectPlaceholder}
                       searchPlaceholder={tq.serviceSearchPlaceholder}
-                      onCreateOption={handleCreateService}
-                      createOptionLabel={tq.serviceSelectCreate}
+                      className="flex-1 min-w-0 justify-between rounded-none rounded-l-md border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal"
                       emptyContent={!hasAnyService ? (
                         <div className="flex flex-col items-center gap-1.5 py-4 px-2 text-center">
                           <p className="text-sm font-medium text-foreground">{tq.serviceSelectEmptyTitle}</p>
@@ -1199,6 +1192,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                         </div>
                       ) : undefined}
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setServiceFormOpen(true)}
+                      className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label={tq.serviceSelectCreateAriaLabel}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Label className="text-xs whitespace-nowrap">{tq.serviceQtyLabel}</Label>
@@ -1660,6 +1663,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           }}
         />
       )}
+
+      {/* Quick-create de tipo de serviço — botão "+" ao lado do seletor de serviços. */}
+      <QuickServiceTypeDialog
+        open={serviceFormOpen}
+        onOpenChange={setServiceFormOpen}
+        initialName={serviceSearchQuery}
+        onCreated={handleServiceTypeCreated}
+      />
     </>
   );
 }

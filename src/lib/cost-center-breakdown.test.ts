@@ -145,3 +145,56 @@ describe('filterByCostCenters', () => {
       .toEqual(['2', '3', '4']);
   });
 });
+
+/**
+ * A quebra por centro de custo, aberta dentro de uma categoria do DRE, existe
+ * pra responder ONDE o dinheiro se concentrou. Em ordem alfabética o centro
+ * mais relevante pode cair no fim da lista e passar despercebido, que foi
+ * exatamente a queixa do CEO. Esta é a régua de ordenação que a tela aplica.
+ */
+describe('ordenação da quebra aberta: maior primeiro', () => {
+  const sortForDisplay = <T extends { revenue: number; expense: number }>(
+    rows: T[],
+    isRevenue: boolean,
+  ) => rows.slice().sort((a, b) => (isRevenue ? b.revenue - a.revenue : b.expense - a.expense));
+
+  it('categoria de receita ordena pelo valor de receita, do maior pro menor', () => {
+    const rows = [
+      { id: 'a', revenue: 100, expense: 0 },
+      { id: 'b', revenue: 900, expense: 0 },
+      { id: 'c', revenue: 450, expense: 0 },
+    ];
+    expect(sortForDisplay(rows, true).map((r) => r.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('categoria de despesa ordena pelo valor de despesa, do maior pro menor', () => {
+    const rows = [
+      { id: 'a', revenue: 0, expense: 30 },
+      { id: 'b', revenue: 0, expense: 800 },
+      { id: 'c', revenue: 0, expense: 120 },
+    ];
+    expect(sortForDisplay(rows, false).map((r) => r.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('empate preserva a ordem original (sort estável): a lista não dança', () => {
+    const rows = [
+      { id: 'primeiro', revenue: 500, expense: 0 },
+      { id: 'segundo', revenue: 500, expense: 0 },
+      { id: 'terceiro', revenue: 500, expense: 0 },
+    ];
+    expect(sortForDisplay(rows, true).map((r) => r.id)).toEqual([
+      'primeiro',
+      'segundo',
+      'terceiro',
+    ]);
+  });
+
+  it('não muta o array original', () => {
+    const rows = [
+      { id: 'a', revenue: 100, expense: 0 },
+      { id: 'b', revenue: 900, expense: 0 },
+    ];
+    sortForDisplay(rows, true);
+    expect(rows.map((r) => r.id)).toEqual(['a', 'b']);
+  });
+});

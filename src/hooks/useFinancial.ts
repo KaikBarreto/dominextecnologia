@@ -98,7 +98,16 @@ export function buildInstallmentRows(args: {
     const installmentBillDate = billDateFor(dueDateStr);
     if (installmentBillDate) billMonths.add(installmentBillDate);
 
+    // "Já foi pago/recebido" + parcelamento: só a PRIMEIRA parcela nasce
+    // quitada. As outras são o que ainda falta entrar/sair — marcar todas
+    // daria a série inteira como liquidada no dia do lançamento.
     const parcelIsPaid = isCardInstallment ? false : (i === 0 ? rest.is_paid : false);
+    // A data de CAIXA é a que o usuário informou, não o vencimento da parcela.
+    // Antes a parcela 1 recebia o próprio vencimento como `paid_date` e a
+    // "Data do recebimento" digitada era jogada fora em silêncio — e é ela que
+    // decide o MÊS no regime de Caixa da DRE, então o dinheiro caía no mês
+    // errado. Fallback no vencimento pra quem não informou data nenhuma.
+    const parcelPaidDate = parcelIsPaid ? (rest.paid_date || dueDateStr) : undefined;
     rows.push(normalizeOptionalForeignKeys(
       {
         ...rest,
@@ -107,7 +116,7 @@ export function buildInstallmentRows(args: {
         transaction_date: dueDateStr,
         due_date: dueDateStr,
         is_paid: parcelIsPaid,
-        paid_date: parcelIsPaid ? dueDateStr : undefined,
+        paid_date: parcelPaidDate,
         credit_card_bill_date: installmentBillDate ?? null,
         created_by: createdBy,
         company_id: companyId,

@@ -62,13 +62,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6">
-      <div className="flex flex-col gap-4">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl lg:text-2xl font-bold text-foreground">Olá, {firstName}!</h1>
           <p className="text-sm text-muted-foreground">Visão geral do sistema</p>
         </div>
 
-        <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+        <div className="flex items-center gap-2 shrink-0">
+          <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+        </div>
       </div>
 
       {/* 1. Stats */}

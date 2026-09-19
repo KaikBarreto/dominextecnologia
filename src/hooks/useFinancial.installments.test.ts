@@ -130,6 +130,91 @@ describe('buildInstallmentRows', () => {
     expect(rows[0].paid_date).toBe('2026-05-10');
   });
 
+  /**
+   * PIX/dinheiro parcelado com "já recebido" ligado é o caso que o sócio
+   * levantou: se entrou dinheiro hoje mas a venda foi parcelada, o sistema
+   * precisa dizer exatamente O QUE ficou quitado. A resposta é: a PRIMEIRA
+   * parcela, na data de caixa que o usuário informou.
+   */
+  describe('já pago + parcelado: o que fica quitado e em que data', () => {
+    it('a data de recebimento informada manda na 1a parcela, não o vencimento dela', () => {
+      const plan = buildInstallmentPlan('2026-05-10', 500, 4);
+      const { rows } = buildInstallmentRows({
+        // Venda lançada em 10/05 (competência), mas o dinheiro entrou em 05/05.
+        // É a data de CAIXA que decide o mês no Regime de Caixa da DRE.
+        rest: { ...baseRest, transaction_date: '2026-05-10', paid_date: '2026-05-05' },
+        plan,
+        groupId: 'grp-paid-1',
+        companyId: 'co-1',
+        isCardInstallment: false,
+        billDateFor: () => undefined,
+      });
+      expect(rows[0].is_paid).toBe(true);
+      expect(rows[0].paid_date).toBe('2026-05-05');
+      // O VENCIMENTO da 1a parcela continua sendo a data do lançamento.
+      expect(rows[0].due_date).toBe('2026-05-10');
+    });
+
+    it('sem data de recebimento informada, cai no vencimento da 1a parcela', () => {
+      const plan = buildInstallmentPlan('2026-05-10', 500, 4);
+      const { rows } = buildInstallmentRows({
+        rest: baseRest,
+        plan,
+        groupId: 'grp-paid-2',
+        companyId: 'co-1',
+        isCardInstallment: false,
+        billDateFor: () => undefined,
+      });
+      expect(rows[0].paid_date).toBe('2026-05-10');
+    });
+
+    it('as parcelas em aberto não herdam data de pagamento nenhuma', () => {
+      const plan = buildInstallmentPlan('2026-05-10', 500, 4);
+      const { rows } = buildInstallmentRows({
+        rest: { ...baseRest, paid_date: '2026-05-05' },
+        plan,
+        groupId: 'grp-paid-3',
+        companyId: 'co-1',
+        isCardInstallment: false,
+        billDateFor: () => undefined,
+      });
+      expect(rows.slice(1).every((r) => r.is_paid === false)).toBe(true);
+      expect(rows.slice(1).every((r) => r.paid_date === undefined)).toBe(true);
+    });
+
+    it('vencimentos seguem mensais a partir do lançamento, mesmo com a 1a paga', () => {
+      const plan = buildInstallmentPlan('2026-05-10', 500, 4);
+      const { rows } = buildInstallmentRows({
+        rest: { ...baseRest, paid_date: '2026-05-05' },
+        plan,
+        groupId: 'grp-paid-4',
+        companyId: 'co-1',
+        isCardInstallment: false,
+        billDateFor: () => undefined,
+      });
+      expect(rows.map((r) => r.due_date)).toEqual([
+        '2026-05-10',
+        '2026-06-10',
+        '2026-07-10',
+        '2026-08-10',
+      ]);
+    });
+
+    it('cartão ignora o "já pago": nenhuma parcela nasce quitada nem com data', () => {
+      const plan = buildInstallmentPlan('2026-05-10', 500, 4);
+      const { rows } = buildInstallmentRows({
+        rest: { ...baseRest, paid_date: '2026-05-05' },
+        plan,
+        groupId: 'grp-paid-5',
+        companyId: 'co-1',
+        isCardInstallment: true,
+        billDateFor: () => '2026-06-01',
+      });
+      expect(rows.every((r) => r.is_paid === false)).toBe(true);
+      expect(rows.every((r) => r.paid_date === undefined)).toBe(true);
+    });
+  });
+
   it('a soma das parcelas bate com o total ao centavo', () => {
     const plan = buildInstallmentPlan('2026-01-15', 1000, 3);
     const { rows } = buildInstallmentRows({

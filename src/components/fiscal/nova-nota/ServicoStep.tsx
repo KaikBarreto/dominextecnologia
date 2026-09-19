@@ -75,6 +75,7 @@ export function ServicoStep({
   const { serviceTypes, isLoading: serviceTypesLoading, gapFillServiceTypeFiscal } = useServiceTypes();
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateName, setQuickCreateName] = useState('');
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
 
   /** Um serviço "pronto pra nota" tem ao menos o código de tributação nacional. */
   const hasFiscalData = (st: ServiceType) =>
@@ -242,23 +243,34 @@ export function ServicoStep({
        * ------------------------------------------------------------------- */}
       <div className="space-y-1.5">
         <Label>{p.label}</Label>
-        <SearchableSelect
-          groups={serviceGroups}
-          value={servico.serviceTypeId}
-          onValueChange={(id) => {
-            const st = serviceTypes.find((x) => x.id === id);
-            if (st) applyServiceType(st);
-          }}
-          placeholder={serviceTypesLoading ? p.loading : p.placeholder}
-          searchPlaceholder={p.searchPlaceholder}
-          emptyMessage={p.emptyMessage}
-          onCreateOption={(query) => {
-            setQuickCreateName(query);
-            setQuickCreateOpen(true);
-          }}
-          createOptionLabel={p.createLabel}
-          createAlwaysLabel={p.createAlways}
-        />
+        <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+          <SearchableSelect
+            groups={serviceGroups}
+            value={servico.serviceTypeId}
+            onValueChange={(id) => {
+              const st = serviceTypes.find((x) => x.id === id);
+              if (st) applyServiceType(st);
+            }}
+            onSearchChange={setServiceSearchQuery}
+            placeholder={serviceTypesLoading ? p.loading : p.placeholder}
+            searchPlaceholder={p.searchPlaceholder}
+            emptyMessage={p.emptyMessage}
+            className="flex-1 min-w-0 justify-between rounded-none rounded-l-md border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setQuickCreateName(serviceSearchQuery);
+              setQuickCreateOpen(true);
+            }}
+            className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+            aria-label={p.createAlways}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
         {activeServiceTypes.length === 0 && !serviceTypesLoading ? (
           /* Catálogo vazio: atalho direto, sem obrigar a abrir o seletor. */
           <div className="rounded-lg border bg-card p-3 space-y-2">

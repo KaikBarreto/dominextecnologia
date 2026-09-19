@@ -42,6 +42,43 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.48',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda parcelada já recebida respeita a data que você informou',
+        description: 'Ao lançar uma venda parcelada e marcar que já recebeu, a data de recebimento que você digita passa a valer de verdade na primeira parcela. Antes o sistema usava a data do lançamento no lugar dela, e como é a data do recebimento que define o mês no regime de caixa, o dinheiro podia aparecer no mês errado na DRE.',
+        category: 'correcao',
+      },
+      {
+        title: 'O lançamento parcelado agora explica o que vai acontecer',
+        description: 'Com o parcelamento escolhido, o formulário mostra o primeiro e o último vencimento. E se você marcar que já recebeu ou já pagou, ele diz exatamente o que fica quitado: a primeira parcela, com valor e data, e quantas continuam em aberto. Antes isso acontecia sem aviso e dava a impressão de que a venda inteira entrava como recebida.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Filtro de período no canto direito da tela',
+        description: 'O filtro de período saiu do canto esquerdo, onde passava despercebido, e foi para a direita, na mesma linha do título. Vale no Financeiro, nas Ordens de Serviço, na Satisfação do Cliente e no Relatório de OS.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criar na hora virou botão em todos os campos',
+        description: 'Centro de custo, conta, tipo de serviço e grupo de material agora têm o mesmo botão de mais ao lado do campo que cliente e fornecedor já tinham, em vez de uma opção escondida no meio da lista. O que você digitou na busca já vai preenchido no cadastro rápido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Campos de conta mostram o banco',
+        description: 'Os campos de escolher conta passam a mostrar o logo do banco e a cor da conta, como no restante do sistema. Você também pode procurar a conta pelo nome do banco, mesmo que tenha cadastrado com outro nome.',
+        category: 'melhoria',
+      },
+      {
+        title: 'DRE: a quebra por centro de custo vem do maior para o menor',
+        description: 'Ao abrir uma categoria da DRE, os centros de custo aparecem ordenados pelo valor, do maior para o menor, em vez de por ordem alfabética. Assim o centro que mais pesou fica na primeira linha.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.47',
     date: '19 de setembro de 2026',
     type: 'patch',

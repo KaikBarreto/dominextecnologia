@@ -140,11 +140,13 @@ export default function AdminFinancial() {
       {isMobile ? (
         <>
           <MobilePageHeader title="Financeiro" subtitle="Controle financeiro do SaaS" icon={Wallet} />
-          <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+          </div>
         </>
       ) : (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10"><Wallet className="h-5 w-5 text-primary" /></div>
               <div>
@@ -153,7 +155,9 @@ export default function AdminFinancial() {
               </div>
             </div>
           </div>
-          <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+          <div className="flex items-center gap-2 shrink-0">
+            <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+          </div>
         </div>
       )}
 

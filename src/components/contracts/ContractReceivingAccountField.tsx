@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
+import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
 
 /**
  * Select da CONTA DE RECEBIMENTO da etapa Financeiro do wizard de contrato.
@@ -37,11 +38,7 @@ export function ContractReceivingAccountField({
   // a fatura que a empresa paga). Sem esse filtro o saldo ficaria como se o
   // dinheiro do cliente tivesse caído dentro do cartão.
   const options = useMemo(
-    () => filterAccountsForReceivable(accounts).map((a: any) => ({
-      value: a.id,
-      label: a.name,
-      sublabel: a.bank_name || a.institution_name || undefined,
-    })),
+    () => buildAccountOptions(accounts as any),
     [accounts],
   );
 

@@ -12,7 +12,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  CreditCard, ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowLeft, Lock,
+  CreditCard, ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowLeft, Lock, Plus,
 } from 'lucide-react';
 import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { AccountFormDialog } from './AccountFormDialog';
@@ -110,6 +110,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   const [draftStatusFilter, setDraftStatusFilter] = useState<string[]>([]);
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountInitialName, setAccountInitialName] = useState('');
+  const [accountQuery, setAccountQuery] = useState('');
 
   const cashBankAccounts = accounts.filter(a => a.type !== 'cartao' && a.is_active);
 
@@ -618,18 +619,35 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
             <div className="space-y-1.5">
               <Label>{cc.payWith}</Label>
-              <SearchableSelect
-                options={payAccountOptions}
-                value={payAccountId}
-                onValueChange={setPayAccountId}
-                placeholder={cc.payWithPlaceholder}
-                searchPlaceholder={cc.payWithSearchPlaceholder}
-                onCreateOption={canManageFinanceSettings ? (query) => {
-                  setAccountInitialName(query);
-                  setAccountFormOpen(true);
-                } : undefined}
-                createAlwaysLabel={cc.payWithNewAccount}
-              />
+              <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+                <SearchableSelect
+                  options={payAccountOptions}
+                  value={payAccountId}
+                  onValueChange={setPayAccountId}
+                  onSearchChange={setAccountQuery}
+                  placeholder={cc.payWithPlaceholder}
+                  searchPlaceholder={cc.payWithSearchPlaceholder}
+                  className={cn(
+                    'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                    canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                  )}
+                />
+                {canManageFinanceSettings && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAccountInitialName(accountQuery);
+                      setAccountFormOpen(true);
+                    }}
+                    className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                    aria-label={cc.payWithNewAccount}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {cashBankAccounts.length === 0 && (
                 <p className="text-xs text-destructive mt-1">{cc.noAccountHint}</p>
               )}

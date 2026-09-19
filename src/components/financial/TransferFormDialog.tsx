@@ -7,11 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, Plus } from 'lucide-react';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { cn } from '@/lib/utils';
+import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
 
 // Sem campo de centro de custo aqui: DECISÃO DELIBERADA, não esquecimento.
 // A transferência fica fora do resultado (par com `transfer_pair_id`) — ver
@@ -40,6 +42,8 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountInitialName, setAccountInitialName] = useState('');
   const [accountTarget, setAccountTarget] = useState<'from' | 'to'>('from');
+  const [fromQuery, setFromQuery] = useState('');
+  const [toQuery, setToQuery] = useState('');
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
@@ -68,11 +72,11 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
 
   // Opções da origem (todas as contas ativas) e do destino (exclui a origem escolhida).
   const fromOptions = useMemo(
-    () => activeAccounts.map(a => ({ value: a.id, label: a.name })),
+    () => buildAccountOptions(activeAccounts as any, { includeCard: true }),
     [activeAccounts],
   );
   const toOptions = useMemo(
-    () => activeAccounts.filter(a => a.id !== fromId).map(a => ({ value: a.id, label: a.name })),
+    () => buildAccountOptions(activeAccounts.filter(a => a.id !== fromId) as any, { includeCard: true }),
     [activeAccounts, fromId],
   );
 
@@ -93,38 +97,70 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
         <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
           <div className="space-y-1.5">
             <Label>{t.originLabel}</Label>
-            <SearchableSelect
-              options={fromOptions}
-              value={fromId}
-              onValueChange={setFromId}
-              placeholder={t.originPlaceholder}
-              searchPlaceholder={t.accountSearchPlaceholder}
-              onCreateOption={canManageFinanceSettings ? (query) => {
-                setAccountTarget('from');
-                setAccountInitialName(query);
-                setAccountFormOpen(true);
-              } : undefined}
-              createOptionLabel={t.accountCreateLabel}
-              createAlwaysLabel={t.accountCreateAlwaysLabel}
-            />
+            <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+              <SearchableSelect
+                options={fromOptions}
+                value={fromId}
+                onValueChange={setFromId}
+                onSearchChange={setFromQuery}
+                placeholder={t.originPlaceholder}
+                searchPlaceholder={t.accountSearchPlaceholder}
+                className={cn(
+                  'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                  canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                )}
+              />
+              {canManageFinanceSettings && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setAccountTarget('from');
+                    setAccountInitialName(fromQuery);
+                    setAccountFormOpen(true);
+                  }}
+                  className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                  aria-label={t.accountCreateAlwaysLabel}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
           <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
           <div className="space-y-1.5">
             <Label>{t.destLabel}</Label>
-            <SearchableSelect
-              options={toOptions}
-              value={toId}
-              onValueChange={setToId}
-              placeholder={t.destPlaceholder}
-              searchPlaceholder={t.accountSearchPlaceholder}
-              onCreateOption={canManageFinanceSettings ? (query) => {
-                setAccountTarget('to');
-                setAccountInitialName(query);
-                setAccountFormOpen(true);
-              } : undefined}
-              createOptionLabel={t.accountCreateLabel}
-              createAlwaysLabel={t.accountCreateAlwaysLabel}
-            />
+            <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+              <SearchableSelect
+                options={toOptions}
+                value={toId}
+                onValueChange={setToId}
+                onSearchChange={setToQuery}
+                placeholder={t.destPlaceholder}
+                searchPlaceholder={t.accountSearchPlaceholder}
+                className={cn(
+                  'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                  canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                )}
+              />
+              {canManageFinanceSettings && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setAccountTarget('to');
+                    setAccountInitialName(toQuery);
+                    setAccountFormOpen(true);
+                  }}
+                  className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                  aria-label={t.accountCreateAlwaysLabel}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

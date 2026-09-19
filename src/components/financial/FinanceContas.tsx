@@ -64,6 +64,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
+import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -109,6 +110,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const [payDespNotes, setPayDespNotes] = useState('');
   const [payDespAccountFormOpen, setPayDespAccountFormOpen] = useState(false);
   const [payDespAccountInitialName, setPayDespAccountInitialName] = useState('');
+  const [payDespAccountQuery, setPayDespAccountQuery] = useState('');
   const isMobile = useIsMobile();
   // `timezone`: fuso da empresa. É ele que define o "hoje" de `paid_date`, que
   // por sua vez decide o MÊS da despesa no regime de Caixa da DRE.
@@ -132,7 +134,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
   // Opções do SearchableSelect — só contas não-cartão e ativas.
   const cashBankAccountOptions = useMemo(
-    () => cashBankAccounts.map(a => ({ value: a.id, label: a.name })),
+    () => buildAccountOptions(cashBankAccounts as any, { includeCard: true }),
     [cashBankAccounts],
   );
   // Faturas de cartão — usadas em subTab='pagar' pra agrupar despesas em
@@ -1148,18 +1150,35 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>{fin.accounts.payExpenseModal.paidWith}</Label>
-            <SearchableSelect
-              options={cashBankAccountOptions}
-              value={payDespAccountId}
-              onValueChange={setPayDespAccountId}
-              placeholder={fin.accounts.payExpenseModal.selectAccount}
-              searchPlaceholder={fin.accounts.payExpenseModal.searchAccount}
-              onCreateOption={canManageFinanceSettings ? (query) => {
-                setPayDespAccountInitialName(query);
-                setPayDespAccountFormOpen(true);
-              } : undefined}
-              createAlwaysLabel={fin.accounts.payExpenseModal.newAccount}
-            />
+            <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+              <SearchableSelect
+                options={cashBankAccountOptions}
+                value={payDespAccountId}
+                onValueChange={setPayDespAccountId}
+                onSearchChange={setPayDespAccountQuery}
+                placeholder={fin.accounts.payExpenseModal.selectAccount}
+                searchPlaceholder={fin.accounts.payExpenseModal.searchAccount}
+                className={cn(
+                  'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                  canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                )}
+              />
+              {canManageFinanceSettings && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setPayDespAccountInitialName(payDespAccountQuery);
+                    setPayDespAccountFormOpen(true);
+                  }}
+                  className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                  aria-label={fin.accounts.payExpenseModal.newAccount}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
             {cashBankAccounts.length === 0 && (
               <p className="text-xs text-destructive">{fin.accounts.payExpenseModal.noAccountWarning}</p>
             )}

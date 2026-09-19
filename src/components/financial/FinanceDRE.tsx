@@ -494,6 +494,14 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   const CategoryRow = ({ c, isRevenue }: { c: CategoryBreakdown; isRevenue: boolean }) => {
     const txns = categoryTxnsMap.get(c.key) ?? [];
     const breakdown = buildCostCenterBreakdown(txns, costCenterOrderIds);
+    // Aberta a categoria, o que interessa é ONDE o dinheiro se concentrou —
+    // então a quebra sai do MAIOR pro menor, não na ordem alfabética dos
+    // centros. Ordena pelo valor do lado que a linha representa (receita numa
+    // categoria de receita, despesa numa de despesa). Empate mantém a ordem
+    // original (sort estável), pra a lista não dançar entre renders.
+    const expandedRows = breakdown.rows
+      .slice()
+      .sort((a, b) => (isRevenue ? b.revenue - a.revenue : b.expense - a.expense));
     const canExpand = breakdown.rows.length > 1;
     const isOpen = expandedCategoryKeys.has(c.key);
     const Icon = c.icon;
@@ -539,7 +547,7 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
               {fin.costCenters.dreSectionTitle}
             </p>
-            {breakdown.rows.map((r) => (
+            {expandedRows.map((r) => (
               <div key={r.id ?? '__none__'} className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-1.5 min-w-0">
                   <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: costCenterColor(r.id) }} />
