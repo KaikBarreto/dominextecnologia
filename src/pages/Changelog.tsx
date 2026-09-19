@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.65',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nome da categoria aparecia cortado',
+        description: 'Com os cards lado a lado, quase todo nome virava algo como CSP – Loca… e três categorias diferentes ficavam escritas Manutenç… na mesma tela, sem dar para saber qual era qual. Agora o nome quebra em duas linhas e aparece inteiro. O menu de ações saiu de dentro do card e passa a aparecer no canto quando o mouse está em cima, o que devolveu o espaço que faltava.',
+        category: 'correcao',
+      },
+      {
+        title: 'Em notebook de tela menor a lista voltava a uma por linha',
+        description: 'Entre certas larguras de tela as duas listas ficavam lado a lado sem ter espaço para isso, e cada card ocupava a linha inteira. Agora elas só ficam lado a lado quando realmente cabem, e em nenhuma largura a tela volta a mostrar um card por linha.',
+        category: 'correcao',
+      },
+      {
+        title: 'Botão de criar categoria no mesmo tamanho dos outros',
+        description: 'O botão tinha ficado mais baixo e com letra menor que os demais botões da tela, e colado no título. Agora tem o tamanho padrão e um respiro do título.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.64',
     date: '20 de setembro de 2026',
     type: 'patch',

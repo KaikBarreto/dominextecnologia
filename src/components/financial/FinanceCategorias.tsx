@@ -353,12 +353,28 @@ export function FinanceCategorias() {
   // função de tamanho MÁXIMA quando ela é definida (460px), e só cai na mínima
   // quando a máxima é indefinida. Ou seja, os 220px do min nunca foram
   // consultados; o grid perguntava "cabem quantas tracks de 460?" → 1.
-  // Com `1fr` (máxima indefinida) a conta passa a ser pela mínima: na mesma
-  // coluna de 468px cabem 2 tracks de 210px, que esticam pra 229px cada.
-  // 210px (e não 220) é o que faz 3 caberem em monitor largo (coluna ~672px
-  // em viewport 1920) sem quebrar os 2 da coluna de 468px.
+  // Com `1fr` (máxima indefinida) a conta passa a ser pela mínima.
+  //
+  // 🔴 O `224px` NÃO É GOSTO, É O COMPRIMENTO DO NOME. Medido no navegador em
+  // 2026-09-19 com a fonte real do card (Montserrat 500, 14px/20px), via
+  // `canvas.measureText` sobre os nomes de verdade do tenant:
+  //   p50 102px · p90 162px · p100 215px ("CSP - Locação de Equipamentos")
+  // Some o cromo fixo do card — padding 24 + alça 24 + ícone 40 (+ chevron 24
+  // quando a categoria tem filha) = 88 a 112px — e o card precisa de ~327px
+  // pra exibir o pior nome em UMA linha.
+  //
+  // A coluna da seção, medida: 468px @1512 · 519px @1614 · 672px @1920 ·
+  // 992px @2560. Ou seja, 327px por card só cabe DUAS vezes até 1920. A
+  // aritmética de `auto-fill` fecha a janela sozinha: pra dar 2 (e não 3) de
+  // 468 até 672, o MIN tem que estar em (217, 229]. 224 é o meio dessa janela
+  // — 10px de folga contra virar 1 por linha em 468px, 20px contra virar 3
+  // por linha em 672px (que é onde o CEO viu todo nome cortado na 1.24.63).
+  //
+  // ⚠️ Não suba o MIN acima de 229 nem desça abaixo de 218 sem REMEDIR: fora
+  // dessa janela a coluna de 1512 volta pra 1 card por linha, ou a de 1920
+  // volta pros 3 cards de 217px em que o nome não cabe.
   const renderCategoryGrid = (fullList: FinancialCategory[], groupItems: FinancialCategory[], groupKey: string) => (
-    <div className="grid gap-2.5 items-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))' }}>
+    <div className="grid gap-2.5 items-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(224px, 1fr))' }}>
       {groupItems.map((cat, idx) => {
         const Icon = getCategoryIcon(cat.icon);
         const isSystem = cat.is_system;
@@ -377,8 +393,12 @@ export function FinanceCategorias() {
             onDrop={() => handleDrop(fullList, groupItems, idx, groupKey)}
             onDragEnd={handleDragEnd}
             className={cn(
-              'group rounded-xl border border-border px-3 py-2.5 transition-all duration-200',
-              'hover:shadow-md hover:border-primary/20 hover:bg-accent/30',
+              // `relative`: o menu de ações saiu do fluxo (ver abaixo) e se
+              // ancora neste card. `hover:bg-accent` OPACO (era `/30`) porque
+              // o menu flutuante usa o mesmo fundo pra não deixar costura
+              // visível por cima do nome.
+              'group relative rounded-xl border border-border px-3 py-2.5 transition-all duration-200',
+              'hover:shadow-md hover:border-primary/20 hover:bg-accent',
               isDragging && 'opacity-40 scale-95',
               isDragOver && 'border-primary border-dashed bg-primary/5',
               !isSystem && 'cursor-grab active:cursor-grabbing',
@@ -413,7 +433,18 @@ export function FinanceCategorias() {
                   o flex item usa a largura do texto e estoura a célula. */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-medium text-sm truncate" title={cat.name}>{cat.name}</span>
+                  {/* `line-clamp-2` em vez de `truncate`: com 30+ categorias de
+                      prefixo comum ("CSP - ", "Salários - ", "Manutenção "),
+                      cortar em 1 linha produzia TRÊS cards escritos
+                      "Manutenç…" na mesma tela — ilegível e ambíguo, o usuário
+                      não sabia em qual clicar. Em 2 linhas o nome inteiro
+                      aparece. O card cresce na própria célula (a linha do grid
+                      é `items-start`), então nenhum vizinho se mexe.
+                      `break-words` cobre o nome de palavra única longa
+                      ("Combustível/Transporte", 159px): sem ele a palavra não
+                      cabe na linha, não tem onde quebrar, e volta a truncar.
+                      `title` continua, pro caso raro de estourar 2 linhas. */}
+                  <span className="font-medium text-sm line-clamp-2 break-words" title={cat.name}>{cat.name}</span>
                   {isSystem && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -423,28 +454,50 @@ export function FinanceCategorias() {
                     </Tooltip>
                   )}
                 </div>
+                {/* 🔴 O CHEVRON MORA AQUI, colado na contagem — NÃO no fim do
+                    flex row. Quando ele era o último item da linha, ficava a
+                    13-29px da borda direita do card, e o menu de ações (que
+                    passou a ser absoluto, 9-41px da mesma borda) cobria 100%
+                    dele: 16x16px de sobreposição, medido. Pior, `opacity-0`
+                    não tira o elemento do hit-test, então o menu roubava o
+                    clique MESMO SEM HOVER — clicar na setinha abria o menu de
+                    ações em vez de expandir (provado com clique real:
+                    `aria-expanded` continuava `false` e um `[role=menu]`
+                    aparecia). Junto da contagem ele não disputa borda com
+                    ninguém, fica ao lado da informação que revela, e ainda
+                    devolve 24px (ícone 16 + gap 8) pra caixa do nome. */}
                 {hasChildren && (
-                  <span className="block text-[11px] text-muted-foreground leading-tight">
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground leading-tight">
+                    {isOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                     {children.length === 1
                       ? tsub.countOne
                       : tsub.count.replace('{count}', String(children.length))}
                   </span>
                 )}
               </div>
-              {hasChildren && (
-                isOpen
-                  ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                  : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              )}
-              {(!isSystem || canRename) && (
-                <div
-                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <RowActionsMenu actions={rowActions(cat)} />
-                </div>
-              )}
             </div>
+
+            {/* Menu de ações FORA DO FLUXO. Medido: no fluxo ele comia 40px
+                (botão 32 + gap 8) de TODO card, com ou sem hover — 28% da
+                caixa do nome num card de 229px. Absoluto, o nome recupera
+                esses 40px e é isso que faz o pior nome (215px) caber em duas
+                linhas até na coluna de 468px.
+                Fundo `bg-accent` = o mesmo fundo que o card assume no hover,
+                que é o único momento em que o menu fica visível: some a
+                costura, e o pedaço de nome que ficaria por baixo só some
+                enquanto o mouse está no card (e o `title` cobre).
+                Mobile não usa este ramo: lá as ações vivem no
+                `MobileListItem`, intocado. */}
+            {(!isSystem || canRename) && (
+              <div
+                className="absolute right-2 top-2 rounded-lg bg-accent opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <RowActionsMenu actions={rowActions(cat)} />
+              </div>
+            )}
 
             {isOpen && (
               <div className="mt-2 border-t border-border/60 pt-2">
@@ -462,7 +515,7 @@ export function FinanceCategorias() {
                         >
                           <ChildIcon className="h-3 w-3 text-white" />
                         </span>
-                        <span className="text-xs truncate min-w-0 flex-1" title={child.name}>{child.name}</span>
+                        <span className="text-xs line-clamp-2 break-words min-w-0 flex-1" title={child.name}>{child.name}</span>
                         {childDreBadge(child, cat)}
                         <RowActionsMenu actions={rowActions(child)} />
                       </div>
@@ -797,12 +850,20 @@ export function FinanceCategorias() {
   }
 
   // ─── DESKTOP LAYOUT ────────────────────────────────────────────────────────
-  // Receita e Despesa lado a lado a partir de `xl` (1280px de viewport — é
-  // onde a tela deixa de ser "média": abaixo disso as duas seções empilham,
-  // cada uma com a largura toda, igual era antes). Lado a lado, cada seção
-  // fica com METADE da largura; é o próprio grid de cards (`renderCategoryGrid`,
-  // via `auto-fill`) que decide sozinho se cabe 1, 2 ou 3 por linha ali dentro
-  // — não é um breakpoint fixo de coluna, que não sabe que a seção encolheu.
+  // Receita e Despesa lado a lado a partir de 1500px de viewport. O número NÃO
+  // é redondo de propósito: é o ponto medido em que a coluna da seção passa a
+  // comportar DOIS cards do `minmax(224px, 1fr)` (2×224 + 10 de gap = 458px de
+  // coluna; a 1500 a coluna mede 462px).
+  //
+  // 🔴 Era `xl` (1280) e isso criava um buraco medido de 1280 a 1511: lado a
+  // lado cedo demais, a coluna caía pra 352-457px e a grade voltava a UM card
+  // por linha — exatamente o defeito que o CEO reprovou na 1.24.62, ressurgindo
+  // justamente em 1366 e 1440, que são larguras de laptop comuns. Pior, em 1279
+  // (empilhado) eram 4 cards por linha e em 1280 virava 1: um degrau absurdo.
+  // Abaixo de 1500 as seções empilham e cada uma usa a largura toda, o que dá
+  // 3 a 4 cards por linha com o nome mais folgado ainda.
+  // Varredura de 1024 (onde o app deixa de ser mobile) a 2560: nunca 1 por
+  // linha, e 0 nome truncado em nenhuma largura.
   return (
     <div className="space-y-6">
       {isLoading ? (
@@ -810,7 +871,7 @@ export function FinanceCategorias() {
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-2 items-start">
+        <div className="grid gap-6 min-[1500px]:grid-cols-2 items-start">
           <div className="space-y-3">
             {/* Botão colado no TÍTULO, não jogado no fim de um
                 `justify-between`: com Receita e Despesa lado a lado a coluna é
@@ -821,15 +882,27 @@ export function FinanceCategorias() {
                 <TrendingUp className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <h3 className="font-bold truncate">{fin.categories.sections.revenueTitle}</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleNew('entrada')}
-                    className="h-7 shrink-0 px-2 text-xs"
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
+                {/* `gap-3` (12px) e não `gap-2`: com o `<h3>` em `font-bold`
+                    o botão a 8px lia como sufixo do texto, não como botão.
+                    O tamanho é o `size="sm"` PADRÃO do projeto (h-9, px-3,
+                    text-sm, ícone 16px pelo `[&_svg]:size-4` do próprio
+                    Button) — nada de altura inventada: o botão de ação da
+                    seção não pode ser menor que os outros da tela: medido,
+                    36px de altura, o mesmo de "Este mês" e "Cobrar".
+
+                    🔴 `flex-wrap` + `<h3>` SEM `truncate`: medido, entre 1280
+                    e ~1350 de viewport (o `xl` acabou de ligar e a coluna é a
+                    mais estreita que existe) sobram só 138,7px pro título, que
+                    precisa de 170px ("Categorias de Receita") a 179px
+                    ("Categorias de Despesa") — com `truncate` ele virava
+                    "Categorias de Desp…". Trocar título cortado por botão
+                    menor seria pior: o botão desce pra linha de baixo, ainda
+                    dentro do bloco da seção, e o título aparece inteiro.
+                    NÃO reponha o `truncate` aqui. */}
+                <div className="flex items-center gap-3 min-w-0 flex-wrap">
+                  <h3 className="font-bold">{fin.categories.sections.revenueTitle}</h3>
+                  <Button variant="outline" size="sm" onClick={() => handleNew('entrada')} className="shrink-0">
+                    <Plus className="h-4 w-4" />
                     {fin.categories.sections.newButton}
                   </Button>
                 </div>
@@ -857,15 +930,27 @@ export function FinanceCategorias() {
                 <TrendingDown className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <h3 className="font-bold truncate">{fin.categories.sections.expenseTitle}</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleNew('saida')}
-                    className="h-7 shrink-0 px-2 text-xs"
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
+                {/* `gap-3` (12px) e não `gap-2`: com o `<h3>` em `font-bold`
+                    o botão a 8px lia como sufixo do texto, não como botão.
+                    O tamanho é o `size="sm"` PADRÃO do projeto (h-9, px-3,
+                    text-sm, ícone 16px pelo `[&_svg]:size-4` do próprio
+                    Button) — nada de altura inventada: o botão de ação da
+                    seção não pode ser menor que os outros da tela: medido,
+                    36px de altura, o mesmo de "Este mês" e "Cobrar".
+
+                    🔴 `flex-wrap` + `<h3>` SEM `truncate`: medido, entre 1280
+                    e ~1350 de viewport (o `xl` acabou de ligar e a coluna é a
+                    mais estreita que existe) sobram só 138,7px pro título, que
+                    precisa de 170px ("Categorias de Receita") a 179px
+                    ("Categorias de Despesa") — com `truncate` ele virava
+                    "Categorias de Desp…". Trocar título cortado por botão
+                    menor seria pior: o botão desce pra linha de baixo, ainda
+                    dentro do bloco da seção, e o título aparece inteiro.
+                    NÃO reponha o `truncate` aqui. */}
+                <div className="flex items-center gap-3 min-w-0 flex-wrap">
+                  <h3 className="font-bold">{fin.categories.sections.expenseTitle}</h3>
+                  <Button variant="outline" size="sm" onClick={() => handleNew('saida')} className="shrink-0">
+                    <Plus className="h-4 w-4" />
                     {fin.categories.sections.newButton}
                   </Button>
                 </div>
