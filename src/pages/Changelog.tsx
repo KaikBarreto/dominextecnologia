@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.62',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Categorias do sistema ficavam desalinhadas das outras',
+        description: 'Categoria criada pelo sistema não pode ser reordenada, então não tinha a alça de arrastar, e por isso o ícone dela começava mais à esquerda que o das categorias comuns. Na grade, uma ficava torta ao lado da outra. Agora todas alinham no mesmo ponto.',
+        category: 'correcao',
+      },
+      {
+        title: 'Divisores de grupo com respiro',
+        description: 'Os títulos dos grupos da DRE, como Impostos e Deduções, estavam colados nas categorias acima e abaixo, e pareciam legenda da categoria anterior em vez de separador. Agora têm espaço em volta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Entrada e Saída de volta lado a lado',
+        description: 'As duas listas de categorias voltam a ficar lado a lado nas telas largas, com dois a três cards por linha em cada uma, então a página fica pela metade do tamanho. Em telas menores elas continuam uma embaixo da outra, e no celular continuam em linhas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.61',
     date: '19 de setembro de 2026',
     type: 'minor',

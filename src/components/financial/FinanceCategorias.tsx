@@ -340,8 +340,16 @@ export function FinanceCategorias() {
   // (que tira o conteúdo do fluxo e some com a afordância de "expandiu aqui").
   // A lista de filhas é limitada em altura pra um pai com muitas filhas não
   // esticar a linha inteira.
+  // `minmax` em vez de `sm:/lg:/xl:grid-cols-N`: com Receita e Despesa lado a
+  // lado (ver layout desktop abaixo), cada seção passou a ter METADE da
+  // largura da tela, e breakpoint de viewport não sabe disso — daria 4 cards
+  // por linha numa coluna que não tem espaço pra 4. `auto-fill` conta o
+  // espaço de verdade do próprio grid (cheio quando a seção está empilhada,
+  // pela metade quando está lado a lado) e decide sozinho quantos cards de
+  // ~220 a ~460px cabem por linha — 1 na faixa "tela média", 2 a 3 em tela
+  // larga, sem card esticando feio quando sobra pouco item na linha.
   const renderCategoryGrid = (fullList: FinancialCategory[], groupItems: FinancialCategory[], groupKey: string) => (
-    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
+    <div className="grid gap-2.5 items-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 460px))' }}>
       {groupItems.map((cat, idx) => {
         const Icon = getCategoryIcon(cat.icon);
         const isSystem = cat.is_system;
@@ -378,9 +386,14 @@ export function FinanceCategorias() {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(cat.id); }
               } : undefined}
             >
-              {!isSystem && (
-                <GripVertical className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
-              )}
+              {/* Espaço da alça reservado mesmo quando não existe (categoria de
+                  sistema não é arrastável): sem isso o ícone dela nasce mais à
+                  esquerda que o dos vizinhos e a grade fica desalinhada. */}
+              <div className="flex h-4 w-4 items-center justify-center shrink-0">
+                {!isSystem && (
+                  <GripVertical className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                )}
+              </div>
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0 shadow-sm"
                 style={{ backgroundColor: cat.color }}
@@ -625,7 +638,7 @@ export function FinanceCategorias() {
   // Divisória discreta reutilizada no desktop e no mobile: nome do grupo do
   // DRE + contagem, sem card, sem travessão.
   const renderGroupDivider = (label: string, count: number) => (
-    <div className="flex items-center gap-2 px-0.5 pb-1.5 pt-3 first:pt-0">
+    <div className="flex items-center gap-2 px-0.5 pb-3 pt-6 first:pt-0">
       <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
         {label} <span className="normal-case font-normal text-muted-foreground/70">({count})</span>
       </span>
@@ -765,9 +778,12 @@ export function FinanceCategorias() {
   }
 
   // ─── DESKTOP LAYOUT ────────────────────────────────────────────────────────
-  // Seções EMPILHADAS (receita em cima, despesa embaixo), cada uma ocupando a
-  // largura toda: é o que permite 3 a 4 cards por linha. Lado a lado, cada
-  // coluna teria metade da largura e o nome da categoria não caberia.
+  // Receita e Despesa lado a lado a partir de `xl` (1280px de viewport — é
+  // onde a tela deixa de ser "média": abaixo disso as duas seções empilham,
+  // cada uma com a largura toda, igual era antes). Lado a lado, cada seção
+  // fica com METADE da largura; é o próprio grid de cards (`renderCategoryGrid`,
+  // via `auto-fill`) que decide sozinho se cabe 1, 2 ou 3 por linha ali dentro
+  // — não é um breakpoint fixo de coluna, que não sabe que a seção encolheu.
   return (
     <div className="space-y-6">
       {isLoading ? (
@@ -775,7 +791,7 @@ export function FinanceCategorias() {
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
       ) : (
-        <>
+        <div className="grid gap-6 xl:grid-cols-2 items-start">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -838,7 +854,7 @@ export function FinanceCategorias() {
               </div>
             ) : renderCategoryGrid(despesas, despesaRoots, 'flat')}
           </div>
-        </>
+        </div>
       )}
 
       {categoryFormDialog}
