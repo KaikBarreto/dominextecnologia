@@ -8,6 +8,13 @@ interface PageHeaderProps {
   icon?: LucideIcon;
   actions?: React.ReactNode;
   className?: string;
+  /**
+   * Conteúdo renderizado NA MESMA LINHA do título, logo à direita dele (ex: as
+   * abas de funil do CRM). Opcional e aditivo: sem ele o header é idêntico ao
+   * de antes. Quando presente, a coluna do título vira `flex-1 min-w-0` e o
+   * título trunca, pra título longo não empurrar o conteúdo pra fora da faixa.
+   */
+  titleSuffix?: React.ReactNode;
 }
 
 /**
@@ -19,15 +26,18 @@ interface PageHeaderProps {
  *     <Button>Novo Cliente</Button>
  *   </PageHeader>
  */
-export function PageHeader({ title, subtitle, icon: Icon, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, icon: Icon, actions, className, titleSuffix }: PageHeaderProps) {
   return (
     <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6', className)}>
-      <div className="flex items-start gap-3 min-w-0">
+      <div className={cn('flex items-start gap-3 min-w-0', titleSuffix && 'flex-1')}>
         {Icon && (
           <Icon className="h-7 w-7 lg:h-8 lg:w-8 text-foreground/70 shrink-0 mt-0.5" />
         )}
-        <div className="min-w-0">
-          <h1 className={typography.pageTitle}>{title}</h1>
+        <div className={cn('min-w-0', titleSuffix && 'flex-1')}>
+          <div className={cn(titleSuffix && 'flex items-center gap-3 min-w-0')}>
+            <h1 className={cn(typography.pageTitle, titleSuffix && 'truncate min-w-0 max-w-[45%]')}>{title}</h1>
+            {titleSuffix}
+          </div>
           {subtitle && (
             <p className={cn(typography.pageSubtitle, 'mt-1 hidden lg:block')}>{subtitle}</p>
           )}

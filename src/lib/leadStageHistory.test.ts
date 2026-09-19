@@ -4,6 +4,7 @@ import {
   buildStageChangeDescription,
   parseStageChangeDescription,
   STAGE_CHANGE_INTERACTION_TYPE,
+  isPipelineChange,
 } from './leadStageHistory';
 
 describe('shouldLogStageChange — soltar na mesma coluna não pode virar ruído no histórico', () => {
@@ -62,6 +63,40 @@ describe('buildStageChangeDescription / parseStageChangeDescription — round-tr
 
   it('JSON válido mas sem to_stage_id (formato inesperado) vira null', () => {
     expect(parseStageChangeDescription(JSON.stringify({ foo: 'bar' }))).toBeNull();
+  });
+
+  // ── Mudança de FUNIL (multi-pipeline) ────────────────────────────────────
+  // Mover a oportunidade de funil também é uma troca de etapa (ela cai na
+  // primeira etapa do destino), então o rastro mora no MESMO registro, com os
+  // nomes dos dois funis. Registro antigo não tem esses campos e não pode
+  // ganhar `null` novo no parse, senão quebra quem compara o snapshot inteiro.
+  it('registro que atravessou funil preserva origem e destino do funil', () => {
+    const snapshot = {
+      from_stage_id: 'stage-1',
+      from_stage_name: 'Negociação',
+      to_stage_id: 'stage-9',
+      to_stage_name: 'Recebido',
+      from_pipeline_id: 'pipeline-1',
+      from_pipeline_name: 'Funil de Vendas',
+      to_pipeline_id: 'pipeline-2',
+      to_pipeline_name: 'Pós-venda',
+    };
+    const parsed = parseStageChangeDescription(buildStageChangeDescription(snapshot));
+    expect(parsed).toEqual(snapshot);
+    expect(isPipelineChange(parsed)).toBe(true);
+  });
+
+  it('troca de etapa dentro do MESMO funil não vira "mudança de funil"', () => {
+    const parsed = parseStageChangeDescription(
+      buildStageChangeDescription({
+        from_stage_id: 'stage-1',
+        from_stage_name: 'Leads',
+        to_stage_id: 'stage-2',
+        to_stage_name: 'Negociação',
+      }),
+    );
+    expect(isPipelineChange(parsed)).toBe(false);
+    expect(parsed).not.toHaveProperty('to_pipeline_id');
   });
 });
 

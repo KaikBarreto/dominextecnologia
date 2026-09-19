@@ -10,9 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectSectionLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -20,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   User, Phone, Mail, Calendar, DollarSign, TrendingUp,
   MessageSquare, Clock, Plus, Send, Edit, Trash2, X, Wrench, CalendarPlus,
-  UserX, UserPlus, CheckCircle2, Circle, Repeat, Loader2, AlertTriangle,
+  UserX, UserPlus, CheckCircle2, Circle, Repeat, Loader2, AlertTriangle, Workflow,
 } from 'lucide-react';
 import {
   useLeadInteractions,
@@ -28,7 +26,10 @@ import {
   getInteractionTypes,
   useLeads
 } from '@/hooks/useLeads';
-import { STAGE_CHANGE_INTERACTION_TYPE, parseStageChangeDescription } from '@/lib/leadStageHistory';
+import { STAGE_CHANGE_INTERACTION_TYPE, parseStageChangeDescription, isPipelineChange } from '@/lib/leadStageHistory';
+import { useCrmPipelineAccess } from '@/hooks/useCrmPipelineAccess';
+import { filterAccessiblePipelines } from '@/lib/crmPipelineAccess';
+import { firstStageOfPipeline } from '@/lib/crmPipelineMove';
 import { useCrmStages } from '@/hooks/useCrmStages';
 import { useCrmPipelines } from '@/hooks/useCrmPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
@@ -77,9 +78,10 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const dfLocale = DATE_FNS_LOCALES[locale];
   const interactionTypes = getInteractionTypes(locale);
   const { stages, getStageHex } = useCrmStages();
-  // Onda D — multi-pipeline: mesmo agrupamento por funil do LeadFormDialog.
+  // Onda D — multi-pipeline.
   const { pipelines } = useCrmPipelines();
   const hasMultiplePipelines = pipelines.length > 1;
+  const { access: pipelineAccessRows } = useCrmPipelineAccess();
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
   const { deleteLead, claimLead, updateLeadNotes } = useLeads();
 
@@ -209,8 +211,56 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const currentStageId = lead.stage_id || (stages.length > 0 ? stages[0].id : undefined);
   const currentStage = stages.find((s) => s.id === currentStageId) || null;
 
+  // ── Funil da oportunidade e para onde ela pode ir ──────────────────────
+  // Funil atual: o da etapa (fonte viva); `lead.pipeline_id` (denormalizado
+  // por trigger) é o fallback pra oportunidade sem etapa.
+  const currentPipelineId = currentStage?.pipeline_id ?? lead.pipeline_id ?? null;
+  // REGRA DE ACESSO: a lista sai de `useCrmPipelines`, que a RLS já recortou
+  // pra só os funis que este usuário enxerga (policy "Funis restritos a quem
+  // tem acesso"), e ainda passa pelo espelho client da MESMA regra. Nunca
+  // montamos a lista de outro jeito: funil que o usuário não pode ver não
+  // pode virar destino de um clique que a RLS recusaria em silêncio.
+  const movablePipelines = filterAccessiblePipelines(pipelines, {
+    accessRows: pipelineAccessRows,
+    userId: user?.id,
+    canManageCrm: hasPermission('fn:manage_crm'),
+  });
+  // Etapas mostradas no select de etapa: só as do funil atual. Trocar de funil
+  // é trabalho do select de funil logo acima — misturar as duas coisas num
+  // select só era o que existia antes e ninguém entendia que mudava de funil.
+  const stageOptions = hasMultiplePipelines
+    ? stages.filter((s) => s.pipeline_id === currentPipelineId)
+    : stages;
+
   const handleStageChange = (stageId: string) => {
     onStageChange(lead, stageId);
+  };
+
+  /**
+   * Mover a oportunidade de FUNIL. A etapa atual não existe no destino, então
+   * a REGRA é: entra na PRIMEIRA etapa do funil de destino (a lista já vem
+   * ordenada por `position`) — é o equivalente a "recomeçar" o fluxo naquele
+   * funil, e é o que Kommo/RD fazem. Reaproveita `onStageChange`, o caminho
+   * único de troca de etapa da tela: com isso o motivo de perda, a oferta de
+   * receita e o REGISTRO NO HISTÓRICO (lead_interactions, via updateLead)
+   * continuam valendo, agora com o funil de origem e destino no registro.
+   */
+  const handlePipelineChange = (pipelineId: string) => {
+    if (!pipelineId || pipelineId === currentPipelineId) return;
+    const target = movablePipelines.find((p) => p.id === pipelineId);
+    if (!target) return;
+    const firstStage = firstStageOfPipeline(stages, pipelineId);
+    if (!firstStage) {
+      alert(t.detail.pipelineMoveNoStages.replace('{pipeline}', target.name));
+      return;
+    }
+    // confirm() nativo de propósito, igual ao handleDelete: dois Dialogs Radix
+    // empilhados (este modal + um AlertDialog) já deram bug de foco.
+    const message = t.detail.pipelineMoveConfirm
+      .replace('{pipeline}', target.name)
+      .replace('{stage}', firstStage.name);
+    if (!confirm(message)) return;
+    onStageChange(lead, firstStage.id);
   };
 
   // Botão "Editar" do header: dispara o flush do autosave de Observações na
@@ -294,10 +344,18 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
     const snapshot = parseStageChangeDescription(raw);
     if (!snapshot) return raw || '';
     const toName = snapshot.to_stage_name || t.detail.stageChangeUnknownStage;
-    if (snapshot.from_stage_name) {
-      return t.detail.stageChangeFromTo.replace('{from}', snapshot.from_stage_name).replace('{to}', toName);
+    const stageLine = snapshot.from_stage_name
+      ? t.detail.stageChangeFromTo.replace('{from}', snapshot.from_stage_name).replace('{to}', toName)
+      : t.detail.stageChangeToOnly.replace('{to}', toName);
+    // Trocou de FUNIL: a linha do funil vem primeiro, porque é a informação
+    // maior (o negócio mudou de fluxo, não só de coluna).
+    if (isPipelineChange(snapshot)) {
+      const pipelineLine = t.detail.stageChangePipeline
+        .replace('{from}', snapshot.from_pipeline_name || t.detail.stageChangeUnknownPipeline)
+        .replace('{to}', snapshot.to_pipeline_name || t.detail.stageChangeUnknownPipeline);
+      return `${pipelineLine} ${stageLine}`;
     }
-    return t.detail.stageChangeToOnly.replace('{to}', toName);
+    return stageLine;
   };
 
   return (
@@ -348,7 +406,34 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
           </TabsList>
 
           <TabsContent value="detalhes" className="flex-1 overflow-auto mt-4 space-y-6">
-            {/* Estágio (pipeline do kanban — crm_stages, por empresa) */}
+            {/* Funil + Estágio. São DOIS selects: o de cima move a
+                oportunidade entre funis (pedido do CEO), o de baixo anda com
+                ela dentro do funil atual. O select de funil só aparece quando a
+                empresa tem mais de um — e só lista funil que este usuário pode
+                ver (RLS + espelho client, ver movablePipelines). */}
+            {hasMultiplePipelines && (
+              <div className="flex flex-wrap items-center gap-3">
+                <Label className="text-muted-foreground">{t.detail.pipelineLabel}</Label>
+                <Select value={currentPipelineId ?? undefined} onValueChange={handlePipelineChange}>
+                  <SelectTrigger className="w-auto min-w-[180px] max-w-full">
+                    <SelectValue placeholder={t.detail.pipelinePlaceholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {movablePipelines.map((pipeline) => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        <div className="flex items-center gap-2">
+                          <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          {pipeline.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="w-full text-xs text-muted-foreground">{t.detail.pipelineMoveHint}</p>
+              </div>
+            )}
+
+            {/* Estágio (coluna do kanban — crm_stages, do funil atual) */}
             <div className="flex flex-wrap items-center gap-3">
               <Label className="text-muted-foreground">{t.detail.stageLabel}</Label>
               <Select value={currentStageId} onValueChange={handleStageChange}>
@@ -358,50 +443,23 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   <SelectValue placeholder={t.form.stagePlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  {hasMultiplePipelines
-                    ? pipelines.map((pipeline) => {
-                        const stagesInPipeline = stages.filter((s) => s.pipeline_id === pipeline.id);
-                        if (stagesInPipeline.length === 0) return null;
-                        return (
-                          <SelectGroup key={pipeline.id}>
-                            <SelectSectionLabel>{pipeline.name}</SelectSectionLabel>
-                            {stagesInPipeline.map((stage) => (
-                              <SelectItem key={stage.id} value={stage.id}>
-                                <div className="flex items-center gap-2">
-                                  {stage.icon ? (
-                                    <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
-                                      <IconPreview name={stage.icon} className="h-3 w-3" />
-                                    </span>
-                                  ) : (
-                                    <span
-                                      className="h-2.5 w-2.5 rounded-full shrink-0"
-                                      style={{ backgroundColor: getStageHex(stage.color) }}
-                                    />
-                                  )}
-                                  {stage.name}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        );
-                      })
-                    : stages.map((stage) => (
-                        <SelectItem key={stage.id} value={stage.id}>
-                          <div className="flex items-center gap-2">
-                            {stage.icon ? (
-                              <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
-                                <IconPreview name={stage.icon} className="h-3 w-3" />
-                              </span>
-                            ) : (
-                              <span
-                                className="h-2.5 w-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: getStageHex(stage.color) }}
-                              />
-                            )}
-                            {stage.name}
-                          </div>
-                        </SelectItem>
-                      ))}
+                  {stageOptions.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      <div className="flex items-center gap-2">
+                        {stage.icon ? (
+                          <span className="shrink-0" style={{ color: getStageHex(stage.color) }}>
+                            <IconPreview name={stage.icon} className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: getStageHex(stage.color) }}
+                          />
+                        )}
+                        {stage.name}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {currentStage && (
@@ -412,9 +470,6 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   {currentStage.icon && <IconPreview name={currentStage.icon} className="h-3 w-3" />}
                   {currentStage.name}
                 </Badge>
-              )}
-              {hasMultiplePipelines && (
-                <p className="w-full text-xs text-muted-foreground">{t.detail.stagePipelineHint}</p>
               )}
             </div>
 

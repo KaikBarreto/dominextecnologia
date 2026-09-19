@@ -26,7 +26,12 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface StageManagerDialogProps {
-  children: React.ReactNode;
+  /** Gatilho embutido (padrão histórico). Omitir quando o diálogo é aberto
+   *  de fora, por `open`/`onOpenChange` (menu da engrenagem das abas de funil). */
+  children?: React.ReactNode;
+  /** Modo controlado. Ausente = o diálogo controla o próprio estado. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   /**
    * Funil dono das etapas gerenciadas aqui (Onda D — multi-pipeline). Toda
    * etapa listada/criada/reordenada neste diálogo pertence a ESTE funil —
@@ -40,7 +45,13 @@ interface StageManagerDialogProps {
   pipelineName?: string;
 }
 
-export function StageManagerDialog({ children, pipelineId, pipelineName }: StageManagerDialogProps) {
+export function StageManagerDialog({
+  children,
+  open: openProp,
+  onOpenChange,
+  pipelineId,
+  pipelineName,
+}: StageManagerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const { stages: allStages, createStage, updateStage, deleteStage, reorderStages, getStageColorClass } =
@@ -54,7 +65,13 @@ export function StageManagerDialog({ children, pipelineId, pipelineName }: Stage
   const dialogTitle = pipelineName
     ? t.stages.titleWithPipeline.replace('{pipeline}', pipelineName)
     : t.stages.title;
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newStage, setNewStage] = useState<{
@@ -265,7 +282,10 @@ export function StageManagerDialog({ children, pipelineId, pipelineName }: Stage
           {stage.is_won && <Trophy className="h-3.5 w-3.5 text-success" />}
           {stage.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive" />}
         </div>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Menu SEMPRE visível no toque: `opacity-0 + group-hover` escondia
+            editar/excluir por completo no celular, onde hover não existe. No
+            desktop segue aparecendo só no hover, como antes. */}
+        <div className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <RowActionsMenu
             actions={[
               {
@@ -289,7 +309,7 @@ export function StageManagerDialog({ children, pipelineId, pipelineName }: Stage
 
   return (
     <>
-      <span onClick={() => setOpen(true)}>{children}</span>
+      {children && <span onClick={() => setOpen(true)}>{children}</span>}
       <ResponsiveModal open={open} onOpenChange={setOpen} title={dialogTitle}>
         <div className="space-y-4">
           <div className="space-y-3 p-3 rounded-lg border-2 border-dashed border-muted">

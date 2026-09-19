@@ -21,6 +21,8 @@ import {
   ListChecks,
   CheckCircle2,
   Circle,
+  Star,
+  Trash2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -48,9 +50,15 @@ import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
 import { PipelineManagerDialog } from '@/components/crm/PipelineManagerDialog';
+import { PipelineAccessDialog } from '@/components/crm/PipelineAccessDialog';
+import { PipelineTabsBar } from '@/components/crm/PipelineTabsBar';
 import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
+import { useTaskSubmit } from '@/hooks/useTaskSubmit';
+import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
+import type { CrmPipeline } from '@/hooks/useCrmPipelines';
 import { LeadWonRevenueDialog } from '@/components/financial/LeadWonRevenueDialog';
 import { useLeadWonRevenuePrompt } from '@/hooks/useLeadWonRevenuePrompt';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -114,15 +122,20 @@ export default function CRM() {
   const { leads, isLoading, updateLead } = useLeads();
   const { users } = useUsers();
   const { stages: allStages, isLoading: stagesLoading, seedDefaultStages, reorderStages } = useCrmStages();
-  const { pipelines, isLoading: pipelinesLoading, defaultPipeline } = useCrmPipelines();
+  const { pipelines, isLoading: pipelinesLoading, defaultPipeline, setDefaultPipeline } = useCrmPipelines();
 
   // Onda C — "cada um vê as suas": filtro no client é UX, a RLS (policy
   // "Leads visiveis apenas ao responsavel") já é quem garante a segurança de
   // verdade. Mesma chave que a RLS espelha (public.user_has_permission),
   // pra tela e banco nunca discordarem sobre quem enxerga o quê.
-  const { user, hasPermission, roles, permissions, hasPermissionRecord } = useAuth();
+  const { user, hasPermission, isAdminOrGestor, roles, permissions, hasPermissionRecord } = useAuth();
   const { teamsWithMembers } = useTeams();
   const canManageCrm = hasPermission('fn:manage_crm');
+  // Gate de "Quem pode ver" no menu da engrenagem — MESMO público que a RLS de
+  // crm_pipeline_access deixa escrever (public.can_manage_system), igual ao
+  // PipelineManagerDialog. Não é fn:manage_crm: quem só gerencia o CRM não
+  // necessariamente administra o sistema, e a RLS recusaria em silêncio.
+  const canManagePipelineAccess = isAdminOrGestor() || hasPermission('fn:manage_settings');
   const visibleLeads = useMemo(() => {
     if (canManageCrm) return leads;
     const uid = user?.id;
@@ -235,7 +248,8 @@ export default function CRM() {
   const [showEmptyStages, setShowEmptyStages] = useState(false);
   const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string[]>([]);
 
-  const { serviceOrders } = useServiceOrders();
+  const { serviceOrders, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const { submitTask } = useTaskSubmit();
   const { data: profiles = [] } = useProfiles();
   const profileMap = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
 
@@ -244,7 +258,7 @@ export default function CRM() {
   // de afazeres transversal (o vendedor quer ver tudo que tem pra fazer hoje,
   // não só do funil que estava aberto por último) — e o próprio plano da Onda
   // E (E0) descreve a aba como "todas as tarefas com lead_id não nulo", sem
-  // recorte por funil. `pipelineSelector` some quando pageTab==='tarefas'
+  // recorte por funil. As abas de funil somem quando pageTab==='tarefas'
   // pra não sugerir um filtro que não existe.
   const visibleLeadIds = useMemo(() => new Set(visibleLeads.map((l) => l.id)), [visibleLeads]);
   const leadTitleMap = useMemo(() => new Map(visibleLeads.map((l) => [l.id, l.title])), [visibleLeads]);
@@ -542,7 +556,11 @@ export default function CRM() {
     stageId: string,
     opts?: { fromModal?: boolean },
   ) => {
-    const targetStage = stages.find(s => s.id === stageId);
+    // Busca em `allStages`, não em `stages`: mover a oportunidade PRA OUTRO
+    // FUNIL (select de funil do card) aterrissa numa etapa que não está no
+    // funil aberto — procurar só no funil atual devolveria undefined e o
+    // fluxo de perda/ganho seria pulado em silêncio.
+    const targetStage = allStages.find(s => s.id === stageId);
     if (targetStage?.is_lost) {
       if (opts?.fromModal) setDetailOpen(false);
       setPendingLossDrop({ leadId: lead.id, stageId, leadTitle: lead.title });
@@ -550,6 +568,14 @@ export default function CRM() {
       return;
     }
     await updateLead.mutateAsync({ id: lead.id, stage_id: stageId });
+
+    // Mudou de FUNIL: a tela segue o card. Sem isso, a oportunidade some do
+    // quadro no instante em que é movida e o usuário fica sem saber pra onde
+    // ela foi. Vale pros dois caminhos que atravessam funil (o select de
+    // funil do card e escolher uma etapa de outro funil no select de etapa).
+    if (targetStage?.pipeline_id && targetStage.pipeline_id !== selectedPipelineId) {
+      selectPipeline(targetStage.pipeline_id);
+    }
 
     // Ganhou → oferece lançar a receita. É OFERTA, NUNCA BLOQUEIO: o estágio
     // acima já foi gravado, e `maybeOpen` é no-op silencioso quando o usuário
@@ -841,7 +867,14 @@ export default function CRM() {
             </div>
           </CardContent>
         </Card>
-      ) : filteredLeads.length === 0 ? (
+      ) : visibleStages.length === 0 ? (
+        /* Só cai aqui quando a BUSCA escondeu todas as etapas (ver
+           `hidesEmptyStages`): não há coluna nenhuma pra desenhar. Funil COM
+           etapas e SEM oportunidade NÃO entra aqui de propósito — era esse o
+           bug do CEO ("criei estágios no segundo funil e as colunas não
+           aparecem"): o quadro inteiro era trocado por este card sempre que
+           `filteredLeads` estava vazio, e funil novo nasce vazio. Sem coluna,
+           o usuário também ficava sem alvo pra arrastar card pra dentro. */
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground" />
@@ -855,6 +888,13 @@ export default function CRM() {
         </Card>
       ) : (
         <div className="space-y-2">
+          {/* Quadro vazio continua explicando o que fazer, agora SEM esconder
+              as colunas: a orientação vira uma linha acima do funil. */}
+          {filteredLeads.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              {pipelineLeads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
+            </p>
+          )}
           {hiddenStagesCount > 0 && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>
@@ -1060,44 +1100,90 @@ export default function CRM() {
   );
 
   // ------------------------------------------------------------------
-  // SELETOR DE FUNIL — Onda D (multi-pipeline). Só aparece quando a empresa
-  // tem MAIS DE UM funil; empresa com um funil só (a maioria) nunca vê isso.
-  // Mobile reusa o padrão de pills roláveis com fade nas bordas (MobilePillTabs,
-  // já usado em FinanceContas/SettingsSidebarLayout); desktop usa o mesmo
-  // padrão visual que esses lugares usam fora do mobile: botões pill num flex
-  // que quebra linha (a empresa raramente tem mais funis do que cabe numa
-  // linha, e diferente da Agenda/Financeiro no mobile não precisa de scroll
-  // horizontal porque o desktop tem largura de sobra).
+  // ABAS DE FUNIL — Onda D (multi-pipeline), redesenhadas a pedido do CEO:
+  // o TÍTULO da tela passa a ser o nome do funil atual e as abas ficam na
+  // mesma linha, à direita dele, com engrenagem por aba e "+" pra criar funil.
+  // Toda a mecânica (abas quadradas no desktop, pills roláveis no mobile,
+  // engrenagem sempre visível na aba ativa no toque) vive no PipelineTabsBar.
+  //
+  // Some na aba Tarefas de propósito: a lista de tarefas é transversal a
+  // TODOS os funis (decisão registrada na Onda E2), então abas ali sugeririam
+  // um recorte que não existe.
   // ------------------------------------------------------------------
-  const pipelineSelector = pipelines.length > 1 && (
-    isMobile ? (
-      <MobilePillTabs
-        tabs={pipelines.map((p) => ({ value: p.id, label: p.name }))}
-        activeTab={selectedPipelineId ?? ''}
-        onTabChange={selectPipeline}
+  const [stageDialogPipelineId, setStageDialogPipelineId] = useState<string | null>(null);
+  const [pipelineManagerOpen, setPipelineManagerOpen] = useState(false);
+  const [accessPipelineId, setAccessPipelineId] = useState<string | null>(null);
+
+  const pipelineMenuActions = (pipeline: CrmPipeline): RowAction[] => [
+    {
+      label: t.manageStages,
+      icon: Settings2,
+      onClick: () => setStageDialogPipelineId(pipeline.id),
+    },
+    {
+      label: t.pipelineAccess.menuLabel,
+      icon: Users,
+      hidden: !canManagePipelineAccess,
+      onClick: () => setAccessPipelineId(pipeline.id),
+    },
+    {
+      label: t.pipelines.setDefaultAction,
+      icon: Star,
+      hidden: pipeline.is_default,
+      disabled: setDefaultPipeline.isPending,
+      onClick: () => setDefaultPipeline.mutate(pipeline.id),
+    },
+    {
+      label: t.managePipelines,
+      icon: Workflow,
+      onClick: () => setPipelineManagerOpen(true),
+    },
+  ];
+
+  const pipelineTabs = pipelines.length > 0 && (
+    <PipelineTabsBar
+      pipelines={pipelines}
+      selectedId={selectedPipelineId}
+      onSelect={selectPipeline}
+      onCreate={() => setPipelineManagerOpen(true)}
+      menuActions={pipelineMenuActions}
+      mobile={isMobile}
+      configureLabel={t.pipelineTabs.configure}
+      createLabel={t.pipelineTabs.create}
+      listLabel={t.pipelineSelectorLabel}
+    />
+  );
+
+  // Título da tela: o NOME do funil quando a empresa tem mais de um (é o que
+  // o CEO pediu, e é o que diz "onde eu estou"). Com um funil só, o nome
+  // apareceria duplicado no título E na única aba — aí o título continua
+  // sendo "CRM", como sempre foi.
+  const headerTitle =
+    pageTab === 'funil' && pipelines.length > 1 && selectedPipeline ? selectedPipeline.name : t.title;
+
+  // Diálogos abertos pelo menu da engrenagem (e pelo "+"). Ficam aqui, fora
+  // do PipelineTabsBar, porque também são acionados de outros pontos da tela.
+  const pipelineDialogs = (
+    <>
+      <StageManagerDialog
+        open={!!stageDialogPipelineId}
+        onOpenChange={(o) => !o && setStageDialogPipelineId(null)}
+        pipelineId={stageDialogPipelineId ?? undefined}
+        pipelineName={
+          pipelines.length > 1 ? pipelines.find((p) => p.id === stageDialogPipelineId)?.name : undefined
+        }
       />
-    ) : (
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          {t.pipelineSelectorLabel}
-        </span>
-        {pipelines.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => selectPipeline(p.id)}
-            className={cn(
-              'inline-flex items-center h-9 px-3.5 rounded-full text-sm font-medium transition-all',
-              selectedPipelineId === p.id
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted/50 text-muted-foreground hover:bg-muted',
-            )}
-          >
-            {p.name}
-          </button>
-        ))}
-      </div>
-    )
+      <PipelineManagerDialog
+        open={pipelineManagerOpen}
+        onOpenChange={setPipelineManagerOpen}
+        onCreated={selectPipeline}
+      />
+      <PipelineAccessDialog
+        pipeline={pipelines.find((p) => p.id === accessPipelineId) ?? null}
+        open={!!accessPipelineId}
+        onOpenChange={(o) => !o && setAccessPipelineId(null)}
+      />
+    </>
   );
 
   // ------------------------------------------------------------------
@@ -1140,6 +1226,58 @@ export default function CRM() {
   // oportunidades, com busca, filtro por responsável e ordenação por data
   // (vencidas primeiro). Mesmo bloco pra mobile e desktop.
   // ------------------------------------------------------------------
+  // ── Ações da tarefa direto na linha (concluir / editar / excluir) ──────
+  // Reusa EXATAMENTE o que a aba Tarefas do card da oportunidade já faz
+  // (LeadDetailModal): toggle de status no mesmo `updateServiceOrder`, edição
+  // no mesmo TaskFormDialog (é onde se reagenda a data) e exclusão só da
+  // ocorrência. Nenhum fluxo novo.
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [savingTask, setSavingTask] = useState(false);
+
+  const handleToggleTaskDone = async (task: any) => {
+    const isDone = task.status === 'concluida';
+    await updateServiceOrder.mutateAsync({ id: task.id, status: isDone ? 'pendente' : 'concluida' } as any);
+  };
+
+  const handleEditTask = (task: any) => {
+    setEditingTask(task);
+    setTaskFormOpen(true);
+  };
+
+  // confirm() nativo, igual ao card da oportunidade: um AlertDialog aqui
+  // empilharia Radix por cima do modal de detalhe quando a linha for aberta.
+  const handleDeleteTask = async (task: any) => {
+    const message = task.recurrence_group_id
+      ? `${t.detail.tasksDeleteConfirm}${t.detail.tasksDeleteSeriesNote}`
+      : t.detail.tasksDeleteConfirm;
+    if (confirm(message)) {
+      await deleteServiceOrder.mutateAsync(task.id);
+    }
+  };
+
+  const taskDialog = (
+    <TaskFormDialog
+      open={taskFormOpen}
+      onOpenChange={(open) => {
+        setTaskFormOpen(open);
+        if (!open) setEditingTask(null);
+      }}
+      defaultLeadId={editingTask?.lead_id ?? undefined}
+      task={editingTask}
+      isLoading={savingTask}
+      onSubmit={async (data: TaskFormData) => {
+        setSavingTask(true);
+        try {
+          await submitTask(data, editingTask);
+        } finally {
+          setSavingTask(false);
+          setEditingTask(null);
+        }
+      }}
+    />
+  );
+
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const tasksBlock = (
     <div className="space-y-4">
@@ -1199,22 +1337,38 @@ export default function CRM() {
             const isOverdue = !isDone && !!task.scheduled_date && task.scheduled_date < todayStr;
             const assigneeIds: string[] = task._assignee_user_ids || [];
             return (
-              <button
+              /* A linha NÃO é mais um <button> só: ela tem ações próprias, e
+                 botão dentro de botão é HTML inválido e já deu clique-fantasma
+                 neste repo. Agora são irmãos: o círculo de concluir, a área
+                 clicável que abre o card e o menu de ações. */
+              <div
                 key={task.id}
-                type="button"
-                onClick={() => {
-                  setDetailLeadId(task.lead_id);
-                  setDetailInitialTab('tarefas');
-                  setDetailOpen(true);
-                }}
-                className="w-full text-left flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors"
+                className="w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors"
               >
-                {isDone ? (
-                  <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
-                ) : (
-                  <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => handleToggleTaskDone(task)}
+                  title={isDone ? t.detail.tasksMarkPending : t.detail.tasksMarkDone}
+                  aria-label={isDone ? t.detail.tasksMarkPending : t.detail.tasksMarkDone}
+                  data-task-toggle={task.id}
+                  className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {isDone ? (
+                    <CheckCircle2 className="h-5 w-5 text-success" />
+                  ) : (
+                    <Circle className="h-5 w-5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailLeadId(task.lead_id);
+                    setDetailInitialTab('tarefas');
+                    setDetailOpen(true);
+                  }}
+                  data-task-open={task.id}
+                  className="flex-1 min-w-0 text-left"
+                >
                   <p className={cn('text-sm font-medium truncate', isDone && 'line-through text-muted-foreground')}>
                     {task.task_title}
                   </p>
@@ -1244,8 +1398,8 @@ export default function CRM() {
                       </Badge>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
+                </button>
+                <div className="flex items-center gap-1 shrink-0">
                   {assigneeIds.length > 0 && (
                     <span className="hidden sm:inline-flex items-center -space-x-1.5">
                       {assigneeIds.slice(0, 3).map((uid) => {
@@ -1270,8 +1424,29 @@ export default function CRM() {
                       : t.tasks.noDate}
                     {isOverdue ? ` · ${t.tasks.overdueBadge}` : ''}
                   </Badge>
+                  <RowActionsMenu
+                    actions={[
+                      {
+                        label: isDone ? t.detail.tasksMarkPending : t.detail.tasksMarkDone,
+                        icon: isDone ? Circle : CheckCircle2,
+                        onClick: () => handleToggleTaskDone(task),
+                      },
+                      {
+                        label: t.detail.edit,
+                        icon: Pencil,
+                        variant: 'edit',
+                        onClick: () => handleEditTask(task),
+                      },
+                      {
+                        label: t.stages.deleteLabel,
+                        icon: Trash2,
+                        variant: 'delete',
+                        onClick: () => handleDeleteTask(task),
+                      },
+                    ]}
+                  />
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -1286,7 +1461,7 @@ export default function CRM() {
     return (
       <div className="space-y-4 pb-24 min-w-0">
         <MobilePageHeader
-          title={t.title}
+          title={headerTitle}
           subtitle={t.subtitleMobile}
           icon={TrendingUp}
         />
@@ -1297,7 +1472,7 @@ export default function CRM() {
           tasksBlock
         ) : (
           <>
-            {pipelineSelector}
+            {pipelineTabs}
 
             {summaryRow}
 
@@ -1380,6 +1555,8 @@ export default function CRM() {
             Fica fora do modal de detalhe de propósito: a oferta também
             nasce do arrastar no kanban e do menu de ações do mobile. */}
         <LeadWonRevenueDialog {...leadWonRevenue.dialogProps} />
+        {pipelineDialogs}
+        {taskDialog}
       </div>
     );
   }
@@ -1390,9 +1567,10 @@ export default function CRM() {
   return (
     <div className="space-y-6 min-w-0">
       <PageHeader
-        title={t.title}
+        title={headerTitle}
         subtitle={t.subtitle}
         icon={TrendingUp}
+        titleSuffix={pageTab === 'funil' ? pipelineTabs || undefined : undefined}
         actions={
           <>
             <StageManagerDialog
@@ -1435,8 +1613,6 @@ export default function CRM() {
         tasksBlock
       ) : (
       <>
-      {pipelineSelector}
-
       {/* Stats Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="border-0 bg-primary text-white">
@@ -1619,6 +1795,8 @@ export default function CRM() {
           Fica fora do modal de detalhe de propósito: a oferta também
           nasce do arrastar no kanban e do menu de ações do mobile. */}
       <LeadWonRevenueDialog {...leadWonRevenue.dialogProps} />
+      {pipelineDialogs}
+      {taskDialog}
     </div>
   );
 }

@@ -1,14 +1,18 @@
-// Prova de DOM real de que o funil ESCONDE as etapas sem resultado enquanto há
-// busca digitada. Bug real do sócio (2026-09-19): buscar "marcos braga" achava
-// 1 oportunidade, mas o funil continuava renderizando as 12 etapas vazias e o
-// único card ficava na 8ª coluna, fora da tela, atrás de um scroll horizontal.
+// Bug real do CEO (2026-09-19): "ao criar estágios em um segundo pipeline as
+// colunas não estão aparecendo, deveria".
 //
-// Também prende os dois contratos que impedem a correção de virar regressão:
-// 1) sem busca, TODA etapa aparece (coluna vazia é alvo de arraste);
-// 2) "Mostrar todas" devolve as etapas escondidas sem limpar a busca.
+// CAUSA RAIZ (provada aqui): o kanban trocava o QUADRO INTEIRO pelo card
+// "Nenhuma oportunidade" sempre que `filteredLeads.length === 0`. Funil novo
+// nasce sem nenhuma oportunidade — então, por mais etapas que o usuário
+// criasse, ele nunca via coluna nenhuma, e ainda ficava sem alvo pra arrastar
+// um card pra dentro do funil novo. O estágio ESTAVA no banco, com o
+// pipeline_id certo; quem escondia era a tela.
 //
-// Driver mínimo com createRoot + act, mesmo padrão de CRM.test.tsx (o repo não
-// usa @testing-library/react).
+// Este arquivo prende os dois lados: funil vazio mostra as colunas, e trocar
+// de funil recorta as etapas/oportunidades/KPIs do funil selecionado.
+//
+// Driver mínimo com createRoot + act, mesmo padrão de CRM.stages.test.tsx
+// (o repo não usa @testing-library/react).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
@@ -26,24 +30,31 @@ vi.mock('@/hooks/use-mobile', async (importOriginal) => {
   return { ...actual, useIsMobile: () => false };
 });
 
-// 3 etapas, 1 oportunidade só — na do MEIO. Se o filtro de etapa vazia não
-// existisse, as 3 colunas apareceriam e o card ficaria no meio do scroll.
+const PIPELINES = [
+  { id: 'pipeline-1', name: 'Funil de Vendas', is_default: true, position: 0 },
+  { id: 'pipeline-2', name: 'Pós-venda', is_default: false, position: 1 },
+];
+
+// Funil 1 tem oportunidade; funil 2 é o recém-criado: tem etapas e NENHUMA
+// oportunidade — exatamente o caso que sumia da tela.
 const STAGES = [
   { id: 'stage-1', name: 'Leads', color: 'blue', position: 0, pipeline_id: 'pipeline-1' },
-  { id: 'stage-2', name: 'Agendar Cliente', color: 'green', position: 1, pipeline_id: 'pipeline-1' },
-  { id: 'stage-3', name: 'Fechado', color: 'red', position: 2, pipeline_id: 'pipeline-1' },
+  { id: 'stage-2', name: 'Fechado', color: 'green', position: 1, pipeline_id: 'pipeline-1' },
+  { id: 'stage-3', name: 'Recebido', color: 'blue', position: 2, pipeline_id: 'pipeline-2' },
+  { id: 'stage-4', name: 'Em atendimento', color: 'green', position: 3, pipeline_id: 'pipeline-2' },
+  { id: 'stage-5', name: 'Resolvido', color: 'red', position: 4, pipeline_id: 'pipeline-2' },
 ];
 
 const LEADS = [
   {
     id: 'lead-1',
     title: 'Instalação de split',
-    stage_id: 'stage-2',
+    stage_id: 'stage-1',
     pipeline_id: 'pipeline-1',
     status: 'aberto',
     value: 1400,
     source: 'Site',
-    customers: { id: 'cust-1', name: 'Marcos Antônio Moraes Braga', phone: '(21) 96830-1901' },
+    customers: { id: 'cust-1', name: 'Marcos Braga', phone: '(21) 96830-1901' },
     assignees: [],
   },
 ];
@@ -64,9 +75,9 @@ vi.mock('@/hooks/useCrmStages', () => ({
 }));
 vi.mock('@/hooks/useCrmPipelines', () => ({
   useCrmPipelines: () => ({
-    pipelines: [{ id: 'pipeline-1', name: 'Funil de Vendas', is_default: true }],
+    pipelines: PIPELINES,
     isLoading: false,
-    defaultPipeline: { id: 'pipeline-1', name: 'Funil de Vendas', is_default: true },
+    defaultPipeline: PIPELINES[0],
     setDefaultPipeline: { mutate: vi.fn(), isPending: false },
   }),
 }));
@@ -105,11 +116,11 @@ vi.mock('@/components/crm/LeadDetailModal', () => ({ LeadDetailModal: () => null
 vi.mock('@/components/crm/LeadCard', () => ({ LeadCard: () => null }));
 vi.mock('@/components/crm/StageManagerDialog', () => ({ StageManagerDialog: () => null }));
 vi.mock('@/components/crm/PipelineManagerDialog', () => ({ PipelineManagerDialog: () => null }));
+vi.mock('@/components/crm/PipelineAccessDialog', () => ({ PipelineAccessDialog: () => null }));
 vi.mock('@/components/crm/WebhookManagerDialog', () => ({ WebhookManagerDialog: () => null }));
 vi.mock('@/components/crm/LossReasonDialog', () => ({ LossReasonDialog: () => null }));
 vi.mock('@/hooks/useTaskSubmit', () => ({ useTaskSubmit: () => ({ submitTask: vi.fn() }) }));
 vi.mock('@/components/schedule/TaskFormDialog', () => ({ TaskFormDialog: () => null }));
-vi.mock('@/components/crm/PipelineAccessDialog', () => ({ PipelineAccessDialog: () => null }));
 
 import CRM from './CRM';
 
@@ -133,25 +144,16 @@ function visibleStageNames(): string[] {
   ).map((s) => s.name);
 }
 
-function typeSearch(text: string) {
-  const input = qAll('input').find(
-    (el) => (el as HTMLInputElement).type !== 'number' && /buscar/i.test(el.getAttribute('placeholder') || ''),
-  ) as HTMLInputElement | undefined;
-  expect(input).toBeTruthy();
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+function clickPipelineTab(pipelineId: string) {
+  const tab = document.querySelector(`[data-pipeline-tab="${pipelineId}"]`) as HTMLElement | null;
+  expect(tab).toBeTruthy();
   act(() => {
-    setter.call(input!, text);
-    input!.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-}
-
-function click(el: HTMLElement) {
-  act(() => {
-    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    tab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   });
 }
 
 beforeEach(() => {
+  localStorage.clear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -161,39 +163,34 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   document.body.innerHTML = '';
+  localStorage.clear();
 });
 
-describe('CRM — funil esconde etapa sem resultado durante a busca', () => {
-  it('sem busca, todas as etapas aparecem (coluna vazia é alvo de arraste)', () => {
+describe('CRM — etapas do segundo funil aparecem', () => {
+  it('abre no funil padrão mostrando só as etapas dele', () => {
     mount();
-    expect(visibleStageNames()).toEqual(['Leads', 'Agendar Cliente', 'Fechado']);
+    expect(visibleStageNames()).toEqual(['Leads', 'Fechado']);
   });
 
-  it('buscando o cliente, só a etapa que tem o resultado fica na tela', () => {
+  it('funil sem NENHUMA oportunidade ainda mostra as colunas dele (bug do CEO)', () => {
     mount();
-    typeSearch('marcos braga');
-    expect(visibleStageNames()).toEqual(['Agendar Cliente']);
+    clickPipelineTab('pipeline-2');
+    // As 3 etapas do funil 2 precisam virar coluna, mesmo com zero cards: sem
+    // coluna não existe alvo pra arrastar oportunidade pra dentro do funil.
+    expect(visibleStageNames()).toEqual(['Recebido', 'Em atendimento', 'Resolvido']);
   });
 
-  it('avisa quantas etapas escondeu e "Mostrar todas" traz de volta sem limpar a busca', () => {
+  it('o título da tela é o nome do funil selecionado', () => {
     mount();
-    typeSearch('marcos braga');
-
-    const aviso = qAll('span').find((el) => /2 etapas sem resultado/i.test(el.textContent || ''));
-    expect(aviso).toBeTruthy();
-
-    const botao = qAll('button').find((b) => /mostrar todas/i.test(b.textContent || ''));
-    expect(botao).toBeTruthy();
-    click(botao!);
-
-    expect(visibleStageNames()).toEqual(['Leads', 'Agendar Cliente', 'Fechado']);
+    expect(document.querySelector('h1')?.textContent?.trim()).toBe('Funil de Vendas');
+    clickPipelineTab('pipeline-2');
+    expect(document.querySelector('h1')?.textContent?.trim()).toBe('Pós-venda');
   });
 
-  it('busca que não casa ninguém não deixa o funil sem nenhuma etapa por engano', () => {
+  it('voltar pro primeiro funil recorta as etapas de novo', () => {
     mount();
-    typeSearch('zzzzz nao existe');
-    // Sem resultado nenhum, a tela cai no estado vazio do funil: o que não pode
-    // é sobrar um funil de colunas fantasmas nem quebrar a renderização.
-    expect(visibleStageNames()).toEqual([]);
+    clickPipelineTab('pipeline-2');
+    clickPipelineTab('pipeline-1');
+    expect(visibleStageNames()).toEqual(['Leads', 'Fechado']);
   });
 });

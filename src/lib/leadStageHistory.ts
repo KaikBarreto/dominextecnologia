@@ -20,6 +20,18 @@ export interface StageChangeSnapshot {
   from_stage_name: string | null;
   to_stage_id: string;
   to_stage_name: string | null;
+  /**
+   * Preenchidos SÓ quando a troca de etapa atravessou FUNIL (multi-pipeline).
+   * Mudar de funil é uma decisão comercial (o negócio saiu de Vendas e virou
+   * Pós-venda, por exemplo) e não pode ficar sem rastro — mas registrar o
+   * funil em TODA troca de etapa encheria o histórico de ruído, então os
+   * campos ficam ausentes quando o funil não mudou. Registro antigo (anterior
+   * a esta versão) também não tem os campos, e o parse devolve null neles.
+   */
+  from_pipeline_id?: string | null;
+  from_pipeline_name?: string | null;
+  to_pipeline_id?: string | null;
+  to_pipeline_name?: string | null;
 }
 
 /**
@@ -49,13 +61,38 @@ export function parseStageChangeDescription(raw: string | null | undefined): Sta
   try {
     const parsed = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null || typeof parsed.to_stage_id !== 'string') return null;
-    return {
-      from_stage_id: typeof parsed.from_stage_id === 'string' ? parsed.from_stage_id : null,
-      from_stage_name: typeof parsed.from_stage_name === 'string' ? parsed.from_stage_name : null,
+    const str = (v: unknown) => (typeof v === 'string' ? v : null);
+    const base: StageChangeSnapshot = {
+      from_stage_id: str(parsed.from_stage_id),
+      from_stage_name: str(parsed.from_stage_name),
       to_stage_id: parsed.to_stage_id,
-      to_stage_name: typeof parsed.to_stage_name === 'string' ? parsed.to_stage_name : null,
+      to_stage_name: str(parsed.to_stage_name),
+    };
+    // Os campos de funil só entram no objeto quando o registro realmente tem
+    // funil (troca que atravessou funil). Registro antigo continua voltando
+    // EXATAMENTE com as 4 chaves de sempre, sem quatro `null` novos — o que
+    // manteria o round-trip com quem gravou antes desta versão.
+    const hasPipeline =
+      typeof parsed.to_pipeline_id === 'string' || typeof parsed.from_pipeline_id === 'string';
+    if (!hasPipeline) return base;
+    return {
+      ...base,
+      from_pipeline_id: str(parsed.from_pipeline_id),
+      from_pipeline_name: str(parsed.from_pipeline_name),
+      to_pipeline_id: str(parsed.to_pipeline_id),
+      to_pipeline_name: str(parsed.to_pipeline_name),
     };
   } catch {
     return null;
   }
+}
+
+/** A troca atravessou funil? Só então o histórico mostra a linha de funil. */
+export function isPipelineChange(snapshot: StageChangeSnapshot | null): boolean {
+  if (!snapshot) return false;
+  return (
+    !!snapshot.to_pipeline_id &&
+    !!snapshot.from_pipeline_id &&
+    snapshot.to_pipeline_id !== snapshot.from_pipeline_id
+  );
 }

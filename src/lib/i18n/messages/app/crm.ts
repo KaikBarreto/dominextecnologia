@@ -63,6 +63,11 @@ export const crm = {
     pipelineSelectorLabel: 'Funil',
 
     // ── Alternância Funil ↔ Tarefas (Onda E — terceira superfície) ──
+    pipelineTabs: {
+      configure: 'Configurar funil',
+      create: 'Novo funil',
+    },
+
     mainTabFunnel: 'Funil',
     mainTabTasks: 'Tarefas',
 
@@ -171,6 +176,14 @@ export const crm = {
       stageChangeFromTo: 'De "{from}" para "{to}"',
       stageChangeToOnly: 'Movido para "{to}"',
       stageChangeUnknownStage: 'Estágio removido',
+      stageChangePipeline: 'Funil: de "{from}" para "{to}".',
+      stageChangeUnknownPipeline: 'Funil removido',
+      // ── Select de funil do card (mover a oportunidade de funil) ──
+      pipelineLabel: 'Funil:',
+      pipelinePlaceholder: 'Selecione o funil',
+      pipelineMoveHint: 'Mudar o funil move esta oportunidade para a primeira etapa do funil escolhido.',
+      pipelineMoveConfirm: 'Mover esta oportunidade para o funil "{pipeline}"? Ela entra na etapa "{stage}".',
+      pipelineMoveNoStages: 'O funil "{pipeline}" ainda não tem etapas. Crie as etapas dele antes de mover oportunidades para lá.',
       stageChangeBy: 'por {name}',
     },
 
@@ -262,6 +275,12 @@ export const crm = {
       namePlaceholder: 'Nome do funil',
       dragHint: 'Arraste para reordenar os funis',
       defaultBadge: 'Padrão',
+      countsLine: '{stages} etapas · {leads} oportunidades',
+      noStagesBadge: 'Sem etapas',
+      createAction: 'Criar',
+      createHint: 'O funil novo nasce vazio: depois de criar, use a engrenagem da aba dele para cadastrar as etapas.',
+      defaultHint: 'O funil padrão é o que abre quando você ainda não escolheu outro.',
+      deleteDescNamed: 'Remover o funil "{name}"? Esta ação não pode ser desfeita. Funil com etapas ou oportunidades não pode ser removido, mova ou exclua o conteúdo antes.',
       setDefaultAction: 'Tornar padrão',
       editLabel: 'Editar',
       deleteLabel: 'Excluir',
@@ -1209,6 +1228,11 @@ export const crm = {
 
     pipelineSelectorLabel: 'Pipeline',
 
+    pipelineTabs: {
+      configure: 'Configure pipeline',
+      create: 'New pipeline',
+    },
+
     mainTabFunnel: 'Pipeline',
     mainTabTasks: 'Tasks',
 
@@ -1309,6 +1333,13 @@ export const crm = {
       stageChangeFromTo: 'From "{from}" to "{to}"',
       stageChangeToOnly: 'Moved to "{to}"',
       stageChangeUnknownStage: 'Stage removed',
+      stageChangePipeline: 'Pipeline: from "{from}" to "{to}".',
+      stageChangeUnknownPipeline: 'Pipeline removed',
+      pipelineLabel: 'Pipeline:',
+      pipelinePlaceholder: 'Select the pipeline',
+      pipelineMoveHint: 'Changing the pipeline moves this opportunity to the first stage of the chosen pipeline.',
+      pipelineMoveConfirm: 'Move this opportunity to the "{pipeline}" pipeline? It will land on the "{stage}" stage.',
+      pipelineMoveNoStages: 'The "{pipeline}" pipeline has no stages yet. Create its stages before moving opportunities there.',
       stageChangeBy: 'by {name}',
     },
 
@@ -1396,6 +1427,12 @@ export const crm = {
       namePlaceholder: 'Pipeline name',
       dragHint: 'Drag to reorder pipelines',
       defaultBadge: 'Default',
+      countsLine: '{stages} stages · {leads} opportunities',
+      noStagesBadge: 'No stages',
+      createAction: 'Create',
+      createHint: 'A new pipeline starts empty: after creating it, use the gear on its tab to set up the stages.',
+      defaultHint: 'The default pipeline is the one that opens when you have not picked another.',
+      deleteDescNamed: 'Remove the "{name}" pipeline? This action cannot be undone. A pipeline with stages or opportunities cannot be removed, move or delete its content first.',
       setDefaultAction: 'Make default',
       editLabel: 'Edit',
       deleteLabel: 'Delete',
@@ -2269,6 +2306,11 @@ export const crm = {
 
     pipelineSelectorLabel: 'Embudo',
 
+    pipelineTabs: {
+      configure: 'Configurar embudo',
+      create: 'Nuevo embudo',
+    },
+
     mainTabFunnel: 'Embudo',
     mainTabTasks: 'Tareas',
 
@@ -2369,6 +2411,13 @@ export const crm = {
       stageChangeFromTo: 'De "{from}" a "{to}"',
       stageChangeToOnly: 'Movido a "{to}"',
       stageChangeUnknownStage: 'Etapa eliminada',
+      stageChangePipeline: 'Embudo: de "{from}" a "{to}".',
+      stageChangeUnknownPipeline: 'Embudo eliminado',
+      pipelineLabel: 'Embudo:',
+      pipelinePlaceholder: 'Selecciona el embudo',
+      pipelineMoveHint: 'Cambiar el embudo mueve esta oportunidad a la primera etapa del embudo elegido.',
+      pipelineMoveConfirm: '¿Mover esta oportunidad al embudo "{pipeline}"? Entrará en la etapa "{stage}".',
+      pipelineMoveNoStages: 'El embudo "{pipeline}" todavía no tiene etapas. Crea sus etapas antes de mover oportunidades allí.',
       stageChangeBy: 'por {name}',
     },
 
@@ -2456,6 +2505,12 @@ export const crm = {
       namePlaceholder: 'Nombre del embudo',
       dragHint: 'Arrastra para reordenar los embudos',
       defaultBadge: 'Predeterminado',
+      countsLine: '{stages} etapas · {leads} oportunidades',
+      noStagesBadge: 'Sin etapas',
+      createAction: 'Crear',
+      createHint: 'El embudo nuevo nace vacío: después de crearlo, usa el engranaje de su pestaña para dar de alta las etapas.',
+      defaultHint: 'El embudo predeterminado es el que se abre cuando todavía no elegiste otro.',
+      deleteDescNamed: '¿Eliminar el embudo "{name}"? Esta acción no se puede deshacer. Un embudo con etapas u oportunidades no se puede eliminar, mueve o borra su contenido antes.',
       setDefaultAction: 'Hacer predeterminado',
       editLabel: 'Editar',
       deleteLabel: 'Eliminar',
@@ -3331,6 +3386,11 @@ export const crm = {
 
     pipelineSelectorLabel: 'Pipeline',
 
+    pipelineTabs: {
+      configure: 'Configurer le pipeline',
+      create: 'Nouveau pipeline',
+    },
+
     mainTabFunnel: 'Pipeline',
     mainTabTasks: 'Tâches',
 
@@ -3431,6 +3491,13 @@ export const crm = {
       stageChangeFromTo: 'De « {from} » à « {to} »',
       stageChangeToOnly: 'Déplacé vers « {to} »',
       stageChangeUnknownStage: 'Étape supprimée',
+      stageChangePipeline: 'Pipeline : de "{from}" vers "{to}".',
+      stageChangeUnknownPipeline: 'Pipeline supprimé',
+      pipelineLabel: 'Pipeline :',
+      pipelinePlaceholder: 'Sélectionnez le pipeline',
+      pipelineMoveHint: `Changer de pipeline déplace cette opportunité vers la première étape du pipeline choisi.`,
+      pipelineMoveConfirm: `Déplacer cette opportunité vers le pipeline "{pipeline}" ? Elle arrivera à l'étape "{stage}".`,
+      pipelineMoveNoStages: `Le pipeline "{pipeline}" n'a pas encore d'étapes. Créez ses étapes avant d'y déplacer des opportunités.`,
       stageChangeBy: 'par {name}',
     },
 
@@ -3518,6 +3585,12 @@ export const crm = {
       namePlaceholder: 'Nom du pipeline',
       dragHint: 'Glissez pour réorganiser les pipelines',
       defaultBadge: 'Par défaut',
+      countsLine: '{stages} étapes · {leads} opportunités',
+      noStagesBadge: 'Sans étapes',
+      createAction: 'Créer',
+      createHint: `Le nouveau pipeline démarre vide : après l'avoir créé, utilisez l'engrenage de son onglet pour créer les étapes.`,
+      defaultHint: `Le pipeline par défaut est celui qui s'ouvre tant que vous n'en avez pas choisi un autre.`,
+      deleteDescNamed: `Supprimer le pipeline "{name}" ? Cette action est irréversible. Un pipeline avec des étapes ou des opportunités ne peut pas être supprimé, déplacez ou supprimez son contenu avant.`,
       setDefaultAction: 'Définir par défaut',
       editLabel: 'Modifier',
       deleteLabel: 'Supprimer',

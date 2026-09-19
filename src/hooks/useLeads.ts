@@ -273,11 +273,30 @@ export function useLeads() {
       if (isStageUpdate && shouldLogStageChange(previousStageId, nextStageId)) {
         try {
           const idsToFetch = previousStageId ? [previousStageId, nextStageId] : [nextStageId];
+          // `pipeline_id` junto do nome: é daqui que sai o rastro de MUDANÇA DE
+          // FUNIL. Toda troca de funil no app acontece movendo a oportunidade
+          // pra uma etapa de outro funil (o select de funil do card escolhe a
+          // primeira etapa do destino), então comparar o funil das duas etapas
+          // cobre TODOS os caminhos sem exigir campo novo no chamador.
           const { data: stagesData } = await supabase
             .from('crm_stages')
-            .select('id, name')
+            .select('id, name, pipeline_id')
             .in('id', idsToFetch);
+          const stageById = new Map((stagesData || []).map((s) => [s.id, s]));
           const nameById = new Map((stagesData || []).map((s) => [s.id, s.name]));
+
+          const fromPipelineId = previousStageId ? stageById.get(previousStageId)?.pipeline_id ?? null : null;
+          const toPipelineId = stageById.get(nextStageId)?.pipeline_id ?? null;
+          const crossedPipeline = !!fromPipelineId && !!toPipelineId && fromPipelineId !== toPipelineId;
+          let pipelineNames = new Map<string, string>();
+          if (crossedPipeline) {
+            const { data: pipelinesData } = await supabase
+              .from('crm_pipelines')
+              .select('id, name')
+              .in('id', [fromPipelineId as string, toPipelineId as string]);
+            pipelineNames = new Map((pipelinesData || []).map((p) => [p.id, p.name]));
+          }
+
           const { data: userData } = await supabase.auth.getUser();
           await supabase.from('lead_interactions').insert({
             lead_id: id,
@@ -287,6 +306,14 @@ export function useLeads() {
               from_stage_name: previousStageId ? nameById.get(previousStageId) ?? null : null,
               to_stage_id: nextStageId,
               to_stage_name: nameById.get(nextStageId) ?? null,
+              ...(crossedPipeline
+                ? {
+                    from_pipeline_id: fromPipelineId,
+                    from_pipeline_name: pipelineNames.get(fromPipelineId as string) ?? null,
+                    to_pipeline_id: toPipelineId,
+                    to_pipeline_name: pipelineNames.get(toPipelineId as string) ?? null,
+                  }
+                : {}),
             }),
             created_by: userData.user?.id,
           });

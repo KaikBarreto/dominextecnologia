@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.54',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Funil novo não aparecia vazio de propósito, aparecia sem colunas',
+        description: 'Ao criar um segundo funil e cadastrar as etapas dele, o quadro não mostrava coluna nenhuma. O sistema trocava o quadro inteiro pela mensagem de que não havia oportunidades, e como todo funil novo começa sem nenhuma, você ficava sem colunas e sem lugar para arrastar o primeiro card. Agora as colunas aparecem vazias, prontas para receber.',
+        category: 'correcao',
+      },
+      {
+        title: 'Abas de funil no topo do CRM',
+        description: 'O título do CRM passa a ser o nome do funil aberto, com os demais funis em abas ao lado e um botão de mais para criar. Cada aba tem um atalho de configuração, que reúne gerenciar etapas, quem pode ver o funil e torná-lo padrão. No celular as abas viram pílulas roláveis.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mover oportunidade de funil',
+        description: 'O card agora pode ser movido para outro funil, não só para outra etapa. Só aparecem os funis que você tem permissão de ver, a oportunidade entra na primeira etapa do funil escolhido e a mudança fica registrada no histórico, dizendo de qual funil para qual.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ações da tarefa direto na lista',
+        description: 'Na aba Tarefas do CRM, cada linha ganhou concluir, editar e excluir sem precisar abrir a oportunidade. A linha também mostra o cliente e a data de vencimento, com a data em vermelho quando está atrasada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Gerenciar funis mais claro, e as ações voltaram a funcionar no celular',
+        description: 'No gerenciamento de funis e de etapas, os botões de editar e excluir só apareciam ao passar o mouse, então no celular não havia como alcançá-los. Agora ficam sempre visíveis no toque. A lista também mostra quantas etapas e quantas oportunidades cada funil tem, avisa quando um funil está sem etapas, e criar um funil já abre ele.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.24.53',
     date: '19 de setembro de 2026',
     type: 'patch',

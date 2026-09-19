@@ -46,6 +46,7 @@ vi.mock('@/hooks/useCrmPipelines', () => ({
     pipelines: [{ id: 'pipeline-1', name: 'Funil de Vendas', is_default: true }],
     isLoading: false,
     defaultPipeline: { id: 'pipeline-1', name: 'Funil de Vendas', is_default: true },
+    setDefaultPipeline: { mutate: vi.fn(), isPending: false },
   }),
 }));
 
@@ -88,7 +89,7 @@ vi.mock('@/hooks/useTeams', () => ({ useTeams: () => ({ teamsWithMembers: [] }) 
 // no filtro de valor, que não exercita permissão nenhuma. `hasPermission: true`
 // mantém a tela mostrando todas as oportunidades, como era antes do recorte.
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'user-teste' }, hasPermission: () => true, roles: ['admin'], permissions: ['*'], hasPermissionRecord: true }),
+  useAuth: () => ({ user: { id: 'user-teste' }, hasPermission: () => true, isAdminOrGestor: () => true, roles: ['admin'], permissions: ['*'], hasPermissionRecord: true }),
 }));
 vi.mock('@/components/crm/LeadFormDialog', () => ({ LeadFormDialog: () => null }));
 vi.mock('@/components/crm/LeadDetailModal', () => ({ LeadDetailModal: () => null }));
@@ -97,6 +98,9 @@ vi.mock('@/components/crm/StageManagerDialog', () => ({ StageManagerDialog: () =
 vi.mock('@/components/crm/PipelineManagerDialog', () => ({ PipelineManagerDialog: () => null }));
 vi.mock('@/components/crm/WebhookManagerDialog', () => ({ WebhookManagerDialog: () => null }));
 vi.mock('@/components/crm/LossReasonDialog', () => ({ LossReasonDialog: () => null }));
+vi.mock('@/hooks/useTaskSubmit', () => ({ useTaskSubmit: () => ({ submitTask: vi.fn() }) }));
+vi.mock('@/components/schedule/TaskFormDialog', () => ({ TaskFormDialog: () => null }));
+vi.mock('@/components/crm/PipelineAccessDialog', () => ({ PipelineAccessDialog: () => null }));
 
 import CRM from './CRM';
 

@@ -51,6 +51,12 @@ vi.mock('@/hooks/useCrmPipelines', () => ({
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'user-1' }, isAdminOrGestor: () => true, hasPermission: () => true }),
 }));
+// ACL por funil (D3): o modal passou a ler `crm_pipeline_access` pra montar o
+// select de "mover de funil". Sem QueryClient no teste, o hook real derruba a
+// montagem — e o caso sob teste é o autosave/histórico, não a ACL.
+vi.mock('@/hooks/useCrmPipelineAccess', () => ({
+  useCrmPipelineAccess: () => ({ access: [], getPipelineAccessUserIds: () => [], setPipelineAccess: { mutate: vi.fn() } }),
+}));
 vi.mock('@/hooks/useServiceOrders', () => ({
   useServiceOrders: () => ({
     serviceOrders: [],

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.53";
+export const APP_VERSION = "1.24.54";
 
-export const VERSION_NOTES = "Cancelar assinatura de Pix Automático agora encerra a autorização de verdade no banco, e assinatura cancelada pode ser arquivada para sumir da lista."
+export const VERSION_NOTES = "Funil novo agora mostra as colunas mesmo sem oportunidade, e o CRM ganhou abas de funil no topo, com mover oportunidade entre funis."

@@ -101,9 +101,16 @@ export function useCrmStages() {
 
   const createStage = useMutation({
     mutationFn: async (stage: CrmStageInsert) => {
-      // Get max position
-      const maxPosition = stages.length > 0 ? Math.max(...stages.map(s => s.position)) + 1 : 0;
-      
+      // Última posição DENTRO DO FUNIL de destino — nunca o máximo global da
+      // empresa. Com multi-pipeline, o máximo global fazia a etapa nova de um
+      // funil nascer com a posição contando as etapas de OUTRO funil (o funil
+      // A com 12 etapas empurrava a 1ª etapa do funil B pra posição 12). A
+      // ordem dentro do funil ainda saía certa por sorte, mas os números
+      // divergiam de tudo que o reorder grava depois (0..n por funil).
+      const stagesInPipeline = stages.filter((s) => s.pipeline_id === stage.pipeline_id);
+      const maxPosition =
+        stagesInPipeline.length > 0 ? Math.max(...stagesInPipeline.map((s) => s.position)) + 1 : 0;
+
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
