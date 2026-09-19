@@ -11,7 +11,7 @@ import { formatMoney } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import {
   Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
-  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Brain, Network, Tablet,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Archive, Brain, Network, Tablet,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -151,7 +151,7 @@ export default function Employees() {
   const [paymentEmployee, setPaymentEmployee] = useState<Employee | null>(null);
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [employeeToArchive, setEmployeeToArchive] = useState<Employee | null>(null);
   const [kioskDialogOpen, setKioskDialogOpen] = useState(false);
 
   // `timezone` é o fuso da EMPRESA (company_settings.timezone), não o do
@@ -163,7 +163,11 @@ export default function Employees() {
   const t = MESSAGES[locale].app.employees;
 
   const isMobile = useIsMobile();
-  const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { employees, isLoading, createEmployee, updateEmployee, archiveEmployee } = useEmployees();
+  const activeEmployees = useMemo(
+    () => employees.filter((employee) => employee.is_active !== false),
+    [employees],
+  );
 
   // ── Deep-link do Perfil Comportamental ──────────────────────────────────────
   // Resolve o funcionário do `:param` da URL amigável. Prioriza o public_short_code
@@ -338,7 +342,7 @@ export default function Employees() {
   }, [activeEmployeeId, movements, employees]);
 
   const filtered = useMemo(() => {
-    let result = employees.filter(e =>
+    const result = activeEmployees.filter(e =>
       fuzzyIncludes(e.name, search) ||
       fuzzyIncludes(e.position, search)
     );
@@ -348,7 +352,7 @@ export default function Employees() {
       case 'oldest': result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break;
     }
     return result;
-  }, [employees, search, sort]);
+  }, [activeEmployees, search, sort]);
 
   // Gera (idempotente) o slug do ponto público e copia o link no ato.
   // `wasEnabled` = estado anterior; só notifica/copia quando o ponto ACABOU de
@@ -797,7 +801,16 @@ export default function Employees() {
     updateEmployee.mutate({ id: empId, photo_url: url });
   }, [updateEmployee]);
 
-  const handleDeleteWithUser = useCallback(async (employee: Employee) => {
+  const handleArchiveWithUser = useCallback(async (employee: Employee) => {
+    try {
+      // Arquiva primeiro: a RPC ainda enxerga user_id e consegue limpar equipes
+      // e OS de forma transacional. A edge delete_user desvincula esse user_id.
+      await archiveEmployee.mutateAsync(employee.id);
+    } catch {
+      // O hook ja exibe o erro. Sem arquivamento confirmado, nao apaga o usuario.
+      return;
+    }
+
     if (employee.user_id) {
       try {
         const response = await supabase.functions.invoke('manage-user', {
@@ -810,8 +823,7 @@ export default function Employees() {
         toast({ variant: 'destructive', title: t.toasts.errorDeleteUser, description: getErrorMessage(err) });
       }
     }
-    deleteEmployee.mutate(employee.id);
-  }, [deleteEmployee, toast, t]);
+  }, [archiveEmployee, toast, t]);
 
   const fmtCurrency = (v: number) => formatMoney(v, currency, locale);
 
@@ -838,14 +850,14 @@ export default function Employees() {
               >
                 <Tablet className="h-4 w-4" />
               </Button>
-              <Badge variant="secondary" className="text-[10px]">{employees.length}</Badge>
+              <Badge variant="secondary" className="text-[10px]">{activeEmployees.length}</Badge>
             </div>
           ) : (
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setKioskDialogOpen(true)}>
                 <Tablet className="h-4 w-4" /> {t.kioskDialog.triggerLabel}
               </Button>
-              <Badge variant="secondary">{employees.length}</Badge>
+              <Badge variant="secondary">{activeEmployees.length}</Badge>
             </div>
           )
         }
@@ -911,8 +923,8 @@ export default function Employees() {
                     employee={emp}
                     balance={balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary)}
                     onEdit={() => { setEditingEmployee(emp); setFormOpen(true); }}
-                    onDelete={() => deleteEmployee.mutate(emp.id)}
-                    onDeleteWithUser={emp.user_id ? () => handleDeleteWithUser(emp) : undefined}
+                    onArchive={() => archiveEmployee.mutate(emp.id)}
+                    onArchiveWithUser={emp.user_id ? () => handleArchiveWithUser(emp) : undefined}
                     onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
                     onPayment={() => setPaymentEmployee(emp)}
                     onExtract={() => setExtractEmployee(emp)}
@@ -968,11 +980,11 @@ export default function Employees() {
                         onClick: () => { setEditingEmployee(emp); setFormOpen(true); },
                       },
                       {
-                        key: 'delete',
+                        key: 'archive',
                         label: t.actions.delete,
-                        icon: <Trash2 className="h-4 w-4" />,
+                        icon: <Archive className="h-4 w-4" />,
                         variant: 'destructive' as const,
-                        onClick: () => setEmployeeToDelete(emp),
+                        onClick: () => setEmployeeToArchive(emp),
                       },
                     ];
 
@@ -1029,13 +1041,13 @@ export default function Employees() {
               // -------------------------------------------------------------
               // Visão LISTA (desktop): tabela limpa (1 borda externa + linhas
               // por divisor), saldo como selo de status saturado, ações no
-              // RowActionsMenu (editar = warning, excluir = destructive).
+              // RowActionsMenu (editar = warning, arquivar = destructive).
               // -------------------------------------------------------------
               <EmployeesListView
                 employees={filtered}
                 balanceMap={balanceMap}
                 onEdit={(emp) => { setEditingEmployee(emp); setFormOpen(true); }}
-                onDelete={(emp) => setEmployeeToDelete(emp)}
+                onArchive={(emp) => setEmployeeToArchive(emp)}
                 onMovement={(emp, type) => { setMovementType(type); setMovementEmployee(emp); }}
                 onPayment={(emp) => setPaymentEmployee(emp)}
                 onExtract={(emp) => setExtractEmployee(emp)}
@@ -1128,25 +1140,25 @@ export default function Employees() {
         />
       )}
 
-      {/* Confirmação de exclusão (mobile usa esta — centralizada na page) */}
-      <AlertDialog open={!!employeeToDelete} onOpenChange={o => { if (!o) setEmployeeToDelete(null); }}>
+      {/* Confirmação de arquivamento (mobile/lista usam esta, centralizada na page) */}
+      <AlertDialog open={!!employeeToArchive} onOpenChange={o => { if (!o) setEmployeeToArchive(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.deleteConfirm.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              {employeeToDelete?.user_id
+              {employeeToArchive?.user_id
                 ? t.deleteConfirm.descriptionWithUser
                 : t.deleteConfirm.descriptionSimple}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel>{t.deleteConfirm.cancelLabel}</AlertDialogCancel>
-            {employeeToDelete?.user_id && (
+            {employeeToArchive?.user_id && (
               <AlertDialogAction
                 onClick={() => {
-                  if (employeeToDelete) {
-                    handleDeleteWithUser(employeeToDelete);
-                    setEmployeeToDelete(null);
+                  if (employeeToArchive) {
+                    handleArchiveWithUser(employeeToArchive);
+                    setEmployeeToArchive(null);
                   }
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -1156,13 +1168,13 @@ export default function Employees() {
             )}
             <AlertDialogAction
               onClick={() => {
-                if (employeeToDelete) {
-                  deleteEmployee.mutate(employeeToDelete.id);
-                  setEmployeeToDelete(null);
+                if (employeeToArchive) {
+                  archiveEmployee.mutate(employeeToArchive.id);
+                  setEmployeeToArchive(null);
                 }
               }}
             >
-              {employeeToDelete?.user_id ? t.deleteConfirm.deleteEmployee : t.deleteConfirm.deleteLabel}
+              {employeeToArchive?.user_id ? t.deleteConfirm.deleteEmployee : t.deleteConfirm.deleteLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

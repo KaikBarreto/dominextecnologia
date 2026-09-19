@@ -323,7 +323,7 @@ export const employees = {
       payment: 'Pagamento',
       timeclockLink: 'Link do ponto',
       edit: 'Editar',
-      delete: 'Excluir',
+      delete: 'Arquivar',
       view: 'Visualizar',
     },
 
@@ -339,16 +339,17 @@ export const employees = {
       hireDate: 'Admissão',
     },
 
-    // ── Confirmação de exclusão de funcionário ──────────────────────────────
+    // ── Confirmação de arquivamento de funcionário ─────────────────────────
     deleteConfirm: {
-      title: 'Excluir funcionário?',
+      title: 'Arquivar funcionário?',
       descriptionWithUser:
-        'Este funcionário está vinculado a um usuário do sistema. Deseja excluir o usuário também? Isso liberará o email para reutilização.',
-      descriptionSimple: 'Todos os dados e movimentações serão perdidos.',
+        'O funcionário será arquivado para preservar o histórico. Deseja excluir também o usuário do sistema? Isso liberará o email para reutilização.',
+      descriptionSimple:
+        'O funcionário será removido das operações ativas, mas seu histórico de ponto e movimentações será preservado.',
       cancelLabel: 'Cancelar',
-      deleteWithUser: 'Excluir ambos',
-      deleteEmployee: 'Só o funcionário',
-      deleteLabel: 'Excluir',
+      deleteWithUser: 'Arquivar e excluir usuário',
+      deleteEmployee: 'Só arquivar',
+      deleteLabel: 'Arquivar',
     },
 
     // ── Dashboard ───────────────────────────────────────────────────────────
@@ -1284,7 +1285,7 @@ export const employees = {
       payment: 'Payment',
       timeclockLink: 'Time clock link',
       edit: 'Edit',
-      delete: 'Delete',
+      delete: 'Archive',
       view: 'View',
     },
     card: {
@@ -1298,14 +1299,15 @@ export const employees = {
       hireDate: 'Hired',
     },
     deleteConfirm: {
-      title: 'Delete employee?',
+      title: 'Archive employee?',
       descriptionWithUser:
-        'This employee is linked to a system user. Do you also want to delete the user? This will free up the email for reuse.',
-      descriptionSimple: 'All data and transactions will be lost.',
+        'The employee will be archived to preserve their history. Do you also want to delete the system user? This will free up the email for reuse.',
+      descriptionSimple:
+        'The employee will be removed from active operations, but their time clock and transaction history will be preserved.',
       cancelLabel: 'Cancel',
-      deleteWithUser: 'Delete both',
-      deleteEmployee: 'Employee only',
-      deleteLabel: 'Delete',
+      deleteWithUser: 'Archive and delete user',
+      deleteEmployee: 'Archive only',
+      deleteLabel: 'Archive',
     },
     dashboard: {
       kpi: {
@@ -2224,7 +2226,7 @@ export const employees = {
       payment: 'Pago',
       timeclockLink: 'Link de fichaje',
       edit: 'Editar',
-      delete: 'Eliminar',
+      delete: 'Archivar',
       view: 'Ver',
     },
     card: {
@@ -2238,14 +2240,15 @@ export const employees = {
       hireDate: 'Contratación',
     },
     deleteConfirm: {
-      title: '¿Eliminar empleado?',
+      title: '¿Archivar empleado?',
       descriptionWithUser:
-        'Este empleado está vinculado a un usuario del sistema. ¿Deseas eliminar el usuario también? Esto liberará el email para reutilización.',
-      descriptionSimple: 'Todos los datos y movimientos se perderán.',
+        'El empleado se archivará para conservar su historial. ¿Deseas eliminar también el usuario del sistema? Esto liberará el email para reutilización.',
+      descriptionSimple:
+        'El empleado se eliminará de las operaciones activas, pero se conservará su historial de fichajes y movimientos.',
       cancelLabel: 'Cancelar',
-      deleteWithUser: 'Eliminar ambos',
-      deleteEmployee: 'Solo el empleado',
-      deleteLabel: 'Eliminar',
+      deleteWithUser: 'Archivar y eliminar usuario',
+      deleteEmployee: 'Solo archivar',
+      deleteLabel: 'Archivar',
     },
     dashboard: {
       kpi: {
@@ -3164,7 +3167,7 @@ export const employees = {
       payment: 'Paiement',
       timeclockLink: 'Lien de pointage',
       edit: 'Modifier',
-      delete: 'Supprimer',
+      delete: 'Archiver',
       view: 'Voir',
     },
     card: {
@@ -3178,14 +3181,15 @@ export const employees = {
       hireDate: 'Embauche',
     },
     deleteConfirm: {
-      title: 'Supprimer l\'employé ?',
+      title: `Archiver l'employé ?`,
       descriptionWithUser:
-        'Cet employé est lié à un utilisateur du système. Voulez-vous aussi supprimer l\'utilisateur ? Cela libérera l\'email pour réutilisation.',
-      descriptionSimple: 'Toutes les données et opérations seront perdues.',
+        `L'employé sera archivé afin de préserver son historique. Voulez-vous également supprimer l'utilisateur système ? Cela libérera l'email pour une réutilisation.`,
+      descriptionSimple:
+        `L'employé sera retiré des opérations actives, mais son historique de pointage et de mouvements sera conservé.`,
       cancelLabel: 'Annuler',
-      deleteWithUser: 'Supprimer les deux',
-      deleteEmployee: 'Employé seulement',
-      deleteLabel: 'Supprimer',
+      deleteWithUser: `Archiver et supprimer l'utilisateur`,
+      deleteEmployee: 'Archiver uniquement',
+      deleteLabel: 'Archiver',
     },
     dashboard: {
       kpi: {

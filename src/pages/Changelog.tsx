@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.64',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Funcionário sai da equipe sem apagar o histórico',
+        description: 'Ao remover um funcionário, o sistema agora o arquiva em vez de apagar o cadastro. Ele deixa de aparecer na lista ativa e sai das equipes e ordens de serviço em andamento, mas o histórico de ponto e os registros de serviços já concluídos continuam preservados.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.24.63',
     date: '19 de setembro de 2026',
     type: 'patch',

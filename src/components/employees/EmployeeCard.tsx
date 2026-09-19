@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, Calendar, Edit, Trash2, FileText, Banknote, Gift, CreditCard, Link2, Minus, Award, XCircle } from 'lucide-react';
+import { Phone, Calendar, Edit, Archive, FileText, Banknote, Gift, CreditCard, Link2, Minus, Award, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -19,15 +19,15 @@ interface EmployeeCardProps {
   employee: Employee;
   balance: BalanceSummary;
   onEdit: () => void;
-  onDelete: () => void;
-  onDeleteWithUser?: () => void;
+  onArchive: () => void;
+  onArchiveWithUser?: () => void;
   onMovement: (type: 'vale' | 'bonus' | 'falta') => void;
   onPayment: () => void;
   onExtract: () => void;
 
 }
 
-export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWithUser, onMovement, onPayment, onExtract }: EmployeeCardProps) {
+export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWithUser, onMovement, onPayment, onExtract }: EmployeeCardProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
@@ -86,7 +86,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
                   className="h-7 w-7"
                   title={t.actions.delete}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Archive className="h-3.5 w-3.5" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -100,15 +100,15 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                   <AlertDialogCancel>{t.deleteConfirm.cancelLabel}</AlertDialogCancel>
-                  {employee.user_id && onDeleteWithUser && (
+                  {employee.user_id && onArchiveWithUser && (
                     <AlertDialogAction
-                      onClick={onDeleteWithUser}
+                      onClick={onArchiveWithUser}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       {t.deleteConfirm.deleteWithUser}
                     </AlertDialogAction>
                   )}
-                  <AlertDialogAction onClick={onDelete}>
+                  <AlertDialogAction onClick={onArchive}>
                     {employee.user_id ? t.deleteConfirm.deleteEmployee : t.deleteConfirm.deleteLabel}
                   </AlertDialogAction>
                 </AlertDialogFooter>

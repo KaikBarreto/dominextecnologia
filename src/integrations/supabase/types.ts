@@ -3228,6 +3228,51 @@ export type Database = {
           },
         ]
       }
+      employee_face_templates: {
+        Row: {
+          company_id: string
+          created_at: string
+          embedding: number[]
+          employee_id: string
+          id: string
+          model_version: string
+          quality_score: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          embedding: number[]
+          employee_id: string
+          id?: string
+          model_version: string
+          quality_score?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          embedding?: number[]
+          employee_id?: string
+          id?: string
+          model_version?: string
+          quality_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_face_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_face_templates_employee_company_fkey"
+            columns: ["employee_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
       employee_movements: {
         Row: {
           amount: number
@@ -9260,6 +9305,9 @@ export type Database = {
           edited_at: string | null
           edited_by: string | null
           employee_id: string | null
+          face_match: boolean | null
+          face_model_version: string | null
+          face_score: number | null
           id: string
           invalidated_at: string | null
           invalidated_by: string | null
@@ -9283,6 +9331,9 @@ export type Database = {
           edited_at?: string | null
           edited_by?: string | null
           employee_id?: string | null
+          face_match?: boolean | null
+          face_model_version?: string | null
+          face_score?: number | null
           id?: string
           invalidated_at?: string | null
           invalidated_by?: string | null
@@ -9306,6 +9357,9 @@ export type Database = {
           edited_at?: string | null
           edited_by?: string | null
           employee_id?: string | null
+          face_match?: boolean | null
+          face_model_version?: string | null
+          face_score?: number | null
           id?: string
           invalidated_at?: string | null
           invalidated_by?: string | null
@@ -10067,6 +10121,10 @@ export type Database = {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
         Returns: Json
       }
+      archive_employee: {
+        Args: { p_employee_id: string }
+        Returns: boolean
+      }
       archive_tenant_subscription: {
         Args: { p_company_id: string; p_subscription_id: string }
         Returns: Json
@@ -10183,6 +10241,10 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: undefined
       }
+      delete_employee_face_templates: {
+        Args: { p_employee_id: string }
+        Returns: number
+      }
       delete_tenant_charge_local: {
         Args: { p_charge_id: string; p_company_id: string }
         Returns: Json
@@ -10285,6 +10347,10 @@ export type Database = {
       }
       get_db_health_snapshot: { Args: never; Returns: Json }
       get_disc_public: { Args: { p_code: string }; Returns: Json }
+      get_employee_face_template_status: {
+        Args: { p_employee_id: string }
+        Returns: Json
+      }
       get_instance_health_verdict: { Args: never; Returns: Json }
       get_instance_recommendation: { Args: never; Returns: Json }
       get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
@@ -10730,6 +10796,14 @@ export type Database = {
       }
       replace_contract_plan_activities: {
         Args: { p_activities: Json; p_contract_id: string }
+        Returns: number
+      }
+      replace_employee_face_templates: {
+        Args: {
+          p_employee_id: string
+          p_model_version: string
+          p_templates: Json
+        }
         Returns: number
       }
       reset_system_audit_start: {

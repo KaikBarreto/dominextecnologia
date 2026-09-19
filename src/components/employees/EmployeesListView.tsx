@@ -1,4 +1,4 @@
-import { Phone, FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Clock } from 'lucide-react';
+import { Phone, FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Archive, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -16,7 +16,7 @@ interface EmployeesListViewProps {
   /** Saldo calculado por funcionário (id → BalanceSummary). */
   balanceMap: Map<string, BalanceSummary>;
   onEdit: (employee: Employee) => void;
-  onDelete: (employee: Employee) => void;
+  onArchive: (employee: Employee) => void;
   onMovement: (employee: Employee, type: 'vale' | 'bonus' | 'falta') => void;
   onPayment: (employee: Employee) => void;
   onExtract: (employee: Employee) => void;
@@ -30,7 +30,7 @@ const getInitials = (name: string) =>
  *
  * Tabela limpa: 1 borda externa + linhas por divisor (padrão Dominex de listas).
  * Saldo é um selo de STATUS saturado (emerald/red + texto branco). Ações pelo
- * RowActionsMenu (editar = warning, excluir = destructive — cores semânticas
+ * RowActionsMenu (editar = warning, arquivar = destructive — cores semânticas
  * fixas do Dominex). Vale ≠ Bônus: ações separadas, sem simetrizar.
  *
  * Inspirado na lista da Eco (avatar+nome, cargo, telefone, salário, saldo,
@@ -40,7 +40,7 @@ export function EmployeesListView({
   employees,
   balanceMap,
   onEdit,
-  onDelete,
+  onArchive,
   onMovement,
   onPayment,
   onExtract,
@@ -187,9 +187,9 @@ export function EmployeesListView({
                           },
                           {
                             label: t.actions.delete,
-                            icon: Trash2,
+                            icon: Archive,
                             variant: 'delete' as const,
-                            onClick: () => onDelete(emp),
+                            onClick: () => onArchive(emp),
                           },
                         ]}
                       />
