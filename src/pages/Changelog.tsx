@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.24.59',
+    date: '19 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobrança de contrato sem prazo para terminar',
+        description: 'Ao criar o contrato, a cobrança pode ser marcada como sem prazo para terminar. O sistema cria pouco mais de dois anos de parcelas agora e vai criando as próximas sozinho, todo dia de madrugada, sem nunca despejar dez anos de uma vez no seu financeiro. A tela diz exatamente quantas parcelas cria e até quando, em vez de prometer infinito.',
+        category: 'recurso',
+      },
+      {
+        title: 'Contrato já criado agora tem por onde configurar a cobrança',
+        description: 'A configuração de cobrança só existia no momento de criar o contrato. Quem não marcou na hora ficava sem parcela nenhuma e sem caminho para gerar depois. A aba Financeiro do contrato agora oferece configurar a cobrança a qualquer momento, com o primeiro vencimento já sugerido para a frente, para não criar um monte de parcelas vencidas de uma vez.',
+        category: 'correcao',
+      },
+      {
+        title: 'Alterar ou desligar a cobrança contínua',
+        description: 'Um contrato com cobrança contínua mostra até quando as parcelas já foram criadas e permite alterar a frequência e o dia do vencimento, ou desligar a renovação automática. Alterar o dia vale para as próximas parcelas, as que já existem não são mexidas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.57',
     date: '19 de setembro de 2026',
     type: 'patch',

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/integrations/supabase/client';
+import type { ContractFinanceRule } from '@/lib/contract-billing';
 import { useToast } from '@/hooks/use-toast';
 import { useFeatureFlag, isFlagEnabledFor } from './useFeatureFlag';
 
@@ -30,6 +31,16 @@ export interface Contract {
   frequency_value: number;
   start_date: string;
   horizon_months: number;
+  // COBRANÇA contínua (janela rolante — migration 20260919250000). Os três
+  // andam SEMPRE juntos: há `CHECK contracts_finance_indeterminate_requires_rule`
+  // no banco recusando a flag sem o passo e a âncora. Quem monta o trio é
+  // `buildContractFinanceRule` em @/lib/contract-billing, nunca objeto literal.
+  // NÃO confundir com `horizon_months`, que é a duração das VISITAS: as duas
+  // coisas são independentes (visita por 12 meses + cobrança sem prazo é um
+  // caso real).
+  finance_indeterminate: boolean;
+  finance_interval_months: number | null;
+  finance_anchor_date: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -1897,6 +1908,12 @@ export function useContracts() {
       frequency_value: number;
       start_date: string;
       horizon_months: number;
+      // Regra da COBRANÇA contínua. Vem pronta de `buildContractFinanceRule`
+      // (@/lib/contract-billing) — é ele que garante que a flag nunca chegue
+      // aqui sem o passo e a âncora, coisa que o CHECK do banco recusa.
+      finance_indeterminate?: boolean;
+      finance_interval_months?: number | null;
+      finance_anchor_date?: string | null;
       // PMOC (Onda A). Quando true, `responsible_technician_id` é obrigatório (a UI valida antes
       // de chamar). `next_pmoc_generation_date` é calculado se vier vazio na criação.
       is_pmoc?: boolean;
@@ -1981,6 +1998,11 @@ export function useContracts() {
           frequency_value: input.frequency_value,
           start_date: input.start_date,
           horizon_months: input.horizon_months,
+          // Os TRÊS juntos ou nenhum. `?? false` / `?? null` mantém o default
+          // do banco pra quem não passa nada (todo contrato que já existe).
+          finance_indeterminate: input.finance_indeterminate ?? false,
+          finance_interval_months: input.finance_interval_months ?? null,
+          finance_anchor_date: input.finance_anchor_date ?? null,
           billing_responsible_ids: input.billing_responsible_ids || [],
           // PMOC
           is_pmoc: input.is_pmoc ?? false,
@@ -2376,6 +2398,38 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    },
+  });
+
+  /**
+   * Liga/desliga/ajusta a regra da COBRANÇA CONTÍNUA de um contrato que JÁ
+   * EXISTE (os três campos `finance_*`).
+   *
+   * Existe porque a etapa Financeiro só roda na CRIAÇÃO: sem este caminho, um
+   * contrato criado sem cobrança ficava preso assim pra sempre (19 dos 27
+   * contratos ativos da base estavam nessa situação em 19/09/2026).
+   *
+   * O patch NUNCA é montado aqui: vem pronto de `buildContractFinanceRule`
+   * (@/lib/contract-billing), que é quem garante que a flag não viaje sem o
+   * passo e a âncora. Se alguém tentar, o `CHECK` do banco recusa e o erro
+   * sobe — silêncio em faturamento é o pior desfecho possível.
+   *
+   * NÃO cria, apaga nem altera parcela nenhuma: isso é `createContractInstallments`
+   * (lote inicial) e o cron `extend-contract-billing-daily` (renovação). Aqui
+   * só muda a REGRA.
+   */
+  const updateContractFinanceRule = useMutation({
+    mutationFn: async (input: { contractId: string; rule: ContractFinanceRule }) => {
+      const { error } = await supabase
+        .from('contracts')
+        .update(input.rule as any)
+        .eq('id', input.contractId);
+      if (error) throw error;
+      return input.rule;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
     },
   });
 
@@ -3720,6 +3774,7 @@ export function useContracts() {
     applyFinancialLinksToContractParcels,
     /** Gera as parcelas (a receber) de um contrato recém-criado, num INSERT só. */
     createContractInstallments,
+    updateContractFinanceRule,
     renewContract,
     setPortalDocumentsReleased,
     deleteContract,

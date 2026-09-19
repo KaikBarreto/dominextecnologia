@@ -16,6 +16,13 @@ verify_jwt = false
 [functions.extend-recurring-tasks]
 verify_jwt = false
 
+# extend-contract-billing: protegido por CRON_SECRET no header Authorization
+# Estica a janela rolante da COBRANÇA de contratos "contínuos"
+# (contracts.finance_indeterminate=true). Ver migration
+# 20260919250000_cobranca_de_contrato_continua_janela_rolante.sql
+[functions.extend-contract-billing]
+verify_jwt = false
+
 # generate-payroll: protegido por CRON_SECRET no header Authorization
 # Gera linhas de Folha de Pagamento em financial_transactions para cada
 # funcionário ativo conforme sua frequência (mensal/quinzenal/semanal)

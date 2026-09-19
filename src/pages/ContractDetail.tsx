@@ -78,6 +78,17 @@ import {
   MAX_TRANSACTION_YEAR_AHEAD,
   isTransactionYearInRange,
 } from '@/lib/finance-installments';
+import {
+  FINANCE_FREQUENCY_MONTHS,
+  buildContractFinanceRule,
+  resolveContractBillingRule,
+  continuousInitialCount,
+  continuousLastDueDate,
+  contractInstallmentDescription,
+  nextNonRetroactiveDue,
+} from '@/lib/contract-billing';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { todayInTz, dateInTz } from '@/lib/timezone';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -120,14 +131,9 @@ const OS_STATUS_VARIANT: Record<OsStatus, 'success' | 'info' | 'warning' | 'dest
 };
 
 // Labels traduzidas dentro do componente (hook-driven). Ver uso abaixo.
-const FREQUENCY_MONTHS: Record<string, number> = {
-  unica: 0,
-  mensal: 1,
-  bimestral: 2,
-  trimestral: 3,
-  semestral: 6,
-  anual: 12,
-};
+// O mapa em si mora em @/lib/contract-billing: é o MESMO da etapa Financeiro
+// do wizard e o que alimenta a conta do lote inicial da cobrança contínua.
+const FREQUENCY_MONTHS = FINANCE_FREQUENCY_MONTHS;
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
@@ -135,6 +141,8 @@ export default function ContractDetail() {
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
   const fin = MESSAGES[locale].app.finance;
+  // Copy da cobrança contínua: a MESMA da etapa Financeiro do wizard.
+  const tCont = MESSAGES[locale].app.contracts.continuousBilling;
 
   const FREQUENCY_OPTIONS = useMemo(
     () => Object.entries(FREQUENCY_MONTHS).map(([value, months]) => ({
@@ -168,7 +176,7 @@ export default function ContractDetail() {
   // "Financeiro" são abas próprias em TODO contrato (decisão do CEO).
   const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
 
-  const { deleteContract, applyFinancialLinksToContractParcels, renewContract } = useContracts();
+  const { deleteContract, applyFinancialLinksToContractParcels, renewContract, updateContractFinanceRule } = useContracts();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -196,6 +204,15 @@ export default function ContractDetail() {
   const [recCategory, setRecCategory] = useState('');
   const [recCostCenterId, setRecCostCenterId] = useState<string | null>(null);
   const [recSaving, setRecSaving] = useState(false);
+  // Cobrança CONTÍNUA (janela rolante) no contrato que JÁ existe. É a saída do
+  // buraco de produção: a etapa Financeiro só roda na CRIAÇÃO, então quem não
+  // marcou "gerar cobrança" na hora ficava sem parcela e sem caminho.
+  const [recContinuous, setRecContinuous] = useState(false);
+  const [showContinuousEdit, setShowContinuousEdit] = useState(false);
+  const [showContinuousOff, setShowContinuousOff] = useState(false);
+  const [contEditFrequency, setContEditFrequency] = useState('mensal');
+  const [contEditAnchor, setContEditAnchor] = useState('');
+  const [contSaving, setContSaving] = useState(false);
   // "Aplicar conta/categoria a todas as parcelas" (contratos antigos sem vínculo).
   const [showApplyLinksModal, setShowApplyLinksModal] = useState(false);
   const [applyAccountId, setApplyAccountId] = useState('');
@@ -727,23 +744,82 @@ export default function ContractDetail() {
   const recDueDateMin = `${MIN_TRANSACTION_YEAR}-01-01`;
   const recDueDateMax = `${new Date().getFullYear() + MAX_TRANSACTION_YEAR_AHEAD}-12-31`;
 
+  // ── Cobrança contínua: regra atual do contrato e estado do modal ─────────
+  const financeIndeterminate = (contract as any)?.finance_indeterminate === true;
+  const financeIntervalMonths = Number((contract as any)?.finance_interval_months) || 0;
+  const financeAnchorDate = ((contract as any)?.finance_anchor_date as string | null) || null;
+
+  // Até onde já EXISTE parcela criada. É MAX(due_date), o mesmo ponto de
+  // continuação que o cron usa — não uma coluna-cache que poderia dessincronizar
+  // se o gestor apagasse ou adicionasse parcela pela lista abaixo.
+  const continuousLastGenerated = useMemo(() => {
+    const dates = (linkedTransactions || [])
+      .filter((t: any) => t.transaction_type === 'entrada' && t.due_date)
+      .map((t: any) => t.due_date as string);
+    return dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null;
+  }, [linkedTransactions]);
+
+  const recIntervalMonths = FREQUENCY_MONTHS[recFrequency] ?? 0;
+  // "Única" não repete, então não há o que renovar: o interruptor fica
+  // desabilitado e o estado é forçado a false na gravação. Sem isso a tela
+  // tentaria mandar a flag com passo 0 e o CHECK do banco recusaria.
+  const recContinuousAvailable = recFrequency !== 'unica';
+  const recIsContinuous = recContinuous && recContinuousAvailable;
+  // Com contínuo a quantidade não é do usuário: é floor(24/passo)+1, a conta
+  // que faz a tela e o cron diário concordarem já no primeiro dia.
+  const recEffectiveCount = recIsContinuous
+    ? continuousInitialCount(recIntervalMonths)
+    : recFrequency === 'unica'
+      ? 1
+      : Math.max(1, parseInt(recInstallments) || 1);
+  const recFirstDue = recDueDate || todayInTz(timezone);
+  // Ligar a cobrança num contrato antigo com a data de início dele geraria N
+  // parcelas já vencidas de uma vez. O default da tela nunca faz isso; se o
+  // usuário escolher uma data passada de propósito, avisamos mas deixamos.
+  const recIsRetroactive = recFirstDue < todayInTz(timezone);
+
   // Plano da série (data + valor de cada lançamento). MESMA fonte pro preview
   // do modal e pra gravação: quando as duas contas divergiam, o cliente via um
   // número na tela e outro no extrato.
   const recReceivablePlan = useMemo(() => {
     const amount = parseFloat(recAmount);
     if (!recAmount || Number.isNaN(amount)) return [];
-    const freqOption = FREQUENCY_OPTIONS.find((f) => f.value === recFrequency);
-    const count = recFrequency === 'unica' ? 1 : Math.max(1, parseInt(recInstallments) || 1);
     return buildRepetitionPlan({
       // Sem data escolhida, a 1a vence HOJE no fuso da empresa (`new Date()` às
       // 21h gravava amanhã).
-      firstDate: recDueDate || todayInTz(timezone),
+      firstDate: recFirstDue,
       amount,
-      count,
-      intervalMonths: freqOption?.months || 0,
+      count: recEffectiveCount,
+      intervalMonths: recIntervalMonths,
     });
-  }, [recAmount, recDueDate, recFrequency, recInstallments, FREQUENCY_OPTIONS, timezone]);
+  }, [recAmount, recFirstDue, recEffectiveCount, recIntervalMonths]);
+
+  // Trocar pra "única" desliga o contínuo (senão o estado ficaria ligado
+  // escondido e voltaria sozinho ao trocar de frequência de novo).
+  useEffect(() => {
+    if (!recContinuousAvailable && recContinuous) setRecContinuous(false);
+  }, [recContinuousAvailable, recContinuous]);
+
+  /**
+   * Abre o modal já configurado pra COBRANÇA DO CONTRATO (e não pra uma
+   * receita avulsa): mensal, quantidade igual ao horizonte e primeiro
+   * vencimento no dia combinado do contrato, já rolado pra frente até hoje.
+   * Este é o caminho que faltava pros contratos criados sem a etapa Financeiro.
+   */
+  const openBillingSetup = () => {
+    if (!contract) return;
+    const today = todayInTz(timezone);
+    setRecDescription(`${td.financial.defaultDescriptionPrefix} - ${contract.name}`);
+    setRecFrequency('mensal');
+    setRecInstallments(String(Math.max(1, Math.min(MAX_REPETITION_COUNT, contract.horizon_months || 12))));
+    setRecDueDate(nextNonRetroactiveDue({
+      startDate: contract.start_date,
+      intervalMonths: 1,
+      today,
+    }));
+    setRecContinuous(false);
+    setShowReceivableModal(true);
+  };
 
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
@@ -764,15 +840,20 @@ export default function ContractDetail() {
       // contrato com metade das parcelas gravadas.
       await createTransactionsBatch.mutateAsync(
         plan.map((row) => {
-          const suffix = plan.length > 1 ? ` (${row.number}/${plan.length})` : '';
-          const monthLabel = plan.length > 1
-            ? ` - ${format(parseLocalDate(row.date), 'MMM/yyyy', { locale: ptBR })}`
-            : '';
           // Grava conta + categoria em TODAS as parcelas (além de
           // cliente/contrato), pra já sair validado no financeiro.
           return {
             transaction_type: 'entrada' as const,
-            description: `${recDescription}${monthLabel}${suffix}`,
+            // Com cobrança contínua NÃO vai "(n/total)": o total não existe, e
+            // o cron que continua a série também não saberia numerar. Formato
+            // único em @/lib/contract-billing, igual ao que o Postgres escreve.
+            description: contractInstallmentDescription({
+              base: recDescription,
+              date: row.date,
+              number: row.number,
+              total: plan.length,
+              continuous: recIsContinuous,
+            }),
             amount: row.amount,
             // transaction_date = mês da parcela (não a data da geração), pra a
             // receita realizada cair no mês certo em Movimentações.
@@ -789,6 +870,36 @@ export default function ContractDetail() {
         })
       );
 
+      // A REGRA da cobrança contínua é gravada DEPOIS das parcelas, de
+      // propósito: o cron molda cada parcela nova na última existente, então
+      // marcar o contrato como contínuo sem nenhuma parcela só produziria
+      // `no_installments` no log. Se o lote falhar, o contrato nem chega a ser
+      // marcado.
+      //
+      // try/catch PRÓPRIO: as parcelas já estão gravadas: um erro aqui não
+      // pode virar "erro ao criar as parcelas". O usuário é avisado e liga o
+      // contínuo de novo pelo painel da própria aba.
+      if (recIsContinuous) {
+        try {
+          await updateContractFinanceRule.mutateAsync({
+            contractId: id!,
+            rule: resolveContractBillingRule({
+              generate: true,
+              continuous: recContinuous,
+              frequency: recFrequency,
+              firstDue: plan[0].date,
+            }),
+          });
+          toast({ title: tCont.toastOn });
+        } catch (ruleErr: unknown) {
+          toast({
+            variant: 'destructive',
+            title: td.toasts.error,
+            description: getErrorMessage(ruleErr),
+          });
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       toast({
         title: plan.length > 1
@@ -802,11 +913,60 @@ export default function ContractDetail() {
       setRecDueDate('');
       setRecFrequency('unica');
       setRecInstallments('1');
+      setRecContinuous(false);
       // Conta/categoria/centro de custo escolhidos ficam memorizados pro próximo lançamento.
     } catch (err: unknown) {
       toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     } finally {
       setRecSaving(false);
+    }
+  };
+
+  /**
+   * Salva a REGRA da cobrança contínua (passo + âncora) de um contrato que já
+   * é contínuo. Mudar o dia de vencimento é mudar a ÂNCORA: editar uma parcela
+   * resolve só aquela, e as próximas voltariam pro dia antigo.
+   *
+   * Não cria nem apaga parcela: quem materializa é o cron diário.
+   */
+  const handleSaveContinuousRule = async () => {
+    if (!id) return;
+    setContSaving(true);
+    try {
+      await updateContractFinanceRule.mutateAsync({
+        contractId: id,
+        rule: buildContractFinanceRule({
+          indeterminate: true,
+          intervalMonths: FREQUENCY_MONTHS[contEditFrequency] ?? 1,
+          anchorDate: contEditAnchor,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      setShowContinuousEdit(false);
+      toast({ title: tCont.toastOn });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
+    } finally {
+      setContSaving(false);
+    }
+  };
+
+  /** Desliga a renovação. Nenhuma parcela existente é tocada. */
+  const handleTurnOffContinuous = async () => {
+    if (!id) return;
+    setContSaving(true);
+    try {
+      await updateContractFinanceRule.mutateAsync({
+        contractId: id,
+        rule: buildContractFinanceRule({ indeterminate: false }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      setShowContinuousOff(false);
+      toast({ title: tCont.toastOff });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
+    } finally {
+      setContSaving(false);
     }
   };
 
@@ -1766,8 +1926,73 @@ export default function ContractDetail() {
                 </div>
               </CardHeader>
               <CardContent className="min-w-0">
+                {/* Painel da COBRANÇA CONTÍNUA. Só aparece quando está ligada:
+                    quem não usa não vê ruído. Mostra a REGRA (a cada quanto e
+                    em que dia), até onde já existe parcela criada, e as duas
+                    ações honestas — alterar a regra e desligar a renovação.
+                    Sem isto, ligar seria um caminho sem volta. */}
+                {financeIndeterminate && (
+                  <div className="mb-4 min-w-0 rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Selo SATURADO: fundo na cor + texto/ícone brancos. */}
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
+                        <RefreshCw className="h-3 w-3 shrink-0" />
+                        {tCont.badge}
+                      </span>
+                      <div className="ml-auto flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="min-h-11 sm:min-h-9 rounded-xl text-warning active:scale-[0.98] transition-transform"
+                          onClick={() => {
+                            const entry = Object.entries(FREQUENCY_MONTHS)
+                              .find(([, m]) => m === financeIntervalMonths);
+                            setContEditFrequency(entry?.[0] ?? 'mensal');
+                            setContEditAnchor(financeAnchorDate ?? contract.start_date);
+                            setShowContinuousEdit(true);
+                          }}
+                        >
+                          {tCont.editBtn}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="min-h-11 sm:min-h-9 rounded-xl text-destructive active:scale-[0.98] transition-transform"
+                          onClick={() => setShowContinuousOff(true)}
+                        >
+                          {tCont.turnOffBtn}
+                        </Button>
+                      </div>
+                    </div>
+                    {financeAnchorDate && (
+                      <p className="text-xs text-muted-foreground break-words">
+                        {(financeIntervalMonths === 1 ? tCont.statusMonthly : tCont.statusEveryN)
+                          .replace('{n}', String(financeIntervalMonths))
+                          .replace('{day}', String(parseLocalDate(financeAnchorDate).getDate()))}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground break-words">
+                      {continuousLastGenerated
+                        ? tCont.statusCovered.replace(
+                            '{last}',
+                            format(parseLocalDate(continuousLastGenerated), 'MM/yyyy'),
+                          )
+                        : tCont.statusNoInstallments}
+                    </p>
+                  </div>
+                )}
                 {(linkedTransactions || []).length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">{td.financial.noTransactions}</p>
+                  /* Saída pro buraco real: 19 dos 27 contratos ativos estavam
+                     sem nenhuma parcela porque a etapa Financeiro só existe na
+                     CRIAÇÃO. O estado vazio deixou de ser um texto morto e
+                     virou o caminho. */
+                  <EmptyState
+                    size="compact"
+                    icon={<DollarSign className="h-10 w-10" />}
+                    title={td.financial.emptyTitle}
+                    description={td.financial.emptyDesc}
+                    action={{ label: td.financial.emptyBtn, onClick: openBillingSetup }}
+                  />
                 ) : (
                   <div className="space-y-2 min-w-0">
                     {/* Barra de seleção em massa. "Selecionar todas" abrange as
@@ -2079,6 +2304,16 @@ export default function ContractDetail() {
                 {td.financial.dueDateYearError.replace('{min}', String(MIN_TRANSACTION_YEAR)).replace('{max}', String(new Date().getFullYear() + MAX_TRANSACTION_YEAR_AHEAD))}
               </p>
             )}
+            {/* Vencimento no passado é ESCOLHA, nunca default: o botão
+                "Configurar cobrança" já abre com a próxima data válida. Quem
+                escolhe uma data antiga de propósito é avisado do que vai
+                acontecer, e segue. */}
+            {recIsRetroactive && !recDueDateYearInvalid && (
+              <p className="mt-1 flex items-start gap-1.5 text-xs text-warning">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 break-words">{td.financial.retroWarning}</span>
+              </p>
+            )}
           </div>
           <div>
             <Label>{td.financial.recurrenceLabel}</Label>
@@ -2093,7 +2328,36 @@ export default function ContractDetail() {
               </SelectContent>
             </Select>
           </div>
-          {recFrequency !== 'unica' && (
+          {/* Duração da cobrança: escolha binária → LabeledSwitch. Fica
+              DEPOIS da recorrência de propósito: só faz sentido depois de o
+              usuário escolher uma frequência que se repita. Wrapper é
+              flex-col/items-start porque Label é inline e a raiz do
+              LabeledSwitch é inline-flex (com space-y as duas colam). */}
+          <div className="flex flex-col items-start gap-2 rounded-xl border bg-muted/30 p-3">
+            <Label>{tCont.sectionLabel}</Label>
+            <LabeledSwitch
+              value={recIsContinuous ? 'on' : 'off'}
+              onChange={(v) => setRecContinuous(v === 'on')}
+              off={{ value: 'off', label: tCont.off }}
+              on={{ value: 'on', label: tCont.on }}
+              disabled={!recContinuousAvailable}
+              aria-label={tCont.sectionLabel}
+            />
+            {/* Desligado e disponível não ganha texto: quem explica a série
+                 fechada é o campo "Quantidade de parcelas" logo abaixo. */}
+            {(!recContinuousAvailable || recIsContinuous) && (
+              <p className="text-xs text-muted-foreground break-words">
+                {recContinuousAvailable ? tCont.hint : tCont.disabledHint}
+              </p>
+            )}
+            {recIsContinuous && (
+              <>
+                <p className="text-xs text-muted-foreground break-words">{tCont.scopeNote}</p>
+                <p className="text-xs text-muted-foreground break-words">{tCont.anchorNote}</p>
+              </>
+            )}
+          </div>
+          {recFrequency !== 'unica' && !recIsContinuous && (
             <div>
               <Label>{td.financial.installmentsLabel}</Label>
               <NumericInput
@@ -2116,11 +2380,31 @@ export default function ContractDetail() {
           {/* Preview da SÉRIE: deixa explícito que 48x R$ 180 são R$ 8.640 no
               total, e não R$ 180 fatiados em 48. Mesma fonte da gravação. */}
           {recReceivablePlan.length > 1 && (
-            <div className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
-              {td.financial.repetitionSummary
-                .replace('{count}', String(recReceivablePlan.length))
-                .replace('{amount}', `R$ ${formatBRL(recReceivablePlan[0].amount)}`)
-                .replace('{total}', `R$ ${formatBRL(repetitionTotal(recReceivablePlan[0].amount, recReceivablePlan.length))}`)}
+            <div className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+              <p className="break-words">
+                {td.financial.repetitionSummary
+                  .replace('{count}', String(recReceivablePlan.length))
+                  .replace('{amount}', `R$ ${formatBRL(recReceivablePlan[0].amount)}`)
+                  .replace('{total}', `R$ ${formatBRL(repetitionTotal(recReceivablePlan[0].amount, recReceivablePlan.length))}`)}
+              </p>
+              {/* Com contínuo, "somando X" é só o LOTE INICIAL. A tela tem que
+                  dizer até quando as parcelas já estão criadas e que o resto
+                  vem sozinho — nunca prometer infinito. */}
+              {recIsContinuous && (
+                <p className="break-words">
+                  {tCont.summary
+                    .replace('{count}', String(recReceivablePlan.length))
+                    .replace(
+                      '{last}',
+                      format(
+                        parseLocalDate(
+                          continuousLastDueDate(recFirstDue, recIntervalMonths, recEffectiveCount),
+                        ),
+                        'MM/yyyy',
+                      ),
+                    )}
+                </p>
+              )}
             </div>
           )}
           <Button
@@ -2129,9 +2413,13 @@ export default function ContractDetail() {
             disabled={recSaving || !recDescription || !recAmount || recInstallmentsExceedsMax || recDueDateYearInvalid}
           >
             {recSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-            {recFrequency !== 'unica'
-              ? td.financial.createInstallments.replace('{n}', String(recInstallments || 1))
-              : td.financial.createSingle}
+            {/* O botão anuncia a contagem REAL que vai ser gravada. Com
+                contínuo quem manda é floor(24/passo)+1, não o campo. */}
+            {recIsContinuous
+              ? td.financial.createContinuous.replace('{n}', String(recEffectiveCount))
+              : recFrequency !== 'unica'
+                ? td.financial.createInstallments.replace('{n}', String(recEffectiveCount))
+                : td.financial.createSingle}
           </Button>
         </div>
       </ResponsiveModal>
@@ -2175,6 +2463,70 @@ export default function ContractDetail() {
           </Button>
         </div>
       </ResponsiveModal>
+
+      {/* ── Cobrança contínua: alterar a REGRA (passo + âncora) ──────────────
+          Mudar o dia de vencimento é mudar a ÂNCORA, não editar uma parcela:
+          editar uma parcela resolve aquela, e as PRÓXIMAS voltam pro dia
+          antigo, porque a âncora é a regra. Este modal é o que evita que a
+          única saída seja desligar e configurar tudo de novo. */}
+      <ResponsiveModal open={showContinuousEdit} onOpenChange={setShowContinuousEdit} title={tCont.editTitle}>
+        <div className="space-y-4 p-1">
+          <p className="text-sm text-muted-foreground break-words">{tCont.editDesc}</p>
+          <div>
+            <Label>{tCont.editFrequencyLabel}</Label>
+            <Select value={contEditFrequency} onValueChange={setContEditFrequency}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FREQUENCY_OPTIONS.filter(f => f.value !== 'unica').map(f => (
+                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>{tCont.editAnchorLabel}</Label>
+            <Input
+              type="date"
+              min={recDueDateMin}
+              max={recDueDateMax}
+              value={contEditAnchor}
+              onChange={e => setContEditAnchor(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-muted-foreground break-words">{tCont.editAnchorHint}</p>
+          </div>
+          <Button
+            className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
+            onClick={handleSaveContinuousRule}
+            disabled={contSaving || !contEditAnchor}
+          >
+            {contSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+            {tCont.editSave}
+          </Button>
+        </div>
+      </ResponsiveModal>
+
+      {/* Desligar a renovação. Nenhuma parcela existente é tocada. */}
+      <AlertDialog open={showContinuousOff} onOpenChange={setShowContinuousOff}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCont.turnOffTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tCont.turnOffDesc}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={contSaving}>{tCont.turnOffCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); void handleTurnOffContinuous(); }}
+              disabled={contSaving}
+            >
+              {contSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {tCont.turnOffConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete confirmation dialog - requires typing contract name */}
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmed(false); }}>

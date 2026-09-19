@@ -1896,6 +1896,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_id: string
+          finance_anchor_date: string | null
+          finance_indeterminate: boolean
+          finance_interval_months: number | null
           form_template_id: string | null
           frequency_type: string
           frequency_value: number
@@ -1940,6 +1943,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id: string
+          finance_anchor_date?: string | null
+          finance_indeterminate?: boolean
+          finance_interval_months?: number | null
           form_template_id?: string | null
           frequency_type?: string
           frequency_value?: number
@@ -1984,6 +1990,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          finance_anchor_date?: string | null
+          finance_indeterminate?: boolean
+          finance_interval_months?: number | null
           form_template_id?: string | null
           frequency_type?: string
           frequency_value?: number
@@ -10179,6 +10188,15 @@ export type Database = {
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      extend_indeterminate_contract_billing: {
+        Args: never
+        Returns: {
+          contract_id: string
+          contract_name: string
+          inserted_count: number
+          reason: string
+        }[]
       }
       extend_indeterminate_task_series: {
         Args: never

@@ -88,6 +88,13 @@ import {
   MIN_TRANSACTION_YEAR,
   MAX_TRANSACTION_YEAR_AHEAD,
 } from '@/lib/finance-installments';
+import {
+  FINANCE_FREQUENCY_MONTHS,
+  continuousInitialCount,
+  continuousLastDueDate,
+  contractInstallmentDescription,
+  resolveContractBillingRule,
+} from '@/lib/contract-billing';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { todayInTz } from '@/lib/timezone';
 import { formatBRL } from '@/utils/currency';
@@ -129,19 +136,12 @@ interface ContractFormDialogProps {
 // Labels traduzidos dentro do componente (ACTIVITY_FREQ_OPTIONS via useMemo).
 const ACTIVITY_FREQ_CODES: FreqCode[] = ['M', 'T', 'S', 'A', 'E'];
 
-// Cadência de COBRANÇA da etapa Financeiro (passo em MESES de calendário).
-// Mesmo mapa da aba Financeiro do contrato (ContractDetail) — os rótulos vêm
-// traduzidos de `pmoc.contractDetail.financial.frequencyOptions`, que já existe
-// nos 4 idiomas. Não confundir com a frequência das VISITAS (etapa Frequência):
-// um contrato pode ter visita trimestral e cobrança mensal.
-const FINANCE_FREQUENCY_MONTHS: Record<string, number> = {
-  unica: 0,
-  mensal: 1,
-  bimestral: 2,
-  trimestral: 3,
-  semestral: 6,
-  anual: 12,
-};
+// A cadência de COBRANÇA (passo em meses de calendário) mora em
+// @/lib/contract-billing: é a MESMA da aba Financeiro do contrato
+// (ContractDetail) e da conta do lote inicial da cobrança contínua. Os rótulos
+// vêm traduzidos de `pmoc.contractDetail.financial.frequencyOptions`, que já
+// existe nos 4 idiomas. Não confundir com a frequência das VISITAS (etapa
+// Frequência): um contrato pode ter visita trimestral e cobrança mensal.
 
 // Rotina POR MÁQUINA (escopo/fase/checklists do catálogo) e helpers do plano
 // vivem em @/components/contracts/pmocMachineRoutine (fonte ÚNICA compartilhada
@@ -307,6 +307,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [finFirstDueDate, setFinFirstDueDate] = useState('');
   const [finFrequency, setFinFrequency] = useState<string>('mensal');
   const [finCount, setFinCount] = useState('');
+  // Cobrança CONTÍNUA (janela rolante). NÃO é status do contrato nem duração
+  // das visitas: é só a COBRANÇA que não tem data pra terminar. Ligado, o lote
+  // inicial cobre ~24 meses e o cron diário empurra o horizonte pra frente.
+  const [finContinuous, setFinContinuous] = useState(false);
   const [finAccountId, setFinAccountId] = useState('');
   // Rótulo da conta escolhida, guardado junto do id: a Revisão precisa do NOME
   // e o hook que sabe os nomes (`useFinancialAccounts`) é pesado demais pra
@@ -538,6 +542,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // ── Etapa Financeiro: dados, máscara e preview ────────────────────────────
   // Hooks são a fronteira do Supabase (o componente nunca lê/escreve direto).
   const tFin = t.finance;
+  // Copy da cobrança contínua: compartilhada com a aba Financeiro do contrato
+  // (ContractDetail), por isso fora de `contractForm`.
+  const tCont = MESSAGES[locale].app.contracts.continuousBilling;
   const tfMethods = MESSAGES[locale].app.finance.transactionForm;
   const tFreqOptions = MESSAGES[locale].app.pmoc.contractDetail.financial.frequencyOptions as Record<string, string>;
   // `cost_centers` é tabela de config (query leve) — pode ficar aqui em cima.
@@ -577,12 +584,29 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // de início do contrato; quantidade = horizonte do contrato em meses.
   const finEffectiveFirstDue = finFirstDueDate || startDate || todayInTz(timezone);
   const finDefaultCount = String(Math.max(1, Math.min(MAX_REPETITION_COUNT, horizonMonths || 12)));
-  const finEffectiveCount = finFrequency === 'unica'
-    ? 1
-    : Math.max(1, parseInt(finCount || finDefaultCount, 10) || 1);
+  const finIntervalMonths = FINANCE_FREQUENCY_MONTHS[finFrequency] ?? 1;
+  // "Única" não tem o que renovar: o interruptor fica desabilitado e o estado
+  // é forçado a false (ver efeito abaixo), pra a gravação nunca tentar mandar
+  // a flag com passo 0 — o CHECK do banco recusaria.
+  const finContinuousAvailable = finFrequency !== 'unica';
+  const finIsContinuous = finContinuous && finContinuousAvailable;
+  // Com contínuo, a quantidade NÃO é do usuário: é floor(24/passo)+1, a conta
+  // que faz a tela e o cron concordarem no dia 1 (ver contract-billing.ts).
+  const finEffectiveCount = finIsContinuous
+    ? continuousInitialCount(finIntervalMonths)
+    : finFrequency === 'unica'
+      ? 1
+      : Math.max(1, parseInt(finCount || finDefaultCount, 10) || 1);
   const finEffectiveDescription = (finDescription.trim() || tFin.descPlaceholder);
+  // Última parcela do LOTE INICIAL. É até onde a tela pode prometer: depois
+  // disso quem continua é o cron, e prometer "infinito" seria mentira.
+  const finContinuousLastDue = finIsContinuous
+    ? continuousLastDueDate(finEffectiveFirstDue, finIntervalMonths, finEffectiveCount)
+    : null;
 
-  const finCountExceedsMax = finFrequency !== 'unica' && finEffectiveCount > MAX_REPETITION_COUNT;
+  const finCountExceedsMax = !finIsContinuous
+    && finFrequency !== 'unica'
+    && finEffectiveCount > MAX_REPETITION_COUNT;
   const finDueDateYearInvalid = !!finEffectiveFirstDue
     && !isTransactionYearInRange(finEffectiveFirstDue, new Date().getFullYear());
   const finDueDateMin = `${MIN_TRANSACTION_YEAR}-01-01`;
@@ -595,14 +619,36 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const finPlan = useMemo(() => {
     const amount = parseFloat(finAmount);
     if (!finAmount || Number.isNaN(amount) || amount <= 0) return [];
-    const months = FIN_FREQUENCY_OPTIONS.find((f) => f.value === finFrequency)?.months ?? 1;
     return buildRepetitionPlan({
       firstDate: finEffectiveFirstDue,
       amount,
       count: finEffectiveCount,
-      intervalMonths: months,
+      intervalMonths: finIntervalMonths,
     });
-  }, [finAmount, finEffectiveFirstDue, finFrequency, finEffectiveCount, FIN_FREQUENCY_OPTIONS]);
+  }, [finAmount, finEffectiveFirstDue, finEffectiveCount, finIntervalMonths]);
+
+  // Trocar a frequência pra "única" desliga o contínuo. Sem isto o estado
+  // ficaria ligado escondido e voltaria sozinho ao trocar de volta.
+  useEffect(() => {
+    if (!finContinuousAvailable && finContinuous) setFinContinuous(false);
+  }, [finContinuousAvailable, finContinuous]);
+
+  // Até onde a série vai, em UMA frase, usada no preview da etapa E na
+  // Revisão (as duas diziam a mesma coisa em dois lugares).
+  //
+  // Com cobrança CONTÍNUA a verdade é outra: "da primeira em X até a última em
+  // Y" seria mentira, porque Y é só o fim do LOTE INICIAL e o cron continua
+  // depois. Também não prometemos "infinito": dizemos quantas nascem agora,
+  // até quando já estão criadas, e que renova sozinho.
+  const finRangeText = finPlan.length > 1
+    ? (finIsContinuous && finContinuousLastDue
+        ? tCont.summary
+            .replace('{count}', String(finPlan.length))
+            .replace('{last}', format(new Date(`${finContinuousLastDue}T12:00:00`), 'MM/yyyy'))
+        : tFin.summaryRange
+            .replace('{first}', format(new Date(`${finPlan[0].date}T12:00:00`), 'dd/MM/yyyy'))
+            .replace('{last}', format(new Date(`${finPlan[finPlan.length - 1].date}T12:00:00`), 'dd/MM/yyyy')))
+    : null;
 
   // A etapa só "vale" quando o switch está ligado E o plano fechou. Sem isso o
   // contrato é criado igualzinho, sem nenhuma parcela.
@@ -674,7 +720,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     // Etapa Financeiro (só criação). Fica no rascunho pra quem fechou o modal
     // no meio não perder o valor/conta/categoria já escolhidos.
     finGenerate: boolean; finDescription: string; finAmount: string;
-    finFirstDueDate: string; finFrequency: string; finCount: string;
+    finFirstDueDate: string; finFrequency: string; finCount: string; finContinuous: boolean;
     finAccountId: string; finAccountLabel: string; finCategory: string; finCostCenterId: string | null;
     finPaymentMethod: string;
   };
@@ -692,7 +738,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // Etapa Financeiro: `finGenerate` nasce false e `finFrequency` nasce
       // 'mensal' — defaults, não preenchimento real. Sem ignorá-los, abrir e
       // fechar o modal já dispararia o prompt de "retomar rascunho".
-      'finGenerate', 'finFrequency',
+      'finGenerate', 'finFrequency', 'finContinuous',
     ],
   });
 
@@ -705,7 +751,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
     environments, looseItems, machineConfigs, commonChecklists,
     finGenerate, finDescription, finAmount, finFirstDueDate, finFrequency,
-    finCount, finAccountId, finAccountLabel, finCategory, finCostCenterId, finPaymentMethod,
+    finCount, finContinuous, finAccountId, finAccountLabel, finCategory, finCostCenterId, finPaymentMethod,
   });
 
   // Persiste a cada mudança (só criação, e não enquanto o prompt de retomar está aberto).
@@ -713,7 +759,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (open && !isEditing && !draft.showResumePrompt) {
       draft.saveDraft(buildDraftSnapshot());
     }
-  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, commonChecklists, finGenerate, finDescription, finAmount, finFirstDueDate, finFrequency, finCount, finAccountId, finAccountLabel, finCategory, finCostCenterId, finPaymentMethod, open, isEditing, draft.showResumePrompt]);
+  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, commonChecklists, finGenerate, finDescription, finAmount, finFirstDueDate, finFrequency, finCount, finContinuous, finAccountId, finAccountLabel, finCategory, finCostCenterId, finPaymentMethod, open, isEditing, draft.showResumePrompt]);
 
   // Espelho do snapshot atual num ref (atualizado a CADA render, sem gate). É a
   // fonte que o flush do UNMOUNT lê — cobre o mobile, onde o drawer vaul DESMONTA
@@ -776,6 +822,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setFinFirstDueDate(d.finFirstDueDate || '');
     setFinFrequency(d.finFrequency || 'mensal');
     setFinCount(d.finCount || '');
+    setFinContinuous(!!d.finContinuous);
     setFinAccountId(d.finAccountId || '');
     setFinAccountLabel(d.finAccountLabel || '');
     setFinCategory(d.finCategory || '');
@@ -2278,6 +2325,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           frequency_value: freqValue,
           start_date: startDate,
           horizon_months: horizonMonths,
+          // Regra da COBRANÇA contínua. Os TRÊS campos saem juntos de
+          // `buildContractFinanceRule` — montá-los à mão aqui é o jeito de
+          // esbarrar no CHECK do banco (flag sem passo e sem âncora).
+          // `horizon_months` acima continua mandando nas VISITAS: são coisas
+          // independentes e é isso que o texto da etapa Financeiro explica.
+          ...resolveContractBillingRule({
+            generate: finWillGenerate,
+            continuous: finContinuous,
+            frequency: finFrequency,
+            firstDue: finEffectiveFirstDue,
+          }),
           // PMOC (Onda A). RT vai vazio quando o usuário ainda não escolheu.
           is_pmoc: isPmoc,
           responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
@@ -2355,17 +2413,21 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               costCenterId: finCostCenterId,
               paymentMethod: finPaymentMethod || null,
               notes: `Vinculado ao contrato: ${name.trim()}`,
-              rows: plan.map((row) => {
-                const suffix = plan.length > 1 ? ` (${row.number}/${plan.length})` : '';
-                const monthLabel = plan.length > 1
-                  ? ` - ${format(new Date(`${row.date}T12:00:00`), 'MMM/yyyy', { locale: ptBR })}`
-                  : '';
-                return {
-                  description: `${desc}${monthLabel}${suffix}`,
-                  amount: row.amount,
+              // Com cobrança contínua NÃO escrevemos "(n/total)": numerar
+              // sobre um total desconhecido é mentira, e o cron que continua a
+              // série também não saberia numerar. Fonte única do formato em
+              // @/lib/contract-billing (o mesmo que o Postgres escreve).
+              rows: plan.map((row) => ({
+                description: contractInstallmentDescription({
+                  base: desc,
                   date: row.date,
-                };
-              }),
+                  number: row.number,
+                  total: plan.length,
+                  continuous: finIsContinuous,
+                }),
+                amount: row.amount,
+                date: row.date,
+              })),
             });
             toast({
               title: plan.length > 1
@@ -3909,7 +3971,50 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       </Select>
                     </div>
 
-                    {finFrequency !== 'unica' && (
+                    {/* Duração da cobrança: escolha binária → LabeledSwitch.
+                        Desabilitado em frequência "única" (não há o que
+                        renovar), com o motivo escrito embaixo: `title` de
+                        tooltip não existe no toque. O wrapper é
+                        flex-col/items-start porque Label é inline e a raiz do
+                        LabeledSwitch é inline-flex — com `space-y` os dois
+                        colam na mesma linha. */}
+                    <div className="flex flex-col items-start gap-2 sm:col-span-2 rounded-lg border bg-muted/20 p-3.5">
+                      <Label>{tCont.sectionLabel}</Label>
+                      <LabeledSwitch
+                        value={finIsContinuous ? 'on' : 'off'}
+                        onChange={(v) => setFinContinuous(v === 'on')}
+                        off={{ value: 'off', label: tCont.off }}
+                        on={{ value: 'on', label: tCont.on }}
+                        disabled={!finContinuousAvailable}
+                        aria-label={tCont.sectionLabel}
+                      />
+                      {/* Desligado e disponível não ganha texto: quem explica
+                           a série fechada é o campo "Quantas parcelas" logo
+                           abaixo, e repetir a dica aqui era ruído duplicado. */}
+                      {(!finContinuousAvailable || finIsContinuous) && (
+                        <p className="text-xs text-muted-foreground break-words">
+                          {finContinuousAvailable ? tCont.hint : tCont.disabledHint}
+                        </p>
+                      )}
+                      {/* As duas confusões que geram chamado, ditas na tela. */}
+                      {finIsContinuous && (
+                        <>
+                          <p className="flex items-start gap-1.5 text-xs text-muted-foreground break-words">
+                            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                            <span className="min-w-0">{tCont.scopeNote}</span>
+                          </p>
+                          <p className="flex items-start gap-1.5 text-xs text-muted-foreground break-words">
+                            <CalendarCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                            <span className="min-w-0">{tCont.anchorNote}</span>
+                          </p>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Quantidade só existe na série FECHADA: com contínuo quem
+                        manda é floor(24/passo)+1 e deixar o campo editável
+                        prometeria um número que o cron não respeitaria. */}
+                    {finFrequency !== 'unica' && !finIsContinuous && (
                       <div className="space-y-2">
                         <Label>{tFin.countLabel}</Label>
                         {/* Campo só-número → NumericInput (sem "0 travado",
@@ -3996,12 +4101,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               .replace('{total}', `R$ ${formatBRL(repetitionTotal(finPlan[0].amount, finPlan.length))}`)
                           : tFin.summaryLineSingle.replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)}
                       </p>
-                      {finPlan.length > 1 && (
-                        <p className="text-xs text-muted-foreground break-words">
-                          {tFin.summaryRange
-                            .replace('{first}', format(new Date(`${finPlan[0].date}T12:00:00`), 'dd/MM/yyyy'))
-                            .replace('{last}', format(new Date(`${finPlan[finPlan.length - 1].date}T12:00:00`), 'dd/MM/yyyy'))}
-                        </p>
+                      {finRangeText && (
+                        <p className="text-xs text-muted-foreground break-words">{finRangeText}</p>
                       )}
                     </div>
                   ) : (
@@ -4253,11 +4354,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                     : tFin.summaryLineSingle.replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)}
                                 </strong>
                               </span>
-                              {finPlan.length > 1 && (
+                              {finRangeText && (
                                 <span className="block text-xs text-muted-foreground">
-                                  • {tFin.summaryRange
-                                    .replace('{first}', format(new Date(`${finPlan[0].date}T12:00:00`), 'dd/MM/yyyy'))
-                                    .replace('{last}', format(new Date(`${finPlan[finPlan.length - 1].date}T12:00:00`), 'dd/MM/yyyy'))}
+                                  • {finRangeText}
+                                </span>
+                              )}
+                              {/* Selo SATURADO (fundo na cor + texto branco):
+                                  a Revisão tem que deixar óbvio que esta
+                                  cobrança não tem data pra acabar. */}
+                              {finIsContinuous && (
+                                <span className="block pt-1">
+                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
+                                    <Wallet className="h-3 w-3 shrink-0" />
+                                    {tCont.badge}
+                                  </span>
                                 </span>
                               )}
                               {finAccountId && (
