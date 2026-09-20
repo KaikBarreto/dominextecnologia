@@ -160,6 +160,7 @@ const Changelog = React.lazy(() => import("./pages/Changelog"));
 const Employees = React.lazy(() => import("./pages/Employees"));
 const PontoPublico = React.lazy(() => import("./pages/PontoPublico"));
 const PontoKiosk = React.lazy(() => import("./pages/PontoKiosk"));
+const FaceEnrollment = React.lazy(() => import("./pages/FaceEnrollment"));
 const Billing = React.lazy(() => import("./pages/Billing"));
 const LiveMap = React.lazy(() => import("./pages/LiveMap"));
 const Checkout = React.lazy(() => import("./pages/Checkout"));
@@ -641,6 +642,9 @@ const AppRoutes = () => (
     {/* Ponto em grupo — tablet fixo da empresa, quiosque com a grade de crachás
        do time. Mesma tela de batida do link pessoal, mesma edge, anônimo. */}
     <Route path="/ponto/empresa/:kioskSlug" element={<PontoKiosk />} />
+    {/* Cadastro biométrico por capability individual de uso único. A câmera e
+       os modelos só carregam depois que o funcionário inicia o fluxo. */}
+    <Route path="/cadastro-facial/:token" element={<FaceEnrollment />} />
     {/* Perfil Comportamental (DISC) por link público — anônimo, fora do AppLayout.
        O funcionário responde deslogado; tudo passa pelas RPCs get_disc_public /
        submit_disc_assessment (SECURITY DEFINER). */}

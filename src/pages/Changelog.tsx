@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.0',
+    date: '20 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Cadastro facial por link individual',
+        description: 'No cadastro do funcionário, o gestor pode gerar um link de uso único e enviar para a própria pessoa. Ela abre no celular, segue três posições orientadas pela tela e conclui em menos de um minuto. O link vence em 24 horas e deixa de funcionar assim que é usado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Leitura facial sem guardar fotografias',
+        description: 'As imagens da câmera ficam no aparelho somente durante a leitura. O sistema guarda apenas uma representação matemática protegida do rosto, sem salvar os vídeos ou as fotos do cadastro. O gestor também pode excluir a biometria quando necessário.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Teste facial opcional no ponto eletrônico',
+        description: 'O funcionário pode testar o reconhecimento facial antes de registrar o ponto. Se a câmera estiver bloqueada, sem iluminação ou indisponível, basta voltar e continuar pelo registro normal: a biometria nunca impede a batida.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.24.65',
     date: '20 de setembro de 2026',
     type: 'patch',

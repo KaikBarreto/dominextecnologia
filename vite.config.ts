@@ -47,7 +47,14 @@ export default defineConfig(({ mode }) => ({
         // listas saem de PAGINAS_ESTATICAS (topo do arquivo): estavam escritas à
         // mão e separadas, e é exatamente assim que a próxima página nasce
         // quebrada, lembrando de uma lista e esquecendo a outra.
-        globIgnores: PAGINAS_ESTATICAS.map((pasta) => `**/${pasta}/**`),
+        globIgnores: [
+          ...PAGINAS_ESTATICAS.map((pasta) => `**/${pasta}/**`),
+          // Reconhecimento facial e opcional. Nem a biblioteca pesada nem os
+          // pesos do modelo podem atrasar a instalacao/atualizacao do PWA ou
+          // virar pre-requisito para registrar o ponto pelo fluxo convencional.
+          "**/face-api.esm-*.js",
+          "**/models/face-api/**",
+        ],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [
           /^\/~oauth/,

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.24.65";
+export const APP_VERSION = "1.25.0";
 
-export const VERSION_NOTES = "Nome da categoria aparece inteiro, a lista nunca mais volta a um card por linha e o botao Nova categoria no tamanho padrao."
+export const VERSION_NOTES = "Cadastro facial por link individual, leitura guiada sem guardar fotos e teste opcional no ponto eletrônico."

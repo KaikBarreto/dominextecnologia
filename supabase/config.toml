@@ -211,6 +211,12 @@ verify_jwt = false
 [functions.time-clock-portal]
 verify_jwt = false
 
+# face-enrollment: cadastro facial por link individual de uso unico. Sem sessao;
+# a capability aleatoria e curta e o gate. A edge recebe somente embeddings,
+# nunca foto, calcula SHA-256 do token e usa RPCs service-role-only.
+[functions.face-enrollment]
+verify_jwt = false
+
 # lead-capture-submit: envio do formulário público de captação de cliente. Anon por
 # design (o visitante do link não está logado). Roda com service_role e delega TUDO
 # à RPC submit_lead_capture_form (resolve tenant pelo short_code, valida, insere em

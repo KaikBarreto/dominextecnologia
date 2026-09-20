@@ -98,6 +98,12 @@ export interface RegisterPunchArgs {
   photoFile: File | null;
 }
 
+export interface CalibrateFaceArgs {
+  modelVersion: string;
+  embedding: number[];
+  qualityScore: number;
+}
+
 export interface PontoError {
   /** 404 (slug inválido), 400 (falta selfie/geo), 401 (PIN errado/faltando),
    *  409 (ação fora de ordem), 423 (PIN bloqueado), 429 (limite), 0 (rede) */
@@ -132,6 +138,11 @@ interface UsePontoPublicoResult {
   /** Sai da tela de bloqueio e tenta de novo (usado quando a trava expira). */
   clearPinLock: () => void;
   refetch: () => Promise<void>;
+  /**
+   * Mede uma leitura 1:1 para calibracao. Nao autentica, nao libera a batida e
+   * nunca devolve score ou informa se ha template cadastrado.
+   */
+  calibrateFace: (args: CalibrateFaceArgs) => Promise<{ status: "captured" | "unavailable" }>;
   registerPunch: (
     args: RegisterPunchArgs,
   ) => Promise<{ success: true; type: PunchType; recorded_at: string }>;
@@ -161,7 +172,7 @@ async function callEdge<T>(body: Record<string, unknown>): Promise<T> {
     } as PontoError;
   }
 
-  let payload: any = null;
+  let payload: unknown = null;
   try {
     payload = await res.json();
   } catch {
@@ -172,12 +183,15 @@ async function callEdge<T>(body: Record<string, unknown>): Promise<T> {
   return payload as T;
 }
 
-function mapError(status: number, payload: any): PontoError {
-  const serverMsg = typeof payload?.error === "string" ? payload.error : null;
+function mapError(status: number, payload: unknown): PontoError {
+  const data = payload && typeof payload === "object"
+    ? payload as Record<string, unknown>
+    : {};
+  const serverMsg = typeof data.error === "string" ? data.error : null;
   // `message` do servidor é fallback PT-BR; a tela renderiza o i18n dos 4
   // idiomas a partir do `code`. Nunca mostrar `error` (código de máquina).
   const serverFallback =
-    typeof payload?.message === "string" ? payload.message : null;
+    typeof data.message === "string" ? data.message : null;
   switch (status) {
     case 404:
       return { status, message: "Link inválido ou desativado." };
@@ -191,8 +205,8 @@ function mapError(status: number, payload: any): PontoError {
           status,
           code: serverMsg,
           attemptsLeft:
-            typeof payload?.attempts_left === "number"
-              ? payload.attempts_left
+            typeof data.attempts_left === "number"
+              ? data.attempts_left
               : undefined,
           message: serverFallback || "PIN incorreto.",
         };
@@ -206,14 +220,16 @@ function mapError(status: number, payload: any): PontoError {
         status,
         code: "pin_locked",
         lockedUntil:
-          typeof payload?.locked_until === "string" ? payload.locked_until : null,
+          typeof data.locked_until === "string" ? data.locked_until : null,
         lockedEmployee:
-          payload?.employee && typeof payload.employee?.name === "string"
+          data.employee &&
+          typeof data.employee === "object" &&
+          typeof (data.employee as Record<string, unknown>).name === "string"
             ? {
-                name: payload.employee.name as string,
+                name: (data.employee as Record<string, unknown>).name as string,
                 photo_url:
-                  typeof payload.employee.photo_url === "string"
-                    ? (payload.employee.photo_url as string)
+                  typeof (data.employee as Record<string, unknown>).photo_url === "string"
+                    ? (data.employee as Record<string, unknown>).photo_url as string
                     : null,
               }
             : null,
@@ -451,6 +467,38 @@ export function usePontoPublico(identity: PontoIdentity | undefined): UsePontoPu
     [identityKey, pin, state],
   );
 
+  const calibrateFace = useCallback(
+    async ({ modelVersion, embedding, qualityScore }: CalibrateFaceArgs) => {
+      if (!identityKey) {
+        throw { status: 404, message: "Link inválido ou desativado." } as PontoError;
+      }
+
+      try {
+        return await callEdge<{ status: "captured" | "unavailable" }>({
+          action: "calibrate_face",
+          ...JSON.parse(identityKey),
+          ...(pin ? { pin } : {}),
+          model_version: modelVersion,
+          embedding,
+          quality_score: qualityScore,
+        });
+      } catch (e) {
+        const err = e as PontoError;
+        if (err.code === "pin_invalid" || err.code === "pin_required") setPin(null);
+        if (err.status === 423) {
+          setState(null);
+          setPin(null);
+          setPinLock({
+            lockedUntil: err.lockedUntil ?? null,
+            employee: err.lockedEmployee ?? null,
+          });
+        }
+        throw err;
+      }
+    },
+    [identityKey, pin],
+  );
+
   return {
     state,
     loading,
@@ -461,6 +509,7 @@ export function usePontoPublico(identity: PontoIdentity | undefined): UsePontoPu
     submitPin,
     clearPinLock,
     refetch,
+    calibrateFace,
     registerPunch,
   };
 }

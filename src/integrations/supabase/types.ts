@@ -3228,6 +3228,60 @@ export type Database = {
           },
         ]
       }
+      employee_face_calibration_attempts: {
+        Row: {
+          avg_distance: number | null
+          company_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          min_distance: number | null
+          model_version: string
+          quality_score: number
+          status: string
+          template_count: number
+        }
+        Insert: {
+          avg_distance?: number | null
+          company_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          min_distance?: number | null
+          model_version: string
+          quality_score: number
+          status: string
+          template_count?: number
+        }
+        Update: {
+          avg_distance?: number | null
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          min_distance?: number | null
+          model_version?: string
+          quality_score?: number
+          status?: string
+          template_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_face_calibration_attempts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_face_calibration_attempts_employee_company_fkey"
+            columns: ["employee_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
       employee_face_templates: {
         Row: {
           company_id: string
@@ -3266,6 +3320,57 @@ export type Database = {
           },
           {
             foreignKeyName: "employee_face_templates_employee_company_fkey"
+            columns: ["employee_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
+      employee_face_enrollment_tokens: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          expires_at: string
+          id: string
+          revoked_at: string | null
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          expires_at: string
+          id?: string
+          revoked_at?: string | null
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          expires_at?: string
+          id?: string
+          revoked_at?: string | null
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_face_enrollment_tokens_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_face_enrollment_tokens_employee_company_fkey"
             columns: ["employee_id", "company_id"]
             isOneToOne: false
             referencedRelation: "employees"
@@ -10198,6 +10303,14 @@ export type Database = {
         Args: { p_company_id: string; p_module_code: string }
         Returns: boolean
       }
+      complete_employee_face_enrollment: {
+        Args: {
+          p_model_version: string
+          p_templates: Json
+          p_token_hash: string
+        }
+        Returns: number
+      }
       compute_next_expiration: {
         Args: { p_current: string; p_cycle: string }
         Returns: string
@@ -10223,6 +10336,10 @@ export type Database = {
           p_tenant_charge_id: string
         }
         Returns: string
+      }
+      create_employee_face_enrollment_link: {
+        Args: { p_employee_id: string }
+        Returns: Json
       }
       credit_ltv_once_for_payment: {
         Args: {
@@ -10349,6 +10466,10 @@ export type Database = {
       get_disc_public: { Args: { p_code: string }; Returns: Json }
       get_employee_face_template_status: {
         Args: { p_employee_id: string }
+        Returns: Json
+      }
+      get_face_enrollment_context: {
+        Args: { p_token_hash: string }
         Returns: Json
       }
       get_instance_health_verdict: { Args: never; Returns: Json }
@@ -10793,6 +10914,16 @@ export type Database = {
           p_type: string
         }
         Returns: string
+      }
+      record_employee_face_calibration: {
+        Args: {
+          p_company_id: string
+          p_embedding: Json
+          p_employee_id: string
+          p_model_version: string
+          p_quality_score: number
+        }
+        Returns: Json
       }
       replace_contract_plan_activities: {
         Args: { p_activities: Json; p_contract_id: string }

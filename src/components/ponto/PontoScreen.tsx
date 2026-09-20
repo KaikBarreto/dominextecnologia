@@ -55,6 +55,7 @@ import {
   ArrowLeft,
   Lock,
   Delete,
+  ScanFace,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { idealForeground } from "@/lib/colorContrast";
@@ -82,6 +83,8 @@ import { formatTime as fmtTime, toBcp47 } from "@/lib/format";
 import type { LocaleCode } from "@/lib/i18n/locales";
 import { MESSAGES } from "@/lib/i18n/messages";
 import type { PontoIdentity } from "@/lib/ponto/identity";
+import { FaceCaptureExperience } from "@/components/ponto/FaceCaptureExperience";
+import { FACE_MODEL_VERSION, type FaceTemplatePayload } from "@/lib/face/faceCapture";
 
 // -----------------------------------------------------------------------------
 // Configuração de exibição — classes CSS semânticas por ação (fixas)
@@ -663,6 +666,7 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
     submitPin,
     clearPinLock,
     refetch,
+    calibrateFace,
     registerPunch,
   } = usePontoPublico(identity);
   const { toast } = useToast();
@@ -719,6 +723,7 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [faceCalibrationAction, setFaceCalibrationAction] = useState<PunchType | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -780,6 +785,32 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
       startGeo();
     },
     [startGeo],
+  );
+
+  const handleFaceCalibrationComplete = useCallback(
+    async (templates: FaceTemplatePayload[]) => {
+      const action = faceCalibrationAction;
+      const template = templates[0];
+      setFaceCalibrationAction(null);
+
+      if (template) {
+        try {
+          await calibrateFace({
+            modelVersion: FACE_MODEL_VERSION,
+            embedding: template.embedding,
+            qualityScore: template.quality_score,
+          });
+          toast({ title: t.faceCalibration.completed });
+        } catch {
+          toast({ title: t.faceCalibration.unavailable });
+        }
+      }
+
+      // A calibracao nunca decide nem bloqueia a batida. Com leitura, falha de
+      // rede ou ausencia de template, o fluxo convencional continua igual.
+      if (action) startFlow(action);
+    },
+    [calibrateFace, faceCalibrationAction, startFlow, t.faceCalibration, toast],
   );
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -958,6 +989,18 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
   const statusLabel = t.status[status];
   const ActionIcon = next_action ? ACTION_ICON[next_action] : null;
   const { accentColor, resolvedLogo } = resolveBranding(company);
+
+  if (faceCalibrationAction) {
+    return (
+      <FaceCaptureExperience
+        accentColor={accentColor}
+        copy={t.faceEnrollment.capture}
+        mode="verification"
+        onComplete={handleFaceCalibrationComplete}
+        onCancel={() => setFaceCalibrationAction(null)}
+      />
+    );
+  }
 
   // Logo da PLATAFORMA Dominex (Home + rodapé): só aparece quando a empresa NÃO
   // tem white-label. White-label = sem marca Dominex na tela do tenant.
@@ -1201,16 +1244,27 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
 
           {/* CTA grande da próxima ação (cores semânticas) ou estado concluído */}
           {next_action && ActionIcon ? (
-            <Button
-              className={cn(
-                "w-full h-16 text-lg font-bold gap-2",
-                ACTION_CLASSNAME[next_action],
-              )}
-              onClick={() => startFlow(next_action)}
-            >
-              <ActionIcon className="h-5 w-5" />
-              {t.actions[next_action]}
-            </Button>
+            <div className="space-y-2.5">
+              <Button
+                className={cn(
+                  "w-full h-16 text-lg font-bold gap-2",
+                  ACTION_CLASSNAME[next_action],
+                )}
+                onClick={() => startFlow(next_action)}
+              >
+                <ActionIcon className="h-5 w-5" />
+                {t.actions[next_action]}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full gap-2 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white"
+                onClick={() => setFaceCalibrationAction(next_action)}
+              >
+                <ScanFace className="h-5 w-5" />
+                {t.faceCalibration.button}
+              </Button>
+            </div>
           ) : (
             // Selo de status CONCLUÍDO (régua Dominex: saturado + texto/ícone
             // brancos, MAIÚSCULO), mesmo tamanho de CTA (w-full h-16 text-lg).

@@ -36,6 +36,11 @@ import {
   type PinVerdict,
   type PontoIdentity,
 } from "../_shared/ponto-kiosk.ts";
+import {
+  calibrationAllowedKeys,
+  hasOnlyKeys,
+  isValidFaceCalibrationPayload,
+} from "../_shared/face-biometrics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,6 +71,39 @@ const ipHits = new Map<string, { count: number; resetAt: number }>();
 const IP_MAX = 120; // requests por janela
 const IP_WINDOW_MS = 60 * 1000; // 1 minuto
 const MAX_PUNCHES_PER_EMPLOYEE_PER_DAY = 20;
+const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
+const MAX_FACE_CALIBRATION_BYTES = 96 * 1024;
+
+class RequestTooLargeError extends Error {}
+
+async function readJsonBody(req: Request): Promise<Record<string, unknown>> {
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+    throw new RequestTooLargeError();
+  }
+
+  if (!req.body) return {};
+  const reader = req.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0;
+  let text = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_REQUEST_BYTES) {
+      await reader.cancel();
+      throw new RequestTooLargeError();
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  text += decoder.decode();
+  if (!text) return {};
+  const parsed = JSON.parse(text);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : {};
+}
 
 // ── Chaves de exposição (§10 da regra — trocar é UMA linha) ──────────────────
 // Cargo do funcionário na lista PÚBLICA do quiosque. Padrão restritivo: NÃO sai.
@@ -369,7 +407,10 @@ Deno.serve(async (req) => {
   try {
     const supabase = createEdgeClient();
 
-    const body = await req.json().catch(() => ({}));
+    const body: Record<string, unknown> = await readJsonBody(req).catch((error) => {
+      if (error instanceof RequestTooLargeError) throw error;
+      return {} as Record<string, unknown>;
+    });
     const action = body?.action;
 
     // Gate de módulo `rh`, por requisição. Fail-closed: erro na RPC NÃO libera,
@@ -734,6 +775,71 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── calibrate_face (Onda 2B, sem efeito sobre a batida) ────────────────
+    // A identidade e o PIN ja foram validados acima. O embedding existe apenas
+    // durante esta chamada; a RPC persiste somente distancias agregadas. Esta
+    // resposta nunca informa se o funcionario tem cadastro, nem traz score.
+    if (action === "calibrate_face") {
+      const allowedKeys = calibrationAllowedKeys(identity.kind);
+      const facePayloadBytes = new TextEncoder().encode(JSON.stringify(body)).byteLength;
+      if (facePayloadBytes > MAX_FACE_CALIBRATION_BYTES) {
+        return jsonResponse(
+          { error: "Leitura facial muito grande." },
+          413,
+          { "Cache-Control": "no-store" },
+        );
+      }
+      if (!hasOnlyKeys(body, allowedKeys) || !isValidFaceCalibrationPayload(body)) {
+        return jsonResponse(
+          { error: "Leitura facial inválida." },
+          400,
+          { "Cache-Control": "no-store" },
+        );
+      }
+
+      const { data: calibration, error: calibrationError } = await supabase.rpc(
+        "record_employee_face_calibration",
+        {
+          p_company_id: companyId,
+          p_employee_id: employee.id,
+          p_model_version: body.model_version,
+          p_embedding: body.embedding,
+          p_quality_score: body.quality_score,
+        },
+      );
+
+      if (calibrationError) {
+        console.error(
+          "[time-clock-portal] face calibration failed, sqlstate:",
+          calibrationError.code ?? "unknown",
+        );
+        return jsonResponse(
+          { status: "unavailable" },
+          200,
+          { "Cache-Control": "no-store" },
+        );
+      }
+
+      const calibrationStatus = calibration && typeof calibration === "object"
+        ? (calibration as { status?: unknown }).status
+        : null;
+      if (calibrationStatus === "rate_limited") {
+        return jsonResponse(
+          { error: "Muitas tentativas. Aguarde um instante." },
+          429,
+          { "Cache-Control": "no-store" },
+        );
+      }
+
+      // `unavailable` (inclusive sem template) e normalizado para `captured`.
+      // Assim a rota publica nao vira um oraculo de quem tem biometria.
+      return jsonResponse(
+        { status: "captured" },
+        200,
+        { "Cache-Control": "no-store" },
+      );
+    }
+
     // Settings da company (defaults se não houver linha). Cliente NÃO escolhe.
     const { data: settingsRow } = await supabase
       .from("time_settings")
@@ -963,6 +1069,9 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ error: "Ação desconhecida." }, 400);
   } catch (error) {
+    if (error instanceof RequestTooLargeError) {
+      return jsonResponse({ error: "Requisição muito grande." }, 413);
+    }
     console.error("[time-clock-portal] unhandled error:", error);
     return jsonResponse({ error: "Erro interno. Tente novamente." }, 500);
   }

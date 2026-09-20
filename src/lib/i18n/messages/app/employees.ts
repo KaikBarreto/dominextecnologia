@@ -862,6 +862,20 @@ export const employees = {
           toastRemoveSuccess: 'PIN removido',
           toastError: 'Erro ao salvar o PIN',
         },
+        face: {
+          label: 'Reconhecimento facial',
+          description: 'Identifica o funcionário no ponto sem guardar fotos.',
+          statusEnrolled: 'Biometria cadastrada', statusNotEnrolled: 'Sem biometria',
+          pendingHint: 'Salve o funcionário e ative o ponto antes de gerar o cadastro facial.',
+          generateButton: 'Gerar link de cadastro', regenerateButton: 'Gerar novo link', copyButton: 'Copiar link',
+          copied: 'Link de cadastro facial copiado',
+          linkHint: 'Válido por 24 horas e usado uma única vez. Um novo link invalida o anterior.',
+          deleteButton: 'Excluir biometria', deleteTitle: 'Excluir cadastro facial?',
+          deleteDescription: 'A assinatura facial será apagada e o funcionário precisará fazer um novo cadastro para usar o reconhecimento.',
+          deleteConfirm: 'Excluir biometria', cancel: 'Cancelar', deleted: 'Biometria facial excluída',
+          error: 'Não foi possível atualizar a biometria facial',
+          privacy: 'As fotos não são enviadas nem armazenadas, apenas a assinatura matemática do rosto.',
+        },
       },
       linkUser: {
         sectionTitle: 'Vincular a um usuário do sistema',
@@ -1802,6 +1816,9 @@ export const employees = {
           toastSetSuccess: 'PIN set successfully',
           toastRemoveSuccess: 'PIN removed',
           toastError: 'Error saving the PIN',
+        },
+        face: {
+          label: 'Face recognition', description: 'Identifies the employee at the time clock without storing photos.', statusEnrolled: 'Biometrics enrolled', statusNotEnrolled: 'No biometrics', pendingHint: 'Save the employee and enable time tracking before creating face enrollment.', generateButton: 'Create enrollment link', regenerateButton: 'Create new link', copyButton: 'Copy link', copied: 'Face enrollment link copied', linkHint: 'Valid for 24 hours and one use only. A new link invalidates the previous one.', deleteButton: 'Delete biometrics', deleteTitle: 'Delete face enrollment?', deleteDescription: 'The face signature will be deleted and the employee will need to enroll again to use recognition.', deleteConfirm: 'Delete biometrics', cancel: 'Cancel', deleted: 'Face biometrics deleted', error: 'Could not update face biometrics', privacy: 'Photos are never sent or stored, only the mathematical face signature.',
         },
       },
       linkUser: {
@@ -2744,6 +2761,9 @@ export const employees = {
           toastRemoveSuccess: 'PIN eliminado',
           toastError: 'Error al guardar el PIN',
         },
+        face: {
+          label: 'Reconocimiento facial', description: 'Identifica al empleado en el fichaje sin guardar fotos.', statusEnrolled: 'Biometría registrada', statusNotEnrolled: 'Sin biometría', pendingHint: 'Guarda al empleado y activa el fichaje antes de crear el registro facial.', generateButton: 'Crear enlace de registro', regenerateButton: 'Crear nuevo enlace', copyButton: 'Copiar enlace', copied: 'Enlace de registro facial copiado', linkHint: 'Válido durante 24 horas y para un solo uso. Un nuevo enlace invalida el anterior.', deleteButton: 'Eliminar biometría', deleteTitle: '¿Eliminar el registro facial?', deleteDescription: 'La firma facial se eliminará y el empleado tendrá que registrarse de nuevo para usar el reconocimiento.', deleteConfirm: 'Eliminar biometría', cancel: 'Cancelar', deleted: 'Biometría facial eliminada', error: 'No fue posible actualizar la biometría facial', privacy: 'Las fotos no se envían ni se almacenan, solo la firma matemática del rostro.',
+        },
       },
       linkUser: {
         sectionTitle: 'Vincular a un usuario del sistema',
@@ -3684,6 +3704,9 @@ export const employees = {
           toastSetSuccess: 'PIN défini avec succès',
           toastRemoveSuccess: 'PIN retiré',
           toastError: `Erreur lors de l'enregistrement du PIN`,
+        },
+        face: {
+          label: 'Reconnaissance faciale', description: `Identifie l'employé sur la pointeuse sans conserver de photos.`, statusEnrolled: 'Biométrie enregistrée', statusNotEnrolled: 'Aucune biométrie', pendingHint: `Enregistrez l'employé et activez le pointage avant de créer l'enregistrement facial.`, generateButton: `Créer le lien d'enregistrement`, regenerateButton: 'Créer un nouveau lien', copyButton: 'Copier le lien', copied: `Lien d'enregistrement facial copié`, linkHint: `Valable 24 heures et pour une seule utilisation. Un nouveau lien invalide l'ancien.`, deleteButton: 'Supprimer la biométrie', deleteTitle: `Supprimer l'enregistrement facial ?`, deleteDescription: `La signature faciale sera supprimée et l'employé devra se réinscrire pour utiliser la reconnaissance.`, deleteConfirm: 'Supprimer la biométrie', cancel: 'Annuler', deleted: 'Biométrie faciale supprimée', error: 'Impossible de mettre à jour la biométrie faciale', privacy: `Les photos ne sont ni envoyées ni conservées, seule la signature mathématique du visage l'est.`,
         },
       },
       linkUser: {

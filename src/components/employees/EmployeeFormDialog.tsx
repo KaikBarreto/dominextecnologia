@@ -33,6 +33,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { EmployeeDiscPanel } from '@/components/employees/EmployeeDiscPanel';
 import { PontoPinField } from '@/components/employees/PontoPinField';
+import { FaceBiometricsField } from '@/components/employees/FaceBiometricsField';
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -622,6 +623,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
         {/* PIN opcional do ponto (protege a batida no tablet compartilhado / link pessoal) */}
         {pontoEnabled && <PontoPinField employeeId={employee?.id ?? null} />}
+
+        {/* Cadastro facial por link de uso único. A foto nunca chega ao servidor. */}
+        {pontoEnabled && <FaceBiometricsField employeeId={employee?.id ?? null} />}
 
         {/* Link to existing user */}
         <div className="rounded-lg border p-3 space-y-2">
