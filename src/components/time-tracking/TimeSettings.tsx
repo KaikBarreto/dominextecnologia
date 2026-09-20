@@ -14,6 +14,7 @@ import { Pencil, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { PontoKioskLinkCard } from '@/components/employees/PontoKioskLinkDialog';
 
 export function TimeSettingsPanel() {
   const { locale } = useAppLocaleContext();
@@ -157,6 +158,9 @@ export function TimeSettingsPanel() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Link único da empresa fica junto das demais configurações do ponto. */}
+      <PontoKioskLinkCard />
 
       {/* Individual schedules */}
       <Card>

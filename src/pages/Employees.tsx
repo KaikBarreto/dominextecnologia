@@ -11,7 +11,7 @@ import { formatMoney } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import {
   Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
-  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Archive, Brain, Network, Tablet,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Archive, Brain, Network,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,6 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
-import { PontoKioskLinkDialog, PontoKioskMobileShortcut } from '@/components/employees/PontoKioskLinkDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
@@ -153,7 +152,6 @@ export default function Employees() {
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
   const [employeeToArchive, setEmployeeToArchive] = useState<Employee | null>(null);
-  const [kioskDialogOpen, setKioskDialogOpen] = useState(false);
 
   // `timezone` é o fuso da EMPRESA (company_settings.timezone), não o do
   // aparelho. Toda data de folha e de vale que vira `paid_date` sai dele: sem
@@ -876,24 +874,9 @@ export default function Employees() {
         actions={
           isMobile ? (
             <Badge variant="secondary" className="text-[10px]">{activeEmployees.length}</Badge>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setKioskDialogOpen(true)}>
-                <Tablet className="h-4 w-4" /> {t.kioskDialog.triggerLabel}
-              </Button>
-              <Badge variant="secondary">{activeEmployees.length}</Badge>
-            </div>
-          )
+          ) : <Badge variant="secondary">{activeEmployees.length}</Badge>
         }
       />
-
-      {isMobile && (
-        <PontoKioskMobileShortcut
-          title={t.kioskDialog.mobileShortcutTitle}
-          description={t.kioskDialog.mobileShortcutDescription}
-          onOpen={() => setKioskDialogOpen(true)}
-        />
-      )}
 
       <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
         {activeTab === 'list' ? (
@@ -1114,8 +1097,6 @@ export default function Employees() {
       )}
 
       {/* Dialogs */}
-      <PontoKioskLinkDialog open={kioskDialogOpen} onOpenChange={setKioskDialogOpen} />
-
       <EmployeeFormDialog
         open={formOpen}
         onOpenChange={o => { setFormOpen(o); if (!o) setEditingEmployee(null); }}

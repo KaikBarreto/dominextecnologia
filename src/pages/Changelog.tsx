@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.6',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Link do ponto em grupo dentro das configurações',
+        description: 'O link e o QR Code do quiosque agora ficam na aba Configurações do ponto eletrônico, junto das regras de jornada e biometria. O botão isolado do topo e o atalho separado no celular foram removidos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.25.5',
     date: '20 de setembro de 2026',
     type: 'patch',

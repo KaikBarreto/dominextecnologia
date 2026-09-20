@@ -14,6 +14,7 @@ import { Loader2, Copy, Download, AlertCircle, ExternalLink, Tablet } from 'luci
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { getBrandedQrPngDataUrl } from '@/utils/brandedQrExport';
@@ -55,12 +56,12 @@ export function PontoKioskMobileShortcut({ title, description, onOpen }: PontoKi
   );
 }
 
-export function PontoKioskLinkDialog({ open, onOpenChange }: PontoKioskLinkDialogProps) {
+function PontoKioskLinkContent({ enabled }: { enabled: boolean }) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.kioskDialog;
   const { toast } = useToast();
   const qrConfig = useBrandedQrConfig();
-  const { data: slug, isLoading, isError, error } = useKioskSlug(open);
+  const { data: slug, isLoading, isError, error } = useKioskSlug(enabled);
   const [downloading, setDownloading] = useState(false);
 
   const link = slug ? `${window.location.origin}/ponto/empresa/${slug}` : '';
@@ -99,8 +100,7 @@ export function PontoKioskLinkDialog({ open, onOpenChange }: PontoKioskLinkDialo
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.title} description={t.description}>
-      <div className="flex flex-col items-center gap-4 py-2">
+    <div className="flex flex-col items-center gap-4 py-2">
         {isLoading ? (
           <div className="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -156,7 +156,37 @@ export function PontoKioskLinkDialog({ open, onOpenChange }: PontoKioskLinkDialo
             </Button>
           </>
         )}
-      </div>
+    </div>
+  );
+}
+
+export function PontoKioskLinkCard() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.kioskDialog;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Tablet className="h-4 w-4" />
+          {t.mobileShortcutTitle}
+        </CardTitle>
+        <CardDescription>{t.description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <PontoKioskLinkContent enabled />
+      </CardContent>
+    </Card>
+  );
+}
+
+export function PontoKioskLinkDialog({ open, onOpenChange }: PontoKioskLinkDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.kioskDialog;
+
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.title} description={t.description}>
+      <PontoKioskLinkContent enabled={open} />
     </ResponsiveModal>
   );
 }
