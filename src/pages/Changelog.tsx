@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.2',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ponto em grupo acessível pelo celular',
+        description: 'Na tela de funcionários, o celular agora mostra um atalho identificado para o quiosque. Por ele, o gestor pode abrir o ponto em grupo, copiar o link ou baixar o QR Code para compartilhar com a equipe.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.25.1',
     date: '20 de setembro de 2026',
     type: 'patch',

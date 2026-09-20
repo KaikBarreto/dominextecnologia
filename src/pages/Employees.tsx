@@ -27,7 +27,7 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
-import { PontoKioskLinkDialog } from '@/components/employees/PontoKioskLinkDialog';
+import { PontoKioskLinkDialog, PontoKioskMobileShortcut } from '@/components/employees/PontoKioskLinkDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
@@ -840,18 +840,7 @@ export default function Employees() {
         icon={Briefcase}
         actions={
           isMobile ? (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                aria-label={t.kioskDialog.triggerLabelMobile}
-                onClick={() => setKioskDialogOpen(true)}
-              >
-                <Tablet className="h-4 w-4" />
-              </Button>
-              <Badge variant="secondary" className="text-[10px]">{activeEmployees.length}</Badge>
-            </div>
+            <Badge variant="secondary" className="text-[10px]">{activeEmployees.length}</Badge>
           ) : (
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setKioskDialogOpen(true)}>
@@ -862,6 +851,14 @@ export default function Employees() {
           )
         }
       />
+
+      {isMobile && (
+        <PontoKioskMobileShortcut
+          title={t.kioskDialog.mobileShortcutTitle}
+          description={t.kioskDialog.mobileShortcutDescription}
+          onOpen={() => setKioskDialogOpen(true)}
+        />
+      )}
 
       <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
         {activeTab === 'list' ? (

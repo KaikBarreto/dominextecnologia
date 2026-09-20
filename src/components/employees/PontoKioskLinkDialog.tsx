@@ -10,7 +10,7 @@
 // (mesmo par usado em EquipmentDetailDialog/ContractDetail).
 
 import { useState } from 'react';
-import { Loader2, Copy, Download, AlertCircle } from 'lucide-react';
+import { Loader2, Copy, Download, AlertCircle, ExternalLink, Tablet } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,33 @@ import { MESSAGES } from '@/lib/i18n/messages';
 interface PontoKioskLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface PontoKioskMobileShortcutProps {
+  title: string;
+  description: string;
+  onOpen: () => void;
+}
+
+export function PontoKioskMobileShortcut({ title, description, onOpen }: PontoKioskMobileShortcutProps) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="h-auto w-full justify-start gap-3 whitespace-normal rounded-xl px-3 py-3 text-left"
+      onClick={onOpen}
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Tablet className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block font-semibold leading-tight">{title}</span>
+        <span className="mt-1 block text-xs font-normal leading-snug text-muted-foreground">
+          {description}
+        </span>
+      </span>
+    </Button>
+  );
 }
 
 export function PontoKioskLinkDialog({ open, onOpenChange }: PontoKioskLinkDialogProps) {
@@ -98,11 +125,29 @@ export function PontoKioskLinkDialog({ open, onOpenChange }: PontoKioskLinkDialo
               />
             </div>
 
-            <div className="flex w-full items-center gap-2">
-              <Input readOnly value={link} className="text-xs" onFocus={(e) => e.currentTarget.select()} />
-              <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={handleCopy} aria-label={t.copyButton}>
-                <Copy className="h-4 w-4" />
-              </Button>
+            <div className="w-full space-y-2">
+              <label htmlFor="ponto-kiosk-link" className="block text-sm font-medium">
+                {t.linkLabel}
+              </label>
+              <Input
+                id="ponto-kiosk-link"
+                readOnly
+                value={link}
+                className="text-xs"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" className="w-full gap-2" onClick={handleCopy}>
+                  <Copy className="h-4 w-4" />
+                  {t.copyButton}
+                </Button>
+                <Button className="w-full gap-2" asChild>
+                  <a href={link} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                    {t.openButton}
+                  </a>
+                </Button>
+              </div>
             </div>
 
             <Button type="button" variant="secondary" className="w-full gap-2" onClick={handleDownload} disabled={downloading}>
