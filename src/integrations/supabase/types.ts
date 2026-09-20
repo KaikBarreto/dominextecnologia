@@ -9557,6 +9557,7 @@ export type Database = {
           default_out: string
           id: string
           late_tolerance_min: number | null
+          kiosk_require_face: boolean
           max_radius_meters: number | null
           require_geolocation: boolean | null
           require_selfie: boolean | null
@@ -9571,6 +9572,7 @@ export type Database = {
           default_out?: string
           id?: string
           late_tolerance_min?: number | null
+          kiosk_require_face?: boolean
           max_radius_meters?: number | null
           require_geolocation?: boolean | null
           require_selfie?: boolean | null
@@ -9585,6 +9587,7 @@ export type Database = {
           default_out?: string
           id?: string
           late_tolerance_min?: number | null
+          kiosk_require_face?: boolean
           max_radius_meters?: number | null
           require_geolocation?: boolean | null
           require_selfie?: boolean | null

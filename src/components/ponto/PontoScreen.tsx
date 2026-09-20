@@ -30,9 +30,11 @@
 //   3. travado  — 423: aviso com o horário de liberação e botão de tentar de novo.
 
 import {
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -42,7 +44,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Camera,
   Check,
   Loader2,
   Clock,
@@ -84,6 +85,7 @@ import type { LocaleCode } from "@/lib/i18n/locales";
 import { MESSAGES } from "@/lib/i18n/messages";
 import type { PontoIdentity } from "@/lib/ponto/identity";
 import { FaceCaptureExperience } from "@/components/ponto/FaceCaptureExperience";
+import { CenteredSelfieCapture } from "@/components/ponto/CenteredSelfieCapture";
 import { FACE_MODEL_VERSION, type FaceTemplatePayload } from "@/lib/face/faceCapture";
 
 // -----------------------------------------------------------------------------
@@ -190,6 +192,25 @@ export function initialsOf(name: string): string {
   );
 }
 
+function FaceIdentityHalo({
+  children,
+  color,
+}: {
+  children: ReactNode;
+  color: string;
+}) {
+  return (
+    <div
+      className="shrink-0 rounded-full p-[3px] shadow-[0_0_28px_rgba(255,255,255,0.12)]"
+      style={{
+        background: `repeating-conic-gradient(from -2deg, ${color} 0deg 3deg, transparent 3deg 10deg)`,
+      }}
+    >
+      <div className="rounded-full bg-black/35 p-1 backdrop-blur-sm">{children}</div>
+    </div>
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Header sticky branded — formato "domo": foto redonda do funcionário em
 // destaque no TOPO + nome (negrito) e cargo logo abaixo, empilhados e
@@ -282,31 +303,33 @@ export function BrandedHeader({
             isHome ? "pt-8 pb-9 gap-2" : "pt-12 pb-12 gap-3",
           )}
         >
-          {showPhoto ? (
-            <img
-              src={photoUrl as string}
-              alt={employeeName}
-              onError={() => setPhotoFailed(true)}
-              className={cn(
-                "rounded-full object-cover border-2 border-white/40 shadow-md shrink-0",
-                isHome ? "h-24 w-24" : "h-32 w-32",
-              )}
-            />
-          ) : (
-            // Placeholder SEM foto (ou foto quebrada via onError): círculo PREENCHIDO
-            // com o MESMO degradê escuro do rodapé sticky (REPORT_HEADER_DARK_GRADIENT,
-            // preto→cinza) + iniciais brancas no centro. Casa com o idioma do rodapé;
-            // nada transparente, nunca a imagem quebrada com alt vazando.
-            <div
-              className={cn(
-                "rounded-full flex items-center justify-center font-bold border-2 border-white/40 shadow-md shrink-0 text-white",
-                isHome ? "h-24 w-24 text-xl" : "h-32 w-32 text-2xl",
-              )}
-              style={{ background: REPORT_HEADER_DARK_GRADIENT }}
-            >
-              {initials}
-            </div>
-          )}
+          <FaceIdentityHalo color={textColor}>
+            {showPhoto ? (
+              <img
+                src={photoUrl as string}
+                alt={employeeName}
+                onError={() => setPhotoFailed(true)}
+                className={cn(
+                  "rounded-full object-cover border border-white/30 shadow-md shrink-0",
+                  isHome ? "h-24 w-24" : "h-32 w-32",
+                )}
+              />
+            ) : (
+              // Placeholder SEM foto (ou foto quebrada via onError): círculo PREENCHIDO
+              // com o MESMO degradê escuro do rodapé sticky (REPORT_HEADER_DARK_GRADIENT,
+              // preto→cinza) + iniciais brancas no centro. Casa com o idioma do rodapé;
+              // nada transparente, nunca a imagem quebrada com alt vazando.
+              <div
+                className={cn(
+                  "rounded-full flex items-center justify-center font-bold border border-white/30 shadow-md shrink-0 text-white",
+                  isHome ? "h-24 w-24 text-xl" : "h-32 w-32 text-2xl",
+                )}
+                style={{ background: REPORT_HEADER_DARK_GRADIENT }}
+              >
+                {initials}
+              </div>
+            )}
+          </FaceIdentityHalo>
           <div className="min-w-0 max-w-full">
             <p
               className={cn(
@@ -391,25 +414,23 @@ function PinPersonCard({
 
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      {showPhoto ? (
-        <img
-          src={employee.photo_url as string}
-          alt={employee.name}
-          onError={() => setPhotoFailed(true)}
-          className="h-20 w-20 rounded-full border-2 object-cover shadow-md"
-          style={{ borderColor: accentColor }}
-        />
-      ) : (
-        <div
-          className="flex h-20 w-20 items-center justify-center rounded-full border-2 text-xl font-bold text-white shadow-md"
-          style={{
-            background: REPORT_HEADER_DARK_GRADIENT,
-            borderColor: accentColor,
-          }}
-        >
-          {initialsOf(employee.name)}
-        </div>
-      )}
+      <FaceIdentityHalo color={accentColor}>
+        {showPhoto ? (
+          <img
+            src={employee.photo_url as string}
+            alt={employee.name}
+            onError={() => setPhotoFailed(true)}
+            className="h-20 w-20 rounded-full border border-white/20 object-cover shadow-md"
+          />
+        ) : (
+          <div
+            className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 text-xl font-bold text-white shadow-md"
+            style={{ background: REPORT_HEADER_DARK_GRADIENT }}
+          >
+            {initialsOf(employee.name)}
+          </div>
+        )}
+      </FaceIdentityHalo>
       <p className="max-w-[16rem] truncate text-lg font-semibold text-foreground">
         {employee.name}
       </p>
@@ -651,13 +672,15 @@ export function LinkBroken({
 
 interface PontoScreenProps {
   identity: PontoIdentity;
+  /** Prova opaca curta, emitida pela identificacao 1:N do quiosque. */
+  faceProof?: string | null;
   /** Quando presente, a tela mostra um jeito de voltar (usado pelo quiosque). */
   onBack?: () => void;
   /** Chamado após a batida ser aceita pela edge. */
   onPunchSuccess?: (r: { type: string; recorded_at: string }) => void;
 }
 
-export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenProps) {
+export function PontoScreen({ identity, faceProof, onBack, onPunchSuccess }: PontoScreenProps) {
   const {
     state,
     loading,
@@ -668,10 +691,23 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
     refetch,
     calibrateFace,
     registerPunch,
-  } = usePontoPublico(identity);
+  } = usePontoPublico(identity, faceProof);
   const { toast } = useToast();
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale as LocaleCode]?.app?.timeclock ?? MESSAGES["pt-br"].app.timeclock;
+  const centeredSelfieCopy = useMemo(() => ({
+    title: t.flow.selfieCenterTitle,
+    preparing: t.flow.selfiePreparing,
+    guidance: t.faceEnrollment.capture.guidance,
+    captureNow: t.flow.selfieCaptureNow,
+    useDeviceCamera: t.flow.selfieOpen,
+    cameraDenied: t.faceEnrollment.capture.cameraDenied,
+    cameraMissing: t.faceEnrollment.capture.cameraMissing,
+    genericError: t.faceEnrollment.capture.genericError,
+    privacy: t.flow.selfiePrivacy,
+    cancel: t.flow.cancelButton,
+    closeAria: t.faceEnrollment.capture.closeAria,
+  }), [t]);
 
   // TEMA ESCURO FORÇADO (independente do tema do usuário/empresa). É uma rota
   // standalone (fora do AppLayout), então aplicamos `dark` no <html> na montagem
@@ -724,7 +760,6 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [faceCalibrationAction, setFaceCalibrationAction] = useState<PunchType | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => {
@@ -813,15 +848,12 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
     [calibrateFace, faceCalibrationAction, startFlow, t.faceCalibration, toast],
   );
 
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handlePhotoCapture = useCallback((file: File) => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhoto(file);
     setPhotoPreview(URL.createObjectURL(file));
     setFlowStep("confirm");
-    e.target.value = "";
-  };
+  }, [photoPreview]);
 
   const handleConfirm = async () => {
     if (!currentAction) return;
@@ -989,6 +1021,17 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
   const statusLabel = t.status[status];
   const ActionIcon = next_action ? ACTION_ICON[next_action] : null;
   const { accentColor, resolvedLogo } = resolveBranding(company);
+
+  if (flowOpen && flowStep === "selfie") {
+    return (
+      <CenteredSelfieCapture
+        accentColor={accentColor}
+        copy={centeredSelfieCopy}
+        onCapture={handlePhotoCapture}
+        onCancel={() => setFlowOpen(false)}
+      />
+    );
+  }
 
   if (faceCalibrationAction) {
     return (
@@ -1247,7 +1290,7 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
             <div className="space-y-2.5">
               <Button
                 className={cn(
-                  "w-full h-16 text-lg font-bold gap-2",
+                  "w-full h-16 rounded-2xl text-lg font-bold gap-2",
                   ACTION_CLASSNAME[next_action],
                 )}
                 onClick={() => startFlow(next_action)}
@@ -1258,7 +1301,7 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 w-full gap-2 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white"
+                className="h-11 w-full gap-2 rounded-2xl border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white"
                 onClick={() => setFaceCalibrationAction(next_action)}
               >
                 <ScanFace className="h-5 w-5" />
@@ -1268,7 +1311,7 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
           ) : (
             // Selo de status CONCLUÍDO (régua Dominex: saturado + texto/ícone
             // brancos, MAIÚSCULO), mesmo tamanho de CTA (w-full h-16 text-lg).
-            <div className="flex w-full h-16 items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white text-lg font-bold">
+            <div className="flex w-full h-16 items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-lg font-bold">
               <Check className="h-5 w-5 text-white" />
               {t.history.dayDone}
             </div>
@@ -1322,56 +1365,10 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
             </div>
           )}
 
-          {/* Step: Selfie */}
-          {flowStep === "selfie" && (
-            <div className="text-center space-y-4 py-4">
-              <Camera className="h-10 w-10 mx-auto text-muted-foreground" />
-              <p className="text-sm font-medium">{t.flow.selfiePrompt}</p>
-              {photoPreview ? (
-                <div className="space-y-3">
-                  <img
-                    src={photoPreview}
-                    alt="Selfie"
-                    className="h-40 w-40 mx-auto rounded-lg object-cover border"
-                  />
-                  <div className="flex gap-2 justify-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (photoPreview) URL.revokeObjectURL(photoPreview);
-                        setPhoto(null);
-                        setPhotoPreview(null);
-                        fileRef.current?.click();
-                      }}
-                    >
-                      {t.flow.selfieRetake}
-                    </Button>
-                    <Button size="sm" onClick={() => setFlowStep("confirm")}>
-                      {t.flow.selfieUse}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button onClick={() => fileRef.current?.click()} className="gap-2">
-                  <Camera className="h-4 w-4" /> {t.flow.selfieOpen}
-                </Button>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                className="hidden"
-                onChange={handlePhotoCapture}
-              />
-            </div>
-          )}
-
           {/* Step: Confirm */}
           {flowStep === "confirm" && currentAction && (
             <div className="space-y-4 py-2">
-              <Card>
+              <Card className="rounded-2xl border-white/10 bg-white/[0.04]">
                 <CardContent className="p-4 space-y-2.5 text-sm">
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground">{t.flow.confirmType}</span>
@@ -1400,7 +1397,7 @@ export function PontoScreen({ identity, onBack, onPunchSuccess }: PontoScreenPro
                   )}
                 </CardContent>
               </Card>
-              <Button className="w-full h-14 text-lg font-bold" onClick={handleConfirm} disabled={submitting}>
+              <Button className="w-full h-14 rounded-2xl text-lg font-bold" onClick={handleConfirm} disabled={submitting}>
                 {submitting ? (
                   <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 ) : (

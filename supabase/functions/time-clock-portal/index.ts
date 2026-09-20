@@ -38,8 +38,10 @@ import {
 } from "../_shared/ponto-kiosk.ts";
 import {
   calibrationAllowedKeys,
+  faceMatchAllowedKeys,
   hasOnlyKeys,
   isValidFaceCalibrationPayload,
+  isValidFaceMatchPayload,
 } from "../_shared/face-biometrics.ts";
 
 const corsHeaders = {
@@ -73,8 +75,19 @@ const IP_WINDOW_MS = 60 * 1000; // 1 minuto
 const MAX_PUNCHES_PER_EMPLOYEE_PER_DAY = 20;
 const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
 const MAX_FACE_CALIBRATION_BYTES = 96 * 1024;
+const MAX_FACE_MATCH_BYTES = 96 * 1024;
 
 class RequestTooLargeError extends Error {}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 async function readJsonBody(req: Request): Promise<Record<string, unknown>> {
   const contentLength = Number(req.headers.get("content-length") ?? "0");
@@ -503,6 +516,12 @@ Deno.serve(async (req) => {
         timezone: (cs?.timezone as string | null) ?? DEFAULT_TIMEZONE,
       };
 
+      const { data: kioskSettings } = await supabase
+        .from("time_settings")
+        .select("kiosk_require_face")
+        .eq("company_id", companyId)
+        .maybeSingle();
+
       // ORDEM IMPORTA: o dia só pode ser calculado DEPOIS de company_settings,
       // porque quem decide qual dia é hoje é o fuso da empresa. Calcular antes
       // era o que chumbava UTC-3.
@@ -562,6 +581,9 @@ Deno.serve(async (req) => {
       return jsonResponse(
         {
           company,
+          settings: {
+            kiosk_require_face: kioskSettings?.kiosk_require_face === true,
+          },
           employees: employeeList.map((e, i) => ({
             id: e.id,
             name: e.name,
@@ -581,6 +603,94 @@ Deno.serve(async (req) => {
         200,
         { "Cache-Control": "no-store" },
       );
+    }
+
+    // ── match_face (identificacao 1:N do quiosque) ─────────────────────────
+    // O browser envia somente o embedding efemero. A RPC compara dentro do
+    // tenant resolvido pelo slug e devolve uma prova opaca curta, nunca
+    // templates nem scores. Indisponibilidade tecnica nunca bloqueia o fluxo
+    // convencional; a UI decide se ambiguidade permite busca conforme a
+    // configuracao do tenant.
+    if (action === "match_face") {
+      const kioskSlug = typeof body?.kiosk_slug === "string"
+        ? body.kiosk_slug.trim()
+        : "";
+      const payloadBytes = new TextEncoder().encode(JSON.stringify(body)).byteLength;
+      if (
+        !kioskSlug ||
+        payloadBytes > MAX_FACE_MATCH_BYTES ||
+        !hasOnlyKeys(body, faceMatchAllowedKeys()) ||
+        !isValidFaceMatchPayload(body)
+      ) {
+        return kioskError("invalid_request", "Leitura facial inválida.", 400);
+      }
+
+      const { data: kioskCompany } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("ponto_kiosk_slug", kioskSlug)
+        .maybeSingle();
+      if (!kioskCompany) return kioskNotFound();
+
+      const companyId = kioskCompany.id as string;
+      const gate = await moduleGate(companyId);
+      if (gate) return gate;
+
+      const { data: match, error: matchError } = await supabase.rpc(
+        "match_employee_face_for_kiosk",
+        {
+          p_company_id: companyId,
+          p_model_version: body.model_version,
+          p_embedding: body.embedding,
+          p_quality_score: body.quality_score,
+        },
+      );
+
+      if (matchError) {
+        console.error(
+          "[time-clock-portal] face match failed, sqlstate:",
+          matchError.code ?? "unknown",
+        );
+        return jsonResponse(
+          { status: "unavailable" },
+          200,
+          { "Cache-Control": "no-store" },
+        );
+      }
+
+      const result = match && typeof match === "object"
+        ? match as Record<string, unknown>
+        : {};
+      if (result.status === "rate_limited") {
+        return jsonResponse(
+          { error: "Muitas tentativas. Aguarde um instante." },
+          429,
+          { "Cache-Control": "no-store" },
+        );
+      }
+      if (
+        result.status === "matched" &&
+        typeof result.employee_id === "string" &&
+        typeof result.proof === "string" &&
+        /^[0-9a-f]{64}$/.test(result.proof)
+      ) {
+        return jsonResponse(
+          { status: "matched", employee_id: result.employee_id, proof: result.proof },
+          200,
+          { "Cache-Control": "no-store" },
+        );
+      }
+      if (result.status === "ambiguous" && Array.isArray(result.candidate_ids)) {
+        return jsonResponse(
+          { status: "ambiguous", candidate_ids: result.candidate_ids.slice(0, 3) },
+          200,
+          { "Cache-Control": "no-store" },
+        );
+      }
+      const status = result.status === "not_recognized"
+        ? "not_recognized"
+        : "unavailable";
+      return jsonResponse({ status }, 200, { "Cache-Control": "no-store" });
     }
 
     // ── Identidade (link pessoal OU quiosque) ────────────────────────────────
@@ -954,6 +1064,10 @@ Deno.serve(async (req) => {
       const photoBase64 =
         typeof body?.photo_base64 === "string" ? body.photo_base64 : null;
       const deviceInfo = body?.device_info ?? null;
+      const faceProof = typeof body?.face_proof === "string" &&
+          /^[0-9a-f]{64}$/.test(body.face_proof)
+        ? body.face_proof
+        : null;
 
       // Anti-duplicado/corrida: o type precisa ser EXATAMENTE o next_action
       // recalculado server-side. Barra "bater entrada 2x" e qualquer ordem fora.
@@ -1030,6 +1144,42 @@ Deno.serve(async (req) => {
         photoPath = path;
       }
 
+      // A decisao facial vem exclusivamente da prova criada pelo servidor.
+      // Campo forjado, prova expirada/repetida ou de outro funcionario apenas
+      // cai para `face_match=false`; jamais bloqueia a batida convencional.
+      let faceMatch = false;
+      let faceScore: number | null = null;
+      let faceModelVersion: string | null = null;
+      if (faceProof) {
+        const proofHash = await sha256Hex(faceProof);
+        const { data: proofResult, error: proofError } = await supabase.rpc(
+          "consume_employee_face_match_proof",
+          {
+            p_proof_hash: proofHash,
+            p_company_id: companyId,
+            p_employee_id: employee.id,
+            p_expected_type: type,
+          },
+        );
+        if (proofError) {
+          console.error(
+            "[time-clock-portal] face proof validation failed, sqlstate:",
+            proofError.code ?? "unknown",
+          );
+        } else if (
+          proofResult && typeof proofResult === "object" &&
+          (proofResult as Record<string, unknown>).valid === true
+        ) {
+          const distance = (proofResult as Record<string, unknown>).distance;
+          const modelVersion = (proofResult as Record<string, unknown>).model_version;
+          faceMatch = true;
+          faceScore = typeof distance === "number" && Number.isFinite(distance)
+            ? distance
+            : null;
+          faceModelVersion = typeof modelVersion === "string" ? modelVersion : null;
+        }
+      }
+
       const recordedAt = new Date().toISOString();
       const { error: insertError } = await supabase
         .from("time_records")
@@ -1047,6 +1197,9 @@ Deno.serve(async (req) => {
           device_info: deviceInfo,
           source: "link_publico",
           is_valid: true,
+          face_match: faceMatch,
+          face_score: faceScore,
+          face_model_version: faceModelVersion,
         });
 
       if (insertError) {

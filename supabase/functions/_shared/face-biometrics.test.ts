@@ -1,15 +1,15 @@
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   calibrationAllowedKeys,
+  classifyFaceDistances,
   FACE_EMBEDDING_DIMENSION,
   FACE_MODEL_VERSION,
   hasOnlyKeys,
   isValidEmbedding,
   isValidEnrollmentToken,
   isValidFaceCalibrationPayload,
+  isValidFaceMatchPayload,
+  faceMatchAllowedKeys,
   parseFaceTemplates,
 } from "./face-biometrics.ts";
 
@@ -82,4 +82,26 @@ Deno.test("allowlist diferencia link pessoal de quiosque e barra campos forjados
   };
   assert(hasOnlyKeys(kiosk, calibrationAllowedKeys("kiosk")));
   assertEquals(hasOnlyKeys({ ...kiosk, company_id: crypto.randomUUID() }, calibrationAllowedKeys("kiosk")), false);
+});
+
+Deno.test("matching exige payload estrito e nunca aceita campos de decisao do navegador", () => {
+  const valid = {
+    action: "match_face",
+    kiosk_slug: "empresa",
+    model_version: FACE_MODEL_VERSION,
+    embedding: embedding(),
+    quality_score: 0.91,
+  };
+  assert(isValidFaceMatchPayload(valid));
+  assert(hasOnlyKeys(valid, faceMatchAllowedKeys()));
+  assertEquals(hasOnlyKeys({ ...valid, employee_id: crypto.randomUUID() }, faceMatchAllowedKeys()), false);
+  assertEquals(hasOnlyKeys({ ...valid, face_score: 1 }, faceMatchAllowedKeys()), false);
+});
+
+Deno.test("matching exige limiar e margem, ambiguo nunca vira identidade", () => {
+  assertEquals(classifyFaceDistances([]), "unavailable");
+  assertEquals(classifyFaceDistances([0.41, 0.55]), "matched");
+  assertEquals(classifyFaceDistances([0.41, 0.46]), "ambiguous");
+  assertEquals(classifyFaceDistances([0.53, 0.8]), "ambiguous");
+  assertEquals(classifyFaceDistances([0.7, 0.9]), "not_recognized");
 });

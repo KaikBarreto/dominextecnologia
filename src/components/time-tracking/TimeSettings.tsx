@@ -39,6 +39,7 @@ export function TimeSettingsPanel() {
     default_break_min: 60,
     require_selfie: true,
     require_geolocation: true,
+    kiosk_require_face: false,
     max_radius_meters: 0,
     allow_off_hours: true,
     late_tolerance_min: 10,
@@ -52,6 +53,7 @@ export function TimeSettingsPanel() {
         default_break_min: settings.default_break_min,
         require_selfie: settings.require_selfie,
         require_geolocation: settings.require_geolocation,
+        kiosk_require_face: settings.kiosk_require_face,
         max_radius_meters: settings.max_radius_meters,
         allow_off_hours: settings.allow_off_hours,
         late_tolerance_min: settings.late_tolerance_min,
@@ -67,7 +69,7 @@ export function TimeSettingsPanel() {
     const companyIn = form.default_in || '08:00';
     const companyOut = form.default_out || '17:00';
     const companyBreak = form.default_break_min ?? 60;
-    const editForm: Record<number, any> = {};
+    const editForm: Record<number, { in: string; out: string; break: number; work: boolean }> = {};
     for (let i = 0; i < 7; i++) {
       const existing = empScheds.find(s => s.weekday === i);
       editForm[i] = existing
@@ -118,7 +120,7 @@ export function TimeSettingsPanel() {
               <NumericInput value={String(form.default_break_min ?? '')} onValueChange={v => setForm(f => ({ ...f, default_break_min: v === '' ? 0 : parseInt(v, 10) }))} />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex items-center justify-between rounded-lg border p-3">
               <Label>{ts.requireSelfie}</Label>
               <Switch checked={form.require_selfie} onCheckedChange={v => setForm(f => ({ ...f, require_selfie: v }))} />
@@ -126,6 +128,13 @@ export function TimeSettingsPanel() {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <Label>{ts.requireGeo}</Label>
               <Switch checked={form.require_geolocation} onCheckedChange={v => setForm(f => ({ ...f, require_geolocation: v }))} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="space-y-1">
+                <Label>{ts.requireFaceKiosk}</Label>
+                <p className="text-xs text-muted-foreground">{ts.requireFaceKioskHint}</p>
+              </div>
+              <Switch checked={form.kiosk_require_face} onCheckedChange={v => setForm(f => ({ ...f, kiosk_require_face: v }))} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

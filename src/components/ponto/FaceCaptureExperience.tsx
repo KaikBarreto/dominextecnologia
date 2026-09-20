@@ -8,6 +8,7 @@ import {
   type FaceCapturePose,
   type FaceTemplatePayload,
 } from '@/lib/face/faceCapture';
+import { FaceScanRing } from '@/components/ponto/FaceScanRing';
 
 export type { FaceTemplatePayload } from '@/lib/face/faceCapture';
 
@@ -32,34 +33,22 @@ interface FaceCaptureExperienceProps {
   copy: FaceCaptureCopy;
   onComplete: (templates: FaceTemplatePayload[]) => void;
   onCancel: () => void;
-  mode?: 'enrollment' | 'verification';
+  mode?: 'enrollment' | 'verification' | 'identification';
+  /** Acao secundaria opcional, usada pelo quiosque para abrir a busca manual. */
+  secondaryActionLabel?: string;
+  showClose?: boolean;
 }
 
 type SetupState = 'preparing' | 'requesting_camera' | 'scanning' | 'error';
 
 const ENROLLMENT_POSES: FaceCapturePose[] = ['front', 'first_side', 'opposite_side'];
 const VERIFICATION_POSES: FaceCapturePose[] = ['front'];
+// No quiosque, o pequeno giro comprova movimento ao vivo antes do 1:N. A
+// comparacao usa a captura frontal; a segunda leitura e apenas o desafio de
+// vivacidade e nunca sai do aparelho.
+const IDENTIFICATION_POSES: FaceCapturePose[] = ['front', 'first_side'];
 const STABLE_FRAMES = 3;
 const LOOP_DELAY_MS = 260;
-
-function ScanRing({ progress, accentColor }: { progress: number; accentColor: string }) {
-  const ticks = 48;
-  const active = Math.round(Math.max(0, Math.min(1, progress)) * ticks);
-  return (
-    <div className="pointer-events-none absolute -inset-3" aria-hidden>
-      {Array.from({ length: ticks }).map((_, index) => (
-        <span
-          key={index}
-          className="absolute left-1/2 top-1/2 h-2.5 w-0.5 origin-[50%_10.75rem] rounded-full transition-colors duration-200 motion-reduce:transition-none sm:origin-[50%_12.75rem]"
-          style={{
-            backgroundColor: index < active ? accentColor : 'rgba(255,255,255,0.18)',
-            transform: `translate(-50%, -10.75rem) rotate(${index * (360 / ticks)}deg)`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 function cameraErrorMessage(error: unknown, copy: FaceCaptureCopy): string {
   const name = (error as DOMException)?.name;
@@ -74,8 +63,14 @@ export function FaceCaptureExperience({
   onComplete,
   onCancel,
   mode = 'enrollment',
+  secondaryActionLabel,
+  showClose = true,
 }: FaceCaptureExperienceProps) {
-  const poses = mode === 'verification' ? VERIFICATION_POSES : ENROLLMENT_POSES;
+  const poses = mode === 'verification'
+    ? VERIFICATION_POSES
+    : mode === 'identification'
+      ? IDENTIFICATION_POSES
+      : ENROLLMENT_POSES;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const stoppedRef = useRef(false);
@@ -235,14 +230,16 @@ export function FaceCaptureExperience({
 
   return (
     <div className="relative flex min-h-[100svh] flex-col items-center overflow-hidden bg-[#050506] px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-white">
-      <button
-        type="button"
-        aria-label={copy.closeAria}
-        onClick={() => { stopCamera(); onCancel(); }}
-        className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white/80 backdrop-blur-md transition-colors hover:bg-white/15"
-      >
-        <X className="h-5 w-5" />
-      </button>
+      {showClose && (
+        <button
+          type="button"
+          aria-label={copy.closeAria}
+          onClick={() => { stopCamera(); onCancel(); }}
+          className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white/80 backdrop-blur-md transition-colors hover:bg-white/15"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      )}
 
       <div className="flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-7 py-12 text-center">
         {setup === 'error' ? (
@@ -270,7 +267,7 @@ export function FaceCaptureExperience({
             </div>
 
             <div className="relative h-[19rem] w-[19rem] sm:h-[23rem] sm:w-[23rem]">
-              <ScanRing progress={progress} accentColor={accentColor} />
+              <FaceScanRing progress={progress} accentColor={accentColor} />
               <div className="relative h-full w-full overflow-hidden rounded-full bg-white/[0.04] ring-1 ring-white/10">
                 <video
                   ref={videoRef}
@@ -321,6 +318,16 @@ export function FaceCaptureExperience({
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
         <p>{copy.privacy}</p>
       </div>
+      {secondaryActionLabel && setup !== 'error' && (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => { stopCamera(); onCancel(); }}
+          className="mt-3 text-white/70 hover:bg-white/10 hover:text-white"
+        >
+          {secondaryActionLabel}
+        </Button>
+      )}
     </div>
   );
 }

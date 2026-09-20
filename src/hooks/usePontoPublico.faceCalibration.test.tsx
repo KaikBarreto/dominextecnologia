@@ -58,6 +58,36 @@ afterEach(() => {
 });
 
 describe('usePontoPublico — calibracao facial', () => {
+  it('envia a prova opaca do quiosque somente na batida', async () => {
+    const proof = 'c'.repeat(64);
+    vi.mocked(fetch).mockImplementation(async (_url, init) => {
+      const body = JSON.parse(String((init as RequestInit)?.body));
+      return body.action === 'register_punch'
+        ? response({ success: true, type: 'clock_in', recorded_at: '2026-09-20T12:00:00Z' })
+        : response(state);
+    });
+    const { result } = renderHook(() =>
+      usePontoPublico(
+        { kind: 'kiosk', kioskSlug: 'quiosque-empresa', employeeId: EMPLOYEE_ID },
+        proof,
+      ),
+    );
+    await waitFor(() => expect(result.current.state).not.toBeNull());
+
+    await act(async () => {
+      await result.current.registerPunch({
+        type: 'clock_in', coords: null, address: null, photoFile: null,
+      });
+    });
+
+    const register = requestBodies().find((item) => item.action === 'register_punch');
+    expect(register.face_proof).toBe(proof);
+    expect(register).not.toHaveProperty('face_match');
+    expect(register).not.toHaveProperty('face_score');
+    const stateRequest = requestBodies().find((item) => item.action === 'get_state');
+    expect(stateRequest).not.toHaveProperty('face_proof');
+  });
+
   it('link pessoal envia somente a capability resolvida e o embedding efemero', async () => {
     const { result } = renderHook(() =>
       usePontoPublico({ kind: 'personal', slug: 'slug-pessoal' }),

@@ -4,6 +4,9 @@
 export const FACE_MODEL_VERSION = "face-api@1.7.15/dlib-128d-v1";
 export const FACE_EMBEDDING_DIMENSION = 128;
 export const FACE_REQUIRED_CAPTURES = 3;
+export const FACE_MATCH_MAX_DISTANCE = 0.48;
+export const FACE_MATCH_MIN_MARGIN = 0.08;
+export const FACE_MATCH_CANDIDATE_DISTANCE = 0.62;
 
 export type FaceTemplate = { embedding: number[]; quality_score: number };
 
@@ -63,6 +66,37 @@ export function isValidFaceCalibrationPayload(body: Record<string, unknown>): bo
   return body.model_version === FACE_MODEL_VERSION &&
     isValidEmbedding(body.embedding) &&
     isValidQuality(body.quality_score);
+}
+
+export function isValidFaceMatchPayload(body: Record<string, unknown>): boolean {
+  return body.model_version === FACE_MODEL_VERSION &&
+    isValidEmbedding(body.embedding) &&
+    isValidQuality(body.quality_score);
+}
+
+export function faceMatchAllowedKeys(): readonly string[] {
+  return ["action", "kiosk_slug", "model_version", "embedding", "quality_score"];
+}
+
+export type FaceDistanceDecision = "matched" | "ambiguous" | "not_recognized" | "unavailable";
+
+/**
+ * Espelho puro da decisao aplicada pela RPC. Quanto menor a distancia, mais
+ * parecidos os rostos. A margem protege contra escolher a pessoa errada quando
+ * os dois primeiros candidatos estao muito proximos.
+ */
+export function classifyFaceDistances(distances: readonly number[]): FaceDistanceDecision {
+  const ordered = distances.filter((value) => Number.isFinite(value) && value >= 0)
+    .sort((a, b) => a - b);
+  const best = ordered[0];
+  if (best === undefined) return "unavailable";
+  const second = ordered[1];
+  if (
+    best <= FACE_MATCH_MAX_DISTANCE &&
+    (second === undefined || second - best >= FACE_MATCH_MIN_MARGIN)
+  ) return "matched";
+  if (best <= FACE_MATCH_CANDIDATE_DISTANCE) return "ambiguous";
+  return "not_recognized";
 }
 
 export function calibrationAllowedKeys(kind: "personal" | "kiosk"): readonly string[] {

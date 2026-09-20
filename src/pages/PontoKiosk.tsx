@@ -23,21 +23,24 @@
 // Força tema escuro, igual à tela de ponto pessoal — rota standalone, fora do
 // AppLayout.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { AlertCircle, Check, Link2Off, Search, Users } from "lucide-react";
+import { AlertCircle, Check, Link2Off, Loader2, ScanFace, Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/mobile/EmptyState";
 import { PontoScreen, resolveBranding, ACCENT_PRIMARY } from "@/components/ponto/PontoScreen";
 import { KioskEmployeeCard } from "@/components/ponto/KioskEmployeeCard";
+import { FaceCaptureExperience, type FaceTemplatePayload } from "@/components/ponto/FaceCaptureExperience";
 import { usePontoKiosk, type KioskCompany } from "@/hooks/usePontoKiosk";
 import type { PontoCompany } from "@/hooks/usePontoPublico";
 import {
   filterKioskEmployees,
   sortKioskEmployees,
+  canUseManualKioskSearch,
   type KioskEmployee,
+  type KioskRecognitionState,
   type KioskSort,
 } from "@/lib/ponto/kiosk";
 import type { PontoIdentity } from "@/lib/ponto/identity";
@@ -46,6 +49,7 @@ import { formatTime as fmtTime, toBcp47 } from "@/lib/format";
 import type { LocaleCode } from "@/lib/i18n/locales";
 import { MESSAGES } from "@/lib/i18n/messages";
 import dominexLogoWhite from "@/assets/logo-white-horizontal.png";
+import { FACE_MODEL_VERSION } from "@/lib/face/faceCapture";
 
 // Quanto tempo a confirmação fica na tela antes de voltar pra lista.
 const RETURN_DELAY_MS = 4000;
@@ -114,7 +118,7 @@ function KioskBackdrop({ accentColor }: { accentColor: string }) {
 
 export default function PontoKiosk() {
   const { kioskSlug } = useParams<{ kioskSlug: string }>();
-  const { state, loading, notFound, moduleInactive, refetch } = usePontoKiosk(kioskSlug);
+  const { state, loading, notFound, moduleInactive, refetch, matchFace } = usePontoKiosk(kioskSlug);
 
   return (
     <PublicAppLocaleProvider
@@ -128,6 +132,7 @@ export default function PontoKiosk() {
         notFound={notFound}
         moduleInactive={moduleInactive}
         refetch={refetch}
+        matchFace={matchFace}
       />
     </PublicAppLocaleProvider>
   );
@@ -140,6 +145,7 @@ interface PontoKioskContentProps {
   notFound: boolean;
   moduleInactive: boolean;
   refetch: () => Promise<void>;
+  matchFace: ReturnType<typeof usePontoKiosk>["matchFace"];
 }
 
 function PontoKioskContent({
@@ -149,6 +155,7 @@ function PontoKioskContent({
   notFound,
   moduleInactive,
   refetch,
+  matchFace,
 }: PontoKioskContentProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale as LocaleCode]?.app?.timeclock ?? MESSAGES["pt-br"].app.timeclock;
@@ -172,7 +179,13 @@ function PontoKioskContent({
     return () => clearInterval(id);
   }, []);
 
-  const [selected, setSelected] = useState<KioskEmployee | null>(null);
+  const [selected, setSelected] = useState<{
+    employee: KioskEmployee;
+    faceProof: string | null;
+  } | null>(null);
+  const [manualMode, setManualMode] = useState(false);
+  const [faceAttempt, setFaceAttempt] = useState(0);
+  const [recognitionState, setRecognitionState] = useState<KioskRecognitionState>(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<KioskSort>("name");
   const [confirmation, setConfirmation] = useState<{ label: string; time: string; name: string } | null>(
@@ -193,11 +206,14 @@ function PontoKioskContent({
     }
     setConfirmation(null);
     setSelected(null);
+    setManualMode(false);
+    setRecognitionState(null);
+    setFaceAttempt((value) => value + 1);
     setSearch("");
     void refetch();
   };
 
-  const employees = state?.employees ?? [];
+  const employees = useMemo(() => state?.employees ?? [], [state?.employees]);
   const visible = useMemo(
     () => sortKioskEmployees(filterKioskEmployees(employees, search), sort),
     [employees, search, sort],
@@ -224,6 +240,47 @@ function PontoKioskContent({
     : ACCENT_PRIMARY;
   const resolvedLogo = state?.company ? resolveBranding(toPontoCompany(state.company)).resolvedLogo : null;
   const showDominexLogo = !state?.company.white_label_enabled;
+  const faceRequired = state?.settings?.kiosk_require_face === true;
+  const canUseManualSearch = canUseManualKioskSearch(faceRequired, recognitionState);
+
+  const handleFaceCaptureComplete = useCallback(async (templates: FaceTemplatePayload[]) => {
+    const template = templates[0];
+    if (!template) {
+      setRecognitionState("unavailable");
+      return;
+    }
+    setRecognitionState("matching");
+    try {
+      const result = await matchFace({
+        modelVersion: FACE_MODEL_VERSION,
+        embedding: template.embedding,
+        qualityScore: template.quality_score,
+      });
+      if (result.status === "matched") {
+        const employee = employees.find((item) => item.id === result.employee_id);
+        if (employee) {
+          setSelected({ employee, faceProof: result.proof });
+          setRecognitionState(null);
+          return;
+        }
+        setRecognitionState("unavailable");
+        return;
+      }
+      setRecognitionState(result.status);
+    } catch {
+      setRecognitionState("unavailable");
+    }
+  }, [employees, matchFace]);
+
+  const retryRecognition = useCallback(() => {
+    setRecognitionState(null);
+    setFaceAttempt((value) => value + 1);
+  }, []);
+
+  const openManualSearch = useCallback(() => {
+    setRecognitionState(null);
+    setManualMode(true);
+  }, []);
 
   // ── Confirmação em tela cheia + volta automática ───────────────────────────
   if (confirmation) {
@@ -256,10 +313,15 @@ function PontoKioskContent({
 
   // ── Tela de batida da pessoa escolhida (compartilhada com o link pessoal) ──
   if (selected && kioskSlug) {
-    const identity: PontoIdentity = { kind: "kiosk", kioskSlug, employeeId: selected.id };
+    const identity: PontoIdentity = {
+      kind: "kiosk",
+      kioskSlug,
+      employeeId: selected.employee.id,
+    };
     return (
       <PontoScreen
         identity={identity}
+        faceProof={selected.faceProof}
         onBack={backToList}
         onPunchSuccess={({ type, recorded_at }) => {
           setConfirmation({
@@ -268,7 +330,7 @@ function PontoKioskContent({
               hour: "2-digit",
               minute: "2-digit",
             }),
-            name: selected.name,
+            name: selected.employee.name,
           });
           returnTimer.current = window.setTimeout(backToList, RETURN_DELAY_MS);
         }}
@@ -291,6 +353,63 @@ function PontoKioskContent({
           {isModule ? tk.moduleInactive.description : t.linkInvalid.description}
         </p>
       </div>
+    );
+  }
+
+  // A camera e a porta inicial do quiosque. A grade completa so entra quando
+  // a pessoa pede explicitamente o fallback manual. No modo obrigatorio, rosto
+  // ambiguo ou nao reconhecido pede nova leitura; falha tecnica de camera,
+  // modelo ou rede continua liberando a contingencia.
+  if (!loading && employees.length > 0 && !manualMode) {
+    if (recognitionState) {
+      const isMatching = recognitionState === "matching";
+      const message = recognitionState === "ambiguous"
+        ? (faceRequired ? tk.recognition.ambiguousRequired : tk.recognition.ambiguous)
+        : recognitionState === "not_recognized"
+          ? (faceRequired ? tk.recognition.notRecognizedRequired : tk.recognition.notRecognized)
+          : recognitionState === "unavailable"
+            ? tk.recognition.unavailable
+            : tk.recognition.matching;
+      return (
+        <div className="dark flex min-h-[100svh] flex-col items-center justify-center gap-6 bg-[#050506] px-6 text-center text-white">
+          <KioskBackdrop accentColor={accentColor} />
+          <div
+            className="flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.06] ring-1 ring-white/10"
+            style={{ color: accentColor }}
+          >
+            {isMatching ? <Loader2 className="h-10 w-10 animate-spin" /> : <ScanFace className="h-10 w-10" />}
+          </div>
+          <div className="max-w-md">
+            <h1 className="text-2xl font-semibold">{isMatching ? tk.recognition.matchingTitle : tk.recognition.retryTitle}</h1>
+            <p className="mt-2 text-white/60">{message}</p>
+          </div>
+          {!isMatching && (
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button type="button" size="lg" onClick={retryRecognition}>
+                <ScanFace className="h-4 w-4" /> {tk.recognition.tryAgain}
+              </Button>
+              {canUseManualSearch && (
+                <Button type="button" size="lg" variant="outline" onClick={openManualSearch} className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                  <Search className="h-4 w-4" /> {tk.recognition.manualSearch}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <FaceCaptureExperience
+        key={faceAttempt}
+        accentColor={accentColor}
+        copy={t.faceEnrollment.capture}
+        mode="identification"
+        secondaryActionLabel={canUseManualSearch ? tk.recognition.manualSearch : undefined}
+        showClose={canUseManualSearch}
+        onComplete={handleFaceCaptureComplete}
+        onCancel={openManualSearch}
+      />
     );
   }
 
@@ -401,7 +520,7 @@ function PontoKioskContent({
               <KioskEmployeeCard
                 key={employee.id}
                 employee={employee}
-                onSelect={setSelected}
+                onSelect={(employee) => setSelected({ employee, faceProof: null })}
                 statusLabels={tk.status}
                 enterDelayMs={entering ? Math.min(i * ENTER_STEP_MS, ENTER_MAX_MS) : null}
               />

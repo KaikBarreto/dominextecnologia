@@ -12,6 +12,25 @@
 
 export type KioskStatus = "not_started" | "working" | "on_break" | "finished";
 
+export type KioskRecognitionState =
+  | "matching"
+  | "ambiguous"
+  | "not_recognized"
+  | "unavailable"
+  | null;
+
+/**
+ * A configuracao nasce opcional. Quando a empresa exige biometria, busca
+ * manual so aparece como contingencia de indisponibilidade tecnica; rosto nao
+ * reconhecido ou ambiguo deve repetir a leitura facial.
+ */
+export function canUseManualKioskSearch(
+  faceRequired: boolean,
+  recognitionState: KioskRecognitionState,
+): boolean {
+  return !faceRequired || recognitionState === "unavailable";
+}
+
 export interface KioskEmployee {
   id: string;
   name: string;

@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.1',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Quiosque reconhece o funcionário pelo rosto',
+        description: 'Ao abrir o ponto geral da empresa, a câmera tenta identificar automaticamente quem está na frente do tablet. A tela orienta o enquadramento e um pequeno movimento da cabeça, confirma a pessoa encontrada e segue para a batida sem expor os cadastros faciais dos demais funcionários.',
+        category: 'recurso',
+      },
+      {
+        title: 'Empresa escolhe se permite busca manual',
+        description: 'Nas configurações do ponto, a empresa pode exigir a identificação facial no uso normal do quiosque. A opção vem desativada por padrão: quem não ativar continua podendo tocar em Buscar manualmente. Se câmera, internet ou leitura facial ficarem indisponíveis, o modo de contingência continua acessível para não impedir o registro da jornada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Captura facial e selfie mais claras',
+        description: 'Cadastro, reconhecimento e selfie do ponto agora usam uma moldura circular com progresso e instruções curtas para centralizar o rosto. Também corrigimos a primeira etapa do cadastro, que podia ficar parada mesmo com a pessoa olhando para a câmera, e o link facial continua visível quando o navegador não permite copiá-lo automaticamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Ponto eletrônico em uma aba própria do funcionário',
+        description: 'Ativação do ponto, link pessoal, PIN e cadastro facial saíram da aba Pagamento e agora ficam juntos na nova aba Ponto eletrônico.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.25.0',
     date: '20 de setembro de 2026',
     type: 'minor',

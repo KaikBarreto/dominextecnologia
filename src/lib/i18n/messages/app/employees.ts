@@ -245,6 +245,8 @@ export const employees = {
         breakMin: 'Intervalo (min)',
         requireSelfie: 'Exigir selfie',
         requireGeo: 'Exigir geolocalização',
+        requireFaceKiosk: 'Biometria obrigatória no quiosque',
+        requireFaceKioskHint: 'Desativada por padrão. Ao ativar, oculta a busca manual enquanto o reconhecimento estiver disponível.',
         maxRadius: 'Raio máximo (metros)',
         maxRadiusHint: '0 = sem restrição',
         lateTolerance: 'Tolerância atraso (min)',
@@ -626,6 +628,7 @@ export const employees = {
       titleEdit: 'Editar Funcionário',
       tabData: 'Dados',
       tabPayment: 'Pagamento',
+      tabTimeclock: 'Ponto eletrônico',
       tabDisc: 'Perfil',
       disc: {
         sectionTitle: 'Perfil Comportamental',
@@ -868,7 +871,7 @@ export const employees = {
           statusEnrolled: 'Biometria cadastrada', statusNotEnrolled: 'Sem biometria',
           pendingHint: 'Salve o funcionário e ative o ponto antes de gerar o cadastro facial.',
           generateButton: 'Gerar link de cadastro', regenerateButton: 'Gerar novo link', copyButton: 'Copiar link',
-          copied: 'Link de cadastro facial copiado',
+          copied: 'Link de cadastro facial copiado', generated: 'Link de cadastro facial gerado', copyManually: 'A cópia automática foi bloqueada pelo navegador. Use o botão Copiar link.',
           linkHint: 'Válido por 24 horas e usado uma única vez. Um novo link invalida o anterior.',
           deleteButton: 'Excluir biometria', deleteTitle: 'Excluir cadastro facial?',
           deleteDescription: 'A assinatura facial será apagada e o funcionário precisará fazer um novo cadastro para usar o reconhecimento.',
@@ -1233,6 +1236,8 @@ export const employees = {
         breakMin: 'Break (min)',
         requireSelfie: 'Require selfie',
         requireGeo: 'Require geolocation',
+        requireFaceKiosk: 'Require biometrics at kiosk',
+        requireFaceKioskHint: 'Off by default. When enabled, hides manual search while face recognition is available.',
         maxRadius: 'Max radius (meters)',
         maxRadiusHint: '0 = no restriction',
         lateTolerance: 'Late tolerance (min)',
@@ -1584,6 +1589,7 @@ export const employees = {
       titleEdit: 'Edit Employee',
       tabData: 'Details',
       tabPayment: 'Payment',
+      tabTimeclock: 'Time clock',
       tabDisc: 'Profile',
       disc: {
         sectionTitle: 'Behavioral Profile',
@@ -1818,7 +1824,7 @@ export const employees = {
           toastError: 'Error saving the PIN',
         },
         face: {
-          label: 'Face recognition', description: 'Identifies the employee at the time clock without storing photos.', statusEnrolled: 'Biometrics enrolled', statusNotEnrolled: 'No biometrics', pendingHint: 'Save the employee and enable time tracking before creating face enrollment.', generateButton: 'Create enrollment link', regenerateButton: 'Create new link', copyButton: 'Copy link', copied: 'Face enrollment link copied', linkHint: 'Valid for 24 hours and one use only. A new link invalidates the previous one.', deleteButton: 'Delete biometrics', deleteTitle: 'Delete face enrollment?', deleteDescription: 'The face signature will be deleted and the employee will need to enroll again to use recognition.', deleteConfirm: 'Delete biometrics', cancel: 'Cancel', deleted: 'Face biometrics deleted', error: 'Could not update face biometrics', privacy: 'Photos are never sent or stored, only the mathematical face signature.',
+          label: 'Face recognition', description: 'Identifies the employee at the time clock without storing photos.', statusEnrolled: 'Biometrics enrolled', statusNotEnrolled: 'No biometrics', pendingHint: 'Save the employee and enable time tracking before creating face enrollment.', generateButton: 'Create enrollment link', regenerateButton: 'Create new link', copyButton: 'Copy link', copied: 'Face enrollment link copied', generated: 'Face enrollment link created', copyManually: 'Automatic copying was blocked by the browser. Use the Copy link button.', linkHint: 'Valid for 24 hours and one use only. A new link invalidates the previous one.', deleteButton: 'Delete biometrics', deleteTitle: 'Delete face enrollment?', deleteDescription: 'The face signature will be deleted and the employee will need to enroll again to use recognition.', deleteConfirm: 'Delete biometrics', cancel: 'Cancel', deleted: 'Face biometrics deleted', error: 'Could not update face biometrics', privacy: 'Photos are never sent or stored, only the mathematical face signature.',
         },
       },
       linkUser: {
@@ -2177,6 +2183,8 @@ export const employees = {
         breakMin: 'Descanso (min)',
         requireSelfie: 'Exigir selfie',
         requireGeo: 'Exigir geolocalización',
+        requireFaceKiosk: 'Biometría obligatoria en el quiosco',
+        requireFaceKioskHint: 'Desactivada de forma predeterminada. Al activarla, oculta la búsqueda manual mientras el reconocimiento esté disponible.',
         maxRadius: 'Radio máximo (metros)',
         maxRadiusHint: '0 = sin restricción',
         lateTolerance: 'Tolerancia retraso (min)',
@@ -2528,6 +2536,7 @@ export const employees = {
       titleEdit: 'Editar Empleado',
       tabData: 'Datos',
       tabPayment: 'Pago',
+      tabTimeclock: 'Control horario',
       tabDisc: 'Perfil',
       disc: {
         sectionTitle: 'Perfil de Comportamiento',
@@ -2762,7 +2771,7 @@ export const employees = {
           toastError: 'Error al guardar el PIN',
         },
         face: {
-          label: 'Reconocimiento facial', description: 'Identifica al empleado en el fichaje sin guardar fotos.', statusEnrolled: 'Biometría registrada', statusNotEnrolled: 'Sin biometría', pendingHint: 'Guarda al empleado y activa el fichaje antes de crear el registro facial.', generateButton: 'Crear enlace de registro', regenerateButton: 'Crear nuevo enlace', copyButton: 'Copiar enlace', copied: 'Enlace de registro facial copiado', linkHint: 'Válido durante 24 horas y para un solo uso. Un nuevo enlace invalida el anterior.', deleteButton: 'Eliminar biometría', deleteTitle: '¿Eliminar el registro facial?', deleteDescription: 'La firma facial se eliminará y el empleado tendrá que registrarse de nuevo para usar el reconocimiento.', deleteConfirm: 'Eliminar biometría', cancel: 'Cancelar', deleted: 'Biometría facial eliminada', error: 'No fue posible actualizar la biometría facial', privacy: 'Las fotos no se envían ni se almacenan, solo la firma matemática del rostro.',
+          label: 'Reconocimiento facial', description: 'Identifica al empleado en el fichaje sin guardar fotos.', statusEnrolled: 'Biometría registrada', statusNotEnrolled: 'Sin biometría', pendingHint: 'Guarda al empleado y activa el fichaje antes de crear el registro facial.', generateButton: 'Crear enlace de registro', regenerateButton: 'Crear nuevo enlace', copyButton: 'Copiar enlace', copied: 'Enlace de registro facial copiado', generated: 'Enlace de registro facial creado', copyManually: 'El navegador bloqueó la copia automática. Usa el botón Copiar enlace.', linkHint: 'Válido durante 24 horas y para un solo uso. Un nuevo enlace invalida el anterior.', deleteButton: 'Eliminar biometría', deleteTitle: '¿Eliminar el registro facial?', deleteDescription: 'La firma facial se eliminará y el empleado tendrá que registrarse de nuevo para usar el reconocimiento.', deleteConfirm: 'Eliminar biometría', cancel: 'Cancelar', deleted: 'Biometría facial eliminada', error: 'No fue posible actualizar la biometría facial', privacy: 'Las fotos no se envían ni se almacenan, solo la firma matemática del rostro.',
         },
       },
       linkUser: {
@@ -3121,6 +3130,8 @@ export const employees = {
         breakMin: 'Pause (min)',
         requireSelfie: 'Exiger un selfie',
         requireGeo: 'Exiger la géolocalisation',
+        requireFaceKiosk: 'Biométrie obligatoire sur la borne',
+        requireFaceKioskHint: `Désactivée par défaut. Une fois activée, masque la recherche manuelle tant que la reconnaissance est disponible.`,
         maxRadius: 'Rayon maximum (mètres)',
         maxRadiusHint: '0 = sans restriction',
         lateTolerance: 'Tolérance retard (min)',
@@ -3472,6 +3483,7 @@ export const employees = {
       titleEdit: 'Modifier l\'employé',
       tabData: 'Détails',
       tabPayment: 'Paiement',
+      tabTimeclock: 'Pointage',
       tabDisc: 'Profil',
       disc: {
         sectionTitle: 'Profil Comportemental',
@@ -3706,7 +3718,7 @@ export const employees = {
           toastError: `Erreur lors de l'enregistrement du PIN`,
         },
         face: {
-          label: 'Reconnaissance faciale', description: `Identifie l'employé sur la pointeuse sans conserver de photos.`, statusEnrolled: 'Biométrie enregistrée', statusNotEnrolled: 'Aucune biométrie', pendingHint: `Enregistrez l'employé et activez le pointage avant de créer l'enregistrement facial.`, generateButton: `Créer le lien d'enregistrement`, regenerateButton: 'Créer un nouveau lien', copyButton: 'Copier le lien', copied: `Lien d'enregistrement facial copié`, linkHint: `Valable 24 heures et pour une seule utilisation. Un nouveau lien invalide l'ancien.`, deleteButton: 'Supprimer la biométrie', deleteTitle: `Supprimer l'enregistrement facial ?`, deleteDescription: `La signature faciale sera supprimée et l'employé devra se réinscrire pour utiliser la reconnaissance.`, deleteConfirm: 'Supprimer la biométrie', cancel: 'Annuler', deleted: 'Biométrie faciale supprimée', error: 'Impossible de mettre à jour la biométrie faciale', privacy: `Les photos ne sont ni envoyées ni conservées, seule la signature mathématique du visage l'est.`,
+          label: 'Reconnaissance faciale', description: `Identifie l'employé sur la pointeuse sans conserver de photos.`, statusEnrolled: 'Biométrie enregistrée', statusNotEnrolled: 'Aucune biométrie', pendingHint: `Enregistrez l'employé et activez le pointage avant de créer l'enregistrement facial.`, generateButton: `Créer le lien d'enregistrement`, regenerateButton: 'Créer un nouveau lien', copyButton: 'Copier le lien', copied: `Lien d'enregistrement facial copié`, generated: `Lien d'enregistrement facial créé`, copyManually: `Le navigateur a bloqué la copie automatique. Utilisez le bouton Copier le lien.`, linkHint: `Valable 24 heures et pour une seule utilisation. Un nouveau lien invalide l'ancien.`, deleteButton: 'Supprimer la biométrie', deleteTitle: `Supprimer l'enregistrement facial ?`, deleteDescription: `La signature faciale sera supprimée et l'employé devra se réinscrire pour utiliser la reconnaissance.`, deleteConfirm: 'Supprimer la biométrie', cancel: 'Annuler', deleted: 'Biométrie faciale supprimée', error: 'Impossible de mettre à jour la biométrie faciale', privacy: `Les photos ne sont ni envoyées ni conservées, seule la signature mathématique du visage l'est.`,
         },
       },
       linkUser: {

@@ -39,6 +39,7 @@ export interface KioskCompany {
 
 export interface KioskState {
   company: KioskCompany;
+  settings: { kiosk_require_face: boolean };
   employees: KioskEmployee[];
 }
 
@@ -47,6 +48,17 @@ export interface KioskError {
   status: number;
   message: string;
   code?: string;
+}
+
+export type KioskFaceMatchResult =
+  | { status: "matched"; employee_id: string; proof: string }
+  | { status: "ambiguous"; candidate_ids: string[] }
+  | { status: "not_recognized" | "unavailable" };
+
+export interface KioskFaceMatchArgs {
+  modelVersion: string;
+  embedding: number[];
+  qualityScore: number;
 }
 
 interface UsePontoKioskResult {
@@ -58,6 +70,7 @@ interface UsePontoKioskResult {
   /** true quando o erro é 403 com code "module_inactive" (módulo de ponto desligado pro tenant) */
   moduleInactive: boolean;
   refetch: () => Promise<void>;
+  matchFace: (args: KioskFaceMatchArgs) => Promise<KioskFaceMatchResult>;
 }
 
 export function usePontoKiosk(kioskSlug: string | undefined): UsePontoKioskResult {
@@ -135,6 +148,58 @@ export function usePontoKiosk(kioskSlug: string | undefined): UsePontoKioskResul
     void refetch();
   }, [refetch]);
 
+  const matchFace = useCallback(async ({
+    modelVersion,
+    embedding,
+    qualityScore,
+  }: KioskFaceMatchArgs): Promise<KioskFaceMatchResult> => {
+    if (!kioskSlug) return { status: "unavailable" };
+
+    let res: Response;
+    try {
+      res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          action: "match_face",
+          kiosk_slug: kioskSlug,
+          model_version: modelVersion,
+          embedding,
+          quality_score: qualityScore,
+        }),
+      });
+    } catch {
+      return { status: "unavailable" };
+    }
+
+    const payload = await res.json().catch(() => null) as Record<string, unknown> | null;
+    if (!res.ok) {
+      if (res.status === 429) throw new Error("rate_limited");
+      return { status: "unavailable" };
+    }
+    if (
+      payload?.status === "matched" &&
+      typeof payload.employee_id === "string" &&
+      typeof payload.proof === "string" &&
+      /^[0-9a-f]{64}$/.test(payload.proof)
+    ) {
+      return { status: "matched", employee_id: payload.employee_id, proof: payload.proof };
+    }
+    if (payload?.status === "ambiguous" && Array.isArray(payload.candidate_ids)) {
+      return {
+        status: "ambiguous",
+        candidate_ids: payload.candidate_ids.filter((id): id is string => typeof id === "string").slice(0, 3),
+      };
+    }
+    return {
+      status: payload?.status === "not_recognized" ? "not_recognized" : "unavailable",
+    };
+  }, [kioskSlug]);
+
   return {
     state,
     loading,
@@ -142,5 +207,6 @@ export function usePontoKiosk(kioskSlug: string | undefined): UsePontoKioskResul
     notFound: error?.status === 404,
     moduleInactive: error?.status === 403 && error?.code === "module_inactive",
     refetch,
+    matchFace,
   };
 }

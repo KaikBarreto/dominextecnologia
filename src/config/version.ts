@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.25.0";
+export const APP_VERSION = "1.25.1";
 
-export const VERSION_NOTES = "Cadastro facial por link individual, leitura guiada sem guardar fotos e teste opcional no ponto eletrônico."
+export const VERSION_NOTES = "Reconhecimento facial no quiosque, busca manual configurável e captura guiada no ponto eletrônico."

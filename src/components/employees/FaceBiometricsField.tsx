@@ -40,12 +40,14 @@ export function FaceBiometricsField({ employeeId }: FaceBiometricsFieldProps) {
 
   useEffect(() => setGeneratedLink(null), [employeeId]);
 
-  const copyLink = async (link: string) => {
+  const copyLink = async (link: string): Promise<boolean> => {
     try {
       await navigator.clipboard.writeText(link);
       toast({ title: t.copied });
+      return true;
     } catch {
-      toast({ variant: 'destructive', title: t.error });
+      toast({ title: t.generated, description: t.copyManually });
+      return false;
     }
   };
 

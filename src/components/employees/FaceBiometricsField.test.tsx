@@ -76,6 +76,24 @@ describe('FaceBiometricsField', () => {
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
   });
 
+  it('mantem o link visivel quando o navegador bloqueia a copia automatica', async () => {
+    createMutate.mockResolvedValue({
+      token: 'b'.repeat(64),
+      expires_at: '2026-09-21T12:00:00.000Z',
+    });
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('blocked'));
+    render(<FaceBiometricsField employeeId="0d182f55-e29b-4d23-a641-e178004bfef3" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /gerar link/i }));
+
+    expect(await screen.findByRole('textbox')).toHaveValue(
+      `${window.location.origin}/cadastro-facial/${'b'.repeat(64)}`,
+    );
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Link de cadastro facial gerado',
+    }));
+  });
+
   it('exclusao exige confirmacao antes de apagar os templates', async () => {
     enrolled = true;
     deleteMutate.mockResolvedValue(undefined);

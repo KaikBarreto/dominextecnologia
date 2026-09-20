@@ -300,7 +300,10 @@ function isIdentityValid(identity: PontoIdentity | undefined): identity is Ponto
 // chamador monta o objeto inline a cada render (é o caso do quiosque, que cria
 // `{ kind: "kiosk", ... }` no próprio JSX ao abrir o crachá) — sem isso, cada
 // render do pai viraria um refetch novo.
-export function usePontoPublico(identity: PontoIdentity | undefined): UsePontoPublicoResult {
+export function usePontoPublico(
+  identity: PontoIdentity | undefined,
+  faceProof?: string | null,
+): UsePontoPublicoResult {
   const [state, setState] = useState<PontoState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<PontoError | null>(null);
@@ -437,6 +440,7 @@ export function usePontoPublico(identity: PontoIdentity | undefined): UsePontoPu
           action: "register_punch",
           ...JSON.parse(identityKey),
           ...(pin ? { pin } : {}),
+          ...(faceProof && /^[0-9a-f]{64}$/.test(faceProof) ? { face_proof: faceProof } : {}),
           type,
           latitude: coords?.latitude ?? null,
           longitude: coords?.longitude ?? null,
@@ -464,7 +468,7 @@ export function usePontoPublico(identity: PontoIdentity | undefined): UsePontoPu
         throw err;
       }
     },
-    [identityKey, pin, state],
+    [faceProof, identityKey, pin, state],
   );
 
   const calibrateFace = useCallback(

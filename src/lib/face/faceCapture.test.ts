@@ -25,6 +25,13 @@ describe('evaluateFaceFrame', () => {
     expect(result.qualityScore).toBeGreaterThan(0.8);
   });
 
+  it('aceita a variacao de yaw observada em um rosto realmente frontal', () => {
+    // O face-api retorna uma medida proporcional ao rosto, nao graus. Esta
+    // proporcao (~0.17) foi observada em amostras frontais reais.
+    expect(evaluateFaceFrame({ ...base, yaw: 44 }, 'front').ready).toBe(true);
+    expect(evaluateFaceFrame({ ...base, yaw: -44 }, 'front').ready).toBe(true);
+  });
+
   it('recusa zero ou mais de um rosto', () => {
     expect(evaluateFaceFrame({ ...base, faceCount: 0, box: null }, 'front').guidance).toBe('no_face');
     expect(evaluateFaceFrame({ ...base, faceCount: 2 }, 'front').guidance).toBe('multiple_faces');
@@ -45,24 +52,24 @@ describe('evaluateFaceFrame', () => {
   });
 
   it('exige olhar frontal na primeira captura', () => {
-    expect(evaluateFaceFrame({ ...base, yaw: 18 }, 'front').guidance).toBe('look_forward');
-    expect(evaluateFaceFrame({ ...base, yaw: -18 }, 'front').guidance).toBe('look_forward');
+    expect(evaluateFaceFrame({ ...base, yaw: 56 }, 'front').guidance).toBe('look_forward');
+    expect(evaluateFaceFrame({ ...base, yaw: -56 }, 'front').guidance).toBe('look_forward');
   });
 
   it('exige lados opostos nas capturas laterais', () => {
-    const first = evaluateFaceFrame({ ...base, yaw: 20 }, 'first_side');
+    const first = evaluateFaceFrame({ ...base, yaw: 60 }, 'first_side');
     expect(first.ready).toBe(true);
     expect(first.yawSign).toBe(1);
 
-    expect(evaluateFaceFrame({ ...base, yaw: 18 }, 'opposite_side', first.yawSign).guidance)
+    expect(evaluateFaceFrame({ ...base, yaw: 60 }, 'opposite_side', first.yawSign).guidance)
       .toBe('turn_to_other_side');
-    expect(evaluateFaceFrame({ ...base, yaw: -18 }, 'opposite_side', first.yawSign).ready)
+    expect(evaluateFaceFrame({ ...base, yaw: -60 }, 'opposite_side', first.yawSign).ready)
       .toBe(true);
   });
 
   it('nao aceita pose lateral sem giro ou sem referencia do primeiro lado', () => {
     expect(evaluateFaceFrame({ ...base, yaw: 0 }, 'first_side').guidance).toBe('turn_to_one_side');
-    expect(evaluateFaceFrame({ ...base, yaw: -18 }, 'opposite_side', 0).guidance)
+    expect(evaluateFaceFrame({ ...base, yaw: -60 }, 'opposite_side', 0).guidance)
       .toBe('turn_to_other_side');
   });
 

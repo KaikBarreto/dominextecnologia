@@ -63,6 +63,7 @@ export interface TimeSettings {
   default_break_min: number;
   require_selfie: boolean;
   require_geolocation: boolean;
+  kiosk_require_face: boolean;
   max_radius_meters: number;
   allow_off_hours: boolean;
   late_tolerance_min: number;

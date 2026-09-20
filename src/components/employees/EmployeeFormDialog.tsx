@@ -87,8 +87,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [matricula, setMatricula] = useState<string>('');
   const TAB_DADOS = 'dados';
   const TAB_REMUNERACAO = 'remuneracao';
+  const TAB_PONTO = 'ponto';
   const TAB_DISC = 'disc';
-  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO | typeof TAB_DISC;
+  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO | typeof TAB_PONTO | typeof TAB_DISC;
   const [activeTab, setActiveTab] = useState<TabKey>(TAB_DADOS);
   // ID do funcionário recém-criado no fluxo "salvar+gerar DISC" na criação.
   const [createdEmployeeId, setCreatedEmployeeId] = useState<string | null>(null);
@@ -317,6 +318,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             tabs={[
               { value: TAB_DADOS, label: t.tabData },
               { value: TAB_REMUNERACAO, label: t.tabPayment },
+              { value: TAB_PONTO, label: t.tabTimeclock },
               { value: TAB_DISC, label: t.tabDisc },
             ]}
             activeTab={activeTab}
@@ -568,65 +570,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </p>
         </div>
 
-        {/* Ponto eletrônico por link público */}
-        <div className="rounded-lg border p-3 space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div>
-                <Label className="text-sm font-medium">{t.timeclock.sectionTitle}</Label>
-                <p className="text-xs text-muted-foreground">{t.timeclock.description}</p>
-              </div>
-            </div>
-            <LabeledSwitch
-              value={pontoEnabled ? 'on' : 'off'}
-              onChange={(v) => setPontoEnabled(v === 'on')}
-              off={{ value: 'off', label: t.timeclock.statusOff }}
-              on={{ value: 'on', label: t.timeclock.statusOn }}
-              aria-label={t.timeclock.ariaLabel}
-            />
-          </div>
-          {pontoEnabled && (
-            employee?.ponto_slug ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  readOnly
-                  value={`${window.location.origin}/ponto/${employee.ponto_slug}`}
-                  className="text-xs"
-                  onFocus={(e) => e.currentTarget.select()}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-10 shrink-0 gap-1"
-                  onClick={async () => {
-                    const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
-                    try {
-                      await navigator.clipboard.writeText(link);
-                      toast({ title: MESSAGES[locale].app.employees.toasts.linkCopied, description: link });
-                    } catch {
-                      toast({ variant: 'destructive', title: MESSAGES[locale].app.employees.toasts.linkCopyFailed, description: link });
-                    }
-                  }}
-                >
-                  <Copy className="h-3.5 w-3.5" /> {t.timeclock.copyButton}
-                </Button>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {t.timeclock.pendingLinkHint}
-              </p>
-            )
-          )}
-        </div>
-
-        {/* PIN opcional do ponto (protege a batida no tablet compartilhado / link pessoal) */}
-        {pontoEnabled && <PontoPinField employeeId={employee?.id ?? null} />}
-
-        {/* Cadastro facial por link de uso único. A foto nunca chega ao servidor. */}
-        {pontoEnabled && <FaceBiometricsField employeeId={employee?.id ?? null} />}
-
         {/* Link to existing user */}
         <div className="rounded-lg border p-3 space-y-2">
           <div className="flex items-center gap-2">
@@ -694,6 +637,67 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </div>
         )}
 
+          </TabsContent>
+
+          <TabsContent value={TAB_PONTO} className="space-y-4">
+            {/* Ponto eletrônico por link público */}
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <Label className="text-sm font-medium">{t.timeclock.sectionTitle}</Label>
+                    <p className="text-xs text-muted-foreground">{t.timeclock.description}</p>
+                  </div>
+                </div>
+                <LabeledSwitch
+                  value={pontoEnabled ? 'on' : 'off'}
+                  onChange={(v) => setPontoEnabled(v === 'on')}
+                  off={{ value: 'off', label: t.timeclock.statusOff }}
+                  on={{ value: 'on', label: t.timeclock.statusOn }}
+                  aria-label={t.timeclock.ariaLabel}
+                />
+              </div>
+              {pontoEnabled && (
+                employee?.ponto_slug ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={`${window.location.origin}/ponto/${employee.ponto_slug}`}
+                      className="text-xs"
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-10 shrink-0 gap-1"
+                      onClick={async () => {
+                        const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
+                        try {
+                          await navigator.clipboard.writeText(link);
+                          toast({ title: MESSAGES[locale].app.employees.toasts.linkCopied, description: link });
+                        } catch {
+                          toast({ variant: 'destructive', title: MESSAGES[locale].app.employees.toasts.linkCopyFailed, description: link });
+                        }
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" /> {t.timeclock.copyButton}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {t.timeclock.pendingLinkHint}
+                  </p>
+                )
+              )}
+            </div>
+
+            {/* PIN opcional do ponto (protege a batida no tablet compartilhado / link pessoal) */}
+            {pontoEnabled && <PontoPinField employeeId={employee?.id ?? null} />}
+
+            {/* Cadastro facial por link de uso único. A foto nunca chega ao servidor. */}
+            {pontoEnabled && <FaceBiometricsField employeeId={employee?.id ?? null} />}
           </TabsContent>
 
           <TabsContent value={TAB_DISC} className="space-y-4">

@@ -43,6 +43,14 @@ export interface FaceTemplatePayload {
 
 const round4 = (value: number) => Math.round(value * 10_000) / 10_000;
 
+// O `angle.yaw` do @vladmandic/face-api nao e um angulo em graus. Na pratica,
+// rostos realmente frontais ficam com |yaw / largura| perto de 0.10-0.18 em
+// cameras comuns. O limite antigo (0.065) rejeitava essas leituras e deixava a
+// primeira etapa presa para sempre. Mantemos uma folga frontal conservadora e
+// exigimos um giro nitido, fora dessa faixa, nas capturas laterais.
+const FRONT_MAX_YAW_RATIO = 0.2;
+const SIDE_MIN_YAW_RATIO = 0.22;
+
 export function evaluateFaceFrame(
   metrics: FaceFrameMetrics,
   pose: FaceCapturePose,
@@ -63,7 +71,7 @@ export function evaluateFaceFrame(
   }
 
   const widthRatio = metrics.box.width / metrics.frameWidth;
-  if (widthRatio < 0.28) return fail('move_closer');
+  if (widthRatio < 0.22) return fail('move_closer');
   if (widthRatio > 0.72) return fail('move_away');
 
   const centerX = metrics.box.x + metrics.box.width / 2;
@@ -78,13 +86,19 @@ export function evaluateFaceFrame(
   // O yaw fornecido pelo face-api e proporcional ao tamanho do rosto, nao um
   // angulo real. Normalizar pela largura deixa o limiar estavel entre cameras.
   const yawRatio = metrics.yaw === null ? 0 : metrics.yaw / metrics.box.width;
-  const yawSign: -1 | 0 | 1 = yawRatio > 0.02 ? 1 : yawRatio < -0.02 ? -1 : 0;
+  const yawSign: -1 | 0 | 1 = yawRatio >= SIDE_MIN_YAW_RATIO
+    ? 1
+    : yawRatio <= -SIDE_MIN_YAW_RATIO
+      ? -1
+      : 0;
 
-  if (pose === 'front' && Math.abs(yawRatio) > 0.065) return fail('look_forward');
-  if (pose === 'first_side' && Math.abs(yawRatio) < 0.025) return fail('turn_to_one_side');
+  if (pose === 'front' && Math.abs(yawRatio) > FRONT_MAX_YAW_RATIO) return fail('look_forward');
+  if (pose === 'first_side' && Math.abs(yawRatio) < SIDE_MIN_YAW_RATIO) {
+    return fail('turn_to_one_side');
+  }
   if (
     pose === 'opposite_side' &&
-    (Math.abs(yawRatio) < 0.025 || firstSideSign === 0 || yawSign === firstSideSign)
+    (Math.abs(yawRatio) < SIDE_MIN_YAW_RATIO || firstSideSign === 0 || yawSign === firstSideSign)
   ) {
     return fail('turn_to_other_side');
   }
