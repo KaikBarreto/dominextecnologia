@@ -13,6 +13,7 @@ const copy: FaceCaptureCopy = {
   preparing: 'Preparando',
   requestingCamera: 'Pedindo câmera',
   captureLabel: 'Captura {current} de {total}',
+  scanLabel: 'Leitura facial',
   poses: {
     front: 'Olhe de frente',
     first_side: 'Vire de lado',
@@ -95,7 +96,8 @@ describe('FaceCaptureExperience', () => {
       />,
     );
 
-    expect(await screen.findByText('Captura 1 de 1')).toBeInTheDocument();
+    expect(await screen.findByText('Leitura facial')).toBeInTheDocument();
+    expect(screen.queryByText('Captura 1 de 1')).not.toBeInTheDocument();
     await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1), { timeout: 3500 });
     const captures = onComplete.mock.calls[0][0];
     expect(captures).toHaveLength(1);
@@ -138,11 +140,73 @@ describe('FaceCaptureExperience', () => {
       />,
     );
 
-    await screen.findByText('Captura 1 de 1');
+    await screen.findByText('Leitura facial');
     fireEvent.click(screen.getByRole('button', { name: 'Fechar leitura' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(stopTrack).toHaveBeenCalled();
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('preserva o progresso após um quadro ruim e envia o melhor quadro da leitura', async () => {
+    const onComplete = vi.fn();
+    const bestEmbedding = embedding.map((value, index) => index === 0 ? value + 0.001 : value);
+    const transientMiss = {
+      ...readyFrame,
+      metrics: { ...readyFrame.metrics, faceCount: 0, box: null },
+      embedding: null,
+    };
+    const lowerQualityFrame = {
+      ...readyFrame,
+      metrics: { ...readyFrame.metrics, detectionScore: 0.7 },
+    };
+    vi.mocked(detectFaceFrame)
+      .mockResolvedValueOnce({ ...readyFrame, embedding: bestEmbedding })
+      .mockResolvedValueOnce(transientMiss)
+      .mockResolvedValueOnce(lowerQualityFrame)
+      .mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <FaceCaptureExperience
+        accentColor="#00c684"
+        copy={copy}
+        mode="verification"
+        onComplete={onComplete}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1), { timeout: 3500 });
+    expect(detectFaceFrame).toHaveBeenCalledTimes(3);
+    expect(onComplete.mock.calls[0][0][0].embedding).toEqual(bestEmbedding);
+  });
+
+  it('mostra o reconhecimento do quiosque como uma leitura contínua', async () => {
+    const onComplete = vi.fn();
+    const sideFrame = {
+      ...readyFrame,
+      metrics: { ...readyFrame.metrics, yaw: 80 },
+    };
+    vi.mocked(detectFaceFrame)
+      .mockResolvedValueOnce(readyFrame)
+      .mockResolvedValueOnce(readyFrame)
+      .mockResolvedValueOnce(sideFrame)
+      .mockResolvedValueOnce(sideFrame)
+      .mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <FaceCaptureExperience
+        accentColor="#00c684"
+        copy={copy}
+        mode="identification"
+        onComplete={onComplete}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('Leitura facial')).toBeInTheDocument();
+    expect(screen.queryByText(/Captura \d de 2/)).not.toBeInTheDocument();
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1), { timeout: 4500 });
+    expect(onComplete.mock.calls[0][0]).toHaveLength(2);
   });
 });

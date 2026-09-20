@@ -36,6 +36,14 @@ export interface FaceFrameEvaluation {
   yawSign: -1 | 0 | 1;
 }
 
+export interface FaceFrameEvaluationOptions {
+  /**
+   * Tolera pequenas oscilacoes de enquadramento durante uma leitura ao vivo.
+   * O cadastro permanece estrito para nao degradar os templates persistidos.
+   */
+  tolerateMotion?: boolean;
+}
+
 export interface FaceTemplatePayload {
   embedding: number[];
   quality_score: number;
@@ -55,6 +63,7 @@ export function evaluateFaceFrame(
   metrics: FaceFrameMetrics,
   pose: FaceCapturePose,
   firstSideSign: -1 | 0 | 1 = 0,
+  options: FaceFrameEvaluationOptions = {},
 ): FaceFrameEvaluation {
   const fail = (guidance: FaceCaptureGuidance): FaceFrameEvaluation => ({
     ready: false,
@@ -66,22 +75,30 @@ export function evaluateFaceFrame(
   if (metrics.faceCount === 0 || !metrics.box) return fail('no_face');
   if (metrics.faceCount > 1) return fail('multiple_faces');
   if (metrics.frameWidth <= 0 || metrics.frameHeight <= 0) return fail('hold_still');
-  if (!Number.isFinite(metrics.detectionScore) || metrics.detectionScore < 0.68) {
+  const minDetectionScore = options.tolerateMotion ? 0.62 : 0.68;
+  const minWidthRatio = options.tolerateMotion ? 0.18 : 0.22;
+  const maxWidthRatio = options.tolerateMotion ? 0.76 : 0.72;
+  const maxOffsetX = options.tolerateMotion ? 0.2 : 0.16;
+  const maxOffsetY = options.tolerateMotion ? 0.24 : 0.2;
+  const maxRoll = options.tolerateMotion ? 20 : 16;
+  const maxPitch = options.tolerateMotion ? 26 : 22;
+
+  if (!Number.isFinite(metrics.detectionScore) || metrics.detectionScore < minDetectionScore) {
     return fail('hold_still');
   }
 
   const widthRatio = metrics.box.width / metrics.frameWidth;
-  if (widthRatio < 0.22) return fail('move_closer');
-  if (widthRatio > 0.72) return fail('move_away');
+  if (widthRatio < minWidthRatio) return fail('move_closer');
+  if (widthRatio > maxWidthRatio) return fail('move_away');
 
   const centerX = metrics.box.x + metrics.box.width / 2;
   const centerY = metrics.box.y + metrics.box.height / 2;
   const offsetX = Math.abs(centerX / metrics.frameWidth - 0.5);
   const offsetY = Math.abs(centerY / metrics.frameHeight - 0.48);
-  if (offsetX > 0.16 || offsetY > 0.2) return fail('center_face');
+  if (offsetX > maxOffsetX || offsetY > maxOffsetY) return fail('center_face');
 
-  if (metrics.roll !== null && Math.abs(metrics.roll) > 16) return fail('keep_head_level');
-  if (metrics.pitch !== null && Math.abs(metrics.pitch) > 22) return fail('keep_head_level');
+  if (metrics.roll !== null && Math.abs(metrics.roll) > maxRoll) return fail('keep_head_level');
+  if (metrics.pitch !== null && Math.abs(metrics.pitch) > maxPitch) return fail('keep_head_level');
 
   // O yaw fornecido pelo face-api e proporcional ao tamanho do rosto, nao um
   // angulo real. Normalizar pela largura deixa o limiar estavel entre cameras.
@@ -104,7 +121,7 @@ export function evaluateFaceFrame(
   }
 
   const sizeQuality = Math.max(0, 1 - Math.abs(widthRatio - 0.48) / 0.28);
-  const centerQuality = Math.max(0, 1 - (offsetX / 0.16 + offsetY / 0.2) / 2);
+  const centerQuality = Math.max(0, 1 - (offsetX / maxOffsetX + offsetY / maxOffsetY) / 2);
   const qualityScore = round4(
     Math.min(1, metrics.detectionScore * 0.65 + sizeQuality * 0.2 + centerQuality * 0.15),
   );

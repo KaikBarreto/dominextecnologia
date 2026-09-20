@@ -51,6 +51,21 @@ describe('evaluateFaceFrame', () => {
     expect(evaluateFaceFrame({ ...base, pitch: -23 }, 'front').guidance).toBe('keep_head_level');
   });
 
+  it('tolera pequenas oscilações apenas durante a leitura ao vivo', () => {
+    const movingFrame: FaceFrameMetrics = {
+      ...base,
+      detectionScore: 0.64,
+      box: { ...base.box!, x: 120, width: 150 },
+      roll: 19,
+      pitch: 25,
+    };
+
+    expect(evaluateFaceFrame(movingFrame, 'front').ready).toBe(false);
+    expect(evaluateFaceFrame(movingFrame, 'front', 0, { tolerateMotion: true }).ready).toBe(true);
+    expect(evaluateFaceFrame({ ...movingFrame, faceCount: 2 }, 'front', 0, { tolerateMotion: true }).ready)
+      .toBe(false);
+  });
+
   it('exige olhar frontal na primeira captura', () => {
     expect(evaluateFaceFrame({ ...base, yaw: 56 }, 'front').guidance).toBe('look_forward');
     expect(evaluateFaceFrame({ ...base, yaw: -56 }, 'front').guidance).toBe('look_forward');

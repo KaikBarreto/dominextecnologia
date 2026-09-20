@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.3',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Reconhecimento facial mais fluido',
+        description: 'A leitura do rosto agora tolera pequenos movimentos e um quadro momentaneamente borrado sem reiniciar todo o progresso. A tela apresenta uma única leitura contínua e escolhe automaticamente o melhor enquadramento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.25.2',
     date: '20 de setembro de 2026',
     type: 'patch',

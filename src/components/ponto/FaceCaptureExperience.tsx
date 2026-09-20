@@ -16,6 +16,7 @@ export interface FaceCaptureCopy {
   preparing: string;
   requestingCamera: string;
   captureLabel: string;
+  scanLabel: string;
   poses: Record<FaceCapturePose, string>;
   guidance: Record<FaceCaptureGuidance, string>;
   captured: string;
@@ -47,8 +48,14 @@ const VERIFICATION_POSES: FaceCapturePose[] = ['front'];
 // comparacao usa a captura frontal; a segunda leitura e apenas o desafio de
 // vivacidade e nunca sai do aparelho.
 const IDENTIFICATION_POSES: FaceCapturePose[] = ['front', 'first_side'];
-const STABLE_FRAMES = 3;
-const LOOP_DELAY_MS = 260;
+const ENROLLMENT_CONFIRMATIONS = 3;
+const LIVE_SCAN_CONFIRMATIONS = 2;
+const MAX_TRANSIENT_MISSES = 1;
+const ENROLLMENT_LOOP_DELAY_MS = 260;
+// A leitura ao vivo nao precisa disputar todos os quadros da camera. Um ritmo
+// proximo de 3 analises/s reduz a disputa de CPU em aparelhos modestos; cada
+// analise continua esperando a anterior terminar, sem criar fila de frames.
+const LIVE_SCAN_LOOP_DELAY_MS = 320;
 
 function cameraErrorMessage(error: unknown, copy: FaceCaptureCopy): string {
   const name = (error as DOMException)?.name;
@@ -75,7 +82,9 @@ export function FaceCaptureExperience({
   const streamRef = useRef<MediaStream | null>(null);
   const stoppedRef = useRef(false);
   const stableFramesRef = useRef(0);
+  const transientMissesRef = useRef(0);
   const capturesRef = useRef<FaceTemplatePayload[]>([]);
+  const bestCandidateRef = useRef<FaceTemplatePayload | null>(null);
   const firstSideSignRef = useRef<-1 | 0 | 1>(0);
   const poseIndexRef = useRef(0);
   const transitionTimerRef = useRef<number | null>(null);
@@ -87,6 +96,9 @@ export function FaceCaptureExperience({
   const [guidance, setGuidance] = useState<FaceCaptureGuidance>('hold_still');
   const [justCaptured, setJustCaptured] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const continuousScan = mode !== 'enrollment';
+  const requiredConfirmations = continuousScan ? LIVE_SCAN_CONFIRMATIONS : ENROLLMENT_CONFIRMATIONS;
+  const loopDelayMs = continuousScan ? LIVE_SCAN_LOOP_DELAY_MS : ENROLLMENT_LOOP_DELAY_MS;
 
   const stopCamera = useCallback(() => {
     stoppedRef.current = true;
@@ -104,7 +116,9 @@ export function FaceCaptureExperience({
   useEffect(() => {
     stoppedRef.current = false;
     stableFramesRef.current = 0;
+    transientMissesRef.current = 0;
     capturesRef.current = [];
+    bestCandidateRef.current = null;
     firstSideSignRef.current = 0;
     poseIndexRef.current = 0;
     setPoseIndex(0);
@@ -117,20 +131,23 @@ export function FaceCaptureExperience({
 
     const scheduleDetection = () => {
       if (stoppedRef.current) return;
-      loopTimer = window.setTimeout(() => void detect(), LOOP_DELAY_MS);
+      loopTimer = window.setTimeout(() => void detect(), loopDelayMs);
     };
 
     const capture = (embedding: number[], qualityScore: number, yawSign: -1 | 0 | 1) => {
       const next = [...capturesRef.current, { embedding, quality_score: qualityScore }];
       capturesRef.current = next;
       stableFramesRef.current = 0;
+      transientMissesRef.current = 0;
+      bestCandidateRef.current = null;
       setStableFrames(0);
-      setJustCaptured(true);
+      const finalCapture = next.length === poses.length;
+      setJustCaptured(!continuousScan || finalCapture);
 
       if (poseIndexRef.current === 1) firstSideSignRef.current = yawSign;
-      if (next.length === poses.length) {
+      if (finalCapture) {
         stopCamera();
-        transitionTimerRef.current = window.setTimeout(() => onComplete(next), 450);
+        transitionTimerRef.current = window.setTimeout(() => onComplete(next), continuousScan ? 260 : 450);
         return;
       }
 
@@ -143,7 +160,7 @@ export function FaceCaptureExperience({
           poseIndexRef.current === 1 ? 'turn_to_one_side' : 'turn_to_other_side',
         );
         scheduleDetection();
-      }, 900);
+      }, continuousScan ? 120 : 900);
     };
 
     const detect = async () => {
@@ -158,23 +175,55 @@ export function FaceCaptureExperience({
           frame.metrics,
           poses[poseIndexRef.current],
           firstSideSignRef.current,
+          { tolerateMotion: continuousScan },
         );
         setGuidance(evaluation.guidance);
 
         if (evaluation.ready && frame.embedding) {
+          transientMissesRef.current = 0;
+          if (
+            !bestCandidateRef.current ||
+            evaluation.qualityScore > bestCandidateRef.current.quality_score
+          ) {
+            bestCandidateRef.current = {
+              embedding: frame.embedding,
+              quality_score: evaluation.qualityScore,
+            };
+          }
           stableFramesRef.current += 1;
           setStableFrames(stableFramesRef.current);
-          if (stableFramesRef.current >= STABLE_FRAMES) {
-            capture(frame.embedding, evaluation.qualityScore, evaluation.yawSign);
+          if (stableFramesRef.current >= requiredConfirmations) {
+            const best = bestCandidateRef.current;
+            capture(
+              best?.embedding ?? frame.embedding,
+              best?.quality_score ?? evaluation.qualityScore,
+              evaluation.yawSign,
+            );
             return;
           }
         } else {
-          stableFramesRef.current = 0;
-          setStableFrames(0);
+          transientMissesRef.current += 1;
+          // Um unico quadro ruim costuma ser apenas movimento ou autofocus.
+          // Mais de um erro seguido reinicia a confirmacao; multiplas pessoas
+          // sempre reiniciam imediatamente por seguranca.
+          if (
+            evaluation.guidance === 'multiple_faces' ||
+            transientMissesRef.current > MAX_TRANSIENT_MISSES
+          ) {
+            stableFramesRef.current = 0;
+            transientMissesRef.current = 0;
+            bestCandidateRef.current = null;
+            setStableFrames(0);
+          }
         }
       } catch {
-        stableFramesRef.current = 0;
-        setStableFrames(0);
+        transientMissesRef.current += 1;
+        if (transientMissesRef.current > MAX_TRANSIENT_MISSES) {
+          stableFramesRef.current = 0;
+          transientMissesRef.current = 0;
+          bestCandidateRef.current = null;
+          setStableFrames(0);
+        }
         setGuidance('hold_still');
       }
       scheduleDetection();
@@ -218,11 +267,11 @@ export function FaceCaptureExperience({
       if (loopTimer) window.clearTimeout(loopTimer);
       stopCamera();
     };
-  }, [attempt, copy, onComplete, poses, stopCamera]);
+  }, [attempt, continuousScan, copy, loopDelayMs, onComplete, poses, requiredConfirmations, stopCamera]);
 
   const progress = useMemo(
-    () => (poseIndex + Math.min(stableFrames, STABLE_FRAMES) / STABLE_FRAMES) / poses.length,
-    [poseIndex, poses.length, stableFrames],
+    () => (poseIndex + Math.min(stableFrames, requiredConfirmations) / requiredConfirmations) / poses.length,
+    [poseIndex, poses.length, requiredConfirmations, stableFrames],
   );
 
   const currentPose = poses[Math.min(poseIndex, poses.length - 1)];
@@ -261,7 +310,9 @@ export function FaceCaptureExperience({
           <>
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.22em] text-white/45">
-                {copy.captureLabel.replace('{current}', String(poseIndex + 1)).replace('{total}', String(poses.length))}
+                {continuousScan
+                  ? copy.scanLabel
+                  : copy.captureLabel.replace('{current}', String(poseIndex + 1)).replace('{total}', String(poses.length))}
               </p>
               <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{copy.poses[currentPose]}</h1>
             </div>
@@ -297,18 +348,20 @@ export function FaceCaptureExperience({
 
             <div aria-live="polite" className="min-h-16">
               <p className="text-lg font-medium">{statusText}</p>
-              <div className="mt-3 flex justify-center gap-2" aria-hidden>
-                {poses.map((_, index) => (
-                  <span
-                    key={index}
-                    className="h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
-                    style={{
-                      width: index === poseIndex ? 32 : 12,
-                      backgroundColor: index < poseIndex ? accentColor : index === poseIndex ? accentColor : 'rgba(255,255,255,0.18)',
-                    }}
-                  />
-                ))}
-              </div>
+              {!continuousScan && (
+                <div className="mt-3 flex justify-center gap-2" aria-hidden>
+                  {poses.map((_, index) => (
+                    <span
+                      key={index}
+                      className="h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
+                      style={{
+                        width: index === poseIndex ? 32 : 12,
+                        backgroundColor: index < poseIndex ? accentColor : index === poseIndex ? accentColor : 'rgba(255,255,255,0.18)',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
