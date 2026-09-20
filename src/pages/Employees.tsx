@@ -42,6 +42,7 @@ import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalc
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { buildPointActivationLink, useCreateFaceEnrollmentLink } from '@/hooks/useFaceBiometrics';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { generateReceiptHTML } from '@/utils/receiptGenerator';
@@ -280,6 +281,7 @@ export default function Employees() {
   const { toast } = useToast();
   const { user, profile, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
+  const { mutateAsync: createFaceEnrollmentLink } = useCreateFaceEnrollmentLink();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
 
@@ -354,7 +356,7 @@ export default function Employees() {
     return result;
   }, [activeEmployees, search, sort]);
 
-  // Gera (idempotente) o slug do ponto público e copia o link no ato.
+  // Gera (idempotente) o slug do ponto público e copia o link de entrada no ato.
   // `wasEnabled` = estado anterior; só notifica/copia quando o ponto ACABOU de
   // ser ativado (evita toast em toda edição de funcionário que já tinha link).
   const ensurePontoLink = useCallback(async (employeeId: string, wasEnabled: boolean) => {
@@ -363,18 +365,51 @@ export default function Employees() {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       if (!wasEnabled && typeof slug === 'string' && slug) {
-        const link = `${window.location.origin}/ponto/${slug}`;
+        const permanentLink = `${window.location.origin}/ponto/${slug}`;
+        let link = permanentLink;
+        let isActivationLink = false;
+
+        const { data: faceStatus, error: faceStatusError } = await supabase.rpc(
+          'get_employee_face_template_status',
+          { p_employee_id: employeeId },
+        );
+        const enrolled = !faceStatusError && (faceStatus as { enrolled?: boolean } | null)?.enrolled === true;
+
+        if (!enrolled) {
+          try {
+            const enrollment = await createFaceEnrollmentLink(employeeId);
+            const activationLink = enrollment?.token
+              ? buildPointActivationLink(enrollment.token)
+              : null;
+            if (activationLink) {
+              link = activationLink;
+              isActivationLink = true;
+            }
+          } catch {
+            // O ponto não pode ficar indisponível se a ativação facial falhar.
+            // O link permanente continua sendo o fallback seguro e funcional.
+          }
+        }
+
         try {
           await navigator.clipboard.writeText(link);
-          toast({ title: t.toasts.linkCopied, description: link, duration: 10000 });
+          toast({
+            title: isActivationLink ? t.toasts.activationLinkCopied : t.toasts.linkCopied,
+            description: link,
+            duration: 10000,
+          });
         } catch {
-          toast({ title: t.toasts.pontoLinkGenerated, description: link, duration: 10000 });
+          toast({
+            title: isActivationLink ? t.toasts.activationLinkGenerated : t.toasts.pontoLinkGenerated,
+            description: link,
+            duration: 10000,
+          });
         }
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: t.toasts.pontoLinkError, description: getErrorMessage(err) });
     }
-  }, [queryClient, toast, t]);
+  }, [createFaceEnrollmentLink, queryClient, toast, t]);
 
   const handleCreateOrUpdate = async (data: Partial<Employee> & { _createAccess?: boolean; _password?: string }) => {
     const { _createAccess, _password, ...employeeData } = data as any;

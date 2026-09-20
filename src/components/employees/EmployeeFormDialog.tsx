@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
-import { Loader2, Camera, Link2, Calculator, Clock, Copy } from 'lucide-react';
+import { Loader2, Camera, Link2, Calculator, Clock } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -658,46 +658,18 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                   aria-label={t.timeclock.ariaLabel}
                 />
               </div>
-              {pontoEnabled && (
-                employee?.ponto_slug ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      readOnly
-                      value={`${window.location.origin}/ponto/${employee.ponto_slug}`}
-                      className="text-xs"
-                      onFocus={(e) => e.currentTarget.select()}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-10 shrink-0 gap-1"
-                      onClick={async () => {
-                        const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
-                        try {
-                          await navigator.clipboard.writeText(link);
-                          toast({ title: MESSAGES[locale].app.employees.toasts.linkCopied, description: link });
-                        } catch {
-                          toast({ variant: 'destructive', title: MESSAGES[locale].app.employees.toasts.linkCopyFailed, description: link });
-                        }
-                      }}
-                    >
-                      <Copy className="h-3.5 w-3.5" /> {t.timeclock.copyButton}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {t.timeclock.pendingLinkHint}
-                  </p>
-                )
-              )}
             </div>
 
             {/* PIN opcional do ponto (protege a batida no tablet compartilhado / link pessoal) */}
             {pontoEnabled && <PontoPinField employeeId={employee?.id ?? null} />}
 
             {/* Cadastro facial por link de uso único. A foto nunca chega ao servidor. */}
-            {pontoEnabled && <FaceBiometricsField employeeId={employee?.id ?? null} />}
+            {pontoEnabled && (
+              <FaceBiometricsField
+                employeeId={employee?.id ?? null}
+                pointSlug={employee?.ponto_slug ?? null}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value={TAB_DISC} className="space-y-4">

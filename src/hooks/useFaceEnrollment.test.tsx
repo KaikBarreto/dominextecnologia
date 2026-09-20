@@ -24,6 +24,7 @@ function context(overrides: Record<string, unknown> = {}) {
     embedding_dimension: FACE_EMBEDDING_DIMENSION,
     required_captures: FACE_REQUIRED_CAPTURES,
     expires_at: '2026-09-21T12:00:00.000Z',
+    point_path: '/ponto/marina-ABC234XY',
     ...overrides,
   };
 }
@@ -72,6 +73,15 @@ describe('useFaceEnrollment', () => {
 
   it('falha fechado quando servidor anuncia modelo, dimensao ou capturas incompatíveis', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(context({ model_version: 'modelo-novo' })));
+    const { result } = renderHook(() => useFaceEnrollment(TOKEN));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.context).toBeNull();
+    expect(result.current.error).toBe('temporarily_unavailable');
+  });
+
+  it('falha fechado quando o destino do ponto não é um caminho interno válido', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(context({ point_path: 'https://site-malicioso.test' })));
     const { result } = renderHook(() => useFaceEnrollment(TOKEN));
 
     await waitFor(() => expect(result.current.loading).toBe(false));

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  buildPointActivationLink,
   useCreateFaceEnrollmentLink,
   useDeleteFaceBiometrics,
   useFaceTemplateStatus,
@@ -26,9 +27,10 @@ import { getErrorMessage } from '@/utils/errorMessages';
 
 interface FaceBiometricsFieldProps {
   employeeId: string | null;
+  pointSlug?: string | null;
 }
 
-export function FaceBiometricsField({ employeeId }: FaceBiometricsFieldProps) {
+export function FaceBiometricsField({ employeeId, pointSlug }: FaceBiometricsFieldProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees.form.timeclock.face;
   const { toast } = useToast();
@@ -55,8 +57,8 @@ export function FaceBiometricsField({ employeeId }: FaceBiometricsFieldProps) {
     if (!employeeId) return;
     try {
       const result = await createLink.mutateAsync(employeeId);
-      if (!result?.token || !/^[0-9a-f]{64}$/.test(result.token)) throw new Error('invalid_token');
-      const link = `${window.location.origin}/cadastro-facial/${result.token}`;
+      const link = result?.token ? buildPointActivationLink(result.token) : null;
+      if (!link) throw new Error('invalid_token');
       setGeneratedLink(link);
       await copyLink(link);
     } catch (error) {
@@ -90,6 +92,9 @@ export function FaceBiometricsField({ employeeId }: FaceBiometricsFieldProps) {
   }
 
   const enrolled = status.data?.enrolled === true;
+  const pointLink = enrolled && pointSlug && /^[a-z0-9-]+$/i.test(pointSlug)
+    ? `${window.location.origin}/ponto/${pointSlug}`
+    : null;
 
   return (
     <div className="space-y-3 rounded-lg border p-3">
@@ -124,6 +129,31 @@ export function FaceBiometricsField({ employeeId }: FaceBiometricsFieldProps) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">{t.linkHint}</p>
+        </div>
+      )}
+
+      {pointLink && (
+        <div className="space-y-2">
+          <Label className="text-xs font-medium">{t.pointLinkLabel}</Label>
+          <div className="flex gap-2">
+            <Input readOnly value={pointLink} className="min-w-0 text-xs" onFocus={(event) => event.currentTarget.select()} />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10 shrink-0"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(pointLink);
+                  toast({ title: t.pointCopied });
+                } catch {
+                  toast({ title: t.generated, description: t.copyManually });
+                }
+              }}
+            >
+              <Copy className="h-3.5 w-3.5" /> {t.pointCopyButton}
+            </Button>
+          </div>
         </div>
       )}
 

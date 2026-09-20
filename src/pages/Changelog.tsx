@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.4',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Um único link para ativar o ponto',
+        description: 'Ao ativar o ponto de um funcionário, o gestor recebe um único link. A pessoa cadastra o rosto e segue automaticamente para seu ponto individual; se não puder usar a câmera, ainda consegue continuar sem biometria.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.25.3',
     date: '20 de setembro de 2026',
     type: 'patch',

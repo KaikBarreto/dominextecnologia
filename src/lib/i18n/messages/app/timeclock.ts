@@ -149,9 +149,11 @@ export const timeclock = {
     faceEnrollment: {
       eyebrow: 'Cadastro facial',
       title: 'Olá, {name}',
-      description: 'Vamos registrar seu rosto em três posições. Leva menos de um minuto e você faz apenas uma vez.',
+      description: 'Vamos fazer uma leitura guiada e contínua do seu rosto. Leva menos de um minuto e você faz apenas uma vez.',
       privacy: 'As imagens ficam somente neste aparelho durante a leitura. O sistema envia e guarda apenas uma assinatura matemática do rosto.',
       start: 'Começar cadastro',
+      continueWithoutFace: 'Continuar sem biometria',
+      goToPoint: 'Ir para meu ponto',
       requirement: 'Use um local iluminado e retire boné, máscara ou qualquer item que cubra o rosto.',
       invalidTitle: 'Link inválido ou expirado',
       invalidDescription: 'Peça ao responsável da empresa um novo link de cadastro facial.',
@@ -161,7 +163,7 @@ export const timeclock = {
       saving: 'Protegendo seu cadastro...',
       successTitle: 'Cadastro facial concluído',
       successDescription: 'Seu rosto já pode ser usado para facilitar a identificação no ponto eletrônico.',
-      successHint: 'Você já pode fechar esta página.',
+      successHint: 'Abrindo seu ponto eletrônico...',
       capture: {
         preparing: 'Carregando o reconhecimento no aparelho...', requestingCamera: 'Autorize o uso da câmera para continuar.', captureLabel: 'Captura {current} de {total}', scanLabel: 'Leitura facial',
         poses: { front: 'Olhe de frente para a câmera', first_side: 'Vire levemente para um lado', opposite_side: 'Agora vire para o outro lado' },
@@ -301,9 +303,9 @@ export const timeclock = {
       unavailable: 'Your face could not be analyzed now. You can continue your time entry normally.',
     },
     faceEnrollment: {
-      eyebrow: 'Face enrollment', title: 'Hi, {name}', description: 'We will register your face in three positions. It takes less than a minute and you only do it once.',
-      privacy: 'Images stay on this device during scanning. The system sends and stores only a mathematical signature of your face.', start: 'Start enrollment', requirement: 'Use a well-lit place and remove hats, masks, or anything covering your face.',
-      invalidTitle: 'Invalid or expired link', invalidDescription: 'Ask your company administrator for a new face enrollment link.', unavailableTitle: 'Enrollment temporarily unavailable', unavailableDescription: 'Check your connection and try again. The link is not consumed until enrollment finishes.', retry: 'Try again', saving: 'Protecting your enrollment...', successTitle: 'Face enrollment complete', successDescription: 'Your face can now help identify you at the time clock.', successHint: 'You can close this page now.',
+      eyebrow: 'Face enrollment', title: 'Hi, {name}', description: 'We will perform one continuous guided scan of your face. It takes less than a minute and you only do it once.',
+      privacy: 'Images stay on this device during scanning. The system sends and stores only a mathematical signature of your face.', start: 'Start enrollment', continueWithoutFace: 'Continue without face recognition', goToPoint: 'Go to my time clock', requirement: 'Use a well-lit place and remove hats, masks, or anything covering your face.',
+      invalidTitle: 'Invalid or expired link', invalidDescription: 'Ask your company administrator for a new face enrollment link.', unavailableTitle: 'Enrollment temporarily unavailable', unavailableDescription: 'Check your connection and try again. The link is not consumed until enrollment finishes.', retry: 'Try again', saving: 'Protecting your enrollment...', successTitle: 'Face enrollment complete', successDescription: 'Your face can now help identify you at the time clock.', successHint: 'Opening your time clock...',
       capture: {
         preparing: 'Loading recognition on this device...', requestingCamera: 'Allow camera access to continue.', captureLabel: 'Capture {current} of {total}', scanLabel: 'Face scan',
         poses: { front: 'Look straight at the camera', first_side: 'Turn slightly to one side', opposite_side: 'Now turn to the other side' },
@@ -443,9 +445,9 @@ export const timeclock = {
       unavailable: 'No fue posible analizar el rostro ahora. Puedes continuar el registro normalmente.',
     },
     faceEnrollment: {
-      eyebrow: 'Registro facial', title: 'Hola, {name}', description: 'Registraremos tu rostro en tres posiciones. Tarda menos de un minuto y solo se hace una vez.',
-      privacy: 'Las imágenes permanecen en este dispositivo durante la lectura. El sistema solo envía y guarda una firma matemática del rostro.', start: 'Comenzar registro', requirement: 'Busca un lugar iluminado y quítate gorra, mascarilla o cualquier objeto que cubra el rostro.',
-      invalidTitle: 'Enlace inválido o caducado', invalidDescription: 'Pide al responsable de la empresa un nuevo enlace de registro facial.', unavailableTitle: 'Registro temporalmente no disponible', unavailableDescription: 'Comprueba tu conexión e inténtalo de nuevo. El enlace no se consume hasta terminar el registro.', retry: 'Intentar de nuevo', saving: 'Protegiendo tu registro...', successTitle: 'Registro facial completado', successDescription: 'Tu rostro ya puede facilitar tu identificación en el reloj de fichaje.', successHint: 'Ya puedes cerrar esta página.',
+      eyebrow: 'Registro facial', title: 'Hola, {name}', description: 'Haremos una única lectura guiada y continua de tu rostro. Tarda menos de un minuto y solo se hace una vez.',
+      privacy: 'Las imágenes permanecen en este dispositivo durante la lectura. El sistema solo envía y guarda una firma matemática del rostro.', start: 'Comenzar registro', continueWithoutFace: 'Continuar sin biometría', goToPoint: 'Ir a mi fichaje', requirement: 'Busca un lugar iluminado y quítate gorra, mascarilla o cualquier objeto que cubra el rostro.',
+      invalidTitle: 'Enlace inválido o caducado', invalidDescription: 'Pide al responsable de la empresa un nuevo enlace de registro facial.', unavailableTitle: 'Registro temporalmente no disponible', unavailableDescription: 'Comprueba tu conexión e inténtalo de nuevo. El enlace no se consume hasta terminar el registro.', retry: 'Intentar de nuevo', saving: 'Protegiendo tu registro...', successTitle: 'Registro facial completado', successDescription: 'Tu rostro ya puede facilitar tu identificación en el reloj de fichaje.', successHint: 'Abriendo tu fichaje...',
       capture: {
         preparing: 'Cargando el reconocimiento en el dispositivo...', requestingCamera: 'Permite el acceso a la cámara para continuar.', captureLabel: 'Captura {current} de {total}', scanLabel: 'Lectura facial',
         poses: { front: 'Mira de frente a la cámara', first_side: 'Gira ligeramente hacia un lado', opposite_side: 'Ahora gira hacia el otro lado' },
@@ -585,9 +587,9 @@ export const timeclock = {
       unavailable: `Le visage n'a pas pu être analysé. Vous pouvez continuer le pointage normalement.`,
     },
     faceEnrollment: {
-      eyebrow: 'Enregistrement facial', title: 'Bonjour, {name}', description: `Nous allons enregistrer votre visage dans trois positions. Cela prend moins d'une minute et ne se fait qu'une fois.`,
-      privacy: `Les images restent sur cet appareil pendant l'analyse. Le système envoie et conserve uniquement une signature mathématique du visage.`, start: `Commencer l'enregistrement`, requirement: `Placez-vous dans un endroit éclairé et retirez casquette, masque ou tout objet couvrant le visage.`,
-      invalidTitle: 'Lien invalide ou expiré', invalidDescription: `Demandez au responsable de l'entreprise un nouveau lien d'enregistrement facial.`, unavailableTitle: 'Enregistrement temporairement indisponible', unavailableDescription: `Vérifiez votre connexion et réessayez. Le lien n'est utilisé qu'une fois l'enregistrement terminé.`, retry: 'Réessayer', saving: 'Protection de votre enregistrement...', successTitle: 'Enregistrement facial terminé', successDescription: `Votre visage peut maintenant faciliter votre identification sur la pointeuse.`, successHint: 'Vous pouvez maintenant fermer cette page.',
+      eyebrow: 'Enregistrement facial', title: 'Bonjour, {name}', description: `Nous allons effectuer une seule lecture guidée et continue de votre visage. Cela prend moins d'une minute et ne se fait qu'une fois.`,
+      privacy: `Les images restent sur cet appareil pendant l'analyse. Le système envoie et conserve uniquement une signature mathématique du visage.`, start: `Commencer l'enregistrement`, continueWithoutFace: 'Continuer sans biométrie', goToPoint: 'Accéder à mon pointage', requirement: `Placez-vous dans un endroit éclairé et retirez casquette, masque ou tout objet couvrant le visage.`,
+      invalidTitle: 'Lien invalide ou expiré', invalidDescription: `Demandez au responsable de l'entreprise un nouveau lien d'enregistrement facial.`, unavailableTitle: 'Enregistrement temporairement indisponible', unavailableDescription: `Vérifiez votre connexion et réessayez. Le lien n'est utilisé qu'une fois l'enregistrement terminé.`, retry: 'Réessayer', saving: 'Protection de votre enregistrement...', successTitle: 'Enregistrement facial terminé', successDescription: `Votre visage peut maintenant faciliter votre identification sur la pointeuse.`, successHint: 'Ouverture de votre pointage...',
       capture: {
         preparing: `Chargement de la reconnaissance sur l'appareil...`, requestingCamera: `Autorisez l'accès à la caméra pour continuer.`, captureLabel: 'Capture {current} sur {total}', scanLabel: 'Lecture faciale',
         poses: { front: 'Regardez la caméra de face', first_side: `Tournez légèrement la tête d'un côté`, opposite_side: `Tournez maintenant la tête de l'autre côté` },

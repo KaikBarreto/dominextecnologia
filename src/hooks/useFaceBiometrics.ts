@@ -13,6 +13,11 @@ export interface FaceEnrollmentLink {
   expires_at: string;
 }
 
+export function buildPointActivationLink(token: string, origin = window.location.origin): string | null {
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+  return `${origin}/ativar-ponto/${token}`;
+}
+
 export function useFaceTemplateStatus(employeeId: string | null | undefined) {
   return useQuery({
     queryKey: ['employee-face-template-status', employeeId],

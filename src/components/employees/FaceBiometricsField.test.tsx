@@ -16,6 +16,9 @@ vi.mock('@/hooks/use-toast', () => ({
 }));
 
 vi.mock('@/hooks/useFaceBiometrics', () => ({
+  buildPointActivationLink: (token: string) => (
+    /^[0-9a-f]{64}$/.test(token) ? `${window.location.origin}/ativar-ponto/${token}` : null
+  ),
   useFaceTemplateStatus: () => ({
     data: enrolled
       ? { enrolled: true, template_count: 3, model_version: 'modelo', created_at: '2026-09-20' }
@@ -59,9 +62,9 @@ describe('FaceBiometricsField', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /gerar link/i }));
     const input = await screen.findByRole('textbox');
-    expect(input).toHaveValue(`${window.location.origin}/cadastro-facial/${'a'.repeat(64)}`);
+    expect(input).toHaveValue(`${window.location.origin}/ativar-ponto/${'a'.repeat(64)}`);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      `${window.location.origin}/cadastro-facial/${'a'.repeat(64)}`,
+      `${window.location.origin}/ativar-ponto/${'a'.repeat(64)}`,
     );
     expect(createMutate).toHaveBeenCalledWith('0d182f55-e29b-4d23-a641-e178004bfef3');
   });
@@ -87,11 +90,29 @@ describe('FaceBiometricsField', () => {
     fireEvent.click(screen.getByRole('button', { name: /gerar link/i }));
 
     expect(await screen.findByRole('textbox')).toHaveValue(
-      `${window.location.origin}/cadastro-facial/${'b'.repeat(64)}`,
+      `${window.location.origin}/ativar-ponto/${'b'.repeat(64)}`,
     );
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Link de cadastro facial gerado',
+      title: 'Link de ativação gerado',
     }));
+  });
+
+  it('mostra o link permanente do ponto depois que o acesso foi configurado', async () => {
+    enrolled = true;
+    render(
+      <FaceBiometricsField
+        employeeId="0d182f55-e29b-4d23-a641-e178004bfef3"
+        pointSlug="marina-ABC234XY"
+      />,
+    );
+
+    expect(screen.getByRole('textbox')).toHaveValue(
+      `${window.location.origin}/ponto/marina-ABC234XY`,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /copiar ponto/i }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/ponto/marina-ABC234XY`,
+    ));
   });
 
   it('exclusao exige confirmacao antes de apagar os templates', async () => {

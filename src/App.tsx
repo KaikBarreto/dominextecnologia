@@ -644,6 +644,8 @@ const AppRoutes = () => (
     <Route path="/ponto/empresa/:kioskSlug" element={<PontoKiosk />} />
     {/* Cadastro biométrico por capability individual de uso único. A câmera e
        os modelos só carregam depois que o funcionário inicia o fluxo. */}
+    <Route path="/ativar-ponto/:token" element={<FaceEnrollment />} />
+    {/* Alias legado para links de cadastro facial já emitidos. */}
     <Route path="/cadastro-facial/:token" element={<FaceEnrollment />} />
     {/* Perfil Comportamental (DISC) por link público — anônimo, fora do AppLayout.
        O funcionário responde deslogado; tudo passa pelas RPCs get_disc_public /

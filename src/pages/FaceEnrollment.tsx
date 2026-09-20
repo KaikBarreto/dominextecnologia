@@ -1,6 +1,6 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AlertCircle, Camera, Check, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowRight, Camera, Check, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FaceCaptureExperience } from '@/components/ponto/FaceCaptureExperience';
 import { PublicAppLocaleProvider } from '@/contexts/AppLocaleContext';
@@ -64,6 +64,17 @@ export default function FaceEnrollment() {
 
   const complete = enrollment.complete;
   const retryEnrollment = enrollment.retry;
+  const pointPath = enrollment.context?.point_path;
+  const goToPoint = useCallback(() => {
+    if (pointPath) window.location.replace(pointPath);
+  }, [pointPath]);
+
+  useEffect(() => {
+    if (stage !== 'success' || !pointPath) return;
+    const timer = window.setTimeout(goToPoint, 1800);
+    return () => window.clearTimeout(timer);
+  }, [goToPoint, pointPath, stage]);
+
   const handleCaptureComplete = useCallback(async (templates: FaceTemplatePayload[]) => {
     setStage('saving');
     try {
@@ -130,6 +141,9 @@ export default function FaceEnrollment() {
               <h1 className="mt-7 text-3xl font-semibold">{t.successTitle}</h1>
               <p className="mt-3 max-w-md text-base leading-relaxed text-white/65">{t.successDescription}</p>
               <p className="mt-7 text-sm text-white/40">{t.successHint}</p>
+              <Button type="button" size="lg" className="mt-5 h-12 w-full max-w-sm rounded-xl text-base font-semibold" style={{ backgroundColor: accent }} onClick={goToPoint}>
+                {t.goToPoint} <ArrowRight className="h-5 w-5" />
+              </Button>
             </>
           ) : (
             <>
@@ -152,6 +166,9 @@ export default function FaceEnrollment() {
               </div>
               <Button type="button" size="lg" className="mt-7 h-12 w-full rounded-xl text-base font-semibold" style={{ backgroundColor: accent }} onClick={() => setStage('scanning')}>
                 <Camera className="h-5 w-5" /> {t.start}
+              </Button>
+              <Button type="button" variant="ghost" className="mt-3 h-11 w-full text-white/60 hover:bg-white/[0.06] hover:text-white" onClick={goToPoint}>
+                {t.continueWithoutFace} <ArrowRight className="h-4 w-4" />
               </Button>
             </>
           )}

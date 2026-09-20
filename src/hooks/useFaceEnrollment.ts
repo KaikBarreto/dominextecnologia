@@ -23,6 +23,7 @@ export interface FaceEnrollmentContext {
   embedding_dimension: number;
   required_captures: number;
   expires_at: string;
+  point_path: string;
 }
 
 type EnrollmentErrorCode =
@@ -76,6 +77,8 @@ function parseContext(value: unknown): FaceEnrollmentContext | null {
     typeof data.embedding_dimension !== 'number' ||
     typeof data.required_captures !== 'number' ||
     typeof data.expires_at !== 'string' ||
+    typeof data.point_path !== 'string' ||
+    !/^\/ponto\/[a-z0-9-]+$/i.test(data.point_path) ||
     data.model_version !== FACE_MODEL_VERSION ||
     data.embedding_dimension !== FACE_EMBEDDING_DIMENSION ||
     data.required_captures !== FACE_REQUIRED_CAPTURES
