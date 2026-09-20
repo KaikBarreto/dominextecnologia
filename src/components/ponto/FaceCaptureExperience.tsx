@@ -96,9 +96,13 @@ export function FaceCaptureExperience({
   const [guidance, setGuidance] = useState<FaceCaptureGuidance>('hold_still');
   const [justCaptured, setJustCaptured] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const continuousScan = mode !== 'enrollment';
-  const requiredConfirmations = continuousScan ? LIVE_SCAN_CONFIRMATIONS : ENROLLMENT_CONFIRMATIONS;
-  const loopDelayMs = continuousScan ? LIVE_SCAN_LOOP_DELAY_MS : ENROLLMENT_LOOP_DELAY_MS;
+  // Cadastro, verificacao e identificacao sao apresentados como UMA leitura
+  // guiada. O cadastro continua mais rigoroso nos bastidores: exige tres
+  // confirmacoes por pose e usa os limites estritos antes de persistir os
+  // templates. Quiosque/verificacao usam a tolerancia propria de leitura ao vivo.
+  const isLiveMatch = mode !== 'enrollment';
+  const requiredConfirmations = isLiveMatch ? LIVE_SCAN_CONFIRMATIONS : ENROLLMENT_CONFIRMATIONS;
+  const loopDelayMs = isLiveMatch ? LIVE_SCAN_LOOP_DELAY_MS : ENROLLMENT_LOOP_DELAY_MS;
 
   const stopCamera = useCallback(() => {
     stoppedRef.current = true;
@@ -142,12 +146,14 @@ export function FaceCaptureExperience({
       bestCandidateRef.current = null;
       setStableFrames(0);
       const finalCapture = next.length === poses.length;
-      setJustCaptured(!continuousScan || finalCapture);
+      // Confirmacao visual so no fim. Mostrar um check entre poses faria o
+      // usuario perceber varias "capturas", embora seja uma sessao continua.
+      setJustCaptured(finalCapture);
 
       if (poseIndexRef.current === 1) firstSideSignRef.current = yawSign;
       if (finalCapture) {
         stopCamera();
-        transitionTimerRef.current = window.setTimeout(() => onComplete(next), continuousScan ? 260 : 450);
+        transitionTimerRef.current = window.setTimeout(() => onComplete(next), 260);
         return;
       }
 
@@ -160,7 +166,7 @@ export function FaceCaptureExperience({
           poseIndexRef.current === 1 ? 'turn_to_one_side' : 'turn_to_other_side',
         );
         scheduleDetection();
-      }, continuousScan ? 120 : 900);
+      }, 120);
     };
 
     const detect = async () => {
@@ -175,7 +181,7 @@ export function FaceCaptureExperience({
           frame.metrics,
           poses[poseIndexRef.current],
           firstSideSignRef.current,
-          { tolerateMotion: continuousScan },
+          { tolerateMotion: isLiveMatch },
         );
         setGuidance(evaluation.guidance);
 
@@ -267,7 +273,7 @@ export function FaceCaptureExperience({
       if (loopTimer) window.clearTimeout(loopTimer);
       stopCamera();
     };
-  }, [attempt, continuousScan, copy, loopDelayMs, onComplete, poses, requiredConfirmations, stopCamera]);
+  }, [attempt, copy, isLiveMatch, loopDelayMs, onComplete, poses, requiredConfirmations, stopCamera]);
 
   const progress = useMemo(
     () => (poseIndex + Math.min(stableFrames, requiredConfirmations) / requiredConfirmations) / poses.length,
@@ -310,9 +316,7 @@ export function FaceCaptureExperience({
           <>
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.22em] text-white/45">
-                {continuousScan
-                  ? copy.scanLabel
-                  : copy.captureLabel.replace('{current}', String(poseIndex + 1)).replace('{total}', String(poses.length))}
+                {copy.scanLabel}
               </p>
               <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{copy.poses[currentPose]}</h1>
             </div>
@@ -348,20 +352,6 @@ export function FaceCaptureExperience({
 
             <div aria-live="polite" className="min-h-16">
               <p className="text-lg font-medium">{statusText}</p>
-              {!continuousScan && (
-                <div className="mt-3 flex justify-center gap-2" aria-hidden>
-                  {poses.map((_, index) => (
-                    <span
-                      key={index}
-                      className="h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
-                      style={{
-                        width: index === poseIndex ? 32 : 12,
-                        backgroundColor: index < poseIndex ? accentColor : index === poseIndex ? accentColor : 'rgba(255,255,255,0.18)',
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           </>
         )}

@@ -209,4 +209,42 @@ describe('FaceCaptureExperience', () => {
     await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1), { timeout: 4500 });
     expect(onComplete.mock.calls[0][0]).toHaveLength(2);
   });
+
+  it('faz o cadastro inteiro em uma unica leitura visual sem expor contadores de captura', async () => {
+    const onComplete = vi.fn();
+    const firstSideFrame = {
+      ...readyFrame,
+      metrics: { ...readyFrame.metrics, yaw: 80 },
+    };
+    const oppositeSideFrame = {
+      ...readyFrame,
+      metrics: { ...readyFrame.metrics, yaw: -80 },
+    };
+    vi.mocked(detectFaceFrame)
+      .mockResolvedValueOnce(readyFrame)
+      .mockResolvedValueOnce(readyFrame)
+      .mockResolvedValueOnce(readyFrame)
+      .mockResolvedValueOnce(firstSideFrame)
+      .mockResolvedValueOnce(firstSideFrame)
+      .mockResolvedValueOnce(firstSideFrame)
+      .mockResolvedValueOnce(oppositeSideFrame)
+      .mockResolvedValueOnce(oppositeSideFrame)
+      .mockResolvedValueOnce(oppositeSideFrame)
+      .mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <FaceCaptureExperience
+        accentColor="#00c684"
+        copy={copy}
+        mode="enrollment"
+        onComplete={onComplete}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('Leitura facial')).toBeInTheDocument();
+    expect(screen.queryByText(/Captura \d de 3/)).not.toBeInTheDocument();
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    expect(onComplete.mock.calls[0][0]).toHaveLength(3);
+  });
 });

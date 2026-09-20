@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.5',
+    date: '20 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Biometria em uma única leitura',
+        description: 'Cadastro, reconhecimento no quiosque e verificação no ponto agora seguem a mesma experiência contínua. A pessoa apenas centraliza o rosto e acompanha as orientações, sem telas ou contadores de capturas separadas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.25.4',
     date: '20 de setembro de 2026',
     type: 'patch',
