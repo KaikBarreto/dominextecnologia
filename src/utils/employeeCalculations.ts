@@ -9,6 +9,12 @@ export interface EmployeeMovement {
   payment_details: any;
   created_by: string | null;
   created_at: string;
+  /** Vínculo explícito do vale com a saída financeira criada na mesma RPC. */
+  financial_transaction_id?: string | null;
+  /** Chave client-side que torna a criação do vale segura para retry. */
+  idempotency_key?: string | null;
+  /** Ordem monotônica do livro do funcionário; UUID não é sequência temporal. */
+  movement_order?: number | null;
 }
 
 export interface BalanceSummary {
@@ -19,11 +25,17 @@ export interface BalanceSummary {
   currentBalance: number;
 }
 
+export function compareEmployeeMovements(a: EmployeeMovement, b: EmployeeMovement): number {
+  if (a.movement_order != null && b.movement_order != null && a.movement_order !== b.movement_order) {
+    return a.movement_order - b.movement_order;
+  }
+  const byDate = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  return byDate || a.id.localeCompare(b.id);
+}
+
 export function calculateEmployeeBalance(movements: EmployeeMovement[], salary: number): BalanceSummary {
   // Sort by date ascending to find the last reset point
-  const sorted = [...movements].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const sorted = [...movements].sort(compareEmployeeMovements);
 
   // Find the last "ajuste" movement (which resets the cycle)
   let lastAjusteIdx = -1;
@@ -45,7 +57,8 @@ export function calculateEmployeeBalance(movements: EmployeeMovement[], salary: 
   const accumulate = (list: EmployeeMovement[]) => {
     for (const m of list) {
       switch (m.type) {
-        case 'vale': totalVales += Math.abs(m.amount); break;
+        case 'vale':
+        case 'vale_residual': totalVales += Math.abs(m.amount); break;
         case 'recebimento': totalVales = Math.max(0, totalVales - Math.abs(m.amount)); break;
         case 'bonus': totalBonus += Math.abs(m.amount); break;
         case 'falta': case 'falta_banco': totalFaltas += Math.abs(m.amount); break;
@@ -88,7 +101,7 @@ export const RESET_DESCRIPTION = 'Reset para salário base';
  *   é o próprio salário base, então runningBalance = amount (não empilha resíduo).
  * - "bonus" / "ajuste" de salário (delta, se existir) / "recebimento":
  *   DELTA somado ao saldo (runningBalance += amount).
- * - "vale" / "falta" / "falta_banco": débitos, subtraem em módulo
+ * - "vale" / "vale_residual" / "falta" / "falta_banco": débitos, subtraem em módulo
  *   (runningBalance -= Math.abs(amount)).
  *
  * A ORDEM dos ifs importa: checar pagamento e reset-ajuste ANTES do ramo
@@ -98,7 +111,7 @@ export const RESET_DESCRIPTION = 'Reset para salário base';
 export function recalculateBalances(movements: EmployeeMovement[], salary: number): EmployeeMovement[] {
   let balance = salary;
   return [...movements]
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .sort(compareEmployeeMovements)
     .map(m => {
       const amount = Number(m.amount);
 
@@ -127,7 +140,7 @@ export function recalculateBalances(movements: EmployeeMovement[], salary: numbe
 
 export function formatMovementType(type: string): string {
   const map: Record<string, string> = {
-    vale: 'Vale', bonus: 'Bônus', falta: 'Falta',
+    vale: 'Vale', vale_residual: 'Saldo de vale', bonus: 'Bônus', falta: 'Falta',
     falta_banco: 'Falta (BH)',
     pagamento: 'Pagamento', ajuste: 'Ajuste',
     recebimento: 'Recebimento',
@@ -137,7 +150,7 @@ export function formatMovementType(type: string): string {
 
 export function getMovementBadgeVariant(type: string): string {
   const map: Record<string, string> = {
-    vale: 'destructive', bonus: 'default', falta: 'secondary',
+    vale: 'destructive', vale_residual: 'destructive', bonus: 'default', falta: 'secondary',
     falta_banco: 'outline',
     pagamento: 'outline', ajuste: 'secondary',
     recebimento: 'default',
@@ -164,6 +177,7 @@ export function signFor(type: string): '+' | '-' | '' {
     case 'recebimento':
       return '+';
     case 'vale':
+    case 'vale_residual':
     case 'falta':
     case 'falta_banco':
       return '-';
@@ -181,6 +195,7 @@ export function colorClassFor(type: string): string {
     case 'recebimento':
       return 'text-emerald-600';
     case 'vale':
+    case 'vale_residual':
       return 'text-destructive';
     case 'falta':
     case 'falta_banco':
@@ -199,6 +214,7 @@ export function iconNameFor(type: string): 'Award' | 'HandCoins' | 'TrendingDown
     case 'recebimento':
       return 'HandCoins';
     case 'vale':
+    case 'vale_residual':
       return 'TrendingDown';
     case 'falta':
     case 'falta_banco':
@@ -214,6 +230,7 @@ export function iconNameFor(type: string): 'Award' | 'HandCoins' | 'TrendingDown
 export function badgeClassFor(type: string): string {
   switch (type) {
     case 'vale':
+    case 'vale_residual':
       return 'bg-red-600 text-white border-red-600 hover:bg-red-600';
     case 'bonus':
       return 'bg-green-600 text-white border-green-600 hover:bg-green-600';

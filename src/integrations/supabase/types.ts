@@ -3386,7 +3386,10 @@ export type Database = {
           created_by: string | null
           description: string | null
           employee_id: string
+          financial_transaction_id: string | null
           id: string
+          idempotency_key: string | null
+          movement_order: number
           payment_details: Json | null
           payment_method: string | null
           type: string
@@ -3398,7 +3401,10 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           employee_id: string
+          financial_transaction_id?: string | null
           id?: string
+          idempotency_key?: string | null
+          movement_order?: number
           payment_details?: Json | null
           payment_method?: string | null
           type: string
@@ -3410,7 +3416,10 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           employee_id?: string
+          financial_transaction_id?: string | null
           id?: string
+          idempotency_key?: string | null
+          movement_order?: number
           payment_details?: Json | null
           payment_method?: string | null
           type?: string
@@ -3421,6 +3430,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_movements_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -10344,6 +10360,22 @@ export type Database = {
         Args: { p_employee_id: string }
         Returns: Json
       }
+      create_employee_vale: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_cost_center_id?: string | null
+          p_description?: string | null
+          p_employee_id: string
+          p_idempotency_key: string
+          p_transaction_date: string
+        }
+        Returns: {
+          created: boolean
+          employee_movement_id: string
+          financial_transaction_id: string
+        }[]
+      }
       credit_ltv_once_for_payment: {
         Args: {
           p_amount: number
@@ -10364,6 +10396,10 @@ export type Database = {
       delete_employee_face_templates: {
         Args: { p_employee_id: string }
         Returns: number
+      }
+      delete_employee_vale: {
+        Args: { p_movement_id: string }
+        Returns: boolean
       }
       delete_tenant_charge_local: {
         Args: { p_charge_id: string; p_company_id: string }

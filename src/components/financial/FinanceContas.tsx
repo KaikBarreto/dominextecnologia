@@ -65,6 +65,7 @@ import { formatMoney } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
+import { buildReceiptBreakdowns } from '@/lib/financial-transaction-display';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -80,12 +81,25 @@ interface FinanceContasProps {
    * a busca cai pra `transactions` (comportamento period-bound).
    */
   allTransactions?: PayrollTxn[];
+  /**
+   * Raizes + filhas ja limitadas pela RLS da empresa. Usado somente para
+   * rastrear as tarifas que compoem o liquido das contas recebidas; nunca vira
+   * linha da listagem nem entra nos totais novamente.
+   */
+  transactionAuditTrail?: FinancialTransaction[];
   isLoading: boolean;
   onMarkAsPaid: (params: any) => Promise<any>;
   dateRange?: { from?: Date; to?: Date };
 }
 
-export function FinanceContas({ transactions, allTransactions, isLoading, onMarkAsPaid, dateRange }: FinanceContasProps) {
+export function FinanceContas({
+  transactions,
+  allTransactions,
+  transactionAuditTrail,
+  isLoading,
+  onMarkAsPaid,
+  dateRange,
+}: FinanceContasProps) {
   const [subTab, setSubTab] = useState<SubTab>('pagar');
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
   // Filtro multi-select: vazio = todas as categorias. Pattern FilterCheckboxGroup.
@@ -298,6 +312,18 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       return true;
     });
   }, [allTransactions, transactions, subTab]);
+
+  // Decomposicao somente de LEITURA para a aba de recebiveis pagos. O bruto
+  // continua sendo `amount` da conta; a taxa vem das linhas financeiras ja
+  // persistidas (filhas/netas ou mesma cobranca Asaas), e o liquido e apenas a
+  // diferenca exibida em centavos. Nao altera summaries, DRE ou saldo.
+  const receiptBreakdowns = useMemo(
+    () => buildReceiptBreakdowns(
+      (allTransactions ?? transactions).filter((t) => t.transaction_type === 'entrada'),
+      transactionAuditTrail ?? allTransactions ?? transactions,
+    ),
+    [allTransactions, transactions, transactionAuditTrail],
+  );
 
   /**
    * Quantos resultados a MESMA busca teria na OUTRA sub-aba.
@@ -877,6 +903,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               const overdue = status === 'vencida';
               const partial = status === 'parcial';
               const received = Number(t.amount_received ?? 0);
+              const receiptBreakdown = subTab === 'receber' && status === 'paga'
+                ? receiptBreakdowns.get(t.id)
+                : undefined;
               const itemActions: ItemAction[] = [
                 ...(!t.is_paid ? [{
                   key: 'mark-paid',
@@ -958,9 +987,23 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                   }
                   trailing={
                     <div className="flex flex-col items-end gap-1">
-                      <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
-                        {fmt(t.amount)}
-                      </span>
+                      {receiptBreakdown ? (
+                        <div className="flex flex-col items-end text-[10px] leading-4 whitespace-nowrap tabular-nums">
+                          <span className="text-muted-foreground">
+                            {fin.accounts.table.gross}: <strong className="font-medium text-foreground">{fmt(receiptBreakdown.gross)}</strong>
+                          </span>
+                          <span className="text-muted-foreground">
+                            {fin.accounts.table.fee}: <strong className="font-medium text-destructive">− {fmt(receiptBreakdown.fee)}</strong>
+                          </span>
+                          <span className="font-semibold text-success">
+                            {fin.accounts.table.net}: {fmt(receiptBreakdown.net)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
+                          {fmt(t.amount)}
+                        </span>
+                      )}
                       {status === 'paga' ? (
                         <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
                       ) : status === 'vencida' ? (
@@ -998,6 +1041,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                     const status = getStatus(t);
                     const partial = status === 'parcial';
                     const received = Number(t.amount_received ?? 0);
+                    const receiptBreakdown = subTab === 'receber' && status === 'paga'
+                      ? receiptBreakdowns.get(t.id)
+                      : undefined;
                     return (
                     <TableRow key={t.id} className={cn(status === 'vencida' && 'bg-destructive/5', partial && 'bg-warning/5')}>
                       <TableCell>
@@ -1025,10 +1071,24 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className={`font-medium tabular-nums ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
-                            {fmt(t.amount)}
-                          </span>
+                        <div className="flex flex-col gap-0.5">
+                          {receiptBreakdown ? (
+                            <>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
+                                {fin.accounts.table.gross}: <strong className="font-medium text-foreground">{fmt(receiptBreakdown.gross)}</strong>
+                              </span>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
+                                {fin.accounts.table.fee}: <strong className="font-medium text-destructive">− {fmt(receiptBreakdown.fee)}</strong>
+                              </span>
+                              <span className="font-semibold text-success whitespace-nowrap tabular-nums">
+                                {fin.accounts.table.net}: {fmt(receiptBreakdown.net)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className={`font-medium tabular-nums ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
+                              {fmt(t.amount)}
+                            </span>
+                          )}
                           {partial && (
                             <span className="text-[11px] text-warning tabular-nums">
                               {fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}

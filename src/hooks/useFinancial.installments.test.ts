@@ -116,6 +116,36 @@ describe('buildInstallmentRows', () => {
     expect(rows.every((r) => r.transaction_date === r.due_date)).toBe(true);
   });
 
+  it('vencimento explícito inicia as parcelas na semântica mensal vigente', () => {
+    const rest = {
+      ...baseRest,
+      transaction_type: 'entrada' as const,
+      transaction_date: '2026-09-22',
+      due_date: '2026-10-15',
+      is_paid: false,
+    };
+    const plan = buildInstallmentPlan(rest.due_date, 1200, 3);
+    const { rows } = buildInstallmentRows({
+      rest,
+      plan,
+      groupId: 'grp-crm-due-date',
+      companyId: 'co-1',
+      isCardInstallment: false,
+      billDateFor: () => undefined,
+    });
+
+    expect(rows.map((r) => r.due_date)).toEqual([
+      '2026-10-15',
+      '2026-11-15',
+      '2026-12-15',
+    ]);
+    expect(rows.map((r) => r.transaction_date)).toEqual([
+      '2026-10-15',
+      '2026-11-15',
+      '2026-12-15',
+    ]);
+  });
+
   it('parcelamento não-cartão: só a 1a pode nascer paga', () => {
     const plan = buildInstallmentPlan('2026-05-10', 500, 4);
     const { rows } = buildInstallmentRows({

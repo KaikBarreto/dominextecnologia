@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { extractShortCode, isUuid, buildEmployeeProfilePath, buildOrgChartPath } from '@/utils/prettyLinks';
@@ -148,6 +148,10 @@ export default function Employees() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [movementType, setMovementType] = useState<'vale' | 'bonus' | 'falta'>('vale');
   const [movementEmployee, setMovementEmployee] = useState<Employee | null>(null);
+  // Uma chave por abertura do modal. Se a resposta da criação do vale se perder
+  // e o usuário tentar de novo, a RPC reconhece o mesmo pedido e devolve o par
+  // já criado em vez de debitar a conta duas vezes.
+  const valeIdempotencyKeyRef = useRef(crypto.randomUUID());
   const [paymentEmployee, setPaymentEmployee] = useState<Employee | null>(null);
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
@@ -302,7 +306,13 @@ export default function Employees() {
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
-  const { movements, addMovement, deleteMovement } = useEmployeeMovements(activeEmployeeId);
+  const { movements, addMovement, createVale, deleteMovement } = useEmployeeMovements(activeEmployeeId);
+
+  useEffect(() => {
+    if (movementEmployee && movementType === 'vale') {
+      valeIdempotencyKeyRef.current = crypto.randomUUID();
+    }
+  }, [movementEmployee, movementType]);
 
   // Fetch ALL movements for balance calculation on cards
   const { data: allMovements = [] } = useQuery({
@@ -311,7 +321,7 @@ export default function Employees() {
       const { data, error } = await supabase
         .from('employee_movements')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('movement_order', { ascending: false });
       if (error) throw error;
       return data as EmployeeMovement[];
     },
@@ -594,7 +604,7 @@ export default function Employees() {
     }
   }, [queryClient, user?.id, toast, t, timezone]);
 
-  const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => {
+  const handleMovement = async (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => {
     if (!movementEmployee) return;
 
     // If falta_banco, just record a non-financial movement
@@ -608,41 +618,34 @@ export default function Employees() {
       else newBalance += data.amount;
     }
 
-    const emp = movementEmployee; // capture pra evitar stale closure no onSuccess
+    const emp = movementEmployee; // capture pra evitar stale closure após await
 
-    addMovement.mutate({
-      employee_id: emp.id,
-      type: effectiveType,
-      amount: data.amount,
-      balance_after: isBancoHoras ? bal.currentBalance : newBalance,
-      description: data.description,
-      created_by: user?.id,
-    }, {
-      onSuccess: async () => {
-        // Apenas VALE gera despesa imediata no financeiro (sai da conta indicada
-        // e aparece no extrato). BÔNUS e FALTA são saldos internos do funcionário
-        // — entram no caixa só quando a folha é paga (handlePayment cuida disso).
-        if (movementType === 'vale') {
-          try {
-            await registerFinancialTransaction({
-              type: 'saida',
-              amount: data.amount,
-              description: `Vale - ${emp.name}`,
-              notes: data.description,
-              accountId: data.accountId,
-              employeeId: emp.id,
-              payrollKind: 'vale',
-              costCenterId: data.costCenterId,
-            });
-          } catch {
-            // Toast já mostrado em registerFinancialTransaction; mantém modal
-            // aberto pro usuário decidir (corrigir conta, tentar de novo).
-            return;
-          }
-        }
-        setMovementEmployee(null);
-      },
-    });
+    // Vale é uma operação única de domínio: a RPC grava o movimento do RH e
+    // a saída financeira na mesma transação. Bônus e falta continuam locais
+    // ao funcionário; só viram caixa no pagamento da folha. Erros sobem para
+    // o modal preservar payload e chave idempotente no retry.
+    if (movementType === 'vale') {
+      if (!data.accountId) return; // o modal já valida e exibe a mensagem
+      await createVale.mutateAsync({
+        employee_id: emp.id,
+        account_id: data.accountId,
+        amount: data.amount,
+        description: data.description,
+        cost_center_id: data.costCenterId,
+        idempotency_key: valeIdempotencyKeyRef.current,
+        transaction_date: todayInTz(timezone),
+      });
+    } else {
+      await addMovement.mutateAsync({
+        employee_id: emp.id,
+        type: effectiveType,
+        amount: data.amount,
+        balance_after: isBancoHoras ? bal.currentBalance : newBalance,
+        description: data.description,
+        created_by: user?.id,
+      });
+    }
+    setMovementEmployee(null);
   };
 
   const handlePayment = async (payload: PaymentPayload) => {
@@ -723,7 +726,9 @@ export default function Employees() {
           if (remainingVales > 0) {
             const { error: valeError } = await supabase.from('employee_movements').insert({
               employee_id: emp.id,
-              type: 'vale',
+              // Saldo carregado para o ciclo seguinte: não cria nova saída no
+              // caixa, portanto é distinto de um vale financeiro.
+              type: 'vale_residual',
               amount: remainingVales,
               balance_after: sal - remainingVales,
               description: 'Vales não descontados no pagamento',
@@ -1117,7 +1122,7 @@ export default function Employees() {
           employeeName={movementEmployee.name}
           currentBalance={activeBalance.currentBalance}
           onSubmit={handleMovement}
-          isPending={addMovement.isPending}
+          isPending={addMovement.isPending || createVale.isPending}
           employeeId={movementEmployee.id}
           salary={movementEmployee.salary}
           cashBankAccounts={cashBankAccounts}

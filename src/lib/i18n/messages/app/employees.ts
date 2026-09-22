@@ -401,6 +401,7 @@ export const employees = {
       deleteMovement: {
         title: 'Excluir movimentação?',
         description: 'Esta ação não pode ser desfeita. Os saldos serão recalculados.',
+        descriptionVale: 'O vale e a saída financeira vinculada serão excluídos. O valor voltará automaticamente para a conta de origem.',
         cancel: 'Cancelar',
         confirm: 'Excluir',
       },
@@ -1378,6 +1379,7 @@ export const employees = {
       deleteMovement: {
         title: 'Delete transaction?',
         description: 'This action cannot be undone. Balances will be recalculated.',
+        descriptionVale: 'The advance and its linked financial withdrawal will be deleted. The amount will automatically return to the source account.',
         cancel: 'Cancel',
         confirm: 'Delete',
       },
@@ -2330,6 +2332,7 @@ export const employees = {
       deleteMovement: {
         title: '¿Eliminar movimiento?',
         description: 'Esta acción no se puede deshacer. Los saldos se recalcularán.',
+        descriptionVale: 'Se eliminarán el adelanto y la salida financiera vinculada. El importe volverá automáticamente a la cuenta de origen.',
         cancel: 'Cancelar',
         confirm: 'Eliminar',
       },
@@ -3282,6 +3285,7 @@ export const employees = {
       deleteMovement: {
         title: 'Supprimer l\'opération ?',
         description: 'Cette action est irréversible. Les soldes seront recalculés.',
+        descriptionVale: 'L\'avance et la sortie financière liée seront supprimées. Le montant retournera automatiquement sur le compte d\'origine.',
         cancel: 'Annuler',
         confirm: 'Supprimer',
       },

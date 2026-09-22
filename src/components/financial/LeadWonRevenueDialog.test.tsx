@@ -33,9 +33,13 @@ vi.mock('@/hooks/use-mobile', async (importOriginal) => {
 
 // Captura o `prefill` que o passo 2 recebe — é o contrato sob teste.
 const capturedPrefill: { current: any } = { current: null };
+const capturedRequireDueDate: { current: boolean | null } = { current: null };
 vi.mock('@/components/financial/TransactionFormDialog', () => ({
-  TransactionFormDialog: ({ open, prefill }: any) => {
-    if (open) capturedPrefill.current = prefill;
+  TransactionFormDialog: ({ open, prefill, requireDueDateWhenUnpaid }: any) => {
+    if (open) {
+      capturedPrefill.current = prefill;
+      capturedRequireDueDate.current = requireDueDateWhenUnpaid;
+    }
     return null;
   },
 }));
@@ -109,6 +113,7 @@ function clickYes() {
 
 beforeEach(() => {
   capturedPrefill.current = null;
+  capturedRequireDueDate.current = null;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -135,6 +140,7 @@ describe('Oportunidade ganha — valor editável no primeiro passo', () => {
     expect(capturedPrefill.current?.amount).toBe(1188);
     expect(capturedPrefill.current?.transaction_type).toBe('entrada');
     expect(capturedPrefill.current?.customer_id).toBe('cust-1');
+    expect(capturedRequireDueDate.current).toBe(true);
   });
 
   it('colar valor de planilha não vira cem vezes menor', () => {

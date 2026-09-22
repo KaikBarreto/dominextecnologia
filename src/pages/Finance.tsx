@@ -338,6 +338,10 @@ export default function Finance() {
           <FinanceContas
             transactions={contasTransactions}
             allTransactions={transactions}
+            // Mesmo dataset RLS-scoped do hook, incluindo filhas/netas. A tela
+            // usa essas linhas apenas para rastrear a tarifa e exibir
+            // bruto/taxa/liquido; elas nao entram novamente na listagem/somas.
+            transactionAuditTrail={transactionsWithChildren}
             isLoading={isLoading}
             onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
             dateRange={range}

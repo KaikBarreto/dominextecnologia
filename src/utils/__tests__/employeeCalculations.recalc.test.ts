@@ -101,4 +101,28 @@ describe("recalculateBalances (semântica ABSOLUTA, espelho EcoSistema)", () => 
     expect(byId["d"]).toBe(2200); // reset absoluto
     expect(byId["e"]).toBe(1800); // 2200 - 400
   });
+
+  it("usa movement_order quando created_at é igual e UUID aponta outra ordem", () => {
+    const instant = "2026-09-22T10:00:00.000Z";
+    const out = recalculateBalances([
+      mv({ id: "z-reset", movement_order: 2, created_at: instant, type: "ajuste", amount: 2200, description: "Reset para salário base" }),
+      mv({ id: "a-payment", movement_order: 1, created_at: instant, type: "pagamento", amount: 1800 }),
+      mv({ id: "b-vale", movement_order: 3, created_at: instant, type: "vale", amount: 200 }),
+    ], 2200);
+
+    expect(out.map((m) => [m.id, m.balance_after])).toEqual([
+      ["a-payment", 0],
+      ["z-reset", 2200],
+      ["b-vale", 2000],
+    ]);
+  });
+
+  it("vale residual mantém o débito no ciclo sem representar nova saída financeira", () => {
+    const out = recalculateBalances([
+      mv({ type: "ajuste", amount: 2200, description: "Reset para salário base" }),
+      mv({ type: "vale_residual", amount: 300 }),
+    ], 2200);
+
+    expect(out.at(-1)?.balance_after).toBe(1900);
+  });
 });

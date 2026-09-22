@@ -120,6 +120,12 @@ function makeTransactionSchema(
   opts?: {
     canAskCardReceiptMode?: boolean;
     /**
+     * Fluxos que criam uma conta futura (hoje, oportunidade ganha no CRM)
+     * precisam pedir o vencimento quando o dinheiro ainda não foi recebido.
+     * Mantemos opt-in para não mudar silenciosamente os demais lançamentos.
+     */
+    requireDueDateWhenUnpaid?: boolean;
+    /**
      * `paid_date` que já estava GRAVADO antes de abrir o form (edição). Dado
      * legado com data futura (existe em produção) não pode travar uma edição
      * que a pessoa não pediu — só uma MUDANÇA para uma data futura é barrada.
@@ -142,6 +148,8 @@ function makeTransactionSchema(
     amount: z.coerce.number().positive(v.amountPositive),
     transaction_date: z.string().min(1, v.dateRequired)
       .refine((val) => isYearInAcceptableRange(val, currentYear), { message: v.dateYearRange }),
+    due_date: z.string().optional()
+      .refine((val) => isYearInAcceptableRange(val ?? '', currentYear), { message: v.dateYearRange }),
     is_paid: z.boolean().default(true),
     /**
      * Data em que o dinheiro REALMENTE se moveu. Só é usada quando `is_paid`
@@ -179,7 +187,15 @@ function makeTransactionSchema(
   // se moveu amanhã. Roda em TODO caso (criação e edição, com ou sem o bloco
   // de crédito parcelado) — diferente da trava abaixo, que só faz sentido
   // quando aquele bloco pode aparecer na tela.
-  let schema = base.superRefine((data, ctx) => {
+  const schema = base.superRefine((data, ctx) => {
+    if (opts?.requireDueDateWhenUnpaid && !data.is_paid && !data.due_date) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['due_date'],
+        message: v.dateRequired,
+      });
+    }
+
     if (data.is_paid && !isPaidDateAllowedInTz(data.paid_date, opts?.timeZone, opts?.originalPaidDate)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -761,10 +777,19 @@ interface TransactionFormDialogProps {
    * Hoje só o fluxo "receita ao finalizar OS" usa.
    */
   prefill?: Partial<TransactionFormData> & { service_order_id?: string; customer_id?: string };
+  /** Exige e mostra vencimento quando `Já foi pago/recebido` estiver desligado. */
+  requireDueDateWhenUnpaid?: boolean;
 }
 
 export function TransactionFormDialog({
-  open, onOpenChange, transaction, onSubmit, isLoading, defaultType = 'entrada', prefill,
+  open,
+  onOpenChange,
+  transaction,
+  onSubmit,
+  isLoading,
+  defaultType = 'entrada',
+  prefill,
+  requireDueDateWhenUnpaid = false,
 }: TransactionFormDialogProps) {
   // `timezone`: fuso da empresa. Manda no "hoje" de `transaction_date` e
   // `paid_date`, e este último decide o MÊS no regime de Caixa da DRE.
@@ -853,6 +878,8 @@ export function TransactionFormDialog({
       description: transaction?.description ?? '',
       amount: transaction?.amount ?? 0,
       transaction_date: transaction?.transaction_date ?? todayInTz(timezone),
+      due_date: (transaction as any)?.due_date
+        ?? (requireDueDateWhenUnpaid ? todayInTz(timezone) : undefined),
       is_paid: transaction?.is_paid ?? true,
       // Regra da data de pagamento:
       // - transação JÁ paga: preserva a data real. Editar a descrição não pode
@@ -890,7 +917,7 @@ export function TransactionFormDialog({
     const { service_order_id: _prefillOsId, ...prefillFields } = prefill;
     return { ...base, ...prefillFields };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transaction, defaultType, prefillKey, timezone]);
+  }, [transaction, defaultType, prefillKey, timezone, requireDueDateWhenUnpaid]);
 
   // Editando uma parcela de um grupo JÁ criado, o campo de parcelas vira badge
   // read-only e a pergunta do crédito parcelado não é feita. A validação segue
@@ -903,9 +930,14 @@ export function TransactionFormDialog({
   // usuário não criou. Ver `isPaidDateAllowedInTz`.
   const originalPaidDate = (transaction as any)?.paid_date ?? null;
   const localizedSchema = useMemo(
-    () => makeTransactionSchema(tf.validations, { canAskCardReceiptMode, originalPaidDate, timeZone: timezone }),
+    () => makeTransactionSchema(tf.validations, {
+      canAskCardReceiptMode,
+      originalPaidDate,
+      timeZone: timezone,
+      requireDueDateWhenUnpaid,
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [locale, canAskCardReceiptMode, originalPaidDate, timezone],
+    [locale, canAskCardReceiptMode, originalPaidDate, timezone, requireDueDateWhenUnpaid],
   );
 
   const form = useForm<TransactionFormData>({
@@ -935,6 +967,9 @@ export function TransactionFormDialog({
   const watchedDate = form.watch('transaction_date');
   const watchedPaymentMethod = form.watch('payment_method');
   const watchedInstallmentCount = form.watch('installment_count') ?? 1;
+  const installmentStartDate = requireDueDateWhenUnpaid && !isPaid
+    ? (form.watch('due_date') || watchedDate)
+    : watchedDate;
 
   // A pergunta "como o dinheiro entra na sua conta?" está na tela?
   const askCardReceiptMode = canAskCardReceiptMode && needsCardReceiptChoice({
@@ -1096,6 +1131,12 @@ export function TransactionFormDialog({
         card_installments: cardInstallments,
         is_paid: isPaidFinal,
         paid_date: isPaidFinal ? (data.paid_date || data.transaction_date) : undefined,
+        // No CRM, vencimento só existe quando a venda ainda não foi recebida.
+        // Se o usuário voltar o toggle para "já recebido", não persiste a data
+        // que ficou escondida no formulário.
+        ...(requireDueDateWhenUnpaid
+          ? { due_date: isPaidFinal ? undefined : data.due_date }
+          : {}),
         payment_method: data.payment_method || null,
         account_id: data.account_id || null,
         // Igual ao cost_center_id logo abaixo: opcional, vazio vira `null`. Se
@@ -1628,7 +1669,7 @@ export function TransactionFormDialog({
                 form={form}
                 installmentCount={watchedInstallmentCount}
                 totalAmount={form.watch('amount') ?? 0}
-                transactionDate={form.watch('transaction_date') ?? ''}
+                transactionDate={installmentStartDate ?? ''}
               />
             </div>
           )}
@@ -1690,6 +1731,24 @@ export function TransactionFormDialog({
                         {tf.paidDateFutureLegacyWarning}
                       </p>
                     )}
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+
+              {!isPaid && requireDueDateWhenUnpaid && (
+                <FormField control={form.control} name="due_date" render={({ field }) => (
+                  <FormItem className="p-3">
+                    <FormLabel>{fin.accounts.table.dueDate} *</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                        min={dateInputMin}
+                        max={dateInputMax}
+                        placeholder={tf.datePlaceholder}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -1784,7 +1843,7 @@ export function TransactionFormDialog({
             {!isEditingInstallmentGroup && (form.watch('installment_count') || 1) > 1 && !isCardAccount && !askCardReceiptMode && (() => {
               const count = form.watch('installment_count') || 1;
               const perInstallment = buildInstallmentPlan(
-                form.watch('transaction_date') || todayInTz(timezone),
+                installmentStartDate || todayInTz(timezone),
                 form.watch('amount') || 0,
                 count,
               );

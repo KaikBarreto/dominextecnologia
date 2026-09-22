@@ -42,6 +42,40 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.8',
+    date: '22 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca financeira por cliente e valor',
+        description: 'Na tela de Movimentações, agora também é possível encontrar um lançamento digitando o nome do cliente vinculado ou o valor da movimentação, inclusive no formato exibido em reais.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Valor líquido visível nas contas recebidas',
+        description: 'A aba de contas recebidas passa a mostrar o valor bruto, a taxa descontada e o valor líquido que realmente entrou na conta, inclusive quando houve recebimentos parciais.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Vencimento ao lançar uma venda ganha',
+        description: 'Ao fechar uma oportunidade como ganha no CRM e deixar o recebimento para depois, agora é possível escolher a data de vencimento antes de criar a conta a receber.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.25.7',
+    date: '22 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vale e saída financeira sempre sincronizados',
+        description: 'Ao registrar um vale para o funcionário, o desconto e a saída da conta financeira passam a ser criados juntos. Se o vale for excluído, a saída correspondente também é removida e o valor retorna automaticamente para a conta de origem.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.25.6',
     date: '20 de setembro de 2026',
     type: 'patch',
