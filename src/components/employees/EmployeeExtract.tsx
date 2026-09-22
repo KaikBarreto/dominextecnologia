@@ -19,6 +19,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import {
   BalanceSummary, formatMovementType, EmployeeMovement,
   signFor, colorClassFor, badgeClassFor, iconChipClassFor, iconNameFor,
+  compareEmployeeMovements,
 } from '@/utils/employeeCalculations';
 import {
   generateExtractHTMLWithHeader, generateReceiptHTML,
@@ -100,7 +101,11 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
   const { accounts } = useFinancialAccounts();
-  const { profile } = useAuth();
+  const { profile, hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  // Espelha public.can_delete_finance: vale vinculado apaga uma saída do caixa,
+  // então não pode expor um botão que o banco corretamente recusará.
+  const canDeleteFinance = isAdminOrGestor()
+    || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const { toast } = useToast();
   const [receiptTarget, setReceiptTarget] = useState<ReceiptTarget | null>(null);
 
@@ -118,7 +123,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
       return movement.payment_details;
     }
     // Movimentos em ordem cronológica crescente.
-    const chrono = [...movements].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const chrono = [...movements].sort(compareEmployeeMovements);
     const idx = chrono.findIndex(m => m.id === movement.id);
     for (let i = idx + 1; i < chrono.length; i++) {
       const m = chrono[i];
@@ -126,7 +131,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
         return m.payment_details;
       }
       // só olha os movimentos imediatamente após o pagamento (ajuste/vale residual)
-      if (m.type !== 'ajuste' && m.type !== 'vale') break;
+      if (m.type !== 'ajuste' && m.type !== 'vale_residual') break;
     }
     return {};
   };
@@ -241,23 +246,27 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
               </div>
               <div className="text-[10px] text-muted-foreground">{t.extract.movement.balanceAfter}: {fmt(m.balance_after)}</div>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-destructive group">
-                  <Trash2 className="h-3.5 w-3.5 text-destructive group-hover:text-white transition-colors" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t.extract.deleteMovement.title}</AlertDialogTitle>
-                  <AlertDialogDescription>{t.extract.deleteMovement.description}</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{t.extract.deleteMovement.cancel}</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDeleteMovement(m.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t.extract.deleteMovement.confirm}</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {(!isVale || canDeleteFinance) && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-destructive group">
+                    <Trash2 className="h-3.5 w-3.5 text-destructive group-hover:text-white transition-colors" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t.extract.deleteMovement.title}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {isVale ? t.extract.deleteMovement.descriptionVale : t.extract.deleteMovement.description}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t.extract.deleteMovement.cancel}</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDeleteMovement(m.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t.extract.deleteMovement.confirm}</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 

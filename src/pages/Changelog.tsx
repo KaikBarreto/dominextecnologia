@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.7',
+    date: '22 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vale e saída financeira sempre sincronizados',
+        description: 'Ao registrar um vale para o funcionário, o desconto e a saída da conta financeira passam a ser criados juntos. Se o vale for excluído, a saída correspondente também é removida e o valor retorna automaticamente para a conta de origem.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.25.6',
     date: '20 de setembro de 2026',
     type: 'patch',

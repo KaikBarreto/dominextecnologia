@@ -33,7 +33,7 @@ interface EmployeeMovementModalProps {
   type: 'vale' | 'bonus' | 'falta';
   employeeName: string;
   currentBalance: number;
-  onSubmit: (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => void;
+  onSubmit: (data: { amount: number; description?: string; subType?: string; accountId?: string; costCenterId?: string | null }) => void | Promise<void>;
   isPending?: boolean;
   employeeId?: string;
   salary?: number;
@@ -125,7 +125,7 @@ export function EmployeeMovementModal({
     setAmount(currencyMask(String(cents)));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const baseValue = parseCurrency(amount);
     if (baseValue <= 0) return;
@@ -158,16 +158,22 @@ export function EmployeeMovementModal({
       }
     }
 
-    onSubmit({
-      amount: finalAmount,
-      description: finalDescription,
-      subType: type === 'falta' ? faltaMode : undefined,
-      accountId: type === 'vale' ? accountId : undefined,
-      costCenterId: type === 'vale' ? costCenterId : undefined,
-    });
-    draft.clearDraft();
-    setAmount('');
-    setDescription('');
+    try {
+      await onSubmit({
+        amount: finalAmount,
+        description: finalDescription,
+        subType: type === 'falta' ? faltaMode : undefined,
+        accountId: type === 'vale' ? accountId : undefined,
+        costCenterId: type === 'vale' ? costCenterId : undefined,
+      });
+      // Em erro ambiguo de rede, mantem o payload inteiro para o retry usar a
+      // mesma chave idempotente e os mesmos dados enviados ao banco.
+      draft.clearDraft();
+      setAmount('');
+      setDescription('');
+    } catch {
+      // A mutation exibe o erro. O formulario fica intacto para retry seguro.
+    }
   };
 
   const baseValue = parseCurrency(amount);
