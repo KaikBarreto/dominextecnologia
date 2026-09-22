@@ -146,6 +146,7 @@ vi.mock('@/components/ui/SearchableSelect', () => ({
 
 import { TransactionFormDialog } from './TransactionFormDialog';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { todayInTz } from '@/lib/timezone';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -154,14 +155,19 @@ let root: Root;
 
 const tf = MESSAGES['pt-br'].app.finance.transactionForm;
 
-function mount(defaultType: 'entrada' | 'saida') {
+function mount(
+  defaultType: 'entrada' | 'saida',
+  requireDueDateWhenUnpaid = false,
+  onSubmit: (payload: any) => Promise<any> = async () => {},
+) {
   act(() => {
     root.render(
       <TransactionFormDialog
         open
         onOpenChange={() => {}}
         defaultType={defaultType}
-        onSubmit={async () => {}}
+        onSubmit={onSubmit}
+        requireDueDateWhenUnpaid={requireDueDateWhenUnpaid}
       />,
     );
   });
@@ -184,6 +190,7 @@ function buttonByText(label: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -233,5 +240,73 @@ describe('TransactionFormDialog — filtro de cartão nas opções de conta', ()
     });
 
     expect(accountOptionLabels()).not.toContain('Cartão Black Elite');
+  });
+});
+
+describe('TransactionFormDialog — vencimento da conta futura do CRM', () => {
+  it('mostra o vencimento quando a receita ainda não foi recebida', () => {
+    mount('entrada', true);
+    expect(document.body.textContent).not.toContain(`${MESSAGES['pt-br'].app.finance.accounts.table.dueDate} *`);
+
+    const paidSwitch = document.querySelector('[role="switch"]');
+    expect(paidSwitch).toBeTruthy();
+
+    act(() => {
+      paidSwitch!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(document.body.textContent).toContain(`${MESSAGES['pt-br'].app.finance.accounts.table.dueDate} *`);
+  });
+
+  it('não muda os demais lançamentos que não ativaram a regra do CRM', () => {
+    mount('entrada');
+
+    const paidSwitch = document.querySelector('[role="switch"]');
+    expect(paidSwitch).toBeTruthy();
+
+    act(() => {
+      paidSwitch!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(document.body.textContent).not.toContain(`${MESSAGES['pt-br'].app.finance.accounts.table.dueDate} *`);
+  });
+
+  it('envia o vencimento escolhido no payload da conta ainda não recebida', async () => {
+    localStorage.setItem('fin_last_account_id', 'acc-banco');
+    const onSubmit = vi.fn().mockResolvedValue({ ids: ['txn-1'] });
+    mount('entrada', true, onSubmit);
+
+    const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+      const proto = element instanceof HTMLTextAreaElement
+        ? window.HTMLTextAreaElement.prototype
+        : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(element, value);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const description = document.querySelector(`textarea[placeholder="${tf.descriptionPlaceholder}"]`) as HTMLTextAreaElement;
+    const amount = document.querySelector(`input[placeholder="${tf.amountPlaceholder}"]`) as HTMLInputElement;
+    expect(description).toBeTruthy();
+    expect(amount).toBeTruthy();
+
+    act(() => {
+      setNativeValue(description, 'Venda fechada no CRM');
+      setNativeValue(amount, '10000');
+      document.querySelector<HTMLElement>('[role="switch"]')!.click();
+    });
+
+    const save = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === tf.saveLabel);
+    expect(save).toBeTruthy();
+
+    await act(async () => {
+      save!.click();
+      await Promise.resolve();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      is_paid: false,
+      due_date: todayInTz('America/Sao_Paulo'),
+    }));
   });
 });

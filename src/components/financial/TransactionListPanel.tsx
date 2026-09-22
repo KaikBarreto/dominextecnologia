@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { fuzzyIncludes, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ArrowLeftRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
@@ -54,6 +54,7 @@ import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { matchesFinancialTransactionSearch } from '@/lib/financial-transaction-display';
 
 function parseLocalDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -253,7 +254,7 @@ export function TransactionListPanel({
       : t.transaction_type === type))
     .filter((t) => categoryFilter.length === 0 || (t.category != null && categoryFilter.includes(t.category)))
     .filter((t) => accountFilter.length === 0 || accountFilter.includes((t as any).account_id))
-    .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
+    .filter((t) => matchesFinancialTransactionSearch(t, search, fmt));
 
   // Contagem de anexos da nova tabela — pra exibir paperclip quando há anexos
   const visibleIds = useMemo(() => filtered.map((t) => t.id), [filtered]);

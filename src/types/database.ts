@@ -276,6 +276,8 @@ export interface FinancialTransaction {
   cost_center_id?: string | null;
   transfer_pair_id?: string | null;
   parent_transaction_id?: string | null;
+  /** Cobrança online que originou a conta/baixa/tarifa (escopo sempre protegido por RLS da empresa). */
+  tenant_charge_id?: string | null;
   credit_card_bill_date?: string | null;
   employee_id?: string | null;
   payroll_period?: string | null;

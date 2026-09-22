@@ -292,6 +292,7 @@ function LeadWonRevenueFlow({ open, onOpenChange, context }: FlowProps) {
         isLoading={createTransaction.isPending}
         defaultType="entrada"
         prefill={prefill}
+        requireDueDateWhenUnpaid
       />
     </>
   );

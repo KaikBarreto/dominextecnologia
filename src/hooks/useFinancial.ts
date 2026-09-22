@@ -67,7 +67,8 @@ export interface TransactionInput {
  *   `cost_center_id`. Parcela sem o centro fura o relatório em silêncio.
  * - Parcela de cartão NUNCA nasce paga (quem fica paga é a FATURA). Em
  *   parcelamento não-cartão, só a 1a pode estar paga (comportamento legado).
- * - `transaction_date` = `due_date` = data da parcela (mês em que o caixa move).
+ * - `transaction_date` = `due_date` = data da parcela (semântica vigente das
+ *   telas de movimentações e dos filtros mensais).
  */
 type InstallmentRowDraft = Omit<TransactionInput, 'installment_count'> & {
   created_by?: string;
@@ -395,7 +396,10 @@ export function useFinancial() {
         // sobra na última) vem do motor puro compartilhado com o preview do
         // TransactionFormDialog e com a aprovação de orçamento — as três
         // superfícies precisam concordar. Ver src/lib/finance-installments.ts.
-        const plan = buildInstallmentPlan(rest.transaction_date, rest.amount, n);
+        // Fluxos que distinguem a data do fato da data do vencimento (como a
+        // oportunidade ganha do CRM) iniciam as parcelas pelo vencimento. Os
+        // fluxos legados, sem `due_date`, continuam partindo do lançamento.
+        const plan = buildInstallmentPlan(rest.due_date || rest.transaction_date, rest.amount, n);
 
         // For card accounts, compute the bill date per installment from its due date
         const isCardInstallment = !!rest.credit_card_bill_date && rest.transaction_type === 'saida';
