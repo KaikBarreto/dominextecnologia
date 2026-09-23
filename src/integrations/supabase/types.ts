@@ -85,6 +85,7 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          icon: string | null
           id: string
           is_lost: boolean
           is_won: boolean
@@ -95,6 +96,7 @@ export type Database = {
         Insert: {
           color?: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean
@@ -105,6 +107,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          icon?: string | null
           id?: string
           is_lost?: boolean
           is_won?: boolean
@@ -3282,51 +3285,6 @@ export type Database = {
           },
         ]
       }
-      employee_face_templates: {
-        Row: {
-          company_id: string
-          created_at: string
-          embedding: number[]
-          employee_id: string
-          id: string
-          model_version: string
-          quality_score: number | null
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          embedding: number[]
-          employee_id: string
-          id?: string
-          model_version: string
-          quality_score?: number | null
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          embedding?: number[]
-          employee_id?: string
-          id?: string
-          model_version?: string
-          quality_score?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "employee_face_templates_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_face_templates_employee_company_fkey"
-            columns: ["employee_id", "company_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id", "company_id"]
-          },
-        ]
-      }
       employee_face_enrollment_tokens: {
         Row: {
           company_id: string
@@ -3371,6 +3329,117 @@ export type Database = {
           },
           {
             foreignKeyName: "employee_face_enrollment_tokens_employee_company_fkey"
+            columns: ["employee_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
+      employee_face_match_attempts: {
+        Row: {
+          best_distance: number | null
+          candidate_count: number
+          company_id: string
+          consumed_at: string | null
+          created_at: string
+          employee_id: string | null
+          expected_type: string | null
+          expires_at: string | null
+          id: string
+          model_version: string
+          proof_hash: string | null
+          quality_score: number
+          second_distance: number | null
+          status: string
+        }
+        Insert: {
+          best_distance?: number | null
+          candidate_count?: number
+          company_id: string
+          consumed_at?: string | null
+          created_at?: string
+          employee_id?: string | null
+          expected_type?: string | null
+          expires_at?: string | null
+          id?: string
+          model_version: string
+          proof_hash?: string | null
+          quality_score: number
+          second_distance?: number | null
+          status: string
+        }
+        Update: {
+          best_distance?: number | null
+          candidate_count?: number
+          company_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          employee_id?: string | null
+          expected_type?: string | null
+          expires_at?: string | null
+          id?: string
+          model_version?: string
+          proof_hash?: string | null
+          quality_score?: number
+          second_distance?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_face_match_attempts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_face_match_attempts_employee_company_fkey"
+            columns: ["employee_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
+      employee_face_templates: {
+        Row: {
+          company_id: string
+          created_at: string
+          embedding: number[]
+          employee_id: string
+          id: string
+          model_version: string
+          quality_score: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          embedding: number[]
+          employee_id: string
+          id?: string
+          model_version: string
+          quality_score?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          embedding?: number[]
+          employee_id?: string
+          id?: string
+          model_version?: string
+          quality_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_face_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_face_templates_employee_company_fkey"
             columns: ["employee_id", "company_id"]
             isOneToOne: false
             referencedRelation: "employees"
@@ -9572,8 +9641,8 @@ export type Database = {
           default_in: string
           default_out: string
           id: string
-          late_tolerance_min: number | null
           kiosk_require_face: boolean
+          late_tolerance_min: number | null
           max_radius_meters: number | null
           require_geolocation: boolean | null
           require_selfie: boolean | null
@@ -9587,8 +9656,8 @@ export type Database = {
           default_in?: string
           default_out?: string
           id?: string
-          late_tolerance_min?: number | null
           kiosk_require_face?: boolean
+          late_tolerance_min?: number | null
           max_radius_meters?: number | null
           require_geolocation?: boolean | null
           require_selfie?: boolean | null
@@ -9602,8 +9671,8 @@ export type Database = {
           default_in?: string
           default_out?: string
           id?: string
-          late_tolerance_min?: number | null
           kiosk_require_face?: boolean
+          late_tolerance_min?: number | null
           max_radius_meters?: number | null
           require_geolocation?: boolean | null
           require_selfie?: boolean | null
@@ -10218,6 +10287,10 @@ export type Database = {
     }
     Functions: {
       _assert_super_admin: { Args: never; Returns: undefined }
+      _recalculate_employee_movement_balances: {
+        Args: { p_employee_id: string }
+        Returns: undefined
+      }
       accept_terms_of_service: {
         Args: { p_version?: string }
         Returns: undefined
@@ -10245,10 +10318,7 @@ export type Database = {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
         Returns: Json
       }
-      archive_employee: {
-        Args: { p_employee_id: string }
-        Returns: boolean
-      }
+      archive_employee: { Args: { p_employee_id: string }; Returns: boolean }
       archive_tenant_subscription: {
         Args: { p_company_id: string; p_subscription_id: string }
         Returns: Json
@@ -10310,6 +10380,10 @@ export type Database = {
         Returns: boolean
       }
       can_manage_contracts: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_employee_face_biometrics: {
+        Args: { p_company_id: string }
+        Returns: boolean
+      }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
       check_email_available: { Args: { _email: string }; Returns: boolean }
@@ -10342,6 +10416,35 @@ export type Database = {
           period: string
         }[]
       }
+      consume_employee_face_match_proof: {
+        Args: {
+          p_company_id: string
+          p_employee_id: string
+          p_expected_type: string
+          p_proof_hash: string
+        }
+        Returns: Json
+      }
+      create_employee_face_enrollment_link: {
+        Args: { p_employee_id: string }
+        Returns: Json
+      }
+      create_employee_vale: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_cost_center_id?: string
+          p_description?: string
+          p_employee_id: string
+          p_idempotency_key: string
+          p_transaction_date: string
+        }
+        Returns: {
+          created: boolean
+          employee_movement_id: string
+          financial_transaction_id: string
+        }[]
+      }
       create_tenant_charge_receivable: {
         Args: {
           p_account_id?: string
@@ -10355,26 +10458,6 @@ export type Database = {
           p_tenant_charge_id: string
         }
         Returns: string
-      }
-      create_employee_face_enrollment_link: {
-        Args: { p_employee_id: string }
-        Returns: Json
-      }
-      create_employee_vale: {
-        Args: {
-          p_account_id: string
-          p_amount: number
-          p_cost_center_id?: string | null
-          p_description?: string | null
-          p_employee_id: string
-          p_idempotency_key: string
-          p_transaction_date: string
-        }
-        Returns: {
-          created: boolean
-          employee_movement_id: string
-          financial_transaction_id: string
-        }[]
       }
       credit_ltv_once_for_payment: {
         Args: {
@@ -10778,6 +10861,15 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: Json
       }
+      match_employee_face_for_kiosk: {
+        Args: {
+          p_company_id: string
+          p_embedding: Json
+          p_model_version: string
+          p_quality_score: number
+        }
+        Returns: Json
+      }
       next_compra_numero: { Args: { p_company_id: string }; Returns: number }
       next_equipment_identifier: {
         Args: { p_company_id: string }
@@ -10848,6 +10940,16 @@ export type Database = {
       record_certificate_custody_consent: {
         Args: { p_version?: string }
         Returns: undefined
+      }
+      record_employee_face_calibration: {
+        Args: {
+          p_company_id: string
+          p_embedding: Json
+          p_employee_id: string
+          p_model_version: string
+          p_quality_score: number
+        }
+        Returns: Json
       }
       record_quote_view: {
         Args: { _fingerprint?: string; _token: string; _user_agent?: string }
@@ -10953,16 +11055,6 @@ export type Database = {
           p_type: string
         }
         Returns: string
-      }
-      record_employee_face_calibration: {
-        Args: {
-          p_company_id: string
-          p_embedding: Json
-          p_employee_id: string
-          p_model_version: string
-          p_quality_score: number
-        }
-        Returns: Json
       }
       replace_contract_plan_activities: {
         Args: { p_activities: Json; p_contract_id: string }

@@ -3,11 +3,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import {
+  STAGE_CHANGE_INTERACTION_TYPE,
+  buildStageChangeDescription,
+  shouldLogStageChange,
+} from '@/lib/leadStageHistory';
 
 export interface AdminCrmStage {
   id: string;
   name: string;
   color: string;
+  /** Nome de um ícone lucide (ex: 'Phone'), desenhado no cabeçalho da coluna do
+   *  funil. Opcional — etapa sem ícone só mostra o nome. Paridade com
+   *  `crm_stages.icon` do CRM do tenant. */
+  icon: string | null;
   position: number;
   is_won: boolean;
   is_lost: boolean;
@@ -88,7 +97,7 @@ export function useAdminCrmStages() {
   });
 
   const createStage = useMutation({
-    mutationFn: async (input: { name: string; color?: string; position?: number; is_won?: boolean; is_lost?: boolean }) => {
+    mutationFn: async (input: { name: string; color?: string; icon?: string | null; position?: number; is_won?: boolean; is_lost?: boolean }) => {
       const { data, error } = await supabase.from('admin_crm_stages' as any).insert(input).select().single();
       if (error) throw error;
       return data;
@@ -115,10 +124,30 @@ export function useAdminCrmStages() {
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
+  /**
+   * Reordena o funil a partir da lista COMPLETA de ids na ordem nova (mesma
+   * assinatura do `reorderStages` do CRM do tenant). Recebe a lista inteira de
+   * propósito: gravar posição a partir de uma lista parcial (ex.: com etapas
+   * escondidas pela busca) embaralharia o funil de todo mundo.
+   */
+  const reorderStages = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      const results = await Promise.all(
+        orderedIds.map((id, position) =>
+          supabase.from('admin_crm_stages' as any).update({ position }).eq('id', id),
+        ),
+      );
+      const failed = results.find(r => r.error);
+      if (failed?.error) throw failed.error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-crm-stages'] }); },
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
+  });
+
   const stages = query.data || [];
   const getStageHex = (stageId: string | null) => stages.find(s => s.id === stageId)?.color || '#6B7280';
 
-  return { stages, isLoading: query.isLoading, createStage, updateStage, deleteStage, getStageHex };
+  return { stages, isLoading: query.isLoading, createStage, updateStage, deleteStage, reorderStages, getStageHex };
 }
 
 export function useAdminLeads() {
@@ -160,11 +189,78 @@ export function useAdminLeads() {
 
   const updateLead = useMutation({
     mutationFn: async ({ id, ...input }: Partial<AdminLead> & { id: string }) => {
+      // Snapshot do estágio ANTES do update. Este é o ÚNICO caminho de escrita
+      // de `admin_leads.stage_id` no painel (arrastar no kanban, Ganhar/Perder
+      // no modal e o form de edição passam todos por aqui), então centralizar
+      // o registro de histórico aqui garante que nenhum caminho fica de fora.
+      // Lê do cache de `admin-leads`, que já está carregado pra desenhar a tela.
+      const isStageUpdate = 'stage_id' in input;
+      const nextStageId = input.stage_id as string | null | undefined;
+      const previousStageId = isStageUpdate
+        ? ((qc.getQueryData<AdminLead[]>(['admin-leads']) || []).find(l => l.id === id)?.stage_id ?? null)
+        : null;
+
       const { error } = await supabase.from('admin_leads' as any).update(input).eq('id', id);
       if (error) throw error;
+
+      // Só grava quando o estágio de fato mudou — soltar o card na mesma coluna
+      // ou salvar o form sem mexer no estágio não pode virar ruído no histórico.
+      // Falha aqui NÃO derruba o update (que já foi commitado acima): pro
+      // usuário o card já mudou de coluna de qualquer jeito.
+      if (isStageUpdate && shouldLogStageChange(previousStageId, nextStageId)) {
+        try {
+          const idsToFetch = previousStageId ? [previousStageId, nextStageId] : [nextStageId];
+          const { data: stagesData } = await supabase
+            .from('admin_crm_stages' as any)
+            .select('id, name')
+            .in('id', idsToFetch);
+          const nameById = new Map(
+            ((stagesData || []) as unknown as { id: string; name: string }[]).map(s => [s.id, s.name]),
+          );
+
+          const { data: userData } = await supabase.auth.getUser();
+          // Sem os campos de funil de propósito: o painel master tem um funil
+          // só (multi-pipeline é exclusivo do CRM do tenant).
+          await supabase.from('admin_lead_interactions' as any).insert({
+            lead_id: id,
+            interaction_type: STAGE_CHANGE_INTERACTION_TYPE,
+            description: buildStageChangeDescription({
+              from_stage_id: previousStageId,
+              from_stage_name: previousStageId ? nameById.get(previousStageId) ?? null : null,
+              to_stage_id: nextStageId,
+              to_stage_name: nameById.get(nextStageId) ?? null,
+            }),
+            created_by: userData.user?.id,
+          });
+        } catch (logError) {
+          console.error('Falha ao registrar mudança de estágio no histórico do lead', logError);
+        }
+      }
+
+      return { id, loggedStageChange: isStageUpdate && shouldLogStageChange(previousStageId, nextStageId) };
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead atualizado!' }); },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      if (result?.loggedStageChange) {
+        qc.invalidateQueries({ queryKey: ['admin-lead-interactions', result.id] });
+      }
+      toast({ title: 'Lead atualizado!' });
+    },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
+  });
+
+  /**
+   * Grava SÓ `notes`, em silêncio (sem toast). É o que o autosave de
+   * "Observações" do modal de detalhe usa: com `updateLead` o usuário levaria
+   * um toast "Lead atualizado!" a cada 800ms de digitação. Espelha o
+   * `updateLeadNotes` do CRM do tenant.
+   */
+  const updateLeadNotes = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string | null }) => {
+      const { error } = await supabase.from('admin_leads' as any).update({ notes }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); },
   });
 
   const deleteLead = useMutation({
@@ -183,7 +279,7 @@ export function useAdminLeads() {
     totalValue: leads.reduce((s, l) => s + Number(l.value || 0), 0),
   };
 
-  return { leads, isLoading: query.isLoading, createLead, updateLead, deleteLead, stats };
+  return { leads, isLoading: query.isLoading, createLead, updateLead, updateLeadNotes, deleteLead, stats };
 }
 
 /**

@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, ClipboardList, User } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, ClipboardList, User, GripVertical } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,8 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,9 +20,10 @@ import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdm
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
-import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { AdminLeadCard } from '@/components/admin/AdminLeadCard';
+import { IconPreview } from '@/components/customers/originIcons';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
-import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { COMPANY_SEGMENTS } from '@/utils/companySegments';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -54,12 +53,6 @@ function computeDateRange(preset: DatePreset, from: string, to: string): { from:
     };
     default: return { from: null, to: null };
   }
-}
-
-function OriginIcon({ name, className }: { name: string; className?: string }) {
-  const LucideIcon = (LucideIcons as any)[name];
-  if (!LucideIcon) return null;
-  return <LucideIcon className={className || 'h-3 w-3'} />;
 }
 
 type CrmTabKey = 'crm' | 'tarefas';
@@ -144,7 +137,7 @@ export default function AdminCRM() {
 function CrmTab() {
   const { user } = useAuth();
   const { leads, isLoading, updateLead } = useAdminLeads();
-  const { stages, isLoading: stagesLoading } = useAdminCrmStages();
+  const { stages, isLoading: stagesLoading, reorderStages } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
 
   // Mapa user_id -> vendedor (pra mostrar avatar do responsável no card quando o
@@ -181,6 +174,19 @@ function CrmTab() {
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropTargetStageId, setDropTargetStageId] = useState<string | null>(null);
 
+  // Arrastar a COLUNA (cabeçalho da etapa) pra reordenar o funil — mesmo
+  // mecanismo nativo já usado pra mover card entre colunas, sem lib extra. A
+  // área arrastável fica restrita ao cabeçalho, então segurar no card continua
+  // movendo o card. Desligado no mobile: o gesto colide com o scroll horizontal
+  // por toque e o drag HTML5 nativo não é confiável em touch.
+  const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+
+  // Durante a busca, etapa sem resultado some do quadro (o funil fica legível
+  // com 8 colunas e 1 resultado). Vale só pra busca atual — trocar o texto
+  // volta o padrão.
+  const [showEmptyStages, setShowEmptyStages] = useState(false);
+
   // View mode mobile (kanban default, conforme briefing). Desktop sempre kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
@@ -214,6 +220,10 @@ function CrmTab() {
       setFilterResponsible([user.id]);
     }
   }, [salespersonByUserId, user?.id]);
+
+  useEffect(() => {
+    setShowEmptyStages(false);
+  }, [search]);
 
   const activeFilterCount =
     (filterOrigin.length > 0 ? 1 : 0) +
@@ -252,7 +262,26 @@ function CrmTab() {
     });
   }, [leads, search, filterOrigin, filterSegment, filterResponsible, filterDatePreset, filterDateFrom, filterDateTo]);
 
-  const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
+  const leadsByStage = useMemo(() => {
+    const map: Record<string, AdminLead[]> = {};
+    for (const stage of stages) map[stage.id] = [];
+    for (const lead of filteredLeads) {
+      if (lead.stage_id && map[lead.stage_id]) map[lead.stage_id].push(lead);
+    }
+    return map;
+  }, [filteredLeads, stages]);
+
+  const getLeadsByStage = (stageId: string) => leadsByStage[stageId] || [];
+
+  // Só a BUSCA esconde etapa vazia. Filtro de origem/segmento/responsável NÃO
+  // esconde: ali o usuário está recortando o funil e quer continuar vendo a
+  // forma dele (mesma régua do CRM do tenant).
+  const hidesEmptyStages = !!search.trim() && !showEmptyStages;
+  const visibleStages = useMemo(
+    () => (hidesEmptyStages ? stages.filter(st => (leadsByStage[st.id]?.length || 0) > 0) : stages),
+    [hidesEmptyStages, stages, leadsByStage],
+  );
+  const hiddenStagesCount = stages.length - visibleStages.length;
 
   // Métricas refletem o mesmo conjunto exibido no kanban (filteredLeads),
   // pra evitar inconsistência entre cards e colunas quando há filtro aplicado.
@@ -298,6 +327,57 @@ function CrmTab() {
     return [...base, ...perStage];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredLeads, activeLeads.length, wonLeadsCount, stages]);
+
+  // Drag de coluna (reordenar etapa) e drag de card compartilham os mesmos
+  // handlers do <div> da coluna. O que separa um do outro é o payload
+  // `stageId` no dataTransfer: só o cabeçalho da etapa o grava.
+  const handleStageDragStart = (e: React.DragEvent, stageId: string) => {
+    e.stopPropagation();
+    setDraggedStageId(stageId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('stageId', stageId);
+  };
+
+  const handleStageDragEnd = () => {
+    setDraggedStageId(null);
+    setDragOverStageId(null);
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedStageId) {
+      if (draggedStageId !== stageId) setDragOverStageId(stageId);
+    } else {
+      setDropTargetStageId(stageId);
+    }
+  };
+
+  const handleColumnDragLeave = (stageId: string) => {
+    setDropTargetStageId(prev => (prev === stageId ? null : prev));
+    setDragOverStageId(prev => (prev === stageId ? null : prev));
+  };
+
+  const handleColumnDrop = (e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    const draggedFromEvent = e.dataTransfer.getData('stageId');
+    if (draggedFromEvent) {
+      setDragOverStageId(null);
+      setDraggedStageId(null);
+      if (draggedFromEvent === stageId) return;
+      // Reordena sobre `stages` (lista COMPLETA), nunca sobre `visibleStages`:
+      // gravar posição a partir de uma lista parcial embaralharia o funil.
+      const draggedIndex = stages.findIndex(st => st.id === draggedFromEvent);
+      const targetIndex = stages.findIndex(st => st.id === stageId);
+      if (draggedIndex === -1 || targetIndex === -1) return;
+      const newOrder = [...stages];
+      const [removed] = newOrder.splice(draggedIndex, 1);
+      newOrder.splice(targetIndex, 0, removed);
+      reorderStages.mutate(newOrder.map(st => st.id));
+      return;
+    }
+    handleDrop(stageId);
+  };
 
   const handleDrop = (stageId: string) => {
     setDropTargetStageId(null);
@@ -515,40 +595,107 @@ function CrmTab() {
             </div>
           )
         ) : (
-          // === KANBAN VIEW (preservado integralmente, mobile e desktop) =========
-          <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
-            {stages.map(stage => {
-              const stageLeads = getLeadsByStage(stage.id);
-              const stageTotal = stageLeads.reduce((s, l) => s + Number(l.value || 0), 0);
-              const isDropTarget = dropTargetStageId === stage.id;
-              return (
-                <div
-                  key={stage.id}
-                  className="w-[280px] sm:w-[300px] shrink-0"
-                  onDragOver={e => { e.preventDefault(); setDropTargetStageId(stage.id); }}
-                  onDragLeave={() => setDropTargetStageId(null)}
-                  onDrop={() => handleDrop(stage.id)}
+          // === KANBAN VIEW (mobile e desktop) ===================================
+          // Repaginado pra bater com o funil do CRM do cliente: cabeçalho de
+          // coluna colorido inteiro (com ícone da etapa, contagem e total),
+          // card da oportunidade em componente próprio (AdminLeadCard) e as
+          // duas mecânicas que faltavam aqui — esconder etapa vazia durante a
+          // busca e arrastar a coluna pra reordenar o funil.
+          <div className="space-y-2">
+            {hiddenStagesCount > 0 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  {hiddenStagesCount === 1
+                    ? '1 etapa sem resultado está escondida'
+                    : `${hiddenStagesCount} etapas sem resultado estão escondidas`}
+                </span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  onClick={() => setShowEmptyStages(true)}
                 >
-                  <div className="mb-4">
-                    <div
-                      className={cn('w-full rounded-full mb-3 transition-all', isDropTarget ? 'h-2' : 'h-1')}
-                      style={{ backgroundColor: stage.color }}
-                    />
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm tracking-wide text-foreground uppercase truncate">{stage.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{stageLeads.length} {stageLeads.length === 1 ? 'lead' : 'leads'}</span>
-                        <span className="text-xs font-medium text-foreground">{formatCurrency(stageTotal)}</span>
-                      </div>
-                    </div>
-                  </div>
+                  Mostrar todas
+                </Button>
+              </div>
+            )}
 
-                  <div className={cn('min-h-[200px] rounded-lg transition-all duration-300', isDropTarget && 'bg-primary/10 ring-2 ring-primary ring-dashed scale-[1.02]')}>
-                    <ScrollArea className={cn(isMobile ? 'h-[calc(100vh-420px)]' : 'h-[calc(100vh-360px)]')}>
-                      <div className="space-y-2 sm:space-y-3 pr-2 p-1">
-                        {stageLeads.length === 0 ? (
-                          <div className={cn('border-2 border-dashed rounded-lg transition-all', isDropTarget && 'border-primary bg-primary/5')}>
-                            {isDropTarget ? (
+            {stages.length === 0 ? (
+              <EmptyState
+                icon={<TrendingUp className="h-12 w-12" />}
+                title="Nenhuma etapa configurada"
+                description="Crie as etapas do funil em Configurações para começar a usar o CRM."
+              />
+            ) : visibleStages.length === 0 ? (
+              /* Só cai aqui quando a BUSCA escondeu todas as etapas. Funil COM
+                 etapas e SEM lead continua desenhando as colunas: sem coluna, o
+                 usuário fica sem alvo pra arrastar card pra dentro. */
+              <EmptyState
+                icon={<TrendingUp className="h-12 w-12" />}
+                title="Nenhum lead encontrado"
+                description="Tente outra busca ou outros filtros."
+              />
+            ) : (
+              <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
+                {visibleStages.map(stage => {
+                  const stageLeads = leadsByStage[stage.id] || [];
+                  const stageTotal = stageLeads.reduce((acc, l) => acc + Number(l.value || 0), 0);
+                  const isDropTarget = dropTargetStageId === stage.id && !draggedStageId;
+                  // Reordenar fica DESLIGADO enquanto o funil esconde as vazias:
+                  // arrastar aqui reordenaria uma lista PARCIAL e gravaria a
+                  // ordem errada pra todo mundo.
+                  const canDragStage = !isMobile && !hidesEmptyStages;
+                  return (
+                    <div
+                      key={stage.id}
+                      className={cn(
+                        'w-[280px] sm:w-[300px] shrink-0 flex flex-col transition-opacity',
+                        draggedStageId === stage.id && 'opacity-50',
+                      )}
+                      onDragOver={e => handleColumnDragOver(e, stage.id)}
+                      onDragLeave={() => handleColumnDragLeave(stage.id)}
+                      onDrop={e => handleColumnDrop(e, stage.id)}
+                    >
+                      <div
+                        className={cn(
+                          'rounded-t-lg p-3 text-white shrink-0',
+                          canDragStage && 'cursor-grab active:cursor-grabbing',
+                          dragOverStageId === stage.id && 'ring-2 ring-inset ring-white',
+                        )}
+                        style={{ backgroundColor: stage.color }}
+                        draggable={canDragStage}
+                        onDragStart={e => handleStageDragStart(e, stage.id)}
+                        onDragEnd={handleStageDragEnd}
+                        title={canDragStage ? 'Arraste para reordenar a etapa' : undefined}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {canDragStage && <GripVertical className="h-3.5 w-3.5 text-white/60 shrink-0" />}
+                            {stage.icon && <IconPreview name={stage.icon} className="h-3.5 w-3.5 shrink-0" />}
+                            <span className="font-semibold text-sm truncate">{stage.name}</span>
+                          </div>
+                          <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full shrink-0">
+                            {stageLeads.length}
+                          </span>
+                        </div>
+                        {/* Sempre renderizada (mesmo em R$ 0,00) — senão a coluna
+                            perde essa linha e o cabeçalho fica mais baixo que os
+                            vizinhos. */}
+                        <p className="text-sm font-semibold mt-1.5 text-white/90">
+                          {formatCurrency(stageTotal)}
+                        </p>
+                      </div>
+
+                      <ScrollArea
+                        className={cn(
+                          'rounded-b-lg border border-t-0 bg-card transition-all',
+                          isMobile ? 'h-[calc(100vh-420px)]' : 'h-[calc(100vh-360px)]',
+                          isDropTarget && 'ring-2 ring-inset ring-primary bg-primary/5',
+                        )}
+                      >
+                        <div className="space-y-3 p-3">
+                          {stageLeads.length === 0 ? (
+                            isDropTarget ? (
                               <div className="text-center py-12 text-sm text-primary">Solte aqui para mover</div>
                             ) : (
                               <EmptyState
@@ -556,122 +703,39 @@ function CrmTab() {
                                 icon={<TrendingUp className="h-10 w-10" />}
                                 title="Sem leads"
                               />
-                            )}
-                          </div>
-                        ) : stageLeads.map(lead => {
-                          const originInfo = getOriginInfo(lead.source);
-                          const segmentData = getSegment(lead.segment);
-                          const assignedSalesperson = lead.responsible_id
-                            ? salespersonByUserId.get(lead.responsible_id) ?? null
-                            : null;
-                          const isDragging = draggedLeadId === lead.id;
-                          return (
-                            <div
-                              key={lead.id}
-                              draggable
-                              onDragStart={() => setDraggedLeadId(lead.id)}
-                              onDragEnd={() => { setDraggedLeadId(null); setDropTargetStageId(null); }}
-                              onClick={() => { setDetailLead(lead); setDetailOpen(true); }}
-                              className={cn(
-                                'group bg-card rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing relative',
-                                isDragging && 'opacity-40 scale-95 rotate-1 shadow-xl ring-2 ring-primary'
-                              )}
-                            >
-                              <div className="p-2.5 sm:p-3 pb-1.5 sm:pb-2">
-                                <div className="flex items-start gap-2.5 sm:gap-3">
-                                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0" style={{ backgroundColor: '#00C597' }}>
-                                    <AvatarFallback className="text-white text-[11px] sm:text-xs font-medium bg-transparent">
-                                      {getInitials(lead.title)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm text-foreground truncate">{lead.title}</h4>
-                                    {lead.company_name && (
-                                      <p className="text-primary text-sm font-medium truncate">{lead.company_name}</p>
-                                    )}
-                                  </div>
-                                </div>
+                            )
+                          ) : (
+                            stageLeads.map(lead => (
+                              <div
+                                key={lead.id}
+                                draggable
+                                onDragStart={() => setDraggedLeadId(lead.id)}
+                                onDragEnd={() => { setDraggedLeadId(null); setDropTargetStageId(null); }}
+                                className={cn(
+                                  'cursor-grab active:cursor-grabbing transition-all',
+                                  draggedLeadId === lead.id && 'opacity-40 scale-95',
+                                )}
+                              >
+                                <AdminLeadCard
+                                  lead={lead}
+                                  origin={getOriginInfo(lead.source)}
+                                  responsible={
+                                    lead.responsible_id
+                                      ? salespersonByUserId.get(lead.responsible_id) ?? null
+                                      : null
+                                  }
+                                  onClick={() => { setDetailLead(lead); setDetailOpen(true); }}
+                                />
                               </div>
-
-                              <div className="px-2.5 sm:px-3 pb-2 space-y-1.5">
-                                {Number(lead.value || 0) > 0 && (
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Valor:</span>
-                                    <span className="text-sm font-semibold text-green-600">{formatCurrency(Number(lead.value))}</span>
-                                  </div>
-                                )}
-                                {originInfo && (
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Origem:</span>
-                                    <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[55%] gap-1" style={{ backgroundColor: originInfo.color || '#6B7280' }}>
-                                      <OriginIcon name={originInfo.icon || 'Globe'} className="h-2.5 w-2.5 shrink-0" />
-                                      <span className="truncate">{originInfo.name}</span>
-                                    </Badge>
-                                  </div>
-                                )}
-                                {segmentData && (
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Segmento:</span>
-                                    <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[60%] gap-1" style={{ backgroundColor: segmentData.color }}>
-                                      <segmentData.icon className="h-3 w-3 shrink-0" />
-                                      <span className="truncate">{segmentData.label}</span>
-                                    </Badge>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 flex items-center justify-between border-t pt-2 mt-1 gap-2">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  {assignedSalesperson ? (
-                                    <span className="inline-flex items-center gap-1.5 min-w-0">
-                                      <SalespersonAvatar
-                                        name={assignedSalesperson.name}
-                                        photoUrl={assignedSalesperson.photo_url}
-                                        size="sm"
-                                        className="border-2 border-background shrink-0"
-                                      />
-                                      <span className="text-xs font-medium text-foreground truncate max-w-[90px]">
-                                        {assignedSalesperson.name.split(' ')[0]}
-                                      </span>
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground italic">
-                                      <User className="h-3.5 w-3.5 shrink-0" />
-                                      Sem responsável
-                                    </span>
-                                  )}
-                                  {lead.phone && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          onClick={(e) => openWhatsApp(lead.phone, e)}
-                                          className="h-6 w-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-muted hover:bg-[#25D366] [&:hover_svg]:fill-white"
-                                        >
-                                          <svg className="h-3.5 w-3.5 fill-muted-foreground" viewBox="0 0 24 24">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.637l4.687-1.227A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.336 0-4.512-.767-6.263-2.063l-.438-.338-2.848.746.762-2.774-.371-.59A9.95 9.95 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
-                                          </svg>
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="bottom" className="text-xs">WhatsApp</TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                </div>
-                                {lead.expected_close_date && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {new Date(lead.expected_close_date).toLocaleDateString('pt-BR')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-              );
-            })}
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

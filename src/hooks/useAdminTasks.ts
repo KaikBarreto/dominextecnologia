@@ -48,6 +48,12 @@ export interface TaskFilters {
   priority?: AdminTaskPriority[];
   assigned_to?: string[];
   search?: string;
+  /**
+   * Recorta as tarefas de UMA oportunidade. Usado pela aba Tarefas dentro do
+   * card do lead (AdminLeadDetailModal) — evita puxar a base inteira de
+   * `admin_tasks` só pra filtrar no cliente.
+   */
+  crm_lead_id?: string;
 }
 
 // ── Configs de apresentação (cores/labels) reaproveitadas pelos componentes ─
@@ -161,9 +167,14 @@ async function buildSearchOrFilter(search: string | undefined): Promise<string |
  * usa `select` com `head: true` — builders de tipos diferentes, mesma API.
  */
 function applyTaskFilters<
-  Q extends { in(column: string, values: readonly string[]): Q; or(f: string): Q },
+  Q extends {
+    in(column: string, values: readonly string[]): Q;
+    or(f: string): Q;
+    eq(column: string, value: string): Q;
+  },
 >(query: Q, filters: TaskFilters | undefined, searchOrFilter: string | null): Q {
   let q = query;
+  if (filters?.crm_lead_id) q = q.eq('crm_lead_id', filters.crm_lead_id);
   if (filters?.type?.length) q = q.in('type', filters.type);
   if (filters?.status?.length) q = q.in('status', filters.status);
   if (filters?.priority?.length) q = q.in('priority', filters.priority);
@@ -347,6 +358,9 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
       priority: AdminTaskPriority;
       due_date?: string | null;
       assigned_to?: string | null;
+      /** Amarra a tarefa a uma oportunidade. Preenchido quando ela nasce de
+       *  dentro do card do lead (aba Tarefas do AdminLeadDetailModal). */
+      crm_lead_id?: string | null;
     }) => {
       const payload: Database['public']['Tables']['admin_tasks']['Insert'] = {
         ...input,
