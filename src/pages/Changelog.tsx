@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.10',
+    date: '24 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notas recebidas de fornecedores, buscadas automaticamente',
+        description: 'Toda nota fiscal que um fornecedor emite contra o CNPJ da sua empresa passa a chegar sozinha no sistema, tanto de produto quanto de serviço, cada uma em sua aba. Você acompanha o que foi comprado sem precisar pedir o arquivo da nota para ninguém. Para funcionar, basta ter o certificado digital A1 cadastrado nas configurações fiscais e ligar a busca.',
+        category: 'recurso',
+      },
+      {
+        title: 'Lance a conta a pagar direto da nota do fornecedor',
+        description: 'A partir de uma nota recebida, você cria a conta a pagar em um clique, com o fornecedor já reconhecido pelo CNPJ. Se o fornecedor parcelou, o sistema lê as datas e os valores de cada parcela na própria nota e cria uma conta para cada uma, sem você digitar nada nem corrigir vencimento depois.',
+        category: 'recurso',
+      },
+      {
+        title: 'Pague várias contas como um lançamento só',
+        description: 'Quando o fornecedor junta várias notas em um boleto único, dava trabalho conciliar: eram vários lançamentos no sistema para uma linha só no extrato. Agora você marca as contas e quita todas de uma vez, gerando uma única linha com o total, que pode ser aberta para ver as contas de dentro. Vale para contas a pagar e a receber, e dá para desfazer o agrupamento inteiro se errar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configurações fiscais agora são uma tela inteira',
+        description: 'Os dados da empresa, o certificado digital e a tributação saíram de uma janela apertada e ganharam uma tela própria, com as etapas numeradas e um resumo do que ainda falta para emitir. No celular ficou bem mais fácil de preencher e de conferir o que está pendente.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.25.9',
     date: '24 de setembro de 2026',
     type: 'patch',

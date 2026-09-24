@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +15,19 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
 import { SYSTEM_CATEGORY_ROLES } from '@/lib/finance-system-categories';
 import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
+
+/**
+ * Retornos das RPCs de lote, DERIVADOS dos types gerados do banco — nunca
+ * copiados à mão. `Returns` é array (as duas são `RETURNS TABLE`), então o que
+ * interessa é `[number]`, a linha única.
+ *
+ * `already_applied` / `already_undone` valem `true` quando o mesmo lote foi
+ * reenviado: nada foi reaplicado e NÃO é erro (contrato de retry idempotente).
+ */
+export type PayBatchResult =
+  Database['public']['Functions']['pay_transactions_batch']['Returns'][number];
+export type UndoGroupResult =
+  Database['public']['Functions']['undo_payment_group']['Returns'][number];
 
 export interface TransactionCreator {
   full_name: string | null;
@@ -55,6 +69,17 @@ export interface TransactionInput {
    */
   cost_center_id?: string | null;
   credit_card_bill_date?: string | null;
+  /**
+   * Plano EXPLÍCITO de parcelas (data + valor de cada uma), vindo de fora —
+   * hoje só as duplicatas do bloco `<cobr>` de uma NF-e recebida (ver
+   * `LancarNotaDespesaDialog.tsx`). Quando presente e do MESMO tamanho de
+   * `installment_count`, SUBSTITUI o rateio automático de
+   * `buildInstallmentPlan`: cada parcela nasce com a data e o valor que a
+   * fonte informou, sem redistribuir o total (a soma pode divergir do total
+   * da nota por centavos — desconto, frete). Ausente = comportamento de
+   * sempre (rateio mensal com clamp de fim de mês).
+   */
+  installmentPlan?: Array<{ date: string; amount: number }>;
 }
 
 /**
@@ -387,19 +412,26 @@ export function useFinancial() {
     mutationFn: async (input: TransactionInput): Promise<{ ids: string[]; primary: FinancialTransaction | null }> => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { installment_count, ...rest } = input;
+      const { installment_count, installmentPlan, ...rest } = input;
       const n = installment_count && installment_count > 1 ? installment_count : 0;
 
       if (n > 1) {
         const groupId = crypto.randomUUID();
-        // Plano de parcelamento (datas com clamp de fim de mês + rateio com
-        // sobra na última) vem do motor puro compartilhado com o preview do
-        // TransactionFormDialog e com a aprovação de orçamento — as três
-        // superfícies precisam concordar. Ver src/lib/finance-installments.ts.
-        // Fluxos que distinguem a data do fato da data do vencimento (como a
-        // oportunidade ganha do CRM) iniciam as parcelas pelo vencimento. Os
-        // fluxos legados, sem `due_date`, continuam partindo do lançamento.
-        const plan = buildInstallmentPlan(rest.due_date || rest.transaction_date, rest.amount, n);
+        // Plano de parcelamento: por padrão vem do motor puro compartilhado
+        // com o preview do TransactionFormDialog e com a aprovação de
+        // orçamento (datas com clamp de fim de mês + rateio com sobra na
+        // última) — ver src/lib/finance-installments.ts. Fluxos que distinguem
+        // a data do fato da data do vencimento (como a oportunidade ganha do
+        // CRM) iniciam as parcelas pelo vencimento. Os fluxos legados, sem
+        // `due_date`, continuam partindo do lançamento.
+        //
+        // `installmentPlan` (quando presente e do mesmo tamanho de `n`) pula
+        // esse rateio: é a nota fiscal dizendo a data e o valor REAIS de cada
+        // parcela (duplicatas do XML), e redistribuir isso destruiria a
+        // informação que o fornecedor combinou.
+        const plan = installmentPlan && installmentPlan.length === n
+          ? installmentPlan.map((p, i) => ({ number: i + 1, date: p.date, amount: p.amount }))
+          : buildInstallmentPlan(rest.due_date || rest.transaction_date, rest.amount, n);
 
         // For card accounts, compute the bill date per installment from its due date
         const isCardInstallment = !!rest.credit_card_bill_date && rest.transaction_type === 'saida';
@@ -943,6 +975,120 @@ export function useFinancial() {
     },
   });
 
+  // ==========================================================================
+  // QUITAÇÃO EM LOTE (contas a pagar E contas a receber)
+  // ==========================================================================
+  //
+  // Contrato das RPCs: migrations
+  // `20260924180000_pagamento_em_lote_contas_a_pagar.sql` e
+  // `20260924200000_lote_trava_de_folha_e_contas_a_receber.sql`.
+  //
+  // As duas RPCs e a coluna `financial_transactions.payment_group_id` já estão
+  // em `src/integrations/supabase/types.ts` (types regenerados depois do push),
+  // então NÃO há tipagem manual aqui: o nome da RPC, os argumentos e o formato
+  // do retorno vêm do tipo gerado. Se a assinatura mudar no banco e os types
+  // forem regenerados, o typecheck aponta — que é exatamente o que uma
+  // interface copiada à mão escondia.
+  //
+  // ⚠️ Via supabase-js as duas devolvem ARRAY (RETURNS TABLE), então o resultado
+  // útil é sempre `data?.[0]`. Ler `data.payment_group_id` direto devolve
+  // `undefined` em silêncio.
+
+  interface PayTransactionsBatchParams {
+    ids: string[];
+    accountId: string;
+    paymentMethod?: string;
+    /** `YYYY-MM-DD`. Ausente = hoje no fuso da EMPRESA, decidido no servidor. */
+    paidDate?: string;
+    /**
+     * Id do lote gerado NO CLIENT (`crypto.randomUUID()`), reaproveitado no
+     * retry. É o que torna o botão seguro contra duplo clique e reenvio: a RPC
+     * reconhece o mesmo id e devolve `already_applied` em vez de quitar de novo
+     * (contrato de mutação idempotente com id gerado no client).
+     */
+    groupId?: string;
+  }
+
+  /**
+   * Quita N contas a pagar OU N contas a receber como UM evento. Nunca as duas
+   * coisas no mesmo lote — o servidor recusa a mistura, e a tela trava a
+   * seleção no lado do primeiro item marcado.
+   *
+   * NENHUMA linha nova nasce: a RPC só marca as N como pagas sob o mesmo
+   * `payment_group_id`. O "lançamento único" que bate com a linha do extrato é
+   * DERIVADO (soma das linhas do grupo) — é isso que impede o saldo de contar o
+   * mesmo dinheiro duas vezes, dos dois lados.
+   *
+   * Tudo ou nada: uma linha inelegível recusa o lote inteiro, com a mensagem já
+   * em PT-BR vinda do servidor (a lista de contas problemáticas vem em
+   * `details`). A tela só antecipa essas regras para desabilitar o checkbox.
+   */
+  const payTransactionsBatch = useMutation({
+    mutationFn: async (params: PayTransactionsBatchParams): Promise<PayBatchResult> => {
+      const { ids, accountId, paymentMethod, paidDate, groupId } = params;
+      if (ids.length === 0) throw new Error('Selecione ao menos uma conta para quitar');
+
+      // Argumento ausente (`undefined`) some do JSON e a RPC aplica o DEFAULT
+      // dela. `null` explícito NÃO faria isso nos parâmetros opcionais, e o
+      // tipo gerado já nem aceita.
+      const { data, error } = await supabase.rpc('pay_transactions_batch', {
+        p_transaction_ids: ids,
+        p_account_id: accountId,
+        p_payment_method: paymentMethod || undefined,
+        // `paid_date` decide o MÊS da despesa no regime de Caixa. Quando a tela
+        // manda a data, ela já veio de `todayInTz(timezone)`; quando não manda,
+        // o servidor usa `company_today()`, o mesmo "hoje" no fuso da empresa.
+        p_paid_date: paidDate || undefined,
+        p_group_id: groupId || undefined,
+      });
+      if (error) throw error;
+
+      const row = data?.[0];
+      if (!row) throw new Error('A quitação em lote não retornou resultado. Tente de novo.');
+      return row;
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+    onError: (error: Error) => {
+      // A RPC devolve a mensagem pronta pro toast (PT-BR). `getRpcErrorMessage`
+      // repassa pura, sem grudar o código SQL.
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível quitar o lote',
+        description: getRpcErrorMessage(error),
+      });
+    },
+  });
+
+  /**
+   * Desfaz o lote inteiro (de contas a pagar OU a receber): as N linhas voltam
+   * a pendente e perdem o carimbo. Grupo inexistente devolve
+   * `already_undone: true` (retry seguro), não erro.
+   */
+  const undoPaymentGroup = useMutation({
+    mutationFn: async (paymentGroupId: string): Promise<UndoGroupResult> => {
+      const { data, error } = await supabase.rpc('undo_payment_group', {
+        p_payment_group_id: paymentGroupId,
+      });
+      if (error) throw error;
+
+      const row = data?.[0];
+      if (!row) throw new Error('Não foi possível desfazer o lote. Tente de novo.');
+      return row;
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível desfazer o lote',
+        description: getRpcErrorMessage(error),
+      });
+    },
+  });
+
   // Tudo o que a query trouxe: mães E filhas (tarifa do recebimento,
   // recebimento parcial, CMV legado). É o conjunto que o DRE precisa pra fechar
   // o resultado — a tarifa da maquininha é despesa de verdade e não existe em
@@ -981,5 +1127,12 @@ export function useFinancial() {
     /** Exclusão em massa dos ids selecionados, com as cascatas do delete individual. */
     deleteTransactionsBatch,
     markAsPaid,
+    /**
+     * Quitação em LOTE de contas a pagar OU a receber: N contas viram UM evento
+     * de caixa (mesmo `payment_group_id`), sem criar lançamento nenhum.
+     */
+    payTransactionsBatch,
+    /** Desfaz um lote inteiro pelo `payment_group_id`. */
+    undoPaymentGroup,
   };
 }

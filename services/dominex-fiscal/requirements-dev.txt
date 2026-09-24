@@ -1,3 +1,14 @@
 # Só para rodar os testes locais/CI. NÃO entra na imagem de produção.
+# (O .dockerignore exclui este arquivo e a pasta tests/ do contexto de build.)
 -r requirements.txt
 pytest==8.3.4
+
+# ⚠️ NÃO é typo e NÃO é substituível por `httpx`.
+# O `starlette.testclient.TestClient` (que o `fastapi.testclient.TestClient`
+# reexporta) faz `import httpx2 as httpx` e só cai pro `httpx` clássico como
+# fallback. Sem este pacote, TODO teste que usa TestClient falha na coleta —
+# ou seja, tests/test_api.py, tests/test_sefaz_api.py e tests/test_adn_api.py
+# (as três suítes que cobrem o contrato HTTP das rotas de NFS-e e de DF-e)
+# simplesmente não rodam, e o CI fica verde sem ter testado o contrato.
+# Versão com que a suíte de 130 testes passa (2026-09-24).
+httpx2==2.13.1

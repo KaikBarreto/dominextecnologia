@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ArrowLeftRight } from 'lucide-react';
+import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeftRight, Layers, Undo2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
 import {
@@ -55,6 +55,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { matchesFinancialTransactionSearch } from '@/lib/financial-transaction-display';
+import { useFinancial } from '@/hooks/useFinancial';
 
 function parseLocalDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -138,6 +139,59 @@ interface TransactionListPanelProps {
    * pra página da paginação onde ela está. `null`/ausente = comportamento normal.
    */
   highlightTransactionId?: string | null;
+  /**
+   * Colapsa as contas quitadas no MESMO lote (`payment_group_id`) numa linha só
+   * com o total, expansível. É o que dá o 1-pra-1 com a linha do extrato do
+   * banco: quem pagou 8 contas num PIX só vê 1 linha, e não 8. Ligado em
+   * Movimentações; NÃO ligar em telas de conferência linha a linha.
+   */
+  collapsePaymentGroups?: boolean;
+  /**
+   * `payment_group_id` → tamanho REAL do lote (todas as linhas da empresa, sem
+   * filtro de período). Serve só pra detectar lote PARTIDO: quando o período
+   * filtrado mostra 3 de 5 contas do mesmo lote, a linha-resumo avisa em vez de
+   * exibir um subtotal que o extrato do banco não reconhece.
+   */
+  paymentGroupTotals?: Map<string, { count: number; total: number }>;
+}
+
+type PanelTxn = TransactionListPanelProps['transactions'][number];
+
+/** O lote de pagamento, do ponto de vista da LISTA (só as linhas visíveis). */
+interface PaymentGroupInfo {
+  groupId: string;
+  /** Linhas do lote presentes na lista atual, em ordem cronológica decrescente. */
+  members: PanelTxn[];
+  /** Soma DERIVADA das linhas visíveis do grupo. Não há valor guardado em lugar nenhum. */
+  total: number;
+  paidDate: string | null;
+  /**
+   * `true` = lote de contas a RECEBER. O grupo é homogêneo por construção (a
+   * RPC recusa misturar entrada com saída), então o tipo da âncora vale pelo
+   * lote inteiro — e é ele que decide o rótulo, a cor e o sinal do valor.
+   */
+  isReceipt: boolean;
+  /** Quantas linhas o lote tem NO TOTAL (inclusive fora do período filtrado). */
+  fullCount: number;
+}
+
+/** Linha da lista: transação normal ou a linha-resumo de um lote. */
+type PanelRow = PanelTxn & { __paymentGroup?: PaymentGroupInfo };
+
+/**
+ * MESMA ordem da caminhada de saldo (`finance-balance.ts`): `transaction_date`,
+ * desempate por `created_at` e, por último, `id`. Crescente.
+ *
+ * Importa porque a linha-resumo do lote herda o `id` da ÚLTIMA linha do grupo
+ * nessa ordem — e o "Saldo Após" daquela linha é, por construção, o saldo
+ * depois do lote inteiro (todas as irmãs vêm antes dela na caminhada).
+ */
+function compareWalkOrder(a: PanelTxn, b: PanelTxn): number {
+  const dateCmp = String(a.transaction_date).localeCompare(String(b.transaction_date));
+  if (dateCmp !== 0) return dateCmp;
+  const createdCmp = String((a as any).created_at ?? '').localeCompare(String((b as any).created_at ?? ''));
+  if (createdCmp !== 0) return createdCmp;
+  return String(a.id).localeCompare(String(b.id));
 }
 
 export function TransactionListPanel({
@@ -146,6 +200,7 @@ export function TransactionListPanel({
   initialAccountFilter, onClearAccountFilter, hideAccountColumn,
   balanceAfterById, balanceAfterLabel, balanceAfterShortLabel,
   groupByDay, dayClosingBalance, highlightTransactionId,
+  collapsePaymentGroups, paymentGroupTotals,
 }: TransactionListPanelProps) {
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -174,6 +229,10 @@ export function TransactionListPanel({
   const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Lotes de pagamento abertos (mostrando as contas de dentro).
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  // Lote aguardando confirmação de "desfazer".
+  const [undoTarget, setUndoTarget] = useState<PaymentGroupInfo | null>(null);
   const isMobile = useIsMobile();
   // `timezone`: fuso da empresa. Vai pros geradores de PDF/Excel pra o carimbo
   // "gerado em" e o nome do arquivo saírem no relógio da empresa, e não no do
@@ -192,6 +251,9 @@ export function TransactionListPanel({
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  // Fronteira do Supabase pro "desfazer lote" (RPC `undo_payment_group`).
+  // Mesma query já em cache do react-query: não dispara busca nova.
+  const { undoPaymentGroup } = useFinancial();
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -260,7 +322,85 @@ export function TransactionListPanel({
   const visibleIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
   const { data: attachmentCounts = {} } = useTransactionAttachmentsCounts(visibleIds);
 
-  const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
+  // ── Lote de pagamento: N contas quitadas juntas viram UMA linha ───────────
+  //
+  // Por que colapsar aqui, e não no banco: o lote NÃO cria lançamento nenhum
+  // (é só um carimbo, `payment_group_id`, nas N linhas que já existiam). Isso é
+  // o que impede o saldo de contar o mesmo dinheiro duas vezes. A "linha única
+  // do extrato" é, portanto, uma questão de APRESENTAÇÃO, e o total dela é
+  // sempre derivado da soma das linhas do grupo.
+  //
+  // Regras:
+  //  • só colapsa com 2+ linhas do grupo VISÍVEIS na lista atual (1 linha só
+  //    não é "lote" pra quem está olhando, e um total parcial seria mentira);
+  //  • a linha-resumo assume a posição e o `id` da última linha do grupo na
+  //    ordem da caminhada de saldo, então o "Saldo Após" continua correto e o
+  //    divisor de dia continua batendo com a data exibida;
+  //  • `transaction_date` da âncora NÃO é reescrito: o mês de competência de
+  //    cada conta é dela, o lote só diz quando o dinheiro saiu (`paid_date`,
+  //    mostrado no subtítulo).
+  const displayRows = useMemo<PanelRow[]>(() => {
+    if (!collapsePaymentGroups) return filtered as PanelRow[];
+    const byGroup = new Map<string, PanelTxn[]>();
+    for (const t of filtered) {
+      const gid = (t as any).payment_group_id as string | null | undefined;
+      // Carimbo só vale em linha paga (o gatilho do banco garante isso; aqui é
+      // cinto e suspensório pra lista velha em cache).
+      if (!gid || !t.is_paid) continue;
+      const arr = byGroup.get(gid);
+      if (arr) arr.push(t); else byGroup.set(gid, [t]);
+    }
+
+    const anchors = new Map<string, PaymentGroupInfo>();
+    const hidden = new Set<string>();
+    for (const [groupId, members] of byGroup) {
+      if (members.length < 2) continue;
+      const walkOrdered = [...members].sort(compareWalkOrder);
+      const anchor = walkOrdered[walkOrdered.length - 1];
+      const total = Number(
+        members.reduce((s, m) => s + Number(m.amount), 0).toFixed(2),
+      );
+      anchors.set(anchor.id, {
+        groupId,
+        members: [...walkOrdered].reverse(),
+        total,
+        paidDate: (anchor.paid_date as string | undefined) ?? null,
+        fullCount: paymentGroupTotals?.get(groupId)?.count ?? members.length,
+        isReceipt: anchor.transaction_type === 'entrada',
+      });
+      for (const m of members) if (m.id !== anchor.id) hidden.add(m.id);
+    }
+
+    if (anchors.size === 0) return filtered as PanelRow[];
+
+    const rows: PanelRow[] = [];
+    for (const t of filtered) {
+      if (hidden.has(t.id)) continue;
+      const info = anchors.get(t.id);
+      if (!info) { rows.push(t); continue; }
+      // A linha-resumo carrega o TOTAL e o rótulo do lote; ordenar por valor ou
+      // por descrição passa a usar o que o usuário está vendo, não a conta
+      // solta que virou âncora.
+      rows.push({
+        ...t,
+        amount: info.total,
+        // Rótulo pelo lado do lote: "Recebimento em lote" num grupo de contas a
+        // receber, "Pagamento em lote" num de contas a pagar.
+        description: (info.members.length === 1
+          ? (info.isReceipt
+            ? fin.transactionList.paymentGroup.receiptTitleOne
+            : fin.transactionList.paymentGroup.titleOne)
+          : (info.isReceipt
+            ? fin.transactionList.paymentGroup.receiptTitleMany
+            : fin.transactionList.paymentGroup.titleMany)
+        ).replace('{count}', String(info.members.length)),
+        __paymentGroup: info,
+      });
+    }
+    return rows;
+  }, [filtered, collapsePaymentGroups, paymentGroupTotals, fin.transactionList.paymentGroup]);
+
+  const { sortedItems, sortConfig, handleSort } = useTableSort(displayRows);
   const pagination = useDataPagination(sortedItems);
 
   // Divisor de dia só faz sentido em ordem cronológica: agrupar por dia numa
@@ -272,7 +412,12 @@ export function TransactionListPanel({
     && (sortConfig.key === '' || sortConfig.key === 'transaction_date');
 
   type PagedTxn = (typeof pagination.paginatedItems)[number];
-  type DayOrRow = { kind: 'day'; dateKey: string } | { kind: 'row'; txn: PagedTxn };
+  type DayOrRow =
+    | { kind: 'day'; dateKey: string }
+    | { kind: 'row'; txn: PagedTxn }
+    // Conta de DENTRO de um lote expandido. Não é linha própria da lista: nasce
+    // e morre com a expansão, e por isso fica fora da paginação e do export.
+    | { kind: 'child'; txn: PanelTxn; groupId: string };
 
   // Intercala divisores de dia com as linhas da PÁGINA ATUAL — única fonte de
   // verdade da regra de agrupamento; os dois renders (mobile e desktop)
@@ -280,10 +425,22 @@ export function TransactionListPanel({
   // é cortado entre páginas, o divisor reaparece no topo da página seguinte
   // (comportamento aceito, não é bug).
   const rowsWithDayDividers: DayOrRow[] = useMemo(() => {
-    if (!canGroupByDay) {
-      return pagination.paginatedItems.map((txn) => ({ kind: 'row' as const, txn }));
-    }
+    const pushChildren = (out: DayOrRow[], txn: PagedTxn) => {
+      const group = (txn as PanelRow).__paymentGroup;
+      if (!group || !expandedGroups.has(group.groupId)) return;
+      for (const child of group.members) {
+        out.push({ kind: 'child', txn: child, groupId: group.groupId });
+      }
+    };
+
     const out: DayOrRow[] = [];
+    if (!canGroupByDay) {
+      for (const txn of pagination.paginatedItems) {
+        out.push({ kind: 'row', txn });
+        pushChildren(out, txn);
+      }
+      return out;
+    }
     let lastKey: string | null = null;
     for (const txn of pagination.paginatedItems) {
       // Mesma regra de `renderTransactionDate`: parcela de cartão mostra a
@@ -295,9 +452,10 @@ export function TransactionListPanel({
         lastKey = dateKey;
       }
       out.push({ kind: 'row', txn });
+      pushChildren(out, txn);
     }
     return out;
-  }, [canGroupByDay, pagination.paginatedItems]);
+  }, [canGroupByDay, pagination.paginatedItems, expandedGroups]);
 
   // Nº de colunas de fato renderizadas na tabela desktop — MESMAS flags que
   // montam o <TableHeader> abaixo. Const única usada nos dois lugares pra
@@ -392,6 +550,38 @@ export function TransactionListPanel({
       setIsDeleting(false);
     }
   };
+  // ── Lote de pagamento: abrir/fechar e desfazer ───────────────────────────
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+      return next;
+    });
+  };
+
+  const handleUndoGroup = async () => {
+    if (!undoTarget) return;
+    try {
+      const result = await undoPaymentGroup.mutateAsync(undoTarget.groupId);
+      // Grupo que já não existe devolve `already_undone` — retry seguro, não é
+      // erro, então nada de toast vermelho.
+      toast({
+        title: result.already_undone
+          ? fin.transactionList.paymentGroup.toastAlreadyUndone
+          : fin.transactionList.paymentGroup.toastUndone,
+      });
+      setExpandedGroups((prev) => {
+        const next = new Set(prev);
+        next.delete(undoTarget.groupId);
+        return next;
+      });
+      setUndoTarget(null);
+    } catch {
+      // O toast de erro (mensagem PT-BR da RPC) já sai no hook. O diálogo fica
+      // aberto pra o usuário tentar de novo.
+    }
+  };
+
   const handleBulkDelete = async () => {
     for (const id of selectedIds) await onDelete(id);
     setSelectedIds(new Set()); setBulkDeleteOpen(false);
@@ -707,10 +897,55 @@ export function TransactionListPanel({
                 );
               }
 
+              // Conta de DENTRO de um lote aberto: linha recuada, só leitura.
+              // Editar/excluir continuam sendo da conta em si, pelo caminho
+              // normal — aqui a pergunta é "o que entrou nesse pagamento".
+              if (item.kind === 'child') {
+                const c = item.txn;
+                // Sinal e cor pelo tipo da CONTA: num lote de recebimento cada
+                // linha é dinheiro que entrou, e mostrar "- " em verde/vermelho
+                // trocado seria mentira sobre o extrato.
+                const childIn = c.transaction_type === 'entrada';
+                return (
+                  <div
+                    key={`child-${c.id}`}
+                    className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 py-2 pl-14 pr-4 last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm truncate">{c.description}</p>
+                      <p className="text-[11px] text-muted-foreground">{renderTransactionDate(c)}</p>
+                    </div>
+                    <span className={cn(
+                      'text-sm font-medium tabular-nums whitespace-nowrap',
+                      childIn ? 'text-success' : 'text-destructive',
+                    )}>
+                      {childIn ? '+' : '-'} {fmt(c.amount)}
+                    </span>
+                  </div>
+                );
+              }
+
               const t = item.txn;
+              const group = (t as PanelRow).__paymentGroup;
+              const isExpanded = !!group && expandedGroups.has(group.groupId);
               const isEntrada = t.transaction_type === 'entrada';
               const isHighlighted = t.id === highlightTransactionId;
-              const itemActions: ItemAction[] = [
+              const itemActions: ItemAction[] = group ? [
+                {
+                  key: 'toggle-group',
+                  label: isExpanded
+                    ? fin.transactionList.paymentGroup.collapse
+                    : fin.transactionList.paymentGroup.expand,
+                  icon: isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />,
+                  onClick: () => toggleGroup(group.groupId),
+                },
+                {
+                  key: 'undo-group',
+                  label: fin.transactionList.paymentGroup.undo,
+                  icon: <Undo2 className="h-4 w-4" />,
+                  onClick: () => setUndoTarget(group),
+                },
+              ] : [
                 {
                   key: 'edit',
                   label: fin.transactionList.rowActions.edit,
@@ -735,35 +970,74 @@ export function TransactionListPanel({
                     selectedIds.has(t.id) && 'bg-primary/5',
                     isHighlighted && 'bg-primary/10 ring-2 ring-inset ring-primary',
                   )}
+                  onClick={group ? () => toggleGroup(group.groupId) : undefined}
                   leading={
                     <div
                       className={cn(
                         'flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0',
-                        isEntrada ? 'bg-success' : 'bg-destructive',
+                        group ? 'bg-primary' : isEntrada ? 'bg-success' : 'bg-destructive',
                       )}
                     >
-                      {isEntrada ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+                      {group
+                        ? <Layers className="h-5 w-5" />
+                        : isEntrada ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                     </div>
                   }
                   title={
                     <div className="flex items-center gap-1.5">
                       <span className="truncate">{t.description}</span>
-                      {renderInstallmentBadge(t)}
-                      {renderReceiptLink(t)}
+                      {group && (
+                        <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 shrink-0">
+                          {fin.transactionList.paymentGroup.badge}
+                        </Badge>
+                      )}
+                      {/* Parcela e comprovante são da conta, não do lote: na
+                          linha-resumo mostrariam o dado de UMA das contas como
+                          se fosse do conjunto. */}
+                      {!group && renderInstallmentBadge(t)}
+                      {!group && renderReceiptLink(t)}
                     </div>
                   }
                   subtitle={
                     <div className="flex items-center gap-2 flex-wrap">
                       {renderCreatorAvatar(t)}
                       <span>{renderTransactionDate(t)}</span>
+                      {/* Lote: o dia em que o dinheiro saiu (paid_date) é o que
+                          casa com a linha do extrato do banco. A data da linha
+                          continua sendo a de competência de cada conta. */}
+                      {group?.paidDate && (
+                        <span className="whitespace-nowrap">
+                          {group.isReceipt ? fin.transactionList.paymentGroup.receivedOn : fin.transactionList.paymentGroup.paidOn} {formatDate(group.paidDate)}
+                        </span>
+                      )}
                       {!hideAccountColumn && (t as any).account && (
                         <span className="inline-flex items-center gap-1 whitespace-nowrap">
                           <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
                           {(t as any).account.type === 'caixa' ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}` : (t as any).account.name}
                         </span>
                       )}
-                      {t.customer && <span className="truncate">{t.customer.name}</span>}
-                      {t.supplier && <span className="truncate">{t.supplier.name}</span>}
+                      {group && group.fullCount > group.members.length && (
+                        <span className="whitespace-nowrap text-warning">
+                          {fin.transactionList.paymentGroup.partialInPeriod
+                            .replace('{visible}', String(group.members.length))
+                            .replace('{total}', String(group.fullCount))}
+                        </span>
+                      )}
+                      {group ? (
+                        <span className="inline-flex items-center gap-0.5 text-primary font-medium whitespace-nowrap">
+                          {isExpanded
+                            ? <ChevronDown className="h-3.5 w-3.5" />
+                            : <ChevronRight className="h-3.5 w-3.5" />}
+                          {isExpanded
+                            ? fin.transactionList.paymentGroup.collapse
+                            : fin.transactionList.paymentGroup.expand}
+                        </span>
+                      ) : (
+                        <>
+                          {t.customer && <span className="truncate">{t.customer.name}</span>}
+                          {t.supplier && <span className="truncate">{t.supplier.name}</span>}
+                        </>
+                      )}
                     </div>
                   }
                   trailing={
@@ -861,7 +1135,36 @@ export function TransactionListPanel({
                       );
                     }
 
+                    // Conta de DENTRO de um lote aberto. Uma célula só cobrindo
+                    // as colunas visíveis (mesmo recurso do divisor de dia):
+                    // alinhar 10 colunas numa linha secundária só criaria ruído.
+                    if (item.kind === 'child') {
+                      const c = item.txn;
+                      // Sinal e cor pelo tipo da CONTA (ver o render mobile).
+                      const childIn = c.transaction_type === 'entrada';
+                      return (
+                        <TableRow key={`child-${c.id}`} className="bg-muted/30 hover:bg-muted/30">
+                          <TableCell colSpan={visibleColumnCount} className="py-1.5">
+                            <div className="flex items-center justify-between gap-3 pl-8">
+                              <div className="min-w-0">
+                                <span className="text-sm">{c.description}</span>
+                                <span className="ml-2 text-xs text-muted-foreground">{renderTransactionDate(c)}</span>
+                              </div>
+                              <span className={cn(
+                                'text-sm font-medium tabular-nums whitespace-nowrap',
+                                childIn ? 'text-success' : 'text-destructive',
+                              )}>
+                                {childIn ? '+' : '-'} {fmt(c.amount)}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+
                     const t = item.txn;
+                    const group = (t as PanelRow).__paymentGroup;
+                    const isExpanded = !!group && expandedGroups.has(group.groupId);
                     return (
                     <TableRow
                       key={t.id}
@@ -887,12 +1190,47 @@ export function TransactionListPanel({
                       <TableCell>
                         <div>
                           <p className="font-medium flex items-center gap-1">
+                            {group && <Layers className="h-4 w-4 text-primary shrink-0" />}
                             {t.description}
-                            {renderInstallmentBadge(t)}
-                            {renderReceiptLink(t)}
+                            {group && (
+                              <Badge className="bg-primary text-white text-[10px] px-1.5 py-0">
+                                {fin.transactionList.paymentGroup.badge}
+                              </Badge>
+                            )}
+                            {!group && renderInstallmentBadge(t)}
+                            {!group && renderReceiptLink(t)}
                           </p>
-                          {t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
-                          {t.supplier && <p className="text-xs text-muted-foreground">{t.supplier.name}</p>}
+                          {group ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(group.groupId)}
+                              className="mt-0.5 inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+                            >
+                              {isExpanded
+                                ? <ChevronDown className="h-3.5 w-3.5" />
+                                : <ChevronRight className="h-3.5 w-3.5" />}
+                              {isExpanded
+                                ? fin.transactionList.paymentGroup.collapse
+                                : fin.transactionList.paymentGroup.expand}
+                              {group.paidDate && (
+                                <span className="ml-1 text-muted-foreground font-normal">
+                                  {group.isReceipt ? fin.transactionList.paymentGroup.receivedOn : fin.transactionList.paymentGroup.paidOn} {formatDate(group.paidDate)}
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <>
+                              {t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
+                              {t.supplier && <p className="text-xs text-muted-foreground">{t.supplier.name}</p>}
+                            </>
+                          )}
+                          {group && group.fullCount > group.members.length && (
+                            <p className="text-xs text-warning">
+                              {fin.transactionList.paymentGroup.partialInPeriod
+                                .replace('{visible}', String(group.members.length))
+                                .replace('{total}', String(group.fullCount))}
+                            </p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -931,10 +1269,26 @@ export function TransactionListPanel({
                       )}
                       <TableCell>
                         <RowActionsMenu
-                          actions={[
+                          actions={(group ? [
+                            // Linha de LOTE: editar/excluir aqui seria ambíguo
+                            // (a linha representa N contas). O caminho é abrir o
+                            // lote e mexer na conta certa, ou desfazer tudo.
+                            {
+                              label: isExpanded
+                                ? fin.transactionList.paymentGroup.collapse
+                                : fin.transactionList.paymentGroup.expand,
+                              icon: isExpanded ? ChevronDown : ChevronRight,
+                              onClick: () => toggleGroup(group.groupId),
+                            },
+                            {
+                              label: fin.transactionList.paymentGroup.undo,
+                              icon: Undo2,
+                              onClick: () => setUndoTarget(group),
+                            },
+                          ] : [
                             { label: fin.transactionList.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(t) },
                             { label: fin.transactionList.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id), hidden: !canDeleteFinance },
-                          ] satisfies RowAction[]}
+                          ]) satisfies RowAction[]}
                         />
                       </TableCell>
                     </TableRow>
@@ -964,6 +1318,49 @@ export function TransactionListPanel({
         onConfirm={confirmDelete}
         isProcessing={isDeleting}
       />
+
+      {/* Desfazer o lote inteiro: as N contas voltam a pendente e o valor volta
+          pro saldo da conta. Nenhuma linha é apagada, porque nenhuma foi criada. */}
+      <AlertDialog open={!!undoTarget} onOpenChange={(v) => { if (!v && !undoPaymentGroup.isPending) setUndoTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            {/* Desfazer um RECEBIMENTO em lote tira dinheiro do saldo, não
+                devolve — a copy tem que dizer o que de fato vai acontecer. */}
+            <AlertDialogTitle>
+              {undoTarget?.isReceipt
+                ? fin.transactionList.paymentGroup.undoDialog.titleReceipt
+                : fin.transactionList.paymentGroup.undoDialog.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {undoTarget?.isReceipt
+                ? fin.transactionList.paymentGroup.undoDialog.descriptionReceipt
+                : fin.transactionList.paymentGroup.undoDialog.description}
+              {undoTarget && (
+                <span className="mt-2 block font-medium text-foreground tabular-nums">
+                  {(undoTarget.members.length === 1
+                    ? (undoTarget.isReceipt
+                      ? fin.transactionList.paymentGroup.receiptTitleOne
+                      : fin.transactionList.paymentGroup.titleOne)
+                    : (undoTarget.isReceipt
+                      ? fin.transactionList.paymentGroup.receiptTitleMany
+                      : fin.transactionList.paymentGroup.titleMany)
+                  ).replace('{count}', String(undoTarget.members.length))}
+                  {' · '}
+                  {fmt(undoTarget.total)}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={undoPaymentGroup.isPending}>
+              {fin.transactionList.paymentGroup.undoDialog.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleUndoGroup(); }} disabled={undoPaymentGroup.isPending}>
+              {fin.transactionList.paymentGroup.undoDialog.confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>

@@ -32,6 +32,20 @@ export interface NfeParsedSupplier {
   name: string | null;
 }
 
+/**
+ * Uma parcela da cobrança (`<cobr><dup>`). É o que o fornecedor combinou de
+ * prazo — sem isso, a conta a pagar gerada da nota nasce vencendo no dia da
+ * emissão e alguém corrige na mão.
+ */
+export interface NfeParsedDuplicata {
+  /** Número da parcela (nDup), ex.: "001". Pode vir vazio. */
+  numero: string | null;
+  /** Vencimento (dVenc) em ISO `YYYY-MM-DD`. */
+  dueDate: string;
+  /** Valor da parcela (vDup). */
+  amount: number;
+}
+
 export interface NfeParseResult {
   /** Chave de acesso de 44 dígitos. */
   accessKey: string | null;
@@ -39,6 +53,12 @@ export interface NfeParseResult {
   items: NfeParsedItem[];
   /** Valor total da nota (vNF), quando disponível. */
   total: number | null;
+  /**
+   * Parcelas do bloco `<cobr>`, em ordem de vencimento. Vazio quando a nota não
+   * traz cobrança (venda à vista, devolução, remessa) — aí o chamador cai no
+   * comportamento antigo de semear o vencimento com a data de emissão.
+   */
+  duplicatas: NfeParsedDuplicata[];
 }
 
 export class NfeParseError extends Error {
@@ -159,5 +179,21 @@ export function parseNfeXml(text: string): NfeParseResult {
   const icmsTot = firstTag(doc, 'ICMSTot');
   const total = icmsTot ? toNumber(tagText(icmsTot, 'vNF')) || null : null;
 
-  return { accessKey, supplier, items, total };
+  // --- Cobrança: <cobr> tem 0..N <dup> (as parcelas combinadas com o fornecedor).
+  // Só entram parcelas com vencimento VÁLIDO: `dVenc` é opcional no leiaute da
+  // NF-e, e parcela sem data não serve pra gerar conta a pagar — melhor cair no
+  // fallback da data de emissão do que inventar um vencimento.
+  const duplicatas: NfeParsedDuplicata[] = [];
+  for (const dup of Array.from(doc.getElementsByTagName('dup'))) {
+    const dueDate = tagText(dup, 'dVenc');
+    if (!dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) continue;
+    const amount = toNumber(tagText(dup, 'vDup'));
+    if (amount <= 0) continue;
+    duplicatas.push({ numero: tagText(dup, 'nDup'), dueDate, amount });
+  }
+  // Ordem de vencimento, não a ordem do XML: o emissor não é obrigado a mandar
+  // ordenado, e a 1ª parcela é o que semeia o vencimento quando há só uma.
+  duplicatas.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  return { accessKey, supplier, items, total, duplicatas };
 }

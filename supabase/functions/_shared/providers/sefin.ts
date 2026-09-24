@@ -235,8 +235,16 @@ async function auditar(
   }
 }
 
-/** Bloco comum de toda requisição autenticada ao microserviço. */
-async function corpoBase(
+/**
+ * Bloco comum de toda requisição autenticada ao microserviço.
+ *
+ * ⚠️ EXPORTADO de propósito: as rotas de DF-e (notas RECEBIDAS — ver
+ * `_shared/dfe-client.ts`) mandam exatamente este mesmo bloco `certificado`.
+ * Duplicar a montagem criaria uma segunda verdade sobre custódia, e é
+ * justamente a custódia que não pode divergir. Quem muda isto aqui muda os
+ * dois caminhos de uma vez, que é o comportamento desejado.
+ */
+export async function corpoBase(
   ctx: NfseProviderCtx,
   contextoAuditoria: string,
 ): Promise<Record<string, unknown>> {

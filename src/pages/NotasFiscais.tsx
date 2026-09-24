@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -9,6 +9,7 @@ import {
   Shield,
   Loader2,
   FileBarChart,
+  Inbox,
 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
@@ -37,8 +38,8 @@ import { NfseVisaoGeral } from '@/components/fiscal/NfseVisaoGeral';
 import { NfseStatsCards, type NfseStats } from '@/components/fiscal/NfseStatsCards';
 import { NfseComoFunciona } from '@/components/fiscal/NfseComoFunciona';
 import { nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
-import { FiscalSettingsModal } from '@/components/fiscal/FiscalSettingsModal';
 import { NfseListTab } from '@/components/fiscal/NfseListTab';
+import { NotasRecebidasTab } from '@/components/fiscal/inboundNotes/NotasRecebidasTab';
 
 /** Quantas notas o atalho "Últimas emissões" mostra. */
 const RECENT_LIMIT = 5;
@@ -57,6 +58,7 @@ function toIsoDate(d: Date | undefined): string | null {
 
 export default function NotasFiscais() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { hasScreenAccess } = useAuth();
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { companyId } = useUserCompany();
@@ -80,9 +82,8 @@ export default function NotasFiscais() {
   const [searchParams, setSearchParams] = useSearchParams();
   // Abre na listagem (a informação que o usuário busca primeiro); "Relatório
   // fiscal" (ex-"Visão Geral") é a 2ª aba.
-  const [tab, setTab] = useState<'visao-geral' | 'nfse'>('nfse');
+  const [tab, setTab] = useState<'visao-geral' | 'nfse' | 'recebidas'>('nfse');
   const [novaOpen, setNovaOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selected, setSelected] = useState<NfseEmission | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailAction, setDetailAction] = useState<NfseDetailAction | null>(null);
@@ -94,16 +95,20 @@ export default function NotasFiscais() {
   const dateStart = useMemo(() => toIsoDate(range.from), [range.from]);
   const dateEnd = useMemo(() => toIsoDate(range.to), [range.to]);
 
-  // Deep-link `?config=1` (rota legada /notas-fiscais/configuracoes) abre o modal
-  // de configuração fiscal e limpa o param pra não re-disparar em re-renders.
+  // Compat: `?config=1` era o jeito de abrir o modal de configuração fiscal
+  // (antes da 1.25.x a config era um modal aqui mesmo). Agora a config é uma
+  // TELA própria (/notas-fiscais/configuracoes) — links/atalhos antigos com
+  // `?config=1` continuam funcionando, só que redirecionam pra lá em vez de
+  // abrir modal. Preserva `?tab=` se já vier informado (deep-link por seção).
   useEffect(() => {
     if (searchParams.get('config') === '1') {
-      setSettingsOpen(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete('config');
-      setSearchParams(next, { replace: true });
+      const settingsTab = searchParams.get('tab');
+      navigate(
+        { pathname: '/notas-fiscais/configuracoes', search: settingsTab ? `?tab=${settingsTab}` : '' },
+        { replace: true },
+      );
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, navigate]);
 
   // ── Indicadores do topo ────────────────────────────────────────────────────
   // Contados sobre a lista COMPLETA da empresa (`useNfse`), não sobre uma
@@ -223,13 +228,13 @@ export default function NotasFiscais() {
     />
   );
 
-  // Botão de acesso à config fiscal.
+  // Botão de acesso à config fiscal — agora é uma TELA própria, não modal.
   const configButton = (
     <Button
       variant="outline"
       className="gap-2"
       aria-label={t.actions.fiscalSettings}
-      onClick={() => setSettingsOpen(true)}
+      onClick={() => navigate('/notas-fiscais/configuracoes')}
     >
       <Settings className="h-4 w-4" />
       <span className="hidden sm:inline">{t.actions.fiscalSettings}</span>
@@ -251,6 +256,7 @@ export default function NotasFiscais() {
   const navTabs: SettingsTab[] = [
     { value: 'nfse', label: t.tabs.list, icon: FileText },
     { value: 'visao-geral', label: t.tabs.overview, icon: FileBarChart },
+    { value: 'recebidas', label: t.tabs.received, icon: Inbox },
   ];
 
   // Estado vazio guiado: config incompleta → manda configurar; config OK sem
@@ -262,7 +268,7 @@ export default function NotasFiscais() {
           icon={<Settings className="h-10 w-10" />}
           title={t.empty.configTitle}
           description={t.empty.configDescription}
-          action={{ label: t.empty.configAction, onClick: () => setSettingsOpen(true) }}
+          action={{ label: t.empty.configAction, onClick: () => navigate('/notas-fiscais/configuracoes') }}
         />
       );
     }
@@ -312,20 +318,36 @@ export default function NotasFiscais() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
         </div>
-      ) : showGuidedEmpty ? (
-        // Sem config: estado guiado único (sem sub-nav, não há o que navegar).
-        renderGuidedEmpty()
       ) : (
         <>
-          {/* Indicadores ACIMA do menu de abas: valem pras duas abas. */}
-          <NfseStatsCards stats={stats} loading={isLoading} />
+          {/* Indicadores ACIMA do menu de abas: valem só pras abas de EMISSÃO
+              (Notas Fiscais / Relatório fiscal) — "Notas recebidas" é outro
+              fluxo (o que fornecedores emitem contra o cliente), sem relação
+              com esses contadores. */}
+          {tab !== 'recebidas' && !showGuidedEmpty && (
+            <NfseStatsCards stats={stats} loading={isLoading} />
+          )}
 
+          {/* A sub-nav aparece SEMPRE, inclusive sem configuração fiscal.
+              Antes o estado guiado substituía a tela inteira e "Notas
+              recebidas" ficava INALCANÇÁVEL — provado no navegador em
+              24/09/2026. Receber nota destinada não depende de a empresa
+              conseguir EMITIR: quem compra material recebe NF-e do fornecedor
+              mesmo que nunca emita NFS-e por aqui. O gate real é o certificado
+              A1, e quem explica isso é a própria aba (ela tem os avisos em
+              cascata: sem certificado → sem opt-in → lista). */}
           <SettingsSidebarLayout
             tabs={navTabs}
             activeTab={tab}
-            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse')}
+            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas')}
           >
-            {tab === 'visao-geral' ? (
+            {tab === 'recebidas' ? (
+              /* ---- Notas recebidas: NF-e/NFS-e emitidas contra o CNPJ do cliente ---- */
+              <NotasRecebidasTab />
+            ) : showGuidedEmpty ? (
+              /* Sem config de emissão: guia só as abas de EMISSÃO. */
+              renderGuidedEmpty()
+            ) : tab === 'visao-geral' ? (
               /* ---- Visão Geral: atalho das últimas emissões ---- */
               <NfseVisaoGeral
                 rows={recentRows}
@@ -375,7 +397,6 @@ export default function NotasFiscais() {
           refetchRecent();
         }}
       />
-      <FiscalSettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

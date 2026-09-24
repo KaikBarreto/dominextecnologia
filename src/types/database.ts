@@ -275,6 +275,19 @@ export interface FinancialTransaction {
   /** Centro de custo (obra/projeto/setor). SEMPRE opcional — nenhum form exige. */
   cost_center_id?: string | null;
   transfer_pair_id?: string | null;
+  /**
+   * Carimbo das linhas quitadas na MESMA operação de pagamento em lote (mesma
+   * conta, mesma data, mesma forma). NÃO existe transação-mãe: o total do lote
+   * é sempre DERIVADO da soma das linhas com este id — é isso que impede o
+   * saldo de contar o mesmo dinheiro duas vezes. `null` em linha quitada
+   * individualmente e em linha não quitada (gatilho no banco normaliza).
+   *
+   * ⚠️ Coluna criada na migration
+   * `20260924180000_pagamento_em_lote_contas_a_pagar.sql`, ainda ausente de
+   * `src/integrations/supabase/types.ts` (só entra depois do push + regeneração).
+   * Declarada aqui à mão porque é este o tipo que as telas consomem.
+   */
+  payment_group_id?: string | null;
   parent_transaction_id?: string | null;
   /** Cobrança online que originou a conta/baixa/tarifa (escopo sempre protegido por RLS da empresa). */
   tenant_charge_id?: string | null;

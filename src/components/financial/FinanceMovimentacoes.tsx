@@ -32,6 +32,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { walkAccountBalance } from '@/lib/finance-balance';
+import { buildPaymentGroupIndex } from '@/lib/finance-batch-payment';
 
 const ALL_TAB = '__all__';
 
@@ -385,6 +386,14 @@ export function FinanceMovimentacoes({
   // "Saldo Total Após" + divisor de dia da Visão Geral — âncora = `totalBalance`
   // (soma dos saldos de TODAS as contas caixa/banco, já calculado acima).
   // `accountId` undefined = caminhada CONSOLIDADA, não de uma conta só.
+  // Tamanho REAL de cada lote de pagamento, sem filtro de período. A lista usa
+  // isso só pra avisar quando o período filtrado parte um lote ao meio — o
+  // total exibido não pode passar por linha de extrato se metade ficou de fora.
+  const paymentGroupTotals = useMemo(
+    () => buildPaymentGroupIndex((allTransactions ?? transactions) as any),
+    [allTransactions, transactions],
+  );
+
   const overviewWalk = useMemo(
     () => walkAccountBalance(allTransactions ?? transactions, totalBalance, undefined, cashBankAccountIds),
     [allTransactions, transactions, totalBalance, cashBankAccountIds],
@@ -670,6 +679,10 @@ export function FinanceMovimentacoes({
               groupByDay
               dayClosingBalance={overviewDayClosingBalance}
               highlightTransactionId={highlightTransactionId}
+              // Contas quitadas no mesmo lote viram UMA linha com o total,
+              // expansível: é assim que o extrato do banco bate 1-pra-1.
+              collapsePaymentGroups
+              paymentGroupTotals={paymentGroupTotals}
             />
           </div>
         ) : selectedAccount ? (
@@ -699,6 +712,8 @@ export function FinanceMovimentacoes({
                 groupByDay
                 dayClosingBalance={dayClosingBalanceForAccount}
                 highlightTransactionId={highlightTransactionId}
+                collapsePaymentGroups
+                paymentGroupTotals={paymentGroupTotals}
               />
             </div>
           )
@@ -712,6 +727,8 @@ export function FinanceMovimentacoes({
             onEdit={onEdit}
             onDelete={onDelete}
             highlightTransactionId={highlightTransactionId}
+            collapsePaymentGroups
+            paymentGroupTotals={paymentGroupTotals}
           />
         )}
       </SettingsSidebarLayout>

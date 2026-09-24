@@ -41,6 +41,13 @@ fiscal.dominex.app {
 		reverse_proxy 127.0.0.1:8099 {
 			# O POST /nfse do governo é SÍNCRONO e pode demorar. Sem isto, o Caddy
 			# poderia cortar uma emissão já aceita pelo governo.
+			#
+			# ⚠️ O `read_timeout` abaixo tem que continuar MAIOR que o
+			# SEFAZ_ORCAMENTO_SEGUNDOS do DF-e (padrão 75s). Se o proxy cortar a
+			# resposta de /v1/dfe/distribuicao DEPOIS de a SEFAZ ter servido NSUs,
+			# a edge não grava o cursor, a rodada seguinte repete NSU já servido e
+			# o CNPJ do cliente toma 1 hora de bloqueio (cStat 656). Quem aumentar
+			# o orçamento aumenta este número ANTES. Ver RUNBOOK §10.3.
 			transport http {
 				dial_timeout 10s
 				response_header_timeout 90s

@@ -249,6 +249,88 @@ export const finance = {
           check: 'Cheque',
         },
       },
+      // ── Quitação em LOTE (RPC `pay_transactions_batch`) ───────────────────
+      // Os motivos de `reasons` espelham, um a um, os testes de elegibilidade
+      // da RPC. Eles servem pra explicar o checkbox desabilitado ANTES do
+      // clique; a guarda de verdade é o servidor.
+      batchPay: {
+        selectAll: 'Selecionar todas',
+        clear: 'Limpar seleção',
+        selectedOne: '1 conta selecionada',
+        selectedMany: '{count} contas selecionadas',
+        total: 'Total',
+        payButton: 'Quitar em lote',
+        blockedTitle: 'Esta conta não entra em lote',
+        modal: {
+          title: 'Quitar contas em lote',
+          summaryOne: '1 conta, total de {total}',
+          summaryMany: '{count} contas, total de {total}',
+          listTitle: 'Contas que serão quitadas',
+          singleEventHint:
+            'As contas são quitadas como um movimento só na conta escolhida, então o extrato do banco bate com o sistema linha a linha.',
+          confirmOne: 'Quitar 1 conta',
+          confirm: 'Quitar {count} contas',
+        },
+        toast: {
+          success: 'Lote quitado',
+          successDescription: '{count} contas, {total}',
+          alreadyApplied: 'Este lote já estava quitado',
+        },
+        reasons: {
+          alreadyPaid: 'Conta já quitada',
+          cancelled: 'Conta cancelada',
+          creditCard: 'Despesa de cartão, quite pela fatura',
+          transfer: 'Transferência entre contas não entra em lote',
+          cardBillPayment: 'Pagamento de fatura, quite pela própria fatura',
+          vale: 'Vale de funcionário, quite pelo fluxo do RH',
+          payroll: 'Salário e rescisão são quitados pelo fluxo do RH',
+          partial: 'Conta com baixa parcial não entra em lote',
+          gatewayCharge: 'Cobrança enviada ao cliente, ela baixa sozinha quando o pagamento é confirmado',
+          notPayable: 'Este lançamento não pode ser quitado em lote',
+        },
+      },
+      // ── Recebimento em LOTE (mesma RPC `pay_transactions_batch`) ──────────
+      // Copy própria de propósito: do lado do recebimento o usuário não
+      // "quita", ele recebe. Os motivos espelham os mesmos testes da RPC,
+      // ditos na língua de quem olha um título a receber.
+      batchReceive: {
+        selectAll: 'Selecionar todas',
+        clear: 'Limpar seleção',
+        selectedOne: '1 conta selecionada',
+        selectedMany: '{count} contas selecionadas',
+        total: 'Total',
+        receiveButton: 'Receber em lote',
+        blockedTitle: 'Esta conta não entra em lote',
+        modal: {
+          title: 'Receber contas em lote',
+          summaryOne: '1 conta, total de {total}',
+          summaryMany: '{count} contas, total de {total}',
+          listTitle: 'Contas que serão recebidas',
+          // O lote recebe o valor CHEIO: tarifa de maquininha nasce como
+          // lançamento filho e só existe no recebimento individual.
+          singleEventHint:
+            'As contas entram como um movimento só na conta escolhida, pelo valor cheio. Recebimento com tarifa de maquininha continua sendo feito um a um.',
+          confirmOne: 'Receber 1 conta',
+          confirm: 'Receber {count} contas',
+        },
+        toast: {
+          success: 'Lote recebido',
+          successDescription: '{count} contas, {total}',
+          alreadyApplied: 'Este lote já estava recebido',
+        },
+        reasons: {
+          alreadyPaid: 'Conta já recebida',
+          cancelled: 'Conta cancelada',
+          creditCard: 'Lançamento de cartão, baixe pela fatura',
+          transfer: 'Transferência entre contas não entra em lote',
+          cardBillPayment: 'Pagamento de fatura, baixe pela própria fatura',
+          vale: 'Vale de funcionário, baixe pelo fluxo do RH',
+          payroll: 'Salário e rescisão são baixados pelo fluxo do RH',
+          partial: 'Conta com recebimento parcial não entra em lote',
+          gatewayCharge: 'Cobrança enviada ao cliente, ela baixa sozinha quando o pagamento é confirmado',
+          notPayable: 'Este lançamento não pode ser recebido em lote',
+        },
+      },
       payroll: {
         toastError: 'Erro ao pagar folha',
         toastSuccess: 'Folha quitada com sucesso',
@@ -379,6 +461,38 @@ export const finance = {
         noneTitle: 'Nenhuma movimentação',
         noneDescription:
           'As entradas e saídas aparecem aqui assim que você registrar a primeira.',
+      },
+      // ── Lote de pagamento (linha agrupada do extrato) ─────────────────────
+      // N contas quitadas juntas viram UMA linha com o total. O total é sempre
+      // derivado da soma das linhas do grupo, nunca um valor guardado.
+      paymentGroup: {
+        badge: 'Lote',
+        titleOne: 'Pagamento em lote, 1 conta',
+        titleMany: 'Pagamento em lote, {count} contas',
+        // Lote de contas a RECEBER. O grupo é sempre de um lado só, então o
+        // rótulo é escolhido pelo tipo da linha, nunca misturado.
+        receiptTitleOne: 'Recebimento em lote, 1 conta',
+        receiptTitleMany: 'Recebimento em lote, {count} contas',
+        paidOn: 'Pago em',
+        receivedOn: 'Recebido em',
+        // Lote partido pelo filtro de período: parte das contas está em outro
+        // mês. Sem esse aviso, o subtotal exibido não bate com o extrato.
+        partialInPeriod: '{visible} de {total} contas deste lote estão neste período',
+        expand: 'Ver contas do lote',
+        collapse: 'Ocultar contas do lote',
+        undo: 'Desfazer lote',
+        undoDialog: {
+          title: 'Desfazer pagamento em lote',
+          titleReceipt: 'Desfazer recebimento em lote',
+          description:
+            'As contas do lote voltam a ficar pendentes e o valor volta para o saldo da conta. Você pode quitar de novo depois.',
+          descriptionReceipt:
+            'As contas do lote voltam a ficar em aberto e o valor sai do saldo da conta. Você pode receber de novo depois.',
+          confirm: 'Desfazer lote',
+          cancel: 'Cancelar',
+        },
+        toastUndone: 'Lote desfeito',
+        toastAlreadyUndone: 'Este lote já tinha sido desfeito',
       },
       bulkDeleteDialog: {
         titlePrefix: 'Excluir',
@@ -1517,6 +1631,78 @@ export const finance = {
           check: 'Check',
         },
       },
+      batchPay: {
+        selectAll: 'Select all',
+        clear: 'Clear selection',
+        selectedOne: '1 bill selected',
+        selectedMany: '{count} bills selected',
+        total: 'Total',
+        payButton: 'Pay as a batch',
+        blockedTitle: 'This bill cannot go in a batch',
+        modal: {
+          title: 'Pay bills as a batch',
+          summaryOne: '1 bill, total of {total}',
+          summaryMany: '{count} bills, total of {total}',
+          listTitle: 'Bills to be paid',
+          singleEventHint:
+            'The bills are settled as a single movement in the chosen account, so the bank statement matches the system line by line.',
+          confirmOne: 'Pay 1 bill',
+          confirm: 'Pay {count} bills',
+        },
+        toast: {
+          success: 'Batch paid',
+          successDescription: '{count} bills, {total}',
+          alreadyApplied: 'This batch had already been paid',
+        },
+        reasons: {
+          alreadyPaid: 'Bill already paid',
+          cancelled: 'Bill cancelled',
+          creditCard: 'Credit card expense, pay it through the invoice',
+          transfer: 'Transfer between accounts cannot go in a batch',
+          cardBillPayment: 'Invoice payment, pay it through the invoice itself',
+          vale: 'Employee advance, pay it through HR',
+          payroll: 'Salary and severance are paid through HR',
+          partial: 'Bill with a partial payment cannot go in a batch',
+          gatewayCharge: 'Charge sent to the customer, it clears on its own once the payment is confirmed',
+          notPayable: 'This entry cannot be settled as a batch',
+        },
+      },
+      batchReceive: {
+        selectAll: 'Select all',
+        clear: 'Clear selection',
+        selectedOne: '1 bill selected',
+        selectedMany: '{count} bills selected',
+        total: 'Total',
+        receiveButton: 'Receive as a batch',
+        blockedTitle: 'This bill cannot go in a batch',
+        modal: {
+          title: 'Receive bills as a batch',
+          summaryOne: '1 bill, total of {total}',
+          summaryMany: '{count} bills, total of {total}',
+          listTitle: 'Bills to be received',
+          singleEventHint:
+            'The bills come in as a single movement in the chosen account, at full value. Receiving with a card machine fee is still done one by one.',
+          confirmOne: 'Receive 1 bill',
+          confirm: 'Receive {count} bills',
+        },
+        toast: {
+          success: 'Batch received',
+          successDescription: '{count} bills, {total}',
+          alreadyApplied: 'This batch had already been received',
+        },
+        reasons: {
+          alreadyPaid: 'Bill already received',
+          cancelled: 'Bill cancelled',
+          creditCard: 'Card entry, clear it through the invoice',
+          transfer: 'Transfer between accounts cannot go in a batch',
+          cardBillPayment: 'Invoice payment, clear it through the invoice itself',
+          vale: 'Employee advance, clear it through HR',
+          payroll: 'Salary and severance are cleared through HR',
+          partial: 'Bill with a partial receipt cannot go in a batch',
+          gatewayCharge: 'Charge sent to the customer, it clears on its own once the payment is confirmed',
+          notPayable: 'This entry cannot be received as a batch',
+        },
+      },
       payroll: {
         toastError: 'Error paying payroll',
         toastSuccess: 'Payroll settled successfully',
@@ -1635,6 +1821,31 @@ export const finance = {
         noneTitle: 'No transactions',
         noneDescription:
           'Income and expenses will appear here once you record the first one.',
+      },
+      paymentGroup: {
+        badge: 'Batch',
+        titleOne: 'Batch payment, 1 bill',
+        titleMany: 'Batch payment, {count} bills',
+        receiptTitleOne: 'Batch receipt, 1 bill',
+        receiptTitleMany: 'Batch receipt, {count} bills',
+        paidOn: 'Paid on',
+        receivedOn: 'Received on',
+        partialInPeriod: '{visible} of {total} bills in this batch are in this period',
+        expand: 'Show bills in the batch',
+        collapse: 'Hide bills in the batch',
+        undo: 'Undo batch',
+        undoDialog: {
+          title: 'Undo batch payment',
+          titleReceipt: 'Undo batch receipt',
+          description:
+            'The bills in the batch go back to pending and the amount returns to the account balance. You can settle them again later.',
+          descriptionReceipt:
+            'The bills in the batch go back to open and the amount leaves the account balance. You can receive them again later.',
+          confirm: 'Undo batch',
+          cancel: 'Cancel',
+        },
+        toastUndone: 'Batch undone',
+        toastAlreadyUndone: 'This batch had already been undone',
       },
       bulkDeleteDialog: {
         titlePrefix: 'Delete',
@@ -2717,6 +2928,78 @@ export const finance = {
           check: 'Cheque',
         },
       },
+      batchPay: {
+        selectAll: 'Seleccionar todas',
+        clear: 'Limpiar selección',
+        selectedOne: '1 cuenta seleccionada',
+        selectedMany: '{count} cuentas seleccionadas',
+        total: 'Total',
+        payButton: 'Pagar en lote',
+        blockedTitle: 'Esta cuenta no entra en el lote',
+        modal: {
+          title: 'Pagar cuentas en lote',
+          summaryOne: '1 cuenta, total de {total}',
+          summaryMany: '{count} cuentas, total de {total}',
+          listTitle: 'Cuentas que se van a pagar',
+          singleEventHint:
+            'Las cuentas se pagan como un solo movimiento en la cuenta elegida, así el extracto del banco coincide con el sistema línea por línea.',
+          confirmOne: 'Pagar 1 cuenta',
+          confirm: 'Pagar {count} cuentas',
+        },
+        toast: {
+          success: 'Lote pagado',
+          successDescription: '{count} cuentas, {total}',
+          alreadyApplied: 'Este lote ya estaba pagado',
+        },
+        reasons: {
+          alreadyPaid: 'Cuenta ya pagada',
+          cancelled: 'Cuenta cancelada',
+          creditCard: 'Gasto de tarjeta, págalo por la factura',
+          transfer: 'La transferencia entre cuentas no entra en el lote',
+          cardBillPayment: 'Pago de factura, págalo por la propia factura',
+          vale: 'Anticipo de empleado, págalo por el flujo de RR. HH.',
+          payroll: 'Sueldo y liquidación se pagan por el flujo de RR. HH.',
+          partial: 'La cuenta con pago parcial no entra en el lote',
+          gatewayCharge: 'Cobro enviado al cliente, se salda solo cuando el pago se confirma',
+          notPayable: 'Este registro no se puede liquidar en lote',
+        },
+      },
+      batchReceive: {
+        selectAll: 'Seleccionar todas',
+        clear: 'Limpiar selección',
+        selectedOne: '1 cuenta seleccionada',
+        selectedMany: '{count} cuentas seleccionadas',
+        total: 'Total',
+        receiveButton: 'Cobrar en lote',
+        blockedTitle: 'Esta cuenta no entra en el lote',
+        modal: {
+          title: 'Cobrar cuentas en lote',
+          summaryOne: '1 cuenta, total de {total}',
+          summaryMany: '{count} cuentas, total de {total}',
+          listTitle: 'Cuentas que se van a cobrar',
+          singleEventHint:
+            'Las cuentas entran como un solo movimiento en la cuenta elegida, por el valor completo. El cobro con comisión de datáfono se sigue haciendo uno por uno.',
+          confirmOne: 'Cobrar 1 cuenta',
+          confirm: 'Cobrar {count} cuentas',
+        },
+        toast: {
+          success: 'Lote cobrado',
+          successDescription: '{count} cuentas, {total}',
+          alreadyApplied: 'Este lote ya estaba cobrado',
+        },
+        reasons: {
+          alreadyPaid: 'Cuenta ya cobrada',
+          cancelled: 'Cuenta cancelada',
+          creditCard: 'Registro de tarjeta, sáldalo por la factura',
+          transfer: 'La transferencia entre cuentas no entra en el lote',
+          cardBillPayment: 'Pago de factura, sáldalo por la propia factura',
+          vale: 'Anticipo de empleado, sáldalo por el flujo de RR. HH.',
+          payroll: 'Sueldo y liquidación se saldan por el flujo de RR. HH.',
+          partial: 'La cuenta con cobro parcial no entra en el lote',
+          gatewayCharge: 'Cobro enviado al cliente, se salda solo cuando el pago se confirma',
+          notPayable: 'Este registro no se puede cobrar en lote',
+        },
+      },
       payroll: {
         toastError: 'Error al pagar la nómina',
         toastSuccess: 'Nómina liquidada con éxito',
@@ -2835,6 +3118,31 @@ export const finance = {
         noneTitle: 'Sin movimientos',
         noneDescription:
           'Los ingresos y gastos aparecerán aquí cuando registre el primero.',
+      },
+      paymentGroup: {
+        badge: 'Lote',
+        titleOne: 'Pago en lote, 1 cuenta',
+        titleMany: 'Pago en lote, {count} cuentas',
+        receiptTitleOne: 'Cobro en lote, 1 cuenta',
+        receiptTitleMany: 'Cobro en lote, {count} cuentas',
+        paidOn: 'Pagado el',
+        receivedOn: 'Cobrado el',
+        partialInPeriod: '{visible} de {total} cuentas de este lote están en este período',
+        expand: 'Ver cuentas del lote',
+        collapse: 'Ocultar cuentas del lote',
+        undo: 'Deshacer lote',
+        undoDialog: {
+          title: 'Deshacer pago en lote',
+          titleReceipt: 'Deshacer cobro en lote',
+          description:
+            'Las cuentas del lote vuelven a quedar pendientes y el valor regresa al saldo de la cuenta. Puedes pagarlas de nuevo después.',
+          descriptionReceipt:
+            'Las cuentas del lote vuelven a quedar abiertas y el valor sale del saldo de la cuenta. Puedes cobrarlas de nuevo después.',
+          confirm: 'Deshacer lote',
+          cancel: 'Cancelar',
+        },
+        toastUndone: 'Lote deshecho',
+        toastAlreadyUndone: 'Este lote ya se había deshecho',
       },
       bulkDeleteDialog: {
         titlePrefix: 'Eliminar',
@@ -3917,6 +4225,78 @@ export const finance = {
           check: 'Chèque',
         },
       },
+      batchPay: {
+        selectAll: 'Tout sélectionner',
+        clear: 'Effacer la sélection',
+        selectedOne: '1 facture sélectionnée',
+        selectedMany: '{count} factures sélectionnées',
+        total: 'Total',
+        payButton: 'Payer en lot',
+        blockedTitle: 'Cette facture ne peut pas entrer dans un lot',
+        modal: {
+          title: 'Payer les factures en lot',
+          summaryOne: '1 facture, total de {total}',
+          summaryMany: '{count} factures, total de {total}',
+          listTitle: 'Factures qui seront payées',
+          singleEventHint:
+            `Les factures sont réglées comme un seul mouvement sur le compte choisi, ainsi le relevé bancaire correspond au système ligne par ligne.`,
+          confirmOne: 'Payer 1 facture',
+          confirm: 'Payer {count} factures',
+        },
+        toast: {
+          success: 'Lot payé',
+          successDescription: '{count} factures, {total}',
+          alreadyApplied: 'Ce lot était déjà payé',
+        },
+        reasons: {
+          alreadyPaid: 'Facture déjà payée',
+          cancelled: 'Facture annulée',
+          creditCard: `Dépense de carte, à régler via la facture de la carte`,
+          transfer: 'Un virement entre comptes ne peut pas entrer dans un lot',
+          cardBillPayment: 'Paiement de facture, à régler via la facture elle-même',
+          vale: 'Acompte de salarié, à régler via le flux RH',
+          payroll: 'Salaire et solde de tout compte sont réglés via le flux RH',
+          partial: 'Une facture avec règlement partiel ne peut pas entrer dans un lot',
+          gatewayCharge: `Facture envoyée au client, elle se solde d'elle-même dès que le paiement est confirmé`,
+          notPayable: 'Cette écriture ne peut pas être réglée en lot',
+        },
+      },
+      batchReceive: {
+        selectAll: 'Tout sélectionner',
+        clear: 'Effacer la sélection',
+        selectedOne: '1 facture sélectionnée',
+        selectedMany: '{count} factures sélectionnées',
+        total: 'Total',
+        receiveButton: 'Encaisser en lot',
+        blockedTitle: 'Cette facture ne peut pas entrer dans un lot',
+        modal: {
+          title: 'Encaisser les factures en lot',
+          summaryOne: '1 facture, total de {total}',
+          summaryMany: '{count} factures, total de {total}',
+          listTitle: 'Factures qui seront encaissées',
+          singleEventHint:
+            `Les factures entrent comme un seul mouvement sur le compte choisi, pour le montant total. L'encaissement avec des frais de terminal reste fait un par un.`,
+          confirmOne: 'Encaisser 1 facture',
+          confirm: 'Encaisser {count} factures',
+        },
+        toast: {
+          success: 'Lot encaissé',
+          successDescription: '{count} factures, {total}',
+          alreadyApplied: 'Ce lot était déjà encaissé',
+        },
+        reasons: {
+          alreadyPaid: 'Facture déjà encaissée',
+          cancelled: 'Facture annulée',
+          creditCard: 'Écriture de carte, à solder via la facture de la carte',
+          transfer: 'Un virement entre comptes ne peut pas entrer dans un lot',
+          cardBillPayment: 'Paiement de facture, à solder via la facture elle-même',
+          vale: 'Acompte de salarié, à solder via le flux RH',
+          payroll: 'Salaire et solde de tout compte sont soldés via le flux RH',
+          partial: `Une facture avec encaissement partiel ne peut pas entrer dans un lot`,
+          gatewayCharge: `Facture envoyée au client, elle se solde d'elle-même dès que le paiement est confirmé`,
+          notPayable: 'Cette écriture ne peut pas être encaissée en lot',
+        },
+      },
       payroll: {
         toastError: 'Erreur lors du paiement de la paie',
         toastSuccess: 'Paie réglée avec succès',
@@ -4035,6 +4415,31 @@ export const finance = {
         noneTitle: 'Aucun mouvement',
         noneDescription:
           'Les produits et charges apparaîtront ici dès que vous enregistrerez le premier.',
+      },
+      paymentGroup: {
+        badge: 'Lot',
+        titleOne: 'Paiement en lot, 1 facture',
+        titleMany: 'Paiement en lot, {count} factures',
+        receiptTitleOne: 'Encaissement en lot, 1 facture',
+        receiptTitleMany: 'Encaissement en lot, {count} factures',
+        paidOn: 'Payé le',
+        receivedOn: 'Encaissé le',
+        partialInPeriod: '{visible} factures sur {total} de ce lot sont dans cette période',
+        expand: 'Voir les factures du lot',
+        collapse: 'Masquer les factures du lot',
+        undo: 'Annuler le lot',
+        undoDialog: {
+          title: 'Annuler le paiement en lot',
+          titleReceipt: `Annuler l'encaissement en lot`,
+          description:
+            `Les factures du lot redeviennent en attente et le montant revient au solde du compte. Vous pouvez les régler à nouveau plus tard.`,
+          descriptionReceipt:
+            `Les factures du lot redeviennent ouvertes et le montant quitte le solde du compte. Vous pouvez les encaisser à nouveau plus tard.`,
+          confirm: 'Annuler le lot',
+          cancel: 'Annuler',
+        },
+        toastUndone: 'Lot annulé',
+        toastAlreadyUndone: 'Ce lot avait déjà été annulé',
       },
       bulkDeleteDialog: {
         titlePrefix: 'Supprimer',

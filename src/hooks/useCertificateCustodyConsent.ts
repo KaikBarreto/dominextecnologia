@@ -13,7 +13,8 @@ import { TERMS_VERSION } from '@/data/termsOfUse';
  * tácito por uso continuado" é o piso mais frágil possível — então o
  * consentimento é pedido e registrado NO ATO DO ENVIO do certificado.
  *
- * Regra de ouro do fluxo (ver FiscalSettingsModal.handleUploadCertificate):
+ * Regra de ouro do fluxo (ver FiscalSettings.handleUploadCertificate, na tela
+ * de Configurações fiscais):
  * grava o consentimento ANTES de enviar o arquivo. Se a gravação falhar, o
  * certificado NÃO é enviado — é melhor falhar do que custodiar chave privada
  * sem prova de consentimento.

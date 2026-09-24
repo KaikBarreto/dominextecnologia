@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -839,6 +814,10 @@ export type Database = {
           codigo_servico_default: string | null
           company_id: string
           created_at: string | null
+          dfe_nfe_ativado_em: string | null
+          dfe_nfe_ativo: boolean
+          dfe_nfse_ativado_em: string | null
+          dfe_nfse_ativo: boolean
           fiscal_ambiente: string
           fisqal_certificate_id: string | null
           fisqal_company_id: string | null
@@ -868,6 +847,10 @@ export type Database = {
           codigo_servico_default?: string | null
           company_id: string
           created_at?: string | null
+          dfe_nfe_ativado_em?: string | null
+          dfe_nfe_ativo?: boolean
+          dfe_nfse_ativado_em?: string | null
+          dfe_nfse_ativo?: boolean
           fiscal_ambiente?: string
           fisqal_certificate_id?: string | null
           fisqal_company_id?: string | null
@@ -897,6 +880,10 @@ export type Database = {
           codigo_servico_default?: string | null
           company_id?: string
           created_at?: string | null
+          dfe_nfe_ativado_em?: string | null
+          dfe_nfe_ativo?: boolean
+          dfe_nfse_ativado_em?: string | null
+          dfe_nfse_ativo?: boolean
           fiscal_ambiente?: string
           fisqal_certificate_id?: string | null
           fisqal_company_id?: string | null
@@ -2843,6 +2830,146 @@ export type Database = {
           },
         ]
       }
+      dfe_manifestacao_jobs: {
+        Row: {
+          bloqueado_em: string | null
+          chave: string
+          company_id: string
+          concluido_em: string | null
+          created_at: string
+          cstat: string | null
+          id: string
+          inbound_nfe_id: string
+          justificativa: string | null
+          protocolo: string | null
+          proxima_tentativa_em: string
+          solicitado_em: string
+          solicitado_por: string | null
+          status: string
+          tentativas: number
+          tipo: string
+          ultimo_erro: string | null
+          updated_at: string
+        }
+        Insert: {
+          bloqueado_em?: string | null
+          chave: string
+          company_id: string
+          concluido_em?: string | null
+          created_at?: string
+          cstat?: string | null
+          id?: string
+          inbound_nfe_id: string
+          justificativa?: string | null
+          protocolo?: string | null
+          proxima_tentativa_em?: string
+          solicitado_em?: string
+          solicitado_por?: string | null
+          status?: string
+          tentativas?: number
+          tipo: string
+          ultimo_erro?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bloqueado_em?: string | null
+          chave?: string
+          company_id?: string
+          concluido_em?: string | null
+          created_at?: string
+          cstat?: string | null
+          id?: string
+          inbound_nfe_id?: string
+          justificativa?: string | null
+          protocolo?: string | null
+          proxima_tentativa_em?: string
+          solicitado_em?: string
+          solicitado_por?: string | null
+          status?: string
+          tentativas?: number
+          tipo?: string
+          ultimo_erro?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dfe_manifestacao_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dfe_manifestacao_jobs_inbound_nfe_id_fkey"
+            columns: ["inbound_nfe_id"]
+            isOneToOne: true
+            referencedRelation: "inbound_nfe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dfe_sync_state: {
+        Row: {
+          ciclos_sem_documento: number
+          company_id: string
+          created_at: string
+          documentos_ultimo_lote: number | null
+          id: string
+          janela_fim: string | null
+          max_nsu: string | null
+          proxima_consulta_em: string
+          tipo: string
+          ultima_consulta_em: string | null
+          ultimo_cstat: string | null
+          ultimo_erro: string | null
+          ultimo_erro_em: string | null
+          ultimo_nsu: string | null
+          updated_at: string
+        }
+        Insert: {
+          ciclos_sem_documento?: number
+          company_id: string
+          created_at?: string
+          documentos_ultimo_lote?: number | null
+          id?: string
+          janela_fim?: string | null
+          max_nsu?: string | null
+          proxima_consulta_em?: string
+          tipo: string
+          ultima_consulta_em?: string | null
+          ultimo_cstat?: string | null
+          ultimo_erro?: string | null
+          ultimo_erro_em?: string | null
+          ultimo_nsu?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ciclos_sem_documento?: number
+          company_id?: string
+          created_at?: string
+          documentos_ultimo_lote?: number | null
+          id?: string
+          janela_fim?: string | null
+          max_nsu?: string | null
+          proxima_consulta_em?: string
+          tipo?: string
+          ultima_consulta_em?: string | null
+          ultimo_cstat?: string | null
+          ultimo_erro?: string | null
+          ultimo_erro_em?: string | null
+          ultimo_nsu?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dfe_sync_state_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       disc_assessments: {
         Row: {
           answers: Json | null
@@ -4342,6 +4469,7 @@ export type Database = {
           notes: string | null
           paid_date: string | null
           parent_transaction_id: string | null
+          payment_group_id: string | null
           payment_method: string | null
           payroll_kind: string | null
           payroll_period: string | null
@@ -4385,6 +4513,7 @@ export type Database = {
           notes?: string | null
           paid_date?: string | null
           parent_transaction_id?: string | null
+          payment_group_id?: string | null
           payment_method?: string | null
           payroll_kind?: string | null
           payroll_period?: string | null
@@ -4428,6 +4557,7 @@ export type Database = {
           notes?: string | null
           paid_date?: string | null
           parent_transaction_id?: string | null
+          payment_group_id?: string | null
           payment_method?: string | null
           payroll_kind?: string | null
           payroll_period?: string | null
@@ -4932,6 +5062,254 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_nfe: {
+        Row: {
+          cfop_principal: string | null
+          chave: string
+          company_id: string
+          created_at: string
+          data_emissao: string | null
+          emitente_cnpj: string | null
+          emitente_nome: string | null
+          fin_nfe: number | null
+          financial_transaction_id: string | null
+          id: string
+          manifestacao: string
+          manifestacao_data: string | null
+          manifestacao_erro: string | null
+          manifestacao_pendente: string | null
+          manifestacao_pendente_em: string | null
+          natureza: string | null
+          nsu: string | null
+          numero: number | null
+          origem: string
+          ref_nfe_key: string | null
+          resumo: boolean
+          serie: number | null
+          situacao_sefaz: string | null
+          supplier_id: string | null
+          updated_at: string
+          valor: number | null
+          xml_content: string | null
+        }
+        Insert: {
+          cfop_principal?: string | null
+          chave: string
+          company_id: string
+          created_at?: string
+          data_emissao?: string | null
+          emitente_cnpj?: string | null
+          emitente_nome?: string | null
+          fin_nfe?: number | null
+          financial_transaction_id?: string | null
+          id?: string
+          manifestacao?: string
+          manifestacao_data?: string | null
+          manifestacao_erro?: string | null
+          manifestacao_pendente?: string | null
+          manifestacao_pendente_em?: string | null
+          natureza?: string | null
+          nsu?: string | null
+          numero?: number | null
+          origem?: string
+          ref_nfe_key?: string | null
+          resumo?: boolean
+          serie?: number | null
+          situacao_sefaz?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+          valor?: number | null
+          xml_content?: string | null
+        }
+        Update: {
+          cfop_principal?: string | null
+          chave?: string
+          company_id?: string
+          created_at?: string
+          data_emissao?: string | null
+          emitente_cnpj?: string | null
+          emitente_nome?: string | null
+          fin_nfe?: number | null
+          financial_transaction_id?: string | null
+          id?: string
+          manifestacao?: string
+          manifestacao_data?: string | null
+          manifestacao_erro?: string | null
+          manifestacao_pendente?: string | null
+          manifestacao_pendente_em?: string | null
+          natureza?: string | null
+          nsu?: string | null
+          numero?: number | null
+          origem?: string
+          ref_nfe_key?: string | null
+          resumo?: boolean
+          serie?: number | null
+          situacao_sefaz?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+          valor?: number | null
+          xml_content?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_nfe_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_nfe_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_nfe_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_nfse: {
+        Row: {
+          chave_acesso: string | null
+          chave_natural: string
+          chave_substituta: string | null
+          codigo_tributacao_municipal: string | null
+          codigo_tributacao_nacional: string | null
+          codigo_verificacao: string | null
+          company_id: string
+          competencia: string | null
+          created_at: string
+          data_cancelamento: string | null
+          data_emissao: string | null
+          discriminacao: string | null
+          financial_transaction_id: string | null
+          id: string
+          iss_retido: boolean | null
+          municipio_incidencia_ibge: string | null
+          nsu: string | null
+          numero: string | null
+          origem: string
+          origem_ref: string | null
+          prestador_documento: string | null
+          prestador_im: string | null
+          prestador_municipio_ibge: string | null
+          prestador_nome: string | null
+          resumo: boolean
+          serie: string | null
+          situacao: string
+          supplier_id: string | null
+          tomador_documento: string | null
+          tomador_nome: string | null
+          updated_at: string
+          valor_iss: number | null
+          valor_liquido: number | null
+          valor_servico: number | null
+          xml_content: string | null
+        }
+        Insert: {
+          chave_acesso?: string | null
+          chave_natural?: string
+          chave_substituta?: string | null
+          codigo_tributacao_municipal?: string | null
+          codigo_tributacao_nacional?: string | null
+          codigo_verificacao?: string | null
+          company_id: string
+          competencia?: string | null
+          created_at?: string
+          data_cancelamento?: string | null
+          data_emissao?: string | null
+          discriminacao?: string | null
+          financial_transaction_id?: string | null
+          id?: string
+          iss_retido?: boolean | null
+          municipio_incidencia_ibge?: string | null
+          nsu?: string | null
+          numero?: string | null
+          origem?: string
+          origem_ref?: string | null
+          prestador_documento?: string | null
+          prestador_im?: string | null
+          prestador_municipio_ibge?: string | null
+          prestador_nome?: string | null
+          resumo?: boolean
+          serie?: string | null
+          situacao?: string
+          supplier_id?: string | null
+          tomador_documento?: string | null
+          tomador_nome?: string | null
+          updated_at?: string
+          valor_iss?: number | null
+          valor_liquido?: number | null
+          valor_servico?: number | null
+          xml_content?: string | null
+        }
+        Update: {
+          chave_acesso?: string | null
+          chave_natural?: string
+          chave_substituta?: string | null
+          codigo_tributacao_municipal?: string | null
+          codigo_tributacao_nacional?: string | null
+          codigo_verificacao?: string | null
+          company_id?: string
+          competencia?: string | null
+          created_at?: string
+          data_cancelamento?: string | null
+          data_emissao?: string | null
+          discriminacao?: string | null
+          financial_transaction_id?: string | null
+          id?: string
+          iss_retido?: boolean | null
+          municipio_incidencia_ibge?: string | null
+          nsu?: string | null
+          numero?: string | null
+          origem?: string
+          origem_ref?: string | null
+          prestador_documento?: string | null
+          prestador_im?: string | null
+          prestador_municipio_ibge?: string | null
+          prestador_nome?: string | null
+          resumo?: boolean
+          serie?: string | null
+          situacao?: string
+          supplier_id?: string | null
+          tomador_documento?: string | null
+          tomador_nome?: string | null
+          updated_at?: string
+          valor_iss?: number | null
+          valor_liquido?: number | null
+          valor_servico?: number | null
+          xml_content?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_nfse_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_nfse_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_nfse_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -10396,6 +10774,7 @@ export type Database = {
         Args: { p_company_id: string; p_module_code: string }
         Returns: boolean
       }
+      company_today: { Args: { p_company_id: string }; Returns: string }
       complete_employee_face_enrollment: {
         Args: {
           p_model_version: string
@@ -10487,6 +10866,101 @@ export type Database = {
       delete_tenant_charge_local: {
         Args: { p_charge_id: string; p_company_id: string }
         Returns: Json
+      }
+      dfe_enfileirar_manifestacao: {
+        Args: {
+          p_company_id: string
+          p_inbound_nfe_id: string
+          p_justificativa: string
+          p_tipo: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      dfe_manifestacao_claim: {
+        Args: { p_limite?: number; p_orfao_minutos?: number }
+        Returns: {
+          chave: string
+          company_id: string
+          id: string
+          inbound_nfe_id: string
+          justificativa: string
+          tentativas: number
+          tipo: string
+        }[]
+      }
+      dfe_manifestacao_concluir: {
+        Args: {
+          p_cstat: string
+          p_job_id: string
+          p_protocolo?: string
+          p_registrada_em?: string
+        }
+        Returns: undefined
+      }
+      dfe_manifestacao_falhar: {
+        Args: {
+          p_erro: string
+          p_espera_minutos?: number
+          p_job_id: string
+          p_permanente?: boolean
+        }
+        Returns: undefined
+      }
+      dfe_sync_claim: {
+        Args: {
+          p_company_id: string
+          p_espera_minutos?: number
+          p_tipo: string
+        }
+        Returns: {
+          ciclos_sem_documento: number
+          claimed: boolean
+          max_nsu: string
+          proxima_consulta_em: string
+          ultimo_nsu: string
+        }[]
+      }
+      dfe_sync_concluir: {
+        Args: {
+          p_ciclos_ate_ocioso?: number
+          p_company_id: string
+          p_cstat: string
+          p_documentos: number
+          p_espera_minutos?: number
+          p_espera_ociosa_minutos?: number
+          p_max_nsu: string
+          p_tipo: string
+          p_ult_nsu: string
+        }
+        Returns: undefined
+      }
+      dfe_sync_falhar: {
+        Args: {
+          p_company_id: string
+          p_cstat: string
+          p_erro: string
+          p_espera_minutos?: number
+          p_max_nsu?: string
+          p_tipo: string
+        }
+        Returns: undefined
+      }
+      dfe_upsert_inbound_nfe: {
+        Args: { p_company_id: string; p_documentos: Json }
+        Returns: {
+          novas: number
+          total: number
+        }[]
+      }
+      dfe_upsert_inbound_nfse: {
+        Args: { p_company_id: string; p_documentos: Json; p_eventos?: Json }
+        Returns: {
+          eventos_aplicados: number
+          eventos_ignorados: number
+          novas: number
+          total: number
+        }[]
       }
       edit_service_order_scope: {
         Args: { _items: Json; _service_order_id: string }
@@ -10916,6 +11390,22 @@ export type Database = {
         }
         Returns: Json
       }
+      pay_transactions_batch: {
+        Args: {
+          p_account_id: string
+          p_group_id?: string
+          p_paid_date?: string
+          p_payment_method?: string
+          p_transaction_ids: string[]
+        }
+        Returns: {
+          already_applied: boolean
+          paid_date: string
+          payment_group_id: string
+          total_amount: number
+          transaction_count: number
+        }[]
+      }
       prune_db_health_history: { Args: never; Returns: number }
       reassign_contract_pending_orders: {
         Args: {
@@ -11209,6 +11699,15 @@ export type Database = {
         Args: { p_company_id: string; p_subscription_id: string }
         Returns: Json
       }
+      undo_payment_group: {
+        Args: { p_payment_group_id: string }
+        Returns: {
+          already_undone: boolean
+          payment_group_id: string
+          total_amount: number
+          transaction_count: number
+        }[]
+      }
       unresolve_billing_reminder: {
         Args: { p_transaction_id: string }
         Returns: undefined
@@ -11407,9 +11906,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

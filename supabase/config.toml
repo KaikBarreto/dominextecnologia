@@ -356,3 +356,26 @@ verify_jwt = false
 # função para traduzir o erro em PT-BR.
 [functions.nfse-danfse]
 verify_jwt = false
+
+# dfe-sync-cron: rotina automática de busca de NOTAS RECEBIDAS (DF-e). Chamada
+# só por pg_cron via pg_net com `Authorization: Bearer <CRON_SECRET>`.
+# verify_jwt=false é OBRIGATÓRIO: o segredo do Vault é texto cru, não um JWT —
+# com verify_jwt=true o gateway rejeitaria com UNAUTHORIZED_INVALID_JWT_FORMAT
+# antes de a função sequer olhar o header, e o cron falharia em silêncio.
+# ⚠️ Ela NÃO tem caminho alternativo com sessão de usuário, de propósito: itera
+# todas as empresas com opt-in ligado e uma chamada indevida queima a cota
+# horária da SEFAZ de CNPJ alheio. Quem sincroniza a própria empresa usa
+# `dfe-sync`, que exige JWT e prova a posse pelo profile.
+[functions.dfe-sync-cron]
+verify_jwt = false
+
+# dfe-manifestar-worker: drena a fila de manifestação do destinatário e
+# transmite à SEFAZ. Mesmo guard e mesmo motivo do dfe-sync-cron — e aqui o
+# evento transmitido é IRREVERSÍVEL perante a Receita, então aceitar JWT de
+# usuário seria pior ainda.
+[functions.dfe-manifestar-worker]
+verify_jwt = false
+
+# dfe-sync e dfe-manifestar NÃO entram nesta lista: elas são do cliente e
+# exigem sessão (verify_jwt = true, o padrão), além do gate de módulo 'nfe' e
+# de can_manage_system em `_shared/fiscal-auth.ts`.

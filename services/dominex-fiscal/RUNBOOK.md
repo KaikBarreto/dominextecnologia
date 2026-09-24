@@ -1,4 +1,4 @@
-# RUNBOOK — `dominex-fiscal` (motor NFS-e próprio, Sefin Nacional)
+# RUNBOOK — `dominex-fiscal` (motor fiscal próprio: NFS-e + DF-e)
 
 > **O que é:** microserviço Python que emite/consulta/cancela NFS-e **direto na API
 > do governo** (Sefin Nacional), com o certificado A1 do cliente. Existe porque as
@@ -15,9 +15,40 @@
 > não derruba só a nota fiscal — derruba o WhatsApp dos dois produtos. A §8
 > (“NUNCA faça”) é a lista curta do que quebra os dois.
 >
-> **Convenções:** comandos rodam como o usuário **`deploy`**
+> **Convenções:** o acesso SSH é pelo usuário **`deploy`**
 > (`ssh deploy@46.202.149.193`). Onde precisa de root, tem `sudo` explícito. Todo
 > passo diz **o que esperar**. Blocos **⚠️** exigem leitura antes de colar.
+>
+> ## ⚠️⚠️ O SERVIÇO NÃO MORA EM `~deploy`. LEIA ISTO ANTES DE COLAR QUALQUER COMANDO.
+> Verificado na VPS em **2026-09-24**. O texto original deste runbook dizia
+> `~/dominex-fiscal` (ou seja, `/home/deploy/dominex-fiscal`) — **está errado**, e
+> quem seguir ao pé da letra vai levar `No such file or directory` e concluir, por
+> engano, que o serviço não está instalado. **Ele está, e está emitindo nota.**
+>
+> | | Valor REAL na VPS | O que o runbook dizia |
+> |---|---|---|
+> | Diretório do compose | **`/home/dominex/dominex-fiscal`** | `~/dominex-fiscal` (= `/home/deploy/...`) |
+> | Dono dos arquivos | **`dominex:dominex`** (uid 1001) | `deploy` |
+> | Quem roda `docker compose` | **`sudo -u dominex -H`** | `deploy` direto |
+> | Dono de `service.env` | **`root:fiscal` `0640`** | `root:deploy` `0640` |
+>
+> Consequências práticas:
+> - `/home/dominex` é `0750 dominex:dominex`. O `deploy` **não consegue nem `ls`**
+>   ali sem `sudo` — não é bug, é o isolamento entre o usuário de SSH e o usuário
+>   que roda o serviço.
+> - Todo comando de compose vira:
+>   ```bash
+>   sudo -u dominex -H bash -c 'cd /home/dominex/dominex-fiscal && docker compose <cmd>'
+>   ```
+>   (o `dominex` está no grupo `docker`; o `-H` é necessário pro Compose achar o
+>   `~/.docker`).
+> - **`service.env` se lê SEM `sudo`**: tanto `deploy` quanto `dominex` estão no
+>   grupo `fiscal` (gid 1002), e o arquivo é `root:fiscal 0640`. Os trechos deste
+>   runbook que fazem `sudo grep ... service.env` funcionam, mas o `sudo` é
+>   desnecessário — e **`sudo` grava a linha de comando no `auth.log`**, então
+>   prefira a forma sem `sudo` quando o comando mencionar segredo.
+> - O `smoke-test.sh` está em **`/home/dominex/dominex-fiscal/smoke-test.sh`**, não
+>   em `/home/deploy/...` como aparece na §6.1.
 
 ---
 
@@ -35,6 +66,9 @@
 | [7](#7-capacidade-a-box-é-dividida) | Capacidade (a box é dividida) |
 | [8](#8-nunca-faça) | **NUNCA faça** |
 | [9](#9-o-que-depende-de-outra-pessoa) | O que depende de outra pessoa |
+| [10](#10-df-e--notas-destinadas-na-sefaz-nf-e) | **DF-e** — notas destinadas na SEFAZ (NF-e) |
+| [11](#11-df-e--nfs-e-recebida-no-adn-serviço-tomado) | **DF-e** — NFS-e recebida no ADN (serviço tomado) |
+| [12](#12-registro-do-deploy-do-df-e--2026-09-24) | Registro do deploy do DF-e (2026-09-24) + o que ele **não** provou |
 
 ---
 
@@ -65,6 +99,7 @@
 | `GET /admin/kek/status` · `POST /admin/kek/rewrap` · `POST /admin/smoke` | Bearer | infra |
 | `POST /v1/nfse/emitir` · `POST /v1/nfse/{chave}/cancelar` · `GET|POST /v1/nfse/{chave}` · `GET|POST /v1/nfse/{chave}/danfse` · `POST /v1/certificado/selar` | Bearer | motor |
 | `GET /v1/nfse/autoteste` | Bearer | motor — canário de layout, **não transmite nada** |
+| `POST /v1/dfe/distribuicao` · `POST /v1/dfe/consulta-chave` · `POST /v1/dfe/manifestar` | Bearer | motor — **DF-e** (§10) |
 
 > As rotas do motor também respondem **sem** o prefixo `/v1` (alias). O caminho
 > oficial, e o que deve aparecer no log, é o `/v1`.
@@ -242,6 +277,10 @@ grep -v '^#' .env | grep .
 
 - **Esperar:** `REQ_FILE`, `FISCAL_HTTP_TIMEOUT`, `FISCAL_VER_APLIC`. **Nenhum segredo.**
 
+> **DF-e (§10) não exige variável nova.** Os endereços do Ambiente Nacional, o
+> timeout (45s), o orçamento da rodada (75s) e o teto de páginas (3) têm padrão
+> no código (`app/sefaz/enderecos.py`). Só mexa se a §10 mandar.
+
 ---
 
 ## 2. Subir o serviço
@@ -276,6 +315,40 @@ docker compose build
 - **Depois:** copie o `requirements.lock.txt` pro repo (`services/dominex-fiscal/`) e
   **commite**. A partir daí, subir versão de biblioteca fiscal é **evento planejado**,
   com o §6 passando antes.
+
+> ### ✅ Status: lock GERADO em 2026-09-24 (41 pacotes) — e a lição de por que quase deu ruim
+> Este passo **nunca tinha sido executado**. Entre 2026-09-03 e 2026-09-24 a VPS
+> rodou com `REQ_FILE=requirements.txt`, e o `requirements.txt` **não tem um único
+> pin** (`fastapi`, `nfelib`, `signxml`, `lxml`, `cryptography`… todos soltos).
+> Ou seja: **qualquer `docker compose build` naquele período teria trocado as
+> bibliotecas fiscais por versões novas do dia, silenciosamente, no serviço que
+> emite nota de cliente.** É exatamente o risco R2 (o caso `nPedRegEvento`).
+>
+> **⚠️ Não gere o lock a partir de um build novo.** Um build novo já resolveu as
+> versões de hoje — congelar *isso* apenas carimba a deriva que você queria evitar.
+> **Gere a partir do container que está no ar e comprovadamente funciona:**
+>
+> ```bash
+> docker exec dominex-fiscal /opt/venv/bin/pip freeze > /tmp/lock.txt
+> sudo install -o dominex -g dominex -m 0644 /tmp/lock.txt \
+>   /home/dominex/dominex-fiscal/requirements.lock.txt
+> sudo sed -i 's|^REQ_FILE=.*|REQ_FILE=requirements.lock.txt|' \
+>   /home/dominex/dominex-fiscal/.env
+> ```
+>
+> **E prove que o lock pegou** — este diff tem que sair vazio:
+> ```bash
+> docker run --rm --entrypoint "" dominex-fiscal:local /opt/venv/bin/pip freeze | sort > /tmp/nova.txt
+> docker exec dominex-fiscal /opt/venv/bin/pip freeze | sort > /tmp/atual.txt
+> diff /tmp/atual.txt /tmp/nova.txt && echo "zero deriva de dependência"
+> ```
+>
+> Versões efetivamente congeladas (as que emitiram as notas reais de 2026-09):
+> `nfelib 2.5.2 · signxml 5.1.0 · xsdata 26.2 · lxml 6.1.3 · cryptography 50.0.1 ·
+> requests 2.34.2 · fastapi 0.141.1 · starlette 1.6.0`.
+> ⚠️ Note que `xsdata` e `requests` **não batem** com os números anotados na §2.4
+> (`25.7` / `2.32.5`): aqueles vieram do spike, não da imagem que foi pro ar. Os
+> corretos são os desta lista.
 
 ### 2.3 — Subir
 
@@ -375,6 +448,27 @@ sudo fail2ban-regex /var/log/caddy/fiscal.access.log /etc/fail2ban/filter.d/domi
 ```
 
 - **Desbanir em emergência:** `sudo fail2ban-client set dominex-fiscal unbanip <IP>`.
+
+> ### ⚠️ Status em 2026-09-24: este jail NÃO está instalado (só o `sshd`)
+> Ficou de fora do deploy original e continua fora. Antes de ligar, entenda o
+> efeito colateral — **é uma decisão, não um passo mecânico**:
+>
+> **O que este jail bane é justamente quem erra o token — e quem chama esta API é
+> a Edge Function da Supabase.** No dia em que alguém rotacionar o
+> `FISCAL_SERVICE_TOKEN` na VPS e esquecer de publicar o novo no Supabase (§3.2), as
+> edges passam a mandar token velho em rajada, o fail2ban lê os 401 e **bane o IP de
+> egresso da Supabase**. Resultado: a emissão para para **todos** os clientes, e o
+> sintoma (timeout, não 401) aponta pro lugar errado — exatamente o modo de falha
+> silenciosa que a §0 decisão 4 usou pra rejeitar allowlist de IP.
+>
+> Se ligar, ligue com consciência disso:
+> - `maxretry` folgado e `bantime` curto (minutos, não horas);
+> - **primeiro item a conferir** em qualquer incidente de “emissão parou”:
+>   `sudo fail2ban-client status dominex-fiscal`;
+> - depois de toda rotação de token, conferir se algum IP foi banido.
+>
+> O jail protege contra força-bruta de token vinda da internet — risco real, porém
+> menor que parar o faturamento de todo mundo. **Decisão do Tech Lead.**
 
 ---
 
@@ -616,15 +710,57 @@ docker compose down                       # PARA o fiscal (⚠️ nunca com -v; 
 
 ### 5.3 — Deploy de versão nova do motor
 
-```bash
-# do Mac
-scp -r services/dominex-fiscal/app deploy@46.202.149.193:~/dominex-fiscal/
+> ⚠️ O `scp` direto pro diretório **não funciona**: o `deploy` não tem permissão de
+> escrita em `/home/dominex` (ver o bloco de convenções no topo). O caminho é
+> staging em `/tmp` + `sudo cp` com dono `dominex`.
 
-# na VPS
-cd ~/dominex-fiscal
-docker compose build && docker compose up -d
-./smoke-test.sh --quiet          # prova antes de dar por encerrado
+```bash
+# 1) do Mac — pacote limpo (COPYFILE_DISABLE evita os ._* do tar do macOS)
+cd services/dominex-fiscal
+COPYFILE_DISABLE=1 tar -czf /tmp/fiscal.tgz \
+  --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' --exclude='.venv' \
+  app tests requirements-dev.txt RUNBOOK.md Caddyfile
+scp /tmp/fiscal.tgz deploy@46.202.149.193:/tmp/
+
+# 2) na VPS — BACKUP ANTES (é o que torna o rollback trivial)
+D=/home/dominex/dominex-fiscal
+sudo tar -czf "$D-backup-$(date +%Y%m%d-%H%M%S).tgz" -C "$D" app .env
+docker tag "$(docker inspect dominex-fiscal --format '{{.Image}}')" dominex-fiscal:rollback-$(date +%Y%m%d)
+
+# 3) instalar
+rm -rf /tmp/stage && mkdir -p /tmp/stage && tar -xzf /tmp/fiscal.tgz -C /tmp/stage
+sudo cp -a /tmp/stage/app/. "$D/app/" && sudo chown -R dominex:dominex "$D/app"
+
+# 4) build + subir  (⚠️ sudo -u dominex, NUNCA `cd ~/dominex-fiscal`)
+sudo -u dominex -H bash -c "cd $D && docker compose build && docker compose up -d"
+sudo "$D/smoke-test.sh" --quiet    # prova antes de dar por encerrado
 ```
+
+#### ⚠️ Antes do `up -d`: prove a imagem nova SEM tocar na produção
+
+O container que emite nota fica de pé o tempo todo; o canário sobe ao lado, numa
+porta descartável, e morre em seguida. Custou ~10 s e é o que separa “acho que está
+bom” de prova.
+
+```bash
+docker run -d --name fiscal-canary -p 127.0.0.1:8098:8000 \
+  -e FISCAL_SERVICE_TOKEN=$(openssl rand -hex 48) \
+  -e FISCAL_KEKS="1:$(openssl rand -base64 32)" \
+  --tmpfs /run/dominex-fiscal:rw,noexec,nosuid,nodev,size=16m,mode=700,uid=10001,gid=10001 \
+  --read-only --user 10001:10001 --memory 512m --memory-swap 512m dominex-fiscal:local
+# bata nas rotas em 127.0.0.1:8098 (422 = rota existe; 404 = rota SUMIU)
+docker rm -f fiscal-canary
+```
+
+#### Rollback (1 comando, ~7 s)
+
+```bash
+sudo -u dominex -H bash -c "cd $D && \
+  docker tag dominex-fiscal:rollback-<data> dominex-fiscal:local && docker compose up -d"
+```
+
+A tag `dominex-fiscal:rollback-20260924` aponta pra imagem de 2026-09-03
+(`745a2d100db6`) que emitiu as 5 primeiras notas em produção. **Não apague.**
 
 - **⚠️ Se o deploy trouxer dependência nova**, regere o lock (§2.2) e rode o
   `--full` antes de considerar promovido.
@@ -829,6 +965,12 @@ evolução natural quando o motor estiver estável.
 | Reemitir uma nota “no susto” depois de um restart | Gera **nota duplicada**. Consulte `GET /dps/{idDPS}` primeiro. |
 | Usar instância de tenant (`dominex_<company_id>`) pra alerta interno | Aquele WhatsApp é do **cliente**. |
 | Remover `app.include_router(infra_routes.router)` do `main.py` | A operação fica cega **em silêncio**: sem `/readyz`, sem rotação de KEK, sem teste de fumaça. |
+| Chamar `POST /v1/dfe/distribuicao` com `ultimoNsu` **menor** que um já servido | É o gatilho do cStat **656**: a SEFAZ bloqueia a consulta de notas daquele CNPJ por **1 hora**. O cursor só anda pra frente. |
+| Descartar o `ultNsu` da resposta porque veio `parcial: true` | Aqueles NSU **já saíram da fila** da SEFAZ. Não gravar = repetir = 656. Ver §10.3. |
+| Usar `POST /v1/dfe/consulta-chave` “só pra testar” em produção | Não mexe no cursor, **mas gasta a mesma cota horária** (medido no Eco: varredura 53 min depois de um consChNFe tomou 656). |
+| Gravar o `ultNsu` da resposta de `consulta-chave` como cursor | Ele vem vazio de propósito. Preencher faria a distribuição seguinte **pular** documentos nunca lidos. |
+| Manifestar “desconhecimento” pra testar | Evento é **declaração ao fisco e é irreversível**. Para testar encanamento use `ambiente: 2`. |
+| Aumentar `SEFAZ_ORCAMENTO_SEGUNDOS` sem aumentar o `read_timeout` do Caddy | O proxy corta a resposta **depois** de a SEFAZ ter servido NSUs → cursor perdido → 656. |
 
 ---
 
@@ -844,6 +986,16 @@ evolução natural quando o motor estiver estável.
 | Edge de **rotação de KEK** (lê banco → `POST /admin/kek/rewrap` → grava banco) | 🛡️ Plataforma | pendente |
 | Edge de **smoke em homologação** por `pg_cron` (C6b, §6.3 opção A) | 🛡️ Plataforma | pendente |
 | Trilha de auditoria de decifra em `fiscal_certificate_audit` | 🛡️ Plataforma (é a edge que enxerga o banco) | pendente |
+| Tabela `dfe_sync_state` (cursor de NSU + trava anti-656) | 🗄️ Database | pendente |
+| Edges `dfe-sync` / `dfe-sync-cron` / `dfe-manifestar` (§10) | 🛡️ Plataforma | pendente |
+| Ramo `tipo: 'nfse'` da edge `dfe-sync`, hoje `nao_suportado` (§11.3) | 🛡️ Plataforma | pendente |
+| **`COMMENT ON` de `dfe_sync_state`**: o cursor de NFS-e é **NSU**, não janela de período (§11.7) | 🗄️ Database | ⚠️ pendente — documentação mente, nada quebra |
+| **Deploy do DF-e na VPS** (build + `up -d` + smoke) | 🖥️ Infra | ✅ **FEITO 2026-09-24** — as 4 rotas no ar, emissão reprovada OK (ver §12) |
+| `requirements.lock.txt` (§2.2) | 🖥️ Infra | ✅ **FEITO 2026-09-24** — 41 pinos, gerados do container em produção |
+| **Timers de fumaça (§6.1) instalados** | 🖥️ Infra | ⚠️ **NÃO instalados** — `systemctl list-timers 'dominex-fiscal*'` devolve **0 timers**. O alarme de deriva de layout **não existe hoje** |
+| **Jail do `fail2ban` (§2.6)** | 🖥️ Infra | ⚠️ **NÃO instalado** — só o jail `sshd` está ativo. Ver o ⚠️ da §2.6 antes de ligar |
+| **`/etc/dominex-fiscal/alert.env` (§6.2)** | **CEO** | ⚠️ **não existe** — falta o nº do WhatsApp e a instância `dominex_infra_alertas`. Sem ele o alerta só vai pro log |
+| **Monitor externo (§6.4)** | **CEO** | ⚠️ pendente — se a box cair, o alerta interno cai junto |
 
 ### Para quem mexer no serviço Python
 
@@ -856,3 +1008,485 @@ evolução natural quando o motor estiver estável.
   garante que nenhum PEM sobrevive à requisição.
 - **`app/main.py` termina com o bloco de infraestrutura.** Ao reescrever o arquivo,
   preserve `app.include_router(infra_routes.router)` e o handler de 401 vazio.
+- **`app/sefaz/` é IRMÃO de `app/sefin/`, não uma extensão dele.** `app/sefin/` é o
+  caminho que emite NFS-e em produção; DF-e não importa nada de lá e não muda nada lá.
+  Em particular, **a assinatura é outra**: a Sefin Nacional exige rsa-sha256 sem
+  prefixo de namespace (`app/sefin/assinatura.py`); a SEFAZ exige rsa-sha1 + sha1
+  (`app/sefaz/manifestacao.py`). São dois governos com duas regras — unificar quebra um.
+- **`app/adn/` é IRMÃO dos dois**, e é o TERCEIRO governo (ver §11.1). Não importa
+  nada de `app/sefaz/` além do abridor de credencial mTLS (`abrir_credencial`), que é
+  genérico apesar do nome. Não existe cStat, não existe `cUFAutor`, não existe
+  manifestação e não existe 656 — quem levar essas ideias pra lá quebra a rota.
+- **DF-e continua sem banco.** Nenhum módulo de `app/sefaz/` **nem de `app/adn/`**
+  pode ganhar cliente Supabase, cursor persistido ou arquivo de estado. O worker
+  equivalente do EcoSistema (`services/ecosistema-dfe`) tem `service_role` em disco;
+  **essa parte não foi portada de propósito** — é a decisão D1 do plano de 24/09/2026.
+
+---
+
+## 10. DF-e — notas destinadas na SEFAZ (NF-e)
+
+> **O que é:** três rotas novas que leem a fila de NF-e **emitidas contra o CNPJ do
+> cliente** (`NFeDistribuicaoDFe`) e transmitem a **manifestação do destinatário**
+> (`NFeRecepcaoEvento4`), sempre por mTLS com o certificado A1 do próprio cliente.
+> Código em `app/sefaz/` (irmão de `app/sefin/`). Lógica portada do
+> `EcoSistemaSaaS/services/ecosistema-dfe`, em produção lá desde 17/09/2026.
+>
+> **⚠️ Status:** escrito e testado **localmente**. **Nada foi para a VPS.** O deploy
+> depende do CEO e dos itens da §9.
+
+### 10.1 — A decisão que muda tudo: este serviço continua sem banco
+
+O worker do EcoSistema guarda `service_role` da Supabase em
+`/etc/ecosistema-dfe/service.env` e resolve o certificado sozinho. **Isso não foi
+portado.** Se fosse, a KEK e a chave do banco passariam a morar na mesma box, e a
+propriedade central da §Custódia (“comprometer um lado sozinho não abre nada”)
+deixaria de ser verdade.
+
+O desenho aqui:
+
+```
+  Edge (dfe-sync-cron, tem o banco)          VPS (tem a KEK, não tem banco)
+  ─────────────────────────────────          ──────────────────────────────
+  lê dfe_sync_state  (cursor de NSU)
+  confere a trava anti-656 (1 hora)
+  marca ultima_rodada_em = now()   ◄── ANTES de chamar
+  lê ciphertext + DEK envelopada
+        │  POST /v1/dfe/distribuicao  { certificado, cnpj, uf, ultimoNsu }
+        └──────────────────────────────────►  decifra em memória
+                                              mTLS → SEFAZ (Ambiente Nacional)
+        ◄──────────────────────────────────  { documentos, ultNsu, maxNsu, cStat }
+  grava as notas + ultNsu no cursor             esquece tudo
+```
+
+O serviço é **burro de propósito**: recebe de onde começar, devolve o que achou e
+onde parou. Ele **detecta e reporta** o consumo indevido; **quem espera a hora é o
+banco**.
+
+### 10.2 — As três rotas
+
+Todas são **POST**, inclusive as de leitura. Dois motivos: o `fetch` do Deno não
+manda corpo em `GET` (e o certificado cifrado precisa viajar no corpo), e assim CNPJ
+e chave de acesso ficam **fora da URL** — logo fora do log de acesso do Caddy, que o
+fail2ban lê e que entra no snapshot semanal da Hostinger.
+
+Corpo comum a todas (igual ao das rotas de NFS-e):
+
+```jsonc
+{
+  "empresaId": "<uuid>",          // só serve de AAD da custódia; não vira consulta
+  "ambiente": 1,                  // 1 = produção · 2 = homologação
+  "certificado": {
+    "pfxCifradoB64": "...", "dekEnvelopadaB64": "...",
+    "senhaCifradaB64": "...", "nonceB64": "...", "algoritmo": "AES-256-GCM"
+  }
+}
+```
+
+#### `POST /v1/dfe/distribuicao` → 200
+
+```jsonc
+// pedido (além do corpo comum)
+{ "cnpj": "38386446000179", "uf": "SP", "ultimoNsu": 675, "maxPaginas": 3 }
+```
+
+- `uf` — **sigla** (`"SP"`) ou o código IBGE (`"35"`). A tabela das 27 UFs vive em
+  `app/sefaz/uf.py`; **não existe consulta a banco** para isso.
+- `ultimoNsu` — o **último NSU já consumido**. `0` na primeira vez.
+- `maxPaginas` — opcional, 1..20 (padrão 3). Cada página traz até 50 documentos.
+
+```jsonc
+// resposta
+{
+  "cStat": 138, "xMotivo": "Documento(s) localizado(s)",
+  "ultNsu": "000000000000676",   // ⚠️ É O CURSOR. Gravar SEMPRE. 15 dígitos —
+                                 //    o formato exato do CHECK de dfe_sync_state
+  "maxNsu": "000000000000900",   // fim da fila do lado da SEFAZ (mede o atraso);
+                                 //    AUSENTE quando a SEFAZ não informou
+  "filaDrenada": false,
+  "parcial": true,               // sobrou fila (teto, orçamento de tempo ou erro)
+  "paginas": 1,
+  "documentos": [{
+    "nsu": "000000000000676",
+    "chave": "3526...0543",
+    "emitenteCnpj": "65256296000151", "emitenteNome": "GR METAIS SBC LTDA",
+    "valor": 34644.44, "dataEmissao": "2026-09-15T16:04:48-03:00",
+    "natureza": "Venda Dentro do Estado",
+    "situacaoSefaz": "autorizada",      // autorizada | cancelada | denegada | outra
+    "numero": 53, "serie": 1, "cfopPrincipal": "5102", "finNfe": 1,
+    "refNfeChave": null,
+    "resumo": false,                    // true = só resNFe, sem XML completo
+    "xml": "<nfeProc ...>"
+  }],
+  "eventosIgnorados": 0,  "ilegiveis": 0,  "semChave": 0,
+  "aviso": { "codigo": "consumo_indevido", "mensagem": "…", "detalhe": {…} }
+}
+```
+
+Erros: **429** `consumo_indevido` (cStat 656/589 — `detalhe` traz o `ultNsu`/`maxNsu`
+que a SEFAZ considera correntes), **422** `dados_invalidos` / `certificado_invalido`,
+**403** `acesso_negado` (certificado recusado no handshake), **503**
+`servico_indisponivel`.
+
+#### `POST /v1/dfe/consulta-chave` → 200
+
+```jsonc
+{ "cnpj": "38386446000179", "uf": "SP", "chave": "<44 dígitos>" }
+```
+
+Mesma forma de resposta, com `documentos` de 0 ou 1 item e **sem o campo `ultNsu`**
+— `consChNFe` **não é cursor** (omitido, não vazio: string vazia gravada por engano
+quebraria o CHECK de 15 dígitos de `dfe_sync_state.ultimo_nsu`). É diagnóstico: não mexe na fila de NSU, **mas gasta a
+mesma cota horária**, então a batida tem que ser registrada na mesma trava anti-656.
+
+#### `POST /v1/dfe/manifestar` → 201
+
+```jsonc
+{ "cnpj": "...", "chave": "<44>", "tipo": "ciencia", "justificativa": null, "idLote": "42" }
+```
+
+| `tipo` | tpEvento | descEvento | `justificativa` |
+|---|---|---|---|
+| `ciencia` | **210210** | Ciencia da Operacao | não |
+| `confirmada` | **210200** | Confirmacao da Operacao | não |
+| `desconhecida` | **210220** | Desconhecimento da Operacao | não (NT 2020.001 v1.50) |
+| `nao_realizada` | **210240** | Operacao nao Realizada | **sim, 15..255 caracteres** |
+
+> ⚠️ O plano de 24/09/2026 lista “210200 (Ciência), 210210 (Confirmação)” — está
+> **invertido** lá. Vale a tabela acima. É a **ciência (210210)** que destrava o XML
+> completo: sem manifestação a SEFAZ só entrega o resumo (`resNFe`).
+
+```jsonc
+// resposta 201
+{ "status": "registrada", "tipo": "ciencia", "tipoEvento": "210210",
+  "chave": "<44>", "cStat": 135, "cStatLote": 128,
+  "motivo": "Evento registrado e vinculado a NF-e",
+  "protocolo": "135260000000001", "registradaEm": "2026-09-24T10:00:00-03:00",
+  "duplicada": false, "ambiente": 1, "xml": "<envEvento …>" }
+```
+
+- **573 (duplicidade) é SUCESSO**: sai 201 com `duplicada: true`. É o retorno
+  esperado quando a SEFAZ aceitou e a gravação do nosso lado falhou depois —
+  reenviar é idempotente.
+- **422** `manifestacao_rejeitada`: recusa definitiva, repetir igual não adianta.
+- **503** `servico_indisponivel`: recusa transitória (108/109/999) — a fila retenta.
+
+### 10.3 — ⚠️ O que a edge PRECISA fazer e este serviço não consegue garantir
+
+Se a resposta HTTP se perder **depois** de a SEFAZ ter servido NSUs (timeout do
+proxy, edge morta no meio), o cursor não é gravado, a rodada seguinte repete NSU já
+servido e o CNPJ toma **1 hora de bloqueio**. O worker do EcoSistema se protegia
+disso gravando a marca-d’água num arquivo local **antes** do upsert; sem banco, esta
+box não tem onde. **A mitigação é obrigatória e é do lado da edge:**
+
+1. marcar `ultima_rodada_em = now()` **antes** de chamar a VPS;
+2. tratar timeout / resposta perdida como **rodada consumida** (esperar a janela
+   cheia antes de tentar de novo), nunca como “não aconteceu”;
+3. gravar `ultNsu` **mesmo quando `parcial` é `true`**.
+
+O que o serviço faz para que isso seja raro: para sozinho no **orçamento de 75s**
+(`SEFAZ_ORCAMENTO_SEGUNDOS`) e devolve o parcial, em vez de esperar o Caddy cortar em
+`read_timeout 120s`. **Se alguém aumentar o orçamento, aumenta o proxy antes.**
+
+Intervalo da trava anti-656, medido no EcoSistema em 17/09/2026: a SEFAZ cobra a
+**hora cheia** e não perdoa segundos (uma rodada disparada 59min50s depois tomou
+656). O Eco usa 65 min com cron de passo curto (10 min). Mesmos números aqui.
+
+### 10.4 — Provar o encanamento sem risco (quando o deploy for autorizado)
+
+```bash
+# Em HOMOLOGAÇÃO (ambiente 2) — não gasta cota de produção e não manifesta nada.
+# A rota de diagnóstico é a única que não mexe no cursor.
+curl -sS -X POST https://fiscal.dominex.app/v1/dfe/consulta-chave \
+  -H "Authorization: Bearer $FISCAL_SERVICE_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d @/tmp/pedido-dfe.json | jq '{cStat, xMotivo, n: (.documentos|length)}'
+```
+
+- **Esperar:** `cStat` 137/138 e HTTP 200. `403 acesso_negado` = certificado recusado.
+- **⚠️ Em produção, cada batida desta gasta a cota horária.** Uma por hora, no máximo.
+- Os testes locais cobrem parser, assinatura do evento, cursor e 656:
+  `pytest tests/test_sefaz_documento.py tests/test_sefaz_manifestacao.py tests/test_sefaz_api.py`
+
+### 10.5 — Capacidade
+
+Nenhum container novo, nenhuma porta nova, nenhum bloco novo no Caddy: são rotas no
+serviço que já existe, dentro do mesmo teto de `mem_limit: 512m`. O pico de RAM é o
+lote de até 50 XMLs de uma página (poucos MB) — por isso o parser tem teto de
+descompressão (`LIMITE_XML`, 12 MB por documento): esta box divide RAM com a Evolution
+que atende o WhatsApp **do Dominex e do EcoSistema**, e um docZip malformado não pode
+convidar o OOM killer.
+
+---
+
+## 11. DF-e — NFS-e recebida no ADN (serviço TOMADO)
+
+> **O que é:** uma rota que lê a fila de **NFS-e emitidas CONTRA o CNPJ do cliente**
+> (ele como **tomador** do serviço) no **ADN — Ambiente de Dados Nacional** da NFS-e.
+> Código em `app/adn/`, irmão de `app/sefaz/` e de `app/sefin/`.
+>
+> **⚠️ Status:** escrito e testado **localmente**. **Nada foi para a VPS.** O deploy
+> depende do CEO.
+
+### 11.1 — ⚠️ São TRÊS governos neste serviço. Não confundir.
+
+| Pacote | Quem é | O que faz | Protocolo |
+|---|---|---|---|
+| `app/sefin/` | SEFIN Nacional | **Emite** NFS-e | XML assinado |
+| `app/sefaz/` | SEFAZ / Ambiente Nacional NF-e | **Recebe** NF-e destinada | SOAP 1.2, NSU, cStat **656** |
+| `app/adn/` | **ADN** (NFS-e nacional) | **Recebe** NFS-e tomada | **REST/JSON**, NSU, **HTTP 429** |
+
+O erro mais caro possível aqui é tratar o ADN como se fosse a SEFAZ. **Não existe**
+`cUFAutor`, **não existe** manifestação do destinatário, **não existe** cStat, e
+**não existe** o bloqueio de 1 hora do 656.
+
+### 11.2 — O que foi CONFIRMADO da especificação oficial, e o que não foi
+
+Fonte primária usada: o **OpenAPI oficial "API NFS-e - ADN Contribuinte" v1** (a
+mesma documentação publicada em `adn.nfse.gov.br/contribuintes/docs/index.html`),
+conferido contra **quatro** implementações independentes em produção na praça.
+
+**Confirmado (alta confiança):**
+
+- Endpoint: `GET {base_adn}/contribuintes/DFe/{NSU}?cnpjConsulta=<cnpj>&lote=true`.
+- mTLS, TLS 1.2+, certificado ICP-Brasil A1/A3 de CNPJ. **Não existe token nem
+  chave de API** — o certificado É a credencial.
+- Resposta JSON `LoteDistribuicaoNSUResponse`:
+  `StatusProcessamento` ∈ `DOCUMENTOS_LOCALIZADOS | NENHUM_DOCUMENTO_LOCALIZADO | REJEICAO`,
+  `LoteDFe[]`, `Alertas[]`, `Erros[]`, `TipoAmbiente`, `VersaoAplicativo`,
+  `DataHoraProcessamento`.
+- Cada item de `LoteDFe`: `NSU` (int64), `ChaveAcesso`, `TipoDocumento`
+  (`NFSE | EVENTO | DPS | PEDIDO_REGISTRO_EVENTO | CNC | NENHUM`), `TipoEvento`,
+  `ArquivoXml`, `DataHoraGeracao`.
+- `ArquivoXml` é **GZip com representação base64** (fixado na apresentação do
+  contrato oficial).
+- **O cursor é por NSU, não por período.** ⚠️ Ver §11.6.
+- **O envelope NÃO devolve `ultNSU` nem `maxNSU`.** O cursor só pode ser o maior
+  `NSU` dos itens recebidos, e **não dá para saber quanto falta na fila**.
+
+**Não confirmado — suposição declarada (ver §11.6):**
+
+- Se o `{NSU}` do caminho é **inclusivo** ou **exclusivo**. O resumo oficial da
+  operação (“Retorna o Documento Fiscal de Serviço correspondente ao NSU
+  informado”) sugere inclusivo, mas não é normativo. **O código foi desenhado para
+  ficar correto nas duas leituras** — ver §11.6.
+- A numeração dos eventos de **análise fiscal** (`105104` / `105105`): qual é
+  deferimento e qual é indeferimento. Por isso esses eventos saem com
+  `situacaoSugerida: null` em vez de um chute.
+- Se existe limite de requisições publicado. O tratamento é reativo (HTTP 429 +
+  `Retry-After`), não preventivo.
+
+### 11.3 — A rota
+
+```jsonc
+// POST /v1/dfe/nfse/distribuicao   (Bearer $FISCAL_SERVICE_TOKEN)
+// pedido — além do corpo comum (empresaId / ambiente / certificado)
+{
+  "cnpj": "38386446000179",   // CNPJ da empresa; decide o que é recebida x emitida
+  "ultimoNsu": 0,             // ÚLTIMO JÁ CONSUMIDO (0 na 1ª vez), não "próximo"
+  "maxPaginas": 3,            // opcional
+  "somenteRecebidas": true    // opcional, padrão true
+}
+```
+
+```jsonc
+// resposta 200
+{
+  "status": "DOCUMENTOS_LOCALIZADOS",
+  "ultimoNsu": "000000000000031",  // 15 dígitos — cursor. GRAVAR SEMPRE.
+  "filaDrenada": true,
+  "parcial": false,
+  "paginas": 2,
+  "documentos": [ { /* nomes = colunas de inbound_nfse, em camelCase */ } ],
+  "eventos":    [ { /* cancelamento/substituição de nota que já existe */ } ],
+  "emitidasIgnoradas": 12,
+  "ignorados": 0, "ilegiveis": 0, "semIdentidade": 0,
+  "ambiente": 1
+}
+```
+
+Campos de cada item de `documentos` (1:1 com `inbound_nfse`): `nsu`, `chaveAcesso`,
+`numero`, `serie`, `codigoVerificacao`, `municipioIncidenciaIbge`, `dataEmissao`,
+`competencia`, `valorServico`, `valorLiquido`, `valorIss`, `issRetido`,
+`prestadorDocumento`, `prestadorNome`, `prestadorIm`, `prestadorMunicipioIbge`,
+`tomadorDocumento`, `tomadorNome`, `codigoTributacaoNacional`,
+`codigoTributacaoMunicipal`, `discriminacao`, `situacao`, `resumo`, `xml`,
+`origemRef`, `direcao`.
+
+Cada item de `eventos`: `nsu`, `chaveAcesso`, `codigo`, `tipoEvento`,
+`situacaoSugerida`, `chaveSubstituta`, `dataEvento`, `xml`.
+
+Erros: `422 distribuicao_rejeitada` (o ADN recusou — em geral CNPJ não habilitado),
+`429 consumo_indevido` (com `detalhe.retryAfter`), `503 servico_indisponivel`,
+`403 acesso_negado` (certificado recusado), `422 dados_invalidos`.
+
+### 11.4 — ⚠️ O feed traz EMITIDAS e RECEBIDAS misturadas
+
+O ADN serve **um feed só por CNPJ**. A mesma fila tem as notas que a empresa emitiu
+e as que ela tomou. Consequências que não dá pra ignorar:
+
+1. `somenteRecebidas: true` (padrão) devolve só as tomadas. As emitidas **fazem o
+   cursor andar mesmo assim** e voltam apenas em `emitidasIgnoradas`. Se elas não
+   fizessem o cursor andar, a fila seria relida para sempre.
+2. Por isso **“0 notas nesta rodada” é normal e não é falha**: pode ter custado três
+   páginas de 50 documentos, todos emitidos. É o `emitidasIgnoradas` que explica
+   isso na tela.
+3. `inbound_nfse` é tabela de nota **recebida**. Uma nota emitida gravada lá viraria
+   despesa de um serviço que a empresa **vendeu**.
+
+### 11.5 — ⚠️ Eventos podem chegar sem a nota deles
+
+Cancelamento e substituição chegam como item **separado**, com NSU próprio,
+possivelmente meses depois da nota. A edge tem que:
+
+- atualizar `inbound_nfse.situacao` quando achar a `chaveAcesso`;
+- **ignorar em silêncio** quando não achar (a nota é anterior ao opt-in do cliente);
+- **nunca criar linha** a partir de um evento;
+- tratar `situacaoSugerida: null` como **“não mexe na nota”** — não como cancelamento.
+  `null` significa que o serviço não sabe traduzir aquele evento (ver §11.2).
+
+### 11.6 — ⚠️ A suposição do NSU, e por que ela é segura
+
+O `{NSU}` do caminho pode ser inclusivo (devolve a partir dele) ou exclusivo
+(devolve depois dele). A documentação sugere inclusivo mas não fecha a questão.
+
+**O serviço pede sempre o ÚLTIMO NSU JÁ CONSUMIDO, nunca ele + 1.** Essa escolha é
+correta nas duas leituras:
+
+| | pedimos `último` (o que fazemos) | pedimos `último + 1` |
+|---|---|---|
+| se inclusivo | 1 documento repetido, deduplicado pelo `chave_natural` | correto |
+| se exclusivo | correto | **pula a nota que estiver em `último+1`, para sempre** |
+
+Entre repetir e perder nota fiscal, repete. O custo é **um** documento duplicado por
+página. Isso está travado por teste
+(`test_o_nsu_pedido_e_o_ultimo_consumido_e_nunca_ele_mais_um`) — se alguém
+“otimizar” para `+1`, o teste cai.
+
+Efeito colateral aceito: quando a fila está vazia, cada rodada gasta **1 requisição**
+que devolve o último documento de novo. É como se descobre que nada chegou.
+
+### 11.7 — ⚠️ Pendência de banco: `dfe_sync_state` está modelado para PERÍODO
+
+A migration `20260924160000` criou `dfe_sync_state.janela_fim` para `tipo='nfse'`,
+partindo do pressuposto (do plano) de que o ADN consultava **por período**. **Não
+consulta: é NSU.** Esse pressuposto veio do fluxo do EcoSistema, que fala com o ADN
+através de um intermediário — e é o intermediário que expõe período, não o governo.
+
+O que isso significa na prática:
+
+- A coluna **`ultimo_nsu` já existe** na mesma tabela, com a CHECK `^[0-9]{15}$` —
+  que é exatamente o formato que esta rota devolve. **Nenhuma coluna nova é
+  necessária.**
+- O gatilho `dfe_sync_state_nsu_nao_regride` passa a valer também para NFS-e, e isso
+  é **desejável**: regredir o cursor aqui não causa 656, mas causa varredura repetida
+  do feed inteiro — o caminho para o 429.
+- O que está **errado é a documentação**: o comentário de `ultimo_nsu` diz “sempre
+  NULL em `tipo='nfse'`” e o de `janela_fim` descreve a consulta por período.
+- **`janela_fim` fica sem uso** para esta via.
+
+➡️ **Isto é tarefa do `dev-database`** (migration só de `COMMENT ON`), não do Infra.
+Enquanto não for corrigido, nada quebra — a coluna aceita o valor; só a documentação
+mente.
+
+### 11.8 — Provar o encanamento (quando o deploy for autorizado)
+
+```bash
+# Em HOMOLOGAÇÃO (ambiente 2). Começar do NSU 0 e com UMA página só.
+curl -sS -X POST https://fiscal.dominex.app/v1/dfe/nfse/distribuicao \
+  -H "Authorization: Bearer $FISCAL_SERVICE_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d @/tmp/pedido-nfse.json \
+  | jq '{status, ultimoNsu, filaDrenada, parcial, paginas,
+         recebidas: (.documentos|length), emitidasIgnoradas, eventos: (.eventos|length)}'
+```
+
+- **Esperar:** HTTP 200 com `status` `DOCUMENTOS_LOCALIZADOS` ou
+  `NENHUM_DOCUMENTO_LOCALIZADO`.
+- `422 distribuicao_rejeitada` → em geral o CNPJ **não está habilitado** no Ambiente
+  Nacional. É cadastro, não encanamento: repetir não resolve.
+- `403 acesso_negado` → certificado recusado no handshake.
+- ⚠️ **Homologação do ADN não tem fila real.** Serve para provar encanamento, não
+  para conferir conteúdo de nota — é a mesma limitação da `NFeDistribuicaoDFe`.
+- Testes locais: `pytest tests/test_adn_documento.py tests/test_adn_api.py`
+  (40 testes, sem rede). Suíte inteira do serviço: **130 testes, exit 0**.
+
+### 11.9 — Botões de ajuste (variáveis de ambiente)
+
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `ADN_ORCAMENTO_SEGUNDOS` | `75` | Teto de parede da rodada. **Tem que ficar abaixo do `read_timeout 120s` do Caddy.** Aumentou aqui? Aumenta o Caddy **antes**. |
+| `ADN_TIMEOUT` | `45` | Timeout de uma chamada |
+| `ADN_MAX_PAGINAS` | `3` | Páginas por rodada quando a edge não pede |
+| `ADN_MAX_PAGINAS_TETO` | `20` | Teto absoluto, mesmo se a edge pedir mais |
+| `ADN_LIMITE_RESPOSTA_MB` | `32` | Teto do corpo HTTP de uma página |
+| `ADN_DIST_HOST` / `ADN_DIST_PATH` | — | Só para apontar para um dublê em teste |
+| `FISCAL_BLOQUEAR_PRODUCAO` | — | `1` recusa qualquer chamada com `ambiente: 1` |
+
+### 11.10 — Capacidade
+
+Igual à §10.5: **nenhum container novo, nenhuma porta nova, nenhum bloco novo no
+Caddy.** É rota no serviço que já existe, dentro do mesmo `mem_limit: 512m`. Os dois
+tetos que protegem a box (que divide RAM com a Evolution do WhatsApp **do Dominex e
+do EcoSistema**): `ADN_LIMITE_RESPOSTA_MB` no corpo HTTP e `LIMITE_XML` (12 MB) por
+documento descompactado.
+
+---
+
+## 12. Registro do deploy do DF-e — 2026-09-24
+
+> Seção de histórico. Serve pra responder “o que mudou no dia em que o DF-e subiu?”
+> sem precisar de arqueologia no Docker.
+
+### 12.1 — O que foi publicado
+
+| Item | Antes | Depois |
+|---|---|---|
+| Imagem | `745a2d100db6` (2026-09-03) | `16a1cdc15891` (2026-09-24) |
+| `app/sefaz/` (10 arquivos) | ausente | presente |
+| `app/adn/` (7 arquivos) | ausente | presente |
+| `app/main.py` | sem os `include_router` do DF-e | com os dois |
+| `REQ_FILE` | `requirements.txt` (**sem pin**) | `requirements.lock.txt` (41 pinos) |
+| Rotas `/v1/dfe/*` | **404** | **422** com token · **401** sem |
+
+**Nada mais mudou.** Confirmado por checksum: os 21 arquivos `.py` que já existiam
+— incluindo **todo** o `app/sefin/` (a emissão), `custodia.py`, `config.py`,
+`security.py` e `app/danfse/` — são **byte-idênticos** antes e depois. O único
+arquivo pré-existente tocado foi o `main.py`, e só para registrar os routers.
+
+Não foi tocado: `/etc/caddy/Caddyfile` (o `@permitido path … /v1/*` já cobria
+`/v1/dfe/*`, e o `read_timeout 120s` já é maior que o orçamento de 75s do DF-e),
+`docker-compose.yml`, `Dockerfile`, `service.env`, ufw, e os stacks
+`~/whatsapp-evolution` e `~/ecosistema-dfe`.
+
+### 12.2 — Prova pós-deploy (saída real)
+
+```
+/v1/nfse/autoteste        → {"ok":true,"problemas":[]}   HTTP 200
+/readyz?deep=1            → status ok · kek ok (selar→abrir) · tmpfs em_ram=true
+                            noexec=true nosuid=true modo=0o700 · assinatura ok,
+                            problemas=[] · egresso ok
+smoke-test.sh --quiet     → RESULTADO: tudo certo (light) · exit 0
+blindagem                 → user=10001:10001 readonly=true mem=536870912
+                            swap=536870912 (== mem, sem swap) caps=[ALL]
+                            nnp=[no-new-privileges:true] pids=256
+porta                     → 127.0.0.1:8099 (não exposta)
+/docs /openapi.json /redoc /metrics /  → 404
+Evolution (os 2 produtos) → 3 containers Up 12 dias, ininterruptos
+```
+
+Downtime do fiscal: **~7 s** (recriação do container). A Evolution **não** foi
+tocada — `docker compose` rodou só em `/home/dominex/dominex-fiscal`.
+
+### 12.3 — ⚠️ O que este deploy NÃO provou
+
+- **Nenhuma chamada real ao governo.** As rotas foram exercitadas com corpo vazio
+  (`{}` → 422 de validação). Isso prova que a rota **existe, está registrada e está
+  autenticada** — não prova o diálogo com SEFAZ/ADN. Esse teste é o da §10.4 e
+  §11.8, exige certificado de cliente e **gasta cota horária**.
+- **Nenhuma empresa tem opt-in ligado** (`dfe_nfe_ativo`/`dfe_nfse_ativo` = 0 na
+  data), então os crons das edges não chamam estas rotas ainda. O primeiro tráfego
+  real vai aparecer quando o primeiro cliente ligar a função.
+- O alarme de deriva de layout (§6.1) **continua desligado** — os timers não estão
+  instalados. Enquanto isso, a única rede de proteção é rodar o
+  `smoke-test.sh --quiet` na mão.

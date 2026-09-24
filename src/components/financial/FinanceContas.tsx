@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
@@ -13,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -66,6 +67,15 @@ import { todayInTz } from '@/lib/timezone';
 import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
 import { buildReceiptBreakdowns } from '@/lib/financial-transaction-display';
+import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
+import {
+  getBatchPayIneligibility,
+  summarizeBatchSelection,
+  batchSideOf,
+  type BatchPayIneligibleReason,
+  type BatchSide,
+} from '@/lib/finance-batch-payment';
+import { BatchPayModal, type BatchPayConfirmPayload } from './BatchPayModal';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -125,13 +135,30 @@ export function FinanceContas({
   const [payDespAccountFormOpen, setPayDespAccountFormOpen] = useState(false);
   const [payDespAccountInitialName, setPayDespAccountInitialName] = useState('');
   const [payDespAccountQuery, setPayDespAccountQuery] = useState('');
+  // ── Quitação em LOTE ("A Pagar" e "A Receber") ────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  /**
+   * Lado do lote, travado no PRIMEIRO item marcado (`null` = nada selecionado).
+   * Um lote nunca mistura contas a pagar com contas a receber: o total do grupo
+   * seria a soma de dinheiro que saiu com dinheiro que entrou, um número que
+   * não corresponde a nenhuma linha de extrato. O servidor recusa a mistura.
+   */
+  const [selectionSide, setSelectionSide] = useState<BatchSide | null>(null);
+  /**
+   * Id do lote gerado NO CLIENT e reaproveitado enquanto a MESMA seleção não
+   * for quitada. É o que torna o botão seguro contra duplo clique e contra
+   * reenvio depois de a rede cair: a RPC reconhece o id, devolve
+   * `already_applied` e não quita nada duas vezes.
+   */
+  const batchGroupIdRef = useRef<string | null>(null);
   const isMobile = useIsMobile();
   // `timezone`: fuso da empresa. É ele que define o "hoje" de `paid_date`, que
   // por sua vez decide o MÊS da despesa no regime de Caixa da DRE.
   const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
-  const { deleteTransaction } = useFinancial();
+  const { deleteTransaction, payTransactionsBatch } = useFinancial();
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
@@ -521,6 +548,174 @@ export function FinanceContas({
 
   const pagination = useDataPagination(isMobile ? filtered : sortedItems);
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // QUITAÇÃO EM LOTE (as duas sub-abas: "A Pagar" e "A Receber")
+  // ══════════════════════════════════════════════════════════════════════════
+  //
+  // A guarda de verdade é a RPC `pay_transactions_batch`: tudo ou nada, com a
+  // mensagem já em PT-BR. O que existe aqui é ANTECIPAÇÃO dessas mesmas regras
+  // pra desabilitar o checkbox e dizer o motivo ANTES do clique — o usuário não
+  // pode selecionar 40 contas e descobrir o problema só no erro.
+  //
+  // A copy muda por lado (quem recebe não "quita", recebe), a mecânica não: é a
+  // mesma RPC, o mesmo carimbo e a mesma regra de "nenhuma linha nova nasce".
+  const isReceiveTab = subTab === 'receber';
+  const batchMsg = isReceiveTab ? fin.accounts.batchReceive : fin.accounts.batchPay;
+  const batchActionLabel = isReceiveTab
+    ? fin.accounts.batchReceive.receiveButton
+    : fin.accounts.batchPay.payButton;
+  // Mesma régua do gate de `fn:manage_finance` já usada no Financeiro
+  // (`useCanLaunchLeadRevenue`), que é a condição que a RPC checa no servidor:
+  // quem não pode gerenciar o Financeiro não vê checkbox nenhum, em vez de
+  // marcar 40 contas e levar um 42501 no clique.
+  const batchEnabled = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
+
+  /** Contas que JÁ têm filha de baixa parcial (mesmo teste estrutural da RPC). */
+  const partialParentIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of transactionAuditTrail ?? []) {
+      if (t.parent_transaction_id && t.category === PARTIAL_RECEIPT_CATEGORY) {
+        set.add(t.parent_transaction_id);
+      }
+    }
+    return set;
+  }, [transactionAuditTrail]);
+
+  /** Lançamentos que SÃO o pagamento de uma fatura de cartão. */
+  const cardBillPaymentIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of allBills) {
+      const id = (b as any).payment_transaction_id;
+      if (id) set.add(id as string);
+    }
+    return set;
+  }, [allBills]);
+
+  const eligibilityCtx = useMemo(
+    () => ({ partialParentIds, cardBillPaymentIds }),
+    [partialParentIds, cardBillPaymentIds],
+  );
+
+  /** `null` = a conta pode entrar no lote. */
+  const batchReasonFor = (t: FinancialTransaction): BatchPayIneligibleReason | null =>
+    getBatchPayIneligibility(t as any, eligibilityCtx);
+
+  // "Marcar todas" respeita o filtro ativo: marca o que está na lista filtrada
+  // (todas as páginas dela), nunca o banco inteiro.
+  //
+  // O LADO do lote entra aqui: com uma seleção já aberta, só continua
+  // selecionável quem é do mesmo lado. Um lote que misturasse entrada com saída
+  // teria um total que não corresponde a linha nenhuma de extrato (e
+  // `undo_payment_group` devolveria esse mesmo número sem sentido) — o servidor
+  // recusa, e a tela não deixa chegar lá.
+  const selectableRows = useMemo(
+    () => (batchEnabled
+      ? filtered.filter((t) => (
+        batchReasonFor(t) === null
+        && (selectionSide === null || batchSideOf(t as any) === selectionSide)
+      ))
+      : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [batchEnabled, filtered, eligibilityCtx, selectionSide],
+  );
+  // A seleção é sempre lida DE VOLTA da lista visível: conta que saiu do filtro
+  // não entra no total nem no lote, mesmo que o id continue guardado.
+  const selectedRows = useMemo(
+    () => selectableRows.filter((t) => selectedIds.has(t.id)),
+    [selectableRows, selectedIds],
+  );
+  const batchSelection = useMemo(() => summarizeBatchSelection(selectedRows as any), [selectedRows]);
+  const allSelectableSelected = selectableRows.length > 0 && selectedRows.length === selectableRows.length;
+
+  // Trocar de sub-aba zera a seleção (e o lado travado): uma seleção invisível
+  // voltando depois é pedir pra quitar o que não se viu.
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectionSide(null);
+    batchGroupIdRef.current = null;
+  }, [subTab]);
+
+  /** Qualquer mudança de seleção invalida o id do lote: outro conjunto, outro lote. */
+  const resetBatchGroupId = () => { batchGroupIdRef.current = null; };
+
+  const toggleSelectRow = (t: FinancialTransaction) => {
+    const side = batchSideOf(t as any);
+    if (!side) return;
+    // Marcar item de outro lado é ignorado (o checkbox nem aparece habilitado).
+    if (!selectedIds.has(t.id) && selectionSide !== null && side !== selectionSide) return;
+    resetBatchGroupId();
+    const next = new Set(selectedIds);
+    if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+    setSelectedIds(next);
+    // Primeiro item marcado TRAVA o lado; seleção vazia destrava.
+    setSelectionSide(next.size === 0 ? null : side);
+  };
+
+  const toggleSelectAll = () => {
+    resetBatchGroupId();
+    if (allSelectableSelected) {
+      const next = new Set(selectedIds);
+      selectableRows.forEach((t) => next.delete(t.id));
+      setSelectedIds(next);
+      if (next.size === 0) setSelectionSide(null);
+      return;
+    }
+    const next = new Set(selectedIds);
+    selectableRows.forEach((t) => next.add(t.id));
+    setSelectedIds(next);
+    const side = selectableRows.length > 0 ? batchSideOf(selectableRows[0] as any) : null;
+    if (next.size > 0 && side) setSelectionSide(side);
+  };
+
+  const clearSelection = () => {
+    resetBatchGroupId();
+    setSelectedIds(new Set());
+    setSelectionSide(null);
+  };
+
+  const handleConfirmBatchPay = async (payload: BatchPayConfirmPayload) => {
+    const ids = selectedRows.map((t) => t.id);
+    if (ids.length === 0) return;
+    // Cinto e suspensório: a seleção já é travada por lado, mas um lote
+    // misturado seria recusado pelo servidor com o lote inteiro perdido.
+    if (new Set(selectedRows.map((t) => t.transaction_type)).size > 1) {
+      clearSelection();
+      return;
+    }
+    // Id gerado no CLIENT e reaproveitado: duplo clique ou reenvio depois de a
+    // rede cair devolve `already_applied` em vez de quitar duas vezes.
+    if (!batchGroupIdRef.current) batchGroupIdRef.current = crypto.randomUUID();
+    try {
+      const result = await payTransactionsBatch.mutateAsync({
+        ids,
+        accountId: payload.accountId,
+        paymentMethod: payload.paymentMethod,
+        paidDate: payload.paidDate,
+        groupId: batchGroupIdRef.current,
+      });
+      if (result.already_applied) {
+        // Replay do MESMO lote: nada foi reaplicado. Não é erro, então nada de
+        // toast vermelho.
+        toast({ title: batchMsg.toast.alreadyApplied });
+      } else {
+        toast({
+          title: batchMsg.toast.success,
+          description: batchMsg.toast.successDescription
+            .replace('{count}', String(result.transaction_count))
+            .replace('{total}', fmt(Number(result.total_amount))),
+        });
+      }
+      setSelectedIds(new Set());
+      setSelectionSide(null);
+      batchGroupIdRef.current = null;
+      setBatchModalOpen(false);
+    } catch {
+      // O toast de erro (mensagem PT-BR da própria RPC) já sai no hook. O modal
+      // fica aberto e o id do lote é MANTIDO de propósito: se o usuário tentar
+      // de novo, o retry é idempotente.
+    }
+  };
+
   const isOverdue = (t: FinancialTransaction) =>
     !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
 
@@ -897,11 +1092,25 @@ export function FinanceContas({
         null
       ) : isMobile ? (
         <div className="space-y-3">
+          {/* Marcar/desmarcar todas — só o que está visível no filtro atual. */}
+          {batchEnabled && selectableRows.length > 0 && (
+            <div className="flex items-center gap-2 px-1">
+              <Checkbox
+                checked={allSelectableSelected}
+                onCheckedChange={toggleSelectAll}
+                aria-label={batchMsg.selectAll}
+              />
+              <span className="text-xs text-muted-foreground">{batchMsg.selectAll}</span>
+            </div>
+          )}
           <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
             {pagination.paginatedItems.map((t) => {
               const status = getStatus(t);
               const overdue = status === 'vencida';
               const partial = status === 'parcial';
+              // `null` = entra no lote. Com motivo, o checkbox fica desabilitado
+              // e um toque no (i) explica o porquê (tooltip não funciona no toque).
+              const batchReason = batchEnabled ? batchReasonFor(t) : null;
               const received = Number(t.amount_received ?? 0);
               const receiptBreakdown = subTab === 'receber' && status === 'paga'
                 ? receiptBreakdowns.get(t.id)
@@ -951,16 +1160,51 @@ export function FinanceContas({
                   )}
                   onClick={partial ? () => setViewingTxn(t) : undefined}
                   leading={
-                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
-                      {t.payroll_kind === 'salary'
-                        ? <Users className="h-5 w-5" />
-                        : status === 'paga'
-                          ? <Check className="h-5 w-5" />
-                          : status === 'vencida'
-                            ? <AlertTriangle className="h-5 w-5" />
-                            : status === 'parcial'
-                              ? <Receipt className="h-5 w-5" />
-                              : <Clock className="h-5 w-5" />}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {batchEnabled && (
+                        // `stopPropagation`: o toque no checkbox não pode virar
+                        // clique da linha (que abre o histórico em conta parcial).
+                        <span
+                          className="flex items-center"
+                          onClick={(e) => { e.stopPropagation(); }}
+                        >
+                          {batchReason === 'alreadyPaid' ? (
+                            // Conta paga não precisa de explicação: o (i) em
+                            // toda linha da aba "Pagas" seria só ruído. Espaço
+                            // reservado pra lista não dançar.
+                            <span className="block h-5 w-5" />
+                          ) : batchReason ? (
+                            <button
+                              type="button"
+                              aria-label={batchMsg.reasons[batchReason]}
+                              onClick={() => toast({
+                                title: batchMsg.blockedTitle,
+                                description: batchMsg.reasons[batchReason],
+                              })}
+                              className="flex h-5 w-5 items-center justify-center text-muted-foreground"
+                            >
+                              <Info className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <Checkbox
+                              checked={selectedIds.has(t.id)}
+                              onCheckedChange={() => toggleSelectRow(t)}
+                              aria-label={t.description}
+                            />
+                          )}
+                        </span>
+                      )}
+                      <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
+                        {t.payroll_kind === 'salary'
+                          ? <Users className="h-5 w-5" />
+                          : status === 'paga'
+                            ? <Check className="h-5 w-5" />
+                            : status === 'vencida'
+                              ? <AlertTriangle className="h-5 w-5" />
+                              : status === 'parcial'
+                                ? <Receipt className="h-5 w-5" />
+                                : <Clock className="h-5 w-5" />}
+                      </div>
                     </div>
                   }
                   title={
@@ -1028,6 +1272,17 @@ export function FinanceContas({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {/* Coluna de seleção do lote — só em "A Pagar". */}
+                    {batchEnabled && (
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[40px]">
+                        <Checkbox
+                          checked={allSelectableSelected}
+                          onCheckedChange={toggleSelectAll}
+                          disabled={selectableRows.length === 0}
+                          aria-label={batchMsg.selectAll}
+                        />
+                      </SortableTableHead>
+                    )}
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>{fin.accounts.table.description}</SortableTableHead>
                     <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">{fin.accounts.table.category}</SortableTableHead>
                     <SortableTableHead sortKey="_due_ts" sortConfig={sortConfig} onSort={handleSort}>{fin.accounts.table.dueDate}</SortableTableHead>
@@ -1044,8 +1299,33 @@ export function FinanceContas({
                     const receiptBreakdown = subTab === 'receber' && status === 'paga'
                       ? receiptBreakdowns.get(t.id)
                       : undefined;
+                    // `null` = entra no lote. Com motivo, o checkbox fica
+                    // desabilitado e o `title` explica no hover.
+                    const batchReason = batchEnabled ? batchReasonFor(t) : null;
                     return (
-                    <TableRow key={t.id} className={cn(status === 'vencida' && 'bg-destructive/5', partial && 'bg-warning/5')}>
+                    <TableRow
+                      key={t.id}
+                      className={cn(
+                        status === 'vencida' && 'bg-destructive/5',
+                        partial && 'bg-warning/5',
+                        selectedIds.has(t.id) && 'bg-primary/5',
+                      )}
+                    >
+                      {batchEnabled && (
+                        <TableCell>
+                          <span
+                            className="inline-flex"
+                            title={batchReason ? batchMsg.reasons[batchReason] : undefined}
+                          >
+                            <Checkbox
+                              checked={selectedIds.has(t.id)}
+                              disabled={!!batchReason}
+                              onCheckedChange={() => toggleSelectRow(t)}
+                              aria-label={t.description}
+                            />
+                          </span>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div>
                           <p className="font-medium flex items-center gap-1.5">
@@ -1147,6 +1427,63 @@ export function FinanceContas({
           </CardContent>
         </Card>
       )}
+
+      {/* ── Barra de seleção do lote ────────────────────────────────────────
+          `sticky` (não `fixed`) e ancorada DEPOIS da lista: assim ela acompanha
+          o fim do conteúdo e nunca cobre a última linha. No mobile o offset é o
+          mesmo do FAB (96px + safe area), pra ficar acima da barra inferior de
+          navegação; no desktop cola no rodapé da viewport. Mesmo tratamento das
+          barras de salvar da configuração fiscal. */}
+      {batchEnabled && selectedRows.length > 0 && (
+        <div className="sticky bottom-[calc(96px+env(safe-area-inset-bottom))] lg:bottom-3 z-30 flex flex-wrap items-center gap-3 rounded-2xl border bg-background/95 px-3 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Fundo saturado com o ícone branco direto nele. Verde do lado do
+                recebimento, igual à régua de cor do resto do Financeiro. */}
+            <span className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-full shrink-0',
+              isReceiveTab ? 'bg-success' : 'bg-primary',
+            )}>
+              <Layers className="h-4 w-4 text-white" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold leading-tight truncate">
+                {batchSelection.count === 1
+                  ? batchMsg.selectedOne
+                  : batchMsg.selectedMany.replace('{count}', String(batchSelection.count))}
+              </p>
+              <p className="text-sm font-bold tabular-nums leading-tight truncate">
+                {batchMsg.total}: {fmt(batchSelection.total)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="ghost" size="sm" onClick={clearSelection} className="min-h-11 rounded-xl">
+              {batchMsg.clear}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setBatchModalOpen(true)}
+              className={cn(
+                'min-h-11 rounded-xl gap-2',
+                isReceiveTab && 'bg-success hover:bg-success/90 text-white',
+              )}
+            >
+              <Check className="h-4 w-4" />
+              {batchActionLabel}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <BatchPayModal
+        open={batchModalOpen}
+        onOpenChange={(v) => { if (!payTransactionsBatch.isPending) setBatchModalOpen(v); }}
+        mode={isReceiveTab ? 'receive' : 'pay'}
+        transactions={selectedRows}
+        accounts={allAccounts}
+        onConfirm={handleConfirmBatchPay}
+        isSubmitting={payTransactionsBatch.isPending}
+      />
 
       <ContaFormDialog
         open={contaFormOpen}
@@ -1334,8 +1671,10 @@ export function FinanceContas({
         onCreated={(account) => setPayDespAccountId(account.id)}
       />
 
-      {/* FAB mobile — "Nova Conta". Desktop usa o botão inline do header. */}
-      {isMobile && (
+      {/* FAB mobile — "Nova Conta". Desktop usa o botão inline do header.
+          Some enquanto há seleção: o FAB e a barra do lote dividem o mesmo
+          canto inferior, e sobrepostos um cobre o outro. */}
+      {isMobile && selectedRows.length === 0 && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={fin.accounts.header.title}

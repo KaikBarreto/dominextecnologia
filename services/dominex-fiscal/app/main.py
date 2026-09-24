@@ -10,6 +10,11 @@ CONTRATO HTTP (fixo — a edge function e o Caddy dependem dele):
     GET  /v1/nfse/{chaveAcesso}              → 200 | 404
     GET  /v1/nfse/{chaveAcesso}/danfse       → 200 (application/pdf)
 
+    POST /v1/dfe/distribuicao                → 200  (NF-e destinada, ver app/sefaz/)
+    POST /v1/dfe/consulta-chave              → 200  (diagnóstico por chave)
+    POST /v1/dfe/manifestar                  → 201  (evento do destinatário)
+    POST /v1/dfe/nfse/distribuicao           → 200  (NFS-e tomada, ver app/adn/)
+
     POST /v1/certificado/selar               → 200  (custódia, ver abaixo)
     POST /v1/nfse/{chaveAcesso}/consultar    → 200  (alias de GET, ver abaixo)
     POST /v1/nfse/{chaveAcesso}/danfse       → 200  (alias de GET, ver abaixo)
@@ -231,6 +236,28 @@ async def selar_certificado(req: SelarCertificadoRequest) -> dict:
     nada mais. Nada é gravado aqui: quem persiste é a edge (Storage + banco).
     """
     return servico.selar_certificado(req)
+
+
+# -----------------------------------------------------------------------------
+# DF-e — NF-e destinada na SEFAZ + manifestação do destinatário.
+# Módulo IRMÃO de `app/sefin/`: o caminho que emite NFS-e não é tocado por ele.
+# Entra no mesmo router `rotas`, então ganha `/v1/dfe/*` e o alias sem prefixo
+# de graça, e herda os mesmos handlers de erro (ErroFiscal → resposta PT-BR).
+# -----------------------------------------------------------------------------
+from .sefaz.routes import rotas_dfe  # noqa: E402
+
+rotas.include_router(rotas_dfe)
+
+
+# -----------------------------------------------------------------------------
+# DF-e — NFS-e recebida (serviço TOMADO) no ADN, o Ambiente de Dados Nacional.
+# ⚠️ OUTRO GOVERNO, OUTRO PROTOCOLO: REST/JSON, não o SOAP da SEFAZ. Vive em
+# `app/adn/`, irmão de `app/sefaz/`, e entra no mesmo router `rotas` pra ganhar
+# `/v1/dfe/nfse/*`, o alias sem prefixo e os mesmos handlers de erro.
+# -----------------------------------------------------------------------------
+from .adn.routes import rotas_adn  # noqa: E402
+
+rotas.include_router(rotas_adn)
 
 
 # =============================================================================
