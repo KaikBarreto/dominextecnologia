@@ -19,7 +19,19 @@ const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
 >(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image ref={ref} className={cn("aspect-square h-full w-full", className)} {...props} />
+  // `draggable={false}`: <img> é arrastável por padrão, e dentro de um card
+  // arrastável (kanban do CRM, agenda) o arrasto iniciado em cima da foto vira
+  // um arrasto DA IMAGEM — o browser enche o dataTransfer com a URL da foto
+  // (text/uri-list + Files). Soltando fora de uma coluna, a ação padrão do
+  // Chrome é NAVEGAR pra essa URL: o app sai do ar ("a página atualizou") e o
+  // card não muda de estágio. Fica antes de {...props} pra quem precisar
+  // arrastar um avatar de propósito poder reativar.
+  <AvatarPrimitive.Image
+    ref={ref}
+    draggable={false}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
 ));
 AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 

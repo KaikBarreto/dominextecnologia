@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.25.8";
+export const APP_VERSION = "1.25.9";
 
-export const VERSION_NOTES = "O Financeiro ganhou busca por cliente e valor, detalhamento do valor líquido recebido e vencimento nas vendas pendentes do CRM."
+export const VERSION_NOTES = "Arrastar uma oportunidade entre as etapas do funil ficou seguro: soltar fora de uma coluna não tira mais você da tela."

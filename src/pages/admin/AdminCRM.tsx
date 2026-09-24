@@ -343,6 +343,15 @@ function CrmTab() {
     setDragOverStageId(null);
   };
 
+  // O `leadId` vai NO dataTransfer, não só no state: sem nenhum dado gravado o
+  // arrasto é inválido pela spec (Firefox aborta no dragstart) e o drop fica
+  // dependendo só do React state. Mesma chave do CRM do tenant.
+  const handleLeadDragStart = (e: React.DragEvent, leadId: string) => {
+    setDraggedLeadId(leadId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('leadId', leadId);
+  };
+
   const handleColumnDragOver = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -376,19 +385,20 @@ function CrmTab() {
       reorderStages.mutate(newOrder.map(st => st.id));
       return;
     }
-    handleDrop(stageId);
+    handleDrop(stageId, e.dataTransfer.getData('leadId'));
   };
 
-  const handleDrop = (stageId: string) => {
+  const handleDrop = (stageId: string, leadIdFromEvent?: string) => {
     setDropTargetStageId(null);
-    if (!draggedLeadId) return;
+    const leadId = leadIdFromEvent || draggedLeadId;
+    if (!leadId) return;
     const targetStage = stages.find(s => s.id === stageId);
     if (targetStage?.is_lost) {
-      const lead = leads.find(l => l.id === draggedLeadId);
-      setPendingLossDrop({ leadId: draggedLeadId, stageId, leadTitle: lead?.title || '' });
+      const lead = leads.find(l => l.id === leadId);
+      setPendingLossDrop({ leadId, stageId, leadTitle: lead?.title || '' });
       setLossDialogOpen(true);
     } else {
-      updateLead.mutate({ id: draggedLeadId, stage_id: stageId });
+      updateLead.mutate({ id: leadId, stage_id: stageId });
     }
     setDraggedLeadId(null);
   };
@@ -709,7 +719,7 @@ function CrmTab() {
                               <div
                                 key={lead.id}
                                 draggable
-                                onDragStart={() => setDraggedLeadId(lead.id)}
+                                onDragStart={e => handleLeadDragStart(e, lead.id)}
                                 onDragEnd={() => { setDraggedLeadId(null); setDropTargetStageId(null); }}
                                 className={cn(
                                   'cursor-grab active:cursor-grabbing transition-all',

@@ -71,6 +71,7 @@ class ErrorBoundary extends React.Component<
 
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import { SwipeBackProvider } from "@/components/SwipeBack";
+import { StrayDropGuard } from "@/components/StrayDropGuard";
 import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
 // i18n do SITE PÚBLICO (Fase 1: só liga a máquina de roteamento por idioma).
 import { isLocaleCode } from "@/lib/i18n";
@@ -823,6 +824,7 @@ const App = () => (
           <PageTitleUpdater />
           <HtmlLangManager />
           <ViewportManager />
+          <StrayDropGuard />
           <AuthProvider>
             <AppLocaleProvider>
               <UsageTracker />

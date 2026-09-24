@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.9',
+    date: '24 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Arrastar oportunidade no funil sem sustos',
+        description: 'Ao mover um card entre as etapas do funil de vendas, soltar um pouco fora da coluna podia tirar você do sistema, e a oportunidade continuava na etapa antiga. Agora o card só muda de etapa quando é solto no lugar certo, e soltar fora simplesmente cancela o movimento.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.25.8',
     date: '22 de setembro de 2026',
     type: 'patch',
