@@ -62,6 +62,11 @@ export const changelog: ChangelogEntry[] = [
         category: 'recurso',
       },
       {
+        title: 'Link salvo de Contas a Pagar volta a abrir',
+        description: 'Quem salvava o link da tela de contas a pagar, ou apenas atualizava a página nela, era mandado de volta para a tela de relatório, como se não tivesse acesso. O sistema decidia isso antes de terminar de carregar os módulos contratados. Agora ele espera a conferência terminar, e a tela abre normalmente.',
+        category: 'correcao',
+      },
+      {
         title: 'Configurações fiscais agora são uma tela inteira',
         description: 'Os dados da empresa, o certificado digital e a tributação saíram de uma janela apertada e ganharam uma tela própria, com as etapas numeradas e um resumo do que ainda falta para emitir. No celular ficou bem mais fácil de preencher e de conferir o que está pendente.',
         category: 'melhoria',

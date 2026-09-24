@@ -92,7 +92,7 @@ export default function Finance() {
   // Linha a destacar na lista (vem do `?txn=`). Fica até o usuário sair da tela.
   const [highlightTransactionId, setHighlightTransactionId] = useState<string | null>(null);
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
-  const { hasModule } = useCompanyModules();
+  const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   // Cobrança avulsa (recebimento do cliente final via Asaas): o botão "Cobrar"
   // só aparece com o add-on `cobrancas` contratado E a conta de recebimentos
   // ativa. Se o módulo está ativo mas a conta não foi configurada, mostramos um
@@ -105,11 +105,20 @@ export default function Finance() {
 
   // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
   // escondia a aba). Acesso direto por URL sem o módulo → cai no Relatório.
+  //
+  // ⚠️ ESPERAR `modulesLoading` NÃO É DETALHE: sem isso, quem cola a URL ou dá
+  // F5 em /financeiro/contas é expulso SEMPRE, mesmo tendo o módulo contratado.
+  // No primeiro render o `AuthContext` ainda hidrata, `profile.company_id` é
+  // undefined, as queries de módulo ficam `enabled: false`, `modules` vem `[]` e
+  // `hasModule()` responde `false` — o effect então redireciona ANTES do dado
+  // chegar. Clicar na aba de dentro do app disfarçava (cache quente), o que
+  // fazia o bug parecer intermitente. Provado no navegador em 24/09/2026.
   useEffect(() => {
+    if (modulesLoading) return;
     if (screen === 'contas' && !hasModule('finance_advanced')) {
       navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });
     }
-  }, [screen, hasModule, navigate, locale]);
+  }, [screen, hasModule, modulesLoading, navigate, locale]);
 
   const {
     // `transactions` = só as RAÍZES. É o que toda listagem desta tela consome.
