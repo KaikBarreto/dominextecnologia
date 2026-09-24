@@ -613,6 +613,7 @@ export type Database = {
           extra_users: number | null
           ibge_municipality_code: string | null
           id: string
+          is_internal_account: boolean
           is_self_service: boolean
           lead_worked_at: string | null
           lead_worked_by: string | null
@@ -668,6 +669,7 @@ export type Database = {
           extra_users?: number | null
           ibge_municipality_code?: string | null
           id?: string
+          is_internal_account?: boolean
           is_self_service?: boolean
           lead_worked_at?: string | null
           lead_worked_by?: string | null
@@ -723,6 +725,7 @@ export type Database = {
           extra_users?: number | null
           ibge_municipality_code?: string | null
           id?: string
+          is_internal_account?: boolean
           is_self_service?: boolean
           lead_worked_at?: string | null
           lead_worked_by?: string | null
@@ -2686,33 +2689,42 @@ export type Database = {
       }
       db_compute_catalog: {
         Row: {
+          baseline_disk_io_mbps: number | null
           captured_at: string
+          connections_direct: number | null
           cpu_cores: number | null
           cpu_dedicated: boolean | null
           id: number
           identifier: string | null
+          max_disk_io_mbps: number | null
           memory_gb: number
           name: string
           price_hourly: number | null
           price_monthly: number | null
         }
         Insert: {
+          baseline_disk_io_mbps?: number | null
           captured_at?: string
+          connections_direct?: number | null
           cpu_cores?: number | null
           cpu_dedicated?: boolean | null
           id?: never
           identifier?: string | null
+          max_disk_io_mbps?: number | null
           memory_gb: number
           name: string
           price_hourly?: number | null
           price_monthly?: number | null
         }
         Update: {
+          baseline_disk_io_mbps?: number | null
           captured_at?: string
+          connections_direct?: number | null
           cpu_cores?: number | null
           cpu_dedicated?: boolean | null
           id?: never
           identifier?: string | null
+          max_disk_io_mbps?: number | null
           memory_gb?: number
           name?: string
           price_hourly?: number | null
@@ -2731,13 +2743,34 @@ export type Database = {
           cpu_idle_seconds: number | null
           cpu_pct: number | null
           cpu_total_seconds: number | null
+          disk_io_mbps: number | null
+          disk_io_queue: number | null
+          disk_io_time_seconds: number | null
+          disk_io_util_pct: number | null
+          disk_io_weighted_seconds: number | null
+          disk_iops: number | null
           disk_pct: number | null
+          disk_read_bytes_total: number | null
+          disk_read_mbps: number | null
+          disk_reads_completed_total: number | null
+          disk_write_mbps: number | null
+          disk_writes_completed_total: number | null
+          disk_written_bytes_total: number | null
           id: number
+          major_faults_per_sec: number | null
+          major_faults_total: number | null
           mem_available_bytes: number | null
           mem_pct: number | null
           mem_total_bytes: number | null
           raw: Json | null
+          sample_elapsed_seconds: number | null
           slow_queries: number | null
+          swap_free_bytes: number | null
+          swap_in_pages_total: number | null
+          swap_io_mbps: number | null
+          swap_out_pages_total: number | null
+          swap_total_bytes: number | null
+          swap_used_pct: number | null
         }
         Insert: {
           active_queries?: number | null
@@ -2749,13 +2782,34 @@ export type Database = {
           cpu_idle_seconds?: number | null
           cpu_pct?: number | null
           cpu_total_seconds?: number | null
+          disk_io_mbps?: number | null
+          disk_io_queue?: number | null
+          disk_io_time_seconds?: number | null
+          disk_io_util_pct?: number | null
+          disk_io_weighted_seconds?: number | null
+          disk_iops?: number | null
           disk_pct?: number | null
+          disk_read_bytes_total?: number | null
+          disk_read_mbps?: number | null
+          disk_reads_completed_total?: number | null
+          disk_write_mbps?: number | null
+          disk_writes_completed_total?: number | null
+          disk_written_bytes_total?: number | null
           id?: never
+          major_faults_per_sec?: number | null
+          major_faults_total?: number | null
           mem_available_bytes?: number | null
           mem_pct?: number | null
           mem_total_bytes?: number | null
           raw?: Json | null
+          sample_elapsed_seconds?: number | null
           slow_queries?: number | null
+          swap_free_bytes?: number | null
+          swap_in_pages_total?: number | null
+          swap_io_mbps?: number | null
+          swap_out_pages_total?: number | null
+          swap_total_bytes?: number | null
+          swap_used_pct?: number | null
         }
         Update: {
           active_queries?: number | null
@@ -2767,13 +2821,34 @@ export type Database = {
           cpu_idle_seconds?: number | null
           cpu_pct?: number | null
           cpu_total_seconds?: number | null
+          disk_io_mbps?: number | null
+          disk_io_queue?: number | null
+          disk_io_time_seconds?: number | null
+          disk_io_util_pct?: number | null
+          disk_io_weighted_seconds?: number | null
+          disk_iops?: number | null
           disk_pct?: number | null
+          disk_read_bytes_total?: number | null
+          disk_read_mbps?: number | null
+          disk_reads_completed_total?: number | null
+          disk_write_mbps?: number | null
+          disk_writes_completed_total?: number | null
+          disk_written_bytes_total?: number | null
           id?: never
+          major_faults_per_sec?: number | null
+          major_faults_total?: number | null
           mem_available_bytes?: number | null
           mem_pct?: number | null
           mem_total_bytes?: number | null
           raw?: Json | null
+          sample_elapsed_seconds?: number | null
           slow_queries?: number | null
+          swap_free_bytes?: number | null
+          swap_in_pages_total?: number | null
+          swap_io_mbps?: number | null
+          swap_out_pages_total?: number | null
+          swap_total_bytes?: number | null
+          swap_used_pct?: number | null
         }
         Relationships: []
       }
@@ -11028,6 +11103,16 @@ export type Database = {
       }
       get_accessible_inventory_ids: { Args: never; Returns: string[] }
       get_admin_cobrancas_overview: { Args: never; Returns: Json }
+      get_admin_usage_statistics: {
+        Args: {
+          p_bucket?: string
+          p_from?: string
+          p_include_internal?: boolean
+          p_timezone?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       get_company_health_scores: {
         Args: never
         Returns: {
@@ -11047,14 +11132,22 @@ export type Database = {
         Returns: {
           avg_conn_used: number
           avg_cpu_pct: number
+          avg_disk_io_mbps: number
+          avg_disk_io_util_pct: number
+          avg_disk_iops: number
           avg_disk_pct: number
           avg_mem_pct: number
+          avg_swap_io_mbps: number
+          avg_swap_used_pct: number
           bucket_ts: string
           max_conn_used: number
           max_cpu_pct: number
+          max_disk_io_mbps: number
+          max_disk_io_util_pct: number
           max_disk_pct: number
           max_mem_pct: number
           max_slow_queries: number
+          max_swap_used_pct: number
           samples: number
         }[]
       }

@@ -74,6 +74,15 @@ services:
       # ---- Identificação do emissor no XML (campo verAplic).
       FISCAL_VER_APLIC: ${FISCAL_VER_APLIC:-Dominex-1.0}
 
+      # ---- Observabilidade (GET /v1/infra/metricas, RUNBOOK §6.5) ----------
+      # Diretório do retrato da box escrito pelo HOST. Ver o volume :ro abaixo.
+      FISCAL_ESTADO_DIR: /var/lib/dominex-fiscal
+      # Marcação de qual entrega está rodando. Aparece na aba Infra do painel e
+      # é o que responde "a VPS já está com o código de ontem?" sem SSH.
+      # Preencha no ~/dominex-fiscal/.env a cada deploy (RUNBOOK §5.3).
+      FISCAL_BUILD_REF: ${FISCAL_BUILD_REF:-}
+      FISCAL_IMAGE: dominex-fiscal:local
+
       # ⚠️ NÃO existe "ambiente" fixo aqui de propósito: produção (1) x
       # homologação (2) vem no CORPO de cada requisição. Não há chave global pra
       # alguém virar sem querer — e o smoke diário roda em homologação sem mexer
@@ -98,6 +107,21 @@ services:
       - /run/dominex-fiscal:size=16m,mode=0700,uid=10001,gid=10001,noexec,nosuid,nodev
       # /tmp — o Python precisa de um scratch gravável com rootfs read-only.
       - /tmp:size=32m,mode=1777,noexec,nosuid,nodev
+
+    # ---- Retrato da box, SOMENTE LEITURA ----
+    # O host (collect-box.sh, chamado pelo smoke) escreve aqui um JSON sem
+    # segredo com o consumo POR STACK. O container só LÊ.
+    #
+    # ⚠️ Isto NÃO quebra a regra "serviço sem estado em disco": nada do serviço é
+    # gravado (o bind é `:ro` e o rootfs continua read_only). Se o diretório
+    # sumir, `GET /v1/infra/metricas` degrada dizendo que o coletor está ausente
+    # e o motor não muda em nada.
+    #
+    # ⚠️ E é o substituto deliberado de montar /var/run/docker.sock: o socket do
+    # Docker é equivalente a ROOT NO HOST, e este é o container que toca chave
+    # privada de cliente. Ninguém monta o socket aqui. Nunca.
+    volumes:
+      - /var/lib/dominex-fiscal:/var/lib/dominex-fiscal:ro
 
     # ---- Blindagem do runtime ----
     security_opt:

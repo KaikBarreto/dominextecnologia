@@ -20,6 +20,8 @@ import {
   ChevronsUpDown,
   Briefcase,
   CreditCard,
+  HeartPulse,
+  Newspaper,
   Building2,
   Map,
   Target,
@@ -34,6 +36,7 @@ import {
   Clapperboard,
   Crown,
   Video,
+  BarChart3,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -116,6 +119,18 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
+  // ⚠️ ESTE ARRAY TEM QUE ESPELHAR `adminMenuItems` de `SidebarMenuContent.tsx`.
+  // Ele é a ÚNICA porta do painel admin no celular (o bottom nav só tem 4 slots
+  // fixos). Divergiu em silêncio até 24/09/2026: Health Score, Cobranças e Blog
+  // existiam só no desktop, então no telefone o master NUNCA chegava nessas três
+  // telas — rota e permissão funcionavam, faltava o item de menu. Mesma classe do
+  // incidente do `AdminSidebarNav.tsx` (código morto). Ao acrescentar tela admin,
+  // acrescente NOS DOIS arquivos, no mesmo commit.
+  { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
+  { title: 'Cobranças', icon: CreditCard, path: '/admin/cobrancas', screenKey: 'admin_cobrancas' },
+  { title: 'Blog', icon: Newspaper, path: '/admin/blog', screenKey: 'admin_blog', masterOnly: true },
+  // Estatísticas (Sistema + Banco de dados + Infra). masterOnly = vendedor-admin não vê.
+  { title: 'Estatísticas', icon: BarChart3, path: '/admin/estatisticas', screenKey: 'admin_estatisticas', masterOnly: true },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
   // Configurações intencionalmente fora da lista — botão dedicado no footer.
 ];

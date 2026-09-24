@@ -472,7 +472,18 @@ const STALE = 25_000;
 
 type TabKey = "overview" | "history" | "queries";
 
-export default function AdminMonitoramento() {
+interface AdminMonitoramentoProps {
+  /**
+   * `true` quando esta tela é renderizada como a aba "Banco de dados" de
+   * `/admin/estatisticas`. Único efeito: esconde o h1/subtítulo próprios e o
+   * padding de página, pra não empilhar dois títulos. NENHUMA regra muda — o
+   * veredito de instância, os cards de saúde e as top queries continuam sendo
+   * daqui.
+   */
+  embedded?: boolean;
+}
+
+export default function AdminMonitoramento({ embedded = false }: AdminMonitoramentoProps = {}) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [autoRefresh, setAutoRefresh] = useState(false);
   // Reage a mudança de visibilidade da aba pra pausar o auto-refresh em background.
@@ -546,11 +557,13 @@ export default function AdminMonitoramento() {
   // ── Acesso restrito (42501) ───────────────────────────────────────────────
   if (anyPermissionError) {
     return (
-      <div className="space-y-6 p-4 md:p-6">
-        <h1 className={`${typography.pageTitle} text-foreground flex items-center gap-2`}>
-          <Database className="h-6 w-6 lg:h-7 lg:w-7" />
-          Banco de Dados
-        </h1>
+      <div className={cn("space-y-6", !embedded && "p-4 md:p-6")}>
+        {!embedded && (
+          <h1 className={`${typography.pageTitle} text-foreground flex items-center gap-2`}>
+            <Database className="h-6 w-6 lg:h-7 lg:w-7" />
+            Banco de Dados
+          </h1>
+        )}
         <Alert variant="destructive">
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Acesso restrito</AlertTitle>
@@ -587,14 +600,16 @@ export default function AdminMonitoramento() {
 
   return (
     <TooltipProvider delayDuration={100}>
-      <div className="space-y-6 p-4 md:p-6">
+      <div className={cn("space-y-6", !embedded && "p-4 md:p-6")}>
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className={`${typography.pageTitle} text-foreground flex items-center gap-2`}>
-              <Database className="h-6 w-6 lg:h-7 lg:w-7" />
-              Banco de Dados
-            </h1>
+            {!embedded && (
+              <h1 className={`${typography.pageTitle} text-foreground flex items-center gap-2`}>
+                <Database className="h-6 w-6 lg:h-7 lg:w-7" />
+                Banco de Dados
+              </h1>
+            )}
             <p className="text-sm text-muted-foreground">
               Monitoramento de saúde do Postgres
               {capturedAt && (

@@ -34,7 +34,7 @@ import {
   Newspaper,
   Video,
   Crown,
-  Database,
+  BarChart3,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -141,7 +141,11 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
   { title: 'Cobranças', icon: CreditCard, path: '/admin/cobrancas', screenKey: 'admin_cobrancas' },
   { title: 'Blog', icon: Newspaper, path: '/admin/blog', screenKey: 'admin_blog', masterOnly: true },
-  { title: 'Banco de Dados', icon: Database, path: '/admin/monitoramento', screenKey: 'admin_monitoramento', masterOnly: true },
+  // Estatísticas engloba o antigo "Banco de Dados" (/admin/monitoramento) como
+  // aba, mais Sistema (uso da base) e Infra. masterOnly: vendedor-admin NÃO vê.
+  // ⚠️ Este array é O menu do painel admin. `AdminSidebarNav.tsx` é código
+  // morto (não é importado em lugar nenhum) — item colocado lá não aparece.
+  { title: 'Estatísticas', icon: BarChart3, path: '/admin/estatisticas', screenKey: 'admin_estatisticas', masterOnly: true },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
 

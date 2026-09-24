@@ -379,3 +379,12 @@ verify_jwt = false
 # dfe-sync e dfe-manifestar NÃO entram nesta lista: elas são do cliente e
 # exigem sessão (verify_jwt = true, o padrão), além do gate de módulo 'nfe' e
 # de can_manage_system em `_shared/fiscal-auth.ts`.
+
+# collect-db-health: coletor do histórico de saúde da plataforma
+# (db_health_history). Chamado SÓ por pg_cron via pg_net a cada 2 min com
+# `Authorization: Bearer <CRON_SECRET>` — o segredo do Vault é texto cru, não
+# um JWT. Sem esta entrada o deploy volta pro default verify_jwt=true e o
+# gateway passa a rejeitar o cron com 401 UNAUTHORIZED_INVALID_JWT_FORMAT
+# antes de a função olhar o header (aconteceu em 2026-09-24).
+[functions.collect-db-health]
+verify_jwt = false

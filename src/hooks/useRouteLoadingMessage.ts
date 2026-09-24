@@ -20,6 +20,7 @@ const ROUTE_MESSAGES: Array<readonly [string, string]> = [
   ['/admin/vendedores', 'Buscando vendedores...'],
   ['/admin/configuracoes', 'Carregando configurações...'],
   ['/admin/domiflix', 'Carregando Domiflix admin...'],
+  ['/admin/estatisticas', 'Apurando estatísticas da base...'],
   ['/admin', 'Carregando painel admin...'],
 
   // App principal

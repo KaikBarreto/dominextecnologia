@@ -32,6 +32,8 @@ set -uo pipefail
 
 AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ALERT="${ALERT_SCRIPT:-$AQUI/alert.sh}"
+COLETOR="${COLLECT_SCRIPT:-$AQUI/collect-box.sh}"
+ESTADO_DIR="${FISCAL_ESTADO_DIR:-/var/lib/dominex-fiscal}"
 
 MODO="light"
 QUIET=0
@@ -69,6 +71,10 @@ CERT_MIN_DIAS="${CERT_MIN_DIAS:-10}"
 
 FALHAS=()
 DETALHES=()
+#: 1 só quando o `--full` conseguiu EMITIR de verdade em homologação. Enquanto
+#: for 0, a cobertura é rasa: mudança de layout do lado do governo passa batida.
+#: A aba Infra do painel lê isto e mostra o aviso — ver RUNBOOK §6.5.
+COBERTURA_EMISSAO=0
 
 anotar()  { DETALHES+=("$*"); [[ $QUIET -eq 1 ]] && echo "  $*"; }
 falhar()  { FALHAS+=("$*"); echo "✗ $*" >&2; }
@@ -226,10 +232,55 @@ if [[ "$MODO" == "full" && -n "$TOKEN" ]]; then
 		falhar "emissão de fumaça em HOMOLOGAÇÃO falhou (HTTP $HTTP): $SAIDA"
 	else
 		passar "emissão de fumaça em homologação OK"
+		COBERTURA_EMISSAO=1
 	fi
 fi
 
+# ---- 8. Retratos pro painel (aba Infra) -------------------------------------
+# Dois arquivos pequenos, sem segredo, em $ESTADO_DIR — que o container monta
+# SOMENTE LEITURA. É assim que `GET /v1/infra/metricas` consegue mostrar "o
+# último smoke passou?" e "quanto cada stack está comendo de RAM?" sem que o
+# container fiscal precise do socket do Docker (= root no host). RUNBOOK §6.5.
+escrever_fumaca() {
+	local resultado="$1"
+	mkdir -p "$ESTADO_DIR" 2>/dev/null || return 0
+	local temp
+	temp="$(mktemp "$ESTADO_DIR/.fumaca.XXXXXX" 2>/dev/null)" || return 0
+	MODO="$MODO" RESULTADO="$resultado" COBERTURA="$COBERTURA_EMISSAO" \
+	python3 - "$temp" "${FALHAS[@]+"${FALHAS[@]}"}" "--" "${DETALHES[@]+"${DETALHES[@]}"}" <<'PY' || { rm -f "$temp"; return 0; }
+import json, os, sys
+from datetime import datetime
+
+destino = sys.argv[1]
+resto = sys.argv[2:]
+corte = resto.index("--") if "--" in resto else len(resto)
+falhas, detalhes = resto[:corte], resto[corte + 1:]
+
+with open(destino, "w", encoding="utf-8") as fh:
+    json.dump({
+        "executadoEm": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "modo": os.environ.get("MODO", "light"),
+        "resultado": os.environ.get("RESULTADO", "falha"),
+        "falhas": falhas[:20],
+        "detalhes": detalhes[:20],
+        "coberturaEmissao": os.environ.get("COBERTURA") == "1",
+    }, fh, ensure_ascii=False)
+PY
+	chmod 0644 "$temp" 2>/dev/null
+	# Atômico: o container pode estar lendo agora.
+	mv -f "$temp" "$ESTADO_DIR/fumaca.json" 2>/dev/null || rm -f "$temp"
+}
+
 # ---- Desfecho --------------------------------------------------------------------
+if (( ${#FALHAS[@]} > 0 )); then
+	escrever_fumaca falha
+else
+	escrever_fumaca ok
+fi
+# Coleta do host (consumo por stack). Best-effort: retrato é conveniência, não
+# pode fazer o alarme falhar.
+[[ -x "$COLETOR" ]] && "$COLETOR" >/dev/null 2>&1 || true
+
 if (( ${#FALHAS[@]} > 0 )); then
 	MENSAGEM="$(printf '%s\n' "${FALHAS[@]}" | sed 's/^/• /')"
 	if [[ -n "${DETALHES[*]:-}" ]]; then

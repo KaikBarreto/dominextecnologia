@@ -182,7 +182,10 @@ const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPorta
 const AdminCompanies = React.lazy(() => import("./pages/admin/AdminCompanies"));
 const AdminCompanyDetail = React.lazy(() => import("./pages/admin/AdminCompanyDetail"));
 const AdminHealthScore = React.lazy(() => import("./pages/admin/AdminHealthScore"));
-const AdminMonitoramento = React.lazy(() => import("./pages/admin/AdminMonitoramento"));
+// AdminMonitoramento não é mais rota própria: virou a aba "Banco de dados"
+// dentro de AdminEstatisticas (que o importa direto). /admin/monitoramento
+// continua existindo como redirect logo abaixo.
+const AdminEstatisticas = React.lazy(() => import("./pages/admin/AdminEstatisticas"));
 const AdminDashboard = React.lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminBlog = React.lazy(() => import("./pages/admin/AdminBlog"));
 const AdminBlogEditor = React.lazy(() => import("./pages/admin/AdminBlogEditor"));
@@ -390,13 +393,30 @@ function LegacyTechnicianToolsRedirect() {
 // Admin-screen-gated route — protege rotas /admin/* via admin_permissions.
 // super_admin sempre passa (hasAdminScreenAccess retorna true). Vendedor admin
 // só passa se a screenKey estiver listada em admin_permissions.
-function AdminScreenRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
+function AdminScreenRoute({
+  screenKey,
+  masterOnly = false,
+  children,
+}: {
+  screenKey: string;
+  /**
+   * `true` = só `super_admin`, ponto. Vendedor-admin NÃO entra nem com a
+   * screenKey gravada em `admin_permissions`.
+   * ⚠️ `hasAdminScreenAccess` sozinho não serve pra isso: ele é
+   * `isMaster || adminPermissions.includes(key)`, mesma semântica de
+   * `is_admin_user()` no SQL, que inclui vendedor-admin. Telas de estatística
+   * e infra são master-only por decisão do CEO (2026-09-24).
+   */
+  masterOnly?: boolean;
+  children: React.ReactNode;
+}) {
   const { hasAdminScreenAccess, loading, user, roles, permissions, adminPermissions } = useAuth();
   const defaultRoute = useDefaultRoute();
 
   if (loading) return <LoadingSpinner />;
   // Espera permissions/roles carregarem antes de decidir redirect (evita flicker e race)
   if (user && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
+  if (masterOnly && !roles.includes("super_admin")) return <Navigate to={defaultRoute} replace />;
   if (!hasAdminScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
 
   // TODO temporário: curadoria Domiflix restrita a um e-mail enquanto o conteúdo é montado.
@@ -752,7 +772,12 @@ const AppRoutes = () => (
       <Route path="/admin/configuracoes" element={<AdminScreenRoute screenKey="admin_configuracoes"><AdminSettings /></AdminScreenRoute>} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
       <Route path="/admin/cobrancas" element={<AdminScreenRoute screenKey="admin_cobrancas"><AdminCobrancas /></AdminScreenRoute>} />
-      <Route path="/admin/monitoramento" element={<AdminScreenRoute screenKey="admin_monitoramento"><AdminMonitoramento /></AdminScreenRoute>} />
+      <Route path="/admin/estatisticas" element={<AdminScreenRoute screenKey="admin_estatisticas" masterOnly><AdminEstatisticas /></AdminScreenRoute>} />
+      {/* A tela de monitoramento do banco virou a aba "Banco de dados" de
+          /admin/estatisticas. A rota antiga continua VIVA como redirect (não
+          como segunda cópia da tela): links e favoritos do CEO não quebram, e
+          não ficam duas telas iguais divergindo com o tempo. */}
+      <Route path="/admin/monitoramento" element={<Navigate to="/admin/estatisticas?aba=banco" replace />} />
       {localizedAppRoutes('changelog', <Changelog />)}
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />
       <Route path="/tutoriais/:titleId" element={<Navigate to="/domiflix" replace />} />

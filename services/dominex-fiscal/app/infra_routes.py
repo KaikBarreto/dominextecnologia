@@ -6,9 +6,18 @@ Nenhuma regra fiscal aqui. Isto é o que a OPERAÇÃO precisa:
   GET  /readyz             Bearer  — pronto? (token, KEK, tmpfs, versões)
   GET  /readyz?deep=1      Bearer  — + autoteste de assinatura + egresso pro gov
                                      (a lógica vive em app/diagnostico.py)
+  GET  /v1/infra/metricas  Bearer  — retrato de operação pra TELA (aba Infra do
+                                     painel Auctus). Lógica em app/metricas.py.
   GET  /admin/kek/status   Bearer  — ids das KEKs carregadas (nunca o material)
   POST /admin/kek/rewrap   Bearer  — re-envelopa DEKs na KEK atual (rotação)
   POST /admin/smoke        Bearer  — gancho do teste de fumaça diário (C6)
+
+⚠️ `/metrics` (Prometheus) CONTINUA NÃO EXISTINDO, e isso é decisão, não
+   esquecimento: o formato Prometheus é pensado pra ser raspado por um coletor
+   de dentro da rede, tende a crescer sozinho (todo middleware novo pendura
+   série nova lá) e não tem como ser revisado campo a campo. `/v1/infra/metricas`
+   é o oposto: JSON de lista FECHADA, montado à mão, atrás do mesmo Bearer das
+   demais rotas. Nada aqui é público.
 
 `/healthz` NÃO está aqui: é do `main.py` (do motor), é público de propósito e
 devolve só `{"ok": true}` — sem versão, sem hostname, sem estado de dependência.
@@ -26,7 +35,7 @@ import os
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
-from . import custodia, diagnostico
+from . import custodia, diagnostico, metricas as metricas_mod
 from .config import ConfiguracaoInvalida, get_config
 from .security import exigir_token
 
@@ -54,6 +63,35 @@ def readyz(deep: int = Query(0, ge=0, le=1)) -> dict:
     resultado = diagnostico.readyz(profundo=bool(deep))
     resultado["status"] = "ok" if resultado.get("ok") else "degradado"
     return resultado
+
+
+# =============================================================================
+# /v1/infra/metricas — o que a aba Infra do painel Auctus desenha
+# =============================================================================
+# ⚠️ POR QUE O CAMINHO É ESCRITO COM `/v1` AQUI DENTRO e não herdado do prefixo:
+# este router é montado na RAIZ (`app.include_router(infra_routes.router)`), ao
+# contrário do router do motor, que é montado duas vezes (`/v1/...` e `/...`).
+# A rota de métricas tem UM caminho só, de propósito — menos superfície, e o
+# `@permitido path ... /v1/*` do Caddy já a libera sem tocar no Caddyfile.
+#
+# ⚠️ NÃO transformar isto em rota pública "porque é só métrica". Uptime, versões
+# de biblioteca e ocupação de RAM são reconhecimento de graça pra quem estiver
+# procurando alvo. Mesmo Bearer das outras rotas; 401 sem corpo.
+@router.get("/v1/infra/metricas", include_in_schema=False)
+def infra_metricas() -> dict:
+    """Retrato de operação: serviço, box COMPARTILHADA, custódia e fumaça.
+
+    Sempre 200 — igual ao `/readyz`, o veredito está no corpo (`ok`/`status`/
+    `avisos`). Monitor que descarta o corpo em erro é justamente o que impede
+    de descobrir O QUE quebrou.
+
+    É BARATO de propósito (lê `/proc`, cgroup e dois arquivos pequenos): dá pra
+    a tela consultar a cada poucos segundos. O que é caro — autoteste de
+    assinatura, que gera uma chave RSA, e o teste de egresso — **não** roda
+    aqui; fica no `/readyz?deep=1` e o resultado histórico chega pelo bloco
+    `fumaca`, que é o retrato do smoke agendado.
+    """
+    return metricas_mod.metricas()
 
 
 # =============================================================================

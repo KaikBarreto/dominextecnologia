@@ -62,7 +62,7 @@
 | [3](#3-rotação-de-segredo) | **Rotação da KEK** e do token |
 | [4](#4-dns--caddy-https) | DNS + Caddy (HTTPS) |
 | [5](#5-operação-do-dia-a-dia) | Logs, restart, deploy, emissão interrompida |
-| [6](#6-teste-de-fumaça-e-alerta) | Teste de fumaça agendado + alerta no WhatsApp |
+| [6](#6-teste-de-fumaça-e-alerta) | Teste de fumaça agendado + alerta no WhatsApp + **métricas pro painel (§6.5)** |
 | [7](#7-capacidade-a-box-é-dividida) | Capacidade (a box é dividida) |
 | [8](#8-nunca-faça) | **NUNCA faça** |
 | [9](#9-o-que-depende-de-outra-pessoa) | O que depende de outra pessoa |
@@ -96,6 +96,7 @@
 |---|---|---|
 | `GET /healthz` | **não** | motor — devolve só `{"ok": true}` |
 | `GET /readyz` · `GET /readyz?deep=1` | Bearer | infra |
+| `GET /v1/infra/metricas` | Bearer | infra — retrato de operação pra **aba Infra** do painel Auctus (§6.5) |
 | `GET /admin/kek/status` · `POST /admin/kek/rewrap` · `POST /admin/smoke` | Bearer | infra |
 | `POST /v1/nfse/emitir` · `POST /v1/nfse/{chave}/cancelar` · `GET|POST /v1/nfse/{chave}` · `GET|POST /v1/nfse/{chave}/danfse` · `POST /v1/certificado/selar` | Bearer | motor |
 | `GET /v1/nfse/autoteste` | Bearer | motor — canário de layout, **não transmite nada** |
@@ -719,7 +720,8 @@ docker compose down                       # PARA o fiscal (⚠️ nunca com -v; 
 cd services/dominex-fiscal
 COPYFILE_DISABLE=1 tar -czf /tmp/fiscal.tgz \
   --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' --exclude='.venv' \
-  app tests requirements-dev.txt RUNBOOK.md Caddyfile
+  app tests requirements-dev.txt RUNBOOK.md Caddyfile \
+  docker-compose.yml smoke-test.sh collect-box.sh alert.sh systemd
 scp /tmp/fiscal.tgz deploy@46.202.149.193:/tmp/
 
 # 2) na VPS — BACKUP ANTES (é o que torna o rollback trivial)
@@ -730,6 +732,20 @@ docker tag "$(docker inspect dominex-fiscal --format '{{.Image}}')" dominex-fisc
 # 3) instalar
 rm -rf /tmp/stage && mkdir -p /tmp/stage && tar -xzf /tmp/fiscal.tgz -C /tmp/stage
 sudo cp -a /tmp/stage/app/. "$D/app/" && sudo chown -R dominex:dominex "$D/app"
+
+# 3b) scripts de operação + compose, quando a entrega mexer neles.
+#     ⚠️ `docker-compose.yml` só vale depois de um `up -d` (recria o container);
+#     `restart` não aplica mudança de volume/env.
+sudo cp -a /tmp/stage/smoke-test.sh /tmp/stage/collect-box.sh /tmp/stage/alert.sh "$D/"
+sudo cp -a /tmp/stage/docker-compose.yml "$D/"
+sudo chown dominex:dominex "$D"/*.sh "$D/docker-compose.yml"
+sudo chmod +x "$D"/*.sh
+
+# 3c) marque QUAL entrega está subindo. É isto que a aba Infra do painel mostra
+#     em `servico.revisao` e responde "a VPS já está com o código de ontem?".
+sudo -u dominex -H bash -c "cd $D && \
+  grep -q '^FISCAL_BUILD_REF=' .env && sed -i 's|^FISCAL_BUILD_REF=.*|FISCAL_BUILD_REF=$(date +%Y-%m-%d)|' .env \
+  || echo 'FISCAL_BUILD_REF=$(date +%Y-%m-%d)' >> .env"
 
 # 4) build + subir  (⚠️ sudo -u dominex, NUNCA `cd ~/dominex-fiscal`)
 sudo -u dominex -H bash -c "cd $D && docker compose build && docker compose up -d"
@@ -898,6 +914,131 @@ Feche isso com um monitor externo gratuito batendo em
 nada). O mesmo monitor deve cobrir `https://wa.ecosistematecnologia.com.br/` —
 porque a queda da box leva junto o WhatsApp do Dominex **e** do EcoSistema.
 
+### 6.5 — `GET /v1/infra/metricas` (o que a aba Infra do painel desenha)
+
+> **Por que existe:** os timers da §6.1 nunca foram instalados, então hoje não há
+> alarme nenhum de deriva de layout — só rodar o smoke na mão. A aba Infra do painel
+> Auctus **põe na tela** o que o alerta não manda: saúde do motor, consumo por stack
+> e "quando foi o último smoke, e ele cobriu emissão de verdade?". Ver o olho vivo
+> mais abaixo: enquanto o coletor não estiver instalado, a rota **diz** que não sabe.
+
+**Contrato.** `GET https://fiscal.dominex.app/v1/infra/metricas`, `Authorization:
+Bearer $FISCAL_SERVICE_TOKEN`, **sempre 200** (o veredito está no corpo, igual ao
+`/readyz`). Quem chama é uma Edge Function da Supabase — nunca o browser, que não
+pode ver o token.
+
+```
+{
+  ok, status, geradoEm, avisos[],
+  servico:  { nome, versaoApp, imagem, revisao, python, iniciadoEm, uptimeSegundos,
+              memoria{usadoMb,limiteMb,picoMb,usoPct,fonte}, cpu{...},
+              processos{atual,limite}, oom{mortesDesdeQueSubiu,aconteceu,...},
+              tmpfsCustodia{ok,emRam,noexec,nosuid,tamanhoMb,usadoMb} },
+  box:      { compartilhada:true, aviso, ocupantes[], uptimeSegundos,
+              memoria{totalMb,usadoMb,disponivelMb,usoPct}, swap, cpu{nucleos,carga…},
+              disco{totalGb,livreGb,usadoPct,fonte} },
+  stacks:   { disponivel, coletadoEm, idadeSegundos, atualizado,
+              itens[{stack,container,estado,saude,reinicios,memMb,memLimiteMb,
+                     cpuPct,oomUltimaParada,criadoEm}] },
+  custodia: { ok, kekAbreOQueFecha, keksConfiguradas, kekAtualId, tmpfsConforme,
+              acervoNestaVps:false },
+  fumaca:   { disponivel, executadoEm, idadeSegundos, atualizado, modo, resultado,
+              falhas[], detalhes[], coberturaEmissao },
+  governo:  { versoesBibliotecas{nfelib,signxml,xsdata,lxml,…}, producaoBloqueada }
+}
+```
+
+**⚠️ `servico` ≠ `box`, e a tela TEM que respeitar isso.** `servico.*` é o cgroup
+**deste container**; `box.*` é a VPS inteira — e a VPS é dividida com a Evolution API
+(WhatsApp do Dominex **e** do EcoSistema) e com o `ecosistema-dfe`. Uma tela que
+rotular `box.memoria.usoPct` como "consumo do motor fiscal" **mente pro CEO**: os
+GB vão estar majoritariamente no WhatsApp do outro produto. Por isso o próprio corpo
+carrega `box.compartilhada: true`, `box.aviso` em PT-BR e `box.ocupantes[]` — a tela
+deve renderizar o aviso, não escondê-lo. A quebra por produto está em `stacks.itens[]`,
+agrupada por `stack` (= projeto do Docker Compose).
+
+**⚠️ O que NÃO sai nessa resposta, e é decisão:** KEK, token, senha, material de
+certificado, conteúdo do `service.env`, caminho do tmpfs de custódia, hostname e IP
+da VPS. Texto livre vindo dos scripts do host (mensagens de falha do smoke) passa por
+uma redação que apaga caminho sob `/etc/dominex-fiscal` e qualquer blob longo. Quem
+for acrescentar campo: **o teste `test_resposta_nao_carrega_nenhum_segredo` é o
+portão** — se você precisou afrouxá-lo, a resposta é não.
+
+**⚠️ `/metrics` (Prometheus) continua devolvendo 404, e continua sendo de propósito.**
+O formato Prometheus cresce sozinho (todo middleware novo pendura série nova) e não
+dá pra revisar campo a campo. Esta rota é o oposto: JSON de lista fechada, montado à
+mão, atrás do mesmo Bearer. **Nada aqui é público** — uptime, versão de biblioteca e
+ocupação de RAM são reconhecimento de graça pra quem estiver procurando alvo.
+
+#### Instalar o coletor do host (é o que preenche `stacks` e `fumaca`)
+
+O container **não** enxerga os outros containers — e não vai enxergar: pra isso seria
+preciso montar `/var/run/docker.sock` nele, e **o socket do Docker é equivalente a
+root no host**. Este é justamente o container que manipula chave privada de cliente.
+Então inverte-se o fluxo: o host coleta e deixa um JSON sem segredo; o container lê.
+
+```bash
+# 1) diretório do retrato (o mesmo que o smoke já usa pro restart_count)
+sudo install -d -m 0755 /var/lib/dominex-fiscal
+
+# 2) o coletor vem no pacote do deploy (§5.3). ⚠️ O diretório REAL é
+#    /home/dominex/dominex-fiscal — ver o bloco de convenções no topo.
+sudo chmod +x /home/dominex/dominex-fiscal/collect-box.sh
+
+# 3) prova sem escrever nada
+sudo /home/dominex/dominex-fiscal/collect-box.sh --stdout | head -c 400; echo
+
+# 4) escreve o retrato de verdade
+sudo /home/dominex/dominex-fiscal/collect-box.sh
+ls -l /var/lib/dominex-fiscal/          # box.json (0644) e, após um smoke, fumaca.json
+```
+
+- **Esperar:** JSON com `containers[]` listando `whatsapp-evolution`, `dominex-fiscal`
+  e `ecosistema-dfe`, cada um com `stack`, `memMb`, `reinicios` e `oomUltimaParada`.
+- **Quem chama sozinho:** o `smoke-test.sh`, no fim de cada passagem — ou seja, a cada
+  15 min **depois que os timers da §6.1 forem instalados**. Não há timer novo pra
+  instalar. Se um dia quiser retrato mais fresco, crie um `.timer` de 1 min apontando
+  pro `collect-box.sh`; ele é idempotente e custa ~1 s.
+- **Enquanto os timers não existirem:** `stacks.disponivel` e `fumaca.disponivel` vêm
+  `false` **com motivo escrito**, e `avisos[]` diz que nada está vigiando mudança de
+  layout do lado do governo. A tela mostra a lacuna em vez de fingir que está verde —
+  que é exatamente o ponto.
+
+> **⚠️ Regra dura do coletor:** `docker inspect` **sempre** com `-f` e campo nomeado.
+> O `inspect` completo despeja o bloco `Env`, que contém `FISCAL_SERVICE_TOKEN`,
+> `FISCAL_KEKS` e a `EVOLUTION_API_KEY` — a chave que controla o WhatsApp dos **dois**
+> produtos. Há teste travando isso (`test_nenhum_script_do_host_usa_docker_inspect_sem_filtro`).
+
+#### O container precisa enxergar o diretório
+
+O `docker-compose.yml` já monta `/var/lib/dominex-fiscal` **somente leitura**. Depois
+de atualizar o compose, o container precisa ser **recriado** (não basta `restart`):
+
+```bash
+sudo -u dominex -H bash -c 'cd /home/dominex/dominex-fiscal && docker compose up -d'
+docker inspect -f '{{range .Mounts}}{{.Source}} -> {{.Destination}} ro={{not .RW}}{{"\n"}}{{end}}' dominex-fiscal
+```
+
+- **Esperar:** `/var/lib/dominex-fiscal → /var/lib/dominex-fiscal (ro=true)`.
+- **Se o diretório não existir**, o Docker o cria como `root:root 0755` — o container
+  (uid 10001) lê assim mesmo. Nada quebra.
+
+#### Prova ponta a ponta
+
+```bash
+# sem sudo de propósito: `deploy` está no grupo `fiscal` e o sudo gravaria a
+# linha de comando (que menciona o segredo) no auth.log — ver convenções no topo.
+TOKEN="$(grep -E '^FISCAL_SERVICE_TOKEN=' /etc/dominex-fiscal/service.env | cut -d= -f2-)"
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  https://fiscal.dominex.app/v1/infra/metricas | python3 -m json.tool | head -40
+
+# E sem token: tem que ser 401 seco.
+curl -sS -o /dev/null -w '%{http_code}\n' https://fiscal.dominex.app/v1/infra/metricas
+```
+
+- **Esperar:** `200` com `box.compartilhada: true`; e `401` sem token.
+- **Nada a mexer no Caddy:** a allowlist já libera `/v1/*`.
+
 ---
 
 ## 7. Capacidade (a box é dividida)
@@ -928,6 +1069,11 @@ dia → planejar **KVM 4 (16 GB)**. Planejar **antes** de saturar.
 ```bash
 free -h && docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}'
 ```
+
+**Sem SSH:** os mesmos números saem por `GET /v1/infra/metricas` (§6.5) — `box.memoria`
+é a box inteira e `stacks.itens[]` é a quebra por produto, que é o que responde "o
+gatilho de 75% é culpa de quem?". ⚠️ A quebra por produto depende do coletor do host
+estar instalado; sem ele, só o total da box aparece.
 
 **Recomendação de arquitetura, para o Tech Lead decidir:** o risco residual desta
 montagem é que a Evolution API (Node, open source, superfície grande, exposta) e a
@@ -964,7 +1110,13 @@ evolução natural quando o motor estiver estável.
 | Reiniciar o container no meio do expediente sem necessidade | O `POST /nfse` é síncrono: pode deixar nota autorizada no governo e perdida pra gente (§5.4). |
 | Reemitir uma nota “no susto” depois de um restart | Gera **nota duplicada**. Consulte `GET /dps/{idDPS}` primeiro. |
 | Usar instância de tenant (`dominex_<company_id>`) pra alerta interno | Aquele WhatsApp é do **cliente**. |
-| Remover `app.include_router(infra_routes.router)` do `main.py` | A operação fica cega **em silêncio**: sem `/readyz`, sem rotação de KEK, sem teste de fumaça. |
+| Remover `app.include_router(infra_routes.router)` do `main.py` | A operação fica cega **em silêncio**: sem `/readyz`, sem rotação de KEK, sem teste de fumaça, sem a aba Infra do painel. |
+| Montar `/var/run/docker.sock` no container fiscal | O socket do Docker é **equivalente a root no host**: quem o alcança lê a KEK e o `service.env`, e este é justamente o container que manipula chave privada de cliente. Se precisar de dado dos outros containers, o **host** coleta e deixa um JSON `:ro` (§6.5). |
+| Tornar `/v1/infra/metricas` pública "porque é só métrica" | Uptime, versão de biblioteca e ocupação de RAM são reconhecimento de graça. Mesmo Bearer das demais rotas. |
+| Acrescentar campo em `/v1/infra/metricas` sem revisar o que ele carrega | O portão é o teste `test_resposta_nao_carrega_nenhum_segredo`. Se você precisou afrouxá-lo pra caber o campo novo, a resposta é **não**. |
+| `docker inspect <container>` sem `-f` dentro de script | Despeja o bloco `Env`: `FISCAL_SERVICE_TOKEN`, `FISCAL_KEKS` e a `EVOLUTION_API_KEY` (que controla o WhatsApp dos **dois** produtos). Sempre campo nomeado. |
+| Rotular `box.*` como consumo do motor fiscal na tela | É a VPS **inteira**, dividida com o WhatsApp do EcoSistema e o `ecosistema-dfe`. O consumo do motor é `servico.*`; a quebra por produto é `stacks.itens[]`. |
+| Tratar `fumaca.disponivel: true` como "está tudo coberto" | Enquanto `coberturaEmissao` for `false`, nenhuma nota de verdade foi emitida no teste — deriva do lado do **governo** continua invisível (§6.3, pendência C6b). |
 | Chamar `POST /v1/dfe/distribuicao` com `ultimoNsu` **menor** que um já servido | É o gatilho do cStat **656**: a SEFAZ bloqueia a consulta de notas daquele CNPJ por **1 hora**. O cursor só anda pra frente. |
 | Descartar o `ultNsu` da resposta porque veio `parcial: true` | Aqueles NSU **já saíram da fila** da SEFAZ. Não gravar = repetir = 656. Ver §10.3. |
 | Usar `POST /v1/dfe/consulta-chave` “só pra testar” em produção | Não mexe no cursor, **mas gasta a mesma cota horária** (medido no Eco: varredura 53 min depois de um consChNFe tomou 656). |
@@ -992,7 +1144,9 @@ evolução natural quando o motor estiver estável.
 | **`COMMENT ON` de `dfe_sync_state`**: o cursor de NFS-e é **NSU**, não janela de período (§11.7) | 🗄️ Database | ⚠️ pendente — documentação mente, nada quebra |
 | **Deploy do DF-e na VPS** (build + `up -d` + smoke) | 🖥️ Infra | ✅ **FEITO 2026-09-24** — as 4 rotas no ar, emissão reprovada OK (ver §12) |
 | `requirements.lock.txt` (§2.2) | 🖥️ Infra | ✅ **FEITO 2026-09-24** — 41 pinos, gerados do container em produção |
-| **Timers de fumaça (§6.1) instalados** | 🖥️ Infra | ⚠️ **NÃO instalados** — `systemctl list-timers 'dominex-fiscal*'` devolve **0 timers**. O alarme de deriva de layout **não existe hoje** |
+| **Timers de fumaça (§6.1) instalados** | 🖥️ Infra | ⚠️ **NÃO instalados** — `systemctl list-timers 'dominex-fiscal*'` devolve **0 timers**. O alarme de deriva de layout **não existe hoje**. Enquanto isso, a aba Infra **mostra a lacuna** (`fumaca.disponivel: false`) em vez de fingir verde (§6.5) |
+| **`GET /v1/infra/metricas` + `collect-box.sh` (§6.5)** | 🖥️ Infra | ✍️ **escrito e testado local, NÃO publicado** — precisa de janela: `up -d` (recria o container por causa do volume `:ro`) + `collect-box.sh` |
+| Aba **Infra** do painel e a edge que chama `/v1/infra/metricas` | 🛡️ Plataforma | pendente — o token **não pode** ir pro browser; quem chama é Edge Function |
 | **Jail do `fail2ban` (§2.6)** | 🖥️ Infra | ⚠️ **NÃO instalado** — só o jail `sshd` está ativo. Ver o ⚠️ da §2.6 antes de ligar |
 | **`/etc/dominex-fiscal/alert.env` (§6.2)** | **CEO** | ⚠️ **não existe** — falta o nº do WhatsApp e a instância `dominex_infra_alertas`. Sem ele o alerta só vai pro log |
 | **Monitor externo (§6.4)** | **CEO** | ⚠️ pendente — se a box cair, o alerta interno cai junto |
@@ -1021,6 +1175,13 @@ evolução natural quando o motor estiver estável.
   pode ganhar cliente Supabase, cursor persistido ou arquivo de estado. O worker
   equivalente do EcoSistema (`services/ecosistema-dfe`) tem `service_role` em disco;
   **essa parte não foi portada de propósito** — é a decisão D1 do plano de 24/09/2026.
+- **⚠️ `app/metricas.py` LÊ um arquivo do host, e isso NÃO é exceção à D1.** O bind
+  de `/var/lib/dominex-fiscal` é `:ro`: o serviço **nunca escreve**, e o que está lá
+  é retrato de infraestrutura (consumo por container), não estado de negócio — se o
+  arquivo sumir, a rota degrada e o motor não muda em nada. **Não use isso como
+  precedente pra persistir cursor, cache de NSU ou qualquer coisa do domínio
+  fiscal.** No dia em que alguém precisar gravar algo, a resposta continua sendo a
+  edge function.
 
 ---
 
