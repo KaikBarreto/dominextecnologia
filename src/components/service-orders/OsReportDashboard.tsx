@@ -135,7 +135,10 @@ export function OsReportDashboard() {
     const map = new Map<string, { name: string; count: number; totalMin: number; withTime: number }>();
     const concluded = filtered.filter(os => os.status === 'concluida');
     concluded.forEach(os => {
-      const tid = os.technician_id;
+      // Credita quem EXECUTOU de verdade (check-in), não só quem foi escalado
+      // — em OS de equipe technician_id pode ser um integrante que nem foi a
+      // campo. OS sem nenhum dos dois continua fora do ranking.
+      const tid = os.check_in_by ?? os.technician_id;
       if (!tid) return;
       const profile = profiles?.find(p => p.user_id === tid);
       const existing = map.get(tid);

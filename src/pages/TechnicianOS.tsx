@@ -410,7 +410,7 @@ function TechnicianOSInner() {
   const { toast } = useToast();
   // Usuário LOGADO agora — carimbo legal da assinatura usa o nome de quem
   // assina de fato (no modo autenticado), não o técnico atribuído à OS.
-  const { profile: currentUserProfile, isAdminOrGestor, hasPermission } = useAuth();
+  const { user: currentUser, profile: currentUserProfile, isAdminOrGestor, hasPermission } = useAuth();
   // Bloqueio por assinatura do TENANT DO USUÁRIO LOGADO (profile.company_id),
   // reusando a mesma decisão do SubscriptionGate. Só é APLICADO no modo técnico
   // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
@@ -1636,12 +1636,18 @@ function TechnicianOSInner() {
     try {
       const location = await getCurrentLocation();
       const now = new Date().toISOString();
-      
+
+      // Autor real do check-in (rastreio do relatório de OS). Falha em
+      // resolver o usuário NUNCA bloqueia o check-in — o trigger do banco
+      // carimba auth.uid() como rede de segurança se vier null.
+      const checkInAuthorId = currentUser?.id ?? null;
+
       const { error } = await supabase
         .from('service_orders')
         .update({
           check_in_time: now,
           check_in_location: location,
+          check_in_by: checkInAuthorId,
           status: 'em_andamento',
         })
         .eq('id', resolvedOsId);
@@ -1654,7 +1660,7 @@ function TechnicianOSInner() {
 
       setCheckInTime(now);
       setCheckInLocation(location);
-      setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus, check_in_time: now } : null);
+      setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus, check_in_time: now, check_in_by: checkInAuthorId } : null);
 
       toast({ title: tFlow.toastCheckInDone });
 
@@ -1836,6 +1842,10 @@ function TechnicianOSInner() {
       const updateData: any = {
         check_out_time: now,
         check_out_location: location,
+        // Autor real do check-out (rastreio do relatório de OS). Falha em
+        // resolver o usuário NUNCA bloqueia o fechamento — trigger do banco
+        // carimba auth.uid() como rede de segurança se vier null.
+        check_out_by: currentUser?.id ?? null,
         status: 'concluida',
         // Conclusão de verdade limpa a marca de finalização parcial (caso a OS
         // tenha passado por "Finalizar Parcialmente" antes).
@@ -1899,7 +1909,7 @@ function TechnicianOSInner() {
 
       setCheckOutTime(now);
       setCheckOutLocation(location);
-      setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus, check_out_time: now, partial_finish: false } as any : null);
+      setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus, check_out_time: now, check_out_by: updateData.check_out_by, partial_finish: false } as any : null);
 
       toast({ title: tFlow.toastFinishDone });
 

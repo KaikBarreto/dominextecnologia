@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.25.10";
+export const APP_VERSION = "1.25.11";
 
-export const VERSION_NOTES = "O sistema agora busca sozinho as notas fiscais que seus fornecedores emitem para o seu CNPJ, e você lança a conta a pagar a partir delas já com as parcelas combinadas. Também dá para quitar várias contas de uma vez, gerando um único lançamento que bate com o extrato do banco."
+export const VERSION_NOTES = "O relatório de serviço passa a mostrar quem realmente fez o check-in e o check-out do atendimento, e não o técnico escalado na ordem. Em ordem de equipe o nome saía trocado; os relatórios antigos também foram corrigidos."

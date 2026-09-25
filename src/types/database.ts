@@ -108,6 +108,10 @@ export interface ServiceOrder {
   check_in_location?: { lat: number; lng: number } | null;
   check_out_time?: string;
   check_out_location?: { lat: number; lng: number } | null;
+  // Autor REAL de cada evento (pode divergir de technician_id em OS de
+  // equipe). Rastreio do relatório de OS — ver OSReport.tsx fetchExecutors.
+  check_in_by?: string | null;
+  check_out_by?: string | null;
   client_signature?: string;
   notes?: string;
   contract_id?: string;

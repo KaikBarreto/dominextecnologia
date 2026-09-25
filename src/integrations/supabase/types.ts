@@ -8464,8 +8464,10 @@ export type Database = {
       }
       service_orders: {
         Row: {
+          check_in_by: string | null
           check_in_location: Json | null
           check_in_time: string | null
+          check_out_by: string | null
           check_out_location: Json | null
           check_out_time: string | null
           client_signature: string | null
@@ -8537,8 +8539,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          check_in_by?: string | null
           check_in_location?: Json | null
           check_in_time?: string | null
+          check_out_by?: string | null
           check_out_location?: Json | null
           check_out_time?: string | null
           client_signature?: string | null
@@ -8610,8 +8614,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          check_in_by?: string | null
           check_in_location?: Json | null
           check_in_time?: string | null
+          check_out_by?: string | null
           check_out_location?: Json | null
           check_out_time?: string | null
           client_signature?: string | null

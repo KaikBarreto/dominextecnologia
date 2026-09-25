@@ -189,6 +189,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
   const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
+  // Autor REAL de cada evento (check-in/check-out), independentes entre si —
+  // em OS de equipe quem faz check-in pode não ser quem faz check-out.
+  const [checkInTechnicianInfo, setCheckInTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
+  const [checkOutTechnicianInfo, setCheckOutTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
   // Single-open UNIFICADO no relatório: uma só chave aberta cruzando os DOIS
   // accordions (checklist PMOC + checklists personalizados). As chaves são
   // únicas entre os grupos: PMOC usa `equipmentName ?? '__geral__'`,
@@ -470,6 +474,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceOrder.id, forceReadOnly, partialReport, visibleKeysSig]);
 
+  // Executores em useEffect PRÓPRIO: `check_in_by`/`check_out_by` chegam DEPOIS
+  // do primeiro render no fluxo de campo (o técnico bate o check-in e o estado
+  // local é atualizado na hora), e o efeito geral acima só reage a
+  // `serviceOrder.id` — sem isto o relatório mostraria o nome legado até o
+  // reload. Reseta antes de buscar pra não vazar o executor da OS anterior.
+  useEffect(() => {
+    setCheckInTechnicianInfo(null);
+    setCheckOutTechnicianInfo(null);
+    if (!forceReadOnly) fetchExecutors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceOrder.id, serviceOrder.check_in_by, serviceOrder.check_out_by, forceReadOnly]);
+
   // Chaves de grupo UNIFICADAS do relatório: cada equipamento é UM accordion que
   // contém as seções PMOC + a seção "Checklists Personalizados". Começa pelas
   // chaves PMOC (na ordem de render) e acrescenta os grupos que SÓ têm
@@ -582,11 +598,21 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       ((payload.equipment_items || []) as any[]).filter((it) => keep(it.equipment_id ?? GENERAL_KEY)) as unknown as EquipmentItem[]
     );
 
-    // technician (full_name, avatar_url) com fallback de snapshot
+    // technician (full_name, avatar_url) com fallback de snapshot — legado,
+    // usado quando a OS não tem autor real rastreado (check_in_by/check_out_by).
     if (payload.technician) {
       setTechnicianInfo({ full_name: payload.technician.full_name, photo_url: payload.technician.avatar_url });
     } else if (snapshot?.technician) {
       setTechnicianInfo({ full_name: snapshot.technician.full_name, photo_url: snapshot.technician.avatar_url });
+    }
+
+    // Executores REAIS de check-in/check-out. Uuids não vêm no payload anônimo
+    // (decisão de segurança) — só os objetos já resolvidos pela RPC.
+    if (payload.check_in_technician) {
+      setCheckInTechnicianInfo({ full_name: payload.check_in_technician.full_name, photo_url: payload.check_in_technician.avatar_url });
+    }
+    if (payload.check_out_technician) {
+      setCheckOutTechnicianInfo({ full_name: payload.check_out_technician.full_name, photo_url: payload.check_out_technician.avatar_url });
     }
 
     // contract (id, name) com fallback de snapshot
@@ -611,6 +637,22 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       // Fallback to snapshot if profile was deleted
       setTechnicianInfo({ full_name: snapshot.technician.full_name, photo_url: snapshot.technician.avatar_url });
     }
+  };
+
+  // Resolve os autores REAIS de check-in e check-out em UMA query só (dedup
+  // quando é a mesma pessoa nos dois eventos — caso comum). Sem check_in_by/
+  // check_out_by gravado (OS antiga), não seta nada — o render cai no
+  // fallback `technicianInfo` (legado, mesmo comportamento de hoje).
+  const fetchExecutors = async () => {
+    const checkInId = serviceOrder.check_in_by ?? null;
+    const checkOutId = serviceOrder.check_out_by ?? null;
+    const ids = Array.from(new Set([checkInId, checkOutId].filter((id): id is string => !!id)));
+    if (ids.length === 0) return;
+    const { data } = await db.from('profiles').select('user_id, full_name, avatar_url').in('user_id', ids);
+    if (!data) return;
+    const byId = new Map(data.map((p: any) => [p.user_id, { full_name: p.full_name, photo_url: p.avatar_url }]));
+    if (checkInId && byId.has(checkInId)) setCheckInTechnicianInfo(byId.get(checkInId)!);
+    if (checkOutId && byId.has(checkOutId)) setCheckOutTechnicianInfo(byId.get(checkOutId)!);
   };
 
   const fetchRating = async () => {
@@ -928,6 +970,14 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     );
   };
 
+  // Executor REAL de cada evento (check-in/check-out independentes — em OS de
+  // equipe quem chega pode não ser quem sai). checkIn/checkOutTechnicianInfo
+  // só populam quando a OS tem autor rastreado (check_in_by/check_out_by ou,
+  // no modo público, check_in_technician/check_out_technician). OS antiga sem
+  // rastreio cai no `technicianInfo` legado — mesmo comportamento de hoje.
+  const checkInExecutor = checkInTechnicianInfo ?? technicianInfo;
+  const checkOutExecutor = checkOutTechnicianInfo ?? technicianInfo;
+
   return (
     <>
     <div className="space-y-4">
@@ -1141,7 +1191,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {serviceOrder.check_in_time && (
                   <div className="flex items-start gap-3">
-                    {technicianInfo?.photo_url && (
+                    {checkInExecutor?.photo_url && (
                       /* `data-pdf-gallery`: mesmo caso da foto do cliente acima.
                          Pai redondo de 48px com `overflow-hidden`, a ampliação do
                          renderer virava um recorte ampliado do canto da foto. */
@@ -1149,19 +1199,19 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                         type="button"
                         data-pdf-gallery
                         className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 shrink-0 mt-0.5 transition-opacity hover:opacity-80"
-                        onClick={() => setPreviewImage(technicianInfo.photo_url!)}
+                        onClick={() => setPreviewImage(checkInExecutor.photo_url!)}
                       >
                         <img
-                          src={technicianInfo.photo_url}
-                          alt={technicianInfo.full_name}
+                          src={checkInExecutor.photo_url}
+                          alt={checkInExecutor.full_name}
                           className="w-full h-full rounded-full object-cover"
                         />
                       </button>
                     )}
                     <div>
                       <p className="text-xs text-slate-400 font-semibold">{tR.labelCheckin}</p>
-                      {technicianInfo && (
-                        <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
+                      {checkInExecutor && (
+                        <p className="text-sm font-semibold text-slate-700">{checkInExecutor.full_name}</p>
                       )}
                       <p className="text-sm font-medium text-slate-800">
                         {formatDateTime(serviceOrder.check_in_time!, locale, timezone)}
@@ -1185,7 +1235,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 )}
                 {!partialReport && serviceOrder.check_out_time && (
                   <div className="flex items-start gap-3">
-                    {technicianInfo?.photo_url && (
+                    {checkOutExecutor?.photo_url && (
                       /* `data-pdf-gallery`: mesmo caso da foto do cliente acima.
                          Pai redondo de 48px com `overflow-hidden`, a ampliação do
                          renderer virava um recorte ampliado do canto da foto. */
@@ -1193,19 +1243,19 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                         type="button"
                         data-pdf-gallery
                         className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 shrink-0 mt-0.5 transition-opacity hover:opacity-80"
-                        onClick={() => setPreviewImage(technicianInfo.photo_url!)}
+                        onClick={() => setPreviewImage(checkOutExecutor.photo_url!)}
                       >
                         <img
-                          src={technicianInfo.photo_url}
-                          alt={technicianInfo.full_name}
+                          src={checkOutExecutor.photo_url}
+                          alt={checkOutExecutor.full_name}
                           className="w-full h-full rounded-full object-cover"
                         />
                       </button>
                     )}
                     <div>
                       <p className="text-xs text-slate-400 font-semibold">{tR.labelCheckout}</p>
-                      {technicianInfo && (
-                        <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
+                      {checkOutExecutor && (
+                        <p className="text-sm font-semibold text-slate-700">{checkOutExecutor.full_name}</p>
                       )}
                       <p className="text-sm font-medium text-slate-800">
                         {formatDateTime(serviceOrder.check_out_time!, locale, timezone)}

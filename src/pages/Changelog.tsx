@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.11',
+    date: '25 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de serviço mostra quem realmente esteve no local',
+        description: 'O relatório exibia no check-in e no check-out o técnico escalado para a ordem, e não quem de fato bateu o ponto. Em ordem atendida por equipe, o sistema escolhia um integrante qualquer, então o nome saía trocado. Agora cada ordem guarda quem chegou e quem saiu, e o relatório mostra os dois, inclusive quando são pessoas diferentes. Os relatórios antigos também foram corrigidos, com base no registro de localização de cada atendimento.',
+        category: 'correcao',
+      },
+      {
+        title: 'Ranking de técnicos conta quem foi a campo',
+        description: 'No painel de relatórios, o ranking creditava o atendimento ao técnico escalado na ordem. Quando a ordem era de equipe, ou quando outra pessoa acabava indo no lugar, o serviço ia para a conta de quem não esteve lá. Agora o ranking considera quem realmente fez o check-in.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.25.10',
     date: '24 de setembro de 2026',
     type: 'patch',
