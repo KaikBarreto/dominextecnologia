@@ -284,7 +284,7 @@ export function FinanceCobrancas() {
       {/* ── Cards de totais ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {/* A receber */}
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 px-4 py-3">
           <DollarSign className="h-5 w-5 shrink-0 text-amber-500" />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground">{t.cards.pending}</p>
@@ -294,7 +294,7 @@ export function FinanceCobrancas() {
           </div>
         </div>
         {/* Recebido */}
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 px-4 py-3">
           <TrendingUp className="h-5 w-5 shrink-0 text-emerald-500" />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground">{t.cards.paid}</p>
@@ -304,7 +304,7 @@ export function FinanceCobrancas() {
           </div>
         </div>
         {/* Vencido */}
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl bg-destructive/10 px-4 py-3">
           <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground">{t.cards.overdue}</p>

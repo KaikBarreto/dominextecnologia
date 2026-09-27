@@ -187,7 +187,7 @@ export function FinanceCostCenters() {
       ) : filtered.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground py-8">{t.noResults}</p>
       ) : isMobile ? (
-        <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="rounded-xl bg-muted/25 overflow-hidden">
           {filtered.map((cc) => (
             <MobileListItem
               key={cc.id}

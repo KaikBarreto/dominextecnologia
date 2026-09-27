@@ -192,6 +192,7 @@ export function FinanceCategorias() {
       color: cat.color,
       icon: cat.icon ?? 'Tag',
       dre_group: cat.dre_group ?? 'opex',
+      dfc_group: cat.dfc_group ?? 'operacional',
       parent_id: null,
       is_system: cat.is_system,
       previous_name: cat.name,
@@ -394,11 +395,11 @@ export function FinanceCategorias() {
             onDragEnd={handleDragEnd}
             className={cn(
               // `relative`: o menu de ações saiu do fluxo (ver abaixo) e se
-              // ancora neste card. `hover:bg-accent` OPACO (era `/30`) porque
-              // o menu flutuante usa o mesmo fundo pra não deixar costura
-              // visível por cima do nome.
-              'group relative rounded-xl border border-border px-3 py-2.5 transition-all duration-200',
-              'hover:shadow-md hover:border-primary/20 hover:bg-accent',
+              // ancora neste card. A borda fica transparente no repouso para
+              // reduzir ruído sem causar salto quando o drag ativa o contorno;
+              // o hover opaco combina com o fundo do menu flutuante.
+              'group relative rounded-xl border border-transparent bg-muted/30 px-3 py-2.5 transition-all duration-200',
+              'hover:bg-accent',
               isDragging && 'opacity-40 scale-95',
               isDragOver && 'border-primary border-dashed bg-primary/5',
               !isSystem && 'cursor-grab active:cursor-grabbing',

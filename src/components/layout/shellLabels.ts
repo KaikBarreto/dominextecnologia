@@ -43,6 +43,8 @@ const TITLE_TO_KEY: Record<string, keyof ShellMenu> = {
   'Visão Geral': 'financeOverview',
   'Movimentações Financeiras': 'financeMovements',
   'Contas a Pagar/Receber': 'financeAccounts',
+  Cobranças: 'financeCharges',
+  Relatórios: 'financeReports',
   'Notas Fiscais': 'fiscalNotes',
   // Itens admin Auctus
   'CRM/Tarefas': 'adminCrm',

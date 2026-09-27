@@ -4461,6 +4461,7 @@ export type Database = {
           color: string
           company_id: string | null
           created_at: string
+          dfc_group: string | null
           dre_group: string | null
           icon: string | null
           id: string
@@ -4476,6 +4477,7 @@ export type Database = {
           color?: string
           company_id?: string | null
           created_at?: string
+          dfc_group?: string | null
           dre_group?: string | null
           icon?: string | null
           id?: string
@@ -4491,6 +4493,7 @@ export type Database = {
           color?: string
           company_id?: string | null
           created_at?: string
+          dfc_group?: string | null
           dre_group?: string | null
           icon?: string | null
           id?: string

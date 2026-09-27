@@ -20,6 +20,8 @@ export interface FinancialCategory {
   icon: string | null;
   is_active: boolean;
   dre_group: string | null;
+  /** Grupo gerencial usado pelo DFC direto. `null` usa o fallback operacional. */
+  dfc_group: 'operacional' | 'investimento' | 'financiamento' | null;
   is_system: boolean;
   company_id: string | null;
   sort_order?: number | null;
@@ -33,7 +35,8 @@ export interface FinancialCategory {
    *
    * 🔴 A FILHA É UMA CATEGORIA COMPLETA: tem `name` próprio e ÚNICO na empresa
    * (o índice `financial_categories_company_id_name_key` continua valendo),
-   * e `dre_group`, `color` e `icon` PRÓPRIOS — NÃO herda o grupo do pai. O
+   * e `dre_group`, `dfc_group`, `color` e `icon` PRÓPRIOS — os grupos só vêm
+   * pré-preenchidos ao criar e podem ser alterados depois. O
    * lançamento grava em `financial_transactions.category` o NOME DA FOLHA
    * escolhida (coluna `text`, não é FK), nunca o do pai. Por isso nenhum valor
    * é contado duas vezes: cada lançamento pertence a exatamente uma linha.
@@ -50,6 +53,7 @@ export interface CategoryInput {
   icon?: string;
   is_active?: boolean;
   dre_group?: string;
+  dfc_group?: 'operacional' | 'investimento' | 'financiamento';
   /** Pai da subcategoria. Ausente/`null` cria categoria raiz (comportamento de sempre). */
   parent_id?: string | null;
 }

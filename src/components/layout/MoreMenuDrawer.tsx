@@ -107,6 +107,8 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Visão Geral', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
       { title: 'Movimentações Financeiras', icon: HistoryIcon, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
       { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Cobranças', icon: CreditCard, path: '/financeiro/cobrancas', screenKey: 'screen:finance', moduleKey: 'cobrancas' },
+      { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
       { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
     ],
   },

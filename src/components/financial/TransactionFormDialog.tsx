@@ -1279,7 +1279,10 @@ export function TransactionFormDialog({
       const Icon = getCategoryIcon(cat.icon);
       return {
         value: cat.name,
-        label: cat.name,
+        // O gatilho do select precisa deixar explícito o caminho escolhido.
+        // Só o rótulo é hierárquico: o valor persistido continua sendo o nome
+        // da filha, preservando o contrato histórico de `category`.
+        label: `${categoryCascade.parentName} › ${cat.name}`,
         sublabel: cat.is_active ? undefined : tf.categoryInactiveSuffix,
         icon: (
           <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
@@ -1288,7 +1291,7 @@ export function TransactionFormDialog({
         ) as React.ReactNode,
       };
     }),
-  ]), [categoryCascade.children, tf.subcategoryNone, tf.categoryInactiveSuffix]);
+  ]), [categoryCascade.children, categoryCascade.parentName, tf.subcategoryNone, tf.categoryInactiveSuffix]);
 
   // Opções do SearchableSelect de conta bancária / caixa.
   // Em RECEITA o cartão sai da lista: cartão de crédito é conta de SAÍDA (a
@@ -1385,81 +1388,87 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Category — SearchableSelect com busca + criar-na-hora (padrão EcoSistema).
-              O "+" (Nova categoria) fica sempre visível dentro da lista. Ao criar,
-              abre o CategoryFormDialog pré-preenchido com o nome digitado e o tipo
-              da transação atual; a nova categoria é auto-selecionada no submit.
-              As options são filtradas pelo tipo (entrada/saída/ambos) da transação. */}
-          <FormField control={form.control} name="category" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{tf.categoryLabel}</FormLabel>
-              <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
-                <SearchableSelect
-                  options={categoryOptions}
-                  value={categoryCascade.parentName}
-                  onValueChange={field.onChange}
-                  onSearchChange={setCategoryQuery}
-                  placeholder={tf.categoryPlaceholder}
-                  searchPlaceholder={tf.categorySearchPlaceholder}
-                  className={cn(
-                    'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
-                    canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+          {/* Classificação é um único grupo visual, sem caixa/borda intermediária:
+              Categoria e Centro de custo começam na mesma linha no desktop e
+              empilham no mobile. Se a raiz tiver filhas, Subcategoria cresce
+              somente para baixo da Categoria, sem deslocar o Centro de custo. */}
+          <fieldset className="lg:col-span-2 min-w-0 space-y-2">
+            <legend className="text-sm font-semibold text-foreground">{tf.classificationLabel}</legend>
+            <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 lg:grid-cols-2">
+              {/* Category — SearchableSelect com busca + criar-na-hora (padrão EcoSistema).
+                  O "+" (Nova categoria) fica sempre visível dentro da lista. Ao criar,
+                  abre o CategoryFormDialog pré-preenchido com o nome digitado e o tipo
+                  da transação atual; a nova categoria é auto-selecionada no submit.
+                  As options são filtradas pelo tipo (entrada/saída/ambos) da transação. */}
+              <FormField control={form.control} name="category" render={({ field }) => (
+                <FormItem className={cn(!showCostCenter && 'lg:col-span-2')}>
+                  <FormLabel>{tf.categoryLabel}</FormLabel>
+                  <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
+                    <SearchableSelect
+                      options={categoryOptions}
+                      value={categoryCascade.parentName}
+                      onValueChange={field.onChange}
+                      onSearchChange={setCategoryQuery}
+                      placeholder={tf.categoryPlaceholder}
+                      searchPlaceholder={tf.categorySearchPlaceholder}
+                      className={cn(
+                        'flex-1 min-w-0 justify-between border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal rounded-none',
+                        canManageFinanceSettings ? 'rounded-l-md' : 'rounded-md',
+                      )}
+                    />
+                    {canManageFinanceSettings && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setCategoryInitialName(categoryQuery);
+                          setCategoryFormOpen(true);
+                        }}
+                        className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                        aria-label={tf.categoryCreateAlwaysLabel}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {/* Subcategoria: só entra na tela quando a categoria escolhida TEM
+                      filhas. O rótulo selecionado inclui o caminho pai › filha. */}
+                  {categoryCascade.children.length > 0 && (
+                    <div className="space-y-1 pt-2">
+                      <span className="block text-[11px] font-medium text-muted-foreground">{tf.subcategoryLabel}</span>
+                      <SearchableSelect
+                        options={subcategoryOptions}
+                        value={categoryCascade.childName || USE_PARENT_CATEGORY}
+                        onValueChange={(name) => field.onChange(name === USE_PARENT_CATEGORY ? categoryCascade.parentName : name)}
+                        placeholder={tf.subcategoryPlaceholder}
+                        searchPlaceholder={tf.subcategorySearchPlaceholder}
+                        className="w-full justify-between h-10 font-normal"
+                      />
+                    </div>
                   )}
-                />
-                {canManageFinanceSettings && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setCategoryInitialName(categoryQuery);
-                      setCategoryFormOpen(true);
-                    }}
-                    className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                    aria-label={tf.categoryCreateAlwaysLabel}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              {/* Subcategoria: só entra na tela quando a categoria escolhida TEM
-                  filhas. Quem não usa subcategoria não vê diferença nenhuma. */}
-              {categoryCascade.children.length > 0 && (
-                <div className="space-y-1 pt-2">
-                  <span className="block text-[11px] font-medium text-muted-foreground">{tf.subcategoryLabel}</span>
-                  <SearchableSelect
-                    options={subcategoryOptions}
-                    value={categoryCascade.childName || USE_PARENT_CATEGORY}
-                    onValueChange={(name) => field.onChange(name === USE_PARENT_CATEGORY ? categoryCascade.parentName : name)}
-                    placeholder={tf.subcategoryPlaceholder}
-                    searchPlaceholder={tf.subcategorySearchPlaceholder}
-                    className="w-full justify-between h-10 font-normal"
-                  />
-                </div>
-              )}
-              <FormMessage />
-            </FormItem>
-          )} />
+                  <FormMessage />
+                </FormItem>
+              )} />
 
-          {/* Centro de custo — fica logo depois de Categoria de propósito: as
-              duas respondem "em que isso se encaixa", e enterrado dentro de
-              "Mais detalhes" ninguém achava o campo. SEMPRE opcional: sem
-              nenhum centro ativo cadastrado o campo nem é renderizado (não
-              poluir o form de quem não organiza por obra/projeto). A exceção é
-              editar um lançamento que JÁ tem centro: aí ele aparece mesmo que o
-              centro tenha sido desativado depois. */}
-          {showCostCenter && (
-            <FormField control={form.control} name="cost_center_id" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{fin.costCenters.fieldLabel}</FormLabel>
-                <CostCenterSelect
-                  value={field.value ?? null}
-                  onValueChange={(v) => field.onChange(v)}
-                />
-                <FormMessage />
-              </FormItem>
-            )} />
-          )}
+              {/* Centro de custo — fica junto da Categoria porque ambos respondem
+                  "em que isso se encaixa". SEMPRE opcional e condicional: sem
+                  nenhum centro ativo o campo não aparece, exceto ao editar um
+                  lançamento que já tenha um centro, mesmo desativado. */}
+              {showCostCenter && (
+                <FormField control={form.control} name="cost_center_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{fin.costCenters.fieldLabel}</FormLabel>
+                    <CostCenterSelect
+                      value={field.value ?? null}
+                      onValueChange={(v) => field.onChange(v)}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+            </div>
+          </fieldset>
 
           {/* Description — sobe pra cá (era mostrada mais abaixo): a ordem
               "tipo, categoria, descrição, cliente, fornecedor" é a leitura

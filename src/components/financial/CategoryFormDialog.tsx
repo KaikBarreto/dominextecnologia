@@ -29,6 +29,7 @@ const baseSchema = z.object({
   color: z.string().min(1),
   icon: z.string().default('Tag'),
   dre_group: z.string().default('opex'),
+  dfc_group: z.enum(['operacional', 'investimento', 'financiamento']).default('operacional'),
   /** `''` = categoria principal (raiz). Vira `null` no submit. */
   parent_id: z.string().default(''),
 });
@@ -85,6 +86,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       color: category?.color ?? initialParent?.color ?? '#00C597',
       icon: category?.icon ?? initialParent?.icon ?? 'Tag',
       dre_group: (category as any)?.dre_group ?? initialParent?.dre_group ?? 'opex',
+      dfc_group: category?.dfc_group ?? initialParent?.dfc_group ?? 'operacional',
       parent_id: category?.parent_id ?? initialParentId ?? '',
     },
   });
@@ -99,6 +101,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
         color: category?.color ?? initialParent?.color ?? '#00C597',
         icon: category?.icon ?? initialParent?.icon ?? 'Tag',
         dre_group: (category as any)?.dre_group ?? initialParent?.dre_group ?? 'opex',
+        dfc_group: category?.dfc_group ?? initialParent?.dfc_group ?? 'operacional',
         parent_id: category?.parent_id ?? initialParentId ?? '',
       });
     }
@@ -139,10 +142,10 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   const showParentField = parentCandidates.length > 0 || !!category?.parent_id;
 
   /**
-   * Trocar o PAI pré-preenche tipo, grupo DRE, cor e ícone com os dele. É só
-   * PADRÃO: todos os campos seguem editáveis, porque uma subcategoria tem grupo do DRE
-   * PRÓPRIO de propósito (um pai em CSP pode ter filha em OPEX, e é assim que
-   * a empresa do cliente já classifica).
+   * Trocar o PAI pré-preenche tipo, grupos DRE/DFC, cor e ícone com os dele. É
+   * só PADRÃO: todos os campos seguem editáveis, porque uma subcategoria tem
+   * classificação própria de propósito (um pai em CSP pode ter filha em OPEX,
+   * por exemplo).
    *
    * O `ref` guarda o último pai visto pra o efeito só reagir à MUDANÇA feita
    * pelo usuário — sem ele, reabrir o formulário de uma categoria existente
@@ -158,6 +161,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     if (!parent) return;
     form.setValue('type', parent.type, { shouldDirty: true });
     form.setValue('dre_group', parent.dre_group ?? 'opex', { shouldDirty: true });
+    form.setValue('dfc_group', parent.dfc_group ?? 'operacional', { shouldDirty: true });
     form.setValue('color', parent.color, { shouldDirty: true });
     form.setValue('icon', parent.icon ?? 'Tag', { shouldDirty: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -273,6 +277,22 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
               </FormItem>
             )} />
           )}
+
+          <FormField control={form.control} name="dfc_group" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t.dfcGroupLabel}</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="operacional">{t.dfcGroups.operacional}</SelectItem>
+                  <SelectItem value="investimento">{t.dfcGroups.investimento}</SelectItem>
+                  <SelectItem value="financiamento">{t.dfcGroups.financiamento}</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>{t.dfcGroupHint}</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )} />
 
           <FormField control={form.control} name="color" render={({ field }) => (
             <FormItem>

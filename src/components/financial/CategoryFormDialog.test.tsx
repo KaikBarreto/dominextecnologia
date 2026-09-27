@@ -48,6 +48,7 @@ const parent = {
   color: '#c50000',
   icon: 'Fuel',
   dre_group: 'opex',
+  dfc_group: 'investimento',
   parent_id: null,
   is_active: true,
   is_system: false,
@@ -68,7 +69,7 @@ afterEach(() => {
 });
 
 describe('CategoryFormDialog — criação de subcategoria', () => {
-  it('herda cor, ícone, tipo e grupo da categoria mãe como padrão editável', async () => {
+  it('herda cor, ícone, tipo e grupos DRE/DFC da categoria mãe como padrão editável', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     await act(async () => {
       root.render(
@@ -100,6 +101,7 @@ describe('CategoryFormDialog — criação de subcategoria', () => {
       icon: 'Fuel',
       type: 'saida',
       dre_group: 'opex',
+      dfc_group: 'investimento',
     }));
   });
 });

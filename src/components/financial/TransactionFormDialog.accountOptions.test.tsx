@@ -44,6 +44,17 @@ const ACCOUNTS = [
   { id: 'acc-cartao', name: 'Cartão Black Elite', type: 'cartao', is_active: true, color: '#111', institution_code: null, institution_name: null, bank_name: null, closing_day: 5, due_day: 12 },
 ];
 
+const CATEGORIES = [
+  { id: 'cat-receitas', name: 'Receitas operacionais', type: 'entrada', color: '#2563eb', icon: null, is_active: true, parent_id: null },
+  { id: 'cat-instalacao', name: 'Instalação', type: 'entrada', color: '#16a34a', icon: null, is_active: true, parent_id: 'cat-receitas' },
+  { id: 'cat-despesas', name: 'Despesas operacionais', type: 'saida', color: '#dc2626', icon: null, is_active: true, parent_id: null },
+];
+
+const COST_CENTERS = [
+  { id: 'cc-obra', name: 'Obra Centro', color: '#7c3aed', is_active: true },
+];
+let costCentersEnabled = true;
+
 const noopMutation = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
 
 vi.mock('@/hooks/useFinancialAccounts', () => ({
@@ -60,13 +71,16 @@ vi.mock('@/hooks/useFinancialAccounts', () => ({
 
 vi.mock('@/hooks/useFinancialCategories', () => ({
   useFinancialCategories: () => ({
-    categories: [],
+    categories: CATEGORIES,
     createCategory: noopMutation,
   }),
 }));
 
 vi.mock('@/hooks/useCostCenters', () => ({
-  useCostCenters: () => ({ costCenters: [], activeCostCenters: [] }),
+  useCostCenters: () => ({
+    costCenters: costCentersEnabled ? COST_CENTERS : [],
+    activeCostCenters: costCentersEnabled ? COST_CENTERS : [],
+  }),
 }));
 
 vi.mock('@/hooks/useCustomers', () => ({
@@ -180,6 +194,13 @@ function accountSelect(): HTMLSelectElement {
   return found;
 }
 
+function searchableSelect(placeholder: string): HTMLSelectElement {
+  const selects = Array.from(document.querySelectorAll('[data-testid="searchable-select"]')) as HTMLSelectElement[];
+  const found = selects.find((s) => s.getAttribute('data-placeholder') === placeholder);
+  if (!found) throw new Error(`Select não encontrado: ${placeholder}`);
+  return found;
+}
+
 function accountOptionLabels(): string[] {
   return Array.from(accountSelect().options).map((o) => o.textContent || '').filter(Boolean);
 }
@@ -191,6 +212,7 @@ function buttonByText(label: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  costCentersEnabled = true;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -240,6 +262,81 @@ describe('TransactionFormDialog — filtro de cartão nas opções de conta', ()
     });
 
     expect(accountOptionLabels()).not.toContain('Cartão Black Elite');
+  });
+});
+
+describe('TransactionFormDialog — classificação', () => {
+  it('mantém Categoria e Centro de custo no grid responsivo sem caixa intermediária', () => {
+    mount('entrada');
+
+    const legend = Array.from(document.querySelectorAll('legend'))
+      .find((item) => item.textContent?.trim() === 'Classificação');
+    expect(legend).toBeTruthy();
+
+    const fieldset = legend!.closest('fieldset');
+    const grid = Array.from(fieldset?.children ?? []).find((item) => item.tagName === 'DIV');
+    expect(fieldset?.className).not.toContain('border');
+    expect(grid?.className).toContain('grid-cols-1');
+    expect(grid?.className).toContain('lg:grid-cols-2');
+    expect(searchableSelect(tf.categoryPlaceholder)).toBeTruthy();
+    expect(document.body.textContent).toContain(MESSAGES['pt-br'].app.finance.costCenters.fieldLabel);
+  });
+
+  it('mantém Centro de custo condicional quando a empresa não usa o recurso', () => {
+    costCentersEnabled = false;
+    mount('entrada');
+
+    expect(document.body.textContent).not.toContain(MESSAGES['pt-br'].app.finance.costCenters.fieldLabel);
+    expect(searchableSelect(tf.categoryPlaceholder).closest('.lg\\:col-span-2')).toBeTruthy();
+  });
+
+  it('mostra e persiste a hierarquia Categoria › Subcategoria sem alterar o contrato do payload', async () => {
+    localStorage.setItem('fin_last_account_id', 'acc-banco');
+    const onSubmit = vi.fn().mockResolvedValue({ ids: ['txn-1'] });
+    mount('entrada', false, onSubmit);
+
+    act(() => {
+      const category = searchableSelect(tf.categoryPlaceholder);
+      category.value = 'Receitas operacionais';
+      category.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    const subcategory = searchableSelect(tf.subcategoryPlaceholder);
+    expect(Array.from(subcategory.options).map((option) => option.textContent))
+      .toContain('Receitas operacionais › Instalação');
+
+    act(() => {
+      subcategory.value = 'Instalação';
+      subcategory.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(subcategory.selectedOptions[0]?.textContent).toBe('Receitas operacionais › Instalação');
+
+    const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+      const proto = element instanceof HTMLTextAreaElement
+        ? window.HTMLTextAreaElement.prototype
+        : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(element, value);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const description = document.querySelector(`textarea[placeholder="${tf.descriptionPlaceholder}"]`) as HTMLTextAreaElement;
+    const amount = document.querySelector(`input[placeholder="${tf.amountPlaceholder}"]`) as HTMLInputElement;
+
+    act(() => {
+      setNativeValue(description, 'Instalação de equipamento');
+      setNativeValue(amount, '10000');
+    });
+
+    const save = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === tf.saveLabel);
+    await act(async () => {
+      save!.click();
+      await Promise.resolve();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      category: 'Instalação',
+      cost_center_id: null,
+    }));
   });
 });
 

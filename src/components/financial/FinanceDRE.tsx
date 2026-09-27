@@ -932,10 +932,10 @@ export function FinanceDRE({
             <p className="text-lg sm:text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 bg-info">
           <CardContent className="p-3 sm:p-5">
-            <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider leading-tight">{fin.dre.kpi.netRevenue}</p>
-            <p className="text-sm sm:text-3xl font-bold mt-1 truncate">{fmt(dre.receitaLiquida)}</p>
+            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">{fin.dre.kpi.netRevenue}</p>
+            <p className="text-sm sm:text-3xl font-bold mt-1 truncate text-white">{fmt(dre.receitaLiquida)}</p>
           </CardContent>
         </Card>
         <Card className={cn('border-0', dre.resultadoLiquido >= 0 ? 'bg-success' : 'bg-destructive')}>
@@ -948,7 +948,7 @@ export function FinanceDRE({
 
       {/* Chart */}
       {monthlyData.length > 1 && (
-        <Card>
+        <Card className="border-0 bg-muted/20 shadow-none">
           <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               {isMobile ? fin.dre.chart.titleShort : fin.dre.chart.title}
@@ -996,7 +996,7 @@ export function FinanceDRE({
       )}
 
       {/* DRE Table */}
-      <Card className="border shadow-lg overflow-hidden">
+      <Card className="border-0 shadow-none overflow-hidden bg-muted/15">
         <CardHeader className="bg-foreground pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 text-background">
@@ -1181,7 +1181,7 @@ export function FinanceDRE({
           linhas + o balde "sem centro" bate com a Receita Bruta e com o total de
           despesas da tabela acima: mesmo conjunto, mesmo período, mesmo regime. */}
       {costCenterBreakdown.rows.length > 0 && (
-        <Card className="border shadow-lg overflow-hidden">
+        <Card className="border-0 shadow-none overflow-hidden bg-muted/20">
           <button
             type="button"
             onClick={() => setShowCostCenters(!showCostCenters)}

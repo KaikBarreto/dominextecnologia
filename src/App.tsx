@@ -718,19 +718,23 @@ const AppRoutes = () => (
       {localizedAppRoutes('crm', <PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('quotes', <PermissionRoute screenKey="screen:quotes"><Quotes /></PermissionRoute>)}
       {localizedAppRoutes('inventory', <PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>)}
-      {/* "Financeiro" virou GRUPO com 3 telas próprias (cada uma com no máx. 1
-         nível de navegação). /financeiro entra na tela de Relatório. */}
+      {/* "Financeiro" é um grupo de telas orientadas por tarefa; cada rota tem
+          no máximo uma alternância local entre conteúdos irmãos. */}
       {localizedTemplatesFor('finance').map((tpl) => (
         <Route key={`finance-redirect:${tpl}`} path={tpl} element={<Navigate to="/financeiro/relatorio" replace />} />
       ))}
       {localizedAppRoutes('financeReport', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
       {localizedAppRoutes('financeMovements', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
       {localizedAppRoutes('financeAccounts', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
+      {localizedAppRoutes('financeCharges', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
+      {localizedAppRoutes('financeReports', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
+      {localizedAppRoutes('financeSettings', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
       {/* URLs antigas → redirecionam pra não dar 404. */}
-      <Route path="/financeiro/dre" element={<Navigate to="/financeiro/relatorio?tab=dre" replace />} />
+      <Route path="/financeiro/dre" element={<Navigate to="/financeiro/relatorios?tab=dre" replace />} />
       <Route path="/financeiro/caixas-bancos" element={<Navigate to="/financeiro/movimentacoes" replace />} />
-      <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/movimentacoes" replace />} />
-      <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/movimentacoes" replace />} />
+      <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/configuracoes-financeiras?tab=categorias" replace />} />
+      <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/configuracoes-financeiras" replace />} />
+      <Route path="/financeiro/centro-de-custo" element={<Navigate to="/financeiro/configuracoes-financeiras?tab=centro-de-custo" replace />} />
       {/* Notas Fiscais (NFS-e) — gateada pelo módulo pago `nfe`. */}
       {localizedAppRoutes('fiscalSettings', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('fiscalNotes', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}

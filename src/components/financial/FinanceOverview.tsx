@@ -214,7 +214,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                 key={stat.key}
                 type="button"
                 onClick={stat.onClick}
-                className="snap-start shrink-0 flex flex-col items-start justify-between gap-2 h-[110px] min-w-[140px] p-3 rounded-2xl border bg-card text-left transition-all active:scale-95"
+                className="snap-start shrink-0 flex flex-col items-start justify-between gap-2 h-[110px] min-w-[140px] p-3 rounded-2xl bg-muted/50 text-left transition-all active:scale-95"
               >
                 <span
                   className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
@@ -296,7 +296,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
 
           {/* Pending Cards — só desktop (no mobile já estão no carrossel) */}
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
+            <Card className="cursor-pointer border-0 bg-muted/40 shadow-none hover:bg-muted/60 transition-colors" onClick={() => onNavigate('contas')}>
               <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">{ov.kpi.receivable}</p>
@@ -305,7 +305,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                 <Clock className="h-5 w-5 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
+            <Card className="cursor-pointer border-0 bg-muted/40 shadow-none hover:bg-muted/60 transition-colors" onClick={() => onNavigate('contas')}>
               <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">{ov.kpi.payable}</p>
@@ -338,7 +338,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                 ? (balance > 0 ? 'text-destructive' : 'text-muted-foreground')
                 : (balance >= 0 ? 'text-success' : 'text-destructive');
               return (
-                <Card key={a.id} className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('historico')}>
+                <Card key={a.id} className="cursor-pointer border-0 bg-muted/35 shadow-none hover:bg-muted/60 transition-colors" onClick={() => onNavigate('historico')}>
                   <CardContent className="p-3 flex items-center gap-3">
                     <div className="rounded-full p-2 shrink-0" style={{ backgroundColor: a.color }}>
                       <Icon className="h-4 w-4 text-white" />
@@ -378,7 +378,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
 
       {/* Cash Flow Bar Chart */}
       {cashFlowData.length > 0 && (
-        <Card>
+        <Card className="border-0 bg-muted/20 shadow-none">
           <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               {isMobile && cashFlowAll.length > 3 ? ov.charts.cashFlowShort : ov.charts.cashFlow}
@@ -413,7 +413,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Category Chart */}
-        <Card>
+        <Card className="border-0 bg-muted/20 shadow-none">
           <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               {isMobile ? ov.charts.categoryDistShort : ov.charts.categoryDist}
@@ -480,7 +480,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
         </Card>
 
         {/* Recent Transactions — escondido no mobile (já tem aba dedicada). */}
-        <Card className="hidden lg:block">
+        <Card className="hidden border-0 bg-muted/20 shadow-none lg:block">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               {ov.charts.recentMovements}

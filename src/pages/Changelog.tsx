@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.27.0',
+    date: '27 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Novo DFC para acompanhar o caixa',
+        description: 'O novo relatório mostra o saldo inicial, o que entrou, o que saiu e o saldo final do período. Os valores podem ser abertos por atividade, categoria e lançamento, além de serem exportados para planilha. Somente pagamentos e recebimentos já realizados entram no cálculo, sem contar transferências entre contas da própria empresa.',
+        category: 'recurso',
+      },
+      {
+        title: 'Financeiro mais organizado e fácil de navegar',
+        description: 'Visão Geral, Movimentações Financeiras, Contas a Pagar/Receber, Cobranças e Relatórios agora têm acessos mais claros. DRE e DFC ficam juntos na área de Relatórios, enquanto categorias e centros de custo ficam nas configurações. As telas também ganharam menos bordas e um visual mais leve.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Classificação mais clara nos lançamentos',
+        description: 'Categoria, subcategoria e centro de custo agora ficam reunidos no mesmo bloco do lançamento. Quando uma subcategoria é escolhida, o sistema mostra também sua categoria principal, facilitando a conferência antes de salvar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.26.0',
     date: '27 de setembro de 2026',
     type: 'minor',

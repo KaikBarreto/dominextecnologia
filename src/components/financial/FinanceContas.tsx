@@ -805,7 +805,7 @@ export function FinanceContas({
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
           <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
               <div className="rounded-full bg-warning p-2 shrink-0">
                 <Clock className="h-4 w-4 text-warning-foreground" />
               </div>
@@ -814,7 +814,7 @@ export function FinanceContas({
                 <p className="text-sm font-bold truncate leading-tight tabular-nums">{fmt(summary.pendente)}</p>
               </div>
             </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
               <div className="rounded-full bg-destructive p-2 shrink-0">
                 <AlertTriangle className="h-4 w-4 text-destructive-foreground" />
               </div>
@@ -823,7 +823,7 @@ export function FinanceContas({
                 <p className="text-sm font-bold text-destructive truncate leading-tight tabular-nums">{fmt(summary.vencido)}</p>
               </div>
             </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
               <div className="rounded-full bg-primary p-2 shrink-0">
                 <DollarSign className="h-4 w-4 text-primary-foreground" />
               </div>
@@ -832,7 +832,7 @@ export function FinanceContas({
                 <p className="text-sm font-bold truncate leading-tight tabular-nums">{fmt(summary.prox7)}</p>
               </div>
             </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
               <div className="rounded-full bg-success p-2 shrink-0">
                 <CheckCircle2 className="h-4 w-4 text-white" />
               </div>
@@ -847,7 +847,7 @@ export function FinanceContas({
         </div>
       ) : (
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="rounded-2xl shadow-sm">
+          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-warning p-2.5 shrink-0">
                 <Clock className="h-4 w-4 text-white" />
@@ -858,7 +858,7 @@ export function FinanceContas({
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl shadow-sm">
+          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-destructive p-2.5 shrink-0">
                 <AlertTriangle className="h-4 w-4 text-white" />
@@ -869,7 +869,7 @@ export function FinanceContas({
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl shadow-sm">
+          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-primary p-2.5 shrink-0">
                 <DollarSign className="h-4 w-4 text-white" />
@@ -880,7 +880,7 @@ export function FinanceContas({
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl shadow-sm">
+          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-success p-2.5 shrink-0">
                 <CheckCircle2 className="h-4 w-4 text-white" />

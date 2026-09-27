@@ -2,34 +2,35 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinancial } from '@/hooks/useFinancial';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
-import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { Button } from '@/components/ui/button';
-import { Wallet } from 'lucide-react';
-import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { FinanceRelatorio } from '@/components/financial/FinanceRelatorio';
 import { FinanceMovimentacoes } from '@/components/financial/FinanceMovimentacoes';
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { getEffectiveTransactionMonthRange, isTransactionInDateRange } from '@/lib/finance-date';
 import { useTransactionEditSubmit } from '@/hooks/useTransactionEditSubmit';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Settings2 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { resolveAppSlug, localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 
-// "Financeiro" virou um GRUPO no menu com 3 telas próprias, cada uma com no
-// máximo 1 nível de navegação (acaba o duplo-carrossel no mobile):
-//   /financeiro/relatorio     → Relatório (Visão Geral + DRE em abas)
+// "Financeiro" é um grupo orientado por tarefa. Configurações financeiras não
+// disputam espaço com operação e relatórios; ficam numa rota secundária própria.
+//   /financeiro/relatorio     → Visão Geral
 //   /financeiro/contas        → Contas a Pagar/Receber
-//   /financeiro/movimentacoes → Movimentações (carrossel de contas)
+//   /financeiro/movimentacoes → Movimentações (coluna operacional de contas)
+//   /financeiro/cobrancas     → Cobranças + Assinaturas
+//   /financeiro/relatorios    → DRE + DFC
+//   /financeiro/configuracoes-financeiras → Categorias + Centros de Custo
 // As URLs antigas (/financeiro, /financeiro/dre, /caixas-bancos, /categorias,
 // /configuracoes) redirecionam no App.tsx pra não dar 404.
-type FinanceScreen = 'relatorio' | 'contas' | 'movimentacoes';
+type FinanceScreen = 'relatorio' | 'contas' | 'movimentacoes' | 'cobrancas' | 'relatorios' | 'configuracoes';
 
 // A sub-tela é decidida pela KEY canônica da rota (idioma-agnóstica), não pelo
 // pathname pt-br hardcoded. Com as rotas traduzidas (Fase 2), o usuário `en` está
@@ -41,6 +42,9 @@ const KEY_SCREEN_MAP: Record<string, FinanceScreen> = {
   financeReport: 'relatorio',
   financeMovements: 'movimentacoes',
   financeAccounts: 'contas',
+  financeCharges: 'cobrancas',
+  financeReports: 'relatorios',
+  financeSettings: 'configuracoes',
 };
 
 export default function Finance() {
@@ -53,11 +57,15 @@ export default function Finance() {
   const routeKey = resolveAppSlug(location.pathname, locale);
   const screen: FinanceScreen = (routeKey && KEY_SCREEN_MAP[routeKey]) || 'relatorio';
 
-  // Aba interna do Relatório (Visão Geral / DRE) via `?tab=`.
-  const relatorioTab = searchParams.get('tab') || 'visao-geral';
-  const setRelatorioTab = (tab: string) => {
+  const defaultSectionTab =
+    screen === 'relatorios' ? 'dre'
+    : screen === 'cobrancas' ? 'cobrancas'
+    : screen === 'configuracoes' ? 'categorias'
+    : 'visao-geral';
+  const sectionTab = searchParams.get('tab') || defaultSectionTab;
+  const setSectionTab = (tab: string) => {
     const next = new URLSearchParams(searchParams);
-    if (tab === 'visao-geral') next.delete('tab');
+    if (tab === defaultSectionTab) next.delete('tab');
     else next.set('tab', tab);
     setSearchParams(next, { replace: true });
   };
@@ -86,22 +94,13 @@ export default function Finance() {
   };
 
   const [formOpen, setFormOpen] = useState(false);
-  const [chargeOpen, setChargeOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
   // Linha a destacar na lista (vem do `?txn=`). Fica até o usuário sair da tela.
   const [highlightTransactionId, setHighlightTransactionId] = useState<string | null>(null);
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
-  // Cobrança avulsa (recebimento do cliente final via Asaas): o botão "Cobrar"
-  // só aparece com o add-on `cobrancas` contratado E a conta de recebimentos
-  // ativa. Se o módulo está ativo mas a conta não foi configurada, mostramos um
-  // botão desabilitado com tooltip direcional (UX > silêncio). Gate real é server-side.
-  const { isActive: canCharge } = useTenantPaymentAccount();
-  const hasChargeModule = hasModule('cobrancas');
-  const showChargeButton = hasChargeModule && canCharge;
-  // Módulo contratado mas conta Asaas não configurada/ativa.
-  const showChargeInactiveHint = hasChargeModule && !canCharge;
+  const canManageFinanceSettings = useCanManageFinanceSettings();
 
   // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
   // escondia a aba). Acesso direto por URL sem o módulo → cai no Relatório.
@@ -115,17 +114,25 @@ export default function Finance() {
   // fazia o bug parecer intermitente. Provado no navegador em 24/09/2026.
   useEffect(() => {
     if (modulesLoading) return;
-    if (screen === 'contas' && !hasModule('finance_advanced')) {
+    if ((screen === 'contas' || screen === 'relatorios') && !hasModule('finance_advanced')) {
+      navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });
+      return;
+    }
+    if (screen === 'cobrancas' && !hasModule('cobrancas')) {
+      navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });
+      return;
+    }
+    if (screen === 'configuracoes' && !canManageFinanceSettings) {
       navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });
     }
-  }, [screen, hasModule, modulesLoading, navigate, locale]);
+  }, [screen, hasModule, modulesLoading, navigate, locale, canManageFinanceSettings]);
 
   const {
     // `transactions` = só as RAÍZES. É o que toda listagem desta tela consome.
     // `transactionsWithChildren` = raízes + filhas (tarifa do recebimento,
-    // recebimento parcial). Vai SÓ pro DRE, que precisa fechar o resultado
-    // contábil: a tarifa da maquininha é despesa real e não aparece em nenhuma
-    // outra linha — sem ela o lucro saía inflado em toda venda com tarifa.
+    // recebimento parcial). Vai para DRE e DFC: a tarifa da maquininha é saída
+    // real que não aparece em nenhuma outra linha — sem ela resultado e caixa
+    // sairiam inflados em toda venda com tarifa.
     transactions, transactionsWithChildren, isLoading,
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
@@ -267,7 +274,14 @@ export default function Finance() {
       ? fin.page.subtitles.accounts
       : screen === 'movimentacoes'
       ? fin.page.subtitles.movements
+      : screen === 'cobrancas'
+      ? fin.page.subtitles.charges
+      : screen === 'relatorios'
+      ? fin.page.subtitles.reports
+      : screen === 'configuracoes'
+      ? fin.page.subtitles.settings
       : fin.page.subtitles.report;
+  const showDateRange = screen !== 'cobrancas' && screen !== 'configuracoes';
 
   return (
     // min-h-[100dvh] garante que empty states + transição de tela ocupem toda
@@ -279,44 +293,40 @@ export default function Finance() {
         icon={DollarSign}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <DateRangeFilter
-              value={range}
-              preset={preset}
-              onPresetChange={setPreset}
-              onRangeChange={setRange}
-            />
-            {showChargeButton ? (
-              <Button size="sm" onClick={() => setChargeOpen(true)}>
-                <Wallet className="mr-2 h-4 w-4" />
-                {MESSAGES[locale].app.charges.cobrar.button}
-              </Button>
-            ) : showChargeInactiveHint ? (
-              // Módulo contratado mas conta Asaas não ativa: botão direcional
-              // (não some silenciosamente — orienta o usuário).
+            {showDateRange && (
+              <DateRangeFilter
+                value={range}
+                preset={preset}
+                onPresetChange={setPreset}
+                onRangeChange={setRange}
+              />
+            )}
+            {canManageFinanceSettings && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() =>
-                  navigate(localizeAppPath('/configuracoes/integracoes', locale))
-                }
+                onClick={() => navigate(localizeAppPath('/financeiro/configuracoes-financeiras', locale))}
+                aria-current={screen === 'configuracoes' ? 'page' : undefined}
               >
-                <Wallet className="mr-2 h-4 w-4" />
-                {MESSAGES[locale].app.charges.cobrar.notActivated.cta}
+                <Settings2 className="mr-2 h-4 w-4" />
+                {fin.page.settingsAction}
               </Button>
-            ) : undefined}
+            )}
           </div>
         }
       />
 
       <div className="space-y-4">
-        {screen === 'relatorio' && (
+        {(screen === 'relatorio' || screen === 'cobrancas' || screen === 'relatorios' || (screen === 'configuracoes' && canManageFinanceSettings)) && (
           <FinanceRelatorio
+            section={screen}
             transactions={filteredTransactions}
             allTransactions={transactionsWithChildren}
+            isLoading={isLoading}
             dateRange={range}
             summary={summary}
-            activeTab={relatorioTab}
-            onTabChange={setRelatorioTab}
+            activeTab={sectionTab}
+            onTabChange={setSectionTab}
             onNavigateShortcut={handleNavigateShortcut}
             onNewReceita={() => handleNew('entrada')}
             onNewDespesa={() => handleNew('saida')}
@@ -366,8 +376,6 @@ export default function Finance() {
         isLoading={createTransaction.isPending || updateTransaction.isPending}
         defaultType={defaultType}
       />
-
-      {showChargeButton && <ChargeDialog open={chargeOpen} onOpenChange={setChargeOpen} />}
     </div>
   );
 }

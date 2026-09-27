@@ -566,7 +566,7 @@ export function FinanceMovimentacoes({
               );
 
               const cardBillsCard = cardAccounts.length > 0 && (
-                <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3 sm:self-stretch">
+                <div className="rounded-xl bg-muted/40 px-4 py-3 flex items-center justify-between gap-3 sm:self-stretch">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="rounded-full bg-primary/10 p-2 shrink-0">
                       <CreditCard className="h-4 w-4 text-primary" />
@@ -586,7 +586,7 @@ export function FinanceMovimentacoes({
               const distCard = showDist && (() => {
                 const totalDonut = pieData.reduce((s, d) => s + d.value, 0);
                 return (
-                  <div className="rounded-xl border bg-card p-4 space-y-3">
+                  <div className="rounded-xl bg-muted/30 p-4 space-y-3">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {fin.movements.hero.accountDist}
                     </span>

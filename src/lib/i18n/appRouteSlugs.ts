@@ -70,8 +70,11 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   // Sub-segmentos fixos (2º segmento em diante) — traduzidos por SEGMENTO,
   // reaproveitando o dicionário. Ex.: /financeiro/relatorio → /finance/report.
   relatorio: { en: 'report', es: 'informe', fr: 'rapport' },
+  relatorios: { en: 'reports', es: 'informes', fr: 'rapports' },
   movimentacoes: { en: 'movements', es: 'movimientos', fr: 'mouvements' },
   contas: { en: 'accounts', es: 'cuentas', fr: 'comptes' },
+  cobrancas: { en: 'charges', es: 'cobros', fr: 'encaissements' },
+  'configuracoes-financeiras': { en: 'financial-settings', es: 'configuracion-financiera', fr: 'parametres-financiers' },
   organograma: { en: 'organogram', es: 'organigrama', fr: 'organigramme' },
   // 'configuracoes' já está no mapa acima e serve como sub-segmento também
   // (/notas-fiscais/configuracoes → /invoices/settings).
@@ -114,11 +117,15 @@ const ROUTES: AppRouteDef[] = [
   { key: 'crm', base: '/crm' },
   { key: 'quotes', base: '/orcamentos' },
   { key: 'inventory', base: '/estoque' },
-  // Financeiro é um GRUPO: raiz + 3 sub-telas. Todos os segmentos traduzem.
+  // Financeiro é um GRUPO: raiz + telas operacionais, cobrança, relatórios e
+  // configurações próprias. Todos os segmentos traduzem.
   { key: 'finance', base: '/financeiro' },
   { key: 'financeReport', base: '/financeiro/relatorio' },
   { key: 'financeMovements', base: '/financeiro/movimentacoes' },
   { key: 'financeAccounts', base: '/financeiro/contas' },
+  { key: 'financeCharges', base: '/financeiro/cobrancas' },
+  { key: 'financeReports', base: '/financeiro/relatorios' },
+  { key: 'financeSettings', base: '/financeiro/configuracoes-financeiras' },
   { key: 'fiscalSettings', base: '/notas-fiscais/configuracoes' },
   { key: 'fiscalNotes', base: '/notas-fiscais' },
   { key: 'pmoc', base: '/pmoc' },
