@@ -250,6 +250,9 @@ export function useFinancialAccounts() {
     balances: balancesQuery.data?.balances ?? {},
     cardBillTotals: balancesQuery.data?.cardBillTotals ?? {},
     isLoading: accountsQuery.isLoading,
+    // Algumas telas só precisam do cadastro das contas. A visão geral, que
+    // exibe valores, espera esta flag também para não mostrar R$ 0 provisório.
+    isLoadingBalances: balancesQuery.isLoading,
     createAccount,
     updateAccount,
     deleteAccount,

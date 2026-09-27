@@ -80,7 +80,7 @@ function TemplateCard({
   fallbackPreview?: string;
 }) {
   return (
-    <div className="flex h-full flex-col gap-3 rounded-2xl border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-sm">
+    <div className="flex h-full flex-col gap-3 rounded-2xl bg-background/80 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
       {/* Cabeçalho: ícone em destaque + título + tooltip + status */}
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -213,7 +213,7 @@ export function CompanyPmocTemplatesTab() {
 
   return (
     <div className="space-y-6">
-      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:rounded-lg lg:shadow-sm">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border-0 bg-muted/20 shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
             <FileText className="h-5 w-5 shrink-0" />
@@ -263,7 +263,7 @@ export function CompanyPmocTemplatesTab() {
 
       {/* Validade dos documentos — duração (meses) usada pra calcular a data de
           vencimento de cada TRT/Certificado gerado. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:rounded-lg lg:shadow-sm">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border-0 bg-muted/20 shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
             <CalendarClock className="h-5 w-5 shrink-0" />

@@ -26,6 +26,8 @@ import {
 } from 'recharts';
 
 const NPS_COLORS = { promoter: '#22c55e', passive: '#f59e0b', detractor: '#ef4444' };
+const NPS_SURFACE = 'rounded-2xl border-0 bg-background/80 shadow-sm';
+const NPS_KPI_SURFACE = 'rounded-2xl border-0 bg-background/80 shadow-sm';
 
 /** Iniciais pro fallback de avatar. */
 function initials(name?: string | null) {
@@ -199,7 +201,7 @@ export function NpsDashboard() {
 
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className={NPS_KPI_SURFACE}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full p-2 bg-primary/10">
@@ -212,7 +214,7 @@ export function NpsDashboard() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={NPS_KPI_SURFACE}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full p-2 bg-warning/10">
@@ -227,7 +229,7 @@ export function NpsDashboard() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={NPS_KPI_SURFACE}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full p-2 bg-info/10">
@@ -240,7 +242,7 @@ export function NpsDashboard() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={NPS_KPI_SURFACE}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full p-2 bg-success/10">
@@ -258,14 +260,14 @@ export function NpsDashboard() {
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* NPS Gauge + Distribution */}
-        <Card>
+        <Card className={NPS_SURFACE}>
           <CardHeader>
             <CardTitle className="text-sm">{t.chartNpsDistribution}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center gap-4">
               <NpsGauge nps={npsData.nps} />
-              <div className="flex gap-4 text-sm">
+              <div className="flex flex-wrap justify-center gap-4 text-sm">
                 <div className="flex items-center gap-1.5">
                   <ThumbsUp className="h-4 w-4 text-success" />
                   <span>{t.labelPromoters}: {npsData.total > 0 ? Math.round((npsData.promoters / npsData.total) * 100) : 0}%</span>
@@ -304,7 +306,7 @@ export function NpsDashboard() {
         </Card>
 
         {/* Star Distribution */}
-        <Card>
+        <Card className={NPS_SURFACE}>
           <CardHeader>
             <CardTitle className="text-sm">{t.chartAvgByCategory}</CardTitle>
           </CardHeader>
@@ -339,7 +341,7 @@ export function NpsDashboard() {
 
       {/* NPS Trend */}
       {trendData.length > 1 && (
-        <Card>
+        <Card className={NPS_SURFACE}>
           <CardHeader>
             <CardTitle className="text-sm">{t.chartNpsTrend}</CardTitle>
           </CardHeader>
@@ -370,7 +372,7 @@ export function NpsDashboard() {
       )}
 
       {/* Ranking de Técnicos */}
-      <Card>
+      <Card className={NPS_SURFACE}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Trophy className="h-4 w-4 text-warning" />
@@ -393,7 +395,7 @@ export function NpsDashboard() {
                 {podium.map((tech, i) => (
                   <div
                     key={tech.user_id}
-                    className="flex flex-col items-center text-center rounded-xl border p-3 bg-muted/30"
+                    className="flex flex-col items-center rounded-xl bg-background/80 p-3 text-center shadow-sm"
                   >
                     <div className="relative">
                       <Avatar className="h-12 w-12 sm:h-14 sm:w-14 ring-2" style={{ '--tw-ring-color': PODIUM_COLORS[i] } as React.CSSProperties}>
@@ -424,7 +426,7 @@ export function NpsDashboard() {
 
               {/* Restante da lista */}
               {restRanking.length > 0 && (
-                <div className="rounded-xl border divide-y divide-border/60">
+                <div className="divide-y divide-border/60 overflow-hidden rounded-xl bg-background/80 shadow-sm">
                   {restRanking.map((tech, i) => {
                     const isAttention = tech.user_id === attentionId && (tech.nps_medio ?? 0) <= 6;
                     return (
@@ -467,7 +469,7 @@ export function NpsDashboard() {
       </Card>
 
       {/* Detratores em aberto */}
-      <Card>
+      <Card className={NPS_SURFACE}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -489,7 +491,7 @@ export function NpsDashboard() {
           ) : (
             <div className="space-y-3">
               {openDetractors.map((d) => (
-                <div key={d.os_id} className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                <div key={d.os_id} className="space-y-2 rounded-xl border-l-4 border-destructive bg-destructive/5 p-3 shadow-sm">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-mono text-xs text-muted-foreground shrink-0">OS #{d.order_number}</span>
@@ -516,7 +518,7 @@ export function NpsDashboard() {
       </Card>
 
       {/* Feed de Feedbacks */}
-      <Card>
+      <Card className={NPS_SURFACE}>
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-sm flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-info" />
@@ -564,7 +566,7 @@ export function NpsDashboard() {
               {filteredFeed.map((r) => {
                 const classification = r.nps_score !== null ? classifyNps(r.nps_score) : null;
                 return (
-                  <div key={r.id} className="border rounded-lg p-3 space-y-2">
+                  <div key={r.id} className="space-y-2 rounded-xl bg-background/80 p-3 shadow-sm">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-mono text-xs text-muted-foreground shrink-0">

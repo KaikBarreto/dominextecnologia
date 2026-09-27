@@ -247,43 +247,16 @@ export default function Customers() {
         }
       />
 
-      {/* Clientes / Fornecedores — mobile usa pills roláveis, desktop botões
-         (mesmo padrão das subabas do Financeiro em CustomerDetail). */}
-      {isMobile ? (
-        <MobilePillTabs
-          variant="underline"
-          tabs={[
-            { value: 'clientes', label: t.title, icon: <Users className="h-4 w-4 shrink-0" /> },
-            { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },
-          ]}
-          activeTab={mainTab}
-          onTabChange={(v) => setMainTab(v as CustomersMainTab)}
-        />
-      ) : (
-        <div className="flex gap-1 border-b overflow-x-auto no-scrollbar" role="tablist">
-          {([
-            { value: 'clientes' as const, label: t.title, icon: Users },
-            { value: 'fornecedores' as const, label: tSuppliers.tabLabel, icon: Truck },
-          ]).map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              role="tab"
-              aria-selected={mainTab === opt.value}
-              onClick={() => setMainTab(opt.value)}
-              className={cn(
-                'inline-flex min-h-10 shrink-0 items-center gap-2 -mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-                mainTab === opt.value
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <opt.icon className="h-4 w-4" />
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Mesmo componente e variante em mobile, tablet e desktop. */}
+      <MobilePillTabs
+        variant="underline"
+        tabs={[
+          { value: 'clientes', label: t.title, icon: <Users className="h-4 w-4 shrink-0" /> },
+          { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },
+        ]}
+        activeTab={mainTab}
+        onTabChange={(v) => setMainTab(v as CustomersMainTab)}
+      />
 
       {mainTab === 'fornecedores' ? (
         <SuppliersTab />

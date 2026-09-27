@@ -65,6 +65,11 @@ interface FinanceDFCProps {
 const FALLBACK_CATEGORY_COLOR = '#6b7280';
 const FALLBACK_COST_CENTER_COLOR = '#94a3b8';
 const NO_COST_CENTER_KEY = '__none__';
+const DFC_GROUP_META: Record<DfcGroupKey, { icon: LucideIcon; color: string }> = {
+  operacional: { icon: Banknote, color: '#2563eb' },
+  investimento: { icon: Landmark, color: '#7c3aed' },
+  financiamento: { icon: PiggyBank, color: '#d97706' },
+};
 
 function toDateOnly(value?: Date): string | undefined {
   if (!value || Number.isNaN(value.getTime())) return undefined;
@@ -512,6 +517,8 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
           {report.groups.map((group) => {
             const groupIsOpen = expandedGroups.has(group.key);
             const nodes = groupNodes.get(group.key) ?? [];
+            const groupMeta = DFC_GROUP_META[group.key];
+            const GroupIcon = groupMeta.icon;
             return (
               <div key={group.key} className="border-b border-border/30 last:border-b-0">
                 <button
@@ -520,7 +527,17 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
                   aria-expanded={groupIsOpen}
                   onClick={() => toggleSetItem(setExpandedGroups, group.key)}
                 >
-                  <span className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.label}</span>
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      data-dfc-group-icon={group.key}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm"
+                      style={{ backgroundColor: groupMeta.color }}
+                      aria-hidden="true"
+                    >
+                      <GroupIcon className="h-3.5 w-3.5 text-white" />
+                    </span>
+                    <span className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.label}</span>
+                  </span>
                   <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', groupIsOpen && 'rotate-180')} />
                 </button>
 

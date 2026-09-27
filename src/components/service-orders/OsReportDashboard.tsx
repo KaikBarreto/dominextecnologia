@@ -225,7 +225,7 @@ export function OsReportDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-flow-col auto-cols-[82%] gap-4 overflow-x-auto pb-1 snap-x sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-2 sm:overflow-visible 2xl:grid-cols-4 [&>*]:snap-start">
+      <div className="grid auto-rows-[148px] grid-flow-col auto-cols-[82%] gap-4 overflow-x-auto pb-1 snap-x sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-2 sm:overflow-visible 2xl:grid-cols-4 [&>*]:snap-start">
         <KPICard title={t.kpiTotal} value={kpis.total} icon={ClipboardCheck} bgClass="bg-primary" delay={0} />
         <KPICard
           title={t.kpiCompletionRate}

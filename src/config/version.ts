@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.1";
+export const APP_VERSION = "1.29.0";
 
-export const VERSION_NOTES = "O CRM/Kanban ganhou navegação mais clara entre funis, melhor adaptação para celular e tablet e a mesma experiência no painel administrativo.";
+export const VERSION_NOTES = "Relatórios financeiros, CRM/Kanban, estoque, contratos e ordens de serviço ganharam análises mais claras, configurações melhores e uma experiência visual mais leve em qualquer tela.";

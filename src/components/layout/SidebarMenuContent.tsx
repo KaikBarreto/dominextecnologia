@@ -406,9 +406,10 @@ export function SidebarMenuContent() {
                         <NavLink
                           key={child.path}
                           to={L(child.path)}
+                          title={tMenu(child.title)}
                           className={({ isActive }) =>
                             cn(
-                              'nav-indicator flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-200',
+                              'nav-indicator flex items-start gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-200',
                               isActive && 'nav-indicator-active',
                               isActive
                                 ? 'bg-primary text-primary-foreground'
@@ -416,8 +417,8 @@ export function SidebarMenuContent() {
                             )
                           }
                         >
-                          <child.icon className="h-4 w-4 shrink-0" />
-                          <span className="min-w-0 truncate whitespace-nowrap">{tMenu(child.title)}</span>
+                          <child.icon className="mt-0.5 h-4 w-4 shrink-0" />
+                          <span className="min-w-0 break-words leading-tight">{tMenu(child.title)}</span>
                         </NavLink>
                       ))}
                     </CollapsibleContent>

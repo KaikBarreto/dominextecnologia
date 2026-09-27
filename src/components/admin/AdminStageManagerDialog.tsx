@@ -7,11 +7,12 @@ interface Props {
   pipelineId: string | null;
   pipelineName?: string;
   embedded?: boolean;
+  compact?: boolean;
 }
 
-export function AdminStageManagerDialog({ open, onOpenChange, pipelineId, pipelineName, embedded = false }: Props) {
+export function AdminStageManagerDialog({ open, onOpenChange, pipelineId, pipelineName, embedded = false, compact = false }: Props) {
   if (embedded) {
-    return <AdminCrmStagesTab pipelineId={pipelineId} pipelineName={pipelineName} embedded />;
+    return <AdminCrmStagesTab pipelineId={pipelineId} pipelineName={pipelineName} embedded compact={compact} />;
   }
 
   return (

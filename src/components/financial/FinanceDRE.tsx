@@ -2,11 +2,8 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-// Alias obrigatório: `Tooltip` acima já é o do recharts (gráfico). O tooltip de
-// UI dos botões de regime é outro componente.
 import {
-  Tooltip as UITooltip,
+  Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
@@ -14,8 +11,7 @@ import {
 import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import type { FinancialTransaction } from '@/types/database';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
-import { format, parseISO, startOfMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { generateDreHtml } from '@/utils/dreHtmlGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -23,7 +19,6 @@ import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
 import { buildCostCenterBreakdown, filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
 import {
   getDreEffectiveDate,
@@ -101,23 +96,11 @@ export function FinanceDRE({
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
   const { costCenters } = useCostCenters();
-  const isMobile = useIsMobile();
   // `timezone`: fuso da empresa, usado pra decidir o que já é passado no
   // regime de Caixa (ver `isFutureCashDate`).
   const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
-  const fmtCompact = (value: number) => {
-    const absolute = Math.abs(value);
-    if (absolute < 1_000) return fmt(value);
-    const sign = value < 0 ? '-' : '';
-    const symbol = new Intl.NumberFormat(
-      locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR',
-      { style: 'currency', currency, currencyDisplay: 'narrowSymbol' },
-    ).formatToParts(0).find((part) => part.type === 'currency')?.value ?? currency;
-    if (absolute >= 1_000_000) return `${sign}${symbol} ${(absolute / 1_000_000).toFixed(1)}M`;
-    return `${sign}${symbol} ${(absolute / 1_000).toFixed(1)}k`;
-  };
 
   // Leitura tolerante a types ainda não regenerados — quando a migration
   // adicionar dre_start_date em company_settings, este cast vai funcionar sem
@@ -471,31 +454,6 @@ export function FinanceDRE({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, categoryDreGroupMap, categoryMetaMap, fin.dre.fallbackCategory]);
-
-  // Monthly chart data — mobile simplifica pros últimos 6 meses pra caber.
-  const monthlyData = useMemo(() => {
-    const map = new Map<string, { receitas: number; despesas: number }>();
-    transactions.forEach((t) => {
-      // MESMA data efetiva do filtro/tabela — senão o gráfico discorda dos
-      // números logo abaixo dele.
-      const effective = getDreEffectiveDate(t, regime);
-      if (!effective) return;
-      const parsed = parseISO(effective);
-      if (isNaN(parsed.getTime())) return;
-      const monthKey = format(startOfMonth(parsed), 'yyyy-MM');
-      const entry = map.get(monthKey) || { receitas: 0, despesas: 0 };
-      if (t.transaction_type === 'entrada') entry.receitas += Number(t.amount);
-      else entry.despesas += Number(t.amount);
-      map.set(monthKey, entry);
-    });
-    const all = Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, val]) => ({
-        month: format(parseISO(`${key}-01`), 'MMM/yy', { locale: ptBR }),
-        ...val,
-      }));
-    return isMobile ? all.slice(-6) : all;
-  }, [transactions, isMobile, regime]);
 
   // ── Quebra por centro de custo ────────────────────────────────────────────
   //
@@ -918,7 +876,7 @@ export function FinanceDRE({
   return (
     <div className="space-y-5 sm:space-y-6">
       {/* Filtro por centro de custo — corta o conjunto ANTES de qualquer soma,
-          então KPIs, gráfico, tabela e quebra por centro respondem todos a ele.
+          então demonstrativo e quebra por centro respondem juntos a ele.
           Só aparece pra quem usa centro de custo. */}
       {costCenterFilterOptions.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -933,81 +891,6 @@ export function FinanceDRE({
             ]}
           />
         </div>
-      )}
-
-      {/* KPI Cards — mobile: 3 colunas compactas pra caber tudo na primeira tela. */}
-      <div className="grid gap-2 sm:gap-4 grid-cols-3">
-        <Card className={cn('border-0', dre.margem >= 0 ? 'bg-success' : 'bg-destructive')}>
-          <CardContent className="p-3 sm:p-5">
-            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">{fin.dre.kpi.margin}</p>
-            <p className="text-lg sm:text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 bg-info">
-          <CardContent className="p-3 sm:p-5">
-            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">{fin.dre.kpi.netRevenue}</p>
-            <p className="mt-1 text-sm font-bold text-white sm:text-3xl" title={fmt(dre.receitaLiquida)}>
-              {isMobile ? fmtCompact(dre.receitaLiquida) : fmt(dre.receitaLiquida)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className={cn('border-0', dre.resultadoLiquido >= 0 ? 'bg-success' : 'bg-destructive')}>
-          <CardContent className="p-3 sm:p-5">
-            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">EBITDA</p>
-            <p className="mt-1 text-sm font-bold text-white sm:text-3xl" title={fmt(dre.resultadoLiquido)}>
-              {isMobile ? fmtCompact(dre.resultadoLiquido) : fmt(dre.resultadoLiquido)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Chart */}
-      {monthlyData.length > 1 && (
-        <Card className="border-0 bg-muted/20 shadow-none">
-          <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
-            <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              {isMobile ? fin.dre.chart.titleShort : fin.dre.chart.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className={cn(isMobile && 'p-2')}>
-            <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
-              <AreaChart data={monthlyData}>
-                <defs>
-                  {/* Gradiente vertical de preenchimento: forte no topo (0.7) → quase
-                      transparente na base (0.05) — clássico de chart financeiro. */}
-                  <linearGradient id="dre-grad-area-success" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.7} />
-                    <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.05} />
-                  </linearGradient>
-                  <linearGradient id="dre-grad-area-destructive" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.7} />
-                    <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 11 }} />
-                <YAxis tick={{ fontSize: isMobile ? 10 : 11 }} tickFormatter={(v) => `${currency} ${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number) => fmt(value)} />
-                <Area
-                  type="monotone"
-                  dataKey="receitas"
-                  name={fin.dre.chart.revenue}
-                  stroke="hsl(var(--success))"
-                  strokeWidth={2}
-                  fill="url(#dre-grad-area-success)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="despesas"
-                  name={fin.dre.chart.expenses}
-                  stroke="hsl(var(--destructive))"
-                  strokeWidth={2}
-                  fill="url(#dre-grad-area-destructive)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
       )}
 
       {/* DRE Table */}
@@ -1025,7 +908,7 @@ export function FinanceDRE({
                   aria-label={fin.dre.regime.ariaLabel}
                   className="grid grid-cols-2 items-stretch rounded-lg bg-background/10 p-0.5 w-full sm:w-auto"
                 >
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
@@ -1045,8 +928,8 @@ export function FinanceDRE({
                     <TooltipContent side="bottom" className="max-w-xs">
                       <p className="text-sm">{fin.dre.regime.cashHint}</p>
                     </TooltipContent>
-                  </UITooltip>
-                  <UITooltip>
+                  </Tooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
@@ -1066,7 +949,7 @@ export function FinanceDRE({
                     <TooltipContent side="bottom" className="max-w-xs">
                       <p className="text-sm">{fin.dre.regime.accrualHint}</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </div>
               </TooltipProvider>
               {canIncludeSubscriptionProjections && regime === 'competencia' && (

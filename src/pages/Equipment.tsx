@@ -3,7 +3,6 @@ import { Boxes, Package, Tag, Plus, Pencil, Trash2 } from 'lucide-react';
 import { EquipmentPanel } from '@/components/customers/EquipmentPanel';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,14 +15,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
-import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState('equipamentos');
-  const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const tEq = MESSAGES[locale].app.equipment;
 
@@ -40,53 +37,20 @@ export default function EquipmentPage() {
         icon={Boxes}
       />
 
-      {isMobile ? (
-        <>
-          <MobilePillTabs
-            variant="underline"
-            tabs={tabItems.map((t) => {
-              const Icon = t.icon;
-              return { value: t.key, label: t.label, icon: <Icon className="h-4 w-4 shrink-0" /> };
-            })}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-          <div className="min-w-0">
-            {activeTab === 'equipamentos' && <EquipmentPanel />}
-            {activeTab === 'categorias' && <CategoriesPanel />}
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-6">
-          <nav className="lg:w-52 shrink-0">
-            <div className="flex lg:flex-col gap-1">
-              {tabItems.map((item) => {
-                const isActive = activeTab === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setActiveTab(item.key)}
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-left w-full',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
+      <MobilePillTabs
+        variant="underline"
+        tabs={tabItems.map((tab) => {
+          const Icon = tab.icon;
+          return { value: tab.key, label: tab.label, icon: <Icon className="h-4 w-4 shrink-0" /> };
+        })}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-          <div className="flex-1 min-w-0">
-            {activeTab === 'equipamentos' && <EquipmentPanel />}
-            {activeTab === 'categorias' && <CategoriesPanel />}
-          </div>
-        </div>
-      )}
+      <div className="min-w-0">
+        {activeTab === 'equipamentos' && <EquipmentPanel />}
+        {activeTab === 'categorias' && <CategoriesPanel />}
+      </div>
     </div>
   );
 }

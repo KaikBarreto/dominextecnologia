@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X, Trophy, Ban, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, Trophy, Ban, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
@@ -54,9 +54,10 @@ interface AdminCrmStagesTabProps {
   pipelineId?: string | null;
   pipelineName?: string;
   embedded?: boolean;
+  compact?: boolean;
 }
 
-export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }: AdminCrmStagesTabProps = {}) {
+export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false, compact = false }: AdminCrmStagesTabProps = {}) {
   const { pipelines, defaultPipeline } = useAdminCrmPipelines();
   const [settingsPipelineId, setSettingsPipelineId] = useState<string | null>(null);
   const activePipelineId = pipelineId ?? settingsPipelineId ?? defaultPipeline?.id ?? null;
@@ -123,16 +124,26 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
     setDragOverId(null);
   };
 
+  const moveStage = (id: string, offset: number) => {
+    const currentIndex = stages.findIndex((stage) => stage.id === id);
+    const targetIndex = currentIndex + offset;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= stages.length) return;
+    const ordered = [...stages];
+    const [item] = ordered.splice(currentIndex, 1);
+    ordered.splice(targetIndex, 0, item);
+    reorderStages.mutate(ordered.map((stage) => stage.id));
+  };
+
   const content = (
     <>
-      {embedded ? (
+      {embedded && !compact ? (
         <div className="px-6 pb-1">
           <h2 className="text-xl font-semibold">
             {activePipelineName ? `Estágios de ${activePipelineName}` : 'Estágios do CRM/Kanban'}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">Crie, ordene e personalize as colunas deste funil.</p>
         </div>
-      ) : (
+      ) : !embedded ? (
         <CardHeader>
           <CardTitle className="text-base">Estágios do CRM/Kanban</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -156,11 +167,11 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
             </Select>
           )}
         </CardHeader>
-      )}
-      <CardContent className="space-y-4">
-        <div className="space-y-3 rounded-xl bg-muted/35 p-4">
+      ) : null}
+      <CardContent className={cn('space-y-4', compact && 'p-0')}>
+        <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
           <Label htmlFor="admin-new-stage">Novo estágio</Label>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid items-center gap-2 sm:grid-cols-[minmax(150px,1fr)_100px_auto_auto]">
             <Input
               id="admin-new-stage"
               value={newName}
@@ -194,6 +205,10 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
               )}
             >
               <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+              <div className="flex shrink-0 flex-col md:hidden">
+                <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${s.name} para cima`} disabled={stages[0]?.id === s.id} onClick={() => moveStage(s.id, -1)}><ChevronUp className="h-3.5 w-3.5" /></button>
+                <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${s.name} para baixo`} disabled={stages[stages.length - 1]?.id === s.id} onClick={() => moveStage(s.id, 1)}><ChevronDown className="h-3.5 w-3.5" /></button>
+              </div>
               {editingId === s.id ? (
                 <>
                   <div className="flex min-w-[220px] flex-1 flex-wrap items-center gap-2">

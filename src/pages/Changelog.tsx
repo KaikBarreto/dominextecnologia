@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.29.0',
+    date: '28 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Nova visão geral dos relatórios financeiros',
+        description: 'A área de Relatórios ganhou uma visão geral própria com receita versus despesa, distribuição por categorias e análise por centro de custo. DRE e DFC ficam mais focados no demonstrativo, e o DFC ganhou identificação visual para cada tipo de atividade.',
+        category: 'recurso',
+      },
+      {
+        title: 'Saldos separados por tipo de conta',
+        description: 'Contas bancárias, caixas e cartões agora aparecem em grupos separados, evitando misturar dinheiro disponível com faturas. A lista continua prática mesmo para empresas com muitas contas, e a ação de nova movimentação ganhou mais destaque.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Funis, etapas e webhooks mais fáceis de configurar',
+        description: 'Cada funil agora pode ser aberto para editar suas próprias etapas, tanto no CRM da empresa quanto no painel administrativo. Novos webhooks também permitem escolher exatamente o funil e a etapa que receberão a oportunidade.',
+        category: 'recurso',
+      },
+      {
+        title: 'Indicadores e telas com visual mais leve',
+        description: 'Estoque, posição de estoque, responsáveis técnicos, relatório de ordens de serviço e satisfação ganharam indicadores padronizados e melhor leitura. Custos dos serviços e configurações de contrato também ficaram com menos caixas e bordas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Navegação consistente e responsiva',
+        description: 'Clientes e fornecedores agora usam o mesmo padrão de navegação de equipamentos e categorias. As telas e configurações ajustadas foram revisadas para computador, tablet e celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.1',
     date: '27 de setembro de 2026',
     type: 'patch',

@@ -10,6 +10,8 @@ export type CrmWebhook = Tables<'crm_webhooks'>;
 interface CreateWebhookInput {
   name: string;
   origin?: string | null;
+  pipeline_id: string;
+  stage_id: string;
 }
 
 interface UpdateWebhookInput {
@@ -17,6 +19,8 @@ interface UpdateWebhookInput {
   name?: string;
   origin?: string | null;
   is_active?: boolean;
+  pipeline_id?: string | null;
+  stage_id?: string | null;
 }
 
 export function useCrmWebhooks() {
@@ -63,6 +67,8 @@ export function useCrmWebhooks() {
           company_id: companyId,
           name: input.name,
           origin: input.origin ?? null,
+          pipeline_id: input.pipeline_id,
+          stage_id: input.stage_id,
           created_by: user?.id ?? null,
         })
         .select()

@@ -242,7 +242,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
       )}
 
       {/* Stats — chips clicáveis filtram a lista */}
-      <StatCarousel items={statItems} />
+      <StatCarousel items={statItems} variant="saturated" />
 
       {/* Busca + filtros */}
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
@@ -295,7 +295,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
             />
           ) : (
             <>
-              <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="overflow-hidden rounded-xl bg-muted/20 shadow-sm">
                 {pagination.paginatedItems.map((rt) => {
                   const actions: ItemAction[] = [
                     {
@@ -367,7 +367,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
           <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
             {tRT.pageTitle}
           </h2>
-          <Card className="w-full max-w-full overflow-hidden">
+          <Card className="w-full max-w-full overflow-hidden border-0 bg-muted/20 shadow-none">
             <CardContent className="p-0">
               <div className="p-4 sm:p-6">
                 {filteredTechnicians.length === 0 ? (

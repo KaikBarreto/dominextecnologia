@@ -114,7 +114,7 @@ export function ServiceMaterialsList({ serviceId }: Props) {
   };
 
   return (
-    <Card>
+    <Card className="border-0 bg-background/80 shadow-sm">
       <CardContent className="p-4 space-y-4">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -168,11 +168,11 @@ export function ServiceMaterialsList({ serviceId }: Props) {
         </div>
 
         {materials.length === 0 ? (
-          <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl bg-muted/30 p-6 text-center text-sm text-muted-foreground">
             {t.emptyState}
           </div>
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
+          <div className="overflow-x-auto rounded-xl bg-muted/20">
             <Table>
               <TableHeader>
                 <TableRow>

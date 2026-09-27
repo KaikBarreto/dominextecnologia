@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import {
   BarChart3,
+  DollarSign,
+  TrendingUp,
   RefreshCw,
   FileDown,
   FileText,
@@ -42,6 +44,7 @@ import { generateStockPositionPdf } from '@/utils/stockPositionPdfGenerator';
 import { generateStockPositionExcel } from '@/utils/stockPositionExcelGenerator';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
+import { KPICard } from '@/components/dashboard/KPICard';
 
 /** Formata timestamp local para o input datetime-local */
 function toLocalInputValue(d: Date): string {
@@ -262,15 +265,23 @@ export function StockPositionTab() {
 
       {/* Totais */}
       {filteredRows.length > 0 && !isLoading && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border bg-card p-3">
-            <p className="text-xs text-muted-foreground">{t.totalCost}</p>
-            <p className="text-base font-bold mt-0.5">{formatCurrency(totalValor)}</p>
-          </div>
-          <div className="rounded-xl border bg-card p-3">
-            <p className="text-xs text-muted-foreground">{t.totalSale}</p>
-            <p className="text-base font-bold mt-0.5">{formatCurrency(totalProjecao)}</p>
-          </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <KPICard
+            title={t.totalCost}
+            value={totalValor}
+            formattedValue={formatCurrency(totalValor)}
+            icon={DollarSign}
+            bgClass="bg-primary"
+            delay={0}
+          />
+          <KPICard
+            title={t.totalSale}
+            value={totalProjecao}
+            formattedValue={formatCurrency(totalProjecao)}
+            icon={TrendingUp}
+            bgClass="bg-success"
+            delay={1}
+          />
         </div>
       )}
 

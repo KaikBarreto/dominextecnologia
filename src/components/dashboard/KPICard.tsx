@@ -44,13 +44,14 @@ export function KPICard({
 
   return (
     <motion.div
+      className="h-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: delay * 0.1 }}
     >
       <Card
         className={cn(
-          'border-0 overflow-hidden rounded-2xl shadow-md',
+          'h-full border-0 overflow-hidden rounded-2xl shadow-md',
           onClick && 'cursor-pointer group hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200',
           bgClass,
           // gradient sutil top→bottom pra dar profundidade (cor do bg base + leve clareada)
@@ -58,14 +59,14 @@ export function KPICard({
         )}
         onClick={onClick}
       >
-        <CardContent className="p-5 lg:p-6 relative">
+        <CardContent className="relative flex h-full items-center p-5 lg:p-6">
           {/* halo decorativo no canto direito */}
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 pointer-events-none" />
 
-          <div className="flex items-start justify-between gap-3 relative">
+          <div className="relative flex w-full items-start justify-between gap-3">
             <div className="space-y-2 min-w-0 flex-1">
               <p className="text-[11px] font-semibold text-white/80 uppercase tracking-wider truncate">{title}</p>
-              <p className="text-3xl lg:text-4xl font-bold text-white tracking-tight whitespace-nowrap">
+              <p className="truncate text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
                 {formattedValue ?? formatNumber(animatedValue, locale)}
               </p>
               {subtitle && <p className="text-xs text-white/80">{subtitle}</p>}

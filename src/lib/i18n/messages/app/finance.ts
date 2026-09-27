@@ -12,7 +12,7 @@ export const finance = {
         accounts: 'Contas a pagar e a receber',
         movements: 'Movimentações por conta',
         charges: 'Cobranças e recorrências',
-        reports: 'DRE e DFC',
+        reports: 'Visão geral, DRE e DFC',
         settings: 'Categorias e centros de custo',
       },
       settingsAction: 'Configurações Financeiras',

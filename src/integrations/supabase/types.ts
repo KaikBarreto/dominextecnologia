@@ -2467,6 +2467,8 @@ export type Database = {
           is_active: boolean
           name: string
           origin: string | null
+          pipeline_id: string | null
+          stage_id: string | null
           token: string
           updated_at: string
         }
@@ -2478,6 +2480,8 @@ export type Database = {
           is_active?: boolean
           name: string
           origin?: string | null
+          pipeline_id?: string | null
+          stage_id?: string | null
           token?: string
           updated_at?: string
         }
@@ -2489,6 +2493,8 @@ export type Database = {
           is_active?: boolean
           name?: string
           origin?: string | null
+          pipeline_id?: string | null
+          stage_id?: string | null
           token?: string
           updated_at?: string
         }
@@ -2498,6 +2504,20 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_webhooks_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_webhooks_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
             referencedColumns: ["id"]
           },
         ]

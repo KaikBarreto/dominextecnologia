@@ -104,7 +104,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
   const categoriesToShow: CostResourceCategory[] = ['vehicle', 'tool', 'epi', 'other'];
 
   return (
-    <Card>
+    <Card className="border-0 bg-background/80 shadow-sm">
       <CardContent className="p-4 space-y-4">
         <div>
           <p className="text-sm font-semibold text-foreground">{t.linkedTitle}</p>
@@ -163,7 +163,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                       return (
                         <div
                           key={resource.id}
-                          className={`flex flex-col gap-2 p-2 rounded-md border ${isLinked ? 'border-primary bg-background' : 'border-border bg-background'}`}
+                          className={`flex flex-col gap-2 rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'bg-muted/30 hover:bg-muted/45'}`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -252,7 +252,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                     return (
                       <div
                         key={resource.id}
-                        className={`flex items-center justify-between p-2 rounded-md border ${isLinked ? 'border-primary bg-background' : 'border-border bg-background'}`}
+                        className={`flex items-center justify-between rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'bg-muted/30 hover:bg-muted/45'}`}
                       >
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -289,7 +289,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
 
         {/* Total summary */}
         {totals.total > 0 && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+          <div className="flex items-center justify-between rounded-xl bg-muted/40 p-3 shadow-sm">
             <span className="text-sm font-medium text-foreground">{t.linkedTotalLabel}</span>
             <span className="text-lg font-bold text-primary">{fmt(totals.total)}</span>
           </div>

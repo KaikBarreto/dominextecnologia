@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, FileBarChart, Layers, RefreshCw, Tags, Wallet } from 'lucide-react';
+import { BarChart3, FileBarChart, LayoutDashboard, Layers, RefreshCw, Tags, Wallet } from 'lucide-react';
 import { FinanceOverview } from './FinanceOverview';
+import { FinanceReportsOverview } from './FinanceReportsOverview';
 import { FinanceDRE } from './FinanceDRE';
 import { FinanceDFC } from './FinanceDFC';
 import { FinanceCategorias } from './FinanceCategorias';
@@ -75,6 +76,7 @@ export function FinanceRelatorio({
   const tabs = useMemo<SectionTab[]>(() => {
     if (section === 'relatorios') {
       return [
+        { value: 'visao-geral', label: fin.report.tabs.overview, icon: LayoutDashboard },
         { value: 'dre', label: fin.report.tabs.incomeStatement, icon: FileBarChart },
         { value: 'dfc', label: fin.report.tabs.cashFlowStatement, icon: BarChart3 },
       ];
@@ -107,6 +109,7 @@ export function FinanceRelatorio({
       <FinanceOverview
         transactions={transactions}
         summary={summary}
+        isLoading={isLoading}
         onNavigate={(target) => onNavigateShortcut(target as 'historico' | 'contas')}
         onNewMovement={onNewMovement}
       />
@@ -136,7 +139,9 @@ export function FinanceRelatorio({
 
   return (
     <SettingsSidebarLayout tabs={tabs} activeTab={safeTab} onTabChange={onTabChange}>
-      {safeTab === 'dfc' ? (
+      {safeTab === 'visao-geral' ? (
+        <FinanceReportsOverview transactions={allTransactions} range={dateRange} isLoading={isLoading} />
+      ) : safeTab === 'dfc' ? (
         <FinanceDFC transactions={allTransactions} range={dateRange} isLoading={isLoading} />
       ) : safeTab === 'dre' ? (
         <FinanceDRE

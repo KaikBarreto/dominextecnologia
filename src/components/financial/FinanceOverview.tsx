@@ -1,6 +1,9 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, Wallet, Plus, Clock, Landmark, CreditCard, HelpCircle, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 // Tooltip do shadcn vem com alias pra não colidir com o <Tooltip> do recharts (acima).
@@ -32,6 +35,7 @@ interface FinanceOverviewProps {
     aPagar: number;
     aReceber: number;
   };
+  isLoading?: boolean;
   onNavigate: (tab: string) => void;
   onNewMovement: () => void;
 }
@@ -42,8 +46,14 @@ const CHART_COLORS = [
   'hsl(160, 60%, 45%)', 'hsl(30, 80%, 55%)',
 ];
 
-export function FinanceOverview({ transactions, summary, onNavigate, onNewMovement }: FinanceOverviewProps) {
-  const { accounts, balances, cardBillTotals } = useFinancialAccounts();
+export function FinanceOverview({ transactions, summary, isLoading = false, onNavigate, onNewMovement }: FinanceOverviewProps) {
+  const {
+    accounts,
+    balances,
+    cardBillTotals,
+    isLoading: isLoadingAccounts,
+    isLoadingBalances,
+  } = useFinancialAccounts();
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const ov = MESSAGES[locale].app.finance.overview;
@@ -62,7 +72,31 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewMoveme
     return `${sign}${sym} ${(abs / 1_000).toFixed(1)}k`;
   };
 
-  const activeAccounts = accounts.filter(a => a.is_active);
+  const activeAccounts = useMemo(() => accounts.filter((account) => account.is_active), [accounts]);
+  const accountGroups = useMemo(() => [
+    {
+      value: 'banco',
+      label: 'Contas bancárias',
+      accounts: activeAccounts.filter((account) => account.type === 'banco'),
+    },
+    {
+      value: 'caixa',
+      label: 'Caixas',
+      accounts: activeAccounts.filter((account) => account.type === 'caixa'),
+    },
+    {
+      value: 'cartao',
+      label: 'Cartões',
+      accounts: activeAccounts.filter((account) => account.type === 'cartao'),
+    },
+  ].filter((group) => group.accounts.length > 0), [activeAccounts]);
+  const [activeAccountGroup, setActiveAccountGroup] = useState('banco');
+
+  useEffect(() => {
+    if (accountGroups.length > 0 && !accountGroups.some((group) => group.value === activeAccountGroup)) {
+      setActiveAccountGroup(accountGroups[0].value);
+    }
+  }, [accountGroups, activeAccountGroup]);
 
   const getTypeIcon = (type: string) => {
     if (type === 'caixa') return Wallet;
@@ -162,6 +196,41 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewMoveme
     },
   ];
 
+  if (isLoading || isLoadingAccounts || isLoadingBalances) {
+    return <FinanceOverviewLoading />;
+  }
+
+  const renderAccountCard = (account: (typeof activeAccounts)[number]) => {
+    const Icon = getTypeIcon(account.type);
+    const isCard = account.type === 'cartao';
+    const balance = isCard
+      ? (cardBillTotals[account.id] ?? 0)
+      : (balances[account.id] ?? Number(account.initial_balance ?? 0));
+    const valueClass = isCard
+      ? (balance > 0 ? 'text-destructive' : 'text-muted-foreground')
+      : (balance >= 0 ? 'text-success' : 'text-destructive');
+
+    return (
+      <button
+        key={account.id}
+        type="button"
+        className="flex min-w-0 items-center gap-3 rounded-xl bg-background/70 p-3 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => onNavigate('historico')}
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: account.color }}>
+          <Icon className="h-4 w-4 text-white" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs text-muted-foreground">{account.name}</span>
+          <span className={cn('block truncate text-sm font-bold tabular-nums', valueClass)} title={formatCurrency(balance)}>
+            {formatCurrency(balance)}
+          </span>
+          {isCard && <span className="block text-[10px] uppercase tracking-wider text-muted-foreground/70">{ov.accounts.invoiceSuffix}</span>}
+        </span>
+      </button>
+    );
+  };
+
   return (
     <div className="space-y-5 sm:space-y-6">
       {/* ── Resumo financeiro ── */}
@@ -176,19 +245,19 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewMoveme
                 key={stat.key}
                 type="button"
                 onClick={stat.onClick}
-                className="snap-start shrink-0 flex flex-col items-start justify-between gap-2 h-[110px] min-w-[140px] p-3 rounded-2xl bg-muted/50 text-left transition-all active:scale-95"
+                className="snap-start shrink-0 flex flex-col items-start justify-between gap-2 h-[110px] min-w-[140px] p-3 rounded-2xl text-left text-white shadow-md transition-all active:scale-95"
+                style={{ backgroundColor: stat.color }}
               >
                 <span
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
-                  style={{ backgroundColor: stat.color }}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white shrink-0"
                 >
                   {stat.icon}
                 </span>
                 <div className="space-y-0.5 w-full">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">
+                  <p className="text-[10px] uppercase tracking-wider text-white/80 truncate">
                     {stat.label}
                   </p>
-                  <p className="text-base font-bold leading-tight truncate">
+                  <p className="text-base font-bold leading-tight text-white truncate">
                     {formatCurrencyShort(stat.value)}
                   </p>
                 </div>
@@ -280,55 +349,46 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewMoveme
         </>
       )}
 
-      {/* Account balances */}
-      {activeAccounts.length > 0 && (
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70 mb-3">{ov.accounts.sectionTitle}</h3>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {activeAccounts.map(a => {
-              const Icon = getTypeIcon(a.type);
-              // Cartão de crédito não tem "saldo de conta"; o valor relevante é a fatura aberta
-              // (despesas - reembolsos). Conta-corrente/caixa usa o saldo real.
-              // Mantém consistência visual com FinanceBanks.tsx (que já trata isso assim).
-              const isCard = a.type === 'cartao';
-              const balance = isCard
-                ? (cardBillTotals[a.id] ?? 0)
-                : (balances[a.id] ?? Number(a.initial_balance ?? 0));
-              // Cartão: fatura > 0 é dívida (mostra em destructive); = 0 é cinza (sem fatura).
-              // Conta/caixa: positivo verde, negativo vermelho.
-              const valueClass = isCard
-                ? (balance > 0 ? 'text-destructive' : 'text-muted-foreground')
-                : (balance >= 0 ? 'text-success' : 'text-destructive');
-              return (
-                <Card key={a.id} className="cursor-pointer border-0 bg-muted/35 shadow-none hover:bg-muted/60 transition-colors" onClick={() => onNavigate('historico')}>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="rounded-full p-2 shrink-0" style={{ backgroundColor: a.color }}>
-                      <Icon className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground truncate">
-                        {a.name}
-                        {isCard && <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">· {ov.accounts.invoiceSuffix}</span>}
-                      </p>
-                      <p className={`text-sm font-bold ${valueClass}`}>
-                        {formatCurrency(balance)}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="flex">
-        <Button size="sm" className="h-10 w-full gap-2 bg-success text-white hover:bg-success/90 sm:h-9 sm:w-auto" onClick={onNewMovement}>
-          <Plus className="h-4 w-4" />
+      {/* Ação principal — acima das contas, visível sem percorrer listas longas. */}
+      <div className="flex justify-end">
+        <Button
+          size="lg"
+          className="h-12 w-full gap-2 bg-foreground px-6 text-background shadow-sm hover:bg-foreground/90 sm:w-auto"
+          onClick={onNewMovement}
+        >
+          <Plus className="h-5 w-5" />
           {ov.actions.newMovement}
         </Button>
       </div>
+
+      {/* Saldos separados por natureza: cartão é fatura/dívida, nunca caixa disponível. */}
+      {activeAccounts.length > 0 && (
+        <Card className="border-0 bg-muted/25 shadow-none">
+          <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-foreground/70">{ov.accounts.sectionTitle}</CardTitle>
+            <p className="text-xs text-muted-foreground">Caixas, bancos e faturas são exibidos separadamente para não misturar disponibilidade com dívida.</p>
+          </CardHeader>
+          <CardContent className="p-3 pt-1 sm:p-5 sm:pt-2">
+            <Tabs value={activeAccountGroup} onValueChange={setActiveAccountGroup}>
+              <TabsList variant="underline" className="w-full">
+                {accountGroups.map((group) => (
+                  <TabsTrigger key={group.value} value={group.value} variant="underline" className="gap-1.5 px-3 text-xs sm:text-sm">
+                    {group.label}
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{group.accounts.length}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {accountGroups.map((group) => (
+                <TabsContent key={group.value} value={group.value} className="mt-3">
+                  <div className="grid max-h-[19rem] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.accounts.map(renderAccountCard)}
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cash Flow Bar Chart */}
       {cashFlowData.length > 0 && (
@@ -489,6 +549,22 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewMoveme
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function FinanceOverviewLoading() {
+  return (
+    <div className="space-y-5 sm:space-y-6" aria-label="Carregando visão geral financeira" aria-busy="true">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[0, 1, 2].map((item) => <Skeleton key={item} className="h-24" />)}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Skeleton className="h-20" /><Skeleton className="h-20" />
+      </div>
+      <div className="flex justify-end"><Skeleton className="h-12 w-full sm:w-52" /></div>
+      <Skeleton className="h-56 w-full" />
+      <Skeleton className="h-72 w-full" />
     </div>
   );
 }

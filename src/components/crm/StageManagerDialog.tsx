@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Check, X, Trophy, XCircle } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Check, X, Trophy, XCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,8 @@ interface StageManagerDialogProps {
   /** Nome do funil, só pra deixar claro no título do diálogo qual funil está
    *  sendo editado quando a empresa tem mais de um. */
   pipelineName?: string;
+  /** Versão enxuta usada dentro do funil expansível nas configurações. */
+  compact?: boolean;
 }
 
 export function StageManagerDialog({
@@ -54,6 +56,7 @@ export function StageManagerDialog({
   onOpenChange,
   pipelineId,
   pipelineName,
+  compact = false,
 }: StageManagerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
@@ -148,6 +151,16 @@ export function StageManagerDialog({
     reorderStages.mutate(newOrder.map((s) => s.id));
     setDraggedId(null);
     setDragOverId(null);
+  };
+
+  const moveStage = (id: string, offset: number) => {
+    const currentIndex = stages.findIndex((stage) => stage.id === id);
+    const targetIndex = currentIndex + offset;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= stages.length) return;
+    const next = [...stages];
+    const [moved] = next.splice(currentIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    reorderStages.mutate(next.map((stage) => stage.id));
   };
 
   const EditableRow = ({ stage }: { stage: CrmStage }) => {
@@ -277,6 +290,10 @@ export function StageManagerDialog({
         )}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+        <div className="flex shrink-0 flex-col md:hidden">
+          <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${stage.name} para cima`} disabled={stages[0]?.id === stage.id} onClick={() => moveStage(stage.id, -1)}><ChevronUp className="h-3.5 w-3.5" /></button>
+          <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${stage.name} para baixo`} disabled={stages[stages.length - 1]?.id === stage.id} onClick={() => moveStage(stage.id, 1)}><ChevronDown className="h-3.5 w-3.5" /></button>
+        </div>
         <Badge className={cn(getStageColorClass(stage.color), 'font-medium gap-1')}>
           {stage.icon && <IconPreview name={stage.icon} className="h-3 w-3" />}
           {stage.name}
@@ -314,22 +331,22 @@ export function StageManagerDialog({
     <>
       {!embedded && children && <span onClick={() => setOpen(true)}>{children}</span>}
       {embedded ? (
-        <section className="space-y-5" aria-label={dialogTitle}>
-          <div>
+        <section className={cn('space-y-4', !compact && 'space-y-5')} aria-label={dialogTitle}>
+          {!compact && <div>
             <h2 className="text-xl font-semibold">{dialogTitle}</h2>
             <p className="text-sm text-muted-foreground mt-1">Crie, ordene e personalize as colunas deste funil.</p>
-          </div>
+          </div>}
           <div className="space-y-4">
-            <div className="space-y-3 p-4 rounded-xl bg-muted/35">
+            <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
               <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
-              <div className="flex gap-2 flex-wrap">
+              <div className="grid gap-2 sm:grid-cols-[minmax(150px,1fr)_110px_auto_auto]">
                 <Input value={newStage.name} onChange={(e) => setNewStage({ ...newStage, name: e.target.value })} placeholder={t.stages.namePlaceholder} className="flex-1 min-w-[150px]" />
                 <Select value={newStage.icon ?? 'none'} onValueChange={(v) => setNewStage({ ...newStage, icon: v === 'none' ? null : v })}>
                   <SelectTrigger className="w-[110px] h-9" aria-label={t.stages.iconLabel}><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="none">{t.stages.iconNone}</SelectItem>{ICON_OPTIONS.map((ic) => <SelectItem key={ic} value={ic}>{ic}</SelectItem>)}</SelectContent>
                 </Select>
                 <ColorPicker value={newStage.color} onChange={(color) => setNewStage({ ...newStage, color })} />
-                <Button onClick={handleCreateStage} disabled={!newStage.name.trim() || !pipelineId || createStage.isPending} className="gap-2"><Plus className="h-4 w-4" /> Adicionar estágio</Button>
+                <Button onClick={handleCreateStage} disabled={!newStage.name.trim() || !pipelineId || createStage.isPending} className="gap-2 sm:justify-self-end"><Plus className="h-4 w-4" /> Adicionar estágio</Button>
               </div>
             </div>
             <div className="space-y-2"><p className="text-xs text-muted-foreground">{t.stages.dragHint}</p>{stages.map((stage) => <EditableRow key={stage.id} stage={stage} />)}</div>

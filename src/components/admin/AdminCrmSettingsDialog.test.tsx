@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
@@ -33,17 +33,9 @@ vi.mock('@/components/SettingsSidebarLayout', () => ({
   ),
 }));
 
-vi.mock('@/components/admin/AdminStageManagerDialog', () => ({
-  AdminStageManagerDialog: ({ pipelineId, pipelineName, embedded }: {
-    pipelineId: string;
-    pipelineName: string;
-    embedded: boolean;
-  }) => <div data-testid="stages">{`${pipelineName}:${pipelineId}:${embedded}`}</div>,
-}));
-
 vi.mock('@/components/admin/AdminPipelineManagerDialog', () => ({
-  AdminPipelineManagerDialog: ({ embedded }: { embedded: boolean }) => (
-    <div data-testid="pipelines">{String(embedded)}</div>
+  AdminPipelineManagerDialog: ({ embedded, initialExpandedPipelineId }: { embedded: boolean; initialExpandedPipelineId: string }) => (
+    <div data-testid="pipelines">{`${embedded}:${initialExpandedPipelineId}`}</div>
   ),
 }));
 
@@ -52,22 +44,22 @@ import { AdminCrmSettingsDialog } from './AdminCrmSettingsDialog';
 describe('AdminCrmSettingsDialog', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('abre nas configurações de estágios do funil selecionado', () => {
+  it('abre na configuração de funis com o funil selecionado expandido', () => {
     render(
       <AdminCrmSettingsDialog
         open
         onOpenChange={() => undefined}
         pipelineId="pipeline-1"
-        pipelineName="Funil da Dominex"
       />,
     );
 
     expect(screen.getByRole('heading', { name: 'Configurações do CRM/Kanban' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Estágios' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByTestId('stages').textContent).toBe('Funil da Dominex:pipeline-1:true');
+    expect(screen.queryByRole('button', { name: 'Estágios' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Funis' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('pipelines').textContent).toBe('true:pipeline-1');
   });
 
-  it('troca para o CRUD de funis dentro da mesma tela', () => {
+  it('mantém somente o CRUD de funis dentro da tela', () => {
     render(
       <AdminCrmSettingsDialog
         open
@@ -77,8 +69,7 @@ describe('AdminCrmSettingsDialog', () => {
       />,
     );
 
-    expect(screen.getByTestId('pipelines').textContent).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Estágios' }));
-    expect(screen.getByTestId('stages')).toBeTruthy();
+    expect(screen.getByTestId('pipelines').textContent).toBe('true:pipeline-1');
+    expect(screen.queryByTestId('stages')).toBeNull();
   });
 });

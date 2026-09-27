@@ -387,25 +387,25 @@ export function ServiceCostsTab() {
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="rounded-lg bg-muted/30 p-3">
+                        <div className="rounded-xl bg-muted/30 p-3 shadow-sm">
                           <p className="text-xs text-muted-foreground">{tsc.summaryLabor}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(laborCost)}</p>
                         </div>
-                        <div className="rounded-lg bg-muted/30 p-3">
+                        <div className="rounded-xl bg-muted/30 p-3 shadow-sm">
                           <p className="text-xs text-muted-foreground">{tsc.summaryMaterials}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(materialsTotal || 0)}</p>
                         </div>
-                        <div className="rounded-lg bg-muted/30 p-3">
+                        <div className="rounded-xl bg-muted/30 p-3 shadow-sm">
                           <p className="text-xs text-muted-foreground">{tsc.summaryResources}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(linkedResourcesTotal)}</p>
                         </div>
-                        <div className="rounded-lg bg-muted/30 p-3">
+                        <div className="rounded-xl bg-muted/30 p-3 shadow-sm">
                           <p className="text-xs text-muted-foreground">{tsc.summaryExtras}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(extrasTotal)}</p>
                         </div>
                       </div>
 
-                      <div className="rounded-lg bg-muted/20 p-3 space-y-3">
+                      <div className="space-y-3 px-1 py-2">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div className="space-y-1.5">
                             <Label className="text-xs">{tsc.simTax}</Label>
@@ -440,7 +440,7 @@ export function ServiceCostsTab() {
                         </div>
                       </div>
 
-                      <div className="rounded-xl bg-muted/40 p-4">
+                      <div className="rounded-2xl bg-primary/5 p-4 shadow-sm">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold text-foreground">{tsc.summaryTotalCost}</p>
                           <p className="text-lg font-bold text-foreground">{fmt(totalServiceCost)}</p>

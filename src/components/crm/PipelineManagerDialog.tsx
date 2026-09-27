@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Check, X, Star, Lock, Users, AlertTriangle } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, GripVertical, Pencil, Trash2, Check, X, Star, Lock, Users, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { PipelineAccessDialog } from '@/components/crm/PipelineAccessDialog';
+import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
 import { Label } from '@/components/ui/label';
 import { useCrmPipelines, type CrmPipeline } from '@/hooks/useCrmPipelines';
 import { useCrmPipelineAccess } from '@/hooks/useCrmPipelineAccess';
@@ -39,6 +40,8 @@ interface PipelineManagerDialogProps {
    *  novo: criar um funil e continuar olhando pro antigo fazia o usuário
    *  cadastrar as etapas no funil errado. */
   onCreated?: (pipelineId: string) => void;
+  /** Funil que deve abrir expandido quando as configurações forem acionadas pela engrenagem da aba. */
+  initialExpandedPipelineId?: string;
 }
 
 /**
@@ -56,6 +59,7 @@ export function PipelineManagerDialog({
   open: openProp,
   onOpenChange,
   onCreated,
+  initialExpandedPipelineId,
 }: PipelineManagerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
@@ -101,8 +105,14 @@ export function PipelineManagerDialog({
   const [accessPipelineId, setAccessPipelineId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#2563EB');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [expandedPipelineId, setExpandedPipelineId] = useState<string | null>(initialExpandedPipelineId ?? null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialExpandedPipelineId) setExpandedPipelineId(initialExpandedPipelineId);
+  }, [initialExpandedPipelineId]);
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -112,6 +122,8 @@ export function PipelineManagerDialog({
         onSuccess: (created) => {
           setNewName('');
           setNewColor('#2563EB');
+          setShowCreateForm(false);
+          if (created?.id) setExpandedPipelineId(created.id);
           if (created?.id) onCreated?.(created.id);
         },
       },
@@ -150,6 +162,16 @@ export function PipelineManagerDialog({
     reorderPipelines.mutate(newOrder.map((p) => p.id));
     setDraggedId(null);
     setDragOverId(null);
+  };
+
+  const movePipeline = (id: string, offset: number) => {
+    const currentIndex = pipelines.findIndex((pipeline) => pipeline.id === id);
+    const targetIndex = currentIndex + offset;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= pipelines.length) return;
+    const next = [...pipelines];
+    const [moved] = next.splice(currentIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    reorderPipelines.mutate(next.map((pipeline) => pipeline.id));
   };
 
   const Row = ({ pipeline }: { pipeline: CrmPipeline }) => {
@@ -198,6 +220,7 @@ export function PipelineManagerDialog({
     }
 
     return (
+      <div className={cn('rounded-xl bg-muted/20 transition-colors', isDragOver && 'ring-2 ring-primary')}>
       <div
         draggable
         onDragStart={(e) => handleDragStart(e, pipeline.id)}
@@ -206,13 +229,26 @@ export function PipelineManagerDialog({
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, pipeline.id)}
         className={cn(
-          'flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/20 transition-all group',
+          'flex items-center gap-2 px-2 py-3 sm:gap-3 sm:px-3 group',
           isDragging && 'opacity-50',
-          isDragOver && 'border-primary border-2 bg-primary/5',
+          isDragOver && 'bg-primary/5',
           !isDragging && !isDragOver && 'hover:bg-muted/30',
         )}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+        <div className="flex shrink-0 flex-col md:hidden">
+          <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${pipeline.name} para cima`} disabled={pipelines[0]?.id === pipeline.id} onClick={() => movePipeline(pipeline.id, -1)}><ChevronUp className="h-3.5 w-3.5" /></button>
+          <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${pipeline.name} para baixo`} disabled={pipelines[pipelines.length - 1]?.id === pipeline.id} onClick={() => movePipeline(pipeline.id, 1)}><ChevronDown className="h-3.5 w-3.5" /></button>
+        </div>
+        <button
+          type="button"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-muted"
+          onClick={() => setExpandedPipelineId((current) => current === pipeline.id ? null : pipeline.id)}
+          aria-expanded={expandedPipelineId === pipeline.id}
+          aria-label={expandedPipelineId === pipeline.id ? `Recolher ${pipeline.name}` : `Expandir ${pipeline.name}`}
+        >
+          {expandedPipelineId === pipeline.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
         {/* Nome + o que tem DENTRO do funil. Antes a linha era só o nome: não
             dava pra saber qual funil era qual, nem por que a exclusão era
             recusada (é o funil com etapas/oportunidades que o banco segura). */}
@@ -279,6 +315,12 @@ export function PipelineManagerDialog({
           />
         </div>
       </div>
+      {expandedPipelineId === pipeline.id && (
+        <div className="px-3 pb-4 pt-1 sm:pl-12">
+          <StageManagerDialog embedded compact pipelineId={pipeline.id} pipelineName={pipeline.name} />
+        </div>
+      )}
+      </div>
     );
   };
 
@@ -287,14 +329,18 @@ export function PipelineManagerDialog({
       {!embedded && children && <span onClick={() => setOpen(true)}>{children}</span>}
       {embedded ? <section className="space-y-5">
         <div><h2 className="text-xl font-semibold">{t.pipelines.title}</h2><p className="text-sm text-muted-foreground mt-1">{t.pipelines.subtitle}</p></div>
-        <div className="space-y-3 p-4 rounded-xl bg-muted/35">
-          <Label className="text-sm font-medium">{t.pipelines.newPipelineLabel}</Label>
-          <div className="flex flex-wrap gap-2">
+        {!showCreateForm ? (
+          <Button variant="outline" onClick={() => setShowCreateForm(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Novo funil
+          </Button>
+        ) : <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2"><Label className="text-sm font-medium">{t.pipelines.newPipelineLabel}</Label><Button variant="ghost" size="icon" onClick={() => setShowCreateForm(false)}><X className="h-4 w-4" /></Button></div>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t.pipelines.namePlaceholder} className="flex-1 min-w-[170px]" />
             <input aria-label="Cor do novo funil" type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-9 w-11 cursor-pointer rounded border bg-transparent p-1" />
             <Button onClick={handleCreate} disabled={!newName.trim() || createPipeline.isPending} className="gap-2"><Plus className="h-4 w-4" />{t.pipelines.createAction}</Button>
           </div>
-        </div>
+        </div>}
         <div className="space-y-2"><p className="text-xs text-muted-foreground">{t.pipelines.dragHint} {t.pipelines.defaultHint}</p>{pipelines.map((pipeline) => <Row key={pipeline.id} pipeline={pipeline} />)}</div>
       </section> : <ResponsiveModal open={open} onOpenChange={setOpen} title={t.pipelines.title}>
         <div className="space-y-4">

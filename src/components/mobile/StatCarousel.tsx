@@ -19,6 +19,8 @@ export interface StatCarouselItem {
 interface StatCarouselProps {
   items: StatCarouselItem[];
   loading?: boolean;
+  /** Cards com fundo semântico saturado e conteúdo branco (padrão Dominex). */
+  variant?: 'default' | 'saturated';
 }
 
 // Degrada o tamanho da fonte do valor do chip conforme o texto cresce — números
@@ -36,8 +38,9 @@ function getChipValueSizeClass(value: string): string {
 /**
  * Stats de listagem. Mobile = carrossel horizontal de chips snap-x. Desktop = grid auto-fit.
  */
-export function StatCarousel({ items, loading = false }: StatCarouselProps) {
+export function StatCarousel({ items, loading = false, variant = 'default' }: StatCarouselProps) {
   const isMobile = useIsMobile();
+  const saturated = variant === 'saturated';
 
   if (loading) {
     return isMobile ? (
@@ -66,20 +69,27 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
               key={item.key}
               type="button"
               onClick={item.onClick}
+              style={saturated ? { backgroundColor: item.accentColor || 'hsl(var(--primary))' } : undefined}
               className={cn(
-                'snap-start shrink-0 flex flex-col items-center justify-center gap-1.5 h-[120px] min-w-[112px] max-w-[140px] p-3 rounded-2xl border bg-card text-center transition-all active:scale-95',
+                'snap-start shrink-0 flex flex-col items-center justify-center gap-1.5 h-[120px] min-w-[112px] max-w-[140px] p-3 rounded-2xl text-center transition-all active:scale-95',
+                saturated
+                  ? 'border-0 bg-gradient-to-br from-white/10 to-transparent text-white shadow-md hover:shadow-lg'
+                  : 'border bg-card',
                 item.active
-                  ? 'ring-2 ring-primary border-primary/60 shadow-md'
-                  : 'border-border shadow-sm'
+                  ? saturated ? 'ring-2 ring-white/80 shadow-lg' : 'ring-2 ring-primary border-primary/60 shadow-md'
+                  : !saturated && 'border-border shadow-sm'
               )}
             >
               <span
-                className="flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0"
-                style={{ backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
+                className={cn(
+                  'flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0',
+                  saturated && 'bg-white/20 backdrop-blur-sm',
+                )}
+                style={saturated ? undefined : { backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
               >
                 {item.icon}
               </span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate max-w-full">
+              <span className={cn('text-[10px] uppercase tracking-wider truncate max-w-full', saturated ? 'text-white/80' : 'text-muted-foreground')}>
                 {item.label}
               </span>
               <span
@@ -102,21 +112,25 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
       {items.map((item) => (
         <Card
           key={item.key}
+          style={saturated ? { backgroundColor: item.accentColor || 'hsl(var(--primary))' } : undefined}
           className={cn(
-            'cursor-pointer transition-colors hover:bg-muted',
-            item.active && 'ring-2 ring-primary'
+            'h-full cursor-pointer overflow-hidden rounded-2xl transition-all',
+            saturated
+              ? 'border-0 bg-gradient-to-br from-white/10 to-transparent text-white shadow-md hover:-translate-y-0.5 hover:shadow-lg'
+              : 'hover:bg-muted',
+            item.active && (saturated ? 'ring-2 ring-white/80' : 'ring-2 ring-primary')
           )}
           onClick={item.onClick}
         >
-          <CardContent className="p-3 sm:p-4">
+          <CardContent className="h-full p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">{item.label}</p>
-                <p className="text-xl sm:text-2xl font-bold">{item.displayValue ?? item.count}</p>
+              <div className="min-w-0">
+                <p className={cn('truncate text-xs sm:text-sm', saturated ? 'text-white/80' : 'text-muted-foreground')}>{item.label}</p>
+                <p className="truncate text-xl font-bold sm:text-2xl">{item.displayValue ?? item.count}</p>
               </div>
               <div
-                className="rounded-full p-1.5 sm:p-2 text-white"
-                style={{ backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
+                className={cn('shrink-0 rounded-full p-1.5 text-white sm:p-2', saturated && 'bg-white/20 backdrop-blur-sm')}
+                style={saturated ? undefined : { backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
               >
                 {item.icon}
               </div>

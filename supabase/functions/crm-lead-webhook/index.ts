@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       .from('crm_webhooks')
       // company_id é o QUE define o tenant do lead — sem ele o insert quebra
       // (leads.company_id é NOT NULL) e o escopo dos estágios some.
-      .select('id, name, origin, is_active, company_id')
+      .select('id, name, origin, is_active, company_id, pipeline_id, stage_id')
       .eq('token', token)
       .eq('is_active', true)
       .maybeSingle();
@@ -186,9 +186,67 @@ Deno.serve(async (req) => {
     // lead ia parar no funil de outra empresa (por acidente na busca do padrão,
     // e de propósito na busca por stage_id do corpo).
     let stageId: string | null = null;
+    const configuredPipelineId = webhook.pipeline_id as string | null;
+    const configuredStageId = webhook.stage_id as string | null;
     const requestedStageId = pickString(payload, ['stage_id']);
 
-    if (requestedStageId) {
+    // Configuração do webhook sempre vence o payload: quem integra não pode
+    // desviar oportunidades para outra etapa depois que o administrador
+    // definiu o destino na tela.
+    if (configuredStageId) {
+      const { data: configuredStage, error: configuredStageError } = await supabaseAdmin
+        .from('crm_stages')
+        .select('id')
+        .eq('id', configuredStageId)
+        .eq('company_id', companyId)
+        .eq('pipeline_id', configuredPipelineId)
+        .maybeSingle();
+
+      if (configuredStageError) {
+        console.error('[crm-lead-webhook] falha ao consultar etapa configurada', { code: configuredStageError.code });
+        return json({ error: MSG.internal }, 500);
+      }
+      stageId = configuredStage?.id ?? null;
+    }
+
+    // Webhook já associado a um funil, mas sem etapa (registro antigo ou etapa
+    // removida): usa a primeira etapa aberta daquele mesmo funil.
+    if (!stageId && configuredPipelineId) {
+      const { data: configuredPipeline, error: pipelineError } = await supabaseAdmin
+        .from('crm_pipelines')
+        .select('id')
+        .eq('id', configuredPipelineId)
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (pipelineError) {
+        console.error('[crm-lead-webhook] falha ao consultar funil configurado', { code: pipelineError.code });
+        return json({ error: MSG.internal }, 500);
+      }
+
+      if (configuredPipeline) {
+        const { data: pipelineStage, error: pipelineStageError } = await supabaseAdmin
+          .from('crm_stages')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('pipeline_id', configuredPipelineId)
+          .eq('is_won', false)
+          .eq('is_lost', false)
+          .order('position', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (pipelineStageError) {
+          console.error('[crm-lead-webhook] falha ao consultar etapa do funil', { code: pipelineStageError.code });
+          return json({ error: MSG.internal }, 500);
+        }
+        stageId = pipelineStage?.id ?? null;
+      }
+    }
+
+    // Compatibilidade: webhooks sem destino salvo continuam aceitando stage_id
+    // no payload, com o mesmo isolamento por empresa que já existia.
+    if (!configuredPipelineId && !configuredStageId && requestedStageId) {
       // Formato inválido nem chega ao banco (evita erro 22P02 virando 500).
       if (!UUID_RE.test(requestedStageId)) return json({ error: MSG.stageInvalid }, 400);
 
@@ -214,13 +272,30 @@ Deno.serve(async (req) => {
       stageId = requestedStage.id;
     }
 
-    if (!stageId) {
-      const { data: defaultStage, error: defaultStageError } = await supabaseAdmin
+    if (!stageId && !configuredPipelineId) {
+      const { data: defaultPipeline, error: defaultPipelineError } = await supabaseAdmin
+        .from('crm_pipelines')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      if (defaultPipelineError) {
+        console.error('[crm-lead-webhook] falha ao consultar funil padrão', { code: defaultPipelineError.code });
+        return json({ error: MSG.internal }, 500);
+      }
+
+      let defaultStageQuery = supabaseAdmin
         .from('crm_stages')
         .select('id')
         .eq('company_id', companyId)
         .eq('is_won', false)
-        .eq('is_lost', false)
+        .eq('is_lost', false);
+      if (defaultPipeline?.id) {
+        defaultStageQuery = defaultStageQuery.eq('pipeline_id', defaultPipeline.id);
+      }
+
+      const { data: defaultStage, error: defaultStageError } = await defaultStageQuery
         .order('position', { ascending: true })
         .limit(1)
         .maybeSingle();

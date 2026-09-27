@@ -29,7 +29,7 @@ import { resolveAppSlug, localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 //   /financeiro/contas        → Contas a Pagar/Receber
 //   /financeiro/movimentacoes → Movimentações (coluna operacional de contas)
 //   /financeiro/cobrancas     → Cobranças + Assinaturas
-//   /financeiro/relatorios    → DRE + DFC
+//   /financeiro/relatorios    → Visão Geral + DRE + DFC
 //   /financeiro/configuracoes-financeiras → Categorias + Centros de Custo
 // As URLs antigas (/financeiro, /financeiro/dre, /caixas-bancos, /categorias,
 // /configuracoes) redirecionam no App.tsx pra não dar 404.
@@ -61,7 +61,7 @@ export default function Finance() {
   const screen: FinanceScreen = (routeKey && KEY_SCREEN_MAP[routeKey]) || 'relatorio';
 
   const defaultSectionTab =
-    screen === 'relatorios' ? 'dre'
+    screen === 'relatorios' ? 'visao-geral'
     : screen === 'cobrancas' ? 'cobrancas'
     : screen === 'configuracoes' ? 'categorias'
     : 'visao-geral';

@@ -135,6 +135,9 @@ describe('FinanceDFC', () => {
     );
     expect(realizedBadge?.className).toContain('bg-success');
     expect(realizedBadge?.className).toContain('text-white');
+    expect(container.querySelector('[data-dfc-group-icon="operacional"]')).toBeTruthy();
+    expect(container.querySelector('[data-dfc-group-icon="investimento"]')).toBeTruthy();
+    expect(container.querySelector('[data-dfc-group-icon="financiamento"]')).toBeTruthy();
 
     const investmentButton = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent?.includes('Atividades de investimento'),

@@ -562,7 +562,7 @@ export default function Inventory() {
         {activeTab === 'estoque' && (
           <div className="space-y-4">
             {/* Stats */}
-            <StatCarousel items={statItems} loading={isLoading} />
+            <StatCarousel items={statItems} loading={isLoading} variant="saturated" />
 
             {/* Subabas dos depósitos (quando há mais de 1) */}
             {stocks.length > 1 && (

@@ -231,7 +231,7 @@ export default function CRM() {
   // reabrir a tela sempre volta pro Funil, que é o uso principal.
   const [pageTab, setPageTab] = useState<'funil' | 'tarefas'>('funil');
   const [crmSettingsOpen, setCrmSettingsOpen] = useState(false);
-  const [crmSettingsSection, setCrmSettingsSection] = useState<'stages' | 'pipelines' | 'webhooks'>('stages');
+  const [crmSettingsSection, setCrmSettingsSection] = useState<'pipelines' | 'webhooks'>('pipelines');
   const [taskSearch, setTaskSearch] = useState('');
   // Com busca digitada, o funil esconde as etapas que ficaram sem nenhum card —
   // senão o único resultado fica na 8ª coluna e o usuário precisa rolar até
@@ -759,7 +759,7 @@ export default function CRM() {
       icon: Settings2,
       onClick: () => {
         selectPipeline(pipeline.id);
-        setCrmSettingsSection('stages');
+        setCrmSettingsSection('pipelines');
         setCrmSettingsOpen(true);
       },
     },
@@ -1143,7 +1143,6 @@ export default function CRM() {
       onOpenChange={setCrmSettingsOpen}
       initialSection={crmSettingsSection}
       pipelineId={selectedPipelineId ?? undefined}
-      pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
       onPipelineCreated={selectPipeline}
     />
   );
