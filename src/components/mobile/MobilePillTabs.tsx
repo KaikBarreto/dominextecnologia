@@ -28,6 +28,8 @@ interface MobilePillTabsProps {
   activeTab: string;
   onTabChange: (value: string) => void;
   className?: string;
+  /** Navegacao usa linha inferior; seletores compactos mantem pills segmentadas. */
+  variant?: 'segmented' | 'underline';
   /**
    * Sufixo renderizado à direita do label de cada pill, dentro do container da
    * pill mas FORA do elemento clicável principal. Usar para ícones de ação
@@ -51,7 +53,7 @@ interface MobilePillTabsProps {
  * - Fade direito aparece só quando há conteúdo além da borda direita.
  * - Ambos os fades usam mask-image (funciona sobre qualquer superfície: tela, modal, card).
  */
-export function MobilePillTabs({ tabs, activeTab, onTabChange, className, renderSuffix }: MobilePillTabsProps) {
+export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', renderSuffix }: MobilePillTabsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeDivRef = useRef<HTMLDivElement>(null);
   const activeButtonRef = useRef<HTMLButtonElement>(null);
@@ -150,8 +152,12 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
     <div className={cn('relative -mx-3', className)}>
       <div
         ref={scrollRef}
+        role="tablist"
         style={maskStyle}
-        className="flex gap-1.5 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200"
+        className={cn(
+          'flex overflow-x-auto px-3 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200',
+          variant === 'underline' ? 'items-end gap-1 border-b border-border pb-0' : 'gap-1.5 pb-1',
+        )}
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.value;
@@ -170,7 +176,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
           // quando muito clara (ex: #ffffff) — aí cai no token escuro pra não
           // sumir sobre o fundo translúcido claro.
           const pillTextColor = idealForeground(tab.accentColor) === '#0f172a' ? '#0f172a' : `rgb(${rgb})`;
-          const accentStyle: React.CSSProperties = colorBg
+          const segmentedAccentStyle: React.CSSProperties = colorBg
             ? isActive
               ? { backgroundColor: `rgb(${rgb})`, color: idealForeground(tab.accentColor) }
               : {}
@@ -179,6 +185,11 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
               ? { backgroundColor: `rgba(${rgb}, 0.16)`, color: pillTextColor, boxShadow: `inset 0 0 0 1px rgba(${rgb}, 0.4)` }
               : {}
             : {};
+          const accentStyle: React.CSSProperties = variant === 'underline'
+            ? accented && isActive
+              ? { borderColor: `rgb(${rgb})`, color: pillTextColor }
+              : {}
+            : segmentedAccentStyle;
 
           const suffix = renderSuffix ? renderSuffix(tab, isActive) : null;
 
@@ -192,8 +203,13 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
                 ref={isActive ? activeDivRef : undefined}
                 style={accentStyle}
                 className={cn(
-                  'snap-start shrink-0 inline-flex items-center rounded-full text-sm font-medium transition-all',
-                  accented
+                  'snap-start shrink-0 inline-flex items-center text-sm font-medium transition-colors',
+                  variant === 'underline'
+                    ? cn(
+                        '-mb-px rounded-none border-b-2 bg-transparent shadow-none',
+                        isActive ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
+                      )
+                    : accented
                     ? isActive
                       ? 'shadow-sm'
                       : 'bg-muted/50 text-muted-foreground'
@@ -209,7 +225,10 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
                   tabIndex={0}
                   onClick={() => onTabChange(tab.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTabChange(tab.value); } }}
-                  className="inline-flex items-center gap-1.5 h-9 pl-3.5 pr-1.5 cursor-pointer select-none active:scale-95"
+                  className={cn(
+                    'inline-flex items-center gap-1.5 h-9 cursor-pointer select-none active:scale-95',
+                    variant === 'underline' ? 'pl-4 pr-2' : 'pl-3.5 pr-1.5',
+                  )}
                 >
                   {tab.icon}
                   <span className="whitespace-nowrap">{tab.label}</span>
@@ -218,7 +237,9 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
                       style={colorBg && isActive ? { opacity: 0.85 } : undefined}
                       className={cn(
                         'whitespace-nowrap text-xs font-semibold tabular-nums',
-                        colorBg
+                        variant === 'underline'
+                          ? isActive ? 'text-current opacity-80' : 'text-muted-foreground/70'
+                          : colorBg
                           ? isActive ? '' : 'text-muted-foreground/70'
                           : accented
                           ? isActive ? 'opacity-80' : 'text-muted-foreground/70'
@@ -230,7 +251,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
                   )}
                 </span>
                 {/* Sufixo: elemento interativo irmão, não filho de button */}
-                <span className="flex items-center pr-1.5">
+                <span className={cn('flex items-center', variant === 'underline' ? 'pr-2' : 'pr-1.5')}>
                   {suffix}
                 </span>
               </div>
@@ -242,17 +263,27 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
               key={tab.value}
               ref={isActive ? activeButtonRef : undefined}
               type="button"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => onTabChange(tab.value)}
               style={accentStyle}
               className={cn(
-                'snap-start shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-medium transition-all active:scale-95',
-                accented
+                'snap-start shrink-0 inline-flex items-center gap-1.5 h-9 text-sm font-medium transition-colors active:scale-95',
+                variant === 'underline'
+                  ? cn(
+                      '-mb-px rounded-none border-b-2 bg-transparent px-4 shadow-none',
+                      isActive ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
+                    )
+                  : cn(
+                    'rounded-full px-3.5',
+                    accented
                   ? isActive
                     ? 'shadow-sm'
                     : 'bg-muted/50 text-muted-foreground hover:bg-muted active:bg-muted'
                   : isActive
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'bg-muted/50 text-muted-foreground hover:bg-muted active:bg-muted',
+                  ),
               )}
             >
               {tab.icon}
@@ -264,7 +295,9 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, render
                   style={colorBg && isActive ? { opacity: 0.85 } : undefined}
                   className={cn(
                     'whitespace-nowrap text-xs font-semibold tabular-nums',
-                    colorBg
+                    variant === 'underline'
+                      ? isActive ? 'text-current opacity-80' : 'text-muted-foreground/70'
+                      : colorBg
                       ? isActive ? '' : 'text-muted-foreground/70'
                       : accented
                       ? isActive ? 'opacity-80' : 'text-muted-foreground/70'

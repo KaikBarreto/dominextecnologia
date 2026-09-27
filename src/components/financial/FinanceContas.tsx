@@ -773,6 +773,7 @@ export function FinanceContas({
       {/* Sub-tab toggle — mobile usa pillTabs scrolláveis; desktop botões */}
       {isMobile ? (
         <MobilePillTabs
+          variant="underline"
           tabs={[
             { value: 'pagar', label: fin.accounts.subTabs.payable, icon: <ArrowDownCircle className="h-3.5 w-3.5" /> },
             { value: 'receber', label: fin.accounts.subTabs.receivable, icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
@@ -781,21 +782,31 @@ export function FinanceContas({
           onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
         />
       ) : (
-        <div className="flex gap-2">
-          <Button
-            variant={subTab === 'pagar' ? 'default' : 'outline'}
+        <div className="flex gap-1 border-b" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === 'pagar'}
             onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
-            className={cn('min-h-11 rounded-xl', subTab === 'pagar' && 'bg-destructive hover:bg-destructive/90 text-white')}
+            className={cn(
+              'min-h-11 -mb-px border-b-2 px-4 text-sm font-medium transition-colors',
+              subTab === 'pagar' ? 'border-destructive text-destructive' : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
           >
             {fin.accounts.subTabs.payable}
-          </Button>
-          <Button
-            variant={subTab === 'receber' ? 'default' : 'outline'}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === 'receber'}
             onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
-            className={cn('min-h-11 rounded-xl', subTab === 'receber' && 'bg-success hover:bg-success/90 text-white')}
+            className={cn(
+              'min-h-11 -mb-px border-b-2 px-4 text-sm font-medium transition-colors',
+              subTab === 'receber' ? 'border-success text-success' : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
           >
             {fin.accounts.subTabs.receivable}
-          </Button>
+          </button>
         </div>
       )}
 

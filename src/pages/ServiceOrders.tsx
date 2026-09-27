@@ -184,11 +184,27 @@ export default function ServiceOrders() {
           fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
           fuzzyIncludes((os as any).task_title, searchTerm) ||
           fuzzyIncludes((os as any).equipment?.name, searchTerm) ||
+          fuzzyIncludes(os.description, searchTerm) ||
+          fuzzyIncludes(os.diagnosis, searchTerm) ||
+          fuzzyIncludes(os.service_address, searchTerm) ||
+          fuzzyIncludes(os.service_address_number, searchTerm) ||
+          fuzzyIncludes(os.service_neighborhood, searchTerm) ||
+          fuzzyIncludes(os.service_city, searchTerm) ||
+          fuzzyIncludes(os.service_state, searchTerm) ||
+          fuzzyIncludes(os.service_zip_code, searchTerm) ||
+          fuzzyIncludes(os.customer?.address, searchTerm) ||
+          fuzzyIncludes(os.customer?.address_number, searchTerm) ||
+          fuzzyIncludes(os.customer?.complement, searchTerm) ||
+          fuzzyIncludes(os.customer?.neighborhood, searchTerm) ||
+          fuzzyIncludes(os.customer?.city, searchTerm) ||
+          fuzzyIncludes(os.customer?.state, searchTerm) ||
+          fuzzyIncludes(os.customer?.zip_code, searchTerm) ||
           // Telefone do cliente: só entra quando a busca é um telefone de
           // verdade (6+ dígitos), senão "123" traria toda OS cujo cliente tem
           // "123" no celular e afundaria a busca por número de OS.
           fuzzyIncludesPhone(os.customer?.phone, searchTerm) ||
-          fuzzyIncludesPhone((os.customer as any)?.celular, searchTerm)
+          fuzzyIncludesPhone((os.customer as any)?.celular, searchTerm) ||
+          fuzzyIncludesPhone((os as any).contact_phone, searchTerm)
         );
       });
     }

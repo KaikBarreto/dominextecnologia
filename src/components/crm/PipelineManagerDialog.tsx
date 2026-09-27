@@ -27,6 +27,8 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface PipelineManagerDialogProps {
+  /** Renderiza o CRUD dentro da área unificada de configurações. */
+  embedded?: boolean;
   /** Gatilho embutido (padrão histórico). Omitir quando o diálogo é aberto de
    *  fora, por `open`/`onOpenChange` (botão "+" das abas de funil). */
   children?: React.ReactNode;
@@ -49,6 +51,7 @@ interface PipelineManagerDialogProps {
  * que são coisas diferentes, do jeito que Kommo/RD Station também separam.
  */
 export function PipelineManagerDialog({
+  embedded = false,
   children,
   open: openProp,
   onOpenChange,
@@ -97,16 +100,18 @@ export function PipelineManagerDialog({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [accessPipelineId, setAccessPipelineId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState('#2563EB');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const handleCreate = () => {
     if (!newName.trim()) return;
     createPipeline.mutate(
-      { name: newName.trim() },
+      { name: newName.trim(), color: newColor },
       {
         onSuccess: (created) => {
           setNewName('');
+          setNewColor('#2563EB');
           if (created?.id) onCreated?.(created.id);
         },
       },
@@ -149,6 +154,7 @@ export function PipelineManagerDialog({
 
   const Row = ({ pipeline }: { pipeline: CrmPipeline }) => {
     const [name, setName] = useState(pipeline.name);
+    const [color, setColor] = useState(pipeline.color ?? '#2563EB');
     const isEditing = editingId === pipeline.id;
     const isDragging = draggedId === pipeline.id;
     const isDragOver = dragOverId === pipeline.id;
@@ -156,7 +162,7 @@ export function PipelineManagerDialog({
 
     if (isEditing) {
       return (
-        <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
+        <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/35">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -164,11 +170,13 @@ export function PipelineManagerDialog({
             className="flex-1"
             autoFocus
           />
+          <input aria-label="Cor do funil" type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-11 cursor-pointer rounded border bg-transparent p-1" />
           <Button
             variant="ghost"
             size="icon"
             onClick={() => {
               setName(pipeline.name);
+              setColor(pipeline.color ?? '#2563EB');
               setEditingId(null);
             }}
           >
@@ -179,7 +187,7 @@ export function PipelineManagerDialog({
             size="icon"
             disabled={!name.trim()}
             onClick={() => {
-              updatePipeline.mutate({ id: pipeline.id, name: name.trim() });
+              updatePipeline.mutate({ id: pipeline.id, name: name.trim(), color });
               setEditingId(null);
             }}
           >
@@ -198,7 +206,7 @@ export function PipelineManagerDialog({
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, pipeline.id)}
         className={cn(
-          'flex items-center gap-2 p-2 rounded-lg border bg-card transition-all group',
+          'flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/20 transition-all group',
           isDragging && 'opacity-50',
           isDragOver && 'border-primary border-2 bg-primary/5',
           !isDragging && !isDragOver && 'hover:bg-muted/30',
@@ -210,6 +218,7 @@ export function PipelineManagerDialog({
             recusada (é o funil com etapas/oportunidades que o banco segura). */}
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{pipeline.name}</p>
+          <span className="mt-1 block h-1 w-16 rounded-full" style={{ backgroundColor: pipeline.color ?? '#2563EB' }} />
           <p className="text-xs text-muted-foreground truncate">
             {t.pipelines.countsLine
               .replace('{stages}', String(counts.stages))
@@ -275,8 +284,19 @@ export function PipelineManagerDialog({
 
   return (
     <>
-      {children && <span onClick={() => setOpen(true)}>{children}</span>}
-      <ResponsiveModal open={open} onOpenChange={setOpen} title={t.pipelines.title}>
+      {!embedded && children && <span onClick={() => setOpen(true)}>{children}</span>}
+      {embedded ? <section className="space-y-5">
+        <div><h2 className="text-xl font-semibold">{t.pipelines.title}</h2><p className="text-sm text-muted-foreground mt-1">{t.pipelines.subtitle}</p></div>
+        <div className="space-y-3 p-4 rounded-xl bg-muted/35">
+          <Label className="text-sm font-medium">{t.pipelines.newPipelineLabel}</Label>
+          <div className="flex flex-wrap gap-2">
+            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t.pipelines.namePlaceholder} className="flex-1 min-w-[170px]" />
+            <input aria-label="Cor do novo funil" type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-9 w-11 cursor-pointer rounded border bg-transparent p-1" />
+            <Button onClick={handleCreate} disabled={!newName.trim() || createPipeline.isPending} className="gap-2"><Plus className="h-4 w-4" />{t.pipelines.createAction}</Button>
+          </div>
+        </div>
+        <div className="space-y-2"><p className="text-xs text-muted-foreground">{t.pipelines.dragHint} {t.pipelines.defaultHint}</p>{pipelines.map((pipeline) => <Row key={pipeline.id} pipeline={pipeline} />)}</div>
+      </section> : <ResponsiveModal open={open} onOpenChange={setOpen} title={t.pipelines.title}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">{t.pipelines.subtitle}</p>
 
@@ -296,6 +316,13 @@ export function PipelineManagerDialog({
                     handleCreate();
                   }
                 }}
+              />
+              <input
+                aria-label="Cor do novo funil"
+                type="color"
+                value={newColor}
+                onChange={(e) => setNewColor(e.target.value)}
+                className="h-9 w-11 cursor-pointer rounded border bg-transparent p-1"
               />
               <Button
                 onClick={handleCreate}
@@ -318,7 +345,7 @@ export function PipelineManagerDialog({
             ))}
           </div>
         </div>
-      </ResponsiveModal>
+      </ResponsiveModal>}
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>

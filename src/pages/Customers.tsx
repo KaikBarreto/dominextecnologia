@@ -170,6 +170,13 @@ export default function Customers() {
         customer.document,
         customer.phone,
         customer.celular,
+        customer.address,
+        customer.address_number,
+        customer.complement,
+        customer.neighborhood,
+        customer.city,
+        customer.state,
+        customer.zip_code,
       ],
       searchTerm,
     ),
@@ -244,6 +251,7 @@ export default function Customers() {
          (mesmo padrão das subabas do Financeiro em CustomerDetail). */}
       {isMobile ? (
         <MobilePillTabs
+          variant="underline"
           tabs={[
             { value: 'clientes', label: t.title, icon: <Users className="h-4 w-4 shrink-0" /> },
             { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },
@@ -252,20 +260,27 @@ export default function Customers() {
           onTabChange={(v) => setMainTab(v as CustomersMainTab)}
         />
       ) : (
-        <div className="flex gap-2">
+        <div className="flex gap-1 border-b overflow-x-auto no-scrollbar" role="tablist">
           {([
             { value: 'clientes' as const, label: t.title, icon: Users },
             { value: 'fornecedores' as const, label: tSuppliers.tabLabel, icon: Truck },
           ]).map((opt) => (
-            <Button
+            <button
               key={opt.value}
-              variant={mainTab === opt.value ? 'default' : 'outline'}
+              type="button"
+              role="tab"
+              aria-selected={mainTab === opt.value}
               onClick={() => setMainTab(opt.value)}
-              className="min-h-10 rounded-xl gap-2"
+              className={cn(
+                'inline-flex min-h-10 shrink-0 items-center gap-2 -mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                mainTab === opt.value
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
             >
               <opt.icon className="h-4 w-4" />
               {opt.label}
-            </Button>
+            </button>
           ))}
         </div>
       )}

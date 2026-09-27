@@ -2359,6 +2359,7 @@ export type Database = {
       }
       crm_pipelines: {
         Row: {
+          color: string
           company_id: string
           created_at: string
           id: string
@@ -2368,6 +2369,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string
           company_id: string
           created_at?: string
           id?: string
@@ -2377,6 +2379,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string
           company_id?: string
           created_at?: string
           id?: string
@@ -9335,6 +9338,7 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          address: string | null
           company_id: string
           contact_name: string | null
           cpf_cnpj: string | null
@@ -9348,6 +9352,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           company_id: string
           contact_name?: string | null
           cpf_cnpj?: string | null
@@ -9361,6 +9366,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           company_id?: string
           contact_name?: string | null
           cpf_cnpj?: string | null

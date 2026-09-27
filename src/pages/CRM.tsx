@@ -10,8 +10,6 @@ import {
   Users,
   Target,
   Settings2,
-  Webhook,
-  Workflow,
   LayoutList,
   LayoutGrid,
   User,
@@ -21,7 +19,6 @@ import {
   ListChecks,
   CheckCircle2,
   Circle,
-  Star,
   Trash2,
   ListFilter,
 } from 'lucide-react';
@@ -50,10 +47,8 @@ import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
-import { PipelineManagerDialog } from '@/components/crm/PipelineManagerDialog';
-import { PipelineAccessDialog } from '@/components/crm/PipelineAccessDialog';
 import { PipelineTabsBar } from '@/components/crm/PipelineTabsBar';
-import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
+import { CrmSettingsDialog } from '@/components/crm/CrmSettingsDialog';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
@@ -68,7 +63,6 @@ import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fn
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
-import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
@@ -123,20 +117,15 @@ export default function CRM() {
   const { leads, isLoading, updateLead } = useLeads();
   const { users } = useUsers();
   const { stages: allStages, isLoading: stagesLoading, seedDefaultStages, reorderStages } = useCrmStages();
-  const { pipelines, isLoading: pipelinesLoading, defaultPipeline, setDefaultPipeline } = useCrmPipelines();
+  const { pipelines, isLoading: pipelinesLoading, defaultPipeline } = useCrmPipelines();
 
   // Onda C — "cada um vê as suas": filtro no client é UX, a RLS (policy
   // "Leads visiveis apenas ao responsavel") já é quem garante a segurança de
   // verdade. Mesma chave que a RLS espelha (public.user_has_permission),
   // pra tela e banco nunca discordarem sobre quem enxerga o quê.
-  const { user, hasPermission, isAdminOrGestor, roles, permissions, hasPermissionRecord } = useAuth();
+  const { user, hasPermission, roles, permissions, hasPermissionRecord } = useAuth();
   const { teamsWithMembers } = useTeams();
   const canManageCrm = hasPermission('fn:manage_crm');
-  // Gate de "Quem pode ver" no menu da engrenagem — MESMO público que a RLS de
-  // crm_pipeline_access deixa escrever (public.can_manage_system), igual ao
-  // PipelineManagerDialog. Não é fn:manage_crm: quem só gerencia o CRM não
-  // necessariamente administra o sistema, e a RLS recusaria em silêncio.
-  const canManagePipelineAccess = isAdminOrGestor() || hasPermission('fn:manage_settings');
   const visibleLeads = useMemo(() => {
     if (canManageCrm) return leads;
     const uid = user?.id;
@@ -241,6 +230,8 @@ export default function CRM() {
   // Tarefas (lista das tarefas vinculadas a oportunidades). Não persiste —
   // reabrir a tela sempre volta pro Funil, que é o uso principal.
   const [pageTab, setPageTab] = useState<'funil' | 'tarefas'>('funil');
+  const [crmSettingsOpen, setCrmSettingsOpen] = useState(false);
+  const [crmSettingsSection, setCrmSettingsSection] = useState<'stages' | 'pipelines' | 'webhooks'>('stages');
   const [taskSearch, setTaskSearch] = useState('');
   // Com busca digitada, o funil esconde as etapas que ficaram sem nenhum card —
   // senão o único resultado fica na 8ª coluna e o usuário precisa rolar até
@@ -753,32 +744,44 @@ export default function CRM() {
 
       <div className="pt-2 border-t space-y-2">
         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filterConfig}</label>
-        <StageManagerDialog
-          pipelineId={selectedPipelineId ?? undefined}
-          pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
-        >
-          <Button variant="outline" className="w-full justify-start gap-2" type="button">
-            <Settings2 className="h-4 w-4" />
-            {t.manageStages}
-          </Button>
-        </StageManagerDialog>
-        <PipelineManagerDialog>
-          <Button variant="outline" className="w-full justify-start gap-2" type="button">
-            <Workflow className="h-4 w-4" />
-            {t.managePipelines}
-          </Button>
-        </PipelineManagerDialog>
-        <WebhookManagerDialog>
-          <Button variant="outline" className="w-full justify-start gap-2" type="button">
-            <Webhook className="h-4 w-4" />
-            {t.configWebhooks}
-          </Button>
-        </WebhookManagerDialog>
+        <Button variant="outline" className="w-full justify-start gap-2" type="button" onClick={() => setCrmSettingsOpen(true)}>
+          <Settings2 className="h-4 w-4" />
+          {t.crmSettings}
+        </Button>
       </div>
     </div>
   );
 
   // Resumo (chip mobile): primeira stage "won" e primeira stage neutra
+  const pipelineMenuActions = (pipeline: CrmPipeline): RowAction[] => [
+    {
+      label: t.crmSettings,
+      icon: Settings2,
+      onClick: () => {
+        selectPipeline(pipeline.id);
+        setCrmSettingsSection('stages');
+        setCrmSettingsOpen(true);
+      },
+    },
+  ];
+
+  const pipelineTabs = pipelines.length > 0 && (
+    <PipelineTabsBar
+      pipelines={pipelines}
+      selectedId={selectedPipelineId}
+      onSelect={selectPipeline}
+      onCreate={() => {
+        setCrmSettingsSection('pipelines');
+        setCrmSettingsOpen(true);
+      }}
+      menuActions={pipelineMenuActions}
+      mobile={isMobile}
+      configureLabel={t.pipelineTabs.configure}
+      createLabel={t.pipelineTabs.create}
+      listLabel={t.pipelineSelectorLabel}
+    />
+  );
+
   const wonStage = stages.find(s => s.is_won);
   const neutralStage = stages.find(s => !s.is_won && !s.is_lost);
 
@@ -816,6 +819,14 @@ export default function CRM() {
   // ------------------------------------------------------------------
   const kanbanBlock = (
     <div className="overflow-hidden">
+      <div className="mb-3 flex items-center gap-2">
+        <div className="min-w-0 flex-1">{pipelineTabs}</div>
+        {isMobile && (
+          <Button variant="outline" size="icon" onClick={() => setCrmSettingsOpen(true)} title={t.crmSettings} aria-label={t.crmSettings}>
+            <Settings2 className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
       {!isMobile && (
         <div className="flex items-center gap-2 mb-3">
           <ListFilter className="h-5 w-5" />
@@ -1111,80 +1122,23 @@ export default function CRM() {
   // TODOS os funis (decisão registrada na Onda E2), então abas ali sugeririam
   // um recorte que não existe.
   // ------------------------------------------------------------------
-  const [stageDialogPipelineId, setStageDialogPipelineId] = useState<string | null>(null);
-  const [pipelineManagerOpen, setPipelineManagerOpen] = useState(false);
-  const [accessPipelineId, setAccessPipelineId] = useState<string | null>(null);
-
-  const pipelineMenuActions = (pipeline: CrmPipeline): RowAction[] => [
-    {
-      label: t.manageStages,
-      icon: Settings2,
-      onClick: () => setStageDialogPipelineId(pipeline.id),
-    },
-    {
-      label: t.pipelineAccess.menuLabel,
-      icon: Users,
-      hidden: !canManagePipelineAccess,
-      onClick: () => setAccessPipelineId(pipeline.id),
-    },
-    {
-      label: t.pipelines.setDefaultAction,
-      icon: Star,
-      hidden: pipeline.is_default,
-      disabled: setDefaultPipeline.isPending,
-      onClick: () => setDefaultPipeline.mutate(pipeline.id),
-    },
-    {
-      label: t.managePipelines,
-      icon: Workflow,
-      onClick: () => setPipelineManagerOpen(true),
-    },
-  ];
-
-  const pipelineTabs = pipelines.length > 0 && (
-    <PipelineTabsBar
-      pipelines={pipelines}
-      selectedId={selectedPipelineId}
-      onSelect={selectPipeline}
-      onCreate={() => setPipelineManagerOpen(true)}
-      menuActions={pipelineMenuActions}
-      mobile={isMobile}
-      configureLabel={t.pipelineTabs.configure}
-      createLabel={t.pipelineTabs.create}
-      listLabel={t.pipelineSelectorLabel}
-    />
-  );
-
   // Título da tela: o NOME do funil quando a empresa tem mais de um (é o que
   // o CEO pediu, e é o que diz "onde eu estou"). Com um funil só, o nome
   // apareceria duplicado no título E na única aba — aí o título continua
   // sendo "CRM", como sempre foi.
-  const headerTitle =
-    pageTab === 'funil' && pipelines.length > 1 && selectedPipeline ? selectedPipeline.name : t.title;
+  const headerTitle = t.title;
 
   // Diálogos abertos pelo menu da engrenagem (e pelo "+"). Ficam aqui, fora
   // do PipelineTabsBar, porque também são acionados de outros pontos da tela.
   const pipelineDialogs = (
-    <>
-      <StageManagerDialog
-        open={!!stageDialogPipelineId}
-        onOpenChange={(o) => !o && setStageDialogPipelineId(null)}
-        pipelineId={stageDialogPipelineId ?? undefined}
-        pipelineName={
-          pipelines.length > 1 ? pipelines.find((p) => p.id === stageDialogPipelineId)?.name : undefined
-        }
-      />
-      <PipelineManagerDialog
-        open={pipelineManagerOpen}
-        onOpenChange={setPipelineManagerOpen}
-        onCreated={selectPipeline}
-      />
-      <PipelineAccessDialog
-        pipeline={pipelines.find((p) => p.id === accessPipelineId) ?? null}
-        open={!!accessPipelineId}
-        onOpenChange={(o) => !o && setAccessPipelineId(null)}
-      />
-    </>
+    <CrmSettingsDialog
+      open={crmSettingsOpen}
+      onOpenChange={setCrmSettingsOpen}
+      initialSection={crmSettingsSection}
+      pipelineId={selectedPipelineId ?? undefined}
+      pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
+      onPipelineCreated={selectPipeline}
+    />
   );
 
   // ------------------------------------------------------------------
@@ -1473,13 +1427,11 @@ export default function CRM() {
           tasksBlock
         ) : (
           <>
-            {pipelineTabs}
-
             {summaryRow}
 
             {/* Busca + filtros */}
             <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder={t.searchPlaceholderMobile}
@@ -1495,6 +1447,10 @@ export default function CRM() {
               >
                 {filterSheetContent}
               </FilterSheet>
+              <Button className="h-10 shrink-0 gap-1.5 px-3" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                <span>{t.newOpportunity}</span>
+              </Button>
             </div>
 
             {/* StatCarousel — 1 chip por stage; tap filtra (apenas view lista). */}
@@ -1515,14 +1471,6 @@ export default function CRM() {
             {/* Conteúdo */}
             {viewMode === 'list' ? mobileListBlock : kanbanBlock}
           </>
-        )}
-
-        {pageTab === 'funil' && (
-          <FABButton
-            icon={<Plus className="h-5 w-5" />}
-            label={t.newOpportunityShort}
-            onClick={() => setDialogOpen(true)}
-          />
         )}
 
         {/* Dialogs */}
@@ -1571,40 +1519,11 @@ export default function CRM() {
         title={headerTitle}
         subtitle={t.subtitle}
         icon={ListFilter}
-        titleSuffix={pageTab === 'funil' ? pipelineTabs || undefined : undefined}
         actions={
-          <>
-            <StageManagerDialog
-              pipelineId={selectedPipelineId ?? undefined}
-              pipelineName={pipelines.length > 1 ? selectedPipeline?.name : undefined}
-            >
-              {/* Os três eram só ícone, com o nome escondido no `title` (o
-                  tooltip do navegador, que no celular nem existe): ninguém
-                  sabia o que cada um fazia sem clicar. Agora o rótulo aparece
-                  no desktop; no celular fica só o ícone, senão três botões com
-                  texto estouram a faixa do cabeçalho. */}
-              <Button variant="outline" size={isMobile ? 'icon' : 'sm'} className="gap-2" title={t.manageStages}>
-                <Settings2 className="h-4 w-4" />
-                {!isMobile && t.manageStages}
-              </Button>
-            </StageManagerDialog>
-            <PipelineManagerDialog>
-              <Button variant="outline" size={isMobile ? 'icon' : 'sm'} className="gap-2" title={t.managePipelines}>
-                <Workflow className="h-4 w-4" />
-                {!isMobile && t.managePipelines}
-              </Button>
-            </PipelineManagerDialog>
-            <WebhookManagerDialog>
-              <Button variant="outline" size={isMobile ? 'icon' : 'sm'} className="gap-2" title={t.configWebhooks}>
-                <Webhook className="h-4 w-4" />
-                {!isMobile && t.configWebhooks}
-              </Button>
-            </WebhookManagerDialog>
-            <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="h-4 w-4" />
-              {t.newOpportunity}
-            </Button>
-          </>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setCrmSettingsOpen(true)}>
+            <Settings2 className="h-4 w-4" />
+            {t.crmSettings}
+          </Button>
         }
       />
 
@@ -1724,6 +1643,10 @@ export default function CRM() {
             </div>
           </div>
         </FilterButton>
+        <Button onClick={() => setDialogOpen(true)} className="shrink-0 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Plus className="h-4 w-4" />
+          {t.newOpportunity}
+        </Button>
       </div>
 
       {/* Active Filters Display */}

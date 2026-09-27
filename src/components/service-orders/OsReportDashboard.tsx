@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -10,15 +9,18 @@ import { formatBRL } from '@/utils/currency';
 import { osStatusLabels } from '@/types/database';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  LineChart, Line, ResponsiveContainer, Tooltip, Legend,
+  AreaChart, Area, ResponsiveContainer, Tooltip,
 } from 'recharts';
 import {
-  ClipboardCheck, TrendingUp, Clock, DollarSign, Users, Wrench,
+  ClipboardCheck, TrendingUp, Clock, DollarSign, Users, Wrench, CalendarCheck,
 } from 'lucide-react';
-import { format, differenceInMinutes, getDay, parseISO } from 'date-fns';
+import { format, differenceInMinutes, differenceInCalendarDays, getDay, parseISO, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { KPICard } from '@/components/dashboard/KPICard';
+
+const REPORT_SURFACE = 'border-0 bg-muted/20 shadow-none rounded-2xl';
 
 /**
  * Gera os rótulos dos dias da semana (Dom..Sáb) no locale correto usando Intl.
@@ -96,25 +98,68 @@ export function OsReportDashboard() {
       const key = st?.id || 'sem_tipo';
       const existing = map.get(key);
       if (existing) existing.value++;
-      else map.set(key, { name: st?.name || 'Sem tipo', value: 1, color: st?.color || '#94a3b8' });
+      else map.set(key, { name: st?.name || t.serviceTypeFallback, value: 1, color: st?.color || '#94a3b8' });
     });
     return Array.from(map.values()).sort((a, b) => b.value - a.value);
-  }, [filtered]);
+  }, [filtered, t.serviceTypeFallback]);
 
-  // ── OS over time (line) ──
+  // ── OS over time ──
+  // Em períodos curtos, agrega por dia. A versão anterior sempre agrupava por
+  // mês, fazendo "Este mês" virar um único ponto sem valor analítico.
   const timelineData = useMemo(() => {
-    const map = new Map<string, { month: string; total: number; revenue: number }>();
+    const from = range.from;
+    const to = range.to;
+    const byDay = !!from && !!to && differenceInCalendarDays(to, from) <= 62;
+    const map = new Map<string, { label: string; total: number; concluded: number; revenue: number }>();
     filtered.forEach(os => {
       const d = os.scheduled_date || os.created_at;
-      const key = format(new Date(d), 'yyyy-MM');
-      const label = format(new Date(d), 'MMM/yy', { locale: ptBR });
+      const date = new Date(d);
+      const key = format(date, byDay ? 'yyyy-MM-dd' : 'yyyy-MM');
+      const label = format(date, byDay ? 'dd/MM' : 'MMM/yy', { locale: ptBR });
       const existing = map.get(key);
-      const val = os.status === 'concluida' ? (Number(os.total_value) || 0) : 0;
-      if (existing) { existing.total++; existing.revenue += val; }
-      else map.set(key, { month: label, total: 1, revenue: val });
+      const concluded = os.status === 'concluida';
+      const val = concluded ? (Number(os.total_value) || 0) : 0;
+      if (existing) {
+        existing.total++;
+        existing.concluded += concluded ? 1 : 0;
+        existing.revenue += val;
+      } else {
+        map.set(key, { label, total: 1, concluded: concluded ? 1 : 0, revenue: val });
+      }
     });
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
-  }, [filtered]);
+  }, [filtered, range.from, range.to]);
+
+  // ── Saúde operacional do agendamento ──
+  // Usa somente fatos registrados: data agendada, status e data de conclusão.
+  // Não presume SLA nem prazo contratual inexistente.
+  const scheduleHealthData = useMemo(() => {
+    const today = startOfDay(new Date());
+    let onSchedule = 0;
+    let completedLate = 0;
+    let overdueOpen = 0;
+    let withoutCompletionTime = 0;
+
+    filtered.forEach(os => {
+      if (!os.scheduled_date) return;
+      const scheduled = startOfDay(parseISO(os.scheduled_date));
+      if (os.status === 'concluida') {
+        const completedAt = os.completed_at || os.check_out_time;
+        if (!completedAt) withoutCompletionTime++;
+        else if (startOfDay(new Date(completedAt)) <= scheduled) onSchedule++;
+        else completedLate++;
+      } else if (os.status !== 'cancelada' && scheduled < today) {
+        overdueOpen++;
+      }
+    });
+
+    return [
+      { name: t.scheduleHealthOnTime, value: onSchedule, color: 'hsl(var(--success))' },
+      { name: t.scheduleHealthLate, value: completedLate, color: 'hsl(var(--warning))' },
+      { name: t.scheduleHealthOpenOverdue, value: overdueOpen, color: 'hsl(var(--destructive))' },
+      { name: t.scheduleHealthNoCompletion, value: withoutCompletionTime, color: 'hsl(var(--muted-foreground))' },
+    ];
+  }, [filtered, t.scheduleHealthLate, t.scheduleHealthNoCompletion, t.scheduleHealthOnTime, t.scheduleHealthOpenOverdue]);
 
   // ── Top 10 customers ──
   const topCustomers = useMemo(() => {
@@ -149,10 +194,10 @@ export function OsReportDashboard() {
         hasTime = 1;
       }
       if (existing) { existing.count++; existing.totalMin += min; existing.withTime += hasTime; }
-      else map.set(tid, { name: profile?.full_name || 'Técnico', count: 1, totalMin: min, withTime: hasTime });
+      else map.set(tid, { name: profile?.full_name || t.technicianFallback, count: 1, totalMin: min, withTime: hasTime });
     });
     return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
-  }, [filtered, profiles]);
+  }, [filtered, profiles, t.technicianFallback]);
 
   // ── OS by weekday ──
   const weekdayData = useMemo(() => {
@@ -163,10 +208,6 @@ export function OsReportDashboard() {
     });
     return WEEKDAY_LABELS.map((label, i) => ({ day: label, total: counts[i] }));
   }, [filtered, WEEKDAY_LABELS]);
-
-  const pieConfig: ChartConfig = Object.fromEntries(
-    statusData.map(s => [s.name, { label: s.name, color: s.color }])
-  );
 
   const totalStatus = statusData.reduce((s, d) => s + d.value, 0);
 
@@ -184,74 +225,79 @@ export function OsReportDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="rounded-full bg-primary/10 p-3"><ClipboardCheck className="h-5 w-5 text-primary" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t.kpiTotal}</p>
-              <p className="text-2xl font-bold">{kpis.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="rounded-full bg-success/10 p-3"><TrendingUp className="h-5 w-5 text-success" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t.kpiCompletionRate}</p>
-              <p className="text-2xl font-bold">{kpis.rate}%</p>
-              <p className="text-[11px] text-muted-foreground">{t.kpiCompletionRateSub.replace('{n}', String(kpis.concluded))}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="rounded-full bg-info/10 p-3"><Clock className="h-5 w-5 text-info" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t.kpiAvgTime}</p>
-              <p className="text-2xl font-bold">{kpis.avgMinutes > 0 ? formatMinutes(kpis.avgMinutes) : '—'}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="rounded-full bg-warning/10 p-3"><DollarSign className="h-5 w-5 text-warning" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t.kpiBilling}</p>
-              <p className="text-2xl font-bold">R$ {formatBRL(kpis.revenue)}</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-flow-col auto-cols-[82%] gap-4 overflow-x-auto pb-1 snap-x sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-2 sm:overflow-visible 2xl:grid-cols-4 [&>*]:snap-start">
+        <KPICard title={t.kpiTotal} value={kpis.total} icon={ClipboardCheck} bgClass="bg-primary" delay={0} />
+        <KPICard
+          title={t.kpiCompletionRate}
+          value={kpis.rate}
+          formattedValue={`${kpis.rate}%`}
+          subtitle={t.kpiCompletionRateSub.replace('{n}', String(kpis.concluded))}
+          icon={TrendingUp}
+          bgClass="bg-success"
+          delay={1}
+        />
+        <KPICard
+          title={t.kpiAvgTime}
+          value={kpis.avgMinutes}
+          formattedValue={kpis.avgMinutes > 0 ? formatMinutes(kpis.avgMinutes) : '—'}
+          icon={Clock}
+          bgClass="bg-info"
+          delay={2}
+        />
+        <KPICard
+          title={t.kpiBilling}
+          value={kpis.revenue}
+          formattedValue={`R$ ${formatBRL(kpis.revenue)}`}
+          icon={DollarSign}
+          bgClass="bg-warning"
+          delay={3}
+        />
       </div>
 
       {/* Charts row 1 */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* OS by status pie */}
-        <Card>
+        <Card className={REPORT_SURFACE}>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartByStatus}</CardTitle></CardHeader>
           <CardContent className="overflow-hidden">
             {statusData.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">{t.noData}</p>
             ) : (
               <>
-                <ChartContainer config={pieConfig} className="h-[220px] w-full">
-                  <PieChart>
-                    <defs>
-                      {statusData.map((entry, i) => (
-                        <linearGradient key={i} id={`os-grad-status-${i}`} x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor={entry.color} stopOpacity={1.0} />
-                          <stop offset="100%" stopColor={entry.color} stopOpacity={0.55} />
-                        </linearGradient>
-                      ))}
-                    </defs>
-                    <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}>
-                      {statusData.map((entry, i) => (
-                        <Cell key={i} fill={`url(#os-grad-status-${i})`} stroke={entry.color} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </PieChart>
-                </ChartContainer>
+                <div className="relative h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <defs>
+                        {statusData.map((entry, i) => (
+                          <linearGradient key={i} id={`os-grad-status-${i}`} x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stopColor={entry.color} stopOpacity={1.0} />
+                            <stop offset="100%" stopColor={entry.color} stopOpacity={0.55} />
+                          </linearGradient>
+                        ))}
+                      </defs>
+                      <Pie
+                        data={statusData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={88}
+                        paddingAngle={2}
+                        stroke="none"
+                      >
+                        {statusData.map((entry, i) => (
+                          <Cell key={i} fill={`url(#os-grad-status-${i})`} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number, name: string) => [value, name]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold">{totalStatus}</span>
+                    <span className="text-[10px] text-muted-foreground">{t.osInPeriod}</span>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-2">
                   {statusData.map((entry, i) => {
                     const pct = totalStatus > 0 ? Math.round((entry.value / totalStatus) * 100) : 0;
@@ -271,7 +317,7 @@ export function OsReportDashboard() {
         </Card>
 
         {/* OS by service type bar */}
-        <Card>
+        <Card className={REPORT_SURFACE}>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartByServiceType}</CardTitle></CardHeader>
           <CardContent>
             {serviceTypeData.length === 0 ? (
@@ -308,7 +354,7 @@ export function OsReportDashboard() {
       {/* Charts row 2 */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Timeline */}
-        <Card>
+        <Card className={REPORT_SURFACE}>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartTimeline}</CardTitle></CardHeader>
           <CardContent>
             {timelineData.length === 0 ? (
@@ -316,25 +362,36 @@ export function OsReportDashboard() {
             ) : (
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={timelineData} margin={{ left: 0, right: 20 }}>
+                  <AreaChart data={timelineData} margin={{ left: 0, right: 20 }}>
                     <defs>
                       <linearGradient id="os-grad-timeline-primary" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
                         <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} />
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/40" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
+                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} width={30} />
                     <Tooltip formatter={(v: number) => [v, t.tooltipWo]} />
-                    <Line
+                    <Area
                       type="monotone"
                       dataKey="total"
-                      stroke="url(#os-grad-timeline-primary)"
+                      name={t.timelineTotal}
+                      stroke="hsl(var(--primary))"
                       strokeWidth={2.5}
-                      dot={{ r: 4, fill: 'hsl(var(--primary))' }}
+                      fill="url(#os-grad-timeline-primary)"
+                      dot={false}
                     />
-                  </LineChart>
+                    <Area
+                      type="monotone"
+                      dataKey="concluded"
+                      name={t.timelineConcluded}
+                      stroke="hsl(var(--success))"
+                      strokeWidth={2.5}
+                      fill="transparent"
+                      dot={false}
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             )}
@@ -342,7 +399,7 @@ export function OsReportDashboard() {
         </Card>
 
         {/* Revenue over time */}
-        <Card>
+        <Card className={REPORT_SURFACE}>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartRevenue}</CardTitle></CardHeader>
           <CardContent>
             {timelineData.length === 0 ? (
@@ -358,7 +415,7 @@ export function OsReportDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
                     <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v: number) => [`R$ ${formatBRL(v)}`, t.tooltipBilling]} />
                     <Bar dataKey="revenue" fill="url(#os-grad-revenue-vertical)" radius={[4, 4, 0, 0]} />
@@ -370,34 +427,66 @@ export function OsReportDashboard() {
         </Card>
       </div>
 
-      {/* Weekday chart */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartByWeekday}</CardTitle></CardHeader>
-        <CardContent>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weekdayData}>
-                <defs>
-                  <linearGradient id="os-grad-weekday-vertical" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} />
-                <Tooltip formatter={(v: number) => [v, t.tooltipWo]} />
-                <Bar dataKey="total" fill="url(#os-grad-weekday-vertical)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Weekday chart */}
+        <Card className={REPORT_SURFACE}>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartByWeekday}</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weekdayData}>
+                  <defs>
+                    <linearGradient id="os-grad-weekday-vertical" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/40" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} axisLine={false} tickLine={false} width={30} />
+                  <Tooltip formatter={(v: number) => [v, t.tooltipWo]} />
+                  <Bar dataKey="total" fill="url(#os-grad-weekday-vertical)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pontualidade baseada na data agendada, sem presumir SLA. */}
+        <Card className={REPORT_SURFACE}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <CalendarCheck className="h-4 w-4" /> {t.scheduleHealthTitle}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {scheduleHealthData.every(item => item.value === 0) ? (
+              <p className="flex h-[220px] items-center justify-center text-center text-sm text-muted-foreground">
+                {t.scheduleHealthEmpty}
+              </p>
+            ) : (
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={scheduleHealthData} layout="vertical" margin={{ left: 18, right: 24 }}>
+                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/40" />
+                    <XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={138} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(v: number) => [v, t.tooltipWo]} />
+                    <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                      {scheduleHealthData.map(item => <Cell key={item.name} fill={item.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Rankings */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Top customers */}
-        <Card>
+        <Card className={REPORT_SURFACE}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Users className="h-4 w-4" /> {t.rankingCustomers}
@@ -428,7 +517,7 @@ export function OsReportDashboard() {
         </Card>
 
         {/* Top technicians */}
-        <Card>
+        <Card className={REPORT_SURFACE}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Wrench className="h-4 w-4" /> {t.rankingTechnicians}

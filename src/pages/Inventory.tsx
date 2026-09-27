@@ -573,17 +573,17 @@ export default function Inventory() {
                   // tamanho e, com a engrenagem junto, ficavam apertados demais
                   // dentro do carrossel de MobilePillTabs. Mesmo padrão
                   // tab+gear-como-irmãos do desktop (evita button-in-button).
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist">
                     {stocks.map((s) => {
                       const isActive = resolvedStockId === s.id;
                       return (
                         <div
                           key={s.id}
                           className={cn(
-                            'inline-flex items-center rounded-full text-sm font-medium transition-all',
+                            'inline-flex shrink-0 items-center -mb-px border-b-2 text-sm font-medium transition-colors',
                             isActive
-                              ? 'bg-primary text-primary-foreground shadow-sm'
-                              : 'bg-muted/50 text-muted-foreground',
+                              ? 'border-primary text-primary'
+                              : 'border-transparent text-muted-foreground',
                           )}
                         >
                           <span
@@ -592,7 +592,7 @@ export default function Inventory() {
                             tabIndex={0}
                             onClick={() => setActiveStockId(s.id)}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
-                            className="flex items-center gap-1.5 h-9 pl-3.5 pr-1.5 cursor-pointer select-none active:scale-95"
+                            className="flex h-9 items-center gap-1.5 pl-3.5 pr-1.5 cursor-pointer select-none hover:text-foreground active:scale-95"
                           >
                             {s.name}
                             {s.is_default && (
@@ -610,7 +610,7 @@ export default function Inventory() {
                                 openConfigurator(s.id, e);
                               }
                             }}
-                            className="flex items-center justify-center h-8 w-8 mr-0.5 rounded-full cursor-pointer text-current opacity-70 hover:opacity-100 active:scale-90 transition-opacity"
+                            className="flex items-center justify-center h-8 w-8 mr-0.5 rounded-sm cursor-pointer text-current opacity-70 hover:opacity-100 active:scale-90 transition-opacity"
                           >
                             <Settings className="h-3.5 w-3.5" />
                           </span>

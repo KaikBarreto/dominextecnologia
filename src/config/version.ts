@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.27.0";
+export const APP_VERSION = "1.28.0";
 
-export const VERSION_NOTES = "O Financeiro ganhou uma navegação mais simples, telas mais limpas e o novo DFC para acompanhar a movimentação do caixa. O lançamento também reúne categoria, subcategoria e centro de custo em uma classificação mais clara."
+export const VERSION_NOTES = "CRM, Financeiro, relatórios de OS e dashboards ganharam uma experiência mais organizada, responsiva e fácil de navegar. As buscas também ficaram mais completas para localizar clientes, fornecedores e ordens de serviço."

@@ -27,8 +27,8 @@ import { PipelineTabsBar } from './PipelineTabsBar';
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const PIPELINES = [
-  { id: 'p1', name: 'Funil de Vendas', is_default: true, position: 0, company_id: 'c', created_at: '', updated_at: '' },
-  { id: 'p2', name: 'Pós-venda', is_default: false, position: 1, company_id: 'c', created_at: '', updated_at: '' },
+  { id: 'p1', name: 'Funil de Vendas', color: '#123456', is_default: true, position: 0, company_id: 'c', created_at: '', updated_at: '' },
+  { id: 'p2', name: 'Pós-venda', color: '#ABCDEF', is_default: false, position: 1, company_id: 'c', created_at: '', updated_at: '' },
 ];
 
 let container: HTMLDivElement;
@@ -85,6 +85,19 @@ describe('PipelineTabsBar — desktop', () => {
     expect(gears()).toEqual(['p1', 'p2']);
   });
 
+  it('mostra a cor persistida como linha abaixo do nome', () => {
+    render(false);
+    expect((document.querySelector('[data-pipeline-color="p1"]') as HTMLElement).style.backgroundColor).toBe('rgb(18, 52, 86)');
+  });
+
+  it('usa apenas a cor do funil como indicador inferior ativo', () => {
+    render(false);
+    const activeItem = document.querySelector('[data-pipeline-item="p1"]') as HTMLElement;
+    expect(activeItem.className).not.toContain('border-primary');
+    expect(document.querySelector('[data-pipeline-color="p1"]')?.className).toContain('w-full');
+    expect(document.querySelector('[data-pipeline-color="p2"]')?.className).toContain('w-5');
+  });
+
   it('clicar na aba troca de funil; clicar no "+" pede funil novo', () => {
     render(false);
     act(() => {
@@ -112,15 +125,27 @@ describe('PipelineTabsBar — mobile (sem hover)', () => {
     render(true);
     expect(gears()).toEqual(['p1']);
     // A aba inativa continua na tela e alcançável: tocar nela a torna ativa e
-    // aí a engrenagem dela aparece. (No MobilePillTabs, só a pill COM sufixo
-    // vira container com <span role="tab">; a sem sufixo continua <button>.)
+    // aí a engrenagem dela aparece.
     const rotulos = Array.from(document.querySelectorAll('span')).map((e) => e.textContent);
     expect(rotulos).toContain('Funil de Vendas');
     expect(rotulos).toContain('Pós-venda');
+    expect(document.querySelectorAll('[data-pipeline-color]').length).toBe(2);
   });
 
   it('o "+" continua existindo no mobile', () => {
     render(true);
     expect(document.querySelector('[data-pipeline-create]')).toBeTruthy();
+  });
+
+  it('usa abas transparentes com sublinhado, sem aparência de pill', () => {
+    render(true);
+    const items = Array.from(document.querySelectorAll('[data-pipeline-item]')) as HTMLElement[];
+    expect(items).toHaveLength(2);
+    items.forEach((item) => {
+      expect(item.className).toContain('bg-transparent');
+      expect(item.className).not.toContain('rounded-full');
+      expect(item.className).not.toContain('bg-primary/10');
+      expect(item.className).not.toContain('bg-muted/50');
+    });
   });
 });

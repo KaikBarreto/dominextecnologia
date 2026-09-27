@@ -80,9 +80,9 @@ export default function AdminBlog() {
       </div>
 
       <Tabs defaultValue="artigos">
-        <TabsList>
-          <TabsTrigger value="artigos">Artigos</TabsTrigger>
-          <TabsTrigger value="comentarios">{commentsLabel}</TabsTrigger>
+        <TabsList variant="underline">
+          <TabsTrigger variant="underline" value="artigos">Artigos</TabsTrigger>
+          <TabsTrigger variant="underline" value="comentarios">{commentsLabel}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="artigos" className="mt-4">

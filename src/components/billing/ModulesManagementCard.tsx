@@ -674,11 +674,11 @@ export function ModulesManagementCard({
           {/* ESQUERDA — montador (abas) */}
           <div className="flex-1 min-w-0 md:overflow-y-auto md:pr-1">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-1">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="plans" className="gap-1.5 text-xs sm:text-sm">
+              <TabsList variant="underline" className="grid w-full grid-cols-2">
+                <TabsTrigger variant="underline" value="plans" className="gap-1.5 text-xs sm:text-sm">
                   <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Planos Prontos
                 </TabsTrigger>
-                <TabsTrigger value="custom" className="gap-1.5 text-xs sm:text-sm">
+                <TabsTrigger variant="underline" value="custom" className="gap-1.5 text-xs sm:text-sm">
                   <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Personalizado
                 </TabsTrigger>
               </TabsList>

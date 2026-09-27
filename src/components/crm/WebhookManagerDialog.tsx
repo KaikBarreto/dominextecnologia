@@ -20,10 +20,11 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface WebhookManagerDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  embedded?: boolean;
 }
 
-export function WebhookManagerDialog({ children }: WebhookManagerDialogProps) {
+export function WebhookManagerDialog({ children, embedded = false }: WebhookManagerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const [open, setOpen] = useState(false);
@@ -54,16 +55,9 @@ export function WebhookManagerDialog({ children }: WebhookManagerDialogProps) {
     }
   };
 
-  return (
-    <>
-      <span onClick={() => setOpen(true)}>{children}</span>
-      <ResponsiveModal
-        open={open}
-        onOpenChange={setOpen}
-        title={t.webhooks.title}
-        className="sm:max-w-[700px]"
-      >
+  const content = (
         <div className="space-y-6">
+          {embedded && <div><h2 className="text-xl font-semibold">{t.webhooks.title}</h2><p className="text-sm text-muted-foreground mt-1">Crie endereços seguros para receber novas oportunidades de outros sistemas.</p></div>}
           <div className="rounded-lg border p-4 space-y-3">
             <h3 className="font-medium">{t.webhooks.createTitle}</h3>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -161,6 +155,11 @@ export function WebhookManagerDialog({ children }: WebhookManagerDialogProps) {
 
           <div className="rounded-lg border bg-muted/40 p-4 text-sm space-y-3">
             <div>
+              <p className="text-xs text-muted-foreground">
+                Para reenviar uma tentativa sem criar a mesma oportunidade duas vezes, mantenha o mesmo valor no cabeçalho <code className="bg-muted px-1 rounded">x-idempotency-key</code>.
+              </p>
+            </div>
+            <div>
               <h4 className="font-medium text-foreground mb-2">{t.webhooks.docsTitle}</h4>
               <p className="text-muted-foreground text-xs mb-3">
                 {t.webhooks.docsDesc.split('POST').map((part, i) =>
@@ -222,7 +221,16 @@ export function WebhookManagerDialog({ children }: WebhookManagerDialogProps) {
             </div>
           </div>
         </div>
-      </ResponsiveModal>
+  );
+
+  return (
+    <>
+      {!embedded && children && <span onClick={() => setOpen(true)}>{children}</span>}
+      {embedded ? content : (
+        <ResponsiveModal open={open} onOpenChange={setOpen} title={t.webhooks.title} className="sm:max-w-[700px]">
+          {content}
+        </ResponsiveModal>
+      )}
     </>
   );
 }

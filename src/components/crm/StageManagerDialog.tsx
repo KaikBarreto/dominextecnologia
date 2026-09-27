@@ -26,6 +26,8 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface StageManagerDialogProps {
+  /** Renderiza o CRUD dentro de uma tela de configurações, sem abrir outro modal. */
+  embedded?: boolean;
   /** Gatilho embutido (padrão histórico). Omitir quando o diálogo é aberto
    *  de fora, por `open`/`onOpenChange` (menu da engrenagem das abas de funil). */
   children?: React.ReactNode;
@@ -46,6 +48,7 @@ interface StageManagerDialogProps {
 }
 
 export function StageManagerDialog({
+  embedded = false,
   children,
   open: openProp,
   onOpenChange,
@@ -309,7 +312,30 @@ export function StageManagerDialog({
 
   return (
     <>
-      {children && <span onClick={() => setOpen(true)}>{children}</span>}
+      {!embedded && children && <span onClick={() => setOpen(true)}>{children}</span>}
+      {embedded ? (
+        <section className="space-y-5" aria-label={dialogTitle}>
+          <div>
+            <h2 className="text-xl font-semibold">{dialogTitle}</h2>
+            <p className="text-sm text-muted-foreground mt-1">Crie, ordene e personalize as colunas deste funil.</p>
+          </div>
+          <div className="space-y-4">
+            <div className="space-y-3 p-4 rounded-xl bg-muted/35">
+              <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
+              <div className="flex gap-2 flex-wrap">
+                <Input value={newStage.name} onChange={(e) => setNewStage({ ...newStage, name: e.target.value })} placeholder={t.stages.namePlaceholder} className="flex-1 min-w-[150px]" />
+                <Select value={newStage.icon ?? 'none'} onValueChange={(v) => setNewStage({ ...newStage, icon: v === 'none' ? null : v })}>
+                  <SelectTrigger className="w-[110px] h-9" aria-label={t.stages.iconLabel}><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">{t.stages.iconNone}</SelectItem>{ICON_OPTIONS.map((ic) => <SelectItem key={ic} value={ic}>{ic}</SelectItem>)}</SelectContent>
+                </Select>
+                <ColorPicker value={newStage.color} onChange={(color) => setNewStage({ ...newStage, color })} />
+                <Button onClick={handleCreateStage} disabled={!newStage.name.trim() || !pipelineId || createStage.isPending} className="gap-2"><Plus className="h-4 w-4" /> Adicionar estágio</Button>
+              </div>
+            </div>
+            <div className="space-y-2"><p className="text-xs text-muted-foreground">{t.stages.dragHint}</p>{stages.map((stage) => <EditableRow key={stage.id} stage={stage} />)}</div>
+          </div>
+        </section>
+      ) : (
       <ResponsiveModal open={open} onOpenChange={setOpen} title={dialogTitle}>
         <div className="space-y-4">
           <div className="space-y-3 p-3 rounded-lg border-2 border-dashed border-muted">
@@ -364,6 +390,7 @@ export function StageManagerDialog({
           </div>
         </div>
       </ResponsiveModal>
+      )}
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>

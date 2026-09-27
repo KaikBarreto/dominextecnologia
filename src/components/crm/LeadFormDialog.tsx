@@ -302,7 +302,12 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
                         if (stagesInPipeline.length === 0) return null;
                         return (
                           <SelectGroup key={pipeline.id}>
-                            <SelectSectionLabel>{pipeline.name}</SelectSectionLabel>
+                            <SelectSectionLabel>
+                              <span className="flex items-center gap-2">
+                                <span className="h-1 w-6 rounded-full" style={{ backgroundColor: pipeline.color ?? '#2563EB' }} />
+                                {pipeline.name}
+                              </span>
+                            </SelectSectionLabel>
                             {stagesInPipeline.map((stage) => (
                               <SelectItem key={stage.id} value={stage.id}>
                                 <div className="flex items-center gap-2">

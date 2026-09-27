@@ -15,7 +15,7 @@ export const finance = {
         reports: 'DRE e DFC',
         settings: 'Categorias e centros de custo',
       },
-      settingsAction: 'Configurar',
+      settingsAction: 'Configurações Financeiras',
     },
 
     // ── Visão Geral (FinanceOverview) ───────────────────────────────────────
@@ -38,6 +38,7 @@ export const finance = {
       actions: {
         newRevenue: 'Nova Receita',
         newExpense: 'Nova Despesa',
+        newMovement: 'Nova movimentação',
         exportCsv: 'Exportar CSV',
       },
       charts: {
@@ -61,6 +62,18 @@ export const finance = {
         paid: 'Pago',
         pending: 'Pendente',
       },
+    },
+
+    newMovement: {
+      title: 'Nova movimentação',
+      description: 'Escolha como o dinheiro se movimenta.',
+      revenue: 'Receita',
+      revenueDescription: 'Dinheiro que entra na empresa.',
+      expense: 'Despesa',
+      expenseDescription: 'Dinheiro que sai da empresa.',
+      transfer: 'Transferência',
+      transferDescription: 'Movimento entre contas da empresa.',
+      transferDisabled: 'Cadastre ao menos duas contas para transferir.',
     },
 
     // ── Relatório (FinanceRelatorio) — abas do sidebar ───────────────────────
@@ -1421,7 +1434,7 @@ export const finance = {
         reports: 'Income statement and cash flows',
         settings: 'Categories and cost centers',
       },
-      settingsAction: 'Settings',
+      settingsAction: 'Financial Settings',
     },
     overview: {
       kpi: {
@@ -1442,6 +1455,7 @@ export const finance = {
       actions: {
         newRevenue: 'New Revenue',
         newExpense: 'New Expense',
+        newMovement: 'New transaction',
         exportCsv: 'Export CSV',
       },
       charts: {
@@ -1465,6 +1479,17 @@ export const finance = {
         paid: 'Paid',
         pending: 'Pending',
       },
+    },
+    newMovement: {
+      title: 'New transaction',
+      description: 'Choose how the money moves.',
+      revenue: 'Revenue',
+      revenueDescription: 'Money coming into the company.',
+      expense: 'Expense',
+      expenseDescription: 'Money leaving the company.',
+      transfer: 'Transfer',
+      transferDescription: 'Move money between company accounts.',
+      transferDisabled: 'Create at least two accounts to transfer.',
     },
     report: {
       tabs: {
@@ -2731,7 +2756,7 @@ export const finance = {
         reports: 'Resultados y flujos de efectivo',
         settings: 'Categorías y centros de costo',
       },
-      settingsAction: 'Configurar',
+      settingsAction: 'Configuración Financiera',
     },
     overview: {
       kpi: {
@@ -2752,6 +2777,7 @@ export const finance = {
       actions: {
         newRevenue: 'Nuevo Ingreso',
         newExpense: 'Nuevo Gasto',
+        newMovement: 'Nuevo movimiento',
         exportCsv: 'Exportar CSV',
       },
       charts: {
@@ -2775,6 +2801,17 @@ export const finance = {
         paid: 'Pagado',
         pending: 'Pendiente',
       },
+    },
+    newMovement: {
+      title: 'Nuevo movimiento',
+      description: 'Elige cómo se mueve el dinero.',
+      revenue: 'Ingreso',
+      revenueDescription: 'Dinero que entra en la empresa.',
+      expense: 'Gasto',
+      expenseDescription: 'Dinero que sale de la empresa.',
+      transfer: 'Transferencia',
+      transferDescription: 'Movimiento entre cuentas de la empresa.',
+      transferDisabled: 'Crea al menos dos cuentas para transferir.',
     },
     report: {
       tabs: {
@@ -4042,7 +4079,7 @@ export const finance = {
         reports: 'Résultat et flux de trésorerie',
         settings: 'Catégories et centres de coûts',
       },
-      settingsAction: 'Configurer',
+      settingsAction: 'Paramètres financiers',
     },
     overview: {
       kpi: {
@@ -4063,6 +4100,7 @@ export const finance = {
       actions: {
         newRevenue: 'Nouveau Produit',
         newExpense: 'Nouvelle Charge',
+        newMovement: 'Nouveau mouvement',
         exportCsv: 'Exporter CSV',
       },
       charts: {
@@ -4086,6 +4124,17 @@ export const finance = {
         paid: 'Payé',
         pending: 'En attente',
       },
+    },
+    newMovement: {
+      title: 'Nouveau mouvement',
+      description: 'Choisissez comment l’argent circule.',
+      revenue: 'Recette',
+      revenueDescription: 'Argent entrant dans l’entreprise.',
+      expense: 'Dépense',
+      expenseDescription: 'Argent sortant de l’entreprise.',
+      transfer: 'Virement',
+      transferDescription: 'Mouvement entre les comptes de l’entreprise.',
+      transferDisabled: 'Créez au moins deux comptes pour effectuer un virement.',
     },
     report: {
       tabs: {

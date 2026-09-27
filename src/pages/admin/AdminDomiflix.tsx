@@ -1457,16 +1457,16 @@ export default function AdminDomiflix() {
       </div>
 
       <Tabs defaultValue="series">
-        <TabsList className="mb-6">
-          <TabsTrigger value="series" className="gap-2">
+        <TabsList variant="underline" className="mb-6">
+          <TabsTrigger variant="underline" value="series" className="gap-2">
             <Tv className="w-4 h-4" />
             Séries ({seriesTitles.length})
           </TabsTrigger>
-          <TabsTrigger value="movies" className="gap-2">
+          <TabsTrigger variant="underline" value="movies" className="gap-2">
             <Film className="w-4 h-4" />
             Lives ({movieTitles.length})
           </TabsTrigger>
-          <TabsTrigger value="sections" className="gap-2">
+          <TabsTrigger variant="underline" value="sections" className="gap-2">
             <GripVertical className="w-4 h-4" />
             Seções
           </TabsTrigger>

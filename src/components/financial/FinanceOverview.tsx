@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown, Landmark, CreditCard, HelpCircle, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Plus, Clock, Landmark, CreditCard, HelpCircle, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 // Tooltip do shadcn vem com alias pra não colidir com o <Tooltip> do recharts (acima).
 // O TooltipProvider global vive em App.tsx, então aqui só consumimos.
@@ -14,7 +14,6 @@ import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
-import { useCostCenters } from '@/hooks/useCostCenters';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -34,8 +33,7 @@ interface FinanceOverviewProps {
     aReceber: number;
   };
   onNavigate: (tab: string) => void;
-  onNewReceita: () => void;
-  onNewDespesa: () => void;
+  onNewMovement: () => void;
 }
 
 const CHART_COLORS = [
@@ -44,9 +42,8 @@ const CHART_COLORS = [
   'hsl(160, 60%, 45%)', 'hsl(30, 80%, 55%)',
 ];
 
-export function FinanceOverview({ transactions, summary, onNavigate, onNewReceita, onNewDespesa }: FinanceOverviewProps) {
+export function FinanceOverview({ transactions, summary, onNavigate, onNewMovement }: FinanceOverviewProps) {
   const { accounts, balances, cardBillTotals } = useFinancialAccounts();
-  const { costCenters } = useCostCenters();
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const ov = MESSAGES[locale].app.finance.overview;
@@ -116,41 +113,6 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
   const cashFlowData = isMobile ? cashFlowAll.slice(-3) : cashFlowAll;
 
   const recentTransactions = transactions.slice(0, 8);
-
-  const handleExportCSV = () => {
-    const fin = MESSAGES[locale].app.finance;
-    // Nome, nunca o id cru: quem abre a planilha não sabe o que é um UUID.
-    // Cobre também centro desativado depois do lançamento (mesmo critério do
-    // filtro em TransactionListPanel) — só um id sem correspondência (empresa
-    // trocada, dado corrompido) cai no "sem centro de custo".
-    const costCenterName = new Map(costCenters.map((c) => [c.id, c.name]));
-    const headers = [
-      fin.transactionList.table.date,
-      fin.transactionList.table.type,
-      fin.transactionList.table.description,
-      fin.transactionList.table.category,
-      fin.costCenters.fieldLabel,
-      fin.transactionList.table.amount,
-      fin.accounts.table.status,
-    ];
-    const rows = transactions.map((t) => [
-      t.transaction_date,
-      t.transaction_type === 'entrada' ? fin.transactionList.badges.revenue : fin.transactionList.badges.expense,
-      `"${(t.description || '').replace(/"/g, '""')}"`,
-      t.category || '',
-      (t.cost_center_id && costCenterName.get(t.cost_center_id)) || fin.costCenters.dreNoCenter,
-      Number(t.amount).toFixed(2).replace('.', ','),
-      t.is_paid ? ov.status.paid : ov.status.pending,
-    ]);
-    const csv = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'transacoes.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   // ─── MOBILE: stats em carrossel horizontal ───────────────────────────────
   // Usa StatCarousel — mas com valor financeiro (não contagem). Mapeamos pra
@@ -361,18 +323,10 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
-        <Button size="sm" className="bg-success hover:bg-success/90 text-white gap-2 h-10 sm:h-9" onClick={onNewReceita}>
+      <div className="flex">
+        <Button size="sm" className="h-10 w-full gap-2 bg-success text-white hover:bg-success/90 sm:h-9 sm:w-auto" onClick={onNewMovement}>
           <Plus className="h-4 w-4" />
-          {ov.actions.newRevenue}
-        </Button>
-        <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-white gap-2 h-10 sm:h-9" onClick={onNewDespesa}>
-          <Plus className="h-4 w-4" />
-          {ov.actions.newExpense}
-        </Button>
-        <Button size="sm" variant="outline" className="gap-2 col-span-2 sm:col-span-1 h-10 sm:h-9" onClick={handleExportCSV}>
-          <FileDown className="h-4 w-4" />
-          {ov.actions.exportCsv}
+          {ov.actions.newMovement}
         </Button>
       </div>
 
@@ -503,8 +457,8 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
             ) : (
               <div className="space-y-3">
                 {recentTransactions.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div className="flex items-center gap-3">
+                  <div key={t.id} className="flex items-center justify-between gap-3 py-2 border-b last:border-0">
+                    <div className="flex min-w-0 items-center gap-3">
                       <div className={`rounded-full p-1.5 ${t.transaction_type === 'entrada' ? 'bg-success' : 'bg-destructive'}`}>
                         {t.transaction_type === 'entrada' ? (
                           <TrendingUp className="h-3.5 w-3.5 text-white" />
@@ -512,15 +466,15 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                           <TrendingDown className="h-3.5 w-3.5 text-white" />
                         )}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{t.description}</p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{t.description}</p>
+                        <p className="truncate text-xs text-muted-foreground">
                           {format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
                           {t.category && ` • ${t.category}`}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="shrink-0 text-right">
                       <p className={`text-sm font-semibold ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                         {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                       </p>

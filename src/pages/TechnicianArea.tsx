@@ -266,6 +266,7 @@ function ToolsShell({
       {(isLocked || (isOwnSegment && activeTab !== 'inicio')) && (
         <div className="lg:hidden">
           <MobilePillTabs
+            variant="underline"
             tabs={navItems.map((t) => ({
               value: t.value,
               label: t.label,

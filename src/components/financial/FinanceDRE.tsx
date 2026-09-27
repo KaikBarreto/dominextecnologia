@@ -107,6 +107,17 @@ export function FinanceDRE({
   const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
+  const fmtCompact = (value: number) => {
+    const absolute = Math.abs(value);
+    if (absolute < 1_000) return fmt(value);
+    const sign = value < 0 ? '-' : '';
+    const symbol = new Intl.NumberFormat(
+      locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR',
+      { style: 'currency', currency, currencyDisplay: 'narrowSymbol' },
+    ).formatToParts(0).find((part) => part.type === 'currency')?.value ?? currency;
+    if (absolute >= 1_000_000) return `${sign}${symbol} ${(absolute / 1_000_000).toFixed(1)}M`;
+    return `${sign}${symbol} ${(absolute / 1_000).toFixed(1)}k`;
+  };
 
   // Leitura tolerante a types ainda não regenerados — quando a migration
   // adicionar dre_start_date em company_settings, este cast vai funcionar sem
@@ -935,13 +946,17 @@ export function FinanceDRE({
         <Card className="border-0 bg-info">
           <CardContent className="p-3 sm:p-5">
             <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">{fin.dre.kpi.netRevenue}</p>
-            <p className="text-sm sm:text-3xl font-bold mt-1 truncate text-white">{fmt(dre.receitaLiquida)}</p>
+            <p className="mt-1 text-sm font-bold text-white sm:text-3xl" title={fmt(dre.receitaLiquida)}>
+              {isMobile ? fmtCompact(dre.receitaLiquida) : fmt(dre.receitaLiquida)}
+            </p>
           </CardContent>
         </Card>
         <Card className={cn('border-0', dre.resultadoLiquido >= 0 ? 'bg-success' : 'bg-destructive')}>
           <CardContent className="p-3 sm:p-5">
             <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">EBITDA</p>
-            <p className="text-sm sm:text-3xl font-bold mt-1 text-white truncate">{fmt(dre.resultadoLiquido)}</p>
+            <p className="mt-1 text-sm font-bold text-white sm:text-3xl" title={fmt(dre.resultadoLiquido)}>
+              {isMobile ? fmtCompact(dre.resultadoLiquido) : fmt(dre.resultadoLiquido)}
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -305,7 +305,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
           <FormField control={form.control} name="icon" render={({ field }) => (
             <FormItem>
               <FormLabel>{t.iconLabel}</FormLabel>
-              <div className="grid grid-cols-8 gap-2 max-h-[160px] overflow-y-auto p-1">
+              <div className="grid max-h-[160px] grid-cols-6 gap-2 overflow-y-auto p-1 sm:grid-cols-8">
                 {iconKeys.map((key) => {
                   const Icon = CATEGORY_ICONS[key];
                   const isSelected = field.value === key;
@@ -315,7 +315,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
                       key={key}
                       onClick={() => field.onChange(key)}
                       title={key}
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg border-2 transition-all ${
+                      className={`flex h-10 w-full items-center justify-center rounded-lg border-2 transition-all ${
                         isSelected ? 'border-foreground text-white' : 'border-transparent text-muted-foreground hover:bg-muted'
                       }`}
                       style={isSelected ? { backgroundColor: selectedColor } : undefined}

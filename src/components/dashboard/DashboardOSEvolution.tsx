@@ -31,22 +31,22 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }}>
-      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="rounded-2xl border-0 bg-transparent shadow-none">
         <CardHeader className="pb-2">
           <div className="flex flex-col items-center gap-2 lg:flex-row lg:justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left leading-tight">
               <Activity className="h-5 w-5 text-muted-foreground" />
               {t.title}
             </CardTitle>
-            <div className="inline-flex rounded-lg border border-border bg-muted/50 p-1">
+            <div className="inline-flex border-b border-border">
               {(['daily', 'weekly', 'monthly'] as ViewMode[]).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`min-h-9 px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 ${
+                  className={`min-h-9 px-3 py-1 text-xs font-medium border-b-2 -mb-px transition-colors active:scale-95 ${
                     view === v
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                   }`}
                 >
                   {viewLabels[v]}

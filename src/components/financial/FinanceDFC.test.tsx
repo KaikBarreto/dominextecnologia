@@ -5,12 +5,24 @@ import { createRoot, type Root } from 'react-dom/client';
 
 const categoriesState = vi.hoisted(() => ({
   isLoading: false,
-  categories: [] as Array<{ name: string; dfc_group?: string | null }>,
+  categories: [] as Array<{
+    id?: string;
+    name: string;
+    parent_id?: string | null;
+    color?: string;
+    icon?: string | null;
+    dfc_group?: string | null;
+  }>,
 }));
 
 const accountsState = vi.hoisted(() => ({
   isLoading: false,
   accounts: [] as Array<{ type: string; initial_balance: number }>,
+}));
+
+const costCentersState = vi.hoisted(() => ({
+  isLoading: false,
+  costCenters: [] as Array<{ id: string; name: string; color: string }>,
 }));
 
 vi.mock('@/hooks/useFinancialCategories', () => ({
@@ -19,6 +31,10 @@ vi.mock('@/hooks/useFinancialCategories', () => ({
 
 vi.mock('@/hooks/useFinancialAccounts', () => ({
   useFinancialAccounts: () => accountsState,
+}));
+
+vi.mock('@/hooks/useCostCenters', () => ({
+  useCostCenters: () => costCentersState,
 }));
 
 vi.mock('@/lib/format/hooks', () => ({
@@ -60,6 +76,8 @@ describe('FinanceDFC', () => {
     categoriesState.categories = [];
     accountsState.isLoading = false;
     accountsState.accounts = [];
+    costCentersState.isLoading = false;
+    costCentersState.costCenters = [];
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -70,13 +88,17 @@ describe('FinanceDFC', () => {
     container.remove();
   });
 
-  it('reconcilia saldos e permite drilldown por atividade e categoria', () => {
+  it('reconcilia saldos e detalha subcategoria, centro de custo e lançamento', () => {
     categoriesState.categories = [
-      { name: 'Máquinas', dfc_group: 'investimento' },
+      { id: 'cat-parent', name: 'Ativos', parent_id: null, color: '#7c3aed', icon: 'Landmark', dfc_group: 'investimento' },
+      { id: 'cat-child', name: 'Máquinas', parent_id: 'cat-parent', color: '#2563eb', icon: 'Wrench', dfc_group: 'investimento' },
     ];
     accountsState.accounts = [
       { type: 'banco', initial_balance: 300 },
       { type: 'cartao', initial_balance: 99_999 },
+    ];
+    costCentersState.costCenters = [
+      { id: 'cc-fabrica', name: 'Fábrica', color: '#f97316' },
     ];
 
     const transactions = [
@@ -88,6 +110,7 @@ describe('FinanceDFC', () => {
         amount: 150,
         paid_date: '2026-02-12',
         category: 'Máquinas',
+        cost_center_id: 'cc-fabrica',
       }),
       transaction('pendente', { amount: 50_000, is_paid: false, paid_date: undefined, category: 'Vendas' }),
     ];
@@ -107,12 +130,24 @@ describe('FinanceDFC', () => {
     expect(text).toContain('BRL 1550.00');
     expect(text).not.toContain('BRL 50000.00');
     expect(text).toContain('Vendas');
+    const realizedBadge = Array.from(container.querySelectorAll('span')).find(
+      (span) => span.textContent === 'Somente realizado',
+    );
+    expect(realizedBadge?.className).toContain('bg-success');
+    expect(realizedBadge?.className).toContain('text-white');
 
     const investmentButton = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent?.includes('Atividades de investimento'),
     );
     expect(investmentButton).toBeTruthy();
     act(() => investmentButton!.click());
+    expect(container.textContent).toContain('Ativos');
+
+    const parentButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.includes('Ativos') && button.textContent?.includes('1 subcategoria'),
+    );
+    expect(parentButton).toBeTruthy();
+    act(() => parentButton!.click());
     expect(container.textContent).toContain('Máquinas');
 
     const categoryButton = Array.from(container.querySelectorAll('button')).find(
@@ -120,6 +155,13 @@ describe('FinanceDFC', () => {
     );
     expect(categoryButton).toBeTruthy();
     act(() => categoryButton!.click());
+    expect(container.textContent).toContain('Fábrica');
+
+    const costCenterButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.includes('Fábrica'),
+    );
+    expect(costCenterButton).toBeTruthy();
+    act(() => costCenterButton!.click());
     expect(container.textContent).toContain('Compressor novo');
   });
 

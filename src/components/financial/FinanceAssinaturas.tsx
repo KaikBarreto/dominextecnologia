@@ -696,7 +696,7 @@ export function FinanceAssinaturas() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           {/* Tabela desktop */}
-          <table className="hidden w-full text-sm sm:table">
+          <table className="hidden w-full text-sm lg:table">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 <th className="w-10 px-4 py-3">
@@ -834,7 +834,7 @@ export function FinanceAssinaturas() {
           </table>
 
           {/* Lista mobile */}
-          <div className="divide-y divide-border sm:hidden">
+          <div className="divide-y divide-border lg:hidden">
             {visibleSubs.map((sub) => (
               <div key={sub.id} className="bg-card px-4 py-3">
                 <div className="flex items-start justify-between gap-2">

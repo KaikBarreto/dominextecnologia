@@ -236,6 +236,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
     >
       <div className="space-y-4">
         <MobilePillTabs
+          variant="underline"
           activeTab={activeTab}
           onTabChange={(v) => setActiveTab(v as 'items' | 'access')}
           tabs={[

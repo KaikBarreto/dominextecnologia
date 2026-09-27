@@ -30,7 +30,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="rounded-2xl border-0 bg-transparent shadow-none">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
@@ -47,7 +47,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
             <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
           ) : items.length > 0 ? (
             isMobile ? (
-              <div className="rounded-xl border bg-card overflow-hidden -mx-2">
+              <div className="rounded-xl bg-muted/25 overflow-hidden -mx-2">
                 {items.slice(0, 5).map((os) => (
                   <MobileListItem
                     key={os.id}
@@ -74,7 +74,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                 {items.length > 5 && (
                   <button
                     onClick={() => navigate('/ordens-servico')}
-                    className="w-full text-center text-xs text-primary font-medium min-h-11 py-2.5 border-t hover:bg-muted/40 active:bg-muted/60 flex items-center justify-center gap-1"
+                    className="w-full text-center text-xs text-primary font-medium min-h-11 py-2.5 hover:bg-muted/40 active:bg-muted/60 flex items-center justify-center gap-1"
                   >
                     {t.viewAllCritical} <ArrowRight className="h-3 w-3" />
                   </button>
@@ -86,7 +86,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                   <div
                     key={os.id}
                     onClick={() => navigate('/ordens-servico')}
-                    className="rounded-lg border border-border p-3 space-y-1.5 cursor-pointer hover:border-primary/30 active:scale-[0.98] transition-all"
+                    className="rounded-xl bg-muted/30 p-3 space-y-1.5 cursor-pointer hover:bg-muted/50 active:scale-[0.98] transition-all"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-sm font-semibold text-foreground">

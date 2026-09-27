@@ -277,6 +277,7 @@ export function EditOsScopeDrawer({
       >
         <div className="pt-2">
           <MobilePillTabs
+            variant="underline"
             tabs={tabs}
             activeTab={tab}
             onTabChange={(v) => setTab(v as 'equipments' | 'standalone')}

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Phone, Mail, FileText, User, Wallet } from 'lucide-react';
+import { Phone, Mail, FileText, User, Wallet, MapPin } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -100,6 +100,12 @@ export function SupplierDetailDialog({ supplier, open, onOpenChange }: SupplierD
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>{supplier.email}</span>
+              </div>
+            )}
+            {supplier.address && (
+              <div className="flex items-start gap-2 text-sm sm:col-span-2">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="break-words">{supplier.address}</span>
               </div>
             )}
           </div>

@@ -6,7 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import type { RowAction, RowActionVariant } from '@/components/ui/RowActionsMenu';
 
@@ -14,6 +13,7 @@ export interface PipelineTabItem {
   id: string;
   name: string;
   is_default: boolean;
+  color?: string;
 }
 
 const variantClasses: Record<RowActionVariant, string> = {
@@ -198,18 +198,28 @@ export function PipelineTabsBar({
   if (mobile) {
     return (
       <div className={cn('flex items-center gap-2 min-w-0', className)}>
-        <div className="min-w-0 flex-1">
-          <MobilePillTabs
-            className="-ml-3 mr-0"
-            tabs={pipelines.map((p) => ({ value: p.id, label: p.name }))}
-            activeTab={selectedId ?? ''}
-            onTabChange={onSelect}
-            renderSuffix={(tab, isActive) => {
-              if (!isActive) return null;
-              const pipeline = pipelines.find((p) => p.id === tab.value);
-              return pipeline ? gearFor(pipeline, true, true) : null;
-            }}
-          />
+        <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
+          <div className="flex w-max items-center gap-1.5 pb-1">
+            {pipelines.map((pipeline) => {
+              const isActive = pipeline.id === selectedId;
+              return (
+                <div key={pipeline.id} data-pipeline-item={pipeline.id} className="group flex shrink-0 items-center bg-transparent">
+                  <button type="button" role="tab" aria-selected={isActive} onClick={() => onSelect(pipeline.id)} className={cn('flex h-10 flex-col items-start justify-center gap-1 px-3 text-sm font-medium transition-colors', isActive ? 'text-foreground' : 'text-muted-foreground')}>
+                    <span className="whitespace-nowrap">{pipeline.name}</span>
+                    <span
+                      data-pipeline-color={pipeline.id}
+                      className={cn(
+                        'h-0.5 rounded-full transition-all',
+                        isActive ? 'w-full opacity-100' : 'w-5 opacity-35',
+                      )}
+                      style={{ backgroundColor: pipeline.color ?? '#2563EB' }}
+                    />
+                  </button>
+                  {isActive && <span className="pr-1">{gearFor(pipeline, true, true)}</span>}
+                </div>
+              );
+            })}
+          </div>
         </div>
         {createButton}
       </div>
@@ -230,10 +240,8 @@ export function PipelineTabsBar({
           return (
             <div
               key={p.id}
-              className={cn(
-                'group shrink-0 flex items-center gap-0.5 pr-1 border-b-2 transition-colors',
-                isActive ? 'border-primary' : 'border-transparent hover:border-muted-foreground/30',
-              )}
+              data-pipeline-item={p.id}
+              className="group flex shrink-0 items-center gap-0.5 bg-transparent pr-1"
             >
               <button
                 type="button"
@@ -246,7 +254,17 @@ export function PipelineTabsBar({
                   isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {p.name}
+                <span className="flex flex-col items-start gap-1">
+                  <span>{p.name}</span>
+                  <span
+                    data-pipeline-color={p.id}
+                    className={cn(
+                      'h-0.5 rounded-full transition-all',
+                      isActive ? 'w-full opacity-100' : 'w-5 opacity-30 group-hover:w-full group-hover:opacity-60',
+                    )}
+                    style={{ backgroundColor: p.color ?? '#2563EB' }}
+                  />
+                </span>
               </button>
               {gearFor(p, isActive, false)}
             </div>

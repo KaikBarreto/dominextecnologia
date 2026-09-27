@@ -195,7 +195,7 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border-0 bg-transparent shadow-none overflow-hidden">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
@@ -223,7 +223,7 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
                     {/* leve overlay pra dar contraste ao card flutuante */}
                     <div className="absolute inset-0 bg-background/30 backdrop-blur-[1px] pointer-events-none" />
                     <div className="absolute inset-0 flex items-center justify-center px-4 pointer-events-none">
-                      <div className="bg-background/95 border border-border rounded-xl shadow-lg px-4 py-3 flex flex-col items-center gap-2 pointer-events-auto max-w-[260px] text-center">
+                      <div className="bg-background/95 rounded-xl shadow-lg px-4 py-3 flex flex-col items-center gap-2 pointer-events-auto max-w-[260px] text-center">
                         <p className="text-sm font-medium text-foreground">{t.empty}</p>
                         <Button
                           variant="link"

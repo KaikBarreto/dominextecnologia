@@ -449,6 +449,7 @@ export default function EquipmentDetail() {
 
       {isMobile ? (
         <MobilePillTabs
+          variant="underline"
           tabs={tabs.map((t) => ({ value: t.key, label: t.label }))}
           activeTab={activeTab}
           onTabChange={(v) => setActiveTab(v as TabKey)}

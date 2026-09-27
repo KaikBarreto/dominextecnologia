@@ -124,6 +124,7 @@ export default function AdminSalespersonDetail() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         {isMobile ? (
           <MobilePillTabs
+            variant="underline"
             tabs={[
               { value: 'overview', label: 'Visão Geral' },
               { value: 'sales', label: 'Vendas' },
@@ -134,11 +135,11 @@ export default function AdminSalespersonDetail() {
             onTabChange={setActiveTab}
           />
         ) : (
-          <TabsList className="grid w-full max-w-[600px] grid-cols-4">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="sales">Vendas</TabsTrigger>
-            <TabsTrigger value="advances">Vales</TabsTrigger>
-            <TabsTrigger value="payment">Pagamento</TabsTrigger>
+          <TabsList variant="underline" className="grid w-full max-w-[600px] grid-cols-4">
+            <TabsTrigger variant="underline" value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger variant="underline" value="sales">Vendas</TabsTrigger>
+            <TabsTrigger variant="underline" value="advances">Vales</TabsTrigger>
+            <TabsTrigger variant="underline" value="payment">Pagamento</TabsTrigger>
           </TabsList>
         )}
 

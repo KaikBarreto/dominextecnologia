@@ -425,7 +425,8 @@ export function PublicPortalShell({
                 <div
                   ref={pillsScrollRef}
                   style={pillsMaskStyle}
-                  className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200"
+                  role="tablist"
+                  className="flex items-end gap-1 overflow-x-auto border-b border-border pb-0 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200"
                 >
                   {navSections.map((section) => {
                     const isActive = activeSection === section.value;
@@ -435,16 +436,18 @@ export function PublicPortalShell({
                       <button
                         key={section.value}
                         type="button"
+                        role="tab"
+                        aria-selected={isActive}
                         onClick={() => onSectionChange?.(section.value)}
                         className={cn(
-                          'flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                          'flex shrink-0 items-center gap-1.5 -mb-px border-b-2 bg-transparent px-4 py-2 text-sm font-semibold transition-colors',
                           isActive
-                            ? 'shadow-sm'
-                            : 'bg-card border border-border text-foreground hover:bg-muted',
+                            ? 'border-current'
+                            : 'border-transparent text-muted-foreground hover:text-foreground',
                         )}
                         style={
                           isActive
-                            ? { backgroundColor: effectiveBrand, color: '#ffffff' }
+                            ? { borderColor: effectiveBrand, color: effectiveBrand }
                             : undefined
                         }
                       >

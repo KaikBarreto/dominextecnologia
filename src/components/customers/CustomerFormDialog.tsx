@@ -240,12 +240,12 @@ export function CustomerFormDialog({
       <Form {...form}>
         <form id="customer-form" onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="space-y-4">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contato' | 'fiscal')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="contato" className="flex items-center gap-2 text-xs sm:text-sm">
+            <TabsList variant="underline" className="grid w-full grid-cols-2">
+              <TabsTrigger variant="underline" value="contato" className="flex items-center gap-2 text-xs sm:text-sm">
                 <User className="h-4 w-4" />
                 {t.tabContact}
               </TabsTrigger>
-              <TabsTrigger value="fiscal" className="flex items-center gap-2 text-xs sm:text-sm">
+              <TabsTrigger variant="underline" value="fiscal" className="flex items-center gap-2 text-xs sm:text-sm">
                 <FileText className="h-4 w-4" />
                 {t.tabFiscal}
               </TabsTrigger>

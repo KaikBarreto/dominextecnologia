@@ -11,7 +11,7 @@ import { CustomerSelectField } from '@/components/customers/CustomerSelectField'
 import { SupplierSelectField } from '@/components/financial/SupplierSelectField';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { addMonths, addWeeks, addYears, format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { Loader2, TrendingDown, TrendingUp } from 'lucide-react';
 import type { TransactionType, FinancialTransaction } from '@/types/database';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useContracts } from '@/hooks/useContracts';
@@ -27,6 +27,7 @@ import { readPastedCents } from '@/lib/money-paste-mask';
 import { CostCenterSelect } from './CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { ModalFormSection } from './ModalFormSection';
+import { cn } from '@/lib/utils';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -236,8 +237,43 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     }
   };
 
+  const handleTypeChange = (nextType: TransactionType) => {
+    setTipo(nextType);
+    setCategory('');
+    setEmployeeId('');
+    setContractId('');
+    // Cliente e Fornecedor não são limpos: ao trocar o tipo eles apenas mudam
+    // entre o bloco principal e Mais detalhes, sem perda silenciosa de vínculo.
+  };
+
+  const customerField = (
+    <div className="space-y-1.5 lg:col-span-2">
+      <Label>{t.customerLabel}</Label>
+      <CustomerSelectField
+        customers={activeCustomers}
+        value={customerId}
+        onValueChange={setCustomerId}
+        placeholder={t.customerPlaceholder}
+      />
+    </div>
+  );
+
+  const supplierField = (
+    <div className="space-y-1.5 lg:col-span-2">
+      <Label>{tSupplier.supplierLabel}</Label>
+      <SupplierSelectField
+        suppliers={(suppliers || []) as any}
+        value={supplierId}
+        onValueChange={setSupplierId}
+        placeholder={tSupplier.supplierPlaceholder}
+      />
+    </div>
+  );
+
+  const secondaryPartyId = tipo === 'entrada' ? supplierId : customerId;
+
   const footer = (
-    <div className="flex justify-end gap-2">
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <Button variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
       <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount || !accountId}>
         {isSubmitting
@@ -268,15 +304,38 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             dela), descrição e cliente/fornecedor. "Dinheiro" (valor,
             vencimento, conta) é a próxima seção. */}
         <ModalFormSection title={t.sections.whatIsIt}>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 lg:col-span-2">
             <Label>{t.typeLabel}</Label>
-            <Select value={tipo} onValueChange={(v) => { setTipo(v as TransactionType); setCategory(''); setEmployeeId(''); setContractId(''); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="saida">{t.types.saida}</SelectItem>
-                <SelectItem value="entrada">{t.types.entrada}</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-2 gap-3" role="group" aria-label={t.typeLabel}>
+              <button
+                type="button"
+                aria-pressed={tipo === 'entrada'}
+                onClick={() => handleTypeChange('entrada')}
+                className={cn(
+                  'flex min-w-0 items-center justify-center gap-2 rounded-lg border-2 px-2 py-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  tipo === 'entrada'
+                    ? 'border-success bg-success text-white'
+                    : 'border-border bg-background text-muted-foreground hover:border-success/50',
+                )}
+              >
+                <TrendingUp className="h-4 w-4 shrink-0" />
+                <span className="truncate">{t.types.entrada}</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={tipo === 'saida'}
+                onClick={() => handleTypeChange('saida')}
+                className={cn(
+                  'flex min-w-0 items-center justify-center gap-2 rounded-lg border-2 px-2 py-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  tipo === 'saida'
+                    ? 'border-destructive bg-destructive text-white'
+                    : 'border-border bg-background text-muted-foreground hover:border-destructive/50',
+                )}
+              >
+                <TrendingDown className="h-4 w-4 shrink-0" />
+                <span className="truncate">{t.types.saida}</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -294,6 +353,10 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             <Label>{t.descriptionLabel}</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} />
           </div>
+
+          {/* Vínculo principal: Cliente em conta a receber; Fornecedor em
+              conta a pagar. O outro vínculo continua em Mais detalhes. */}
+          {tipo === 'entrada' ? customerField : supplierField}
 
           {/* Employee selector for salary categories */}
           {isSalaryCategory && tipo === 'saida' && (
@@ -321,29 +384,6 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             </div>
           )}
 
-          {/* Customer selector */}
-          <div className="space-y-1.5">
-            <Label>{t.customerLabel}</Label>
-            <CustomerSelectField
-              customers={activeCustomers}
-              value={customerId}
-              onValueChange={setCustomerId}
-              placeholder={t.customerPlaceholder}
-            />
-          </div>
-
-          {/* Fornecedor — mesma régua do Cliente acima: sempre opcional e
-              sempre visível, nos dois tipos. Uma conta a pagar quase sempre tem
-              fornecedor, e o campo existia só no formulário de Movimentações. */}
-          <div className="space-y-1.5">
-            <Label>{tSupplier.supplierLabel}</Label>
-            <SupplierSelectField
-              suppliers={(suppliers || []) as any}
-              value={supplierId}
-              onValueChange={setSupplierId}
-              placeholder={tSupplier.supplierPlaceholder}
-            />
-          </div>
         </ModalFormSection>
 
         {/* ── Seção 2: Dinheiro ────────────────────────────────────────────
@@ -397,12 +437,18 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         </ModalFormSection>
 
         {/* ── Seção 3: Mais detalhes ───────────────────────────────────────
-            Opcionais: centro de custo e observações. */}
+            Opcionais: vínculo secundário, centro de custo e observações. */}
         <ModalFormSection
+          key={`conta-more-details-${tipo}`}
           title={t.sections.moreDetails}
           collapsible
-          defaultOpen={!!costCenterId || !!notes.trim()}
+          defaultOpen={isEditing || !!secondaryPartyId || !!costCenterId || !!notes.trim()}
         >
+          {/* Vínculo secundário continua disponível. Ao editar, a seção abre;
+              ao trocar o tipo com valor preenchido, a key remonta a seção já
+              aberta para que o dado nunca desapareça da vista. */}
+          {tipo === 'entrada' ? supplierField : customerField}
+
           {/* Centro de custo — opcional. Só renderiza pra quem tem centro ativo
               cadastrado (ou quando a conta em edição já carrega um). */}
           {(activeCostCenters.length > 0 || costCenterId) && (
@@ -423,7 +469,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             só nesta conta. */}
         {!isEditing && (
           <ModalFormSection title={t.sections.installmentsOrRecurrence} collapsible grid={false} defaultOpen={recurrence !== 'unica'}>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>{t.recurrenceLabel}</Label>
                 <Select value={recurrence} onValueChange={(v) => setRecurrence(v as Recurrence)}>

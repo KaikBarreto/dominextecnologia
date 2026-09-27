@@ -24,9 +24,9 @@ interface CustomerTransactionDetailModalProps {
 
 function DetailRow({ label, value, valueClassName }: { label: string; value: React.ReactNode; valueClassName?: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 py-2 text-sm">
+    <div className="flex min-w-0 items-start justify-between gap-3 py-2 text-sm">
       <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className={`text-right font-medium ${valueClassName ?? ''}`}>{value}</span>
+      <span className={`min-w-0 break-words text-right font-medium ${valueClassName ?? ''}`}>{value}</span>
     </div>
   );
 }

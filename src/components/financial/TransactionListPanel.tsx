@@ -1115,11 +1115,11 @@ export function TransactionListPanel({
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.description}</SortableTableHead>
                     <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{fin.transactionList.table.category}</SortableTableHead>
                     {!hideAccountColumn && (
-                      <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{fin.transactionList.table.account}</SortableTableHead>
+                      <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden 2xl:table-cell">{fin.transactionList.table.account}</SortableTableHead>
                     )}
                     <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.amount}</SortableTableHead>
                     {balanceAfterById && (
-                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">{resolvedBalanceAfterLabel}</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden text-right 2xl:table-cell">{resolvedBalanceAfterLabel}</SortableTableHead>
                     )}
                     <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">{fin.transactionList.table.actions}</SortableTableHead>
                   </TableRow>
@@ -1257,7 +1257,7 @@ export function TransactionListPanel({
                         {t.category && <Badge variant="outline">{t.category}</Badge>}
                       </TableCell>
                       {!hideAccountColumn && (
-                        <TableCell className="hidden lg:table-cell">
+                        <TableCell className="hidden 2xl:table-cell">
                           {(t as any).account && (
                             <Badge variant="secondary" className="text-[10px] flex items-center gap-1 w-fit whitespace-nowrap">
                               <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
@@ -1274,7 +1274,7 @@ export function TransactionListPanel({
                         </span>
                       </TableCell>
                       {balanceAfterById && (
-                        <TableCell className="text-right">
+                        <TableCell className="hidden text-right 2xl:table-cell">
                           {balanceAfterById.has(t.id) ? (
                             <span className={cn(
                               'font-medium tabular-nums whitespace-nowrap',

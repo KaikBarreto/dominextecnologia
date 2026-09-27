@@ -1695,6 +1695,7 @@ function AddNodeModal({ open, onOpenChange, employees, onAdd, inheritSector, inh
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.addNodeModal.title}>
       <div className="space-y-4 py-2">
         <MobilePillTabs
+          variant="underline"
           tabs={[
             { value: 'employee', label: t.addNodeModal.tabEmployee },
             { value: 'manual', label: t.addNodeModal.tabManual },

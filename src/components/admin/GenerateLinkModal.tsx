@@ -225,11 +225,11 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const Content = (
     <div className="space-y-4">
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full">
-          <TabsTrigger value="geral" className="text-xs sm:text-sm">
+        <TabsList variant="underline" className="grid grid-cols-2 w-full">
+          <TabsTrigger variant="underline" value="geral" className="text-xs sm:text-sm">
             <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />Geral
           </TabsTrigger>
-          <TabsTrigger value="comercial" className="text-xs sm:text-sm">
+          <TabsTrigger variant="underline" value="comercial" className="text-xs sm:text-sm">
             <Briefcase className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />Comercial
           </TabsTrigger>
         </TabsList>

@@ -48,7 +48,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="rounded-2xl border-0 bg-transparent shadow-none">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start leading-tight">
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -143,7 +143,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
                   />
                 </ComposedChart>
               </ResponsiveContainer>
-              <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm justify-center">
+              <div className="flex flex-wrap items-center gap-4 mt-4 pt-2 text-sm justify-center">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--success))' }} />
                   <span className="text-muted-foreground">{t.inflowsLabel}</span>

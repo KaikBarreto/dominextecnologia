@@ -315,6 +315,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       <form id="employee-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="space-y-4">
           <MobilePillTabs
+            variant="underline"
             tabs={[
               { value: TAB_DADOS, label: t.tabData },
               { value: TAB_REMUNERACAO, label: t.tabPayment },

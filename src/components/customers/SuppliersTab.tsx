@@ -54,7 +54,8 @@ export function SuppliersTab() {
     fuzzyIncludes(supplier.name, searchTerm) ||
     fuzzyIncludes(supplier.cpf_cnpj ?? '', searchTerm) ||
     fuzzyIncludes(supplier.contact_name ?? '', searchTerm) ||
-    fuzzyIncludes(supplier.email ?? '', searchTerm),
+    fuzzyIncludes(supplier.email ?? '', searchTerm) ||
+    fuzzyIncludes(supplier.address ?? '', searchTerm),
   );
 
   const pagination = useDataPagination(filteredSuppliers, 10, 'suppliers-list');

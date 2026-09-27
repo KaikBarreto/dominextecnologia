@@ -423,7 +423,10 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                       <SelectItem key={pipeline.id} value={pipeline.id}>
                         <div className="flex items-center gap-2">
                           <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          {pipeline.name}
+                          <span className="flex items-center gap-2">
+                            <span className="h-1 w-6 rounded-full" style={{ backgroundColor: pipeline.color ?? '#2563EB' }} />
+                            {pipeline.name}
+                          </span>
                         </div>
                       </SelectItem>
                     ))}

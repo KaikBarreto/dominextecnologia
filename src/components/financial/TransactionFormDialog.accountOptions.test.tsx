@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import type { FinancialTransaction } from '@/types/database';
 
 class ResizeObserverStub {
   observe() {}
@@ -131,11 +132,23 @@ vi.mock('@/hooks/useFormDraft', () => ({
 }));
 
 vi.mock('@/components/customers/CustomerSelectField', () => ({
-  CustomerSelectField: () => null,
+  CustomerSelectField: ({ value, onValueChange }: { value?: string; onValueChange: (value: string) => void }) => (
+    <input
+      aria-label="customer-field"
+      value={value ?? ''}
+      onChange={(event) => onValueChange(event.target.value)}
+    />
+  ),
 }));
 
 vi.mock('@/components/financial/SupplierSelectField', () => ({
-  SupplierSelectField: () => null,
+  SupplierSelectField: ({ value, onValueChange }: { value?: string; onValueChange: (value: string) => void }) => (
+    <input
+      aria-label="supplier-field"
+      value={value ?? ''}
+      onChange={(event) => onValueChange(event.target.value)}
+    />
+  ),
 }));
 
 // Stub do combobox de conta: renderiza as `options` recebidas como <option>
@@ -173,6 +186,7 @@ function mount(
   defaultType: 'entrada' | 'saida',
   requireDueDateWhenUnpaid = false,
   onSubmit: (payload: any) => Promise<any> = async () => {},
+  transaction?: FinancialTransaction,
 ) {
   act(() => {
     root.render(
@@ -182,6 +196,7 @@ function mount(
         defaultType={defaultType}
         onSubmit={onSubmit}
         requireDueDateWhenUnpaid={requireDueDateWhenUnpaid}
+        transaction={transaction}
       />,
     );
   });
@@ -207,6 +222,22 @@ function accountOptionLabels(): string[] {
 
 function buttonByText(label: string) {
   return Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === label);
+}
+
+function sectionByTitle(title: string): HTMLElement {
+  const section = Array.from(document.querySelectorAll('section'))
+    .find((item) => Array.from(item.querySelectorAll('h3, button span'))
+      .some((heading) => heading.textContent?.trim() === title)) as HTMLElement | undefined;
+  if (!section) throw new Error(`Seção não encontrada: ${title}`);
+  return section;
+}
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+  act(() => {
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 }
 
 beforeEach(() => {
@@ -337,6 +368,71 @@ describe('TransactionFormDialog — classificação', () => {
       category: 'Instalação',
       cost_center_id: null,
     }));
+  });
+});
+
+describe('TransactionFormDialog — prioridade de Cliente e Fornecedor', () => {
+  it('mostra Cliente no bloco principal da Receita e Fornecedor em Mais detalhes', () => {
+    mount('entrada');
+    const main = sectionByTitle(tf.sections.whatIsIt);
+    const details = sectionByTitle(tf.sections.moreDetails);
+
+    expect(main.querySelector('[aria-label="customer-field"]')).toBeTruthy();
+    expect(main.querySelector('[aria-label="supplier-field"]')).toBeNull();
+    expect(details.querySelector('[aria-label="supplier-field"]')).toBeTruthy();
+  });
+
+  it('mostra Fornecedor no bloco principal da Despesa e Cliente em Mais detalhes', () => {
+    mount('saida');
+    const main = sectionByTitle(tf.sections.whatIsIt);
+    const details = sectionByTitle(tf.sections.moreDetails);
+
+    expect(main.querySelector('[aria-label="supplier-field"]')).toBeTruthy();
+    expect(main.querySelector('[aria-label="customer-field"]')).toBeNull();
+    expect(details.querySelector('[aria-label="customer-field"]')).toBeTruthy();
+  });
+
+  it('não perde o cliente ao trocar Receita por Despesa e revela Mais detalhes', () => {
+    mount('entrada');
+    const customer = document.querySelector('[aria-label="customer-field"]') as HTMLInputElement;
+    setInputValue(customer, 'customer-1');
+
+    act(() => {
+      buttonByText(tf.typeExpense)!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    const details = sectionByTitle(tf.sections.moreDetails);
+    const movedCustomer = details.querySelector('[aria-label="customer-field"]') as HTMLInputElement;
+    expect(movedCustomer.value).toBe('customer-1');
+    expect(details.lastElementChild?.className).not.toContain('hidden');
+  });
+
+  it('em edição preserva os dois vínculos e abre Mais detalhes', () => {
+    mount('saida', false, async () => {}, {
+      id: 'txn-1',
+      transaction_type: 'saida',
+      description: 'Compra de material',
+      amount: 100,
+      transaction_date: '2026-09-27',
+      due_date: '2026-09-27',
+      is_paid: false,
+      account_id: 'acc-banco',
+      customer_id: 'customer-1',
+      supplier_id: 'supplier-1',
+    } as FinancialTransaction);
+
+    const main = sectionByTitle(tf.sections.whatIsIt);
+    const details = sectionByTitle(tf.sections.moreDetails);
+    expect((main.querySelector('[aria-label="supplier-field"]') as HTMLInputElement).value).toBe('supplier-1');
+    expect((details.querySelector('[aria-label="customer-field"]') as HTMLInputElement).value).toBe('customer-1');
+    expect(details.lastElementChild?.className).not.toContain('hidden');
+  });
+
+  it('empilha o rodapé no mobile sem tirar ações da área fixa', () => {
+    mount('entrada');
+    const footer = buttonByText(tf.cancelLabel)?.parentElement;
+    expect(footer?.className).toContain('flex-col-reverse');
+    expect(footer?.className).toContain('sm:flex-row');
   });
 });
 

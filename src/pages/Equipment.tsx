@@ -43,6 +43,7 @@ export default function EquipmentPage() {
       {isMobile ? (
         <>
           <MobilePillTabs
+            variant="underline"
             tabs={tabItems.map((t) => {
               const Icon = t.icon;
               return { value: t.key, label: t.label, icon: <Icon className="h-4 w-4 shrink-0" /> };

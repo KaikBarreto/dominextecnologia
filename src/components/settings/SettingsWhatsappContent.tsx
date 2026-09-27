@@ -65,6 +65,7 @@ export function SettingsIntegrationContent() {
     <div className="space-y-4">
       {/* Pills de subabas (extensível: WhatsApp + Recebimentos) */}
       <MobilePillTabs
+        variant="underline"
         tabs={subTabs}
         activeTab={activeSubTab}
         onTabChange={(v) => setActiveSubTab(v as IntegrationSubTab)}

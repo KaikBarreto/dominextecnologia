@@ -221,14 +221,14 @@ export function ReceivePaymentModal({
   };
 
   const footer = (
-    <div className="flex justify-end gap-2">
-      <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button className="w-full sm:w-auto" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
         {t.cancelLabel}
       </Button>
       <Button
         onClick={handleSubmit}
         disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido || paidDateInvalid}
-        className="bg-success hover:bg-success/90 text-white"
+        className="w-full bg-success text-white hover:bg-success/90 sm:w-auto"
       >
         {isSubmitting ? t.confirmingLabel : t.confirmLabel}
       </Button>
@@ -272,7 +272,7 @@ export function ReceivePaymentModal({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <Label>{t.paymentMethodLabel}</Label>
             <Select value={method} onValueChange={setMethod}>

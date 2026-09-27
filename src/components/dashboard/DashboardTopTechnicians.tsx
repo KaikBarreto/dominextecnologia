@@ -34,7 +34,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
-      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="rounded-2xl border-0 bg-transparent shadow-none">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
@@ -49,7 +49,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
           ) : technicians.length > 0 ? (
             <>
               {isMobile ? (
-                <div className="rounded-xl border bg-card overflow-hidden -mx-2">
+                <div className="rounded-xl bg-muted/25 overflow-hidden -mx-2">
                   {technicians.slice(0, 5).map((tech, i) => (
                     <MobileListItem
                       key={tech.name}
@@ -86,7 +86,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
               ) : (
                 <div className="space-y-2">
                   {technicians.slice(0, 5).map((tech, i) => (
-                    <div key={tech.name} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                    <div key={tech.name} className="flex items-center gap-3 rounded-xl bg-muted/30 p-3">
                       <span className="text-lg w-6 text-center shrink-0">
                         {i < 3 ? medals[i] : <span className="text-sm text-muted-foreground">{i + 1}º</span>}
                       </span>

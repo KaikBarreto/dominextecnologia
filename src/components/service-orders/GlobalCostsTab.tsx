@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -190,7 +189,7 @@ export function GlobalCostsTab() {
           </p>
         </div>
       ) : (
-        <Card>
+        <Card className="border-0 bg-muted/20 shadow-none">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -213,7 +212,7 @@ export function GlobalCostsTab() {
         <StatCarousel items={statItems} loading={isLoading} />
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          <Card>
+          <Card className="border-0 bg-muted/20 shadow-none">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Car className="h-4 w-4 text-muted-foreground" />
@@ -229,7 +228,7 @@ export function GlobalCostsTab() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 bg-muted/20 shadow-none">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-muted-foreground" />
@@ -245,7 +244,7 @@ export function GlobalCostsTab() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 bg-muted/20 shadow-none">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <HardHat className="h-4 w-4 text-muted-foreground" />
@@ -261,7 +260,7 @@ export function GlobalCostsTab() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 bg-muted/20 shadow-none">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Gift className="h-4 w-4 text-muted-foreground" />
@@ -279,48 +278,23 @@ export function GlobalCostsTab() {
         </div>
       )}
 
-      {/* Category navigation — Select no mobile (já era), Tabs no desktop. */}
+      {/* Navegação de categorias: underline rolável em qualquer largura. */}
       <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as CostResourceCategory)}>
-        {isMobile ? (
-          <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as CostResourceCategory)}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORY_CONFIG.map(cat => {
-                const Icon = cat.icon;
-                const count = byCategory[cat.value].length;
-                return (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    <span className="flex items-center gap-2">
-                      <Icon className="h-4 w-4" />
-                      {cat.label}
-                      {count > 0 && (
-                        <span className="text-xs text-muted-foreground">({count})</span>
-                      )}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        ) : (
-          <TabsList className="w-auto flex-wrap h-auto gap-1 p-1">
-            {CATEGORY_CONFIG.map(cat => {
-              const Icon = cat.icon;
-              const count = byCategory[cat.value].length;
-              return (
-                <TabsTrigger key={cat.value} value={cat.value} className="flex items-center gap-1.5">
-                  <Icon className="h-4 w-4" />
-                  {cat.label}
-                  {count > 0 && (
-                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{count}</span>
-                  )}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        )}
+        <TabsList variant="underline" className="w-full">
+          {CATEGORY_CONFIG.map(cat => {
+            const Icon = cat.icon;
+            const count = byCategory[cat.value].length;
+            return (
+              <TabsTrigger variant="underline" key={cat.value} value={cat.value} className="flex items-center gap-1.5">
+                <Icon className="h-4 w-4" />
+                {cat.label}
+                {count > 0 && (
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs">{count}</span>
+                )}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
         {CATEGORY_CONFIG.map(cat => (
           <TabsContent key={cat.value} value={cat.value} className="mt-4">
@@ -332,7 +306,7 @@ export function GlobalCostsTab() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {[1, 2, 3].map(i => (
-                    <Card key={i}>
+                    <Card key={i} className="border-0 bg-muted/20 shadow-none">
                       <CardContent className="p-4 space-y-3">
                         <Skeleton className="h-6 w-32" />
                         <Skeleton className="h-4 w-full" />
@@ -355,7 +329,7 @@ export function GlobalCostsTab() {
                   }}
                 />
               ) : (
-                <Card>
+                <Card className="border-0 bg-muted/20 shadow-none">
                   <CardContent className="p-8 text-center">
                     <DollarSign className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                     <p className="text-muted-foreground">

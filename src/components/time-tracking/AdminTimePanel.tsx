@@ -21,6 +21,7 @@ export function AdminTimePanel() {
       <Tabs value={tab} onValueChange={setTab}>
         {isMobile ? (
           <MobilePillTabs
+            variant="underline"
             tabs={[
               { value: 'today', label: t.today, icon: <CalendarClock className="h-4 w-4" /> },
               { value: 'history', label: t.history, icon: <History className="h-4 w-4" /> },
@@ -31,17 +32,17 @@ export function AdminTimePanel() {
             onTabChange={setTab}
           />
         ) : (
-          <TabsList className="grid w-full grid-cols-4 max-w-lg h-auto">
-            <TabsTrigger value="today" className="gap-1.5 text-xs sm:text-sm">
+          <TabsList variant="underline" className="grid w-full grid-cols-4 max-w-lg h-auto">
+            <TabsTrigger variant="underline" value="today" className="gap-1.5 text-xs sm:text-sm">
               <CalendarClock className="h-4 w-4" /> {t.today}
             </TabsTrigger>
-            <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger variant="underline" value="history" className="gap-1.5 text-xs sm:text-sm">
               <History className="h-4 w-4" /> {t.history}
             </TabsTrigger>
-            <TabsTrigger value="report" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger variant="underline" value="report" className="gap-1.5 text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4" /> {t.report}
             </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger variant="underline" value="settings" className="gap-1.5 text-xs sm:text-sm">
               <Settings2 className="h-4 w-4" /> {t.settings}
             </TabsTrigger>
           </TabsList>

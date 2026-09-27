@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinancial } from '@/hooks/useFinancial';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
+import { NewMovementDialog } from '@/components/financial/NewMovementDialog';
+import { TransferFormDialog } from '@/components/financial/TransferFormDialog';
 import { Button } from '@/components/ui/button';
 import { FinanceRelatorio } from '@/components/financial/FinanceRelatorio';
 import { FinanceMovimentacoes } from '@/components/financial/FinanceMovimentacoes';
@@ -15,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -94,6 +97,8 @@ export default function Finance() {
   };
 
   const [formOpen, setFormOpen] = useState(false);
+  const [movementPickerOpen, setMovementPickerOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
   // Linha a destacar na lista (vem do `?txn=`). Fica até o usuário sair da tela.
@@ -136,6 +141,11 @@ export default function Finance() {
     transactions, transactionsWithChildren, isLoading,
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
+  const { accounts, transfer } = useFinancialAccounts();
+  const transferableAccounts = useMemo(
+    () => accounts.filter((account) => account.type !== 'cartao' && account.is_active),
+    [accounts],
+  );
 
   // Consome o `?txn=ID`: acha a movimentação na lista que o hook já trouxe
   // (todos os períodos, com RLS aplicada), joga o filtro de período pro mês
@@ -264,6 +274,14 @@ export default function Finance() {
     setFormOpen(true);
   };
 
+  const handleMovementKind = (kind: 'entrada' | 'saida' | 'transferencia') => {
+    if (kind === 'transferencia') {
+      setTransferOpen(true);
+      return;
+    }
+    handleNew(kind);
+  };
+
   // No mobile, telas com FAB (movimentações, contas) precisam de padding extra
   // pra última linha não ficar coberta pelo botão.
   const screenHasFab = screen === 'movimentacoes' || screen === 'contas';
@@ -301,12 +319,11 @@ export default function Finance() {
                 onRangeChange={setRange}
               />
             )}
-            {canManageFinanceSettings && (
+            {canManageFinanceSettings && screen !== 'configuracoes' && (
               <Button
                 size="sm"
-                variant="outline"
+                className="bg-foreground text-background hover:bg-foreground/90"
                 onClick={() => navigate(localizeAppPath('/financeiro/configuracoes-financeiras', locale))}
-                aria-current={screen === 'configuracoes' ? 'page' : undefined}
               >
                 <Settings2 className="mr-2 h-4 w-4" />
                 {fin.page.settingsAction}
@@ -328,8 +345,7 @@ export default function Finance() {
             activeTab={sectionTab}
             onTabChange={setSectionTab}
             onNavigateShortcut={handleNavigateShortcut}
-            onNewReceita={() => handleNew('entrada')}
-            onNewDespesa={() => handleNew('saida')}
+            onNewMovement={() => setMovementPickerOpen(true)}
           />
         )}
 
@@ -343,7 +359,7 @@ export default function Finance() {
             // tarifas. Quem vira LINHA na tela continua sendo `transactions`.
             allTransactions={transactionsWithChildren}
             isLoading={isLoading}
-            onNew={() => handleNew('entrada')}
+            onNew={() => setMovementPickerOpen(true)}
             onEdit={handleEdit}
             onDelete={(id) => deleteTransaction.mutateAsync(id)}
             onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
@@ -375,6 +391,21 @@ export default function Finance() {
         onSubmit={handleSubmit}
         isLoading={createTransaction.isPending || updateTransaction.isPending}
         defaultType={defaultType}
+      />
+
+      <NewMovementDialog
+        open={movementPickerOpen}
+        onOpenChange={setMovementPickerOpen}
+        onSelect={handleMovementKind}
+        transferDisabled={transferableAccounts.length < 2}
+      />
+
+      <TransferFormDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        accounts={transferableAccounts}
+        onSubmit={async (data) => { await transfer.mutateAsync(data); }}
+        isLoading={transfer.isPending}
       />
     </div>
   );

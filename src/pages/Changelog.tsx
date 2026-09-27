@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.0',
+    date: '27 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'CRM/Kanban mais organizado e personalizável',
+        description: 'Os funis agora ficam junto ao quadro e podem receber cores próprias para facilitar a identificação. As configurações de funis, etapas e integrações foram reunidas em uma área única, e o botão de nova oportunidade ficou ao lado da busca.',
+        category: 'recurso',
+      },
+      {
+        title: 'Relatórios de ordens de serviço mais completos',
+        description: 'O relatório de OS ganhou novos gráficos para acompanhar evolução, conclusão, faturamento, tipos de serviço, dias mais movimentados e saúde dos agendamentos. O painel principal também ficou mais leve e com menos caixas e bordas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Financeiro mais direto para lançar e analisar',
+        description: 'Receitas, despesas e transferências agora partem de um único botão de nova movimentação. Cobranças, configurações, DRE e DFC ganharam navegação mais clara, indicadores destacados e melhor visualização no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Buscas encontram mais informações',
+        description: 'Clientes e fornecedores agora podem ser encontrados pelo endereço. Nas ordens de serviço, a busca também considera endereço, telefone, serviço, descrição, diagnóstico e equipamento.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Navegação consistente em todo o sistema',
+        description: 'Abas de telas e janelas passaram a seguir o mesmo padrão visual usado na área de clientes. Configurações com várias seções usam menu lateral no computador e navegação adaptada no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.27.0',
     date: '27 de setembro de 2026',
     type: 'minor',

@@ -146,8 +146,8 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
         <p className="text-sm text-muted-foreground md:text-base">{t.subtitle}</p>
       </div>
 
-      {/* Seleção de categoria — chips compactos que quebram linha (flex-wrap) */}
-      <div className="flex flex-wrap gap-2">
+      {/* Navegação de categoria — linha inferior, sem pills preenchidas. */}
+      <div className="flex gap-1 overflow-x-auto border-b border-border no-scrollbar" role="tablist">
         {ORDEM.map((cat) => {
           const Icon = CATEGORIA_ICONES[cat];
           const isActive = categoria === cat;
@@ -156,15 +156,17 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
               key={cat}
               type="button"
               onClick={() => escolherCategoria(cat)}
+              role="tab"
+              aria-selected={isActive}
               aria-pressed={isActive}
               aria-current={isActive ? 'true' : undefined}
-              style={isActive ? { backgroundColor: CATEGORIA_ACCENT[cat] } : undefined}
+              style={isActive ? { borderColor: CATEGORIA_ACCENT[cat], color: CATEGORIA_ACCENT[cat] } : undefined}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors active:scale-[0.97]',
+                'inline-flex shrink-0 items-center gap-1.5 -mb-px border-b-2 bg-transparent px-3 py-2 text-sm font-medium transition-colors active:scale-[0.97]',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
-                  ? 'border-transparent text-white shadow-sm'
-                  : 'border-border bg-muted/40 text-muted-foreground hover:text-foreground',
+                  ? 'font-semibold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />

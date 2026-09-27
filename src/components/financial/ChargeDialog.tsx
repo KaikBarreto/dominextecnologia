@@ -1078,10 +1078,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       description={t.dialogDescription}
       footer={footer}
     >
-      <div className="space-y-4 px-4 pb-4 sm:px-1">
+      <div className="space-y-4 pb-1">
         {!result ? (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ChargeTabKey)} className="space-y-4">
             <MobilePillTabs
+              variant="underline"
               tabs={[
                 {
                   value: TAB_COBRANCA,

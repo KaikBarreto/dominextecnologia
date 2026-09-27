@@ -530,6 +530,7 @@ export function ServiceTypesPanel({
               Sem o módulo de nota fiscal não existe segunda aba. */}
           {showFiscal && (
             <MobilePillTabs
+              variant="underline"
               tabs={[
                 { value: 'dados', label: t.tabDados },
                 { value: 'fiscal', label: t.tabFiscal },

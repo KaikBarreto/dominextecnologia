@@ -215,8 +215,8 @@ export function ServiceCostsTab() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="p-4 space-y-4">
+      <Card className="border-0 bg-muted/20 shadow-none">
+        <CardContent className="p-4 space-y-5 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
               <p className="text-lg font-semibold text-foreground">{tsc.title}</p>
@@ -234,13 +234,14 @@ export function ServiceCostsTab() {
           </div>
 
           {!serviceId ? (
-            <div className="rounded-lg border border-border p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg bg-background/70 p-8 text-center text-sm text-muted-foreground">
               {tsc.noServiceSelected}
             </div>
           ) : (
             <Tabs value={costsTab} onValueChange={setCostsTab} className="w-full">
               {isMobile ? (
                 <MobilePillTabs
+                  variant="underline"
                   tabs={[
                     { value: 'mao_de_obra', label: tsc.tabLabor },
                     ...(hasPricing ? [{ value: 'recursos', label: tsc.tabResources }] : []),
@@ -275,7 +276,7 @@ export function ServiceCostsTab() {
 
               <TabsContent value="mao_de_obra" className="mt-4">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <Card>
+                  <Card className="border-0 bg-background/80 shadow-sm">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-foreground">{tsc.laborTitle}</p>
@@ -293,14 +294,14 @@ export function ServiceCostsTab() {
                           <NumericInput decimal value={numericText.hours} onValueChange={(v) => handleNumericChange('hours', v)} />
                         </div>
                       </div>
-                      <div className="rounded-lg border border-border p-3 bg-muted/30">
+                      <div className="rounded-lg bg-muted/40 p-3">
                         <p className="text-xs text-muted-foreground">{tsc.laborHHCost}</p>
                         <p className="text-sm font-semibold text-foreground">{fmt(laborCost)}</p>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="lg:col-span-2">
+                  <Card className="border-0 bg-background/80 shadow-sm lg:col-span-2">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-foreground">{tsc.extrasTitle}</p>
@@ -310,7 +311,7 @@ export function ServiceCostsTab() {
                       </div>
 
                       {extraCosts.length === 0 ? (
-                        <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
+                        <div className="rounded-lg bg-muted/30 p-6 text-center text-sm text-muted-foreground">
                           {tsc.extrasEmpty}
                         </div>
                       ) : (
@@ -335,14 +336,14 @@ export function ServiceCostsTab() {
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30">
+                      <div className="flex items-center justify-between rounded-lg bg-muted/40 p-3">
                         <span className="text-xs text-muted-foreground">{tsc.extrasTotal}</span>
                         <span className="text-sm font-semibold text-foreground">{fmt(extrasTotal)}</span>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="lg:col-span-3">
+                  <Card className="border-0 bg-background/80 shadow-sm lg:col-span-3">
                     <CardContent className="p-4 space-y-2">
                       <Label className="text-xs">{tsc.notesLabel}</Label>
                       <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={tsc.notesPlaceholder} />
@@ -378,7 +379,7 @@ export function ServiceCostsTab() {
 
               {hasPricing && (
                 <TabsContent value="resumo" className="mt-4">
-                  <Card>
+                  <Card className="border-0 bg-background/80 shadow-sm">
                     <CardContent className="p-4 space-y-4">
                       <div className="flex items-center gap-2">
                         <Calculator className="h-4 w-4 text-primary" />
@@ -386,25 +387,25 @@ export function ServiceCostsTab() {
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="rounded-lg border border-border p-3">
+                        <div className="rounded-lg bg-muted/30 p-3">
                           <p className="text-xs text-muted-foreground">{tsc.summaryLabor}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(laborCost)}</p>
                         </div>
-                        <div className="rounded-lg border border-border p-3">
+                        <div className="rounded-lg bg-muted/30 p-3">
                           <p className="text-xs text-muted-foreground">{tsc.summaryMaterials}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(materialsTotal || 0)}</p>
                         </div>
-                        <div className="rounded-lg border border-border p-3">
+                        <div className="rounded-lg bg-muted/30 p-3">
                           <p className="text-xs text-muted-foreground">{tsc.summaryResources}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(linkedResourcesTotal)}</p>
                         </div>
-                        <div className="rounded-lg border border-border p-3">
+                        <div className="rounded-lg bg-muted/30 p-3">
                           <p className="text-xs text-muted-foreground">{tsc.summaryExtras}</p>
                           <p className="text-sm font-semibold text-foreground">{fmt(extrasTotal)}</p>
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-border p-3 space-y-3">
+                      <div className="rounded-lg bg-muted/20 p-3 space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div className="space-y-1.5">
                             <Label className="text-xs">{tsc.simTax}</Label>
@@ -439,7 +440,7 @@ export function ServiceCostsTab() {
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-border p-4 bg-muted/30">
+                      <div className="rounded-xl bg-muted/40 p-4">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold text-foreground">{tsc.summaryTotalCost}</p>
                           <p className="text-lg font-bold text-foreground">{fmt(totalServiceCost)}</p>

@@ -257,6 +257,7 @@ export default function AdminCompanyDetail() {
       <Tabs value={activeTab} onValueChange={(tab) => setSearchParams({ tab })}>
         {isMobile ? (
           <MobilePillTabs
+            variant="underline"
             tabs={[
               { value: 'info', label: 'Informações' },
               { value: 'plano', label: 'Plano e Histórico' },
@@ -266,10 +267,10 @@ export default function AdminCompanyDetail() {
             onTabChange={(tab) => setSearchParams({ tab })}
           />
         ) : (
-          <TabsList>
-            <TabsTrigger value="info">Informações</TabsTrigger>
-            <TabsTrigger value="plano">Plano e Histórico</TabsTrigger>
-            <TabsTrigger value="atividade">Atividade</TabsTrigger>
+          <TabsList variant="underline">
+            <TabsTrigger variant="underline" value="info">Informações</TabsTrigger>
+            <TabsTrigger variant="underline" value="plano">Plano e Histórico</TabsTrigger>
+            <TabsTrigger variant="underline" value="atividade">Atividade</TabsTrigger>
           </TabsList>
         )}
 

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
-import { cn } from '@/lib/utils';
+import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 
 type FinanceSection = 'relatorio' | 'cobrancas' | 'relatorios' | 'configuracoes';
 
@@ -36,19 +36,18 @@ interface FinanceRelatorioProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onNavigateShortcut: (target: 'historico' | 'contas') => void;
-  onNewReceita: () => void;
-  onNewDespesa: () => void;
+  onNewMovement: () => void;
 }
 
-type SectionTab = { value: string; label: string; icon: typeof FileBarChart };
+type SectionTab = SettingsTab;
 
 /**
  * Conteúdo das áreas secundárias do Financeiro.
  *
  * A navegação principal vive no menu global. Aqui existem somente alternâncias
  * irmãs dentro da mesma tarefa (DRE/DFC, Cobranças/Assinaturas e os dois
- * cadastros financeiros), numa faixa horizontal que não cria uma segunda
- * coluna permanente ao lado do conteúdo.
+ * cadastros financeiros). No desktop elas seguem o padrão de sidebar local;
+ * no celular, o mesmo componente converte a navegação em pills roláveis.
  */
 export function FinanceRelatorio({
   section,
@@ -60,8 +59,7 @@ export function FinanceRelatorio({
   activeTab,
   onTabChange,
   onNavigateShortcut,
-  onNewReceita,
-  onNewDespesa,
+  onNewMovement,
 }: FinanceRelatorioProps) {
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
@@ -110,8 +108,7 @@ export function FinanceRelatorio({
         transactions={transactions}
         summary={summary}
         onNavigate={(target) => onNavigateShortcut(target as 'historico' | 'contas')}
-        onNewReceita={onNewReceita}
-        onNewDespesa={onNewDespesa}
+        onNewMovement={onNewMovement}
       />
     );
   }
@@ -138,31 +135,7 @@ export function FinanceRelatorio({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1 sm:w-fit">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const selected = safeTab === tab.value;
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => onTabChange(tab.value)}
-              aria-pressed={selected}
-              className={cn(
-                'inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors',
-                selected
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
+    <SettingsSidebarLayout tabs={tabs} activeTab={safeTab} onTabChange={onTabChange}>
       {safeTab === 'dfc' ? (
         <FinanceDFC transactions={allTransactions} range={dateRange} isLoading={isLoading} />
       ) : safeTab === 'dre' ? (
@@ -180,6 +153,6 @@ export function FinanceRelatorio({
       ) : (
         <FinanceCobrancas />
       )}
-    </div>
+    </SettingsSidebarLayout>
   );
 }

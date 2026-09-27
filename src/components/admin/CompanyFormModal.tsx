@@ -535,17 +535,17 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const FormContent = (
     <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className={`grid mb-4 shrink-0 ${isEditing ? 'grid-cols-2' : 'grid-cols-3'}`}>
-          <TabsTrigger value="basic" className="flex items-center gap-2">
+        <TabsList variant="underline" className={`grid mb-4 shrink-0 ${isEditing ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <TabsTrigger variant="underline" value="basic" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Dados</span>
           </TabsTrigger>
-          <TabsTrigger value="commercial" className="flex items-center gap-2">
+          <TabsTrigger variant="underline" value="commercial" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">Comercial</span>
           </TabsTrigger>
           {!isEditing && (
-            <TabsTrigger value="access" className="flex items-center gap-2">
+            <TabsTrigger variant="underline" value="access" className="flex items-center gap-2">
               <KeyRound className="h-4 w-4" />
               <span className="hidden sm:inline">Acesso</span>
             </TabsTrigger>

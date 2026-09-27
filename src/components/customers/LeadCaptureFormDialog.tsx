@@ -186,10 +186,10 @@ export function LeadCaptureFormDialog({
       }
     >
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="geral">Geral</TabsTrigger>
-          <TabsTrigger value="campos">Campos</TabsTrigger>
-          <TabsTrigger value="lgpd">LGPD</TabsTrigger>
+        <TabsList variant="underline" className="grid w-full grid-cols-3">
+          <TabsTrigger variant="underline" value="geral">Geral</TabsTrigger>
+          <TabsTrigger variant="underline" value="campos">Campos</TabsTrigger>
+          <TabsTrigger variant="underline" value="lgpd">LGPD</TabsTrigger>
         </TabsList>
 
         <TabsContent value="geral" className="space-y-4 pt-2">

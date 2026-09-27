@@ -22,6 +22,7 @@ const EMPTY: SupplierInput = {
   contact_name: '',
   phone: '',
   email: '',
+  address: '',
   notes: '',
 };
 
@@ -41,6 +42,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
         contact_name: supplier.contact_name ?? '',
         phone: supplier.phone ?? '',
         email: supplier.email ?? '',
+        address: supplier.address ?? '',
         notes: supplier.notes ?? '',
       });
     } else {
@@ -106,6 +108,10 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
             <Label>{t.fields.email}</Label>
             <Input type="email" value={form.email ?? ''} onChange={(e) => change('email', e.target.value)} placeholder={t.fields.emailPlaceholder} />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label>{t.fields.address}</Label>
+          <Input value={form.address ?? ''} onChange={(e) => change('address', e.target.value)} placeholder={t.fields.addressPlaceholder} />
         </div>
         <div className="space-y-2">
           <Label>{t.fields.notes}</Label>

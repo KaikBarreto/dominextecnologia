@@ -345,9 +345,9 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
     <>
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Lead" footer={leadFooter}>
         <Tabs value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-            <TabsTrigger value="tarefas">
+          <TabsList variant="underline" className="grid w-full grid-cols-3">
+            <TabsTrigger variant="underline" value="detalhes">Detalhes</TabsTrigger>
+            <TabsTrigger variant="underline" value="tarefas">
               <span className="inline-flex items-center gap-1.5">
                 Tarefas
                 {openTasksCount > 0 && (
@@ -357,7 +357,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
                 )}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="historico">
+            <TabsTrigger variant="underline" value="historico">
               <span className="inline-flex items-center gap-1.5">
                 Histórico
                 {interactions.length > 0 && (

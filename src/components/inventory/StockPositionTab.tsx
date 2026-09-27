@@ -163,6 +163,7 @@ export function StockPositionTab() {
         <>
           {isMobile ? (
             <MobilePillTabs
+              variant="underline"
               tabs={stockPillTabs}
               activeTab={activeStockId}
               onTabChange={setActiveStockId}

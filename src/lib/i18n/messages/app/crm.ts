@@ -13,7 +13,7 @@ export const crm = {
     title: 'CRM/Kanban',
     subtitle: 'Gerencie oportunidades e leads',
     subtitleMobile: 'Funil Kanban',
-    newOpportunity: 'Nova Oportunidade',
+    newOpportunity: 'Nova oportunidade',
     newOpportunityShort: 'Lead',
 
     // ── Estatísticas ──
@@ -58,6 +58,7 @@ export const crm = {
     manageStages: 'Gerenciar estágios',
     managePipelines: 'Gerenciar funis',
     configWebhooks: 'Configurar webhooks',
+    crmSettings: 'Configurações do CRM/Kanban',
 
     // ── Seletor de funil (Onda D — multi-pipeline) ──
     pipelineSelectorLabel: 'Funil',
@@ -1225,6 +1226,7 @@ export const crm = {
     manageStages: 'Manage stages',
     managePipelines: 'Manage pipelines',
     configWebhooks: 'Configure webhooks',
+    crmSettings: 'CRM/Kanban settings',
 
     pipelineSelectorLabel: 'Pipeline',
 
@@ -2303,6 +2305,7 @@ export const crm = {
     manageStages: 'Gestionar etapas',
     managePipelines: 'Gestionar embudos',
     configWebhooks: 'Configurar webhooks',
+    crmSettings: 'Configuración de CRM/Kanban',
 
     pipelineSelectorLabel: 'Embudo',
 
@@ -3383,6 +3386,7 @@ export const crm = {
     manageStages: 'Gérer les étapes',
     managePipelines: 'Gérer les pipelines',
     configWebhooks: 'Configurer les webhooks',
+    crmSettings: 'Paramètres du CRM/Kanban',
 
     pipelineSelectorLabel: 'Pipeline',
 

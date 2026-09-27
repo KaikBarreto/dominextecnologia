@@ -1318,8 +1318,49 @@ export function TransactionFormDialog({
     [accounts, tf.cashSuffix, isEntrada],
   );
 
+  // Os dois vínculos continuam montados e ligados ao mesmo estado do form;
+  // muda apenas a prioridade visual conforme o tipo. Assim trocar
+  // Receita/Despesa nunca apaga uma escolha já feita e editar um lançamento
+  // legado com ambos os vínculos preserva os dois valores.
+  const customerField = (
+    <FormField control={form.control} name="customer_id" render={({ field }) => (
+      <FormItem className="lg:col-span-2">
+        <FormLabel>{tf.customerLabel}</FormLabel>
+        <CustomerSelectField
+          customers={activeCustomers}
+          value={field.value || ''}
+          onValueChange={field.onChange}
+          placeholder={tf.customerPlaceholder}
+          searchPlaceholder={tf.customerSearchPlaceholder}
+        />
+        <FormMessage />
+      </FormItem>
+    )} />
+  );
+
+  const supplierField = (
+    <FormField control={form.control} name="supplier_id" render={({ field }) => (
+      <FormItem className="lg:col-span-2">
+        <FormLabel>{tf.supplierLabel}</FormLabel>
+        <SupplierSelectField
+          suppliers={suppliers}
+          value={field.value || ''}
+          onValueChange={field.onChange}
+          placeholder={tf.supplierPlaceholder}
+          searchPlaceholder={tf.supplierSearchPlaceholder}
+          createAriaLabel={tf.newSupplierAriaLabel}
+        />
+        <FormMessage />
+      </FormItem>
+    )} />
+  );
+
+  const secondaryPartyId = isEntrada
+    ? form.watch('supplier_id')
+    : form.watch('customer_id');
+
   const footer = (
-    <div className="flex justify-end gap-3">
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tf.cancelLabel}</Button>
       <Button type="submit" form="transaction-form" disabled={busy}
         className={isEntrada ? 'bg-success hover:bg-success/90 text-white' : 'bg-destructive hover:bg-destructive/90 text-white'}>
@@ -1481,47 +1522,9 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Cliente e Fornecedor vinculados — os DOIS campos ficam SEMPRE
-              visíveis, sem alternar por tipo (receita/despesa).
-              Por quê: o campo Cliente já era mostrado em receita E despesa
-              ANTES deste form ganhar Fornecedor (ex.: reembolso a um cliente é
-              uma despesa com dono). Escondê-lo em despesa seria regressão de
-              um uso já em produção. Manter os dois sempre visíveis também
-              elimina de raiz o risco de "troquei o tipo e o vínculo que eu
-              tinha escolhido sumiu sem eu perceber": nada nunca é escondido
-              nem limpo automaticamente por causa do tipo, então nenhum vínculo
-              preenchido é descartado em silêncio (nem escondido, nem apagado)
-              quando o usuário muda entre Receita e Despesa.
-              Mesmo componente/padrão do "Cliente vinculado" do ContaFormDialog
-              (Contas a Pagar/Receber): busca + "+" colado. */}
-          <FormField control={form.control} name="customer_id" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{tf.customerLabel}</FormLabel>
-              <CustomerSelectField
-                customers={activeCustomers}
-                value={field.value || ''}
-                onValueChange={field.onChange}
-                placeholder={tf.customerPlaceholder}
-                searchPlaceholder={tf.customerSearchPlaceholder}
-              />
-              <FormMessage />
-            </FormItem>
-          )} />
-
-          <FormField control={form.control} name="supplier_id" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{tf.supplierLabel}</FormLabel>
-              <SupplierSelectField
-                suppliers={suppliers}
-                value={field.value || ''}
-                onValueChange={field.onChange}
-                placeholder={tf.supplierPlaceholder}
-                searchPlaceholder={tf.supplierSearchPlaceholder}
-                createAriaLabel={tf.newSupplierAriaLabel}
-              />
-              <FormMessage />
-            </FormItem>
-          )} />
+          {/* Vínculo principal: Cliente em receita; Fornecedor em despesa.
+              O vínculo secundário continua disponível em Mais detalhes. */}
+          {isEntrada ? customerField : supplierField}
           </ModalFormSection>
 
           {/* ── Seção 2: Dinheiro ──────────────────────────────────────────
@@ -1767,12 +1770,21 @@ export function TransactionFormDialog({
           </ModalFormSection>
 
           {/* ── Seção 3: Mais detalhes ─────────────────────────────────────
-              Opcionais: centro de custo, observações, comprovantes. */}
+              Opcionais: vínculo secundário, observações e comprovantes. */}
           <ModalFormSection
+            key={`transaction-more-details-${transactionType}`}
             title={tf.sections.moreDetails}
             collapsible
-            defaultOpen={isEditing || !!defaults.cost_center_id || !!(defaults.notes && defaults.notes.trim())}
+            defaultOpen={
+              isEditing
+              || !!secondaryPartyId
+              || !!(defaults.notes && defaults.notes.trim())
+            }
           >
+            {/* Vínculo secundário: permanece editável e é automaticamente
+                revelado em edição ou ao trocar o tipo com valor preenchido. */}
+            {isEntrada ? supplierField : customerField}
+
             {/* Notes */}
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem className="lg:col-span-2">

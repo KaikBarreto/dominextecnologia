@@ -81,7 +81,7 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
   );
 
   const footer = (
-    <div className="flex justify-end gap-3">
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
       <Button type="submit" form="transfer-form" disabled={isLoading || !fromId || !toId || fromId === toId || amount <= 0}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -94,7 +94,7 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
     <>
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.title} className="sm:max-w-[460px]" footer={footer}>
       <form id="transfer-form" onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+        <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_auto_1fr]">
           <div className="space-y-1.5">
             <Label>{t.originLabel}</Label>
             <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
@@ -128,7 +128,7 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
               )}
             </div>
           </div>
-          <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
+          <ArrowRight className="mx-auto h-5 w-5 rotate-90 text-muted-foreground sm:mb-2 sm:rotate-0" />
           <div className="space-y-1.5">
             <Label>{t.destLabel}</Label>
             <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
@@ -164,7 +164,7 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>{t.amountLabel}</Label>
             <Input placeholder={t.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} onPaste={handleCurrencyPaste} inputMode="numeric" />

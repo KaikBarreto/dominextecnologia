@@ -7,6 +7,7 @@ export interface CrmPipeline {
   id: string;
   company_id: string;
   name: string;
+  color: string;
   position: number;
   is_default: boolean;
   created_at: string;
@@ -15,12 +16,14 @@ export interface CrmPipeline {
 
 export interface CrmPipelineInsert {
   name: string;
+  color?: string;
   position?: number;
 }
 
 export interface CrmPipelineUpdate {
   id: string;
   name?: string;
+  color?: string;
   position?: number;
 }
 
@@ -101,6 +104,7 @@ export function useCrmPipelines() {
         .from('crm_pipelines')
         .insert({
           name: pipeline.name,
+          color: pipeline.color ?? '#2563EB',
           position: pipeline.position ?? maxPosition,
           company_id,
           is_default: false,

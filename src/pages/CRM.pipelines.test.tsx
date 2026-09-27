@@ -180,11 +180,11 @@ describe('CRM — etapas do segundo funil aparecem', () => {
     expect(visibleStageNames()).toEqual(['Recebido', 'Em atendimento', 'Resolvido']);
   });
 
-  it('o título da tela é o nome do funil selecionado', () => {
+  it('mantém o título CRM/Kanban ao trocar de funil', () => {
     mount();
-    expect(document.querySelector('h1')?.textContent?.trim()).toBe('Funil de Vendas');
+    expect(document.querySelector('h1')?.textContent?.trim()).toBe('CRM/Kanban');
     clickPipelineTab('pipeline-2');
-    expect(document.querySelector('h1')?.textContent?.trim()).toBe('Pós-venda');
+    expect(document.querySelector('h1')?.textContent?.trim()).toBe('CRM/Kanban');
   });
 
   it('voltar pro primeiro funil recorta as etapas de novo', () => {

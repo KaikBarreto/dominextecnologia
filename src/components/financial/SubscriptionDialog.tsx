@@ -766,7 +766,7 @@ export function SubscriptionDialog({
       description={t.dialogDescription}
       footer={footer}
     >
-      <div className="space-y-4 px-4 pb-4 sm:px-1">
+      <div className="space-y-4 pb-1">
         {customers.length === 0 ? (
           <div className="py-2">
             <EmptyState

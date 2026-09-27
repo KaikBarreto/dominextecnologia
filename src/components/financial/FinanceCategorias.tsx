@@ -745,10 +745,9 @@ export function FinanceCategorias() {
 
     return (
       <div>
-        {groups.map((g) => (
+        {groups.map((g, groupIndex) => (
           <div key={g.key}>
-            {/* Mobile mantém o espaçamento que já estava em produção. */}
-            {renderGroupDivider(g.label, groupCount(g.items), 'pb-3 pt-6 first:pt-0')}
+            {renderGroupDivider(g.label, groupCount(g.items), groupIndex === 0 ? 'pb-3' : 'pb-3 pt-6')}
             <div className="rounded-xl border bg-card overflow-hidden">
               {g.items.map((cat, idx) => renderMobileItem(cat, idx, g.items, fullList))}
             </div>
@@ -825,6 +824,7 @@ export function FinanceCategorias() {
         </div>
 
         <MobilePillTabs
+          variant="underline"
           tabs={[
             { value: 'receitas', label: `${fin.categories.tabs.revenue} (${receitas.length})`, icon: <TrendingUp className="h-3.5 w-3.5" /> },
             { value: 'despesas', label: `${fin.categories.tabs.expense} (${despesas.length})`, icon: <TrendingDown className="h-3.5 w-3.5" /> },

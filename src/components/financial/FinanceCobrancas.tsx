@@ -284,34 +284,40 @@ export function FinanceCobrancas() {
       {/* ── Cards de totais ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {/* A receber */}
-        <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 px-4 py-3">
-          <DollarSign className="h-5 w-5 shrink-0 text-amber-500" />
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-warning px-4 py-4 text-white">
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">{t.cards.pending}</p>
-            <p className="truncate text-base font-bold text-amber-600">
+            <p className="text-xs font-medium uppercase tracking-wider text-white/80">{t.cards.pending}</p>
+            <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">
               {formatBRL(totals.pending)}
             </p>
           </div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
+            <DollarSign className="h-5 w-5 text-white" />
+          </span>
         </div>
         {/* Recebido */}
-        <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 px-4 py-3">
-          <TrendingUp className="h-5 w-5 shrink-0 text-emerald-500" />
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-success px-4 py-4 text-white">
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">{t.cards.paid}</p>
-            <p className="truncate text-base font-bold text-emerald-600">
+            <p className="text-xs font-medium uppercase tracking-wider text-white/80">{t.cards.paid}</p>
+            <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">
               {formatBRL(totals.paid)}
             </p>
           </div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
+            <TrendingUp className="h-5 w-5 text-white" />
+          </span>
         </div>
         {/* Vencido */}
-        <div className="flex items-center gap-3 rounded-xl bg-destructive/10 px-4 py-3">
-          <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-destructive px-4 py-4 text-white">
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">{t.cards.overdue}</p>
-            <p className="truncate text-base font-bold text-destructive">
+            <p className="text-xs font-medium uppercase tracking-wider text-white/80">{t.cards.overdue}</p>
+            <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">
               {formatBRL(totals.overdue)}
             </p>
           </div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
+            <AlertCircle className="h-5 w-5 text-white" />
+          </span>
         </div>
       </div>
 
@@ -388,7 +394,7 @@ export function FinanceCobrancas() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           {/* Tabela desktop */}
-          <table className="hidden w-full text-sm sm:table">
+          <table className="hidden w-full text-sm lg:table">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 <th className="w-10 px-4 py-3">
@@ -448,7 +454,7 @@ export function FinanceCobrancas() {
                           title={t.actions.copyLink}
                         >
                           <Copy className="h-4 w-4" />
-                          <span className="ml-1 hidden lg:inline">{t.actions.copyLink}</span>
+                          <span className="ml-1 hidden 2xl:inline">{t.actions.copyLink}</span>
                         </Button>
                         {canManage && (
                           <>
@@ -460,7 +466,7 @@ export function FinanceCobrancas() {
                               title={t.actions.edit}
                             >
                               <Pencil className="h-4 w-4" />
-                              <span className="ml-1 hidden lg:inline">{t.actions.edit}</span>
+                              <span className="ml-1 hidden 2xl:inline">{t.actions.edit}</span>
                             </Button>
                             <Button
                               variant="destructive-ghost"
@@ -471,7 +477,7 @@ export function FinanceCobrancas() {
                               title={t.actions.delete}
                             >
                               <Trash2 className="h-4 w-4" />
-                              <span className="ml-1 hidden lg:inline">{t.actions.delete}</span>
+                              <span className="ml-1 hidden 2xl:inline">{t.actions.delete}</span>
                             </Button>
                           </>
                         )}
@@ -485,7 +491,7 @@ export function FinanceCobrancas() {
                             title={t.actions.refund}
                           >
                             <RotateCcw className="h-4 w-4" />
-                            <span className="ml-1 hidden lg:inline">{t.actions.refund}</span>
+                            <span className="ml-1 hidden 2xl:inline">{t.actions.refund}</span>
                           </Button>
                         )}
                       </div>
@@ -497,7 +503,7 @@ export function FinanceCobrancas() {
           </table>
 
           {/* Lista mobile — cards */}
-          <div className="divide-y divide-border sm:hidden">
+          <div className="divide-y divide-border lg:hidden">
             {filtered.map((charge) => {
               const isPaid = canRefundCharge(charge);
               const canManage = canManageCharge(charge.status);

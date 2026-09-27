@@ -87,16 +87,16 @@ export default function AdminEstatisticas() {
       <Tabs value={aba} onValueChange={trocarAba}>
         {/* Pills roláveis no mobile, ancoradas à esquerda. */}
         <div className="-mx-4 px-4 overflow-x-auto md:mx-0 md:px-0">
-          <TabsList className="w-max">
-            <TabsTrigger value="sistema" className="gap-1.5">
+          <TabsList variant="underline" className="w-max">
+            <TabsTrigger variant="underline" value="sistema" className="gap-1.5">
               <BarChart3 className="h-4 w-4" />
               Sistema
             </TabsTrigger>
-            <TabsTrigger value="banco" className="gap-1.5">
+            <TabsTrigger variant="underline" value="banco" className="gap-1.5">
               <Database className="h-4 w-4" />
               Banco de dados
             </TabsTrigger>
-            <TabsTrigger value="infra" className="gap-1.5">
+            <TabsTrigger variant="underline" value="infra" className="gap-1.5">
               <Server className="h-4 w-4" />
               Infra
             </TabsTrigger>
