@@ -234,11 +234,16 @@ export function useFinancialCategories() {
       if (target?.is_system) {
         throw new Error('Categoria do sistema não pode ser excluída');
       }
+      // O trigger `trg_reclassify_deleted_financial_subcategory` garante no
+      // banco que, ao apagar uma filha, lançamentos e defaults automáticos
+      // sobem para a categoria principal no mesmo statement.
       const { error } = await supabase.from('financial_categories').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['financial-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['tenant-payment-account'] });
       toast({ title: 'Categoria excluída!' });
     },
     onError: (error: Error) => {

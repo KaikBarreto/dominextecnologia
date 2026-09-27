@@ -55,6 +55,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { matchesFinancialTransactionSearch } from '@/lib/financial-transaction-display';
+import { filterFinancialMovementVisibility } from '@/lib/financial-movement-visibility';
 import { useFinancial } from '@/hooks/useFinancial';
 
 function parseLocalDate(dateStr: string) {
@@ -153,6 +154,12 @@ interface TransactionListPanelProps {
    * exibir um subtotal que o extrato do banco não reconhece.
    */
   paymentGroupTotals?: Map<string, { count: number; total: number }>;
+  /**
+   * Esconde compras de cartão na lista sem filtro, mas permite que um filtro
+   * explícito pela conta do cartão revele suas linhas. Usado somente na Visão
+   * Geral de Movimentações quando a preferência pessoal está desligada.
+   */
+  hideCardPurchasesUnlessAccountFiltered?: boolean;
 }
 
 type PanelTxn = TransactionListPanelProps['transactions'][number];
@@ -201,6 +208,7 @@ export function TransactionListPanel({
   balanceAfterById, balanceAfterLabel, balanceAfterShortLabel,
   groupByDay, dayClosingBalance, highlightTransactionId,
   collapsePaymentGroups, paymentGroupTotals,
+  hideCardPurchasesUnlessAccountFiltered = false,
 }: TransactionListPanelProps) {
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -255,11 +263,23 @@ export function TransactionListPanel({
   // Mesma query já em cache do react-query: não dispara busca nova.
   const { undoPaymentGroup } = useFinancial();
 
+  // A filtragem precisa acontecer DENTRO do painel, depois que ele conhece o
+  // filtro de conta. Se o parent remover as compras antes de passá-las, marcar
+  // um cartão em "Conta" nunca consegue trazer suas movimentações de volta.
+  const visibilityTransactions = useMemo(
+    () => filterFinancialMovementVisibility(
+      transactions,
+      hideCardPurchasesUnlessAccountFiltered,
+      accountFilter,
+    ),
+    [transactions, hideCardPurchasesUnlessAccountFiltered, accountFilter],
+  );
+
   const categories = useMemo(() => {
     const cats = new Set<string>();
-    transactions.forEach((t) => { if (t.category) cats.add(t.category); });
+    visibilityTransactions.forEach((t) => { if (t.category) cats.add(t.category); });
     return Array.from(cats).sort();
-  }, [transactions]);
+  }, [visibilityTransactions]);
 
   // Combine accounts from transactions + master list (so empty accounts also show)
   const accountNames = useMemo(() => {
@@ -310,7 +330,7 @@ export function TransactionListPanel({
   // `filterByCostCenters` (motor puro, com teste) aplica a semântica do balde
   // "Sem centro de custo" — a mesma usada pela DRE, pra as duas telas nunca
   // discordarem sobre o que é "sem centro".
-  const filtered = filterByCostCenters(transactions, costCenterFilter)
+  const filtered = filterByCostCenters(visibilityTransactions, costCenterFilter)
     .filter((t) => (type === 'all'
       ? (typeFilter.length === 0 || typeFilter.includes(t.transaction_type))
       : t.transaction_type === type))

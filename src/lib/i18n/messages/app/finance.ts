@@ -578,6 +578,7 @@ export const finance = {
       deleteDialog: {
         title: 'Excluir categoria',
         description: 'Tem certeza? Transações com esta categoria não serão afetadas.',
+        descriptionChild: 'Tem certeza? As despesas e receitas desta subcategoria serão movidas para a categoria principal "{category}" antes da exclusão.',
         descriptionWithChildren: 'Tem certeza? As subcategorias NÃO serão excluídas, elas viram categorias normais, com nome e histórico intactos. Transações com esta categoria não serão afetadas.',
         confirm: 'Excluir',
         cancel: 'Cancelar',
@@ -1927,6 +1928,7 @@ export const finance = {
       deleteDialog: {
         title: 'Delete category',
         description: 'Are you sure? Transactions with this category will not be affected.',
+        descriptionChild: 'Are you sure? Income and expenses in this subcategory will be moved to the main category "{category}" before deletion.',
         descriptionWithChildren: 'Are you sure? The subcategories will NOT be deleted, they become regular categories, keeping name and history. Transactions with this category will not be affected.',
         confirm: 'Delete',
         cancel: 'Cancel',
@@ -3224,6 +3226,7 @@ export const finance = {
       deleteDialog: {
         title: 'Eliminar categoría',
         description: '¿Está seguro? Las transacciones con esta categoría no se verán afectadas.',
+        descriptionChild: '¿Está seguro? Los ingresos y gastos de esta subcategoría se moverán a la categoría principal "{category}" antes de eliminarla.',
         descriptionWithChildren: '¿Está seguro? Las subcategorías NO se eliminarán, pasan a ser categorías normales, con nombre e historial intactos. Las transacciones con esta categoría no se verán afectadas.',
         confirm: 'Eliminar',
         cancel: 'Cancelar',
@@ -4521,6 +4524,7 @@ export const finance = {
       deleteDialog: {
         title: 'Supprimer la catégorie',
         description: 'Êtes-vous sûr ? Les transactions avec cette catégorie ne seront pas affectées.',
+        descriptionChild: `Êtes-vous sûr ? Les produits et charges de cette sous-catégorie seront déplacés vers la catégorie principale « {category} » avant sa suppression.`,
         descriptionWithChildren: 'Êtes-vous sûr ? Les sous-catégories ne seront PAS supprimées, elles deviennent des catégories normales, avec nom et historique intacts. Les transactions avec cette catégorie ne seront pas affectées.',
         confirm: 'Supprimer',
         cancel: 'Annuler',

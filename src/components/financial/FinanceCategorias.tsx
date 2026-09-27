@@ -776,6 +776,7 @@ export function FinanceCategorias() {
 
   const deletingCategory = deleteId ? tree.byId.get(deleteId) ?? null : null;
   const deletingChildren = deletingCategory ? tree.childrenOf(deletingCategory.id) : [];
+  const deletingParent = deletingCategory ? tree.parentOf(deletingCategory) : null;
 
   const deleteDialog = (
     <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
@@ -787,7 +788,9 @@ export function FinanceCategorias() {
           <AlertDialogDescription>
             {deletingChildren.length > 0
               ? fin.categories.deleteDialog.descriptionWithChildren
-              : fin.categories.deleteDialog.description}
+              : deletingParent
+                ? fin.categories.deleteDialog.descriptionChild.replace('{category}', deletingParent.name)
+                : fin.categories.deleteDialog.description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

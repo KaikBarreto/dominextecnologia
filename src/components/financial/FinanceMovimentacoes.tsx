@@ -128,20 +128,14 @@ export function FinanceMovimentacoes({
   // preenchido = perna do cartão. Nunca por tipo de conta (olhar `accounts`)
   // nem por `category`, que é texto livre.
   // A preferência abaixo (desligada por padrão) reabre a lista completa pra
-  // quem quer ver todas as despesas num lugar só. Vale SÓ pra Visão Geral: o
-  // extrato de uma conta bancária e o painel de faturas do cartão não passam
-  // por aqui. Movida pro card "Movimentações financeiras" em Configurações >
-  // Usabilidade (o CEO pediu pra não poluir esta tela) — por isso é
-  // preferência PESSOAL em `user_preferences` (segue o usuário entre
+  // quem quer ver todas as despesas num lugar só. Mesmo desligada, selecionar
+  // explicitamente um cartão no filtro "Conta" revela as compras dele. Vale
+  // SÓ pra Visão Geral: o extrato de uma conta bancária e o painel de faturas
+  // do cartão não passam por aqui. Movida pro card "Movimentações financeiras"
+  // em Configurações > Usabilidade (o CEO pediu pra não poluir esta tela) —
+  // por isso é preferência PESSOAL em `user_preferences` (segue o usuário entre
   // aparelhos), não `useState` local nem `localStorage`. Ver useUserPreferences.
   const { includeCardPurchasesInMovements: includeCardPurchases, setIncludeCardPurchasesInMovements: setIncludeCardPurchases } = useUserPreferences();
-  const overviewTransactions = useMemo(
-    () => (includeCardPurchases
-      ? transactions
-      : transactions.filter((t) => !t.credit_card_bill_date)),
-    [transactions, includeCardPurchases],
-  );
-
   // Compra no cartão fica FORA da Visão Geral por padrão (preferência acima).
   // Se o deep-link aponta justamente pra uma delas, o destaque cairia numa
   // linha que não está na tela — então liga a preferência uma vez, só nesse
@@ -666,7 +660,7 @@ export function FinanceMovimentacoes({
             <TransactionListPanel
               title={fin.movements.header.titleMobile}
               type="all"
-              transactions={overviewTransactions}
+              transactions={transactions}
               isLoading={isLoading}
               onNew={onNew}
               onEdit={onEdit}
@@ -683,6 +677,7 @@ export function FinanceMovimentacoes({
               // expansível: é assim que o extrato do banco bate 1-pra-1.
               collapsePaymentGroups
               paymentGroupTotals={paymentGroupTotals}
+              hideCardPurchasesUnlessAccountFiltered={!includeCardPurchases}
             />
           </div>
         ) : selectedAccount ? (

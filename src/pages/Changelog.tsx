@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.25.12',
+    date: '27 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Filtro de cartão mostra as movimentações certas',
+        description: 'Na Visão Geral das Movimentações Financeiras, escolher um cartão no filtro de conta agora mostra as compras daquele cartão. Antes, o filtro podia retornar uma lista vazia, mesmo com despesas lançadas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Excluir subcategoria mantém os valores na categoria principal',
+        description: 'Ao excluir uma subcategoria, as receitas e despesas lançadas nela passam automaticamente para a categoria principal. Os valores deixam de aparecer como categorias soltas e continuam agrupados corretamente no resultado financeiro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.25.11',
     date: '25 de setembro de 2026',
     type: 'patch',

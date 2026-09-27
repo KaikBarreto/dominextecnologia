@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.25.11";
+export const APP_VERSION = "1.25.12";
 
-export const VERSION_NOTES = "O relatório de serviço passa a mostrar quem realmente fez o check-in e o check-out do atendimento, e não o técnico escalado na ordem. Em ordem de equipe o nome saía trocado; os relatórios antigos também foram corrigidos."
+export const VERSION_NOTES = "O filtro de conta nas Movimentações Financeiras agora mostra corretamente as compras do cartão selecionado. Ao excluir uma subcategoria, os lançamentos dela passam para a categoria principal e continuam agrupados no resultado."

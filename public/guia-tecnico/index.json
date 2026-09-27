@@ -1,14 +1,14 @@
 {
  "documento": "Guia Técnico — Dominex",
  "descricao": "Manual completo da Dominex, sistema de gestão para empresas de serviço técnico em campo (refrigeração e climatização, elétrica, energia solar, CFTV, dedetização, elevadores e assistência técnica). Uma seção por área do sistema, na ordem da Trilha Domiflix. Cada chunk é auto-contido e pode ser recuperado isoladamente.",
- "gerado_em": "2026-09-06",
- "total_chunks": 644,
- "total_palavras": 134370,
+ "gerado_em": "2026-09-27",
+ "total_chunks": 669,
+ "total_palavras": 142801,
  "chunks_por_tipo": {
   "visao_geral": 18,
-  "capitulo": 188,
-  "problema": 220,
-  "faq": 200,
+  "capitulo": 192,
+  "problema": 230,
+  "faq": 211,
   "glossario": 18
  },
  "secoes": [
@@ -51,7 +51,7 @@
    "titulo": "Usuários, cargos e permissões",
    "fase": "01",
    "fase_titulo": "Deixar o sistema de pé",
-   "chunks": 31,
+   "chunks": 36,
    "capitulos": [
     "Onde fica: Configurações → Usuários e Permissões",
     "Criar usuário: dados, foto, papel, senha e vínculo com o funcionário do RH",
@@ -129,7 +129,7 @@
    "titulo": "Agenda, Equipes e Mapa ao Vivo",
    "fase": "03",
    "fase_titulo": "A operação rodando",
-   "chunks": 33,
+   "chunks": 37,
    "capitulos": [
     "Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)",
     "Criar pelo \"+\": Nova OS × Nova Tarefa — a diferença que mais confunde",
@@ -211,7 +211,7 @@
    "titulo": "CRM: funil, leads e captação",
    "fase": "04",
    "fase_titulo": "Vender",
-   "chunks": 40,
+   "chunks": 56,
    "capitulos": [
     "Tela CRM: kanban × lista, e o empty-state \"criar estágios padrão\"",
     "Montar o funil: criar, renomear, reordenar e colorir estágios",

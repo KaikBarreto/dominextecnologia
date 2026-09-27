@@ -303,7 +303,7 @@
   </ul>
   <div class="regra">Transferências entre contas e pagamentos de fatura de cartão ficam fora dos cards de Receitas e Despesas. É movimento interno: sem esse corte, transferir R$ 10.000,00 de um banco pro outro apareceria como R$ 10.000,00 de receita.</div>
 
-  <h2>10. Categorias: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe</h2>
+  <h2>10. Categorias: criar, organizar em subcategorias e definir o grupo da DRE</h2>
 
   <p>As categorias vivem na aba <span class="ui">Categorias</span> da tela <span class="ui">Relatório</span>. Elas são divididas em duas listas, <span class="ui">Categorias de Receita</span> e <span class="ui">Categorias de Despesa</span>.</p>
 
@@ -314,6 +314,7 @@
       <tr><td><span class="ui">Nome</span></td><td>Sim</td><td>Validação "Nome é obrigatório". Exemplo sugerido na tela: "Serviços".</td></tr>
       <tr><td><span class="ui">Tipo</span></td><td>Sim</td><td>Receita, Despesa ou Ambos. Validação "Tipo é obrigatório".</td></tr>
       <tr><td><span class="ui">Grupo DRE</span></td><td>Não</td><td>Impostos e Deduções, CSP (Custo do Serviço Prestado) ou Despesas Operacionais (OPEX). É o que decide em qual linha do resultado a categoria entra.</td></tr>
+      <tr><td><span class="ui">Categoria principal</span></td><td>Não</td><td>Escolha uma categoria principal para transformar a nova categoria em subcategoria. A hierarquia tem no máximo dois níveis.</td></tr>
       <tr><td><span class="ui">Cor</span></td><td>Sim</td><td>Validação "Cor é obrigatória". Usada nos gráficos.</td></tr>
       <tr><td><span class="ui">Ícone</span></td><td>Não</td><td>Só visual.</td></tr>
     </tbody>
@@ -335,9 +336,12 @@
   </figure>
 
   <h3>Excluir categoria</h3>
-  <p>A confirmação é clara sobre o efeito: "Tem certeza? Transações com esta categoria não serão afetadas." Ou seja, os lançamentos antigos continuam com o nome da categoria gravado, eles não somem e não mudam de valor.</p>
+  <ul>
+    <li>Ao excluir uma <b>subcategoria</b>, as receitas e despesas lançadas nela passam automaticamente para a categoria principal. Os valores e o histórico são preservados e continuam agrupados no resultado.</li>
+    <li>Ao excluir uma <b>categoria principal</b> que tem subcategorias, as subcategorias não são apagadas. Elas viram categorias principais independentes, com nome e histórico preservados.</li>
+  </ul>
 
-  <div class="regra"><b>Não existe subcategoria no financeiro do Dominex.</b> A lista de categorias é plana: não dá pra criar "Veículos" com "Combustível" e "Manutenção" dentro. Se você precisa desse detalhe, o caminho hoje é criar categorias irmãs com nome composto, como "Veículos, Combustível" e "Veículos, Manutenção", e usar a ordenação por arrastar pra deixá-las juntas na lista. O agrupamento contábil de verdade é feito pelo campo <span class="ui">Grupo DRE</span>, que junta várias categorias em Impostos, CSP ou OPEX.</div>
+  <div class="regra"><b>A hierarquia tem no máximo dois níveis.</b> Uma categoria principal pode ter várias subcategorias, mas uma subcategoria não pode ter outra dentro dela. A categoria principal também pode receber lançamentos diretamente.</div>
 
   <h2>11. Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial</h2>
 
@@ -537,8 +541,8 @@
       </tr>
       <tr>
         <td>"Quero criar uma subcategoria dentro de Veículos"</td>
-        <td>Não existe hierarquia de categoria</td>
-        <td>A lista de categorias é plana. Crie categorias irmãs com nome composto ("Veículos, Combustível") e use o campo Grupo DRE para agrupar contabilmente em Impostos, CSP ou OPEX.</td>
+        <td>É preciso criar ou editar a categoria filha</td>
+        <td>Abra Categorias, crie uma categoria e escolha Veículos no campo Categoria principal. Também dá para usar a ação Adicionar subcategoria no card da categoria principal.</td>
       </tr>
       <tr>
         <td>"O saldo da conta no sistema não bate com o do banco"</td>
@@ -547,8 +551,8 @@
       </tr>
       <tr>
         <td>"Minhas compras de cartão sumiram da lista de movimentações"</td>
-        <td>O interruptor "Incluir compras no cartão" está desligado, que é o padrão</td>
-        <td>Ligue o interruptor Incluir compras no cartão na visão geral de Movimentações. Por padrão a lista traz só movimento de conta e caixa, porque o que saiu do caixa foi o pagamento da fatura, não cada compra.</td>
+        <td>A preferência de incluir todas as compras do cartão está desligada, que é o padrão</td>
+        <td>No filtro Conta, escolha o cartão para ver somente as compras dele. Para mostrar compras de todos os cartões junto das demais movimentações, ligue a opção em Configurações, Usabilidade, Movimentações financeiras.</td>
       </tr>
       <tr>
         <td>"Criei uma conta recorrente e quero cancelar as próximas"</td>
@@ -591,7 +595,7 @@
     <dd>Porque o próprio dia do fechamento já pertence ao ciclo seguinte. Com fechamento no dia 20, a fatura acumula do dia 20 do mês anterior até o dia 19. O formulário do cartão avisa isso: "Compras feitas no dia do fechamento já entram na próxima fatura."</dd>
 
     <dt>Dá pra criar subcategoria de categoria financeira?</dt>
-    <dd>Não. A lista de categorias é plana, sem hierarquia. Para agrupar, use o campo Grupo DRE (Impostos, CSP ou OPEX) ou crie categorias irmãs com nome composto.</dd>
+    <dd>Sim. Crie ou edite a categoria filha e escolha a Categoria principal. A hierarquia tem no máximo dois níveis. Se uma subcategoria for excluída, os lançamentos dela passam para a categoria principal.</dd>
 
     <dt>Todo mundo que enxerga o Financeiro pode apagar lançamento?</dt>
     <dd>Não. Excluir lançamento financeiro é uma permissão separada, que não vem ligada por padrão. Administrador, gestor e quem tem acesso total sempre podem. Os demais só com a ação Excluir Lançamento Financeiro marcada no editor de permissões.</dd>
