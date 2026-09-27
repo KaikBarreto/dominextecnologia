@@ -42,9 +42,9 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.29.0',
+    version: '1.28.2',
     date: '28 de setembro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Nova visão geral dos relatórios financeiros',
