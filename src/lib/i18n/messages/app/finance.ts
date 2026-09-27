@@ -527,7 +527,7 @@ export const finance = {
       newLabel: {
         revenue: 'Receita',
         expense: 'Despesa',
-        transaction: 'Transação',
+        transaction: 'Nova movimentação',
       },
       toastDeleted: 'Lançamento excluído!',
       toastDeletedPlural: 'Lançamentos excluídos!',
@@ -1906,7 +1906,7 @@ export const finance = {
       newLabel: {
         revenue: 'Revenue',
         expense: 'Expense',
-        transaction: 'Transaction',
+        transaction: 'New movement',
       },
       toastDeleted: 'Entry deleted!',
       toastDeletedPlural: 'Entries deleted!',
@@ -3229,7 +3229,7 @@ export const finance = {
       newLabel: {
         revenue: 'Ingreso',
         expense: 'Gasto',
-        transaction: 'Transacción',
+        transaction: 'Nuevo movimiento',
       },
       toastDeleted: '¡Registro eliminado!',
       toastDeletedPlural: '¡Registros eliminados!',
@@ -4552,7 +4552,7 @@ export const finance = {
       newLabel: {
         revenue: 'Produit',
         expense: 'Charge',
-        transaction: 'Transaction',
+        transaction: 'Nouveau mouvement',
       },
       toastDeleted: 'Écriture supprimée !',
       toastDeletedPlural: 'Écritures supprimées !',

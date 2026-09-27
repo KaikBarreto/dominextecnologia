@@ -121,7 +121,7 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
     paste(input, 'R$ 4.550');
 
     const saveButton = Array.from(document.querySelectorAll('button')).find(
-      (b) => b.textContent === 'Criar Lead',
+      (b) => b.textContent === 'Criar oportunidade',
     ) as HTMLButtonElement;
     act(() => {
       saveButton.click();
@@ -137,7 +137,7 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
     mount('pipeline-parcerias');
 
     const saveButton = Array.from(document.querySelectorAll('button')).find(
-      (button) => button.textContent === 'Criar Lead',
+      (button) => button.textContent === 'Criar oportunidade',
     ) as HTMLButtonElement;
     act(() => saveButton.click());
 

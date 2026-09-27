@@ -58,6 +58,7 @@ export type Database = {
       }
       admin_crm_pipelines: {
         Row: {
+          color: string
           created_at: string
           id: string
           is_default: boolean
@@ -66,6 +67,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string
           created_at?: string
           id?: string
           is_default?: boolean
@@ -74,6 +76,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string
           created_at?: string
           id?: string
           is_default?: boolean

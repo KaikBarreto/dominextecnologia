@@ -93,7 +93,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
       });
     } else {
       const firstStage = stages.find(s => !s.is_won && !s.is_lost);
-      // Default em "Novo Lead": current user, se ele for vendedor.
+      // Default em "Nova oportunidade": usuário atual, se ele for vendedor.
       // linkedSalespersonId aponta pra salespeople.id; aqui guardamos auth.users.id.
       const defaultResponsible = linkedSalespersonId && user?.id ? user.id : '';
       setForm({
@@ -176,7 +176,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
     <div className="flex justify-end gap-2">
       <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
       <Button onClick={handleSubmit} disabled={isSaving}>
-        {isSaving ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar Lead'}
+        {isSaving ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar oportunidade'}
       </Button>
     </div>
   );
@@ -185,7 +185,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? 'Editar Lead' : 'Novo Lead'}
+      title={isEditing ? 'Editar oportunidade' : 'Nova oportunidade'}
       description="Preencha o essencial. Você pode complementar os dados depois."
       footer={footer}
     >

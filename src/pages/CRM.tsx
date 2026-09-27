@@ -779,6 +779,7 @@ export default function CRM() {
       configureLabel={t.pipelineTabs.configure}
       createLabel={t.pipelineTabs.create}
       listLabel={t.pipelineSelectorLabel}
+      hideSelected
     />
   );
 
@@ -819,7 +820,19 @@ export default function CRM() {
   // ------------------------------------------------------------------
   const kanbanBlock = (
     <div className="overflow-hidden">
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex min-w-0 items-center gap-3">
+        <div className="min-w-0 max-w-[52%] shrink-0 sm:max-w-[34%]">
+          <div className="flex min-w-0 items-center gap-2">
+            <ListFilter className="h-5 w-5 shrink-0" />
+            <h2 className="truncate text-base font-semibold sm:text-lg">
+              {selectedPipeline?.name ?? t.pipeline}
+            </h2>
+          </div>
+          <span
+            className="mt-1 block h-0.5 w-full rounded-full"
+            style={{ backgroundColor: selectedPipeline?.color ?? '#2563EB' }}
+          />
+        </div>
         <div className="min-w-0 flex-1">{pipelineTabs}</div>
         {isMobile && (
           <Button variant="outline" size="icon" onClick={() => setCrmSettingsOpen(true)} title={t.crmSettings} aria-label={t.crmSettings}>
@@ -827,16 +840,10 @@ export default function CRM() {
           </Button>
         )}
       </div>
-      {!isMobile && (
-        <div className="flex items-center gap-2 mb-3">
-          <ListFilter className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">{selectedPipeline?.name ?? t.pipeline}</h2>
-          {filteredLeads.length !== pipelineLeads.length && (
-            <Badge variant="outline" className="ml-2">
-              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(pipelineLeads.length))}
-            </Badge>
-          )}
-        </div>
+      {filteredLeads.length !== pipelineLeads.length && (
+        <Badge variant="outline" className="mb-3">
+          {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(pipelineLeads.length))}
+        </Badge>
       )}
 
       {(isLoading || stagesLoading || pipelinesLoading) ? (
@@ -1447,9 +1454,15 @@ export default function CRM() {
               >
                 {filterSheetContent}
               </FilterSheet>
-              <Button className="h-10 shrink-0 gap-1.5 px-3" onClick={() => setDialogOpen(true)}>
+              <Button
+                size="icon"
+                className="h-10 shrink-0 min-[430px]:w-auto min-[430px]:gap-1.5 min-[430px]:px-3"
+                onClick={() => setDialogOpen(true)}
+                aria-label={t.newOpportunity}
+                title={t.newOpportunity}
+              >
                 <Plus className="h-4 w-4" />
-                <span>{t.newOpportunity}</span>
+                <span className="hidden min-[430px]:inline">{t.newOpportunity}</span>
               </Button>
             </div>
 

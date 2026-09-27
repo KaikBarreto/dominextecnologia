@@ -23,9 +23,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (pipelineId: string) => void;
+  embedded?: boolean;
 }
 
-export function AdminPipelineManagerDialog({ open, onOpenChange, onCreated }: Props) {
+export function AdminPipelineManagerDialog({ open, onOpenChange, onCreated, embedded = false }: Props) {
   const {
     pipelines,
     createPipeline,
@@ -35,8 +36,10 @@ export function AdminPipelineManagerDialog({ open, onOpenChange, onCreated }: Pr
     deletePipeline,
   } = useAdminCrmPipelines();
   const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState('#2563EB');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingColor, setEditingColor] = useState('#2563EB');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -44,9 +47,10 @@ export function AdminPipelineManagerDialog({ open, onOpenChange, onCreated }: Pr
   const create = () => {
     const name = newName.trim();
     if (!name) return;
-    createPipeline.mutate({ name }, {
+    createPipeline.mutate({ name, color: newColor }, {
       onSuccess: (pipeline) => {
         setNewName('');
+        setNewColor('#2563EB');
         onCreated?.(pipeline.id);
       },
     });
@@ -68,105 +72,137 @@ export function AdminPipelineManagerDialog({ open, onOpenChange, onCreated }: Pr
   const startEditing = (pipeline: AdminCrmPipeline) => {
     setEditingId(pipeline.id);
     setEditingName(pipeline.name);
+    setEditingColor(pipeline.color ?? '#2563EB');
   };
+
+  const content = (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">Funis</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Crie funis independentes e use cores para reconhecer cada processo rapidamente.
+        </p>
+      </div>
+
+      <div className="space-y-2 rounded-xl bg-muted/35 p-4">
+        <Label htmlFor="admin-new-pipeline">Novo funil</Label>
+        <div className="flex flex-wrap gap-2">
+          <Input
+            id="admin-new-pipeline"
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                create();
+              }
+            }}
+            placeholder="Ex.: Parcerias, Onboarding, Renovação"
+            className="min-w-[180px] flex-1"
+          />
+          <input
+            aria-label="Cor do novo funil"
+            type="color"
+            value={newColor}
+            onChange={(event) => setNewColor(event.target.value)}
+            className="h-10 w-12 cursor-pointer rounded-lg border bg-transparent p-1"
+          />
+          <Button onClick={create} disabled={!newName.trim() || createPipeline.isPending}>
+            <Plus className="mr-2 h-4 w-4" /> Criar
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">Arraste para ordenar. O funil padrão é aberto primeiro.</p>
+        {pipelines.map((pipeline) => (
+          <div
+            key={pipeline.id}
+            draggable={editingId !== pipeline.id}
+            onDragStart={() => setDraggedId(pipeline.id)}
+            onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+            onDragOver={(event) => { event.preventDefault(); setDragOverId(pipeline.id); }}
+            onDragLeave={() => setDragOverId(null)}
+            onDrop={(event) => { event.preventDefault(); reorder(pipeline.id); }}
+            className={cn(
+              'flex flex-wrap items-center gap-2 rounded-xl bg-muted/20 p-3 transition-all hover:bg-muted/30',
+              draggedId === pipeline.id && 'opacity-50',
+              dragOverId === pipeline.id && draggedId !== pipeline.id && 'ring-2 ring-primary bg-primary/5',
+            )}
+          >
+            <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+            {editingId === pipeline.id ? (
+              <>
+                <Input
+                  value={editingName}
+                  onChange={(event) => setEditingName(event.target.value)}
+                  className="h-8 min-w-[150px] flex-1"
+                  autoFocus
+                />
+                <input
+                  aria-label="Cor do funil"
+                  type="color"
+                  value={editingColor}
+                  onChange={(event) => setEditingColor(event.target.value)}
+                  className="h-8 w-11 cursor-pointer rounded border bg-transparent p-1"
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    const name = editingName.trim();
+                    if (name) updatePipeline.mutate({ id: pipeline.id, name, color: editingColor });
+                    setEditingId(null);
+                  }}
+                  aria-label="Salvar funil"
+                >
+                  <Check className="h-4 w-4 text-success" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => setEditingId(null)} aria-label="Cancelar edição">
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{pipeline.name}</span>
+                  <span
+                    className="mt-1 block h-1 w-16 rounded-full"
+                    style={{ backgroundColor: pipeline.color ?? '#2563EB' }}
+                  />
+                </div>
+                {pipeline.is_default && (
+                  <Badge className="gap-1 border-0 bg-primary text-primary-foreground">
+                    <Star className="h-3 w-3" /> Padrão
+                  </Badge>
+                )}
+                <RowActionsMenu
+                  actions={[
+                    { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEditing(pipeline) },
+                    {
+                      label: 'Definir como padrão',
+                      icon: Star,
+                      hidden: pipeline.is_default,
+                      onClick: () => setDefaultPipeline.mutate(pipeline.id),
+                    },
+                    { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(pipeline.id) },
+                  ]}
+                />
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Gerenciar funis">
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Crie funis independentes para organizar processos diferentes no CRM Admin.
-          </p>
-
-          <div className="space-y-2 rounded-lg border-2 border-dashed p-3">
-            <Label htmlFor="admin-new-pipeline">Novo funil</Label>
-            <div className="flex gap-2">
-              <Input
-                id="admin-new-pipeline"
-                value={newName}
-                onChange={(event) => setNewName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    create();
-                  }
-                }}
-                placeholder="Ex.: Parcerias, Onboarding, Renovação"
-              />
-              <Button onClick={create} disabled={!newName.trim() || createPipeline.isPending}>
-                <Plus className="mr-2 h-4 w-4" /> Criar
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {pipelines.map((pipeline) => (
-              <div
-                key={pipeline.id}
-                draggable={editingId !== pipeline.id}
-                onDragStart={() => setDraggedId(pipeline.id)}
-                onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
-                onDragOver={(event) => { event.preventDefault(); setDragOverId(pipeline.id); }}
-                onDragLeave={() => setDragOverId(null)}
-                onDrop={(event) => { event.preventDefault(); reorder(pipeline.id); }}
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border bg-card p-2 transition-all',
-                  draggedId === pipeline.id && 'opacity-50',
-                  dragOverId === pipeline.id && draggedId !== pipeline.id && 'border-primary bg-primary/5',
-                )}
-              >
-                <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
-                {editingId === pipeline.id ? (
-                  <>
-                    <Input
-                      value={editingName}
-                      onChange={(event) => setEditingName(event.target.value)}
-                      className="h-8 flex-1"
-                      autoFocus
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        const name = editingName.trim();
-                        if (name) updatePipeline.mutate({ id: pipeline.id, name });
-                        setEditingId(null);
-                      }}
-                      aria-label="Salvar nome do funil"
-                    >
-                      <Check className="h-4 w-4 text-success" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setEditingId(null)} aria-label="Cancelar edição">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{pipeline.name}</span>
-                    {pipeline.is_default && (
-                      <Badge className="gap-1 border-0 bg-primary text-primary-foreground">
-                        <Star className="h-3 w-3" /> Padrão
-                      </Badge>
-                    )}
-                    <RowActionsMenu
-                      actions={[
-                        { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEditing(pipeline) },
-                        {
-                          label: 'Definir como padrão',
-                          icon: Star,
-                          hidden: pipeline.is_default,
-                          onClick: () => setDefaultPipeline.mutate(pipeline.id),
-                        },
-                        { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(pipeline.id) },
-                      ]}
-                    />
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </ResponsiveModal>
+      {embedded ? content : (
+        <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Gerenciar funis">
+          {content}
+        </ResponsiveModal>
+      )}
 
       <AlertDialog open={!!deleteId} onOpenChange={(next) => !next && setDeleteId(null)}>
         <AlertDialogContent>

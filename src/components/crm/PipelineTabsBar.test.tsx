@@ -36,7 +36,7 @@ let root: Root;
 const onSelect = vi.fn();
 const onCreate = vi.fn();
 
-function render(mobile: boolean) {
+function render(mobile: boolean, hideSelected = false) {
   act(() => {
     root.render(
       <PipelineTabsBar
@@ -49,6 +49,7 @@ function render(mobile: boolean) {
         configureLabel="Configurar funil"
         createLabel="Novo funil"
         listLabel="Funil"
+        hideSelected={hideSelected}
       />,
     );
   });
@@ -109,6 +110,13 @@ describe('PipelineTabsBar — desktop', () => {
       document.querySelector('[data-pipeline-create]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     expect(onCreate).toHaveBeenCalled();
+  });
+
+  it('mostra somente os outros funis quando o ativo já aparece como título', () => {
+    render(false, true);
+    expect(document.querySelector('[data-pipeline-item="p1"]')).toBeNull();
+    expect(document.querySelector('[data-pipeline-item="p2"]')).toBeTruthy();
+    expect(document.querySelector('[data-pipeline-create]')).toBeTruthy();
   });
 
   it('engrenagem de aba INATIVA seleciona aquele funil antes de configurar', () => {

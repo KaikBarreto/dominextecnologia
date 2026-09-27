@@ -87,12 +87,14 @@ interface Props {
  */
 export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initialTab = 'detalhes' }: Props) {
   const { interactions, createInteraction } = useAdminLeadInteractions(leadProp.id);
-  const { stages } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
   const { deleteLead, updateLead, updateLeadNotes, leads } = useAdminLeads();
   const { user } = useAuth();
 
   const lead = leads.find(l => l.id === leadProp.id) || leadProp;
+  // Em instalações com vários funis, usar todas as etapas misturava os estados
+  // de ganho/perda e podia mover a oportunidade para outro funil sem querer.
+  const { stages } = useAdminCrmStages(lead.pipeline_id);
   const stage = stages.find(s => s.id === lead.stage_id);
 
   // Estágios de fechamento (configuráveis por flag — nunca hardcoded).

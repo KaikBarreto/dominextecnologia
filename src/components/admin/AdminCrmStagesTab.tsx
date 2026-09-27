@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X, Trophy, Ban } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, Trophy, Ban, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
@@ -11,6 +11,17 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ICON_OPTIONS, IconPreview } from '@/components/customers/originIcons';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 /** Seletor de ícone da etapa — mesmo componente e mesmo comportamento do
  *  StageManagerDialog do CRM do tenant (inclusive o valor sentinela 'none',
@@ -50,7 +61,7 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
   const [settingsPipelineId, setSettingsPipelineId] = useState<string | null>(null);
   const activePipelineId = pipelineId ?? settingsPipelineId ?? defaultPipeline?.id ?? null;
   const activePipelineName = pipelineName ?? pipelines.find((pipeline) => pipeline.id === activePipelineId)?.name;
-  const { stages, createStage, updateStage, deleteStage } = useAdminCrmStages(activePipelineId);
+  const { stages, createStage, updateStage, deleteStage, reorderStages } = useAdminCrmStages(activePipelineId);
 
   useEffect(() => {
     if (!pipelineId && !settingsPipelineId && defaultPipeline?.id) {
@@ -66,6 +77,9 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#6B7280');
   const [newIcon, setNewIcon] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const startEdit = (s: AdminCrmStage) => {
     setEditingId(s.id);
@@ -96,35 +110,93 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
     setNewIcon(null);
   };
 
+  const reorder = (targetId: string) => {
+    if (!draggedId || draggedId === targetId) return;
+    const from = stages.findIndex((stage) => stage.id === draggedId);
+    const to = stages.findIndex((stage) => stage.id === targetId);
+    if (from < 0 || to < 0) return;
+    const ordered = [...stages];
+    const [item] = ordered.splice(from, 1);
+    ordered.splice(to, 0, item);
+    reorderStages.mutate(ordered.map((stage) => stage.id));
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   const content = (
     <>
-      {!embedded && (
-      <CardHeader>
-        <CardTitle className="text-base">Etapas do CRM</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Gerencie as etapas {activePipelineName ? `do funil ${activePipelineName}` : 'dos funis administrativos'}
-        </p>
-        {!pipelineId && pipelines.length > 0 && (
-          <Select value={activePipelineId ?? undefined} onValueChange={setSettingsPipelineId}>
-            <SelectTrigger className="mt-3 w-full sm:w-[280px]" aria-label="Funil das etapas">
-              <SelectValue placeholder="Selecione o funil" />
-            </SelectTrigger>
-            <SelectContent>
-              {pipelines.map((pipeline) => (
-                <SelectItem key={pipeline.id} value={pipeline.id}>{pipeline.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </CardHeader>
+      {embedded ? (
+        <div className="px-6 pb-1">
+          <h2 className="text-xl font-semibold">
+            {activePipelineName ? `Estágios de ${activePipelineName}` : 'Estágios do CRM/Kanban'}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">Crie, ordene e personalize as colunas deste funil.</p>
+        </div>
+      ) : (
+        <CardHeader>
+          <CardTitle className="text-base">Estágios do CRM/Kanban</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Gerencie os estágios {activePipelineName ? `do funil ${activePipelineName}` : 'dos funis administrativos'}
+          </p>
+          {!pipelineId && pipelines.length > 0 && (
+            <Select value={activePipelineId ?? undefined} onValueChange={setSettingsPipelineId}>
+              <SelectTrigger className="mt-3 w-full sm:w-[280px]" aria-label="Funil dos estágios">
+                <SelectValue placeholder="Selecione o funil" />
+              </SelectTrigger>
+              <SelectContent>
+                {pipelines.map((pipeline) => (
+                  <SelectItem key={pipeline.id} value={pipeline.id}>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: pipeline.color }} />
+                      {pipeline.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </CardHeader>
       )}
       <CardContent className="space-y-4">
+        <div className="space-y-3 rounded-xl bg-muted/35 p-4">
+          <Label htmlFor="admin-new-stage">Novo estágio</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              id="admin-new-stage"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Nome do estágio"
+              className="h-9 min-w-[150px] flex-1"
+            />
+            <StageIconSelect value={newIcon} onChange={setNewIcon} />
+            <ColorPicker value={newColor} onChange={setNewColor} />
+            <Button size="sm" className="h-9" onClick={handleCreate} disabled={!newName.trim()}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar estágio
+            </Button>
+          </div>
+        </div>
+
         <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Arraste os estágios para definir a ordem das colunas.</p>
           {stages.map((s) => (
-            <div key={s.id} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
+            <div
+              key={s.id}
+              draggable={editingId !== s.id}
+              onDragStart={() => setDraggedId(s.id)}
+              onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+              onDragOver={(event) => { event.preventDefault(); setDragOverId(s.id); }}
+              onDragLeave={() => setDragOverId(null)}
+              onDrop={(event) => { event.preventDefault(); reorder(s.id); }}
+              className={cn(
+                'flex flex-wrap items-center gap-2 rounded-xl bg-muted/20 p-3 transition-all hover:bg-muted/30',
+                draggedId === s.id && 'opacity-50',
+                dragOverId === s.id && draggedId !== s.id && 'ring-2 ring-primary bg-primary/5',
+              )}
+            >
+              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
               {editingId === s.id ? (
                 <>
-                  <div className="flex-1 flex items-center gap-2 flex-wrap">
+                  <div className="flex min-w-[220px] flex-1 flex-wrap items-center gap-2">
                     <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 h-8 min-w-[120px]" />
                     <StageIconSelect value={editIcon} onChange={setEditIcon} />
                     <ColorPicker value={editColor} onChange={setEditColor} />
@@ -153,7 +225,7 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
                     triggerClassName="h-7 w-7"
                     actions={[
                       { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEdit(s) },
-                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => deleteStage.mutate(s.id) },
+                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(s.id) },
                     ]}
                   />
                 </>
@@ -161,19 +233,34 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }
             </div>
           ))}
         </div>
-
-        <div className="flex items-center gap-2 p-2 rounded-lg border border-dashed flex-wrap">
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nova etapa..." className="flex-1 h-8 min-w-[120px]" />
-          <StageIconSelect value={newIcon} onChange={setNewIcon} />
-          <ColorPicker value={newColor} onChange={setNewColor} />
-          <Button size="sm" className="h-8" onClick={handleCreate} disabled={!newName.trim()}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
-          </Button>
-        </div>
       </CardContent>
     </>
   );
 
-  if (embedded) return <div className="-mx-6">{content}</div>;
-  return <Card>{content}</Card>;
+  return (
+    <>
+      {embedded ? <div className="-mx-1 space-y-4">{content}</div> : <Card>{content}</Card>}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este estágio?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A exclusão só será permitida quando não houver oportunidades vinculadas a ele.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteId) deleteStage.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }

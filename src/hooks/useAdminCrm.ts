@@ -28,6 +28,7 @@ export interface AdminCrmStage {
 export interface AdminCrmPipeline {
   id: string;
   name: string;
+  color: string;
   position: number;
   is_default: boolean;
   created_at: string;
@@ -78,13 +79,13 @@ export function useAdminCrmPipelines() {
   const defaultPipeline = pipelines.find((pipeline) => pipeline.is_default) ?? pipelines[0] ?? null;
 
   const createPipeline = useMutation({
-    mutationFn: async (input: { name: string }) => {
+    mutationFn: async (input: { name: string; color?: string }) => {
       const nextPosition = pipelines.length > 0
         ? Math.max(...pipelines.map((pipeline) => pipeline.position)) + 1
         : 0;
       const { data, error } = await supabase
         .from('admin_crm_pipelines')
-        .insert({ name: input.name, position: nextPosition, is_default: pipelines.length === 0 })
+        .insert({ name: input.name, color: input.color ?? '#2563EB', position: nextPosition, is_default: pipelines.length === 0 })
         .select()
         .single();
       if (error) throw error;
@@ -98,7 +99,7 @@ export function useAdminCrmPipelines() {
   });
 
   const updatePipeline = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; position?: number }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; color?: string; position?: number }) => {
       const { data, error } = await supabase
         .from('admin_crm_pipelines')
         .update(updates)

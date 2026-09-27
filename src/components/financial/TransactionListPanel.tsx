@@ -721,6 +721,7 @@ export function TransactionListPanel({
   };
 
   const newLabel = type === 'entrada' ? fin.transactionList.newLabel.revenue : type === 'saida' ? fin.transactionList.newLabel.expense : fin.transactionList.newLabel.transaction;
+  const emptyActionLabel = type === 'all' ? newLabel : `Nova ${newLabel.toLowerCase()}`;
 
   return (
     <div className="space-y-4">
@@ -874,7 +875,7 @@ export function TransactionListPanel({
             icon={<ArrowLeftRight className="h-10 w-10" />}
             title={fin.transactionList.empty.noneTitle}
             description={fin.transactionList.empty.noneDescription}
-            action={onNew ? { label: `Nova ${newLabel.toLowerCase()}`, onClick: onNew } : undefined}
+            action={onNew ? { label: emptyActionLabel, onClick: onNew } : undefined}
           />
         )
       ) : isMobile ? (

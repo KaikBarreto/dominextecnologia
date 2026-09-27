@@ -6,9 +6,14 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   pipelineId: string | null;
   pipelineName?: string;
+  embedded?: boolean;
 }
 
-export function AdminStageManagerDialog({ open, onOpenChange, pipelineId, pipelineName }: Props) {
+export function AdminStageManagerDialog({ open, onOpenChange, pipelineId, pipelineName, embedded = false }: Props) {
+  if (embedded) {
+    return <AdminCrmStagesTab pipelineId={pipelineId} pipelineName={pipelineName} embedded />;
+  }
+
   return (
     <ResponsiveModal
       open={open}

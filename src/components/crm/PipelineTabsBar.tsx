@@ -39,6 +39,8 @@ interface PipelineTabsBarProps {
   createLabel: string;
   /** Rótulo acessível da faixa de abas (ex: "Funil"). */
   listLabel: string;
+  /** Quando o funil ativo já aparece como título, mostra aqui apenas os demais. */
+  hideSelected?: boolean;
   className?: string;
 }
 
@@ -71,8 +73,12 @@ export function PipelineTabsBar({
   configureLabel,
   createLabel,
   listLabel,
+  hideSelected = false,
   className,
 }: PipelineTabsBarProps) {
+  const visiblePipelines = hideSelected
+    ? pipelines.filter((pipeline) => pipeline.id !== selectedId)
+    : pipelines;
   // Qual engrenagem está com o menu aberto — o ícone não pode sumir embaixo do
   // próprio menu quando o mouse sai da aba.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -99,7 +105,7 @@ export function PipelineTabsBar({
       el.removeEventListener('scroll', updateFades);
       ro.disconnect();
     };
-  }, [updateFades, pipelines.length]);
+  }, [updateFades, visiblePipelines.length]);
 
   // Mesma máscara do MobilePillTabs (superfície-agnóstica): borda transparente
   // só do lado que tem conteúdo escondido.
@@ -200,7 +206,7 @@ export function PipelineTabsBar({
       <div className={cn('flex items-center gap-2 min-w-0', className)}>
         <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <div className="flex w-max items-center gap-1.5 pb-1">
-            {pipelines.map((pipeline) => {
+            {visiblePipelines.map((pipeline) => {
               const isActive = pipeline.id === selectedId;
               return (
                 <div key={pipeline.id} data-pipeline-item={pipeline.id} className="group flex shrink-0 items-center bg-transparent">
@@ -235,7 +241,7 @@ export function PipelineTabsBar({
         style={maskStyle}
         className="flex items-end gap-1 min-w-0 overflow-x-auto scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {pipelines.map((p) => {
+        {visiblePipelines.map((p) => {
           const isActive = selectedId === p.id;
           return (
             <div

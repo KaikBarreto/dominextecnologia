@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, User, GripVertical, ListFilter, ListChecks, Settings2, Workflow, Star } from 'lucide-react';
+import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, User, GripVertical, ListFilter, ListChecks, Settings2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -25,18 +25,15 @@ import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { COMPANY_SEGMENTS } from '@/utils/companySegments';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
-import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
-import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { AdminTasksTab } from '@/components/admin/tasks/AdminTasksTab';
 import { useAdminTasksCount } from '@/hooks/useAdminTasks';
 import { PipelineTabsBar, type PipelineTabItem } from '@/components/crm/PipelineTabsBar';
-import { AdminPipelineManagerDialog } from '@/components/admin/AdminPipelineManagerDialog';
-import { AdminStageManagerDialog } from '@/components/admin/AdminStageManagerDialog';
+import { AdminCrmSettingsDialog, type AdminCrmSettingsSection } from '@/components/admin/AdminCrmSettingsDialog';
 import type { RowAction } from '@/components/ui/RowActionsMenu';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
@@ -100,7 +97,7 @@ export default function AdminCRM() {
     <div>
       <div className="container mx-auto space-y-3 px-3 pt-4 sm:px-4 lg:px-6 lg:pt-6">
         <div>
-          <h1 className="text-xl font-bold text-foreground lg:text-2xl">CRM Admin</h1>
+          <h1 className="text-xl font-bold text-foreground lg:text-2xl">CRM/Kanban</h1>
           <p className="text-sm text-muted-foreground">Funis e tarefas comerciais da Dominex</p>
         </div>
         {isMobile ? (
@@ -115,6 +112,7 @@ export default function AdminCRM() {
             ]}
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            variant="underline"
           />
         ) : (
           <div className="flex items-center gap-2" role="tablist" aria-label="Navegação do CRM Admin">
@@ -126,10 +124,10 @@ export default function AdminCRM() {
                 aria-selected={activeTab === tab}
                 onClick={() => handleTabChange(tab)}
                 className={cn(
-                  'inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-all',
+                  'inline-flex h-9 items-center gap-1.5 border-b-2 px-3.5 text-sm font-medium transition-colors',
                   activeTab === tab
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted',
+                    ? 'border-primary text-foreground'
+                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}
               >
                 {tab === 'crm' ? <ListFilter className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
@@ -163,7 +161,6 @@ function CrmTab() {
     pipelines,
     defaultPipeline,
     isLoading: pipelinesLoading,
-    setDefaultPipeline,
   } = useAdminCrmPipelines();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(() => {
@@ -229,8 +226,8 @@ function CrmTab() {
 
   const isMobile = useIsMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [pipelineManagerOpen, setPipelineManagerOpen] = useState(false);
-  const [stageDialogPipelineId, setStageDialogPipelineId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<AdminCrmSettingsSection>('stages');
   const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
   const [detailLead, setDetailLead] = useState<AdminLead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -498,21 +495,13 @@ function CrmTab() {
 
   const pipelineMenuActions = (pipeline: PipelineTabItem): RowAction[] => [
     {
-      label: 'Gerenciar etapas',
+      label: 'Configurações do CRM/Kanban',
       icon: Settings2,
-      onClick: () => setStageDialogPipelineId(pipeline.id),
-    },
-    {
-      label: 'Definir como padrão',
-      icon: Star,
-      hidden: pipeline.is_default,
-      disabled: setDefaultPipeline.isPending,
-      onClick: () => setDefaultPipeline.mutate(pipeline.id),
-    },
-    {
-      label: 'Gerenciar funis',
-      icon: Workflow,
-      onClick: () => setPipelineManagerOpen(true),
+      onClick: () => {
+        selectPipeline(pipeline.id);
+        setSettingsSection('stages');
+        setSettingsOpen(true);
+      },
     },
   ];
 
@@ -521,12 +510,16 @@ function CrmTab() {
       pipelines={pipelines}
       selectedId={selectedPipelineId}
       onSelect={selectPipeline}
-      onCreate={() => setPipelineManagerOpen(true)}
+      onCreate={() => {
+        setSettingsSection('pipelines');
+        setSettingsOpen(true);
+      }}
       menuActions={pipelineMenuActions}
       mobile={isMobile}
-      configureLabel="Configurar funil"
+      configureLabel="Configurações do CRM/Kanban"
       createLabel="Criar funil"
       listLabel="Funis do CRM Admin"
+      hideSelected
     />
   );
 
@@ -561,29 +554,32 @@ function CrmTab() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className={cn('container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4', isMobile && 'pb-24')}>
-        {/* Nome do funil atual + seletor de funis, igual ao CRM do tenant. */}
-        {isMobile ? (
-          <div className="space-y-3">
-            <MobilePageHeader
-              title={selectedPipeline?.name ?? 'CRM/Kanban'}
-              subtitle={`${pipelineLeads.length} oportunidade${pipelineLeads.length === 1 ? '' : 's'} neste funil`}
-              icon={ListFilter}
+        {/* Título do funil atual à esquerda; os demais funis ficam na mesma linha. */}
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="min-w-0 max-w-[52%] shrink-0 sm:max-w-[34%]">
+            <h2 className="truncate text-base font-bold text-foreground sm:text-xl lg:text-2xl">
+              {selectedPipeline?.name ?? 'CRM/Kanban'}
+            </h2>
+            <span
+              className="mt-1 block h-0.5 w-full rounded-full"
+              style={{ backgroundColor: selectedPipeline?.color ?? '#2563EB' }}
             />
-            {pipelineTabs}
+            <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
+              {pipelineLeads.length} oportunidade{pipelineLeads.length === 1 ? '' : 's'}
+            </p>
           </div>
-        ) : (
-          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <h2 className="truncate text-xl font-bold text-foreground lg:text-2xl">
-                {selectedPipeline?.name ?? 'CRM/Kanban'}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {pipelineLeads.length} oportunidade{pipelineLeads.length === 1 ? '' : 's'} neste funil
-              </p>
-            </div>
-            <div className="min-w-0 flex-1 lg:flex lg:justify-end">{pipelineTabs}</div>
-          </div>
-        )}
+          <div className="min-w-0 flex-1">{pipelineTabs}</div>
+          <Button
+            size={isMobile ? 'icon' : 'sm'}
+            className="shrink-0 bg-foreground text-background hover:bg-foreground/90"
+            onClick={() => { setSettingsSection('stages'); setSettingsOpen(true); }}
+            title="Configurações do CRM/Kanban"
+            aria-label="Configurações do CRM/Kanban"
+          >
+            <Settings2 className="h-4 w-4 xl:mr-2" />
+            <span className="hidden xl:inline">Configurações do CRM/Kanban</span>
+          </Button>
+        </div>
 
         {/* Stats: mobile = carrossel (Total + Negociação + Ganhos + 1 chip por estágio).
             Desktop = grid 4 cards original (inclui Valor Total). */}
@@ -591,10 +587,10 @@ function CrmTab() {
           <StatCarousel items={statItems} loading={isLoading || stagesLoading} />
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Total de Leads</p><p className="text-lg font-bold">{filteredLeads.length}</p></div></div></CardContent></Card>
-            <Card><CardContent className="p-3"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Em Negociação</p><p className="text-lg font-bold">{activeLeads.length}</p></div></div></CardContent></Card>
-            <Card><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Valor Total</p><p className="text-lg font-bold">{formatCurrency(totalValue)}</p></div></div></CardContent></Card>
-            <Card><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" /><div><p className="text-xs text-muted-foreground">Ganhos</p><p className="text-lg font-bold text-green-600">{wonLeadsCount}</p></div></div></CardContent></Card>
+            <Card className="border-0 bg-primary text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Total de Leads</p><p className="text-lg font-bold">{filteredLeads.length}</p></div></div></CardContent></Card>
+            <Card className="border-0 bg-info text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Em Negociação</p><p className="text-lg font-bold">{activeLeads.length}</p></div></div></CardContent></Card>
+            <Card className="border-0 bg-success text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Valor Total</p><p className="text-lg font-bold">{formatCurrency(totalValue)}</p></div></div></CardContent></Card>
+            <Card className="border-0 bg-warning text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Ganhos</p><p className="text-lg font-bold">{wonLeadsCount}</p></div></div></CardContent></Card>
           </div>
         )}
 
@@ -606,7 +602,7 @@ function CrmTab() {
               <Input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar leads..."
+                placeholder="Buscar oportunidades..."
                 className="pl-9 h-10"
               />
             </div>
@@ -617,12 +613,20 @@ function CrmTab() {
             >
               {filtersContent}
             </FilterSheet>
+            <Button
+              size="icon"
+              onClick={() => { setEditingLead(null); setDialogOpen(true); }}
+              aria-label="Nova oportunidade"
+              title="Nova oportunidade"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <div className="relative flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar leads..." className="pl-9" />
+              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar oportunidades..." className="pl-9" />
             </div>
             <div className="flex gap-2 sm:ml-auto">
               <DesktopFilterPopover
@@ -638,7 +642,7 @@ function CrmTab() {
                 onClear={clearFilters}
               />
               <Button onClick={() => { setEditingLead(null); setDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" /> Novo Lead
+                <Plus className="h-4 w-4 mr-2" /> Nova oportunidade
               </Button>
             </div>
           </div>
@@ -651,7 +655,7 @@ function CrmTab() {
             <EmptyState
               icon={<TrendingUp className="h-12 w-12" />}
               title={search || activeFilterCount > 0 ? 'Nenhum lead encontrado' : 'Nenhum lead'}
-              description={search || activeFilterCount > 0 ? 'Tente filtros diferentes.' : 'Toque em "Novo Lead" para começar.'}
+              description={search || activeFilterCount > 0 ? 'Tente filtros diferentes.' : 'Toque em "Nova oportunidade" para começar.'}
             />
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
@@ -874,26 +878,14 @@ function CrmTab() {
           leadTitle={pendingLossDrop?.leadTitle || ''}
           onConfirm={handleLossConfirm}
         />
-        <AdminPipelineManagerDialog
-          open={pipelineManagerOpen}
-          onOpenChange={setPipelineManagerOpen}
-          onCreated={selectPipeline}
+        <AdminCrmSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          initialSection={settingsSection}
+          pipelineId={selectedPipelineId}
+          pipelineName={selectedPipeline?.name}
+          onPipelineCreated={selectPipeline}
         />
-        <AdminStageManagerDialog
-          open={!!stageDialogPipelineId}
-          onOpenChange={(open) => !open && setStageDialogPipelineId(null)}
-          pipelineId={stageDialogPipelineId}
-          pipelineName={pipelines.find((pipeline) => pipeline.id === stageDialogPipelineId)?.name}
-        />
-
-        {/* FAB Novo Lead no mobile */}
-        {isMobile && (
-          <FABButton
-            icon={<Plus className="h-5 w-5" />}
-            label="Lead"
-            onClick={() => { setEditingLead(null); setDialogOpen(true); }}
-          />
-        )}
       </div>
     </TooltipProvider>
   );

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.1',
+    date: '27 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'CRM/Kanban consistente também no painel administrativo',
+        description: 'O painel administrativo agora segue a mesma organização do CRM principal, com funis coloridos, configurações reunidas, criação de oportunidades ao lado da busca e uma edição mais clara de funis e etapas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Troca de funil mais clara no computador, tablet e celular',
+        description: 'O funil atual aparece como título e os outros funis ficam ao lado para troca rápida. No celular, a busca e os botões também se ajustam melhor sem apertar o campo de pesquisa.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.0',
     date: '27 de setembro de 2026',
     type: 'minor',
