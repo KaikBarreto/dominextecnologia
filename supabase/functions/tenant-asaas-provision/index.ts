@@ -23,24 +23,52 @@
 import { handleCors } from "../_shared/cors.ts";
 import {
   authorizePaymentsManager,
-  jsonResponse,
-  vaultKeySecretName,
-  vaultWebhookTokenSecretName,
-  vaultUpsertSecret,
-  vaultReadSecret,
-  vaultDeleteSecret,
   generateWebhookToken,
+  jsonResponse,
+  vaultDeleteSecret,
+  vaultKeySecretName,
+  vaultReadSecret,
+  vaultUpsertSecret,
+  vaultWebhookTokenSecretName,
 } from "../_shared/payments-auth.ts";
-import { asaasFor, AsaasApiError, maskKey } from "../_shared/asaas-tenant-client.ts";
+import {
+  AsaasApiError,
+  asaasFor,
+  maskKey,
+} from "../_shared/asaas-tenant-client.ts";
 
 const WEBHOOK_EVENTS = [
+  "PAYMENT_CREATED",
+  "PAYMENT_UPDATED",
   "PAYMENT_RECEIVED",
   "PAYMENT_CONFIRMED",
+  "PAYMENT_RECEIVED_IN_CASH",
   "PAYMENT_OVERDUE",
   "PAYMENT_REFUNDED",
+  "PAYMENT_REFUND_IN_PROGRESS",
   "PAYMENT_CHARGEBACK_REQUESTED",
   "PAYMENT_CHARGEBACK_DISPUTE",
   "PAYMENT_AWAITING_CHARGEBACK_REVERSAL",
+  "PAYMENT_DELETED",
+  "PAYMENT_RESTORED",
+  "SUBSCRIPTION_CREATED",
+  "SUBSCRIPTION_UPDATED",
+  "SUBSCRIPTION_INACTIVATED",
+  "SUBSCRIPTION_DELETED",
+  "CHECKOUT_CREATED",
+  "CHECKOUT_CANCELED",
+  "CHECKOUT_EXPIRED",
+  "CHECKOUT_PAID",
+  "PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED",
+  "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED",
+  "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_CREATED",
+  "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_SCHEDULED",
+  "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_REFUSED",
+  "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_CANCELLED",
 ];
 
 /** URL pública do nosso webhook multi-tenant (rota única). */
@@ -86,9 +114,13 @@ Deno.serve(async (req) => {
   try {
     return await handleRequest(req);
   } catch (e) {
-    console.error("[provision] exceção não tratada no topo:", (e as Error)?.message ?? e);
+    console.error(
+      "[provision] exceção não tratada no topo:",
+      (e as Error)?.message ?? e,
+    );
     return jsonResponse(req, {
-      error: "Ocorreu um erro ao configurar a integração. Tente novamente em instantes.",
+      error:
+        "Ocorreu um erro ao configurar a integração. Tente novamente em instantes.",
     }, 500);
   }
 });
@@ -116,7 +148,9 @@ async function handleRequest(req: Request): Promise<Response> {
     // Estado atual da conta (pra idempotência do webhook e do secret).
     const { data: existing } = await supabase
       .from("tenant_payment_accounts")
-      .select("id, asaas_webhook_id, vault_secret_name, webhook_auth_token_name, status")
+      .select(
+        "id, asaas_webhook_id, vault_secret_name, webhook_auth_token_name, status",
+      )
       .eq("company_id", companyId)
       .maybeSingle();
 
@@ -129,10 +163,15 @@ async function handleRequest(req: Request): Promise<Response> {
         try {
           const apiKey = await vaultReadSecret(supabase, keyName);
           if (apiKey) {
-            await asaasFor(apiKey).delete(`/webhooks/${existing.asaas_webhook_id}`);
+            await asaasFor(apiKey).delete(
+              `/webhooks/${existing.asaas_webhook_id}`,
+            );
           }
         } catch (e) {
-          console.error("[provision] falha ao remover webhook (não-fatal):", (e as Error).message);
+          console.error(
+            "[provision] falha ao remover webhook (não-fatal):",
+            (e as Error).message,
+          );
         }
       }
       await supabase
@@ -148,7 +187,10 @@ async function handleRequest(req: Request): Promise<Response> {
       await vaultDeleteSecret(supabase, keyName);
       await vaultDeleteSecret(supabase, tokenName);
 
-      return jsonResponse(req, { status: "disabled", webhook_registered: false }, 200);
+      return jsonResponse(req, {
+        status: "disabled",
+        webhook_registered: false,
+      }, 200);
     }
 
     // =====================================================================
@@ -160,7 +202,8 @@ async function handleRequest(req: Request): Promise<Response> {
       apiKey = await vaultReadSecret(supabase, keyName);
       if (!apiKey) {
         return jsonResponse(req, {
-          error: "Nenhuma chave da Asaas configurada para revalidar. Ative a integração primeiro.",
+          error:
+            "Nenhuma chave da Asaas configurada para revalidar. Ative a integração primeiro.",
         }, 400);
       }
     } else {
@@ -172,11 +215,12 @@ async function handleRequest(req: Request): Promise<Response> {
       }
       // Guarda de formato: a chave da Asaas começa com "$aact_" e é longa. Rejeita
       // lixo colado (ex.: um link, um trecho) ANTES de bater na Asaas — mensagem clara.
-      const looksLikeAsaasKey = apiKey.startsWith("$aact_") && apiKey.length >= 40;
+      const looksLikeAsaasKey = apiKey.startsWith("$aact_") &&
+        apiKey.length >= 40;
       if (!looksLikeAsaasKey) {
         return jsonResponse(req, {
           error:
-            "Essa não parece ser uma chave de API válida da Asaas. Copie a chave em Configurações → Integrações da sua conta Asaas (começa com \"$aact_\").",
+            'Essa não parece ser uma chave de API válida da Asaas. Copie a chave em Configurações → Integrações da sua conta Asaas (começa com "$aact_").',
         }, 400);
       }
     }
@@ -187,14 +231,21 @@ async function handleRequest(req: Request): Promise<Response> {
       account = await validateKey(apiKey);
     } catch (e) {
       const status = e instanceof AsaasApiError ? e.status : 502;
-      console.error(`[provision] chave inválida (company ${companyId}, ${maskKey(apiKey)}):`, (e as Error).message);
+      console.error(
+        `[provision] chave inválida (company ${companyId}, ${
+          maskKey(apiKey)
+        }):`,
+        (e as Error).message,
+      );
       if (status === 401 || status === 403) {
         return jsonResponse(req, {
-          error: "Chave da Asaas inválida ou sem permissão. Confira em Configurações → Integrações da sua conta Asaas.",
+          error:
+            "Chave da Asaas inválida ou sem permissão. Confira em Configurações → Integrações da sua conta Asaas.",
         }, 400);
       }
       return jsonResponse(req, {
-        error: "Não foi possível validar a chave com a Asaas agora. Tente novamente em instantes.",
+        error:
+          "Não foi possível validar a chave com a Asaas agora. Tente novamente em instantes.",
       }, status >= 400 && status < 500 ? 400 : 502);
     }
 
@@ -255,7 +306,9 @@ async function handleRequest(req: Request): Promise<Response> {
       );
       return jsonResponse(req, {
         error: isClientError
-          ? `A chave é válida, mas a Asaas recusou a configuração do recebimento automático: ${(e as Error).message}`
+          ? `A chave é válida, mas a Asaas recusou a configuração do recebimento automático: ${
+            (e as Error).message
+          }`
           : "A chave é válida, mas não foi possível configurar o recebimento automático de pagamentos agora. Tente novamente em instantes.",
       }, isClientError ? 400 : 502);
     }
@@ -276,7 +329,10 @@ async function handleRequest(req: Request): Promise<Response> {
       .from("tenant_payment_accounts")
       .upsert(row, { onConflict: "company_id" });
     if (upsertErr) {
-      console.error("[provision] upsert tenant_payment_accounts falhou:", upsertErr.message);
+      console.error(
+        "[provision] upsert tenant_payment_accounts falhou:",
+        upsertErr.message,
+      );
       return jsonResponse(req, {
         error: "Não foi possível salvar a integração. Tente novamente.",
       }, 500);

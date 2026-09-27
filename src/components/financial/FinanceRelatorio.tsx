@@ -110,7 +110,11 @@ export function FinanceRelatorio({
   return (
     <SettingsSidebarLayout tabs={tabs} activeTab={safeTab} onTabChange={onTabChange}>
       {safeTab === 'dre' ? (
-        <FinanceDRE transactions={allTransactions} range={dateRange} />
+        <FinanceDRE
+          transactions={allTransactions}
+          range={dateRange}
+          canIncludeSubscriptionProjections={hasChargeModule}
+        />
       ) : safeTab === 'categorias' ? (
         <FinanceCategorias />
       ) : safeTab === 'centro-de-custo' ? (

@@ -75,7 +75,7 @@ vi.mock('@/hooks/useTenantPaymentAccount', () => ({
     defaultInterestPercent: 1,
     // Features dormentes LIGADAS aqui de propósito: o bug do CEO aparece justo
     // na forma "Pix Automático", que só existe no select com este flag.
-    cardRecurringEnabled: false,
+    cardRecurringEnabled: true,
     pixAutoEnabled: true,
   }),
 }));
@@ -213,10 +213,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   createMutateAsync.mockResolvedValue(undefined);
   authorizePixAutoMutateAsync.mockResolvedValue({
-    id: 'aut_1',
-    qr_code: 'abc',
-    copy_paste: '000201',
-    status: 'PENDING',
+    subscription: { id: 'sub-pix-auto' },
+    checkout_url: 'https://app.dominex.com.br/assinar/pix-auto-code',
+    checkout_kind: 'pix_auto',
   });
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -280,6 +279,57 @@ describe('SubscriptionDialog — categoria e centro de custo em toda forma de pa
     const payload = createMutateAsync.mock.calls[0][0];
     expect(payload.category).toBe('Mensalidade');
     expect(payload.cost_center_id).toBe('cc-1');
+  });
+});
+
+describe('SubscriptionDialog — checkout seguro', () => {
+  it('cartão recorrente não coleta PAN/CVV e devolve somente o link hospedado', async () => {
+    createMutateAsync.mockResolvedValueOnce({
+      subscription: { id: 'sub-card' },
+      checkout_url: 'https://asaas.com/checkoutSession/show?id=checkout-1',
+      checkout_kind: 'asaas',
+    });
+    mount();
+    fillMinimum();
+    setBillingType('CREDIT_CARD');
+
+    expect(text()).toContain('Os dados do cartão serão preenchidos pelo cliente no checkout seguro da Asaas');
+    expect(text()).not.toContain('Número do cartão');
+    expect(text()).not.toContain('CVV');
+
+    await act(async () => {
+      click(buttonByText('Criar assinatura'));
+    });
+
+    const payload = createMutateAsync.mock.calls[0][0];
+    expect(payload.billing_type).toBe('CREDIT_CARD');
+    expect(payload).not.toHaveProperty('credit_card');
+    expect(payload).not.toHaveProperty('credit_card_holder_info');
+    expect((q('input[readonly]') as HTMLInputElement).value).toBe(
+      'https://asaas.com/checkoutSession/show?id=checkout-1',
+    );
+  });
+
+  it('Pix Automático mostra o link de autorização no admin, sem expor QR Code', async () => {
+    mount();
+    fillMinimum();
+    setBillingType('PIX_AUTO');
+
+    await act(async () => {
+      click(buttonByText('Criar assinatura'));
+    });
+
+    expect((q('input[readonly]') as HTMLInputElement).value).toBe(
+      'https://app.dominex.com.br/assinar/pix-auto-code',
+    );
+    expect(text()).not.toContain('Escaneie o QR Code');
+    expect(document.querySelector('img[alt*="QR"]')).toBeNull();
+  });
+
+  it('usa o DatePicker do sistema, sem input date nativo do navegador', () => {
+    mount();
+    expect(q('#sub-due')).toBeInstanceOf(HTMLButtonElement);
+    expect(document.querySelector('input[type="date"]')).toBeNull();
   });
 });
 

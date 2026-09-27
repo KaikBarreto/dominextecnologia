@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.26.0',
+    date: '27 de setembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Assinaturas com checkout seguro e gestão completa',
+        description: 'A assinatura no cartão agora gera um checkout para o cliente preencher os dados com segurança, sem expor o cartão dentro da Dominex. O Pix Automático também gera um link de autorização. A tela permite editar os principais dados, atualiza a lista imediatamente e libera a exclusão quando ainda não existe cobrança.',
+        category: 'recurso',
+      },
+      {
+        title: 'Previsão de assinaturas no DRE',
+        description: 'Empresas com o módulo de Cobranças podem incluir no regime de competência uma previsão dos próximos ciclos das assinaturas. Os valores previstos ficam identificados separadamente e não criam movimentações financeiras antes da cobrança existir.',
+        category: 'recurso',
+      },
+      {
+        title: 'Centro de custo detalhado por categoria',
+        description: 'No DRE, cada centro de custo pode ser aberto para mostrar suas categorias e subcategorias. O detalhamento respeita o período e o regime de Caixa ou Competência selecionados.',
+        category: 'melhoria',
+      },
+      {
+        title: 'CRM/Kanban com múltiplos funis no painel administrativo',
+        description: 'O CRM passou a usar o nome real de cada funil e ganhou uma identificação mais neutra para atender processos além de vendas. O painel administrativo agora também permite criar múltiplos funis, acompanhar os indicadores de cada um e alternar melhor entre CRM e Tarefas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Categorias e cadastros mais consistentes',
+        description: 'Novas subcategorias financeiras herdam por padrão a cor e o ícone da categoria principal. O cadastro de empresas também passa a recusar telefones inválidos antes de salvar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.25.12',
     date: '27 de setembro de 2026',
     type: 'patch',

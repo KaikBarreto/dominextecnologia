@@ -106,6 +106,7 @@ export const frOverrides: MessagesOverride = {
     errorEmailRequired: "L'e-mail est obligatoire",
     errorEmailInvalid: 'E-mail invalide',
     errorPhoneRequired: 'Le téléphone est obligatoire',
+    errorPhoneInvalid: 'Saisissez un numéro brésilien valide avec indicatif régional',
     errorPasswordRequired: 'Le mot de passe est obligatoire',
     errorPasswordMinReqs: 'Le mot de passe ne respecte pas les exigences minimales',
     errorConfirmPasswordRequired: 'Confirmez le mot de passe',

@@ -1,11 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, ClipboardList, User, GripVertical } from 'lucide-react';
+import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, User, GripVertical, ListFilter, ListChecks, Settings2, Workflow, Star } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
-import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
+import { useAdminLeads, useAdminCrmStages, useAdminCrmPipelines, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
@@ -35,6 +34,10 @@ import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { AdminTasksTab } from '@/components/admin/tasks/AdminTasksTab';
 import { useAdminTasksCount } from '@/hooks/useAdminTasks';
+import { PipelineTabsBar, type PipelineTabItem } from '@/components/crm/PipelineTabsBar';
+import { AdminPipelineManagerDialog } from '@/components/admin/AdminPipelineManagerDialog';
+import { AdminStageManagerDialog } from '@/components/admin/AdminStageManagerDialog';
+import type { RowAction } from '@/components/ui/RowActionsMenu';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 type DatePreset = 'all' | 'today' | 'this_week' | 'this_month' | 'this_year' | 'custom';
@@ -70,75 +73,136 @@ export default function AdminCRM() {
     return saved === 'tarefas' ? 'tarefas' : 'crm';
   });
 
-  // Sincroniza ?tab= na URL se vier vazia (sem empilhar histórico).
+  // A URL é a fonte de navegação: voltar/avançar também troca CRM/Tarefas.
   useEffect(() => {
-    if (searchParams.get('tab') !== activeTab) {
+    const fromUrl = searchParams.get('tab');
+    if ((fromUrl === 'crm' || fromUrl === 'tarefas') && fromUrl !== activeTab) {
+      setActiveTab(fromUrl);
+      return;
+    }
+    if (!fromUrl) {
       const next = new URLSearchParams(searchParams);
       next.set('tab', activeTab);
       setSearchParams(next, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, searchParams, setSearchParams]);
 
   const handleTabChange = (v: string) => {
     const key = (v === 'tarefas' ? 'tarefas' : 'crm') as CrmTabKey;
     setActiveTab(key);
     localStorage.setItem('admin-crm-active-tab', key);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', key);
+    setSearchParams(next);
   };
 
-  const tasksLabel = (
-    <span className="inline-flex items-center gap-1.5">
-      Tarefas
-      {openTasksCount > 0 && (
-        <Badge className="h-4 min-w-4 px-1 text-[10px] bg-primary text-primary-foreground border-0">
-          {openTasksCount}
-        </Badge>
-      )}
-    </span>
-  );
-
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange}>
-      <div className="container mx-auto px-3 sm:px-4 lg:px-6 pt-4 lg:pt-6">
+    <div>
+      <div className="container mx-auto space-y-3 px-3 pt-4 sm:px-4 lg:px-6 lg:pt-6">
+        <div>
+          <h1 className="text-xl font-bold text-foreground lg:text-2xl">CRM Admin</h1>
+          <p className="text-sm text-muted-foreground">Funis e tarefas comerciais da Dominex</p>
+        </div>
         {isMobile ? (
           <MobilePillTabs
             tabs={[
-              { value: 'crm', label: 'CRM' },
+              { value: 'crm', label: 'CRM/Kanban', icon: <ListFilter className="h-4 w-4" /> },
               {
                 value: 'tarefas',
                 label: openTasksCount > 0 ? `Tarefas (${openTasksCount})` : 'Tarefas',
-                icon: <ClipboardList className="h-4 w-4" />,
+                icon: <ListChecks className="h-4 w-4" />,
               },
             ]}
             activeTab={activeTab}
             onTabChange={handleTabChange}
           />
         ) : (
-          <TabsList>
-            <TabsTrigger value="crm">CRM</TabsTrigger>
-            <TabsTrigger value="tarefas">{tasksLabel}</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2" role="tablist" aria-label="Navegação do CRM Admin">
+            {(['crm', 'tarefas'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => handleTabChange(tab)}
+                className={cn(
+                  'inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-all',
+                  activeTab === tab
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted',
+                )}
+              >
+                {tab === 'crm' ? <ListFilter className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
+                {tab === 'crm' ? 'CRM/Kanban' : 'Tarefas'}
+                {tab === 'tarefas' && openTasksCount > 0 && (
+                  <Badge className="h-4 min-w-4 border-0 bg-background/20 px-1 text-[10px] text-current">
+                    {openTasksCount}
+                  </Badge>
+                )}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      <TabsContent value="crm" className="mt-0">
+      {activeTab === 'crm' ? (
         <CrmTab />
-      </TabsContent>
-
-      <TabsContent value="tarefas" className="mt-0">
+      ) : (
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6">
           <AdminTasksTab />
         </div>
-      </TabsContent>
-    </Tabs>
+      )}
+    </div>
   );
 }
 
 function CrmTab() {
   const { user } = useAuth();
   const { leads, isLoading, updateLead } = useAdminLeads();
-  const { stages, isLoading: stagesLoading, reorderStages } = useAdminCrmStages();
+  const {
+    pipelines,
+    defaultPipeline,
+    isLoading: pipelinesLoading,
+    setDefaultPipeline,
+  } = useAdminCrmPipelines();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(() => {
+    const fromUrl = searchParams.get('pipeline');
+    if (fromUrl) return fromUrl;
+    return typeof window !== 'undefined' ? localStorage.getItem('admin-crm-selected-pipeline') : null;
+  });
+  const selectedPipeline = pipelines.find((pipeline) => pipeline.id === selectedPipelineId) ?? null;
+  const { stages, isLoading: stagesLoading, reorderStages } = useAdminCrmStages(selectedPipelineId);
   const { origins } = useCompanyOrigins();
+
+  const selectPipeline = (id: string) => {
+    setSelectedPipelineId(id);
+    localStorage.setItem('admin-crm-selected-pipeline', id);
+    const next = new URLSearchParams(searchParams);
+    next.set('pipeline', id);
+    setSearchParams(next, { replace: true });
+  };
+
+  useEffect(() => {
+    if (pipelines.length === 0) return;
+    const fromUrl = searchParams.get('pipeline');
+    const resolved = pipelines.find((pipeline) => pipeline.id === fromUrl)?.id
+      ?? pipelines.find((pipeline) => pipeline.id === selectedPipelineId)?.id
+      ?? defaultPipeline?.id
+      ?? pipelines[0].id;
+    if (resolved !== selectedPipelineId) setSelectedPipelineId(resolved);
+    if (fromUrl !== resolved) {
+      localStorage.setItem('admin-crm-selected-pipeline', resolved);
+      const next = new URLSearchParams(searchParams);
+      next.set('pipeline', resolved);
+      setSearchParams(next, { replace: true });
+    }
+  }, [defaultPipeline?.id, pipelines, searchParams, selectedPipelineId, setSearchParams]);
+
+  const pipelineLeads = useMemo(
+    () => selectedPipelineId ? leads.filter((lead) => lead.pipeline_id === selectedPipelineId) : [],
+    [leads, selectedPipelineId],
+  );
 
   // Mapa user_id -> vendedor (pra mostrar avatar do responsável no card quando o
   // lead tem responsible_id apontando pra um usuário vinculado a um vendedor).
@@ -165,6 +229,8 @@ function CrmTab() {
 
   const isMobile = useIsMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pipelineManagerOpen, setPipelineManagerOpen] = useState(false);
+  const [stageDialogPipelineId, setStageDialogPipelineId] = useState<string | null>(null);
   const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
   const [detailLead, setDetailLead] = useState<AdminLead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -242,7 +308,7 @@ function CrmTab() {
 
   const filteredLeads = useMemo(() => {
     const { from, to } = computeDateRange(filterDatePreset, filterDateFrom, filterDateTo);
-    return leads.filter(l => {
+    return pipelineLeads.filter(l => {
       if (
         search &&
         !fuzzyIncludesAny(
@@ -260,7 +326,7 @@ function CrmTab() {
       }
       return true;
     });
-  }, [leads, search, filterOrigin, filterSegment, filterResponsible, filterDatePreset, filterDateFrom, filterDateTo]);
+  }, [pipelineLeads, search, filterOrigin, filterSegment, filterResponsible, filterDatePreset, filterDateFrom, filterDateTo]);
 
   const leadsByStage = useMemo(() => {
     const map: Record<string, AdminLead[]> = {};
@@ -394,7 +460,7 @@ function CrmTab() {
     if (!leadId) return;
     const targetStage = stages.find(s => s.id === stageId);
     if (targetStage?.is_lost) {
-      const lead = leads.find(l => l.id === leadId);
+      const lead = pipelineLeads.find(l => l.id === leadId);
       setPendingLossDrop({ leadId, stageId, leadTitle: lead?.title || '' });
       setLossDialogOpen(true);
     } else {
@@ -430,7 +496,41 @@ function CrmTab() {
     window.open(`https://wa.me/${number}`, '_blank');
   };
 
-  if (isLoading || stagesLoading) {
+  const pipelineMenuActions = (pipeline: PipelineTabItem): RowAction[] => [
+    {
+      label: 'Gerenciar etapas',
+      icon: Settings2,
+      onClick: () => setStageDialogPipelineId(pipeline.id),
+    },
+    {
+      label: 'Definir como padrão',
+      icon: Star,
+      hidden: pipeline.is_default,
+      disabled: setDefaultPipeline.isPending,
+      onClick: () => setDefaultPipeline.mutate(pipeline.id),
+    },
+    {
+      label: 'Gerenciar funis',
+      icon: Workflow,
+      onClick: () => setPipelineManagerOpen(true),
+    },
+  ];
+
+  const pipelineTabs = pipelines.length > 0 && (
+    <PipelineTabsBar
+      pipelines={pipelines}
+      selectedId={selectedPipelineId}
+      onSelect={selectPipeline}
+      onCreate={() => setPipelineManagerOpen(true)}
+      menuActions={pipelineMenuActions}
+      mobile={isMobile}
+      configureLabel="Configurar funil"
+      createLabel="Criar funil"
+      listLabel="Funis do CRM Admin"
+    />
+  );
+
+  if (isLoading || stagesLoading || pipelinesLoading) {
     return (
       <div className={cn('container mx-auto px-3 sm:px-4 lg:px-6 py-4 space-y-4', isMobile && 'pb-24')}>
         <Skeleton className="h-8 w-48" />
@@ -461,17 +561,27 @@ function CrmTab() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className={cn('container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4', isMobile && 'pb-24')}>
-        {/* Header — mobile compacto, desktop inline original */}
+        {/* Nome do funil atual + seletor de funis, igual ao CRM do tenant. */}
         {isMobile ? (
-          <MobilePageHeader
-            title="CRM/Tarefas"
-            subtitle="Pipeline de vendas da Dominex"
-            icon={TrendingUp}
-          />
+          <div className="space-y-3">
+            <MobilePageHeader
+              title={selectedPipeline?.name ?? 'CRM/Kanban'}
+              subtitle={`${pipelineLeads.length} oportunidade${pipelineLeads.length === 1 ? '' : 's'} neste funil`}
+              icon={ListFilter}
+            />
+            {pipelineTabs}
+          </div>
         ) : (
-          <div>
-            <h1 className="text-xl lg:text-2xl font-bold text-foreground">CRM/Tarefas</h1>
-            <p className="text-sm text-muted-foreground">Pipeline de vendas da Dominex</p>
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-bold text-foreground lg:text-2xl">
+                {selectedPipeline?.name ?? 'CRM/Kanban'}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {pipelineLeads.length} oportunidade{pipelineLeads.length === 1 ? '' : 's'} neste funil
+              </p>
+            </div>
+            <div className="min-w-0 flex-1 lg:flex lg:justify-end">{pipelineTabs}</div>
           </div>
         )}
 
@@ -749,7 +859,12 @@ function CrmTab() {
           </div>
         )}
 
-        <AdminLeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editingLead={editingLead} />
+        <AdminLeadFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          editingLead={editingLead}
+          pipelineId={selectedPipelineId}
+        />
         {detailLead && (
           <AdminLeadDetailModal open={detailOpen} onOpenChange={setDetailOpen} lead={detailLead} />
         )}
@@ -758,6 +873,17 @@ function CrmTab() {
           onOpenChange={setLossDialogOpen}
           leadTitle={pendingLossDrop?.leadTitle || ''}
           onConfirm={handleLossConfirm}
+        />
+        <AdminPipelineManagerDialog
+          open={pipelineManagerOpen}
+          onOpenChange={setPipelineManagerOpen}
+          onCreated={selectPipeline}
+        />
+        <AdminStageManagerDialog
+          open={!!stageDialogPipelineId}
+          onOpenChange={(open) => !open && setStageDialogPipelineId(null)}
+          pipelineId={stageDialogPipelineId}
+          pipelineName={pipelines.find((pipeline) => pipeline.id === stageDialogPipelineId)?.name}
         />
 
         {/* FAB Novo Lead no mobile */}

@@ -28,14 +28,16 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingLead?: AdminLead | null;
+  pipelineId?: string | null;
 }
 
 // Sentinel pra opção "Nenhum responsável" no Select (Radix não aceita value="")
 const UNASSIGNED = '__unassigned__';
 
-export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) {
+export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineId }: Props) {
   const { createLead, updateLead } = useAdminLeads();
-  const { stages } = useAdminCrmStages();
+  const activePipelineId = editingLead?.pipeline_id ?? pipelineId ?? null;
+  const { stages } = useAdminCrmStages(activePipelineId);
   const { origins } = useCompanyOrigins();
   const { user } = useAuth();
   const { linkedSalespersonId } = useAdminPermissions();
@@ -152,6 +154,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       notes: form.notes || null,
       loss_reason: isLostStage ? (form.loss_reason || null) : null,
       responsible_id: form.responsible_id || null,
+      pipeline_id: activePipelineId,
     };
     if (isEditing) {
       updateLead.mutate(

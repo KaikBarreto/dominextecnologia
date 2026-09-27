@@ -22,6 +22,16 @@ export interface AdminCrmStage {
   is_lost: boolean;
   created_at: string;
   updated_at: string;
+  pipeline_id: string;
+}
+
+export interface AdminCrmPipeline {
+  id: string;
+  name: string;
+  position: number;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminLead {
@@ -41,8 +51,149 @@ export interface AdminLead {
   loss_reason: string | null;
   created_by: string | null;
   responsible_id: string | null;
+  pipeline_id: string;
   created_at: string;
   updated_at: string;
+}
+
+const NO_ADMIN_PIPELINES: AdminCrmPipeline[] = [];
+
+export function useAdminCrmPipelines() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['admin-crm-pipelines'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_crm_pipelines')
+        .select('*')
+        .order('position');
+      if (error) throw error;
+      return (data || []) as unknown as AdminCrmPipeline[];
+    },
+  });
+
+  const pipelines = query.data ?? NO_ADMIN_PIPELINES;
+  const defaultPipeline = pipelines.find((pipeline) => pipeline.is_default) ?? pipelines[0] ?? null;
+
+  const createPipeline = useMutation({
+    mutationFn: async (input: { name: string }) => {
+      const nextPosition = pipelines.length > 0
+        ? Math.max(...pipelines.map((pipeline) => pipeline.position)) + 1
+        : 0;
+      const { data, error } = await supabase
+        .from('admin_crm_pipelines')
+        .insert({ name: input.name, position: nextPosition, is_default: pipelines.length === 0 })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as unknown as AdminCrmPipeline;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] });
+      toast({ title: 'Funil criado!' });
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Erro ao criar funil', description: getErrorMessage(error) }),
+  });
+
+  const updatePipeline = useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; position?: number }) => {
+      const { data, error } = await supabase
+        .from('admin_crm_pipelines')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as unknown as AdminCrmPipeline;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] }),
+    onError: (error) => toast({ variant: 'destructive', title: 'Erro ao atualizar funil', description: getErrorMessage(error) }),
+  });
+
+  const setDefaultPipeline = useMutation({
+    mutationFn: async (id: string) => {
+      const current = pipelines.find((pipeline) => pipeline.is_default && pipeline.id !== id);
+      if (current) {
+        const { error } = await supabase
+          .from('admin_crm_pipelines')
+          .update({ is_default: false })
+          .eq('id', current.id);
+        if (error) throw error;
+      }
+      const { error } = await supabase
+        .from('admin_crm_pipelines')
+        .update({ is_default: true })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] });
+      toast({ title: 'Funil padrão atualizado!' });
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Erro ao definir funil padrão', description: getErrorMessage(error) }),
+  });
+
+  const reorderPipelines = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      const results = await Promise.all(
+        orderedIds.map((id, position) =>
+          supabase.from('admin_crm_pipelines').update({ position }).eq('id', id),
+        ),
+      );
+      const failed = results.find((result) => result.error);
+      if (failed?.error) throw failed.error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] }),
+    onError: (error) => toast({ variant: 'destructive', title: 'Erro ao reordenar funis', description: getErrorMessage(error) }),
+  });
+
+  const deletePipeline = useMutation({
+    mutationFn: async (id: string) => {
+      if (pipelines.length <= 1) throw new Error('LAST_ADMIN_PIPELINE');
+      const pipeline = pipelines.find((item) => item.id === id);
+      if (pipeline?.is_default) {
+        const next = pipelines.find((item) => item.id !== id);
+        if (next) {
+          const { error: clearError } = await supabase
+            .from('admin_crm_pipelines')
+            .update({ is_default: false })
+            .eq('id', pipeline.id);
+          if (clearError) throw clearError;
+          const { error } = await supabase
+            .from('admin_crm_pipelines')
+            .update({ is_default: true })
+            .eq('id', next.id);
+          if (error) throw error;
+        }
+      }
+      const { error } = await supabase.from('admin_crm_pipelines').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] });
+      toast({ title: 'Funil excluído!' });
+    },
+    onError: (error) => toast({
+      variant: 'destructive',
+      title: 'Não foi possível excluir o funil',
+      description: error instanceof Error && error.message === 'LAST_ADMIN_PIPELINE'
+        ? 'Crie outro funil antes de excluir o único existente.'
+        : 'Remova ou mova as etapas e oportunidades deste funil antes de excluí-lo.',
+    }),
+  });
+
+  return {
+    pipelines,
+    defaultPipeline,
+    isLoading: query.isLoading,
+    createPipeline,
+    updatePipeline,
+    setDefaultPipeline,
+    reorderPipelines,
+    deletePipeline,
+  };
 }
 
 export interface AdminLeadInteraction {
@@ -80,7 +231,7 @@ export const ADMIN_INTERACTION_TYPES = [
   { value: 'outro', label: 'Outro', icon: '📝' },
 ];
 
-export function useAdminCrmStages() {
+export function useAdminCrmStages(pipelineId?: string | null) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -97,8 +248,9 @@ export function useAdminCrmStages() {
   });
 
   const createStage = useMutation({
-    mutationFn: async (input: { name: string; color?: string; icon?: string | null; position?: number; is_won?: boolean; is_lost?: boolean }) => {
-      const { data, error } = await supabase.from('admin_crm_stages' as any).insert(input).select().single();
+    mutationFn: async (input: { name: string; color?: string; icon?: string | null; position?: number; is_won?: boolean; is_lost?: boolean; pipeline_id?: string }) => {
+      const payload = pipelineId && !input.pipeline_id ? { ...input, pipeline_id: pipelineId } : input;
+      const { data, error } = await supabase.from('admin_crm_stages' as any).insert(payload).select().single();
       if (error) throw error;
       return data;
     },
@@ -144,10 +296,11 @@ export function useAdminCrmStages() {
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
-  const stages = query.data || [];
+  const allStages = query.data || [];
+  const stages = pipelineId ? allStages.filter((stage) => stage.pipeline_id === pipelineId) : allStages;
   const getStageHex = (stageId: string | null) => stages.find(s => s.id === stageId)?.color || '#6B7280';
 
-  return { stages, isLoading: query.isLoading, createStage, updateStage, deleteStage, reorderStages, getStageHex };
+  return { stages, allStages, isLoading: query.isLoading, createStage, updateStage, deleteStage, reorderStages, getStageHex };
 }
 
 export function useAdminLeads() {
@@ -219,8 +372,8 @@ export function useAdminLeads() {
           );
 
           const { data: userData } = await supabase.auth.getUser();
-          // Sem os campos de funil de propósito: o painel master tem um funil
-          // só (multi-pipeline é exclusivo do CRM do tenant).
+          // O histórico registra a troca de etapa; o funil é inferido pela
+          // própria etapa e fica preservado no snapshot do lead.
           await supabase.from('admin_lead_interactions' as any).insert({
             lead_id: id,
             interaction_type: STAGE_CHANGE_INTERACTION_TYPE,

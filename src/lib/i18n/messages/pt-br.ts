@@ -741,6 +741,7 @@ export const ptBr = {
     errorEmailRequired: 'Email é obrigatório',
     errorEmailInvalid: 'Email inválido',
     errorPhoneRequired: 'Telefone é obrigatório',
+    errorPhoneInvalid: 'Informe um telefone válido com DDD',
     errorPasswordRequired: 'Senha é obrigatória',
     errorPasswordMinReqs: 'Senha não atende aos requisitos mínimos',
     errorConfirmPasswordRequired: 'Confirme a senha',

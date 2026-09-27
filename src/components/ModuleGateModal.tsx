@@ -140,8 +140,8 @@ export const MODULE_INFO: Record<string, { name: string; description: string; pr
     price: 100,
   },
   crm: {
-    name: 'CRM',
-    description: 'Funil de vendas, leads, interações e webhooks de captação',
+    name: 'CRM/Kanban',
+    description: 'Funis Kanban, oportunidades, interações e webhooks de captação',
     price: 50,
   },
   nfe: {

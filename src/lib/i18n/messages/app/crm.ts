@@ -10,9 +10,9 @@
 export const crm = {
   'pt-br': {
     // ── Chrome da tela (CRM.tsx) ──
-    title: 'CRM',
+    title: 'CRM/Kanban',
     subtitle: 'Gerencie oportunidades e leads',
-    subtitleMobile: 'Pipeline de vendas',
+    subtitleMobile: 'Funil Kanban',
     newOpportunity: 'Nova Oportunidade',
     newOpportunityShort: 'Lead',
 
@@ -72,18 +72,18 @@ export const crm = {
     mainTabTasks: 'Tarefas',
 
     // ── Kanban ──
-    pipeline: 'Pipeline de Vendas',
+    pipeline: 'Funil',
     xOfY: '{filtered} de {total}',
 
     // ── Empty states ──
-    emptyStagesTitle: 'Configure seu funil de vendas',
+    emptyStagesTitle: 'Configure seu funil',
     emptyStagesDesc: 'Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito.',
     startDefaultStages: 'Começar com estágios padrão',
     creatingStages: 'Criando estágios...',
     customizeStages: 'Personalizar estágios',
     emptyOpportunities: 'Nenhuma oportunidade',
     emptySearch: 'Nenhum resultado encontrado',
-    emptyOpportunitiesDesc: 'Toque em "Nova Oportunidade" para começar a gerenciar seu pipeline de vendas',
+    emptyOpportunitiesDesc: 'Toque em "Nova Oportunidade" para começar a gerenciar este funil',
     emptySearchDesc: 'Tente ajustar os filtros para encontrar as oportunidades desejadas',
     emptyStageTitle: 'Sem oportunidades',
     emptyMobileDesc: 'Tente ajustar os filtros ou estágio selecionado',
@@ -1184,9 +1184,9 @@ export const crm = {
   },
 
   en: {
-    title: 'CRM',
+    title: 'CRM/Kanban',
     subtitle: 'Manage opportunities and leads',
-    subtitleMobile: 'Sales pipeline',
+    subtitleMobile: 'Kanban pipeline',
     newOpportunity: 'New Opportunity',
     newOpportunityShort: 'Lead',
 
@@ -1236,17 +1236,17 @@ export const crm = {
     mainTabFunnel: 'Pipeline',
     mainTabTasks: 'Tasks',
 
-    pipeline: 'Sales Pipeline',
+    pipeline: 'Pipeline',
     xOfY: '{filtered} of {total}',
 
-    emptyStagesTitle: 'Set up your sales pipeline',
+    emptyStagesTitle: 'Set up your pipeline',
     emptyStagesDesc: 'Create pipeline stages to start organizing your deals. Use the default set or build your own.',
     startDefaultStages: 'Start with default stages',
     creatingStages: 'Creating stages...',
     customizeStages: 'Customize stages',
     emptyOpportunities: 'No opportunities',
     emptySearch: 'No results found',
-    emptyOpportunitiesDesc: 'Tap "New Opportunity" to start managing your sales pipeline',
+    emptyOpportunitiesDesc: 'Tap "New Opportunity" to start managing this pipeline',
     emptySearchDesc: 'Try adjusting the filters to find the desired opportunities',
     emptyStageTitle: 'No opportunities',
     emptyMobileDesc: 'Try adjusting the filters or selected stage',
@@ -2262,9 +2262,9 @@ export const crm = {
   },
 
   es: {
-    title: 'CRM',
+    title: 'CRM/Kanban',
     subtitle: 'Gestiona oportunidades y leads',
-    subtitleMobile: 'Embudo de ventas',
+    subtitleMobile: 'Embudo Kanban',
     newOpportunity: 'Nueva Oportunidad',
     newOpportunityShort: 'Lead',
 
@@ -2314,17 +2314,17 @@ export const crm = {
     mainTabFunnel: 'Embudo',
     mainTabTasks: 'Tareas',
 
-    pipeline: 'Embudo de Ventas',
+    pipeline: 'Embudo',
     xOfY: '{filtered} de {total}',
 
-    emptyStagesTitle: 'Configura tu embudo de ventas',
+    emptyStagesTitle: 'Configura tu embudo',
     emptyStagesDesc: 'Crea las etapas del pipeline para empezar a organizar tus oportunidades. Usa el conjunto predeterminado o crea el tuyo.',
     startDefaultStages: 'Empezar con etapas predeterminadas',
     creatingStages: 'Creando etapas...',
     customizeStages: 'Personalizar etapas',
     emptyOpportunities: 'Sin oportunidades',
     emptySearch: 'Sin resultados',
-    emptyOpportunitiesDesc: 'Toca "Nueva Oportunidad" para empezar a gestionar tu embudo de ventas',
+    emptyOpportunitiesDesc: 'Toca "Nueva Oportunidad" para empezar a gestionar este embudo',
     emptySearchDesc: 'Intenta ajustar los filtros para encontrar las oportunidades deseadas',
     emptyStageTitle: 'Sin oportunidades',
     emptyMobileDesc: 'Intenta ajustar los filtros o la etapa seleccionada',
@@ -3342,9 +3342,9 @@ export const crm = {
   },
 
   fr: {
-    title: 'CRM',
+    title: 'CRM/Kanban',
     subtitle: 'Gérez vos opportunités et leads',
-    subtitleMobile: 'Pipeline commercial',
+    subtitleMobile: 'Pipeline Kanban',
     newOpportunity: 'Nouvelle Opportunité',
     newOpportunityShort: 'Lead',
 
@@ -3394,17 +3394,17 @@ export const crm = {
     mainTabFunnel: 'Pipeline',
     mainTabTasks: 'Tâches',
 
-    pipeline: 'Pipeline Commercial',
+    pipeline: 'Pipeline',
     xOfY: '{filtered} sur {total}',
 
-    emptyStagesTitle: 'Configurez votre pipeline commercial',
+    emptyStagesTitle: 'Configurez votre pipeline',
     emptyStagesDesc: "Créez les étapes du pipeline pour commencer à organiser vos opportunités. Utilisez l'ensemble par défaut ou construisez le vôtre.",
     startDefaultStages: 'Commencer avec les étapes par défaut',
     creatingStages: 'Création des étapes...',
     customizeStages: 'Personnaliser les étapes',
     emptyOpportunities: 'Aucune opportunité',
     emptySearch: 'Aucun résultat',
-    emptyOpportunitiesDesc: 'Touchez « Nouvelle Opportunité » pour commencer à gérer votre pipeline commercial',
+    emptyOpportunitiesDesc: 'Touchez « Nouvelle Opportunité » pour commencer à gérer ce pipeline',
     emptySearchDesc: 'Essayez d\'ajuster les filtres pour trouver les opportunités souhaitées',
     emptyStageTitle: 'Aucune opportunité',
     emptyMobileDesc: "Essayez d'ajuster les filtres ou l'étape sélectionnée",

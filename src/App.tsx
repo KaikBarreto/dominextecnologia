@@ -169,6 +169,8 @@ const Quotes = React.lazy(() => import("./pages/Quotes"));
 const QuotePublic = React.lazy(() => import("./pages/QuotePublic"));
 // Checkout público do cliente final (/pagar/:code) — sem auth (público).
 const PublicCheckout = React.lazy(() => import("./pages/PublicCheckout"));
+// Consentimento público de assinatura/Pix Automático — sem auth.
+const PublicSubscriptionCheckout = React.lazy(() => import("./pages/PublicSubscriptionCheckout"));
 const ProposalPublic = React.lazy(() => import("./pages/ProposalPublic"));
 const CustomerPortal = React.lazy(() => import("./pages/CustomerPortal"));
 // Tela pública do Perfil Comportamental (DISC) — link /avaliacao/:token, sem auth.
@@ -676,6 +678,8 @@ const AppRoutes = () => (
     <Route path="/orcamento/:token" element={<QuotePublic />} />
     {/* Checkout público do cliente final (pagamento via Asaas) — SEM auth/PermissionRoute */}
     <Route path="/pagar/:code" element={<PublicCheckout />} />
+    {/* Autorização pública de assinatura/Pix Automático — SEM auth/PermissionRoute */}
+    <Route path="/assinar/:code" element={<PublicSubscriptionCheckout />} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />

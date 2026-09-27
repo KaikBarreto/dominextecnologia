@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 // Alias obrigatório: `Tooltip` acima já é o do recharts (gráfico). O tooltip de
 // UI dos botões de regime é outro componente.
@@ -41,6 +42,12 @@ import type { LucideIcon } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { useDreSubscriptionProjections } from '@/hooks/useDreSubscriptionProjections';
+import {
+  buildDreSubscriptionProjections,
+  shouldLoadDreSubscriptionProjections,
+} from '@/lib/dre-subscription-projections';
+import { buildDreCostCenterCategoryRows } from '@/lib/dre-cost-center-categories';
 
 interface FinanceDREProps {
   /**
@@ -51,6 +58,8 @@ interface FinanceDREProps {
   transactions: (FinancialTransaction & { customer?: any })[];
   /** Período selecionado no topo da tela. Vazio = "Todos os tempos". */
   range?: DateRange;
+  /** Gate do add-on Cobranças. Sem ele, nem o toggle nem a query existem na UX. */
+  canIncludeSubscriptionProjections?: boolean;
 }
 
 /**
@@ -84,7 +93,11 @@ interface CategoryBreakdown {
   icon: LucideIcon;
 }
 
-export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREProps) {
+export function FinanceDRE({
+  transactions: rawTransactions,
+  range,
+  canIncludeSubscriptionProjections = false,
+}: FinanceDREProps) {
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
   const { costCenters } = useCostCenters();
@@ -104,6 +117,71 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   // pago). Não persistimos a escolha: é uma lente de leitura, não uma
   // configuração da empresa.
   const [regime, setRegime] = useState<DreRegime>('caixa');
+  const [includeProjections, setIncludeProjections] = useState(false);
+
+  const today = todayInTz(timezone);
+  const selectedProjectionStart = range?.from ? format(range.from, 'yyyy-MM-dd') : today;
+  // A mesma data inicial da DRE vale para projeções. Escolher o maior corte
+  // também impede consultar cobranças antigas que nunca poderiam entrar.
+  const projectionRangeFrom = [selectedProjectionStart, dreStartDate]
+    .reduce((latest, value) => value && value > latest ? value : latest, today);
+  const projectionRangeTo = range?.to ? format(range.to, 'yyyy-MM-dd') : undefined;
+  // A query fica realmente desligada para tenant sem `cobrancas`, no Caixa,
+  // com toggle desligado ou sem fim de período (recorrência contínua é infinita).
+  const projectionQuery = useDreSubscriptionProjections({
+    enabled: shouldLoadDreSubscriptionProjections({
+      hasChargeModule: canIncludeSubscriptionProjections,
+      regime,
+      includeProjections,
+      rangeEnd: projectionRangeTo,
+    }),
+    from: projectionRangeFrom,
+    to: projectionRangeTo,
+  });
+
+  const subscriptionProjections = useMemo(
+    () => buildDreSubscriptionProjections({
+      subscriptions: projectionQuery.data?.subscriptions ?? [],
+      charges: projectionQuery.data?.charges ?? [],
+      transactions: rawTransactions,
+      rangeStart: projectionRangeFrom,
+      rangeEnd: projectionRangeTo,
+      today,
+    }),
+    [
+      projectionQuery.data,
+      rawTransactions,
+      projectionRangeFrom,
+      projectionRangeTo,
+      today,
+    ],
+  );
+
+  const projectedTransactions = useMemo(
+    () => subscriptionProjections.map((projection) => ({
+      id: `dre-projection:${projection.key}`,
+      amount: projection.amount,
+      amount_received: 0,
+      description: `${projection.description} (previsto)`,
+      // Linha própria mantém o previsto visível na abertura da Receita Bruta,
+      // sem misturá-lo silenciosamente à categoria dos lançamentos realizados.
+      category: projection.category
+        ? `${projection.category} · Previsto`
+        : 'Assinaturas · Previsto',
+      transaction_type: 'entrada',
+      transaction_date: projection.cycleDate,
+      due_date: projection.cycleDate,
+      paid_date: null,
+      is_paid: false,
+      customer_id: projection.customerId,
+      cost_center_id: projection.costCenterId,
+      transfer_pair_id: null,
+      parent_transaction_id: null,
+      cancelled_at: null,
+      is_dre_projection: true,
+    })) as unknown as FinancialTransaction[],
+    [subscriptionProjections],
+  );
 
   // Filtro de centro de custo — multisseleção, vazio = todos, com o balde
   // `NO_COST_CENTER` pros lançamentos sem centro. Ele corta o CONJUNTO antes do
@@ -144,7 +222,6 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
       // Cuiabá (UTC-4) abrindo a DRE às 23h15 do dia 30 tinha "hoje" = 31 e um
       // pagamento datado 31 (ainda futuro pra ela) já contava como realizado.
       // Calculado uma vez por corte, não por linha.
-      const today = todayInTz(timezone);
       const out: (FinancialTransaction & { customer?: any })[] = [];
       for (const t of rawTransactions) {
         // Lançamento CANCELADO não é resultado. Quando um funcionário é
@@ -204,21 +281,52 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
       }
       return out;
     },
-    [rawTransactions, dreStartDate, regime, range, parentIdsWithPartialChild, timezone]
+    [rawTransactions, dreStartDate, regime, range, parentIdsWithPartialChild, today]
+  );
+
+  const transactionsWithProjectionsInPeriod = useMemo(
+    () => (
+      canIncludeSubscriptionProjections && regime === 'competencia' && includeProjections
+        ? [...transactionsInPeriod, ...projectedTransactions]
+        : transactionsInPeriod
+    ),
+    [
+      canIncludeSubscriptionProjections,
+      regime,
+      includeProjections,
+      transactionsInPeriod,
+      projectedTransactions,
+    ],
   );
 
   // Corte por centro de custo APLICADO POR CIMA do conjunto acima — e antes de
   // qualquer soma. Assim tudo o que vem depois (totais, gráfico, quebra por
   // centro e export) enxerga exatamente o mesmo conjunto, no mesmo regime.
   const transactions = useMemo(
-    () => filterByCostCenters(transactionsInPeriod, costCenterFilter),
-    [transactionsInPeriod, costCenterFilter]
+    () => filterByCostCenters(transactionsWithProjectionsInPeriod, costCenterFilter),
+    [transactionsWithProjectionsInPeriod, costCenterFilter]
+  );
+  // O resumo do previsto respeita o mesmo filtro de centro de custo da DRE;
+  // assim o valor explicativo nunca diverge do que foi efetivamente somado.
+  const visibleProjectionSummary = useMemo(
+    () => transactions.reduce(
+      (summary, transaction) => {
+        if (!transaction.id.startsWith('dre-projection:')) return summary;
+        summary.count += 1;
+        summary.total += Number(transaction.amount);
+        return summary;
+      },
+      { count: 0, total: 0 },
+    ),
+    [transactions],
   );
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
   const [showOpex, setShowOpex] = useState(false);
   const [showReceita, setShowReceita] = useState(false);
   const [showCostCenters, setShowCostCenters] = useState(false);
+  const [expandedCostCenterIds, setExpandedCostCenterIds] = useState<Set<string>>(new Set());
+  const [expandedCostCenterCategoryKeys, setExpandedCostCenterCategoryKeys] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   // Categorias expandidas (3º nível: quebra por centro de custo), por `CategoryBreakdown.key`.
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<Set<string>>(new Set());
@@ -409,6 +517,37 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
     [transactions, costCenterOrderIds]
   );
 
+  // 2º e 3º níveis do bloco "Por centro de custo". Recebe `transactions`,
+  // que já foi cortado pelo período, pelo regime Caixa/Competência e pelo
+  // filtro de centro; este agrupamento não reinterpreta nenhuma dessas regras.
+  const costCenterCategoryRows = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof buildDreCostCenterCategoryRows>>();
+    for (const row of costCenterBreakdown.rows) {
+      map.set(
+        row.id ?? NO_COST_CENTER,
+        buildDreCostCenterCategoryRows(
+          transactions,
+          financialCategories as any[],
+          row.id,
+          fin.dre.fallbackCategory,
+        ),
+      );
+    }
+    return map;
+  }, [costCenterBreakdown.rows, transactions, financialCategories, fin.dre.fallbackCategory]);
+
+  const toggleSetValue = (
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    key: string,
+  ) => {
+    setter((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   /** Rótulo de uma linha da quebra (`null` = balde sem centro). */
   const costCenterLabel = (id: string | null) =>
     id === null ? fin.costCenters.dreNoCenter : costCenterMeta.get(id)?.name ?? fin.costCenters.dreNoCenter;
@@ -422,14 +561,14 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
   const costCenterFilterOptions = useMemo(() => {
     const ids = new Set<string>();
     costCenters.filter((c) => c.is_active).forEach((c) => ids.add(c.id));
-    transactionsInPeriod.forEach((t) => {
+    transactionsWithProjectionsInPeriod.forEach((t) => {
       const id = t.cost_center_id;
       if (id && costCenterMeta.has(id)) ids.add(id);
     });
     return Array.from(ids)
       .map((id) => ({ value: id, label: costCenterMeta.get(id)!.name, color: costCenterMeta.get(id)!.color }))
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [costCenters, transactionsInPeriod, costCenterMeta]);
+  }, [costCenters, transactionsWithProjectionsInPeriod, costCenterMeta]);
 
   const handleExport = () => {
     if (isExporting) return;
@@ -915,6 +1054,22 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
                   </UITooltip>
                 </div>
               </TooltipProvider>
+              {canIncludeSubscriptionProjections && regime === 'competencia' && (
+                <div className="flex items-center justify-center gap-2 rounded-lg bg-background/10 px-2.5 py-1.5">
+                  <Switch
+                    id="dre-include-subscription-projections"
+                    checked={includeProjections}
+                    onCheckedChange={setIncludeProjections}
+                    aria-label="Incluir projeções de assinaturas"
+                  />
+                  <label
+                    htmlFor="dre-include-subscription-projections"
+                    className="cursor-pointer whitespace-nowrap text-[11px] sm:text-xs font-medium text-background"
+                  >
+                    Incluir projeções
+                  </label>
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -927,6 +1082,21 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
               </Button>
             </div>
           </div>
+          {canIncludeSubscriptionProjections && regime === 'competencia' && includeProjections && (
+            <p className="text-xs text-background/75" aria-live="polite">
+              {!projectionRangeTo
+                ? 'Selecione um período com data final para calcular assinaturas futuras.'
+                : projectionQuery.isFetching
+                  ? 'Calculando ciclos previstos das assinaturas...'
+                  : projectionQuery.isError
+                    ? 'Não foi possível carregar as projeções de assinaturas.'
+                    : visibleProjectionSummary.count > 0
+                      ? `${visibleProjectionSummary.count} ciclo(s) previsto(s) · ${fmt(visibleProjectionSummary.total)}`
+                      : costCenterFilter.length > 0 && subscriptionProjections.length > 0
+                        ? 'Nenhum ciclo previsto nos centros de custo selecionados.'
+                        : 'Nenhum ciclo futuro de assinatura neste período.'}
+            </p>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {/* Receita Bruta */}
@@ -1027,33 +1197,143 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
 
           {showCostCenters && (
             <div className="divide-y divide-border/30">
-              {costCenterBreakdown.rows.map((r) => (
-                <div key={r.id ?? '__none__'} className="px-3 sm:px-4 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: costCenterColor(r.id) }}
-                      />
-                      <span className="text-sm text-foreground truncate">{costCenterLabel(r.id)}</span>
-                    </span>
-                    <span className={cn(
-                      'text-sm font-semibold tabular-nums shrink-0',
-                      r.result >= 0 ? 'text-success' : 'text-destructive',
-                    )}>
-                      {fmt(r.result)}
-                    </span>
+              {costCenterBreakdown.rows.map((r) => {
+                const centerKey = r.id ?? NO_COST_CENTER;
+                const categoryRows = costCenterCategoryRows.get(centerKey) ?? [];
+                const isCenterOpen = expandedCostCenterIds.has(centerKey);
+                return (
+                  <div key={centerKey}>
+                    <button
+                      type="button"
+                      className="w-full px-3 sm:px-4 py-2.5 text-left hover:bg-muted/30 transition-colors"
+                      onClick={() => toggleSetValue(setExpandedCostCenterIds, centerKey)}
+                      aria-expanded={isCenterOpen}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: costCenterColor(r.id) }}
+                          />
+                          <span className="text-sm text-foreground truncate">{costCenterLabel(r.id)}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <span className={cn(
+                            'text-sm font-semibold tabular-nums',
+                            r.result >= 0 ? 'text-success' : 'text-destructive',
+                          )}>
+                            {fmt(r.result)}
+                          </span>
+                          {isCenterOpen
+                            ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                            : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                        </span>
+                      </div>
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-4 mt-0.5 text-[11px] tabular-nums">
+                        <span className="text-success">
+                          {fin.dre.chart.revenue}: {fmt(r.revenue)}
+                        </span>
+                        <span className="text-destructive">
+                          {fin.dre.chart.expenses}: {fmt(r.expense)}
+                        </span>
+                      </span>
+                    </button>
+
+                    {isCenterOpen && (
+                      <div className="border-t border-border/20 bg-muted/10 divide-y divide-border/20">
+                        {categoryRows.map((category) => {
+                          const meta = categoryMeta(category.name);
+                          const CategoryIcon = meta.icon;
+                          const hasChildren = category.children.length > 0;
+                          const isCategoryOpen = expandedCostCenterCategoryKeys.has(category.key);
+                          return (
+                            <div key={category.key}>
+                              <button
+                                type="button"
+                                className={cn(
+                                  'w-full py-2 pl-7 sm:pl-9 pr-3 sm:pr-4 text-left flex items-center justify-between gap-2',
+                                  hasChildren ? 'hover:bg-muted/30 transition-colors' : 'cursor-default',
+                                )}
+                                onClick={() => hasChildren && toggleSetValue(setExpandedCostCenterCategoryKeys, category.key)}
+                                aria-expanded={hasChildren ? isCategoryOpen : undefined}
+                              >
+                                <span className="flex items-center gap-2 min-w-0">
+                                  <span
+                                    className="flex h-5 w-5 items-center justify-center rounded-full shrink-0"
+                                    style={{ backgroundColor: meta.color }}
+                                  >
+                                    <CategoryIcon className="h-3 w-3 text-white" />
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block text-xs text-foreground truncate">{category.name}</span>
+                                    <span className="block text-[10px] text-muted-foreground tabular-nums">
+                                      {fin.dre.chart.revenue}: {fmt(category.revenue)} · {fin.dre.chart.expenses}: {fmt(category.expense)}
+                                    </span>
+                                  </span>
+                                </span>
+                                <span className="flex items-center gap-1.5 shrink-0">
+                                  <span className={cn(
+                                    'text-xs font-medium tabular-nums',
+                                    category.result >= 0 ? 'text-success' : 'text-destructive',
+                                  )}>
+                                    {fmt(category.result)}
+                                  </span>
+                                  {hasChildren && (
+                                    isCategoryOpen
+                                      ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                                      : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                  )}
+                                </span>
+                              </button>
+
+                              {hasChildren && isCategoryOpen && (
+                                <div className="bg-muted/20 py-1 divide-y divide-border/20">
+                                  {category.own && (
+                                    <div className="flex items-center justify-between gap-2 py-1.5 pl-12 sm:pl-14 pr-3 sm:pr-4">
+                                      <span className="text-[11px] text-muted-foreground truncate">
+                                        {fin.dre.categoryBreakdown.ownLine.replace('{category}', category.name)}
+                                      </span>
+                                      <span className={cn(
+                                        'text-[11px] font-medium tabular-nums shrink-0',
+                                        category.own.result >= 0 ? 'text-success' : 'text-destructive',
+                                      )}>
+                                        {fmt(category.own.result)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {category.children.map((child) => {
+                                    const childMeta = categoryMeta(child.name);
+                                    const ChildIcon = childMeta.icon;
+                                    return (
+                                      <div key={child.key} className="flex items-center justify-between gap-2 py-1.5 pl-12 sm:pl-14 pr-3 sm:pr-4">
+                                        <span className="flex items-center gap-1.5 min-w-0">
+                                          <span
+                                            className="flex h-4 w-4 items-center justify-center rounded-full shrink-0"
+                                            style={{ backgroundColor: childMeta.color }}
+                                          >
+                                            <ChildIcon className="h-2.5 w-2.5 text-white" />
+                                          </span>
+                                          <span className="text-[11px] text-muted-foreground truncate">{child.name}</span>
+                                        </span>
+                                        <span className={cn(
+                                          'text-[11px] font-medium tabular-nums shrink-0',
+                                          child.result >= 0 ? 'text-success' : 'text-destructive',
+                                        )}>
+                                          {fmt(child.result)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-4 mt-0.5 text-[11px] tabular-nums">
-                    <span className="text-success">
-                      {fin.dre.chart.revenue}: {fmt(r.revenue)}
-                    </span>
-                    <span className="text-destructive">
-                      {fin.dre.chart.expenses}: {fmt(r.expense)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -1079,6 +1359,9 @@ export function FinanceDRE({ transactions: rawTransactions, range }: FinanceDREP
       <p className="text-xs text-muted-foreground text-center">
         {regime === 'caixa' ? fin.dre.regime.footnoteCash : fin.dre.regime.footnoteAccrual}{' '}
         {fin.dre.footnote}
+        {canIncludeSubscriptionProjections && regime === 'competencia' && includeProjections && visibleProjectionSummary.count > 0 && (
+          <> Inclui {fmt(visibleProjectionSummary.total)} de assinaturas identificadas como previstas; nenhuma transação foi criada.</>
+        )}
         {dreStartDate && (
           <> {fin.dre.footnoteStartDate} {format(parseISO(dreStartDate), 'dd/MM/yyyy')}.</>
         )}

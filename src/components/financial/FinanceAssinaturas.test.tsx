@@ -8,12 +8,8 @@
 // nenhum, mesmo com editar/cancelar/seleção em massa todos implementados.
 //
 // Fix: canceladas ficam ocultas por padrão (toggle "Mostrar canceladas"
-// revela o histórico). Isso NÃO adiciona um "excluir": ver a decisão no
-// briefing do Tech Lead — excluir de verdade exige grant de DELETE em
-// `tenant_subscriptions` (hoje revogado de `authenticated` por design, pra
-// não deixar a assinatura viva na Asaas com o registro local sumido) ou uma
-// ação nova na edge `tenant-asaas-manage-subscription`, ambos fora do escopo
-// deste arquivo.
+// revela o histórico). Assinatura sem nenhuma cobrança ganha exclusão segura
+// via edge; qualquer histórico financeiro mantém somente cancelar/arquivar.
 //
 // Driver mínimo com createRoot + act, mesmo padrão de ChargeDialog.test.tsx.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -28,9 +24,10 @@ class ResizeObserverStub {
 }
 (globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
 
-const { toastSpy, cancelMutateAsync, bulkCancelMutateAsync, archiveMutate } = vi.hoisted(() => ({
+const { toastSpy, cancelMutateAsync, deleteMutateAsync, bulkCancelMutateAsync, archiveMutate } = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   cancelMutateAsync: vi.fn().mockResolvedValue(undefined),
+  deleteMutateAsync: vi.fn().mockResolvedValue(undefined),
   bulkCancelMutateAsync: vi.fn().mockResolvedValue({ ok: 1, fail: 0 }),
   archiveMutate: vi.fn(),
 }));
@@ -47,6 +44,19 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: toastSpy }),
+}));
+
+vi.mock('@/hooks/useCostCenters', () => ({
+  useCostCenters: () => ({ activeCostCenters: [], costCenters: [] }),
+}));
+
+vi.mock('@/hooks/useTenantPaymentAccount', () => ({
+  useTenantPaymentAccount: () => ({
+    allowPix: true,
+    allowBoleto: true,
+    cardRecurringEnabled: true,
+    pixAutoEnabled: true,
+  }),
 }));
 
 // SubscriptionDialog é o MODAL de criação, dono de outro Dev em paralelo —
@@ -67,6 +77,7 @@ type Sub = {
   archived_at?: string | null;
   pix_auto_authorization_id?: string | null;
   pix_auto_status?: string | null;
+  can_delete?: boolean;
   customers: { id: string; name: string } | null;
 };
 
@@ -77,6 +88,7 @@ vi.mock('@/hooks/useTenantSubscriptions', () => ({
     subscriptions: subsState.list,
     isLoading: false,
     manageSubscription: { mutateAsync: cancelMutateAsync, isPending: false },
+    deleteSubscription: { mutateAsync: deleteMutateAsync, isPending: false },
     archiveSubscription: { mutate: archiveMutate, isPending: false },
     bulkCancel: { mutateAsync: bulkCancelMutateAsync, isPending: false },
   }),
@@ -153,6 +165,7 @@ function cancelledWithLivePixConsent(id: string): Sub {
 beforeEach(() => {
   vi.clearAllMocks();
   cancelMutateAsync.mockResolvedValue(undefined);
+  deleteMutateAsync.mockResolvedValue(undefined);
   bulkCancelMutateAsync.mockResolvedValue({ ok: 1, fail: 0 });
   archiveMutate.mockReset();
   subsState.list = [];
@@ -294,6 +307,26 @@ describe('FinanceAssinaturas — cancelar individual exige confirmação', () =>
       subscription_id: 'live',
       action: 'cancel',
     });
+  });
+});
+
+describe('FinanceAssinaturas — exclusão sem histórico', () => {
+  it('só oferece Excluir quando o backend marca can_delete e exige confirmação', () => {
+    subsState.list = [{ ...activeSub('empty'), can_delete: true }];
+    mount();
+
+    click(buttonByText('Excluir'));
+    expect(deleteMutateAsync).not.toHaveBeenCalled();
+    expect(text()).toContain('Excluir assinatura sem pagamentos');
+
+    click(buttonByText('Excluir assinatura'));
+    expect(deleteMutateAsync).toHaveBeenCalledWith('empty');
+  });
+
+  it('não oferece Excluir quando existe cobrança ou histórico', () => {
+    subsState.list = [{ ...activeSub('history'), can_delete: false }];
+    mount();
+    expect(buttonByText('Excluir')).toBeFalsy();
   });
 });
 

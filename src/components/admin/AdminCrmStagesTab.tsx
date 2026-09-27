@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Trash2, Pencil, Check, X, Trophy, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { useAdminCrmStages, type AdminCrmStage } from '@/hooks/useAdminCrm';
+import { useAdminCrmPipelines, useAdminCrmStages, type AdminCrmStage } from '@/hooks/useAdminCrm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +39,24 @@ function StageIconSelect({ value, onChange }: { value: string | null; onChange: 
   );
 }
 
-export function AdminCrmStagesTab() {
-  const { stages, createStage, updateStage, deleteStage } = useAdminCrmStages();
+interface AdminCrmStagesTabProps {
+  pipelineId?: string | null;
+  pipelineName?: string;
+  embedded?: boolean;
+}
+
+export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false }: AdminCrmStagesTabProps = {}) {
+  const { pipelines, defaultPipeline } = useAdminCrmPipelines();
+  const [settingsPipelineId, setSettingsPipelineId] = useState<string | null>(null);
+  const activePipelineId = pipelineId ?? settingsPipelineId ?? defaultPipeline?.id ?? null;
+  const activePipelineName = pipelineName ?? pipelines.find((pipeline) => pipeline.id === activePipelineId)?.name;
+  const { stages, createStage, updateStage, deleteStage } = useAdminCrmStages(activePipelineId);
+
+  useEffect(() => {
+    if (!pipelineId && !settingsPipelineId && defaultPipeline?.id) {
+      setSettingsPipelineId(defaultPipeline.id);
+    }
+  }, [defaultPipeline?.id, pipelineId, settingsPipelineId]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('#6B7280');
@@ -68,18 +84,40 @@ export function AdminCrmStagesTab() {
 
   const handleCreate = () => {
     if (!newName.trim()) return;
-    createStage.mutate({ name: newName.trim(), color: newColor, icon: newIcon, position: stages.length });
+    createStage.mutate({
+      name: newName.trim(),
+      color: newColor,
+      icon: newIcon,
+      position: stages.length,
+      ...(activePipelineId ? { pipeline_id: activePipelineId } : {}),
+    });
     setNewName('');
     setNewColor('#6B7280');
     setNewIcon(null);
   };
 
-  return (
-    <Card>
+  const content = (
+    <>
+      {!embedded && (
       <CardHeader>
         <CardTitle className="text-base">Etapas do CRM</CardTitle>
-        <p className="text-sm text-muted-foreground">Gerencie as etapas do funil de vendas administrativo</p>
+        <p className="text-sm text-muted-foreground">
+          Gerencie as etapas {activePipelineName ? `do funil ${activePipelineName}` : 'dos funis administrativos'}
+        </p>
+        {!pipelineId && pipelines.length > 0 && (
+          <Select value={activePipelineId ?? undefined} onValueChange={setSettingsPipelineId}>
+            <SelectTrigger className="mt-3 w-full sm:w-[280px]" aria-label="Funil das etapas">
+              <SelectValue placeholder="Selecione o funil" />
+            </SelectTrigger>
+            <SelectContent>
+              {pipelines.map((pipeline) => (
+                <SelectItem key={pipeline.id} value={pipeline.id}>{pipeline.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </CardHeader>
+      )}
       <CardContent className="space-y-4">
         <div className="space-y-2">
           {stages.map((s) => (
@@ -133,6 +171,9 @@ export function AdminCrmStagesTab() {
           </Button>
         </div>
       </CardContent>
-    </Card>
+    </>
   );
+
+  if (embedded) return <div className="-mx-6">{content}</div>;
+  return <Card>{content}</Card>;
 }

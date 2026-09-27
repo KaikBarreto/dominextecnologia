@@ -73,14 +73,18 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     color: z.string().min(1, t.validations.colorRequired),
   });
 
+  const allCategories = useMemo(() => categories ?? [], [categories]);
+  const tree = useMemo(() => buildCategoryTree(allCategories), [allCategories]);
+  const initialParent = !category && initialParentId ? tree.byId.get(initialParentId) : null;
+
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: category?.name ?? initialName ?? '',
-      type: category?.type ?? initialType ?? 'ambos',
-      color: category?.color ?? '#00C597',
-      icon: category?.icon ?? 'Tag',
-      dre_group: (category as any)?.dre_group ?? 'opex',
+      type: category?.type ?? initialParent?.type ?? initialType ?? 'ambos',
+      color: category?.color ?? initialParent?.color ?? '#00C597',
+      icon: category?.icon ?? initialParent?.icon ?? 'Tag',
+      dre_group: (category as any)?.dre_group ?? initialParent?.dre_group ?? 'opex',
       parent_id: category?.parent_id ?? initialParentId ?? '',
     },
   });
@@ -91,15 +95,15 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       form.reset({
         // Na criação, respeita o nome/tipo pré-preenchidos (quick-create do SearchableSelect).
         name: category?.name ?? initialName ?? '',
-        type: category?.type ?? initialType ?? 'ambos',
-        color: category?.color ?? '#00C597',
-        icon: category?.icon ?? 'Tag',
-        dre_group: (category as any)?.dre_group ?? 'opex',
+        type: category?.type ?? initialParent?.type ?? initialType ?? 'ambos',
+        color: category?.color ?? initialParent?.color ?? '#00C597',
+        icon: category?.icon ?? initialParent?.icon ?? 'Tag',
+        dre_group: (category as any)?.dre_group ?? initialParent?.dre_group ?? 'opex',
         parent_id: category?.parent_id ?? initialParentId ?? '',
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, category?.id, initialName, initialType, initialParentId]);
+  }, [open, category?.id, initialName, initialType, initialParentId, initialParent?.id]);
 
   const selectedColor = form.watch('color');
   const selectedType = form.watch('type');
@@ -110,8 +114,6 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
    * Subcategoria não pode ser pai de ninguém (o banco recusa neto), então ela
    * nem entra na lista. Tudo em memória, sobre a lista que já veio.
    */
-  const allCategories = useMemo(() => categories ?? [], [categories]);
-  const tree = useMemo(() => buildCategoryTree(allCategories), [allCategories]);
   // Categoria que JÁ tem subcategoria não pode virar subcategoria de outra
   // (o gatilho recusa). O campo aparece explicando, em vez de sumir sem motivo.
   const hasOwnChildren = !!category && tree.hasChildren(category.id);
@@ -137,8 +139,8 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   const showParentField = parentCandidates.length > 0 || !!category?.parent_id;
 
   /**
-   * Trocar o PAI pré-preenche `type` e `dre_group` com os dele. É só PADRÃO:
-   * os dois campos seguem editáveis, porque uma subcategoria tem grupo do DRE
+   * Trocar o PAI pré-preenche tipo, grupo DRE, cor e ícone com os dele. É só
+   * PADRÃO: todos os campos seguem editáveis, porque uma subcategoria tem grupo do DRE
    * PRÓPRIO de propósito (um pai em CSP pode ter filha em OPEX, e é assim que
    * a empresa do cliente já classifica).
    *
@@ -156,6 +158,8 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     if (!parent) return;
     form.setValue('type', parent.type, { shouldDirty: true });
     form.setValue('dre_group', parent.dre_group ?? 'opex', { shouldDirty: true });
+    form.setValue('color', parent.color, { shouldDirty: true });
+    form.setValue('icon', parent.icon ?? 'Tag', { shouldDirty: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedParentId, open]);
 

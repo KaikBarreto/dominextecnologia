@@ -7,6 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { NumericInput } from '@/components/ui/numeric-input';
 import {
   Select,
   SelectContent,
@@ -27,16 +31,23 @@ import {
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { SubscriptionDialog } from '@/components/financial/SubscriptionDialog';
+import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
+import { useCostCenters } from '@/hooks/useCostCenters';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import {
   useTenantSubscriptions,
   hasLivePixConsent,
   type TenantSubscription,
   type SubscriptionCycle,
+  type SubscriptionBillingType,
 } from '@/hooks/useTenantSubscriptions';
 import { formatBRL } from '@/utils/currency';
 import { readPastedCents } from '@/lib/money-paste-mask';
-import { Archive, ArchiveRestore, ArrowLeft, CalendarDays, Eye, EyeOff, Loader2, Pencil, Plus, RefreshCw, XCircle } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, CalendarDays, Eye, EyeOff, Loader2, Pencil, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MAX_REPETITION_COUNT } from '@/lib/finance-installments';
+import type { ChargeFineType } from '@/lib/chargeCustomerAmounts';
 
 // ─── MRR: normaliza o valor de cada ciclo para mensal ────────────────────────
 // anual/12, semestral/6, trimestral/3, quinzenal*2, semanal*4.33, mensal=1
@@ -78,6 +89,12 @@ function fmtDate(iso: string | null, locale: string): string {
   });
 }
 
+function todayISO(): string {
+  const d = new Date();
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 10);
+}
+
 const CYCLES: SubscriptionCycle[] = [
   'WEEKLY',
   'BIWEEKLY',
@@ -107,21 +124,79 @@ function EditSubscriptionModal({
 }: {
   subscription: TenantSubscription | null;
   onOpenChange: (open: boolean) => void;
-  onSave: (input: { value: number; cycle: SubscriptionCycle; next_due_date: string; description: string }) => void;
+  onSave: (input: {
+    value: number;
+    cycle: SubscriptionCycle;
+    billing_type: SubscriptionBillingType;
+    next_due_date: string;
+    description: string;
+    category: string | null;
+    cost_center_id: string | null;
+    max_payments: number | null;
+    fine_type: ChargeFineType;
+    fine_value: number;
+    fine_percent: number;
+    interest_percent: number;
+  }) => void;
   isPending: boolean;
   t: typeof MESSAGES['pt-br']['app']['charges']['subscriptions'];
 }) {
   const [amount, setAmount] = useState(0);
   const [cycle, setCycle] = useState<SubscriptionCycle>('MONTHLY');
+  const [billingType, setBillingType] = useState<SubscriptionBillingType>('PIX');
   const [nextDueDate, setNextDueDate] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [costCenterId, setCostCenterId] = useState<string | null>(null);
+  const [durationLimited, setDurationLimited] = useState(false);
+  const [maxCycles, setMaxCycles] = useState('');
+  const [fineType, setFineType] = useState<ChargeFineType>('PERCENTAGE');
+  const [fineAmount, setFineAmount] = useState(0);
+  const [finePercent, setFinePercent] = useState('');
+  const [interestPercent, setInterestPercent] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const paymentAccount = useTenantPaymentAccount();
+  const { activeCostCenters } = useCostCenters();
+  const billingOptions = useMemo(() => {
+    const options: { value: SubscriptionBillingType; label: string }[] = [];
+    if (paymentAccount.allowPix && paymentAccount.allowBoleto) {
+      options.push({ value: 'UNDEFINED', label: t.billing_types.UNDEFINED });
+    }
+    if (paymentAccount.allowPix) options.push({ value: 'PIX', label: t.billing_types.PIX });
+    if (paymentAccount.allowBoleto) options.push({ value: 'BOLETO', label: t.billing_types.BOLETO });
+    if (paymentAccount.cardRecurringEnabled) options.push({ value: 'CREDIT_CARD', label: t.billing_types.CREDIT_CARD });
+    if (paymentAccount.pixAutoEnabled) options.push({ value: 'PIX_AUTO', label: t.billing_types.PIX_AUTO });
+    // A forma atual continua visível mesmo se o flag foi desligado depois.
+    if (subscription?.billing_type && !options.some((item) => item.value === subscription.billing_type)) {
+      options.push({
+        value: subscription.billing_type as SubscriptionBillingType,
+        label: t.billing_types[subscription.billing_type as keyof typeof t.billing_types] ?? subscription.billing_type,
+      });
+    }
+    return options;
+  }, [paymentAccount, subscription?.billing_type, t.billing_types]);
 
   useEffect(() => {
     if (subscription) {
       setAmount(Number(subscription.value));
       setCycle(subscription.cycle as SubscriptionCycle);
+      setBillingType(subscription.billing_type as SubscriptionBillingType);
       setNextDueDate(subscription.next_due_date ?? '');
       setDescription(subscription.description ?? '');
+      setCategory(subscription.category ?? '');
+      setCostCenterId(subscription.cost_center_id ?? null);
+      setDurationLimited(subscription.max_payments != null);
+      setMaxCycles(subscription.max_payments != null ? String(subscription.max_payments) : '');
+      setFineType(subscription.fine_type ?? 'PERCENTAGE');
+      setFineAmount(Number(subscription.fine_value ?? 0));
+      setFinePercent(subscription.fine_percent != null ? String(subscription.fine_percent) : '');
+      setInterestPercent(subscription.interest_percent != null ? String(subscription.interest_percent) : '');
+      setShowAdvanced(
+        subscription.fine_value != null ||
+        subscription.fine_percent != null ||
+        subscription.interest_percent != null,
+      );
     }
   }, [subscription]);
 
@@ -139,7 +214,20 @@ function EditSubscriptionModal({
     ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
-  const isValid = amount > 0 && !!nextDueDate;
+  const handleFineAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setFineAmount(parseInt(raw || '0', 10) / 100);
+  };
+  const fineAmountDisplay = fineAmount
+    ? fineAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
+  const parsedMaxCycles = parseInt(maxCycles, 10);
+  const maxCyclesValid = Number.isInteger(parsedMaxCycles) && parsedMaxCycles > 0 && parsedMaxCycles <= MAX_REPETITION_COUNT;
+  const isPixAuto = billingType === 'PIX_AUTO';
+  const durationBlocked = !isPixAuto && durationLimited && !maxCyclesValid;
+
+  const isValid = amount > 0 && !!nextDueDate && !durationBlocked;
 
   return (
     <ResponsiveModal
@@ -149,6 +237,14 @@ function EditSubscriptionModal({
       description={t.editDialog.description}
     >
       <div className="space-y-4 px-4 pb-4 sm:px-1">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">{t.fields.customer}</Label>
+          <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+            {subscription?.customers?.name ?? '—'}
+          </div>
+          <p className="text-xs text-muted-foreground">{t.editDialog.customerLockedHint}</p>
+        </div>
+
         {/* Valor (máscara de dinheiro — NÃO NumericInput) */}
         <div className="space-y-2">
           <Label htmlFor="edit-sub-amount" className="text-sm font-medium">
@@ -188,16 +284,59 @@ function EditSubscriptionModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-sub-due" className="text-sm font-medium">
-              {t.fields.next_due_date}
-            </Label>
-            <Input
-              id="edit-sub-due"
-              type="date"
-              value={nextDueDate}
-              onChange={(e) => setNextDueDate(e.target.value)}
-            />
+            <Label className="text-sm font-medium">{t.fields.billing_type}</Label>
+            <Select value={billingType} onValueChange={(v) => setBillingType(v as SubscriptionBillingType)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {billingOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+        </div>
+
+        {!isPixAuto && (
+          <div className="flex flex-col items-start gap-2">
+            <Label className="text-sm font-medium">{t.fields.duration}</Label>
+            <LabeledSwitch
+              value={durationLimited ? 'limited' : 'continuous'}
+              onChange={(v) => setDurationLimited(v === 'limited')}
+              off={{ value: 'continuous', label: t.fields.durationContinuous }}
+              on={{ value: 'limited', label: t.fields.durationLimited }}
+              aria-label={t.fields.duration}
+            />
+            {durationLimited && (
+              <div className="w-full space-y-2">
+                <Label htmlFor="edit-sub-max-cycles">{t.fields.maxCycles}</Label>
+                <NumericInput
+                  id="edit-sub-max-cycles"
+                  value={maxCycles}
+                  onValueChange={setMaxCycles}
+                  placeholder="12"
+                  aria-invalid={durationBlocked || undefined}
+                />
+                {durationBlocked && (
+                  <p className="text-xs font-medium text-destructive">
+                    {t.validation.maxCyclesTooHigh(MAX_REPETITION_COUNT)}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-sub-due" className="text-sm font-medium">
+            {t.fields.next_due_date}
+          </Label>
+          <DatePicker
+            id="edit-sub-due"
+            value={nextDueDate}
+            onValueChange={setNextDueDate}
+            min={todayISO()}
+            placeholder="dd/mm/aaaa"
+          />
         </div>
 
         <div className="space-y-2">
@@ -213,13 +352,108 @@ function EditSubscriptionModal({
           />
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="edit-sub-category" className="text-sm font-medium">{t.fields.category}</Label>
+          <CategorySelectField
+            id="edit-sub-category"
+            type="entrada"
+            value={category}
+            onValueChange={setCategory}
+          />
+          <p className="text-xs text-muted-foreground">{t.fields.categoryHint}</p>
+        </div>
+
+        {activeCostCenters.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Centro de custo</Label>
+            <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
+            <p className="text-xs text-muted-foreground">{t.fields.costCenterHint}</p>
+          </div>
+        )}
+
+        {!isPixAuto && (
+          <div className="rounded-md border border-border">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium"
+              onClick={() => setShowAdvanced((value) => !value)}
+            >
+              {t.advanced.toggle}
+              <span aria-hidden>{showAdvanced ? '−' : '+'}</span>
+            </button>
+            {showAdvanced && (
+              <div className="grid grid-cols-1 gap-3 border-t border-border p-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="edit-sub-fine">
+                      {fineType === 'FIXED' ? t.advanced.fineFixed : t.advanced.finePercent}
+                    </Label>
+                    <SegmentedControl
+                      size="sm"
+                      className="w-[96px]"
+                      options={[
+                        { value: 'PERCENTAGE' as ChargeFineType, label: '%' },
+                        { value: 'FIXED' as ChargeFineType, label: 'R$' },
+                      ]}
+                      value={fineType}
+                      onValueChange={(value) => setFineType(value as ChargeFineType)}
+                      aria-label={t.advanced.fineTypeAria}
+                    />
+                  </div>
+                  {fineType === 'FIXED' ? (
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                      <Input
+                        id="edit-sub-fine"
+                        className="pl-9"
+                        inputMode="numeric"
+                        value={fineAmountDisplay}
+                        onChange={handleFineAmountChange}
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      id="edit-sub-fine"
+                      inputMode="decimal"
+                      value={finePercent}
+                      onChange={(event) => setFinePercent(event.target.value)}
+                    />
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-sub-interest">{t.advanced.interestPercent}</Label>
+                  <Input
+                    id="edit-sub-interest"
+                    inputMode="decimal"
+                    value={interestPercent}
+                    onChange={(event) => setInterestPercent(event.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
             {t.cancel}
           </Button>
           <Button
             disabled={isPending || !isValid}
-            onClick={() => onSave({ value: amount, cycle, next_due_date: nextDueDate, description })}
+            onClick={() => onSave({
+              value: amount,
+              cycle,
+              billing_type: billingType,
+              next_due_date: nextDueDate,
+              description,
+              category: category.trim() || null,
+              cost_center_id: costCenterId,
+              max_payments: !isPixAuto && durationLimited ? parsedMaxCycles : null,
+              fine_type: fineType,
+              fine_value: fineType === 'FIXED' ? fineAmount : 0,
+              fine_percent: fineType === 'PERCENTAGE' ? Number(finePercent.replace(',', '.')) || 0 : 0,
+              interest_percent: Number(interestPercent.replace(',', '.')) || 0,
+            })}
           >
             {isPending ? (
               <>
@@ -246,11 +480,12 @@ export function FinanceAssinaturas() {
   // um caminho de volta, senão arquivar vira exclusão disfarçada.
   const [showArchived, setShowArchived] = useState(false);
 
-  const { subscriptions, isLoading, manageSubscription, archiveSubscription, bulkCancel } =
+  const { subscriptions, isLoading, manageSubscription, deleteSubscription, archiveSubscription, bulkCancel } =
     useTenantSubscriptions({ includeArchived: showArchived });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<TenantSubscription | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TenantSubscription | null>(null);
   const [editTarget, setEditTarget] = useState<TenantSubscription | null>(null);
 
   // ── Seleção múltipla (cancelamento em massa) ──────────────────────────────
@@ -319,17 +554,33 @@ export function FinanceAssinaturas() {
     setCancelTarget(null);
   };
 
-  const handleSaveEdit = async (input: { value: number; cycle: SubscriptionCycle; next_due_date: string; description: string }) => {
+  const handleSaveEdit = async (input: {
+    value: number;
+    cycle: SubscriptionCycle;
+    billing_type: SubscriptionBillingType;
+    next_due_date: string;
+    description: string;
+    category: string | null;
+    cost_center_id: string | null;
+    max_payments: number | null;
+    fine_type: ChargeFineType;
+    fine_value: number;
+    fine_percent: number;
+    interest_percent: number;
+  }) => {
     if (!editTarget) return;
     await manageSubscription.mutateAsync({
       subscription_id: editTarget.id,
       action: 'update',
-      value: input.value,
-      cycle: input.cycle,
-      next_due_date: input.next_due_date,
-      description: input.description,
+      ...input,
     });
     setEditTarget(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteSubscription.mutateAsync(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const handleConfirmBulkCancel = async () => {
@@ -522,6 +773,17 @@ export function FinanceAssinaturas() {
                             <XCircle className="mr-1 h-3.5 w-3.5" />
                             {t.actions.cancel}
                           </Button>
+                          {sub.can_delete === true && (
+                            <Button
+                              variant="destructive-ghost"
+                              size="sm"
+                              onClick={() => setDeleteTarget(sub)}
+                              disabled={deleteSubscription.isPending}
+                            >
+                              <Trash2 className="mr-1 h-3.5 w-3.5" />
+                              {t.actions.delete}
+                            </Button>
+                          )}
                         </>
                       )}
                       {needsRetryCancel(sub) && (
@@ -627,6 +889,18 @@ export function FinanceAssinaturas() {
                           >
                             <XCircle className="h-3.5 w-3.5" />
                           </Button>
+                          {sub.can_delete === true && (
+                            <Button
+                              variant="destructive-ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={() => setDeleteTarget(sub)}
+                              disabled={deleteSubscription.isPending}
+                              aria-label={t.actions.delete}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </>
                       )}
                       {needsRetryCancel(sub) && (
@@ -707,6 +981,30 @@ export function FinanceAssinaturas() {
               disabled={manageSubscription.isPending}
             >
               {t.cancelDialog.confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>{t.deleteDialog.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>{t.deleteDialog.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={handleConfirmDelete}
+              disabled={deleteSubscription.isPending}
+            >
+              {deleteSubscription.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              {t.deleteDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -23,6 +23,7 @@ import {
   Circle,
   Star,
   Trash2,
+  ListFilter,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -817,8 +818,8 @@ export default function CRM() {
     <div className="overflow-hidden">
       {!isMobile && (
         <div className="flex items-center gap-2 mb-3">
-          <TrendingUp className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">{t.pipeline}</h2>
+          <ListFilter className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">{selectedPipeline?.name ?? t.pipeline}</h2>
           {filteredLeads.length !== pipelineLeads.length && (
             <Badge variant="outline" className="ml-2">
               {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(pipelineLeads.length))}
@@ -1214,7 +1215,7 @@ export default function CRM() {
               : 'bg-muted/50 text-muted-foreground hover:bg-muted',
           )}
         >
-          {tab === 'funil' ? <TrendingUp className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
+          {tab === 'funil' ? <ListFilter className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
           {tab === 'funil' ? t.mainTabFunnel : t.mainTabTasks}
         </button>
       ))}
@@ -1463,7 +1464,7 @@ export default function CRM() {
         <MobilePageHeader
           title={headerTitle}
           subtitle={t.subtitleMobile}
-          icon={TrendingUp}
+          icon={ListFilter}
         />
 
         {mainTabs}
@@ -1569,7 +1570,7 @@ export default function CRM() {
       <PageHeader
         title={headerTitle}
         subtitle={t.subtitle}
-        icon={TrendingUp}
+        icon={ListFilter}
         titleSuffix={pageTab === 'funil' ? pipelineTabs || undefined : undefined}
         actions={
           <>

@@ -319,6 +319,11 @@ verify_jwt = false
 [functions.tenant-asaas-pix-auto-authorize]
 verify_jwt = false
 
+# Checkout publico da assinatura: recebe apenas short_code aleatorio e aplica
+# allowlist de resposta dentro da propria edge; nao usa JWT de usuario.
+[functions.get-tenant-subscription-checkout]
+verify_jwt = false
+
 # tenant-asaas-webhook: recepção de eventos da Asaas da conta do TENANT. SEM JWT de
 # usuário — segurança é o header asaas-access-token, validado timing-safe contra o token
 # daquele tenant (resolvido por externalReference → Vault). Fail-closed 401.

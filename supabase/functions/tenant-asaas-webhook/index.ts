@@ -49,7 +49,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { timingSafeEqual } from "../_shared/timing-safe.ts";
-import { vaultWebhookTokenSecretName, generateShortCode } from "../_shared/payments-auth.ts";
+import {
+  generateShortCode,
+  vaultReadSecret,
+  vaultWebhookTokenSecretName,
+} from "../_shared/payments-auth.ts";
+import { asaasFor } from "../_shared/asaas-tenant-client.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -78,8 +83,9 @@ async function resolveCompanyId(
   supabase: any,
   payment: any,
 ): Promise<string | null> {
-  const ext: string | null =
-    typeof payment?.externalReference === "string" ? payment.externalReference : null;
+  const ext: string | null = typeof payment?.externalReference === "string"
+    ? payment.externalReference
+    : null;
   if (ext) {
     const { data } = await supabase
       .from("tenant_payment_accounts")
@@ -87,6 +93,12 @@ async function resolveCompanyId(
       .eq("company_id", ext)
       .maybeSingle();
     if (data?.company_id) return data.company_id;
+    const { data: correlated } = await supabase
+      .from("tenant_subscriptions")
+      .select("company_id")
+      .eq("id", ext)
+      .maybeSingle();
+    if (correlated?.company_id) return correlated.company_id;
   }
   if (payment?.id) {
     const { data } = await supabase
@@ -143,8 +155,9 @@ async function resolveCompanyForSubscription(
   supabase: any,
   subscription: any,
 ): Promise<string | null> {
-  const ext: string | null =
-    typeof subscription?.externalReference === "string" ? subscription.externalReference : null;
+  const ext: string | null = typeof subscription?.externalReference === "string"
+    ? subscription.externalReference
+    : null;
   if (ext) {
     const { data } = await supabase
       .from("tenant_payment_accounts")
@@ -152,6 +165,12 @@ async function resolveCompanyForSubscription(
       .eq("company_id", ext)
       .maybeSingle();
     if (data?.company_id) return data.company_id;
+    const { data: correlated } = await supabase
+      .from("tenant_subscriptions")
+      .select("company_id")
+      .eq("id", ext)
+      .maybeSingle();
+    if (correlated?.company_id) return correlated.company_id;
   }
   if (subscription?.id) {
     const { data } = await supabase
@@ -165,12 +184,18 @@ async function resolveCompanyForSubscription(
 }
 
 /** Lê o token do webhook daquele tenant do Vault (via RPC SECURITY DEFINER). */
-async function readWebhookToken(supabase: any, companyId: string): Promise<string | null> {
+async function readWebhookToken(
+  supabase: any,
+  companyId: string,
+): Promise<string | null> {
   const { data, error } = await supabase.rpc("vault_read_tenant_secret", {
     p_name: vaultWebhookTokenSecretName(companyId),
   });
   if (error) {
-    console.error("[tenant-webhook] vault_read_tenant_secret falhou:", error.message);
+    console.error(
+      "[tenant-webhook] vault_read_tenant_secret falhou:",
+      error.message,
+    );
     return null;
   }
   return typeof data === "string" && data.length > 0 ? data : null;
@@ -192,7 +217,10 @@ async function recordOrphan(supabase: any, event: string, payment: any) {
       { onConflict: "event_id", ignoreDuplicates: true },
     );
   } catch (e) {
-    console.error("[tenant-webhook] orphan record falhou:", (e as Error).message);
+    console.error(
+      "[tenant-webhook] orphan record falhou:",
+      (e as Error).message,
+    );
   }
 }
 
@@ -207,11 +235,15 @@ async function recordOrphan(supabase: any, event: string, payment: any) {
 export function isInstallmentPaymentEvent(
   payment: { installment?: unknown } | null | undefined,
 ): boolean {
-  return typeof payment?.installment === "string" && payment.installment.length > 0;
+  return typeof payment?.installment === "string" &&
+    payment.installment.length > 0;
 }
 
 /** Mapeia o status Asaas de uma assinatura pro status local de tenant_subscriptions. */
-function mapSubscriptionStatus(event: string, asaasStatus: string): string | null {
+function mapSubscriptionStatus(
+  event: string,
+  asaasStatus: string,
+): string | null {
   const s = (asaasStatus || "").toUpperCase();
   if (event === "SUBSCRIPTION_DELETED") return "cancelled";
   if (event === "SUBSCRIPTION_INACTIVATED") return "cancelled";
@@ -219,6 +251,211 @@ function mapSubscriptionStatus(event: string, asaasStatus: string): string | nul
   if (s === "INACTIVE" || s === "EXPIRED") return "cancelled";
   // SUBSCRIPTION_CREATED/UPDATED sem status claro → não mexe (retorna null).
   return null;
+}
+
+function isCheckoutEvent(event: string): boolean {
+  return (event || "").toUpperCase().startsWith("CHECKOUT_");
+}
+
+function checkoutPublicStatus(event: string, rawStatus: unknown): string {
+  const e = (event || "").toUpperCase();
+  const s = String(rawStatus ?? "").toUpperCase();
+  if (e.includes("PAID") || ["PAID", "COMPLETED", "CONFIRMED"].includes(s)) {
+    return "PAID";
+  }
+  if (e.includes("EXPIRED") || s === "EXPIRED") return "EXPIRED";
+  if (e.includes("CANCEL") || ["CANCELLED", "CANCELED"].includes(s)) {
+    return "CANCELLED";
+  }
+  return s || "PENDING";
+}
+
+function checkoutSubscriptionId(checkout: any): string | null {
+  if (typeof checkout?.subscription === "string" && checkout.subscription) {
+    return checkout.subscription;
+  }
+  if (
+    typeof checkout?.subscription?.id === "string" && checkout.subscription.id
+  ) return checkout.subscription.id;
+  if (
+    typeof checkout?.payment?.subscription === "string" &&
+    checkout.payment.subscription
+  ) {
+    return checkout.payment.subscription;
+  }
+  return null;
+}
+
+async function resolveCompanyForCheckout(
+  supabase: any,
+  checkout: any,
+): Promise<string | null> {
+  const ext = typeof checkout?.externalReference === "string"
+    ? checkout.externalReference
+    : null;
+  if (ext) {
+    const { data } = await supabase
+      .from("tenant_payment_accounts")
+      .select("company_id")
+      .eq("company_id", ext)
+      .maybeSingle();
+    if (data?.company_id) return data.company_id;
+    const { data: correlated } = await supabase
+      .from("tenant_subscriptions")
+      .select("company_id")
+      .eq("id", ext)
+      .maybeSingle();
+    if (correlated?.company_id) return correlated.company_id;
+  }
+  if (typeof checkout?.id === "string" && checkout.id) {
+    const { data } = await supabase
+      .from("tenant_subscriptions")
+      .select("company_id")
+      .eq("checkout_id", checkout.id)
+      .maybeSingle();
+    if (data?.company_id) return data.company_id;
+  }
+  return null;
+}
+
+async function processCheckoutEvent(
+  supabase: any,
+  eventId: string,
+  event: string,
+  checkout: any,
+  companyId: string,
+): Promise<boolean> {
+  try {
+    const checkoutStatus = checkoutPublicStatus(event, checkout?.status);
+    let asaasSubscriptionId = checkoutSubscriptionId(checkout);
+    let { data: localSub, error: localSubErr } = await supabase
+      .from("tenant_subscriptions")
+      .select("id, fine_type, fine_value, interest_percent")
+      .eq("checkout_id", checkout.id)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!localSub?.id && typeof checkout?.externalReference === "string") {
+      const correlated = await supabase
+        .from("tenant_subscriptions")
+        .select("id, fine_type, fine_value, interest_percent")
+        .eq("id", checkout.externalReference)
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      localSub = correlated.data;
+      localSubErr = correlated.error;
+    }
+    if (localSubErr || !localSub?.id) {
+      throw new Error(
+        `checkout local não encontrado: ${localSubErr?.message ?? checkout.id}`,
+      );
+    }
+
+    let tenantAsaas: ReturnType<typeof asaasFor> | null = null;
+    const getTenantAsaas = async () => {
+      if (tenantAsaas) return tenantAsaas;
+      const { data: account, error: accountErr } = await supabase
+        .from("tenant_payment_accounts")
+        .select("vault_secret_name")
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (accountErr || !account?.vault_secret_name) {
+        throw new Error(
+          "conta Asaas do tenant não encontrada para reconciliar checkout",
+        );
+      }
+      const apiKey = await vaultReadSecret(supabase, account.vault_secret_name);
+      if (!apiKey) {
+        throw new Error("chave Asaas ausente para reconciliar checkout");
+      }
+      tenantAsaas = asaasFor(apiKey);
+      return tenantAsaas;
+    };
+
+    // Algumas versões do evento informam só o checkout. Consulta o recurso antes
+    // de desistir; assinatura paga sem asaas_subscription_id não pode ser marcada
+    // active localmente porque ficaria impossível cancelar/editar depois.
+    if (checkoutStatus === "PAID" && !asaasSubscriptionId) {
+      const remoteCheckout = await (await getTenantAsaas()).get<any>(
+        `/checkouts/${encodeURIComponent(checkout.id)}`,
+      );
+      asaasSubscriptionId = checkoutSubscriptionId(remoteCheckout);
+      if (!asaasSubscriptionId) {
+        throw new Error(
+          "checkout pago ainda sem subscription id; aguardando nova entrega",
+        );
+      }
+    }
+
+    // Checkout não aceita multa/juros no DTO documentado. Assim que a Asaas
+    // revelar a assinatura criada, aplica as condições por PUT e inclui a
+    // cobrança pendente inicial. Se falhar, o evento fica error para retry.
+    if (asaasSubscriptionId && checkoutStatus === "PAID") {
+      const fineValue = Number(localSub.fine_value ?? 0);
+      const interestValue = Number(localSub.interest_percent ?? 0);
+      if (fineValue > 0 || interestValue > 0) {
+        await (await getTenantAsaas()).put(
+          `/subscriptions/${encodeURIComponent(asaasSubscriptionId)}`,
+          {
+            ...(fineValue > 0
+              ? {
+                fine: {
+                  type: localSub.fine_type === "FIXED" ? "FIXED" : "PERCENTAGE",
+                  value: fineValue,
+                },
+              }
+              : {}),
+            ...(interestValue > 0
+              ? { interest: { value: interestValue } }
+              : {}),
+            updatePendingPayments: true,
+          },
+        );
+      }
+    }
+    const patch: Record<string, unknown> = {
+      checkout_id: checkout.id,
+      checkout_status: checkoutStatus,
+      updated_at: new Date().toISOString(),
+    };
+    if (asaasSubscriptionId) patch.asaas_subscription_id = asaasSubscriptionId;
+    if (checkoutStatus === "PAID") patch.status = "active";
+    if (checkoutStatus === "CANCELLED" || checkoutStatus === "EXPIRED") {
+      patch.status = "cancelled";
+    }
+
+    await applyWrite(
+      "checkout CHECKOUT_*",
+      supabase
+        .from("tenant_subscriptions")
+        .update(patch)
+        .eq("id", localSub.id)
+        .eq("company_id", companyId)
+        .is("deleted_at", null),
+    );
+    const { error: ackErr } = await supabase
+      .from("tenant_payment_webhook_events")
+      .update({ status: "processed", last_error: null })
+      .eq("event_id", eventId);
+    if (ackErr) {
+      console.error(
+        `[tenant-webhook] checkout ack falhou (${eventId}):`,
+        ackErr.message,
+      );
+    }
+    return true;
+  } catch (e) {
+    console.error(
+      `[tenant-webhook] checkout event falhou (${eventId}):`,
+      (e as Error).message,
+    );
+    await supabase
+      .from("tenant_payment_webhook_events")
+      .update({ status: "error", last_error: (e as Error).message })
+      .eq("event_id", eventId);
+    return false;
+  }
 }
 
 /**
@@ -258,15 +495,43 @@ async function processSubscriptionEvent(
   companyId: string,
 ): Promise<boolean> {
   try {
-    const newStatus = mapSubscriptionStatus(event, String(subscription?.status || ""));
-    if (newStatus) {
+    const newStatus = mapSubscriptionStatus(
+      event,
+      String(subscription?.status || ""),
+    );
+    let { data: localSub } = await supabase
+      .from("tenant_subscriptions")
+      .select("id")
+      .eq("asaas_subscription_id", subscription.id)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (
+      !localSub?.id && typeof subscription?.externalReference === "string"
+    ) {
+      const correlated = await supabase
+        .from("tenant_subscriptions")
+        .select("id")
+        .eq("id", subscription.externalReference)
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      localSub = correlated.data;
+    }
+    if (localSub?.id) {
+      const patch: Record<string, unknown> = {
+        asaas_subscription_id: subscription.id,
+        updated_at: new Date().toISOString(),
+      };
+      if (newStatus) patch.status = newStatus;
       await applyWrite(
         "assinatura SUBSCRIPTION_*",
         supabase
           .from("tenant_subscriptions")
-          .update({ status: newStatus, updated_at: new Date().toISOString() })
-          .eq("asaas_subscription_id", subscription.id)
-          .eq("company_id", companyId),
+          .update(patch)
+          .eq("id", localSub.id)
+          .eq("company_id", companyId)
+          .is("deleted_at", null),
       );
     }
     // Marcação de bookkeeping: NÃO lança de propósito. O estado já foi aplicado;
@@ -277,11 +542,17 @@ async function processSubscriptionEvent(
       .update({ status: "processed", last_error: null })
       .eq("event_id", eventId);
     if (ackErr) {
-      console.error(`[tenant-webhook] não consegui marcar ${eventId} como processed:`, ackErr.message);
+      console.error(
+        `[tenant-webhook] não consegui marcar ${eventId} como processed:`,
+        ackErr.message,
+      );
     }
     return true;
   } catch (e) {
-    console.error(`[tenant-webhook] subscription event falhou (${eventId}):`, (e as Error).message);
+    console.error(
+      `[tenant-webhook] subscription event falhou (${eventId}):`,
+      (e as Error).message,
+    );
     await supabase
       .from("tenant_payment_webhook_events")
       .update({ status: "error", last_error: (e as Error).message })
@@ -305,7 +576,9 @@ async function ensureChargeForSubscriptionPayment(
   companyId: string,
 ): Promise<boolean> {
   const asaasSubId: string | null =
-    typeof payment?.subscription === "string" && payment.subscription ? payment.subscription : null;
+    typeof payment?.subscription === "string" && payment.subscription
+      ? payment.subscription
+      : null;
   if (!asaasSubId) return false; // não é cobrança de assinatura → fluxo avulso
 
   // Já existe? (cobrança avulsa OU ciclo já materializado) → nada a criar.
@@ -321,29 +594,56 @@ async function ensureChargeForSubscriptionPayment(
   // pix_auto_authorization_id (aut_*). Tenta o primeiro; cai no segundo.
   let { data: sub } = await supabase
     .from("tenant_subscriptions")
-    .select("id, customer_id, description, category, cost_center_id")
+    .select(
+      "id, customer_id, description, category, cost_center_id, deleted_at",
+    )
     .eq("asaas_subscription_id", asaasSubId)
     .eq("company_id", companyId)
     .maybeSingle();
   if (!sub?.id) {
     const { data: pixSub } = await supabase
       .from("tenant_subscriptions")
-      .select("id, customer_id, description, category, cost_center_id")
+      .select(
+        "id, customer_id, description, category, cost_center_id, deleted_at",
+      )
       .eq("pix_auto_authorization_id", asaasSubId)
       .eq("company_id", companyId)
       .maybeSingle();
     if (pixSub?.id) sub = pixSub;
   }
 
+  // Se um evento financeiro atrasado provar que havia histórico apesar das
+  // consultas de exclusão, a verdade financeira vence o tombstone: restaura a
+  // linha na lista antes de vincular/materializar a cobrança.
+  if (sub?.id && sub.deleted_at) {
+    await applyWrite(
+      "restaurar assinatura com histórico tardio",
+      supabase
+        .from("tenant_subscriptions")
+        .update({
+          deleted_at: null,
+          deleted_by: null,
+          archived_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sub.id)
+        .eq("company_id", companyId),
+    );
+  }
+
   const value = payment?.value != null ? Number(payment.value) : null;
   if (value == null || !Number.isFinite(value) || value <= 0) {
     // Sem valor não dá pra materializar; deixa seguir (a baixa por RPC será no-op).
-    console.warn(`[tenant-webhook] cobrança de assinatura sem value (${payment?.id}); pulando materialização`);
+    console.warn(
+      `[tenant-webhook] cobrança de assinatura sem value (${payment?.id}); pulando materialização`,
+    );
     return false;
   }
 
   const dueDate: string | null =
-    typeof payment?.dueDate === "string" && payment.dueDate ? payment.dueDate : null;
+    typeof payment?.dueDate === "string" && payment.dueDate
+      ? payment.dueDate
+      : null;
   const description: string =
     (typeof payment?.description === "string" && payment.description) ||
     (sub?.description ?? null) ||
@@ -377,7 +677,9 @@ async function ensureChargeForSubscriptionPayment(
   if (insertErr) {
     // Corrida com outra re-entrega: se já existe agora, segue; senão relança.
     if (insertErr.code === "23505") return true;
-    throw new Error(`materializar cobrança de assinatura falhou: ${insertErr.message}`);
+    throw new Error(
+      `materializar cobrança de assinatura falhou: ${insertErr.message}`,
+    );
   }
 
   // Recebível (a receber), respeitando a config da conta. Não-fatal.
@@ -385,33 +687,45 @@ async function ensureChargeForSubscriptionPayment(
     try {
       const { data: account } = await supabase
         .from("tenant_payment_accounts")
-        .select("auto_post_to_finance, default_finance_account_id, default_income_category")
+        .select(
+          "auto_post_to_finance, default_finance_account_id, default_income_category",
+        )
         .eq("company_id", companyId)
         .maybeSingle();
       if (account?.auto_post_to_finance !== false) {
-        const { error: rpcErr } = await supabase.rpc("create_tenant_charge_receivable", {
-          p_company_id: companyId,
-          p_tenant_charge_id: saved.id,
-          p_customer_id: sub?.customer_id ?? null,
-          p_amount: value,
-          p_due_date: dueDate,
-          p_description: description,
-          p_account_id: account?.default_finance_account_id ?? null,
-          // Categoria escolhida na assinatura (persistida em tenant_subscriptions.category)
-          // tem prioridade; ausente/null → default_income_category da conta (comportamento
-          // de hoje, cobre também assinaturas antigas sem a coluna preenchida).
-          p_category: sub?.category ?? account?.default_income_category ?? null,
-          // Centro de custo escolhido na criação da assinatura (persistido em
-          // tenant_subscriptions.cost_center_id). Sem default de conta; assinatura
-          // antiga (coluna NULL) materializa sem centro, como sempre foi.
-          p_cost_center_id: sub?.cost_center_id ?? null,
-        });
+        const { error: rpcErr } = await supabase.rpc(
+          "create_tenant_charge_receivable",
+          {
+            p_company_id: companyId,
+            p_tenant_charge_id: saved.id,
+            p_customer_id: sub?.customer_id ?? null,
+            p_amount: value,
+            p_due_date: dueDate,
+            p_description: description,
+            p_account_id: account?.default_finance_account_id ?? null,
+            // Categoria escolhida na assinatura (persistida em tenant_subscriptions.category)
+            // tem prioridade; ausente/null → default_income_category da conta (comportamento
+            // de hoje, cobre também assinaturas antigas sem a coluna preenchida).
+            p_category: sub?.category ?? account?.default_income_category ??
+              null,
+            // Centro de custo escolhido na criação da assinatura (persistido em
+            // tenant_subscriptions.cost_center_id). Sem default de conta; assinatura
+            // antiga (coluna NULL) materializa sem centro, como sempre foi.
+            p_cost_center_id: sub?.cost_center_id ?? null,
+          },
+        );
         if (rpcErr) {
-          console.warn("[tenant-webhook] create_tenant_charge_receivable (assinatura) falhou (não-fatal):", rpcErr.message);
+          console.warn(
+            "[tenant-webhook] create_tenant_charge_receivable (assinatura) falhou (não-fatal):",
+            rpcErr.message,
+          );
         }
       }
     } catch (e) {
-      console.warn("[tenant-webhook] recebível de assinatura exceção (não-fatal):", (e as Error).message);
+      console.warn(
+        "[tenant-webhook] recebível de assinatura exceção (não-fatal):",
+        (e as Error).message,
+      );
     }
   }
   return true;
@@ -420,14 +734,10 @@ async function ensureChargeForSubscriptionPayment(
 // ---------------------------------------------------------------------------
 // PIX AUTOMÁTICO — eventos de AUTORIZAÇÃO recorrente (consentimento).
 //
-// TODO(asaas-shape): confirmar na doc os NOMES EXATOS dos eventos e o SHAPE do
-// payload. Pela doc/versão atual do Asaas os eventos de autorização de Pix
-// Automático chegam com prefixo `PIX_RECURRING_` (ex.: PIX_RECURRING_CREATED,
-// PIX_RECURRING_AUTHORIZED, PIX_RECURRING_CANCELED, PIX_RECURRING_EXPIRED,
-// PIX_RECURRING_REJECTED). Há relatos de variação com `PIX_AUTOMATIC_*`. Tratamos
-// AMBOS os prefixos aqui (isPixAutoAuthEvent) pra ser tolerante. O objeto da
-// autorização vem em body.pixRecurring ?? body.authorization ?? body.pixAutomatic
-// (allowlist), e o id da autorização (aut_*) casa com pix_auto_authorization_id.
+// Na API atual, os eventos oficiais usam o prefixo
+// `PIX_AUTOMATIC_RECURRING_AUTHORIZATION_*` e o objeto vem em body.authorization.
+// Mantemos leitura tolerante dos shapes legados, mas o id da autorização precisa
+// casar com pix_auto_authorization_id.
 // Os DÉBITOS recorrentes NÃO são tratados aqui — chegam como PAYMENT_* com
 // payment.subscription = aut_* e caem no fluxo de materialização/baixa comum.
 // ---------------------------------------------------------------------------
@@ -437,13 +747,14 @@ function isPixAutoAuthEvent(event: string): boolean {
   const e = (event || "").toUpperCase();
   // Débitos vêm como PAYMENT_* (com payment.subscription) — não são autorização.
   if (e.startsWith("PAYMENT_")) return false;
-  return e.startsWith("PIX_RECURRING") || e.startsWith("PIX_AUTOMATIC");
+  return e.startsWith("PIX_RECURRING") ||
+    e.startsWith("PIX_AUTOMATIC_RECURRING_AUTHORIZATION");
 }
 
 /** Extrai o objeto da autorização de Pix Automático do body (shape tolerante). */
 function extractPixAuthObject(body: any): any {
-  // TODO(asaas-shape): fixar a chave exata quando a doc confirmar.
-  return body?.pixRecurring ?? body?.authorization ?? body?.pixAutomatic ?? body?.pix ?? null;
+  return body?.authorization ?? body?.pixRecurring ?? body?.pixAutomatic ??
+    body?.pix ?? null;
 }
 
 /**
@@ -458,8 +769,11 @@ function mapPixAutoStatus(
   const e = (event || "").toUpperCase();
   const s = (asaasStatus || "").toUpperCase();
   // Aprovada/ativada → authorized + assinatura active.
-  if (e.includes("AUTHORIZED") || e.includes("APPROVED") || e.includes("ACTIVATED") ||
-      s === "AUTHORIZED" || s === "APPROVED" || s === "ACTIVE") {
+  if (
+    e.includes("AUTHORIZED") || e.includes("APPROVED") ||
+    e.includes("ACTIVATED") ||
+    s === "AUTHORIZED" || s === "APPROVED" || s === "ACTIVE"
+  ) {
     return { pixStatus: "authorized", subStatus: "active" };
   }
   // Cancelada → cancelled + assinatura cancelled.
@@ -471,7 +785,10 @@ function mapPixAutoStatus(
     return { pixStatus: "expired", subStatus: "cancelled" };
   }
   // Rejeitada/negada → rejected + assinatura cancelled.
-  if (e.includes("REJECT") || e.includes("DENIED") || s === "REJECTED" || s === "DENIED") {
+  if (
+    e.includes("REJECT") || e.includes("REFUS") || e.includes("DENIED") ||
+    s === "REJECTED" || s === "REFUSED" || s === "DENIED"
+  ) {
     return { pixStatus: "rejected", subStatus: "cancelled" };
   }
   // CREATED/PENDING sem transição clara → não mexe.
@@ -479,9 +796,13 @@ function mapPixAutoStatus(
 }
 
 /** Resolve a company de um evento de autorização Pix Automático (posse). */
-async function resolveCompanyForPixAuth(supabase: any, authObj: any): Promise<string | null> {
-  const ext: string | null =
-    typeof authObj?.externalReference === "string" ? authObj.externalReference : null;
+async function resolveCompanyForPixAuth(
+  supabase: any,
+  authObj: any,
+): Promise<string | null> {
+  const ext: string | null = typeof authObj?.externalReference === "string"
+    ? authObj.externalReference
+    : null;
   if (ext) {
     const { data } = await supabase
       .from("tenant_payment_accounts")
@@ -490,12 +811,25 @@ async function resolveCompanyForPixAuth(supabase: any, authObj: any): Promise<st
       .maybeSingle();
     if (data?.company_id) return data.company_id;
   }
-  const authId: string | null = typeof authObj?.id === "string" ? authObj.id : null;
+  const authId: string | null = typeof authObj?.id === "string"
+    ? authObj.id
+    : null;
   if (authId) {
     const { data } = await supabase
       .from("tenant_subscriptions")
       .select("company_id")
       .eq("pix_auto_authorization_id", authId)
+      .maybeSingle();
+    if (data?.company_id) return data.company_id;
+  }
+  const contractId = typeof authObj?.contractId === "string"
+    ? authObj.contractId
+    : null;
+  if (contractId) {
+    const { data } = await supabase
+      .from("tenant_subscriptions")
+      .select("company_id")
+      .eq("gateway_correlation_ref", contractId)
       .maybeSingle();
     if (data?.company_id) return data.company_id;
   }
@@ -515,23 +849,62 @@ async function processPixAutoAuthEvent(
   companyId: string,
 ): Promise<boolean> {
   try {
-    const authId: string | null = typeof authObj?.id === "string" ? authObj.id : null;
+    const authId: string | null = typeof authObj?.id === "string"
+      ? authObj.id
+      : null;
+    const contractId: string | null = typeof authObj?.contractId === "string"
+      ? authObj.contractId
+      : null;
     const mapped = mapPixAutoStatus(event, String(authObj?.status || ""));
-    if (authId && mapped) {
+    if (authId) {
+      let { data: localSub } = await supabase
+        .from("tenant_subscriptions")
+        .select("id")
+        .eq("pix_auto_authorization_id", authId)
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!localSub?.id && contractId) {
+        const correlated = await supabase
+          .from("tenant_subscriptions")
+          .select("id")
+          .eq("gateway_correlation_ref", contractId)
+          .eq("company_id", companyId)
+          .is("deleted_at", null)
+          .maybeSingle();
+        localSub = correlated.data;
+      }
+      if (!localSub?.id) {
+        throw new Error(`autorização Pix sem assinatura local (${authId})`);
+      }
       const patch: Record<string, unknown> = {
-        pix_auto_status: mapped.pixStatus,
+        pix_auto_authorization_id: authId,
         updated_at: new Date().toISOString(),
       };
-      if (mapped.subStatus) patch.status = mapped.subStatus;
+      if (
+        typeof authObj?.subscriptionId === "string" && authObj.subscriptionId
+      ) {
+        patch.asaas_subscription_id = authObj.subscriptionId;
+      }
+      if (mapped) {
+        patch.pix_auto_status = mapped.pixStatus;
+        patch.checkout_status = mapped.pixStatus.toUpperCase();
+        if (mapped.subStatus) patch.status = mapped.subStatus;
+      }
       await applyWrite(
         "autorizacao Pix Automatico",
         supabase
           .from("tenant_subscriptions")
           .update(patch)
-          .eq("pix_auto_authorization_id", authId)
-          .eq("company_id", companyId),
+          .eq("id", localSub.id)
+          .eq("company_id", companyId)
+          .is("deleted_at", null),
       );
-      console.log(`[tenant-webhook] pix-auto ${authId} → ${mapped.pixStatus}/${mapped.subStatus ?? "-"}`);
+      console.log(
+        `[tenant-webhook] pix-auto ${authId} → ${
+          mapped?.pixStatus ?? "pending"
+        }/${mapped?.subStatus ?? "-"}`,
+      );
     }
     // Marcação de bookkeeping: NÃO lança de propósito. O estado já foi aplicado;
     // se só o carimbo falhar, o evento fica 'pending' e o reconcile reprocessa
@@ -541,11 +914,17 @@ async function processPixAutoAuthEvent(
       .update({ status: "processed", last_error: null })
       .eq("event_id", eventId);
     if (ackErr) {
-      console.error(`[tenant-webhook] não consegui marcar ${eventId} como processed:`, ackErr.message);
+      console.error(
+        `[tenant-webhook] não consegui marcar ${eventId} como processed:`,
+        ackErr.message,
+      );
     }
     return true;
   } catch (e) {
-    console.error(`[tenant-webhook] pix-auto auth event falhou (${eventId}):`, (e as Error).message);
+    console.error(
+      `[tenant-webhook] pix-auto auth event falhou (${eventId}):`,
+      (e as Error).message,
+    );
     await supabase
       .from("tenant_payment_webhook_events")
       .update({ status: "error", last_error: (e as Error).message })
@@ -575,24 +954,30 @@ function warnOnUnsettledCharge(
 ): void {
   if (!data || typeof data !== "object") return;
   const row = data as Record<string, unknown>;
-  const status = typeof row.receivable_status === "string" ? row.receivable_status : null;
+  const status = typeof row.receivable_status === "string"
+    ? row.receivable_status
+    : null;
   // Campo ausente = RPC ainda na versão anterior à auto-cura (janela entre o
   // deploy desta função e a aplicação da migration). Nesse caso NÃO inventa
   // alarme: cai no comportamento antigo, que só avisa quando ok === false.
   const settled = status === null || status === "ok" || status === "healed";
   if (row.ok !== false && settled) return;
 
-  const where = installmentId ? `${paymentId} (installment ${installmentId})` : paymentId;
+  const where = installmentId
+    ? `${paymentId} (installment ${installmentId})`
+    : paymentId;
   if (row.ok === false) {
     console.warn(
       `[tenant-webhook] ${rpc} não aplicou a baixa em ${where} — evento aceito sem efeito. ` +
-      `Resultado: ${JSON.stringify(data)}`,
+        `Resultado: ${JSON.stringify(data)}`,
     );
     return;
   }
   console.warn(
     `[tenant-webhook] ${rpc}: pagamento ${where} confirmado SEM lançamento no Financeiro ` +
-    `(receivable_status=${status ?? "desconhecido"}). Resultado: ${JSON.stringify(data)}`,
+      `(receivable_status=${status ?? "desconhecido"}). Resultado: ${
+        JSON.stringify(data)
+      }`,
   );
 }
 
@@ -626,12 +1011,13 @@ async function processEvent(
       (event === "PAYMENT_RECEIVED" ||
         event === "PAYMENT_CONFIRMED" ||
         event === "PAYMENT_RECEIVED_IN_CASH") &&
-      (status === "RECEIVED" || status === "CONFIRMED" || status === "RECEIVED_IN_CASH")
+      (status === "RECEIVED" || status === "CONFIRMED" ||
+        status === "RECEIVED_IN_CASH")
     ) {
       // BAIXA (dinheiro entrou). RECEIVED_IN_CASH = recebido em dinheiro/fora do Asaas,
       // mas ainda é uma quitação → mesma baixa idempotente por asaas_payment_id.
-      const paidAt =
-        payment.paymentDate || payment.confirmedDate || new Date().toISOString();
+      const paidAt = payment.paymentDate || payment.confirmedDate ||
+        new Date().toISOString();
       const isInstallmentPayment = isInstallmentPaymentEvent(payment);
 
       if (isInstallmentPayment) {
@@ -641,26 +1027,45 @@ async function processEvent(
         // cria filha "Recebimento parcial" (+ neta de tarifa da PARCELA) e só
         // fecha a cobrança como CONFIRMED quando a soma das filhas cobre o
         // valor total (ver apply_tenant_charge_installment_payment).
-        const { data, error } = await supabase.rpc("apply_tenant_charge_installment_payment", {
-          p_asaas_payment_id: payment.id,
-          p_asaas_installment_id: payment.installment,
-          p_value: payment.value != null ? Number(payment.value) : null,
-          p_net_value: payment.netValue != null ? Number(payment.netValue) : null,
-          p_paid_at: paidAt,
-          p_installment_number: payment.installmentNumber ?? null,
-        });
+        const { data, error } = await supabase.rpc(
+          "apply_tenant_charge_installment_payment",
+          {
+            p_asaas_payment_id: payment.id,
+            p_asaas_installment_id: payment.installment,
+            p_value: payment.value != null ? Number(payment.value) : null,
+            p_net_value: payment.netValue != null
+              ? Number(payment.netValue)
+              : null,
+            p_paid_at: paidAt,
+            p_installment_number: payment.installmentNumber ?? null,
+          },
+        );
         if (error) throw new Error(error.message);
-        warnOnUnsettledCharge("apply_tenant_charge_installment_payment", payment.id, data, payment.installment);
-        console.log(`[tenant-webhook] baixa de parcela aplicada ${payment.id}:`, JSON.stringify(data));
+        warnOnUnsettledCharge(
+          "apply_tenant_charge_installment_payment",
+          payment.id,
+          data,
+          payment.installment,
+        );
+        console.log(
+          `[tenant-webhook] baixa de parcela aplicada ${payment.id}:`,
+          JSON.stringify(data),
+        );
       } else {
-        const { data, error } = await supabase.rpc("apply_tenant_charge_payment", {
-          p_asaas_payment_id: payment.id,
-          p_paid_at: paidAt,
-          p_net: payment.netValue != null ? Number(payment.netValue) : null,
-        });
+        const { data, error } = await supabase.rpc(
+          "apply_tenant_charge_payment",
+          {
+            p_asaas_payment_id: payment.id,
+            p_paid_at: paidAt,
+            p_net: payment.netValue != null ? Number(payment.netValue) : null,
+          },
+        );
         if (error) throw new Error(error.message);
         warnOnUnsettledCharge("apply_tenant_charge_payment", payment.id, data);
-        console.log(`[tenant-webhook] baixa aplicada ${payment.id}:`, JSON.stringify(data));
+        console.log(
+          `[tenant-webhook] baixa aplicada ${payment.id}:`,
+          JSON.stringify(data),
+        );
       }
     } else if (
       event === "PAYMENT_REFUNDED" ||
@@ -674,17 +1079,20 @@ async function processEvent(
       //   REFUNDED                      → REFUNDED
       //   CHARGEBACK_REQUESTED/DISPUTE  → CHARGEBACK
       //   AWAITING_CHARGEBACK_REVERSAL  → CHARGEBACK (aguardando reversão; ainda revertido pra nós)
-      const newStatus =
-        event === "PAYMENT_REFUNDED"
-          ? "REFUNDED"
-          : event === "PAYMENT_REFUND_IN_PROGRESS"
-            ? "REFUND_IN_PROGRESS"
-            : "CHARGEBACK";
+      const newStatus = event === "PAYMENT_REFUNDED"
+        ? "REFUNDED"
+        : event === "PAYMENT_REFUND_IN_PROGRESS"
+        ? "REFUND_IN_PROGRESS"
+        : "CHARGEBACK";
       await applyWrite(
         "reversao de baixa na cobranca",
         supabase
           .from("tenant_charges")
-          .update({ status: newStatus, payment_date: null, updated_at: new Date().toISOString() })
+          .update({
+            status: newStatus,
+            payment_date: null,
+            updated_at: new Date().toISOString(),
+          })
           .eq("asaas_payment_id", payment.id)
           .eq("company_id", companyId),
       );
@@ -700,13 +1108,20 @@ async function processEvent(
           "reabertura do recebivel",
           supabase
             .from("financial_transactions")
-            .update({ is_paid: false, paid_date: null, amount_received: 0, updated_at: new Date().toISOString() })
+            .update({
+              is_paid: false,
+              paid_date: null,
+              amount_received: 0,
+              updated_at: new Date().toISOString(),
+            })
             .eq("tenant_charge_id", charge.id)
             .eq("company_id", companyId)
             .eq("transaction_type", "entrada"),
         );
       }
-      console.log(`[tenant-webhook] baixa revertida (${newStatus}) ${payment.id}`);
+      console.log(
+        `[tenant-webhook] baixa revertida (${newStatus}) ${payment.id}`,
+      );
     } else if (event === "PAYMENT_OVERDUE") {
       // VENCIDO. Marca a própria cobrança OVERDUE (posse por company_id). Se for ciclo
       // de uma assinatura, marca também a assinatura 'overdue' (só se ainda ativa —
@@ -727,7 +1142,8 @@ async function processEvent(
             .update({ status: "overdue", updated_at: new Date().toISOString() })
             .eq("asaas_subscription_id", payment.subscription)
             .eq("company_id", companyId)
-            .eq("status", "active"),
+            .eq("status", "active")
+            .is("deleted_at", null),
         );
         // Pix Automático: o vínculo do ciclo vem em pix_auto_authorization_id.
         await applyWrite(
@@ -737,9 +1153,12 @@ async function processEvent(
             .update({ status: "overdue", updated_at: new Date().toISOString() })
             .eq("pix_auto_authorization_id", payment.subscription)
             .eq("company_id", companyId)
-            .eq("status", "active"),
+            .eq("status", "active")
+            .is("deleted_at", null),
         );
-        console.log(`[tenant-webhook] assinatura ${payment.subscription} marcada overdue`);
+        console.log(
+          `[tenant-webhook] assinatura ${payment.subscription} marcada overdue`,
+        );
       }
       console.log(`[tenant-webhook] cobrança ${payment.id} marcada OVERDUE`);
     } else if (event === "PAYMENT_DELETED") {
@@ -766,7 +1185,9 @@ async function processEvent(
           .eq("asaas_payment_id", payment.id)
           .eq("company_id", companyId),
       );
-      console.log(`[tenant-webhook] cobrança ${payment.id} restaurada (${restored})`);
+      console.log(
+        `[tenant-webhook] cobrança ${payment.id} restaurada (${restored})`,
+      );
     } else if (event === "PAYMENT_CREATED" || event === "PAYMENT_UPDATED") {
       // ESPELHO best-effort: se a cobrança já existe localmente, atualiza status/valor/
       // due_date/urls pra refletir o Asaas. Se NÃO existe (cobrança criada direto no
@@ -779,13 +1200,25 @@ async function processEvent(
         .eq("company_id", companyId)
         .maybeSingle();
       if (existing?.id) {
-        const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-        if (typeof payment?.status === "string" && payment.status) patch.status = payment.status;
-        if (payment?.value != null && Number.isFinite(Number(payment.value))) patch.value = Number(payment.value);
+        const patch: Record<string, unknown> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (typeof payment?.status === "string" && payment.status) {
+          patch.status = payment.status;
+        }
+        if (payment?.value != null && Number.isFinite(Number(payment.value))) {
+          patch.value = Number(payment.value);
+        }
         if (payment?.netValue != null) patch.net_value = payment.netValue;
-        if (typeof payment?.dueDate === "string" && payment.dueDate) patch.due_date = payment.dueDate;
-        if (typeof payment?.invoiceUrl === "string" && payment.invoiceUrl) patch.invoice_url = payment.invoiceUrl;
-        if (typeof payment?.bankSlipUrl === "string" && payment.bankSlipUrl) patch.boleto_url = payment.bankSlipUrl;
+        if (typeof payment?.dueDate === "string" && payment.dueDate) {
+          patch.due_date = payment.dueDate;
+        }
+        if (typeof payment?.invoiceUrl === "string" && payment.invoiceUrl) {
+          patch.invoice_url = payment.invoiceUrl;
+        }
+        if (typeof payment?.bankSlipUrl === "string" && payment.bankSlipUrl) {
+          patch.boleto_url = payment.bankSlipUrl;
+        }
         await applyWrite(
           "espelho PAYMENT_CREATED/UPDATED",
           supabase
@@ -796,14 +1229,23 @@ async function processEvent(
         );
         console.log(`[tenant-webhook] espelho ${event} aplicado ${payment.id}`);
       } else {
-        console.log(`[tenant-webhook] ${event} sem charge local (${payment.id}) — ignorado`);
+        console.log(
+          `[tenant-webhook] ${event} sem charge local (${payment.id}) — ignorado`,
+        );
       }
-    } else if (event === "PAYMENT_BANK_SLIP_VIEWED" || event === "PAYMENT_CHECKOUT_VIEWED") {
+    } else if (
+      event === "PAYMENT_BANK_SLIP_VIEWED" ||
+      event === "PAYMENT_CHECKOUT_VIEWED"
+    ) {
       // Informativos — sem efeito no estado. Só registra (o evento já foi dedupado/logado).
-      console.log(`[tenant-webhook] informativo ${event} (${payment.id}) — sem efeito`);
+      console.log(
+        `[tenant-webhook] informativo ${event} (${payment.id}) — sem efeito`,
+      );
     } else {
       // Evento de payment desconhecido: sem efeito, marca processed (não re-tenta à toa).
-      console.log(`[tenant-webhook] payment event não mapeado (${event}, ${payment.id}) — ack`);
+      console.log(
+        `[tenant-webhook] payment event não mapeado (${event}, ${payment.id}) — ack`,
+      );
     }
 
     // Marcação de bookkeeping: NÃO lança de propósito. O estado já foi aplicado;
@@ -814,11 +1256,17 @@ async function processEvent(
       .update({ status: "processed", last_error: null })
       .eq("event_id", eventId);
     if (ackErr) {
-      console.error(`[tenant-webhook] não consegui marcar ${eventId} como processed:`, ackErr.message);
+      console.error(
+        `[tenant-webhook] não consegui marcar ${eventId} como processed:`,
+        ackErr.message,
+      );
     }
     return true;
   } catch (e) {
-    console.error(`[tenant-webhook] processamento falhou (${eventId}):`, (e as Error).message);
+    console.error(
+      `[tenant-webhook] processamento falhou (${eventId}):`,
+      (e as Error).message,
+    );
     await supabase
       .from("tenant_payment_webhook_events")
       .update({ status: "error", last_error: (e as Error).message })
@@ -839,7 +1287,98 @@ Deno.serve(async (req) => {
     const event: string = body?.event ?? "";
     const payment = body?.payment ?? null;
     const subscription = body?.subscription ?? null;
+    const checkout = body?.checkout ?? null;
     const providedToken = (req.headers.get("asaas-access-token") || "").trim();
+
+    // Checkout hospedado do cartão: atualiza somente a linha identificada pelo
+    // checkout_id e captura o asaas_subscription_id quando o checkout o informar.
+    if (isCheckoutEvent(event)) {
+      if (!checkout || !checkout.id) {
+        return json({ received: true, ignored: "sem checkout" });
+      }
+      const checkoutCompanyId = await resolveCompanyForCheckout(
+        supabase,
+        checkout,
+      );
+      if (!checkoutCompanyId) {
+        await recordOrphan(supabase, event, {
+          id: checkout.id,
+          externalReference: checkout.externalReference,
+        });
+        return json({
+          received: true,
+          matched: false,
+          unmatched_recorded: true,
+        });
+      }
+      const expectedTokenCheckout = await readWebhookToken(
+        supabase,
+        checkoutCompanyId,
+      );
+      if (
+        !expectedTokenCheckout || !providedToken ||
+        !timingSafeEqual(providedToken, expectedTokenCheckout)
+      ) {
+        console.error(
+          `[tenant-webhook] token inválido em CHECKOUT (company ${checkoutCompanyId})`,
+        );
+        return json({ error: "Unauthorized webhook" }, 401);
+      }
+      const checkoutEventId: string = body?.id ?? `${checkout.id}_${event}`;
+      const { error: checkoutDedupeErr } = await supabase
+        .from("tenant_payment_webhook_events")
+        .insert({
+          event_id: checkoutEventId,
+          event_type: event,
+          asaas_payment_id: null,
+          company_id: checkoutCompanyId,
+          status: "received",
+          raw_payload: {
+            checkout: {
+              id: checkout.id,
+              status: checkout.status ?? null,
+              subscription: checkoutSubscriptionId(checkout),
+            },
+          },
+        });
+      if (checkoutDedupeErr) {
+        if (checkoutDedupeErr.code === "23505") {
+          const { data: prior } = await supabase
+            .from("tenant_payment_webhook_events")
+            .select("status")
+            .eq("event_id", checkoutEventId)
+            .maybeSingle();
+          if (prior?.status === "processed") {
+            return json({ received: true, duplicate: true });
+          }
+          const okRetry = await processCheckoutEvent(
+            supabase,
+            checkoutEventId,
+            event,
+            checkout,
+            checkoutCompanyId,
+          );
+          return okRetry
+            ? json({ received: true, reprocessed: true })
+            : json({ received: false, retry: true }, 500);
+        }
+        console.error(
+          "[tenant-webhook] dedupe insert (checkout) falhou:",
+          checkoutDedupeErr.message,
+        );
+        return json({ received: false, retry: true }, 500);
+      }
+      const okCheckout = await processCheckoutEvent(
+        supabase,
+        checkoutEventId,
+        event,
+        checkout,
+        checkoutCompanyId,
+      );
+      return okCheckout
+        ? json({ received: true })
+        : json({ received: false, retry: true }, 500);
+    }
 
     // ---- Eventos de ASSINATURA (SUBSCRIPTION_*): payload em body.subscription,
     // NÃO em body.payment. Trata antes do check de payment (que não existe aqui).
@@ -849,14 +1388,29 @@ Deno.serve(async (req) => {
       if (!subscription || !subscription.id) {
         return json({ received: true, ignored: "sem subscription" });
       }
-      const subCompanyId = await resolveCompanyForSubscription(supabase, subscription);
+      const subCompanyId = await resolveCompanyForSubscription(
+        supabase,
+        subscription,
+      );
       if (!subCompanyId) {
-        await recordOrphan(supabase, event, { id: subscription.id, externalReference: subscription.externalReference });
-        return json({ received: true, matched: false, unmatched_recorded: true });
+        await recordOrphan(supabase, event, {
+          id: subscription.id,
+          externalReference: subscription.externalReference,
+        });
+        return json({
+          received: true,
+          matched: false,
+          unmatched_recorded: true,
+        });
       }
       const expectedTokenSub = await readWebhookToken(supabase, subCompanyId);
-      if (!expectedTokenSub || !providedToken || !timingSafeEqual(providedToken, expectedTokenSub)) {
-        console.error(`[tenant-webhook] token inválido em SUBSCRIPTION (company ${subCompanyId})`);
+      if (
+        !expectedTokenSub || !providedToken ||
+        !timingSafeEqual(providedToken, expectedTokenSub)
+      ) {
+        console.error(
+          `[tenant-webhook] token inválido em SUBSCRIPTION (company ${subCompanyId})`,
+        );
         return json({ error: "Unauthorized webhook" }, 401);
       }
       const subEventId: string = body?.id ?? `${subscription.id}_${event}`;
@@ -877,15 +1431,36 @@ Deno.serve(async (req) => {
             .select("status")
             .eq("event_id", subEventId)
             .maybeSingle();
-          if (prior?.status === "processed") return json({ received: true, duplicate: true });
-          const okR = await processSubscriptionEvent(supabase, subEventId, event, subscription, subCompanyId);
-          return okR ? json({ received: true, reprocessed: true }) : json({ received: false, retry: true }, 500);
+          if (prior?.status === "processed") {
+            return json({ received: true, duplicate: true });
+          }
+          const okR = await processSubscriptionEvent(
+            supabase,
+            subEventId,
+            event,
+            subscription,
+            subCompanyId,
+          );
+          return okR
+            ? json({ received: true, reprocessed: true })
+            : json({ received: false, retry: true }, 500);
         }
-        console.error("[tenant-webhook] dedupe insert (subscription) falhou:", subDedupeErr.message);
+        console.error(
+          "[tenant-webhook] dedupe insert (subscription) falhou:",
+          subDedupeErr.message,
+        );
         return json({ received: false, retry: true }, 500);
       }
-      const okSub = await processSubscriptionEvent(supabase, subEventId, event, subscription, subCompanyId);
-      return okSub ? json({ received: true }) : json({ received: false, retry: true }, 500);
+      const okSub = await processSubscriptionEvent(
+        supabase,
+        subEventId,
+        event,
+        subscription,
+        subCompanyId,
+      );
+      return okSub
+        ? json({ received: true })
+        : json({ received: false, retry: true }, 500);
     }
 
     // ---- Eventos de AUTORIZAÇÃO de PIX AUTOMÁTICO (PIX_RECURRING_* / PIX_AUTOMATIC_*):
@@ -897,17 +1472,31 @@ Deno.serve(async (req) => {
       const authObj = extractPixAuthObject(body);
       if (!authObj || !authObj.id) {
         // Sem objeto de autorização não dá pra resolver tenant/token; ack (nada a fazer).
-        console.log(`[tenant-webhook] pix-auto sem authorization no payload (${event}) — ack`);
+        console.log(
+          `[tenant-webhook] pix-auto sem authorization no payload (${event}) — ack`,
+        );
         return json({ received: true, ignored: "sem authorization" });
       }
       const pixCompanyId = await resolveCompanyForPixAuth(supabase, authObj);
       if (!pixCompanyId) {
-        await recordOrphan(supabase, event, { id: authObj.id, externalReference: authObj.externalReference });
-        return json({ received: true, matched: false, unmatched_recorded: true });
+        await recordOrphan(supabase, event, {
+          id: authObj.id,
+          externalReference: authObj.externalReference,
+        });
+        return json({
+          received: true,
+          matched: false,
+          unmatched_recorded: true,
+        });
       }
       const expectedTokenPix = await readWebhookToken(supabase, pixCompanyId);
-      if (!expectedTokenPix || !providedToken || !timingSafeEqual(providedToken, expectedTokenPix)) {
-        console.error(`[tenant-webhook] token inválido em PIX-AUTO (company ${pixCompanyId})`);
+      if (
+        !expectedTokenPix || !providedToken ||
+        !timingSafeEqual(providedToken, expectedTokenPix)
+      ) {
+        console.error(
+          `[tenant-webhook] token inválido em PIX-AUTO (company ${pixCompanyId})`,
+        );
         return json({ error: "Unauthorized webhook" }, 401);
       }
       const pixEventId: string = body?.id ?? `${authObj.id}_${event}`;
@@ -928,15 +1517,36 @@ Deno.serve(async (req) => {
             .select("status")
             .eq("event_id", pixEventId)
             .maybeSingle();
-          if (prior?.status === "processed") return json({ received: true, duplicate: true });
-          const okR = await processPixAutoAuthEvent(supabase, pixEventId, event, authObj, pixCompanyId);
-          return okR ? json({ received: true, reprocessed: true }) : json({ received: false, retry: true }, 500);
+          if (prior?.status === "processed") {
+            return json({ received: true, duplicate: true });
+          }
+          const okR = await processPixAutoAuthEvent(
+            supabase,
+            pixEventId,
+            event,
+            authObj,
+            pixCompanyId,
+          );
+          return okR
+            ? json({ received: true, reprocessed: true })
+            : json({ received: false, retry: true }, 500);
         }
-        console.error("[tenant-webhook] dedupe insert (pix-auto) falhou:", pixDedupeErr.message);
+        console.error(
+          "[tenant-webhook] dedupe insert (pix-auto) falhou:",
+          pixDedupeErr.message,
+        );
         return json({ received: false, retry: true }, 500);
       }
-      const okPix = await processPixAutoAuthEvent(supabase, pixEventId, event, authObj, pixCompanyId);
-      return okPix ? json({ received: true }) : json({ received: false, retry: true }, 500);
+      const okPix = await processPixAutoAuthEvent(
+        supabase,
+        pixEventId,
+        event,
+        authObj,
+        pixCompanyId,
+      );
+      return okPix
+        ? json({ received: true })
+        : json({ received: false, retry: true }, 500);
     }
 
     if (!payment || !payment.id) {
@@ -954,7 +1564,10 @@ Deno.serve(async (req) => {
 
     // 2) Valida o token daquele tenant (fail-closed). Regra-lei #6.
     const expectedToken = await readWebhookToken(supabase, companyId);
-    if (!expectedToken || !providedToken || !timingSafeEqual(providedToken, expectedToken)) {
+    if (
+      !expectedToken || !providedToken ||
+      !timingSafeEqual(providedToken, expectedToken)
+    ) {
       console.error(`[tenant-webhook] token inválido (company ${companyId})`);
       return json({ error: "Unauthorized webhook" }, 401);
     }
@@ -985,10 +1598,21 @@ Deno.serve(async (req) => {
           return json({ received: true, duplicate: true });
         }
         // Reprocessa (a idempotência da RPC/updates por company_id protege de duplicar).
-        const ok = await processEvent(supabase, eventId, event, payment, companyId);
-        return ok ? json({ received: true, reprocessed: true }) : json({ received: false, retry: true }, 500);
+        const ok = await processEvent(
+          supabase,
+          eventId,
+          event,
+          payment,
+          companyId,
+        );
+        return ok
+          ? json({ received: true, reprocessed: true })
+          : json({ received: false, retry: true }, 500);
       }
-      console.error("[tenant-webhook] dedupe insert falhou:", dedupeErr.message);
+      console.error(
+        "[tenant-webhook] dedupe insert falhou:",
+        dedupeErr.message,
+      );
       // Sem dedupe confiável não processamos; pedimos re-entrega à Asaas.
       return json({ received: false, retry: true }, 500);
     }
@@ -1015,7 +1639,13 @@ Deno.serve(async (req) => {
       event === "PAYMENT_RESTORED";
 
     if (isMoneyEvent) {
-      const ok = await processEvent(supabase, eventId, event, payment, companyId);
+      const ok = await processEvent(
+        supabase,
+        eventId,
+        event,
+        payment,
+        companyId,
+      );
       if (!ok) {
         // Marcamos o evento como 'error' (dentro de processEvent) e pedimos re-entrega.
         return json({ received: false, retry: true }, 500);
@@ -1034,7 +1664,10 @@ Deno.serve(async (req) => {
     }
     return json({ received: true });
   } catch (error) {
-    console.error("[tenant-webhook] erro inesperado:", (error as Error).message);
+    console.error(
+      "[tenant-webhook] erro inesperado:",
+      (error as Error).message,
+    );
     // 500 controlado (sem vazar a mensagem interna): pede re-entrega à Asaas.
     // A idempotência (event_id UNIQUE + RPC no-op se já pago) protege de duplicar.
     return json({ received: false, retry: true }, 500);

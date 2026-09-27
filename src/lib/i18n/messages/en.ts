@@ -106,6 +106,7 @@ export const enOverrides: MessagesOverride = {
     errorEmailRequired: 'Email is required',
     errorEmailInvalid: 'Invalid email',
     errorPhoneRequired: 'Phone is required',
+    errorPhoneInvalid: 'Enter a valid Brazilian phone number with area code',
     errorPasswordRequired: 'Password is required',
     errorPasswordMinReqs: 'Password does not meet the minimum requirements',
     errorConfirmPasswordRequired: 'Confirm the password',

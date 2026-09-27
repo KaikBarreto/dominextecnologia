@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
+import { isValidBrazilianPhone } from '../_shared/phone-validation.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -46,6 +47,7 @@ const MESSAGES: Record<Locale, {
   invalidJson: string;
   requiredFields: string;
   invalidEmail: string;
+  invalidPhone: string;
   invalidPassword: string;
   rateLimited: string;
   emailAlreadyRegistered: string;
@@ -56,8 +58,9 @@ const MESSAGES: Record<Locale, {
   'pt-br': {
     methodNotAllowed: 'Método não permitido',
     invalidJson: 'JSON inválido',
-    requiredFields: 'Campos obrigatórios: nome da empresa, contato, e-mail e senha',
+    requiredFields: 'Campos obrigatórios: nome da empresa, contato, e-mail, telefone e senha',
     invalidEmail: 'E-mail inválido',
+    invalidPhone: 'Informe um telefone válido com DDD',
     invalidPassword: 'Senha deve ter entre 8 e 128 caracteres',
     rateLimited: 'Muitas tentativas de cadastro. Aguarde e tente novamente.',
     emailAlreadyRegistered: 'Este email já está cadastrado. Faça login ou use outro email.',
@@ -68,8 +71,9 @@ const MESSAGES: Record<Locale, {
   en: {
     methodNotAllowed: 'Method not allowed',
     invalidJson: 'Invalid JSON',
-    requiredFields: 'Required fields: company name, contact, email and password',
+    requiredFields: 'Required fields: company name, contact, email, phone and password',
     invalidEmail: 'Invalid email',
+    invalidPhone: 'Enter a valid Brazilian phone number with area code',
     invalidPassword: 'Password must be between 8 and 128 characters',
     rateLimited: 'Too many registration attempts. Wait and try again.',
     emailAlreadyRegistered: 'This email is already registered. Log in or use another email.',
@@ -80,8 +84,9 @@ const MESSAGES: Record<Locale, {
   es: {
     methodNotAllowed: 'Método no permitido',
     invalidJson: 'JSON inválido',
-    requiredFields: 'Campos obligatorios: nombre de la empresa, contacto, correo electrónico y contraseña',
+    requiredFields: 'Campos obligatorios: nombre de la empresa, contacto, correo electrónico, teléfono y contraseña',
     invalidEmail: 'Correo electrónico inválido',
+    invalidPhone: 'Introduce un teléfono brasileño válido con código de área',
     invalidPassword: 'La contraseña debe tener entre 8 y 128 caracteres',
     rateLimited: 'Demasiados intentos de registro. Espera e inténtalo de nuevo.',
     emailAlreadyRegistered: 'Este correo electrónico ya está registrado. Inicia sesión o usa otro correo.',
@@ -92,8 +97,9 @@ const MESSAGES: Record<Locale, {
   fr: {
     methodNotAllowed: 'Méthode non autorisée',
     invalidJson: 'JSON invalide',
-    requiredFields: 'Champs obligatoires : nom de l\'entreprise, contact, e-mail et mot de passe',
+    requiredFields: 'Champs obligatoires : nom de l\'entreprise, contact, e-mail, téléphone et mot de passe',
     invalidEmail: 'E-mail invalide',
+    invalidPhone: 'Saisissez un numéro brésilien valide avec indicatif régional',
     invalidPassword: 'Le mot de passe doit contenir entre 8 et 128 caractères',
     rateLimited: 'Trop de tentatives d’inscription. Patientez puis réessayez.',
     emailAlreadyRegistered: 'Cet e-mail est déjà enregistré. Connectez-vous ou utilisez un autre e-mail.',
@@ -244,7 +250,7 @@ Deno.serve(async (req) => {
     const referralCode = trim(raw.referral_code, 50); // closer (vendedor que fechou)
     const sdrReferralCode = trim(raw.sdr_referral_code, 50); // SDR que agendou (opcional)
 
-    if (!company_name || !contact_name || !company_email || !password) {
+    if (!company_name || !contact_name || !company_email || !company_phone || !password) {
       return new Response(
         JSON.stringify({ error: t.requiredFields }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -254,6 +260,11 @@ Deno.serve(async (req) => {
     // grava null (linha do insert: `segment: segment || null`) e segue normal.
     if (!EMAIL_RE.test(company_email)) {
       return new Response(JSON.stringify({ error: t.invalidEmail }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!isValidBrazilianPhone(company_phone)) {
+      return new Response(JSON.stringify({ error: t.invalidPhone }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

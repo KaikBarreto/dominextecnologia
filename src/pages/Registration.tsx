@@ -32,6 +32,7 @@ import LanguageSelector from '@/components/i18n/LanguageSelector';
 import { detectRegionalFromMachine, DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from '@/lib/i18n/regionalDefaults';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { TERMS_VERSION } from '@/data/termsOfUse';
+import { isValidBrazilianPhone } from '@/lib/phone-validation';
 
 interface RegistrationFormData {
   company_name: string;
@@ -614,6 +615,7 @@ export default function Registration() {
                           <Input
                             {...register('company_phone', {
                               required: t.errorPhoneRequired,
+                              validate: (value) => isValidBrazilianPhone(value) || t.errorPhoneInvalid,
                               onChange: (e) => { e.target.value = phoneMask(e.target.value); },
                             })}
                             placeholder={t.phonePlaceholder}

@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon,
   User,
   TrendingUp,
+  ListFilter,
   Wrench,
   ChevronDown,
   Briefcase,
@@ -114,7 +115,7 @@ const tenantMenuItems: MenuItem[] = [
       // quick-create vir pelo modal de contrato (parallel work — Cliente PMOC).
     ],
   },
-  { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
+  { title: 'CRM/Kanban', icon: ListFilter, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
   {
     title: 'Financeiro',
     icon: DollarSign,

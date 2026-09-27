@@ -2,55 +2,61 @@
 // ---------------------------------
 // PRIVILEGIADA (Bearer + módulo 'cobrancas' + can_manage_system). Cria uma ASSINATURA
 // recorrente na conta Asaas DO TENANT (chave BYO lida do Vault) e grava
-// tenant_subscriptions. Aceita boleto/Pix (BOLETO | PIX | UNDEFINED) e, DORMENTE
-// atrás do flag tenant_payment_accounts.card_recurring_enabled, CARTÃO recorrente
-// (CREDIT_CARD) — a Asaas tokeniza o cartão e cobra sozinha a cada ciclo.
+// tenant_subscriptions. Boleto/Pix criam a assinatura pela API. Cartão cria um
+// checkout HOSPEDADO recorrente da Asaas: PAN, validade e CVV nunca passam pelo
+// Dominex, pela Edge Function ou pelo banco.
 //
 // company_id vem do profile (payments-auth), nunca do payload.
 //
 // Fluxo:
 //   1. lê a chave BYO do Vault (via tenant_payment_accounts.vault_secret_name);
 //   2. garante o asaas_customer_id do cliente final (dedupe por externalReference);
-//   3. POST /v3/subscriptions com externalReference = company_id (resolução multi-tenant),
-//      fine/interest do override → default da conta (juros clampado a 10%; a multa
-//      pode ser % ou valor fixo em R$, via fine_type/fine_value). No cartão,
-//      manda creditCard + creditCardHolderInfo + remoteIp e recebe o token de volta;
-//   4. no cartão, grava o token no Vault e a referência (+ last4/brand) na linha;
-//   5. grava tenant_subscriptions (status 'active', asaas_subscription_id, next_due_date...).
+//   3. boleto/Pix: POST /v3/subscriptions e status active;
+//   4. cartão: POST /v3/checkouts RECURRENT/CREDIT_CARD e status pending;
+//   5. grava somente IDs/URL/status do checkout — nunca dados do cartão.
 //
 // As cobranças de cada ciclo são criadas PELO ASAAS e chegam via webhook
 // (tenant-asaas-webhook), que materializa cada uma em tenant_charges + recebível.
 //
-// Duração (opcional): `max_payments` vira `maxPayments` no POST — número máximo
-// de cobranças que a Asaas vai gerar. Ausente = contínua (default de hoje). Ao
-// esgotar o limite a Asaas encerra a assinatura sozinha (status EXPIRED) e o
-// webhook já mapeia EXPIRED/INACTIVE → 'cancelled' local. NÃO persistimos o
-// valor em tenant_subscriptions (sem coluna pra isso; a Asaas é a fonte da
-// verdade e conta os ciclos por conta própria).
+// Duração (opcional): na assinatura criada diretamente, `max_payments` vira
+// `maxPayments`. No checkout hospedado, cujo DTO documentado não aceita esse
+// campo, o limite é convertido em `subscription.endDate`. Ausente = contínua.
+// O limite também é persistido no espelho para edição e auditoria fiéis.
 //
 // Nunca retorna custo/margem interna. Nunca loga a chave.
 
 import { handleCors } from "../_shared/cors.ts";
 import {
   authorizePaymentsManager,
+  generateShortCode,
   jsonResponse,
   vaultReadSecret,
-  vaultUpsertSecret,
 } from "../_shared/payments-auth.ts";
 import {
-  asaasFor,
   AsaasApiError,
+  asaasFor,
   isMethodNotEnabledError,
   methodNotEnabledBody,
 } from "../_shared/asaas-tenant-client.ts";
 import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
 
-/** billing_types de assinatura aceitos. Cartão fica dormente atrás do flag da conta. */
+/** billing_types de assinatura aceitos. */
 type BillingType = "PIX" | "BOLETO" | "UNDEFINED" | "CREDIT_CARD";
-const ALLOWED_BILLING_TYPES: readonly BillingType[] = ["PIX", "BOLETO", "UNDEFINED", "CREDIT_CARD"];
+const ALLOWED_BILLING_TYPES: readonly BillingType[] = [
+  "PIX",
+  "BOLETO",
+  "UNDEFINED",
+  "CREDIT_CARD",
+];
 
 /** Ciclos aceitos pela Asaas (mesmo vocabulário do CHECK de tenant_subscriptions). */
-type Cycle = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "SEMIANNUALLY" | "YEARLY";
+type Cycle =
+  | "WEEKLY"
+  | "BIWEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "SEMIANNUALLY"
+  | "YEARLY";
 const ALLOWED_CYCLES: readonly Cycle[] = [
   "WEEKLY",
   "BIWEEKLY",
@@ -69,13 +75,63 @@ const ASAAS_MAX_INTEREST_PERCENT = 10;
 /** hoje + `days` em UTC, formatado YYYY-MM-DD (usado quando next_due_date não vem). */
 function dueDateFromDays(days: number): string {
   const now = new Date();
-  const base = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const base = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
   const safeDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
   const target = new Date(base + safeDays * 86_400_000);
   const y = target.getUTCFullYear();
   const m = String(target.getUTCMonth() + 1).padStart(2, "0");
   const d = String(target.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+/** Último vencimento de uma assinatura limitada (primeiro ciclo já conta como 1). */
+function subscriptionEndDate(
+  firstDueDate: string,
+  cycle: Cycle,
+  maxPayments: number,
+): string {
+  const date = new Date(`${firstDueDate}T00:00:00Z`);
+  const periods = Math.max(0, maxPayments - 1);
+  if (cycle === "WEEKLY" || cycle === "BIWEEKLY") {
+    date.setUTCDate(
+      date.getUTCDate() + periods * (cycle === "WEEKLY" ? 7 : 14),
+    );
+  } else {
+    const monthsPerCycle = cycle === "MONTHLY"
+      ? 1
+      : cycle === "QUARTERLY"
+      ? 3
+      : cycle === "SEMIANNUALLY"
+      ? 6
+      : 12;
+    const wantedDay = date.getUTCDate();
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() + periods * monthsPerCycle);
+    const lastDay = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    date.setUTCDate(Math.min(wantedDay, lastDay));
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeAsaasCheckoutUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    if (
+      url.protocol !== "https:" ||
+      (host !== "asaas.com" && !host.endsWith(".asaas.com"))
+    ) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 /** Normaliza um percentual: número finito > 0, senão null. */
@@ -104,42 +160,32 @@ type FineType = "PERCENTAGE" | "FIXED";
 const ALLOWED_FINE_TYPES: readonly FineType[] = ["PERCENTAGE", "FIXED"];
 
 /** Valida `next_due_date` no formato YYYY-MM-DD e não no passado (UTC, dia cheio). */
-function validateDueDate(due: string): { ok: true } | { ok: false; error: string } {
+function validateDueDate(
+  due: string,
+): { ok: true } | { ok: false; error: string } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
-    return { ok: false, error: "A data do primeiro vencimento deve estar no formato AAAA-MM-DD." };
+    return {
+      ok: false,
+      error: "A data do primeiro vencimento deve estar no formato AAAA-MM-DD.",
+    };
   }
   const parsed = new Date(`${due}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) {
     return { ok: false, error: "A data do primeiro vencimento é inválida." };
   }
   const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const todayUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
   if (parsed.getTime() < todayUtc) {
-    return { ok: false, error: "A data do primeiro vencimento não pode estar no passado." };
+    return {
+      ok: false,
+      error: "A data do primeiro vencimento não pode estar no passado.",
+    };
   }
   return { ok: true };
-}
-
-/**
- * Dados do cartão. ATENÇÃO PCI (ver bloco CARTÃO no handler): number/ccv/expiry
- * SÓ transitam em memória pra chamar o Asaas — NUNCA são persistidos nem logados.
- */
-interface CreditCardInput {
-  holderName?: string;
-  number?: string;
-  expiryMonth?: string;
-  expiryYear?: string;
-  ccv?: string;
-}
-
-/** Dados do titular exigidos pela Asaas no antifraude do cartão. */
-interface CreditCardHolderInfoInput {
-  name?: string;
-  email?: string;
-  cpfCnpj?: string;
-  postalCode?: string;
-  addressNumber?: string;
-  phone?: string;
 }
 
 interface CreateSubscriptionInput {
@@ -172,14 +218,9 @@ interface CreateSubscriptionInput {
   // tenant_subscriptions.cost_center_id; o webhook lê daqui em cada ciclo.
   // Posse validada na RPC (create_tenant_charge_receivable), não aqui.
   cost_center_id?: string | null;
-  // Só quando billing_type === 'CREDIT_CARD' (dados sensíveis, não persistidos).
-  credit_card?: CreditCardInput;
-  credit_card_holder_info?: CreditCardHolderInfoInput;
-  remote_ip?: string;
   // Número máximo de ciclos (cobranças) gerados por esta assinatura. Ausente =
   // contínua (Asaas gera indefinidamente até cancelar). Mapeia pra `maxPayments`
-  // no POST da Asaas. NÃO persistido em tenant_subscriptions (a Asaas é quem
-  // conta e encerra sozinha; o webhook já reflete EXPIRED/INACTIVE → cancelled).
+  // no POST da Asaas e é persistido no espelho local.
   max_payments?: number;
 }
 
@@ -198,60 +239,27 @@ interface CreateSubscriptionInput {
 const MAX_PAYMENTS_CEILING = 120;
 
 /** Valida `max_payments`: inteiro positivo, opcional. */
-function validateMaxPayments(raw: unknown): { ok: true; value: number | null } | { ok: false; error: string } {
-  if (raw === undefined || raw === null || raw === '') return { ok: true, value: null };
+function validateMaxPayments(
+  raw: unknown,
+): { ok: true; value: number | null } | { ok: false; error: string } {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: null };
+  }
   const n = Number(raw);
   if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
-    return { ok: false, error: "O número de ciclos deve ser um número inteiro maior que zero." };
+    return {
+      ok: false,
+      error: "O número de ciclos deve ser um número inteiro maior que zero.",
+    };
   }
   if (n > MAX_PAYMENTS_CEILING) {
     return {
       ok: false,
-      error: `O número de ciclos não pode ser maior que ${MAX_PAYMENTS_CEILING}. Para um prazo maior, deixe a assinatura contínua.`,
+      error:
+        `O número de ciclos não pode ser maior que ${MAX_PAYMENTS_CEILING}. Para um prazo maior, deixe a assinatura contínua.`,
     };
   }
   return { ok: true, value: n };
-}
-
-/** Nome determinístico do secret do token de cartão no Vault (por assinatura Asaas). */
-function cardTokenSecretName(companyId: string, asaasSubscriptionId: string): string {
-  return `tenant_asaas_card_token_${companyId}_${asaasSubscriptionId}`;
-}
-
-/**
- * Valida os blocos de cartão (presença dos campos obrigatórios). NÃO loga valores.
- * Retorna erro PT-BR claro em qualquer campo faltando.
- */
-function validateCreditCardPayload(
-  card: CreditCardInput | undefined,
-  holder: CreditCardHolderInfoInput | undefined,
-  remoteIp: unknown,
-): { ok: true } | { ok: false; error: string } {
-  const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-  if (!card || typeof card !== "object") {
-    return { ok: false, error: "Informe os dados do cartão para a assinatura no cartão." };
-  }
-  if (!s(card.holderName)) return { ok: false, error: "Informe o nome impresso no cartão." };
-  if (!s(card.number)) return { ok: false, error: "Informe o número do cartão." };
-  if (!s(card.expiryMonth) || !s(card.expiryYear)) {
-    return { ok: false, error: "Informe o mês e o ano de validade do cartão." };
-  }
-  if (!s(card.ccv)) return { ok: false, error: "Informe o código de segurança (CVV) do cartão." };
-
-  if (!holder || typeof holder !== "object") {
-    return { ok: false, error: "Informe os dados do titular do cartão." };
-  }
-  if (!s(holder.name)) return { ok: false, error: "Informe o nome do titular do cartão." };
-  if (!s(holder.email)) return { ok: false, error: "Informe o e-mail do titular do cartão." };
-  if (!s(holder.cpfCnpj)) return { ok: false, error: "Informe o CPF/CNPJ do titular do cartão." };
-  if (!s(holder.postalCode)) return { ok: false, error: "Informe o CEP do titular do cartão." };
-  if (!s(holder.addressNumber)) return { ok: false, error: "Informe o número do endereço do titular do cartão." };
-  if (!s(holder.phone)) return { ok: false, error: "Informe o telefone do titular do cartão." };
-
-  if (!s(remoteIp)) {
-    return { ok: false, error: "Não foi possível identificar o IP do pagador. Recarregue a página e tente novamente." };
-  }
-  return { ok: true };
 }
 
 /**
@@ -279,13 +287,17 @@ async function ensureAsaasCustomer(
   const doc = unmaskDoc(rawDoc);
   if (!doc) {
     throw new AsaasApiError(
-      `O cliente "${customer.name ?? "selecionado"}" não tem CPF/CNPJ cadastrado. Cadastre o documento antes de criar a assinatura.`,
+      `O cliente "${
+        customer.name ?? "selecionado"
+      }" não tem CPF/CNPJ cadastrado. Cadastre o documento antes de criar a assinatura.`,
       400,
     );
   }
   if (!isValidDocument(doc)) {
     throw new AsaasApiError(
-      `O CPF/CNPJ do cliente "${customer.name ?? "selecionado"}" é inválido. Corrija o cadastro antes de criar a assinatura.`,
+      `O CPF/CNPJ do cliente "${
+        customer.name ?? "selecionado"
+      }" é inválido. Corrija o cadastro antes de criar a assinatura.`,
       400,
     );
   }
@@ -309,7 +321,10 @@ async function ensureAsaasCustomer(
   });
   const asaasCustomerId: string | undefined = created?.id;
   if (!asaasCustomerId) {
-    throw new AsaasApiError("Não foi possível cadastrar o cliente na Asaas.", 502);
+    throw new AsaasApiError(
+      "Não foi possível cadastrar o cliente na Asaas.",
+      502,
+    );
   }
   return asaasCustomerId;
 }
@@ -320,9 +335,13 @@ Deno.serve(async (req) => {
   try {
     return await handleRequest(req);
   } catch (e) {
-    console.error("[create-subscription] exceção não tratada no topo:", (e as Error)?.message ?? e);
+    console.error(
+      "[create-subscription] exceção não tratada no topo:",
+      (e as Error)?.message ?? e,
+    );
     return jsonResponse(req, {
-      error: "Ocorreu um erro ao criar a assinatura. Tente novamente em instantes.",
+      error:
+        "Ocorreu um erro ao criar a assinatura. Tente novamente em instantes.",
     }, 500);
   }
 });
@@ -344,15 +363,23 @@ async function handleRequest(req: Request): Promise<Response> {
 
   // ---- Validações de entrada
   if (!input.customer_id || typeof input.customer_id !== "string") {
-    return jsonResponse(req, { error: "Selecione o cliente da assinatura." }, 400);
+    return jsonResponse(
+      req,
+      { error: "Selecione o cliente da assinatura." },
+      400,
+    );
   }
   const value = Number(input.value);
   if (!Number.isFinite(value) || value <= 0) {
-    return jsonResponse(req, { error: "Informe um valor válido para a assinatura." }, 400);
+    return jsonResponse(req, {
+      error: "Informe um valor válido para a assinatura.",
+    }, 400);
   }
   if (value < MIN_VALUE) {
     return jsonResponse(req, {
-      error: `O valor mínimo de uma assinatura é R$ ${MIN_VALUE.toFixed(2).replace(".", ",")}.`,
+      error: `O valor mínimo de uma assinatura é R$ ${
+        MIN_VALUE.toFixed(2).replace(".", ",")
+      }.`,
     }, 400);
   }
   const subValue = Math.round(value * 100) / 100;
@@ -360,14 +387,16 @@ async function handleRequest(req: Request): Promise<Response> {
   const cycle = (input.cycle ?? "MONTHLY") as Cycle;
   if (!ALLOWED_CYCLES.includes(cycle)) {
     return jsonResponse(req, {
-      error: "Frequência de cobrança inválida. Escolha semanal, mensal, trimestral, semestral ou anual.",
+      error:
+        "Frequência de cobrança inválida. Escolha semanal, mensal, trimestral, semestral ou anual.",
     }, 400);
   }
 
   const billingType: BillingType = input.billing_type ?? "UNDEFINED";
   if (!ALLOWED_BILLING_TYPES.includes(billingType)) {
     return jsonResponse(req, {
-      error: "Forma de pagamento inválida. A assinatura aceita Pix, boleto ou cartão.",
+      error:
+        "Forma de pagamento inválida. A assinatura aceita Pix, boleto ou cartão.",
     }, 400);
   }
 
@@ -383,7 +412,9 @@ async function handleRequest(req: Request): Promise<Response> {
   if (input.fine_value !== undefined) {
     const rawFineValue = Number(input.fine_value);
     if (!Number.isFinite(rawFineValue) || rawFineValue < 0) {
-      return jsonResponse(req, { error: "Informe um valor válido para a multa." }, 400);
+      return jsonResponse(req, {
+        error: "Informe um valor válido para a multa.",
+      }, 400);
     }
     // Multa maior que a própria cobrança do ciclo é sempre erro de digitação (e
     // não é permitida como multa moratória no Brasil). Recusar aqui é muito mais
@@ -396,19 +427,7 @@ async function handleRequest(req: Request): Promise<Response> {
     }
   }
 
-  // No cartão, valida a presença dos blocos sensíveis ANTES de tocar o Asaas.
-  // (O gate do flag card_recurring_enabled roda mais abaixo, junto com a conta.)
   const isCreditCard = billingType === "CREDIT_CARD";
-  if (isCreditCard) {
-    const cardCheck = validateCreditCardPayload(
-      input.credit_card,
-      input.credit_card_holder_info,
-      input.remote_ip,
-    );
-    if (!cardCheck.ok) {
-      return jsonResponse(req, { error: cardCheck.error }, 400);
-    }
-  }
 
   const rawDueDate =
     typeof input.next_due_date === "string" && input.next_due_date.trim()
@@ -452,8 +471,9 @@ async function handleRequest(req: Request): Promise<Response> {
     input.source_type === "contract" || input.source_type === "quote"
       ? input.source_type
       : "avulso";
-  const sourceId =
-    typeof input.source_id === "string" && input.source_id.trim() ? input.source_id.trim() : null;
+  const sourceId = typeof input.source_id === "string" && input.source_id.trim()
+    ? input.source_id.trim()
+    : null;
 
   // GUARD anti-double-billing (só ramo 'contract'): um contrato não pode ter
   // DUAS assinaturas vivas. "Viva" = qualquer status que não seja 'cancelled'
@@ -470,14 +490,19 @@ async function handleRequest(req: Request): Promise<Response> {
       .limit(1)
       .maybeSingle();
     if (guardErr) {
-      console.error("[create-subscription] guard contract falhou:", guardErr.message);
+      console.error(
+        "[create-subscription] guard contract falhou:",
+        guardErr.message,
+      );
       return jsonResponse(req, {
-        error: "Não foi possível verificar o faturamento deste contrato. Tente novamente em instantes.",
+        error:
+          "Não foi possível verificar o faturamento deste contrato. Tente novamente em instantes.",
       }, 500);
     }
     if (existingLive) {
       return jsonResponse(req, {
-        error: "Este contrato já tem um faturamento recorrente ativo. Cancele o atual antes de criar outro.",
+        error:
+          "Este contrato já tem um faturamento recorrente ativo. Cancele o atual antes de criar outro.",
       }, 409);
     }
   }
@@ -496,20 +521,23 @@ async function handleRequest(req: Request): Promise<Response> {
     const account = accountData as any;
     if (!account || account.status !== "active" || !account.vault_secret_name) {
       return jsonResponse(req, {
-        error: "Ative o recebimento de pagamentos em Configurações → Integrações antes de criar assinaturas.",
+        error:
+          "Ative o recebimento de pagamentos em Configurações → Integrações antes de criar assinaturas.",
       }, 400);
     }
 
     // GATE do cartão recorrente (feature dormente): só quando a conta está habilitada.
     if (isCreditCard && account.card_recurring_enabled !== true) {
       return jsonResponse(req, {
-        error: "O pagamento recorrente no cartão ainda não está habilitado para a sua conta. Fale com o suporte.",
+        error:
+          "O pagamento recorrente no cartão ainda não está habilitado para a sua conta. Fale com o suporte.",
       }, 400);
     }
     const apiKey = await vaultReadSecret(supabase, account.vault_secret_name);
     if (!apiKey) {
       return jsonResponse(req, {
-        error: "A chave da Asaas não foi encontrada. Reative a integração em Configurações → Integrações.",
+        error:
+          "A chave da Asaas não foi encontrada. Reative a integração em Configurações → Integrações.",
       }, 400);
     }
     const asaas = asaasFor(apiKey);
@@ -524,8 +552,7 @@ async function handleRequest(req: Request): Promise<Response> {
     if (isCreditCard) {
       try {
         const acctStatus = await asaas.get<any>("/myAccount/status");
-        const canReceive =
-          acctStatus?.canReceivePayments ??
+        const canReceive = acctStatus?.canReceivePayments ??
           acctStatus?.general ??
           null;
         if (canReceive === false) {
@@ -537,68 +564,287 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
-    // 2) Cliente final no Asaas.
-    const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
+    // 2) Assinaturas diretas precisam do customer id da Asaas. O checkout
+    // hospedado não aceita esse id no DTO documentado: nele usamos somente
+    // customerData e deixamos a própria página da Asaas completar os dados.
+    const asaasCustomerId = isCreditCard ? null : await ensureAsaasCustomer(
+      supabase,
+      asaas,
+      companyId,
+      input.customer_id,
+    );
 
     // --- Config efetiva (override do corpo → default da conta → fallback) ---
-    const nextDueDate = rawDueDate ?? dueDateFromDays(Number(account.default_due_days ?? 0));
+    const nextDueDate = rawDueDate ??
+      dueDateFromDays(Number(account.default_due_days ?? 0));
 
     const accountDescription =
-      typeof account.default_description === "string" && account.default_description.trim()
+      typeof account.default_description === "string" &&
+        account.default_description.trim()
         ? account.default_description.trim().slice(0, 500)
         : null;
     const description = inputDescription ?? accountDescription;
 
-    // Override por assinatura; senão default da conta. Persistimos SÓ o override
-    // (null quando cai no default), como a coluna espera.
-    //
-    // A multa em REAIS não tem coluna própria em tenant_subscriptions (a tabela
-    // só tem `fine_percent`). Por isso, no modo FIXED, o override percentual
-    // persistido é NULL: gravar o valor em reais dentro de `fine_percent` faria
-    // qualquer tela futura ler "R$ 50" como "50%". A Asaas fica sendo a fonte da
-    // verdade da multa fixa (é ela quem aplica em cada ciclo), e o
-    // manage-subscription nunca reescreve fine/interest — então nada apaga o que
-    // foi configurado aqui.
-    const fineOverride = fineType === "FIXED" ? null : toPositivePercent(input.fine_percent);
+    // Configuração efetiva (override da assinatura ou default da conta). O schema
+    // novo persiste fine_type/fine_value, então multa fixa não é mais perdida nem
+    // reinterpretada como percentual na edição.
     const interestOverride = toPositivePercent(input.interest_percent);
 
     // Em FIXED a multa é o valor em reais, SEM fallback pro default da conta
     // (que é percentual). Vazio em FIXED = sem multa.
     const fineValue = fineType === "FIXED"
       ? toPositiveAmount(input.fine_value) ?? 0
-      : toPositivePercent(input.fine_percent ?? account.default_fine_percent) ?? 0;
-    const rawInterest = interestOverride ?? toPositivePercent(account.default_interest_percent);
-    const interestValue = rawInterest !== null ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT) : 0;
+      : toPositivePercent(input.fine_percent ?? account.default_fine_percent) ??
+        0;
+    const rawInterest = interestOverride ??
+      toPositivePercent(account.default_interest_percent);
+    const interestValue = rawInterest !== null
+      ? Math.min(rawInterest, ASAAS_MAX_INTEREST_PERCENT)
+      : 0;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BLOCO CARTÃO — REGRA DE SEGURANÇA (PCI):
-    // O dado sensível do cartão (PAN/número, CVV/ccv e validade) SÓ transita em
-    // MEMÓRIA aqui, exclusivamente pra montar o corpo do POST /subscriptions do
-    // Asaas. NUNCA é persistido no banco e NUNCA é logado (não colocamos o objeto
-    // creditCard em console.* nem gravamos number/ccv/expiry em coluna nenhuma).
-    // Do retorno da Asaas guardamos APENAS: o token (no Vault) e last4/brand (só
-    // exibição). A Asaas passa a cobrar o cartão sozinha a cada ciclo pelo token.
-    // ─────────────────────────────────────────────────────────────────────────
-    const creditCardBody = isCreditCard
-      ? {
-          creditCard: {
-            holderName: input.credit_card!.holderName!.trim(),
-            number: input.credit_card!.number!.trim(),
-            expiryMonth: input.credit_card!.expiryMonth!.trim(),
-            expiryYear: input.credit_card!.expiryYear!.trim(),
-            ccv: input.credit_card!.ccv!.trim(),
-          },
-          creditCardHolderInfo: {
-            name: input.credit_card_holder_info!.name!.trim(),
-            email: input.credit_card_holder_info!.email!.trim(),
-            cpfCnpj: unmaskDoc(String(input.credit_card_holder_info!.cpfCnpj)),
-            postalCode: input.credit_card_holder_info!.postalCode!.trim(),
-            addressNumber: input.credit_card_holder_info!.addressNumber!.trim(),
-            phone: input.credit_card_holder_info!.phone!.trim(),
-          },
-          remoteIp: String(input.remote_ip).trim(),
+    // CARTÃO: checkout hospedado Asaas. O Dominex não recebe nem encaminha PAN,
+    // validade ou CVV. O checkout cria a assinatura somente depois de o pagador
+    // concluir o formulário hospedado; até lá nosso espelho fica pending.
+    if (isCreditCard) {
+      const { data: checkoutCustomer, error: checkoutCustomerErr } =
+        await supabase
+          .from("customers")
+          .select(
+            "name, document, email, phone, celular, address, address_number, complement, neighborhood, zip_code",
+          )
+          .eq("id", input.customer_id)
+          .eq("company_id", companyId)
+          .maybeSingle();
+      if (checkoutCustomerErr || !checkoutCustomer) {
+        return jsonResponse(req, {
+          error: "Cliente não encontrado na sua empresa.",
+        }, 404);
+      }
+      const checkoutDocument = unmaskDoc(
+        String(checkoutCustomer.document ?? ""),
+      );
+      if (!checkoutDocument) {
+        return jsonResponse(req, {
+          error: `O cliente "${
+            checkoutCustomer.name ?? "selecionado"
+          }" não tem CPF/CNPJ cadastrado. Cadastre o documento antes de criar o checkout.`,
+        }, 400);
+      }
+      if (!isValidDocument(checkoutDocument)) {
+        return jsonResponse(req, {
+          error: `O CPF/CNPJ do cliente "${
+            checkoutCustomer.name ?? "selecionado"
+          }" é inválido. Corrija o cadastro antes de criar o checkout.`,
+        }, 400);
+      }
+      const localSubscriptionId = crypto.randomUUID();
+      const publicShortCode = generateShortCode();
+      const minutesToExpire = 24 * 60;
+      const checkoutExpiresAt = new Date(Date.now() + minutesToExpire * 60_000)
+        .toISOString();
+      const pendingRow = {
+        id: localSubscriptionId,
+        company_id: companyId,
+        customer_id: input.customer_id,
+        asaas_subscription_id: null,
+        source_type: sourceType,
+        source_id: sourceId,
+        cycle,
+        value: subValue,
+        billing_type: "CREDIT_CARD",
+        next_due_date: nextDueDate,
+        status: "pending",
+        fine_percent: fineType === "PERCENTAGE" ? fineValue : null,
+        fine_type: fineType,
+        fine_value: fineValue,
+        interest_percent: interestValue,
+        max_payments: maxPayments,
+        description,
+        category: inputCategory,
+        cost_center_id: inputCostCenterId,
+        public_short_code: publicShortCode,
+        gateway_correlation_ref: localSubscriptionId,
+        checkout_status: "CREATING",
+        checkout_expires_at: checkoutExpiresAt,
+        created_by: userId,
+      };
+      const { error: pendingErr } = await supabase
+        .from("tenant_subscriptions")
+        .insert(pendingRow);
+      if (pendingErr) {
+        console.error("[create-subscription] preinsert do checkout falhou", {
+          company_id: companyId,
+          error: pendingErr.message,
+        });
+        return jsonResponse(req, {
+          error:
+            "Não foi possível preparar o checkout seguro. Tente novamente em instantes.",
+        }, pendingErr.code === "23505" ? 409 : 500);
+      }
+
+      const tombstonePending = async (reason: string) => {
+        const now = new Date().toISOString();
+        const { error } = await supabase
+          .from("tenant_subscriptions")
+          .update({
+            status: "cancelled",
+            checkout_status: reason,
+            deleted_at: now,
+            deleted_by: userId,
+            archived_at: now,
+            updated_at: now,
+          })
+          .eq("id", localSubscriptionId)
+          .eq("company_id", companyId)
+          .is("deleted_at", null);
+        if (error) {
+          console.error("[create-subscription] cleanup do pending falhou", {
+            subscription_id: localSubscriptionId,
+            error: error.message,
+          });
         }
-      : {};
+      };
+
+      let checkout: any;
+      try {
+        checkout = await asaas.post<any>("/checkouts", {
+          billingTypes: ["CREDIT_CARD"],
+          chargeTypes: ["RECURRENT"],
+          minutesToExpire,
+          externalReference: localSubscriptionId,
+          customerData: {
+            name: checkoutCustomer.name,
+            cpfCnpj: checkoutDocument,
+            email: checkoutCustomer.email ?? undefined,
+            phone: checkoutCustomer.phone ?? checkoutCustomer.celular ??
+              undefined,
+            address: checkoutCustomer.address ?? undefined,
+            addressNumber: checkoutCustomer.address_number ?? undefined,
+            complement: checkoutCustomer.complement ?? undefined,
+            province: checkoutCustomer.neighborhood ?? undefined,
+            postalCode: checkoutCustomer.zip_code ?? undefined,
+          },
+          items: [{
+            name: (description ?? "Assinatura recorrente").substring(0, 50),
+            description: description ?? undefined,
+            quantity: 1,
+            value: subValue,
+          }],
+          subscription: {
+            cycle,
+            nextDueDate,
+            ...(maxPayments !== null
+              ? {
+                endDate: subscriptionEndDate(nextDueDate, cycle, maxPayments),
+              }
+              : {}),
+          },
+        });
+      } catch (postErr) {
+        const definitiveFailure = postErr instanceof AsaasApiError &&
+          postErr.status >= 400 && postErr.status < 500;
+        if (definitiveFailure) {
+          await tombstonePending("CREATE_FAILED");
+        } else {
+          await supabase
+            .from("tenant_subscriptions")
+            .update({
+              checkout_status: "CREATE_UNKNOWN",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", localSubscriptionId)
+            .eq("company_id", companyId);
+        }
+        if (isMethodNotEnabledError(postErr, "credit_card")) {
+          return jsonResponse(req, methodNotEnabledBody("credit_card"), 409);
+        }
+        throw postErr;
+      }
+
+      const checkoutId = typeof checkout?.id === "string" ? checkout.id : null;
+      const checkoutUrl = normalizeAsaasCheckoutUrl(
+        checkout?.url ?? checkout?.checkoutUrl ?? checkout?.link,
+      );
+      if (!checkoutId || !checkoutUrl) {
+        console.error("[create-subscription] checkout Asaas sem id/url", {
+          has_id: Boolean(checkoutId),
+          has_url: Boolean(checkoutUrl),
+          company_id: companyId,
+        });
+        let checkoutClosed = !checkoutId;
+        if (checkoutId) {
+          try {
+            await asaas.delete(`/checkouts/${encodeURIComponent(checkoutId)}`);
+            checkoutClosed = true;
+          } catch {
+            // Mantém a linha visível/correlacionável se o rollback remoto falhar.
+            await supabase
+              .from("tenant_subscriptions")
+              .update({
+                checkout_id: checkoutId,
+                checkout_status: "INVALID_RESPONSE",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", localSubscriptionId)
+              .eq("company_id", companyId);
+          }
+        }
+        if (checkoutClosed) await tombstonePending("INVALID_RESPONSE");
+        return jsonResponse(req, {
+          error:
+            "A Asaas não retornou o link seguro do cartão. Tente novamente em instantes.",
+        }, 502);
+      }
+
+      const checkoutStatus = typeof checkout?.status === "string"
+        ? checkout.status
+        : "PENDING";
+      const { data: saved, error: updateErr } = await supabase
+        .from("tenant_subscriptions")
+        .update({
+          checkout_id: checkoutId,
+          checkout_status: checkoutStatus,
+          checkout_url: checkoutUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", localSubscriptionId)
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .select(
+          "id, status, next_due_date, value, cycle, billing_type, checkout_status",
+        )
+        .maybeSingle();
+      if (updateErr || !saved?.id) {
+        console.error(
+          "[create-subscription] checkout criado, atualização local falhou",
+          {
+            checkout_id: checkoutId,
+            subscription_id: localSubscriptionId,
+            company_id: companyId,
+            error: updateErr?.message ?? "sem linha",
+          },
+        );
+        return jsonResponse(req, {
+          error:
+            "O link foi criado na Asaas e está em reconciliação. Atualize a tela em instantes.",
+        }, 500);
+      }
+
+      return jsonResponse(req, {
+        subscription: {
+          id: saved.id,
+          asaas_subscription_id: null,
+          status: saved.status ?? "pending",
+          next_due_date: saved.next_due_date ?? nextDueDate,
+          value: saved.value ?? subValue,
+          cycle: saved.cycle ?? cycle,
+          billing_type: "CREDIT_CARD",
+          checkout_status: saved.checkout_status ?? "PENDING",
+        },
+        checkout_url: checkoutUrl,
+        checkout_kind: "asaas",
+      }, 200);
+    }
 
     // 3) Cria a assinatura no Asaas. externalReference = company_id (resolução multi-tenant).
     // No cartão, a negativa "recurso não habilitado na conta" é capturada e convertida
@@ -606,18 +852,21 @@ async function handleRequest(req: Request): Promise<Response> {
     let subscription: any;
     try {
       subscription = await asaas.post<any>("/subscriptions", {
-        customer: asaasCustomerId,
+        customer: asaasCustomerId as string,
         billingType,
         value: subValue,
         nextDueDate,
         cycle,
         description: description ?? undefined,
         externalReference: companyId,
-        ...(fineValue > 0 ? { fine: { value: fineValue, type: fineType } } : {}),
-        ...(interestValue > 0 ? { interest: { value: interestValue, type: "PERCENTAGE" } } : {}),
+        ...(fineValue > 0
+          ? { fine: { value: fineValue, type: fineType } }
+          : {}),
+        ...(interestValue > 0
+          ? { interest: { value: interestValue, type: "PERCENTAGE" } }
+          : {}),
         // Ausente = contínua (sem maxPayments a Asaas nunca para sozinha).
         ...(maxPayments !== null ? { maxPayments } : {}),
-        ...creditCardBody,
       });
     } catch (postErr) {
       if (isCreditCard && isMethodNotEnabledError(postErr, "credit_card")) {
@@ -628,43 +877,9 @@ async function handleRequest(req: Request): Promise<Response> {
     }
     const asaasSubscriptionId: string | undefined = subscription?.id;
     if (!asaasSubscriptionId) {
-      return jsonResponse(req, { error: "A Asaas não retornou a assinatura. Tente novamente." }, 502);
-    }
-
-    // No cartão, a Asaas tokeniza e devolve creditCard.{creditCardToken, creditCardNumber(=4 últimos), creditCardBrand}.
-    // Guardamos o TOKEN no Vault (nunca no banco) e só last4/brand na linha (exibição).
-    let cardTokenName: string | null = null;
-    let cardLast4: string | null = null;
-    let cardBrand: string | null = null;
-    if (isCreditCard) {
-      const returnedToken =
-        typeof subscription?.creditCard?.creditCardToken === "string"
-          ? subscription.creditCard.creditCardToken
-          : null;
-      const returnedLast4 =
-        typeof subscription?.creditCard?.creditCardNumber === "string"
-          ? subscription.creditCard.creditCardNumber.slice(-4)
-          : null;
-      const returnedBrand =
-        typeof subscription?.creditCard?.creditCardBrand === "string"
-          ? subscription.creditCard.creditCardBrand
-          : null;
-
-      if (returnedToken) {
-        const secretName = cardTokenSecretName(companyId, asaasSubscriptionId);
-        // Grava o token no Vault (RPC SECURITY DEFINER). Só o NOME do secret vai pro banco.
-        await vaultUpsertSecret(supabase, secretName, returnedToken);
-        cardTokenName = secretName;
-      } else {
-        // Assinatura criada no cartão, mas sem token no retorno: não conseguimos
-        // reusar o cartão. Sinalizamos por log SEM dado sensível (só o id da assinatura).
-        console.warn(
-          "[create-subscription] cartão sem creditCardToken no retorno da Asaas:",
-          JSON.stringify({ asaas_subscription_id: asaasSubscriptionId, company_id: companyId }),
-        );
-      }
-      cardLast4 = returnedLast4;
-      cardBrand = returnedBrand;
+      return jsonResponse(req, {
+        error: "A Asaas não retornou a assinatura. Tente novamente.",
+      }, 502);
     }
 
     // 4) Grava tenant_subscriptions (idempotência por asaas_subscription_id UNIQUE).
@@ -681,25 +896,22 @@ async function handleRequest(req: Request): Promise<Response> {
       next_due_date: nextDueDate,
       status: "active",
       // Só o override (null quando cai no default da conta).
-      fine_percent: fineOverride,
-      interest_percent: interestOverride,
+      fine_percent: fineType === "PERCENTAGE" ? fineValue : null,
+      fine_type: fineType,
+      fine_value: fineValue,
+      interest_percent: interestValue,
+      max_payments: maxPayments,
       description,
       category: inputCategory,
       cost_center_id: inputCostCenterId,
       created_by: userId,
-      // Cartão: só referência do token (Vault) + last4/brand (exibição). Nunca PAN/CVV.
-      ...(isCreditCard
-        ? {
-            credit_card_token_name: cardTokenName,
-            credit_card_last4: cardLast4,
-            credit_card_brand: cardBrand,
-          }
-        : {}),
     };
     const { data: saved, error: insertErr } = await supabase
       .from("tenant_subscriptions")
       .upsert(subRow, { onConflict: "asaas_subscription_id" })
-      .select("id, asaas_subscription_id, status, next_due_date, value, cycle, billing_type")
+      .select(
+        "id, asaas_subscription_id, status, next_due_date, value, cycle, billing_type",
+      )
       .maybeSingle();
 
     if (insertErr) {
@@ -714,7 +926,8 @@ async function handleRequest(req: Request): Promise<Response> {
         }),
       );
       return jsonResponse(req, {
-        warning: "A assinatura foi criada na Asaas, mas não conseguimos registrá-la no sistema. Ela continuará gerando cobranças normalmente.",
+        warning:
+          "A assinatura foi criada na Asaas, mas não conseguimos registrá-la no sistema. Ela continuará gerando cobranças normalmente.",
         subscription: {
           id: null,
           asaas_subscription_id: asaasSubscriptionId,
@@ -724,6 +937,7 @@ async function handleRequest(req: Request): Promise<Response> {
           cycle,
           billing_type: billingType,
         },
+        checkout_url: null,
       }, 207);
     }
 
@@ -737,6 +951,7 @@ async function handleRequest(req: Request): Promise<Response> {
         cycle: saved?.cycle ?? cycle,
         billing_type: saved?.billing_type ?? billingType,
       },
+      checkout_url: null,
     }, 200);
   } catch (e) {
     const status = e instanceof AsaasApiError ? e.status : 500;

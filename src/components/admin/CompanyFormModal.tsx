@@ -32,6 +32,7 @@ import { useNfseTiers } from '@/hooks/useNfseTiers';
 import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { isValidBrazilianPhone } from '@/lib/phone-validation';
 
 interface Props {
   open: boolean;
@@ -485,6 +486,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (tab === 'basic') {
       if (!formData.name.trim()) return { valid: false, error: 'Nome da empresa é obrigatório' };
       if (!formData.email.trim()) return { valid: false, error: 'Email é obrigatório' };
+      if (formData.phone.trim() && !isValidBrazilianPhone(formData.phone)) {
+        return { valid: false, error: 'Informe um telefone válido com DDD' };
+      }
     }
     if (tab === 'commercial') {
       if (!formData.subscription_plan) return { valid: false, error: 'Plano é obrigatório' };
@@ -568,7 +572,16 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2"><Phone className="h-4 w-4" />Telefone</Label>
-                <Input value={formData.phone} onChange={e => updateField('phone', phoneMask(e.target.value))} maxLength={15} placeholder="(00) 00000-0000" />
+                <Input
+                  value={formData.phone}
+                  onChange={e => updateField('phone', phoneMask(e.target.value))}
+                  maxLength={15}
+                  placeholder="(00) 00000-0000"
+                  aria-invalid={formData.phone.trim() && !isValidBrazilianPhone(formData.phone) ? true : undefined}
+                />
+                {formData.phone.trim() && !isValidBrazilianPhone(formData.phone) && (
+                  <p className="text-xs text-destructive">Informe um telefone válido com DDD</p>
+                )}
               </div>
             </div>
 

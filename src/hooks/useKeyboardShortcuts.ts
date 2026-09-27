@@ -19,7 +19,7 @@ export const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { id: "goto_agenda", label: "Agenda", description: "Navegar para a agenda", defaultKey: "shift+a", action: "/agenda", category: "navigation" },
   { id: "goto_clients", label: "Clientes", description: "Navegar para clientes", defaultKey: "shift+c", action: "/clientes", category: "navigation" },
   { id: "goto_equipment", label: "Equipamentos", description: "Navegar para equipamentos", defaultKey: "shift+e", action: "/equipamentos", category: "navigation" },
-  { id: "goto_crm", label: "CRM", description: "Navegar para o CRM", defaultKey: "shift+r", action: "/crm", category: "navigation" },
+  { id: "goto_crm", label: "CRM/Kanban", description: "Navegar para o CRM/Kanban", defaultKey: "shift+r", action: "/crm", category: "navigation" },
   { id: "goto_finance", label: "Financeiro", description: "Navegar para o financeiro", defaultKey: "shift+f", action: "/financeiro", category: "navigation" },
   { id: "goto_inventory", label: "Estoque", description: "Navegar para o estoque", defaultKey: "shift+i", action: "/estoque", category: "navigation" },
   { id: "goto_quotes", label: "Orçamentos", description: "Navegar para orçamentos", defaultKey: "shift+q", action: "/orcamentos", category: "navigation" },

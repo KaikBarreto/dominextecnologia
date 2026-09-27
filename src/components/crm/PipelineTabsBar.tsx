@@ -8,8 +8,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
-import type { CrmPipeline } from '@/hooks/useCrmPipelines';
 import type { RowAction, RowActionVariant } from '@/components/ui/RowActionsMenu';
+
+export interface PipelineTabItem {
+  id: string;
+  name: string;
+  is_default: boolean;
+}
 
 const variantClasses: Record<RowActionVariant, string> = {
   default:
@@ -21,13 +26,13 @@ const variantClasses: Record<RowActionVariant, string> = {
 };
 
 interface PipelineTabsBarProps {
-  pipelines: CrmPipeline[];
+  pipelines: PipelineTabItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   /** Cria funil novo (botão "+" à direita das abas). */
   onCreate: () => void;
   /** Itens do menu da engrenagem daquele funil. */
-  menuActions: (pipeline: CrmPipeline) => RowAction[];
+  menuActions: (pipeline: PipelineTabItem) => RowAction[];
   /** Mobile = pills roláveis (régua do projeto); desktop = abas quadradas. */
   mobile: boolean;
   configureLabel: string;
@@ -114,7 +119,7 @@ export function PipelineTabsBar({
     return {};
   })();
 
-  const gearFor = (pipeline: CrmPipeline, isActive: boolean, forMobile: boolean) => {
+  const gearFor = (pipeline: PipelineTabItem, isActive: boolean, forMobile: boolean) => {
     const actions = menuActions(pipeline).filter((a) => !a.hidden);
     if (actions.length === 0) return null;
     const isOpen = openMenuId === pipeline.id;

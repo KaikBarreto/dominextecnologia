@@ -55,9 +55,9 @@ import { AdminLeadFormDialog } from './AdminLeadFormDialog';
 let container: HTMLDivElement;
 let root: Root;
 
-function mount() {
+function mount(pipelineId?: string) {
   act(() => {
-    root.render(<AdminLeadFormDialog open onOpenChange={() => {}} />);
+    root.render(<AdminLeadFormDialog open onOpenChange={() => {}} pipelineId={pipelineId} />);
   });
 }
 
@@ -129,6 +129,20 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
 
     expect(createLead.mutate).toHaveBeenCalledWith(
       expect.objectContaining({ value: 4550 }),
+      expect.anything(),
+    );
+  });
+
+  it('cria a oportunidade dentro do funil selecionado', () => {
+    mount('pipeline-parcerias');
+
+    const saveButton = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Criar Lead',
+    ) as HTMLButtonElement;
+    act(() => saveButton.click());
+
+    expect(createLead.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ pipeline_id: 'pipeline-parcerias' }),
       expect.anything(),
     );
   });

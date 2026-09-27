@@ -56,6 +56,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_crm_pipelines: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_crm_stages: {
         Row: {
           color: string
@@ -65,6 +92,7 @@ export type Database = {
           is_lost: boolean
           is_won: boolean
           name: string
+          pipeline_id: string
           position: number
           updated_at: string
         }
@@ -76,6 +104,7 @@ export type Database = {
           is_lost?: boolean
           is_won?: boolean
           name: string
+          pipeline_id?: string
           position?: number
           updated_at?: string
         }
@@ -87,10 +116,19 @@ export type Database = {
           is_lost?: boolean
           is_won?: boolean
           name?: string
+          pipeline_id?: string
           position?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_crm_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "admin_crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_financial_categories: {
         Row: {
@@ -232,6 +270,7 @@ export type Database = {
           loss_reason: string | null
           notes: string | null
           phone: string | null
+          pipeline_id: string
           probability: number | null
           responsible_id: string | null
           segment: string | null
@@ -252,6 +291,7 @@ export type Database = {
           loss_reason?: string | null
           notes?: string | null
           phone?: string | null
+          pipeline_id?: string
           probability?: number | null
           responsible_id?: string | null
           segment?: string | null
@@ -272,6 +312,7 @@ export type Database = {
           loss_reason?: string | null
           notes?: string | null
           phone?: string | null
+          pipeline_id?: string
           probability?: number | null
           responsible_id?: string | null
           segment?: string | null
@@ -282,6 +323,13 @@ export type Database = {
           value?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "admin_leads_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "admin_crm_pipelines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "admin_leads_stage_id_fkey"
             columns: ["stage_id"]
@@ -9784,6 +9832,10 @@ export type Database = {
           asaas_subscription_id: string | null
           billing_type: string
           category: string | null
+          checkout_expires_at: string | null
+          checkout_id: string | null
+          checkout_status: string | null
+          checkout_url: string | null
           company_id: string
           cost_center_id: string | null
           created_at: string
@@ -9793,13 +9845,22 @@ export type Database = {
           credit_card_token_name: string | null
           customer_id: string | null
           cycle: string
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           fine_percent: number | null
+          fine_type: string | null
+          fine_value: number | null
+          gateway_correlation_ref: string | null
           id: string
           interest_percent: number | null
+          max_payments: number | null
           next_due_date: string | null
           pix_auto_authorization_id: string | null
+          pix_auto_copy_paste: string | null
+          pix_auto_qr_code: string | null
           pix_auto_status: string | null
+          public_short_code: string | null
           source_id: string | null
           source_type: string | null
           status: string
@@ -9811,6 +9872,10 @@ export type Database = {
           asaas_subscription_id?: string | null
           billing_type: string
           category?: string | null
+          checkout_expires_at?: string | null
+          checkout_id?: string | null
+          checkout_status?: string | null
+          checkout_url?: string | null
           company_id: string
           cost_center_id?: string | null
           created_at?: string
@@ -9820,13 +9885,22 @@ export type Database = {
           credit_card_token_name?: string | null
           customer_id?: string | null
           cycle: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           fine_percent?: number | null
+          fine_type?: string | null
+          fine_value?: number | null
+          gateway_correlation_ref?: string | null
           id?: string
           interest_percent?: number | null
+          max_payments?: number | null
           next_due_date?: string | null
           pix_auto_authorization_id?: string | null
+          pix_auto_copy_paste?: string | null
+          pix_auto_qr_code?: string | null
           pix_auto_status?: string | null
+          public_short_code?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -9838,6 +9912,10 @@ export type Database = {
           asaas_subscription_id?: string | null
           billing_type?: string
           category?: string | null
+          checkout_expires_at?: string | null
+          checkout_id?: string | null
+          checkout_status?: string | null
+          checkout_url?: string | null
           company_id?: string
           cost_center_id?: string | null
           created_at?: string
@@ -9847,13 +9925,22 @@ export type Database = {
           credit_card_token_name?: string | null
           customer_id?: string | null
           cycle?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           fine_percent?: number | null
+          fine_type?: string | null
+          fine_value?: number | null
+          gateway_correlation_ref?: string | null
           id?: string
           interest_percent?: number | null
+          max_payments?: number | null
           next_due_date?: string | null
           pix_auto_authorization_id?: string | null
+          pix_auto_copy_paste?: string | null
+          pix_auto_qr_code?: string | null
           pix_auto_status?: string | null
+          public_short_code?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -11051,6 +11138,7 @@ export type Database = {
         Args: { _company_id: string }
         Returns: string
       }
+      ensure_default_admin_crm_pipeline: { Args: never; Returns: string }
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }
         Returns: undefined
@@ -11118,6 +11206,14 @@ export type Database = {
           p_to?: string
         }
         Returns: Json
+      }
+      get_tenant_subscription_delete_capabilities: {
+        Args: never
+        Returns: {
+          can_delete: boolean
+          charge_count: number
+          subscription_id: string
+        }[]
       }
       get_company_health_scores: {
         Args: never
@@ -11758,6 +11854,14 @@ export type Database = {
       }
       tenant_charges_without_receivable: {
         Args: { p_company_id: string }
+        Returns: Json
+      }
+      tombstone_tenant_subscription_if_empty: {
+        Args: {
+          p_company_id: string
+          p_deleted_by: string
+          p_subscription_id: string
+        }
         Returns: Json
       }
       transfer_stock_between: {

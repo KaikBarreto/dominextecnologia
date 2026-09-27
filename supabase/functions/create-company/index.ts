@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts'
+import { isValidBrazilianPhone } from '../_shared/phone-validation.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,6 +79,13 @@ Deno.serve(async (req) => {
 
     if (!company_name || !admin_email || !admin_password) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (company_phone && !isValidBrazilianPhone(company_phone)) {
+      return new Response(JSON.stringify({ error: 'Informe um telefone válido com DDD' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

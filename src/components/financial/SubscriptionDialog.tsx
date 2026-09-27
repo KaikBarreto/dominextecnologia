@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import {
   Select,
   SelectContent,
@@ -30,7 +31,7 @@ import {
   MethodNotEnabledError,
   type SubscriptionCycle,
   type SubscriptionBillingType,
-  type PixAutoAuthorization,
+  type SubscriptionCheckoutResult,
 } from '@/hooks/useTenantSubscriptions';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { useTenantFees } from '@/hooks/useTenantCardFees';
@@ -100,38 +101,6 @@ const CYCLES: SubscriptionCycle[] = [
   'YEARLY',
 ];
 
-/** Obtém o IP público do cliente para tokenização do cartão pela Asaas.
- * Se a requisição falhar (timeout, bloqueio), retorna string vazia — o edge
- * aceita remote_ip vazio e usa o IP do próprio request como fallback. */
-async function fetchClientIp(): Promise<string> {
-  try {
-    const res = await fetch('https://api.ipify.org?format=json');
-    if (!res.ok) return '';
-    const json = await res.json() as { ip?: string };
-    return json.ip ?? '';
-  } catch {
-    return '';
-  }
-}
-
-/** Aplica máscara de cartão (grupos de 4 dígitos). */
-function maskCardNumber(value: string): string {
-  return value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
-}
-
-/** Aplica máscara de validade MM/AA. */
-function maskExpiry(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-}
-
-/** Garante que o qr_code tenha o prefixo base64 correto. */
-function qrCodeSrc(qr: string): string {
-  if (qr.startsWith('data:')) return qr;
-  return `data:image/png;base64,${qr}`;
-}
-
 export function SubscriptionDialog({
   open,
   onOpenChange,
@@ -199,22 +168,10 @@ export function SubscriptionDialog({
   const [durationLimited, setDurationLimited] = useState(false);
   const [maxCycles, setMaxCycles] = useState('');
 
-  // ── Estado cartão recorrente (feature dormente) ───────────────────────────
-  // INVARIANTE: estes campos nunca vão pro console/log.
-  const [cardHolderName, setCardHolderName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [holderFullName, setHolderFullName] = useState('');
-  const [holderEmail, setHolderEmail] = useState('');
-  const [holderCpfCnpj, setHolderCpfCnpj] = useState('');
-  const [holderPostalCode, setHolderPostalCode] = useState('');
-  const [holderAddressNumber, setHolderAddressNumber] = useState('');
-  const [holderPhone, setHolderPhone] = useState('');
-
-  // ── Estado Pix Automático (feature dormente) ──────────────────────────────
-  const [pixAuth, setPixAuth] = useState<PixAutoAuthorization | null>(null);
-  const [copiedPixAuto, setCopiedPixAuto] = useState(false);
+  // Cartão e Pix Automático terminam num checkout externo/público. O gestor
+  // compartilha o link; dados do cartão e o QR nunca aparecem neste painel.
+  const [checkoutResult, setCheckoutResult] = useState<SubscriptionCheckoutResult | null>(null);
+  const [copiedCheckout, setCopiedCheckout] = useState(false);
 
   // ── Estado do painel "método não habilitado" ──────────────────────────────
   // Preenchido quando o edge devolve code=method_not_enabled (HTTP 409).
@@ -295,20 +252,8 @@ export function SubscriptionDialog({
     setDurationLimited(false);
     setMaxCycles('');
     setNetExpanded(false);
-    // reset cartão (sem log)
-    setCardHolderName('');
-    setCardNumber('');
-    setCardExpiry('');
-    setCardCvv('');
-    setHolderFullName('');
-    setHolderEmail('');
-    setHolderCpfCnpj('');
-    setHolderPostalCode('');
-    setHolderAddressNumber('');
-    setHolderPhone('');
-    // reset pix auto
-    setPixAuth(null);
-    setCopiedPixAuto(false);
+    setCheckoutResult(null);
+    setCopiedCheckout(false);
     // reset painel de método não habilitado
     setMethodNotEnabled(null);
   };
@@ -348,8 +293,7 @@ export function SubscriptionDialog({
     ? fineAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
-  // Verifica se o billingType selecionado é Pix Auto (sentinel string)
-  const isPixAuto = billingType === ('PIX_AUTO' as SubscriptionBillingType);
+  const isPixAuto = billingType === 'PIX_AUTO';
   const isCreditCard = billingType === 'CREDIT_CARD';
 
   // Só se aplica a Pix/Boleto/Cliente escolhe/Cartão (POST /subscriptions da
@@ -383,7 +327,7 @@ export function SubscriptionDialog({
     // ── Fluxo: Pix Automático ─────────────────────────────────────────────
     if (isPixAuto) {
       try {
-        const auth = await authorizePixAuto.mutateAsync({
+        const result = await authorizePixAuto.mutateAsync({
           customer_id: customerId,
           value: amount,
           cycle,
@@ -397,8 +341,8 @@ export function SubscriptionDialog({
           source_type: source?.type,
           source_id: source?.id,
         });
-        setPixAuth(auth);
-        // Não fecha o dialog — exibe o QR para o usuário.
+        setCheckoutResult(result);
+        // Não fecha: o gestor precisa copiar/abrir o link para o cliente.
       } catch (err) {
         if (err instanceof MethodNotEnabledError) {
           setMethodNotEnabled(err.method);
@@ -409,14 +353,11 @@ export function SubscriptionDialog({
     }
 
     // ── Fluxo: Cartão recorrente ──────────────────────────────────────────
+    // O cartão é preenchido pelo PAGADOR no checkout hospedado da Asaas. O
+    // painel Dominex nunca recebe PAN, CVV, validade ou dados do titular.
     if (isCreditCard) {
-      const expiryParts = cardExpiry.replace(/\D/g, '');
-      const expiryMonth = expiryParts.slice(0, 2);
-      const expiryYear = `20${expiryParts.slice(2, 4)}`;
-      const remoteIp = await fetchClientIp();
-
       try {
-        await createSubscription.mutateAsync({
+        const result = await createSubscription.mutateAsync({
           customer_id: customerId,
           value: amount,
           cycle,
@@ -436,26 +377,9 @@ export function SubscriptionDialog({
           source_type: source?.type,
           source_id: source?.id,
           max_payments: maxPayments,
-          // INVARIANTE: dados do cartão nunca logados — enviados diretamente ao edge
-          credit_card: {
-            holderName: cardHolderName.trim(),
-            number: cardNumber.replace(/\s/g, ''),
-            expiryMonth,
-            expiryYear,
-            ccv: cardCvv.trim(),
-          },
-          credit_card_holder_info: {
-            name: holderFullName.trim(),
-            email: holderEmail.trim(),
-            cpfCnpj: holderCpfCnpj.replace(/\D/g, ''),
-            postalCode: holderPostalCode.replace(/\D/g, ''),
-            addressNumber: holderAddressNumber.trim(),
-            phone: holderPhone.replace(/\D/g, ''),
-          },
-          remote_ip: remoteIp,
         });
-        // Toast disparado pelo hook — só fecha o dialog aqui.
-        handleClose(false);
+        if (!result?.checkout_url) throw new Error('O checkout do cartão não foi retornado.');
+        setCheckoutResult(result);
       } catch (err) {
         if (err instanceof MethodNotEnabledError) {
           setMethodNotEnabled(err.method);
@@ -490,14 +414,14 @@ export function SubscriptionDialog({
     handleClose(false);
   };
 
-  const handleCopyPixAuto = async () => {
-    if (!pixAuth) return;
+  const handleCopyCheckout = async () => {
+    if (!checkoutResult) return;
     try {
-      await navigator.clipboard.writeText(pixAuth.copy_paste);
-      setCopiedPixAuto(true);
-      setTimeout(() => setCopiedPixAuto(false), 2000);
+      await navigator.clipboard.writeText(checkoutResult.checkout_url);
+      setCopiedCheckout(true);
+      setTimeout(() => setCopiedCheckout(false), 2000);
     } catch {
-      alert(t.pixAuto.copyFallback);
+      alert(t.checkout.copyFallback);
     }
   };
 
@@ -645,7 +569,7 @@ export function SubscriptionDialog({
   // Pix Automático e de "método não habilitado" as ações já vêm embutidas no
   // conteúdo. O resumo fica aqui, sempre visível, porque é a informação que
   // decide o "criar ou não" e ninguém deveria precisar rolar pra achá-la.
-  const showForm = customers.length > 0 && !methodNotEnabled && !pixAuth;
+  const showForm = customers.length > 0 && !methodNotEnabled && !checkoutResult;
   const footer = showForm ? (
     <div className="space-y-2">
       {amount > 0 && (
@@ -912,35 +836,23 @@ export function SubscriptionDialog({
                   </div>
                 );
               })()
-            ) : pixAuth ? (
+            ) : checkoutResult ? (
               <div className="space-y-4">
-                <p className="text-sm font-medium text-foreground">{t.pixAuto.sectionTitle}</p>
-                <p className="text-xs text-muted-foreground">{t.pixAuto.authorized}</p>
-
-                {/* Texto de consentimento — TODO(legal): revisar antes de habilitar */}
-                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                  {t.pixAuto.consentText(
-                    amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                    t.cycles[cycle],
-                  )}
+                <div className="rounded-lg border border-success/30 bg-success/10 p-4">
+                  <p className="text-sm font-semibold text-foreground">{t.checkout.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {checkoutResult.checkout_kind === 'pix_auto'
+                      ? t.checkout.pixAutoDescription
+                      : t.checkout.cardDescription}
+                  </p>
                 </div>
 
-                {/* QR Code */}
-                <div className="flex justify-center">
-                  <img
-                    src={qrCodeSrc(pixAuth.qr_code)}
-                    alt="QR Code Pix Automático"
-                    className="h-48 w-48 rounded-md border border-border object-contain"
-                  />
-                </div>
-
-                {/* Copia e cola */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">{t.pixAuto.copyPaste}</Label>
+                  <Label className="text-xs font-medium">{t.checkout.linkLabel}</Label>
                   <div className="flex gap-2">
                     <Input
                       readOnly
-                      value={pixAuth.copy_paste}
+                      value={checkoutResult.checkout_url}
                       className="truncate font-mono text-xs"
                     />
                     <Button
@@ -948,16 +860,22 @@ export function SubscriptionDialog({
                       variant="outline"
                       size="sm"
                       className="shrink-0"
-                      onClick={handleCopyPixAuto}
+                      onClick={handleCopyCheckout}
                     >
                       <Copy className="mr-1.5 h-3.5 w-3.5" />
-                      {copiedPixAuto ? t.pixAuto.copied : t.pixAuto.copy}
+                      {copiedCheckout ? t.checkout.copied : t.checkout.copy}
                     </Button>
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
-                  <Button onClick={() => handleClose(false)}>{t.cancel}</Button>
+                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                  <Button variant="outline" onClick={() => handleClose(false)}>{t.checkout.close}</Button>
+                  <Button asChild>
+                    <a href={checkoutResult.checkout_url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      {t.checkout.open}
+                    </a>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -1097,11 +1015,12 @@ export function SubscriptionDialog({
                   <Label htmlFor="sub-due" className="text-sm font-medium">
                     {t.fields.first_due_date}
                   </Label>
-                  <Input
+                  <DatePicker
                     id="sub-due"
-                    type="date"
                     value={firstDueDate}
-                    onChange={(e) => setFirstDueDate(e.target.value)}
+                    onValueChange={setFirstDueDate}
+                    min={todayISO()}
+                    placeholder="dd/mm/aaaa"
                   />
                 </div>
 
@@ -1154,161 +1073,9 @@ export function SubscriptionDialog({
                   </div>
                 )}
 
-                {/* ── Campos de cartão recorrente (feature dormente) ────────
-                    Só renderiza quando billing_type=CREDIT_CARD E cardRecurringEnabled=true.
-                    Com o flag false, a opção nem aparece no select — este bloco
-                    nunca é exibido. */}
                 {isCreditCard && cardRecurringEnabled && (
-                  <div className="space-y-4 rounded-md border border-border p-3">
-                    {/* Dados do cartão */}
-                    <p className="text-sm font-medium text-foreground">{t.card.sectionTitle}</p>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="card-holder-name" className="text-xs font-medium">
-                        {t.card.holderName}
-                      </Label>
-                      <Input
-                        id="card-holder-name"
-                        autoComplete="cc-name"
-                        placeholder={t.card.holderNamePlaceholder}
-                        value={cardHolderName}
-                        onChange={(e) => setCardHolderName(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="card-number" className="text-xs font-medium">
-                        {t.card.number}
-                      </Label>
-                      <Input
-                        id="card-number"
-                        autoComplete="cc-number"
-                        inputMode="numeric"
-                        placeholder={t.card.numberPlaceholder}
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(maskCardNumber(e.target.value))}
-                        maxLength={19}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="card-expiry" className="text-xs font-medium">
-                          {t.card.expiry}
-                        </Label>
-                        <Input
-                          id="card-expiry"
-                          autoComplete="cc-exp"
-                          inputMode="numeric"
-                          placeholder={t.card.expiryPlaceholder}
-                          value={cardExpiry}
-                          onChange={(e) => setCardExpiry(maskExpiry(e.target.value))}
-                          maxLength={5}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="card-cvv" className="text-xs font-medium">
-                          {t.card.cvv}
-                        </Label>
-                        <Input
-                          id="card-cvv"
-                          autoComplete="cc-csc"
-                          inputMode="numeric"
-                          placeholder={t.card.cvvPlaceholder}
-                          value={cardCvv}
-                          onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                          maxLength={4}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Dados do titular */}
-                    <p className="pt-2 text-sm font-medium text-foreground">{t.card.holderSectionTitle}</p>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="holder-full-name" className="text-xs font-medium">
-                        {t.card.holderFullName}
-                      </Label>
-                      <Input
-                        id="holder-full-name"
-                        autoComplete="name"
-                        placeholder={t.card.holderFullNamePlaceholder}
-                        value={holderFullName}
-                        onChange={(e) => setHolderFullName(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="holder-email" className="text-xs font-medium">
-                        {t.card.holderEmail}
-                      </Label>
-                      <Input
-                        id="holder-email"
-                        type="email"
-                        autoComplete="email"
-                        placeholder={t.card.holderEmailPlaceholder}
-                        value={holderEmail}
-                        onChange={(e) => setHolderEmail(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="holder-cpfcnpj" className="text-xs font-medium">
-                          {t.card.holderCpfCnpj}
-                        </Label>
-                        <Input
-                          id="holder-cpfcnpj"
-                          inputMode="numeric"
-                          placeholder={t.card.holderCpfCnpjPlaceholder}
-                          value={holderCpfCnpj}
-                          onChange={(e) => setHolderCpfCnpj(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="holder-postal" className="text-xs font-medium">
-                          {t.card.holderPostalCode}
-                        </Label>
-                        <Input
-                          id="holder-postal"
-                          inputMode="numeric"
-                          placeholder={t.card.holderPostalCodePlaceholder}
-                          value={holderPostalCode}
-                          onChange={(e) => setHolderPostalCode(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="holder-addr-num" className="text-xs font-medium">
-                          {t.card.holderAddressNumber}
-                        </Label>
-                        <Input
-                          id="holder-addr-num"
-                          placeholder={t.card.holderAddressNumberPlaceholder}
-                          value={holderAddressNumber}
-                          onChange={(e) => setHolderAddressNumber(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="holder-phone" className="text-xs font-medium">
-                          {t.card.holderPhone}
-                        </Label>
-                        <Input
-                          id="holder-phone"
-                          type="tel"
-                          autoComplete="tel"
-                          inputMode="tel"
-                          placeholder={t.card.holderPhonePlaceholder}
-                          value={holderPhone}
-                          onChange={(e) => setHolderPhone(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Nota de segurança */}
-                    <p className="text-xs text-muted-foreground">{t.card.securityNote}</p>
+                  <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    {t.checkout.cardFormNotice}
                   </div>
                 )}
 

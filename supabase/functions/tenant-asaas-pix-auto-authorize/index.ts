@@ -35,12 +35,13 @@
 import { handleCors } from "../_shared/cors.ts";
 import {
   authorizePaymentsManager,
+  generateShortCode,
   jsonResponse,
   vaultReadSecret,
 } from "../_shared/payments-auth.ts";
 import {
-  asaasFor,
   AsaasApiError,
+  asaasFor,
   isMethodNotEnabledError,
   methodNotEnabledBody,
 } from "../_shared/asaas-tenant-client.ts";
@@ -53,7 +54,13 @@ import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
  * TODO(asaas-shape): confirmar o vocabulário EXATO de `frequency` aceito pelo
  * endpoint /pix/automatic/authorizations (a doc lista o conjunto por versão).
  */
-type Cycle = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "SEMIANNUALLY" | "YEARLY";
+type Cycle =
+  | "WEEKLY"
+  | "BIWEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "SEMIANNUALLY"
+  | "YEARLY";
 const ALLOWED_CYCLES: readonly Cycle[] = [
   "WEEKLY",
   "BIWEEKLY",
@@ -65,16 +72,18 @@ const ALLOWED_CYCLES: readonly Cycle[] = [
 
 /**
  * Mapeia o ciclo interno pra `frequency` do Pix Automático Asaas.
- * TODO(asaas-shape): BIWEEKLY não tem equivalente óbvio no Pix Automático —
- * caímos em MONTHLY como aproximação segura; confirmar antes de habilitar em
- * produção (o gate pix_auto_enabled protege até lá).
+ * BIWEEKLY não tem equivalente no consentimento Pix Automático. O handler
+ * rejeita esse ciclo; nunca convertemos quinzenal em mensal silenciosamente.
  */
 function cycleToPixAutoFrequency(cycle: Cycle): string {
   switch (cycle) {
     case "WEEKLY":
       return "WEEKLY";
     case "BIWEEKLY":
-      return "MONTHLY"; // TODO(asaas-shape): confirmar suporte a quinzenal
+      throw new AsaasApiError(
+        "O Pix Automático não oferece frequência quinzenal. Escolha outra frequência.",
+        400,
+      );
     case "MONTHLY":
       return "MONTHLY";
     case "QUARTERLY":
@@ -90,11 +99,16 @@ function cycleToPixAutoFrequency(cycle: Cycle): string {
 
 /** Valor mínimo aceito pela Asaas por cobrança (R$ 5,00). */
 const MIN_VALUE = 5;
+const PUBLIC_APP_ORIGIN = "https://dominex.app";
 
 /** hoje + `days` em UTC, formatado YYYY-MM-DD (usado quando next_due_date não vem). */
 function dueDateFromDays(days: number): string {
   const now = new Date();
-  const base = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const base = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
   const safeDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
   const target = new Date(base + safeDays * 86_400_000);
   const y = target.getUTCFullYear();
@@ -104,18 +118,30 @@ function dueDateFromDays(days: number): string {
 }
 
 /** Valida `next_due_date` no formato YYYY-MM-DD e não no passado (UTC, dia cheio). */
-function validateDueDate(due: string): { ok: true } | { ok: false; error: string } {
+function validateDueDate(
+  due: string,
+): { ok: true } | { ok: false; error: string } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
-    return { ok: false, error: "A data do primeiro vencimento deve estar no formato AAAA-MM-DD." };
+    return {
+      ok: false,
+      error: "A data do primeiro vencimento deve estar no formato AAAA-MM-DD.",
+    };
   }
   const parsed = new Date(`${due}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) {
     return { ok: false, error: "A data do primeiro vencimento é inválida." };
   }
   const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const todayUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
   if (parsed.getTime() < todayUtc) {
-    return { ok: false, error: "A data do primeiro vencimento não pode estar no passado." };
+    return {
+      ok: false,
+      error: "A data do primeiro vencimento não pode estar no passado.",
+    };
   }
   return { ok: true };
 }
@@ -163,13 +189,17 @@ async function ensureAsaasCustomer(
   const doc = unmaskDoc(rawDoc);
   if (!doc) {
     throw new AsaasApiError(
-      `O cliente "${customer.name ?? "selecionado"}" não tem CPF/CNPJ cadastrado. Cadastre o documento antes de criar a autorização de Pix Automático.`,
+      `O cliente "${
+        customer.name ?? "selecionado"
+      }" não tem CPF/CNPJ cadastrado. Cadastre o documento antes de criar a autorização de Pix Automático.`,
       400,
     );
   }
   if (!isValidDocument(doc)) {
     throw new AsaasApiError(
-      `O CPF/CNPJ do cliente "${customer.name ?? "selecionado"}" é inválido. Corrija o cadastro antes de criar a autorização.`,
+      `O CPF/CNPJ do cliente "${
+        customer.name ?? "selecionado"
+      }" é inválido. Corrija o cadastro antes de criar a autorização.`,
       400,
     );
   }
@@ -193,7 +223,10 @@ async function ensureAsaasCustomer(
   });
   const asaasCustomerId: string | undefined = created?.id;
   if (!asaasCustomerId) {
-    throw new AsaasApiError("Não foi possível cadastrar o cliente na Asaas.", 502);
+    throw new AsaasApiError(
+      "Não foi possível cadastrar o cliente na Asaas.",
+      502,
+    );
   }
   return asaasCustomerId;
 }
@@ -204,9 +237,13 @@ Deno.serve(async (req) => {
   try {
     return await handleRequest(req);
   } catch (e) {
-    console.error("[pix-auto-authorize] exceção não tratada no topo:", (e as Error)?.message ?? e);
+    console.error(
+      "[pix-auto-authorize] exceção não tratada no topo:",
+      (e as Error)?.message ?? e,
+    );
     return jsonResponse(req, {
-      error: "Ocorreu um erro ao criar a autorização de Pix Automático. Tente novamente em instantes.",
+      error:
+        "Ocorreu um erro ao criar a autorização de Pix Automático. Tente novamente em instantes.",
     }, 500);
   }
 });
@@ -228,15 +265,21 @@ async function handleRequest(req: Request): Promise<Response> {
 
   // ---- Validações de entrada
   if (!input.customer_id || typeof input.customer_id !== "string") {
-    return jsonResponse(req, { error: "Selecione o cliente do Pix Automático." }, 400);
+    return jsonResponse(req, {
+      error: "Selecione o cliente do Pix Automático.",
+    }, 400);
   }
   const value = Number(input.value);
   if (!Number.isFinite(value) || value <= 0) {
-    return jsonResponse(req, { error: "Informe um valor válido para o Pix Automático." }, 400);
+    return jsonResponse(req, {
+      error: "Informe um valor válido para o Pix Automático.",
+    }, 400);
   }
   if (value < MIN_VALUE) {
     return jsonResponse(req, {
-      error: `O valor mínimo de uma cobrança é R$ ${MIN_VALUE.toFixed(2).replace(".", ",")}.`,
+      error: `O valor mínimo de uma cobrança é R$ ${
+        MIN_VALUE.toFixed(2).replace(".", ",")
+      }.`,
     }, 400);
   }
   const subValue = Math.round(value * 100) / 100;
@@ -244,7 +287,14 @@ async function handleRequest(req: Request): Promise<Response> {
   const cycle = (input.cycle ?? "MONTHLY") as Cycle;
   if (!ALLOWED_CYCLES.includes(cycle)) {
     return jsonResponse(req, {
-      error: "Frequência de cobrança inválida. Escolha semanal, mensal, trimestral, semestral ou anual.",
+      error:
+        "Frequência de cobrança inválida. Escolha semanal, mensal, trimestral, semestral ou anual.",
+    }, 400);
+  }
+  if (cycle === "BIWEEKLY") {
+    return jsonResponse(req, {
+      error:
+        "O Pix Automático não oferece frequência quinzenal. Escolha semanal, mensal, trimestral, semestral ou anual.",
     }, 400);
   }
 
@@ -283,8 +333,9 @@ async function handleRequest(req: Request): Promise<Response> {
     input.source_type === "contract" || input.source_type === "quote"
       ? input.source_type
       : "avulso";
-  const sourceId =
-    typeof input.source_id === "string" && input.source_id.trim() ? input.source_id.trim() : null;
+  const sourceId = typeof input.source_id === "string" && input.source_id.trim()
+    ? input.source_id.trim()
+    : null;
 
   try {
     // 1) Conta ativa + chave do Vault + defaults + FLAG pix_auto_enabled.
@@ -307,7 +358,8 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (account.status !== "active" || !account.vault_secret_name) {
       return jsonResponse(req, {
-        error: "Ative o recebimento de pagamentos em Configurações → Integrações antes de usar o Pix Automático.",
+        error:
+          "Ative o recebimento de pagamentos em Configurações → Integrações antes de usar o Pix Automático.",
       }, 400);
     }
 
@@ -325,14 +377,19 @@ async function handleRequest(req: Request): Promise<Response> {
         .limit(1)
         .maybeSingle();
       if (guardErr) {
-        console.error("[pix-auto-authorize] guard contract falhou:", guardErr.message);
+        console.error(
+          "[pix-auto-authorize] guard contract falhou:",
+          guardErr.message,
+        );
         return jsonResponse(req, {
-          error: "Não foi possível verificar o faturamento deste contrato. Tente novamente em instantes.",
+          error:
+            "Não foi possível verificar o faturamento deste contrato. Tente novamente em instantes.",
         }, 500);
       }
       if (existingLive) {
         return jsonResponse(req, {
-          error: "Este contrato já tem um faturamento recorrente ativo. Cancele o atual antes de criar outro.",
+          error:
+            "Este contrato já tem um faturamento recorrente ativo. Cancele o atual antes de criar outro.",
         }, 409);
       }
     }
@@ -340,7 +397,8 @@ async function handleRequest(req: Request): Promise<Response> {
     const apiKey = await vaultReadSecret(supabase, account.vault_secret_name);
     if (!apiKey) {
       return jsonResponse(req, {
-        error: "A chave da Asaas não foi encontrada. Reative a integração em Configurações → Integrações.",
+        error:
+          "A chave da Asaas não foi encontrada. Reative a integração em Configurações → Integrações.",
       }, 400);
     }
     const asaas = asaasFor(apiKey);
@@ -353,8 +411,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // é a classificação da negativa do POST (abaixo).
     try {
       const acctStatus = await asaas.get<any>("/myAccount/status");
-      const canReceive =
-        acctStatus?.canReceivePayments ??
+      const canReceive = acctStatus?.canReceivePayments ??
         acctStatus?.general ??
         null;
       if (canReceive === false) {
@@ -366,84 +423,36 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // 2) Cliente final no Asaas.
-    const asaasCustomerId = await ensureAsaasCustomer(supabase, asaas, companyId, input.customer_id);
+    const asaasCustomerId = await ensureAsaasCustomer(
+      supabase,
+      asaas,
+      companyId,
+      input.customer_id,
+    );
 
     // --- Config efetiva ---
-    const startDate = rawDueDate ?? dueDateFromDays(Number(account.default_due_days ?? 0));
+    const startDate = rawDueDate ??
+      dueDateFromDays(Number(account.default_due_days ?? 0));
     const accountDescription =
-      typeof account.default_description === "string" && account.default_description.trim()
+      typeof account.default_description === "string" &&
+        account.default_description.trim()
         ? account.default_description.trim().slice(0, 500)
         : null;
     const description = inputDescription ?? accountDescription;
     const frequency = cycleToPixAutoFrequency(cycle);
 
-    // contractId: identificador do consentimento recorrente (limite Asaas ~35 chars).
-    // Espelha o create-asaas-payment do SaaS.
-    const contractId = `DMX-${companyId.substring(0, 8)}-${Date.now().toString(36)}`.substring(0, 35);
+    // Correlação criada e persistida ANTES da chamada remota. contractId aceita
+    // até 35 caracteres; UUID sem hífens tem 32 e não revela company/customer.
+    const localSubscriptionId = crypto.randomUUID();
+    const contractId = localSubscriptionId.replaceAll("-", "");
+    const publicShortCode = generateShortCode();
+    const publicCheckoutUrl = `${PUBLIC_APP_ORIGIN}/assinar/${publicShortCode}`;
+    const qrExpirationSeconds = 86400;
+    const checkoutExpiresAt = new Date(Date.now() + qrExpirationSeconds * 1000)
+      .toISOString();
 
-    // 3) Cria a AUTORIZAÇÃO de Pix Automático no Asaas.
-    // externalReference = company_id (resolução multi-tenant no webhook).
-    //
-    // TODO(asaas-shape): confirmar o SHAPE EXATO do endpoint e do corpo do
-    // /pix/automatic/authorizations na versão atual da API (campos: frequency,
-    // contractId, startDate, customerId, value, description, immediateQrCode).
-    // O SaaS (create-asaas-payment) usa `customerId` + `immediateQrCode`; a
-    // resposta traz `id` (aut_*), `encodedImage` (QR base64), `payload`
-    // (copia-e-cola) e `status`. Confirmar campos opcionais antes de habilitar.
-    // A negativa "Pix Automático não habilitado na conta" é capturada e convertida
-    // numa resposta ESTRUTURADA (409 + code/method) — SEM persistir nada quebrado.
-    let authorization: any;
-    try {
-      authorization = await asaas.post<any>("/pix/automatic/authorizations", {
-        frequency,
-        contractId,
-        startDate,
-        customerId: asaasCustomerId,
-        value: subValue,
-        description: (description ?? "Cobrança recorrente").substring(0, 35),
-        externalReference: companyId,
-        immediateQrCode: {
-          expirationSeconds: 86400,
-          originalValue: subValue,
-        },
-      });
-    } catch (postErr) {
-      if (isMethodNotEnabledError(postErr, "pix_auto")) {
-        // Nada foi persistido (a autorização nem chegou a ser criada no Asaas).
-        return jsonResponse(req, methodNotEnabledBody("pix_auto"), 409);
-      }
-      throw postErr; // erro normal → catch de topo.
-    }
-
-    const authorizationId: string | undefined = authorization?.id;
-    if (!authorizationId) {
-      return jsonResponse(req, {
-        error: "A Asaas não retornou a autorização de Pix Automático. Tente novamente.",
-      }, 502);
-    }
-
-    // Artefatos de consentimento (o cliente aprova no banco dele).
-    // TODO(asaas-shape): confirmar os nomes exatos dos campos de QR/copia-e-cola
-    // na resposta da autorização (encodedImage/payload são os do SaaS; algumas
-    // versões aninham em `immediateQrCode`).
-    const qrCode: string | null =
-      authorization?.encodedImage ??
-      authorization?.immediateQrCode?.encodedImage ??
-      null;
-    const copyPaste: string | null =
-      authorization?.payload ??
-      authorization?.immediateQrCode?.payload ??
-      null;
-    const authStatus: string =
-      typeof authorization?.status === "string" && authorization.status
-        ? authorization.status
-        : "PENDING";
-
-    // 4) Grava tenant_subscriptions (billing_type='PIX_AUTO', status='pending',
-    //    pix_auto_status='pending'). asaas_subscription_id fica NULL (o vínculo
-    //    recorrente é pix_auto_authorization_id = aut_*; os PAYMENT_* de cada ciclo
-    //    chegam com payment.subscription = aut_*). Ativação vem pelo webhook.
-    const subRow = {
+    const pendingRow = {
+      id: localSubscriptionId,
       company_id: companyId,
       customer_id: input.customer_id,
       asaas_subscription_id: null,
@@ -454,43 +463,177 @@ async function handleRequest(req: Request): Promise<Response> {
       billing_type: "PIX_AUTO",
       next_due_date: startDate,
       status: "pending",
-      pix_auto_authorization_id: authorizationId,
+      pix_auto_authorization_id: null,
       pix_auto_status: "pending",
+      public_short_code: publicShortCode,
+      gateway_correlation_ref: contractId,
+      checkout_status: "CREATING",
+      checkout_expires_at: checkoutExpiresAt,
+      checkout_url: publicCheckoutUrl,
       description,
-      // Destino contábil de CADA débito recorrente. O webhook lê estas duas
-      // colunas tanto no caminho da assinatura comum quanto no do Pix
-      // Automático (resolve por pix_auto_authorization_id), então gravar aqui
-      // é o que faz a escolha do usuário valer de verdade.
       category: inputCategory,
       cost_center_id: inputCostCenterId,
       created_by: userId,
     };
-    const { data: saved, error: insertErr } = await supabase
+    const { error: pendingErr } = await supabase
       .from("tenant_subscriptions")
-      .insert(subRow)
-      .select("id, pix_auto_authorization_id, pix_auto_status, status, next_due_date, value, cycle")
+      .insert(pendingRow);
+    if (pendingErr) {
+      console.error("[pix-auto-authorize] preinsert falhou", {
+        company_id: companyId,
+        error: pendingErr.message,
+      });
+      return jsonResponse(req, {
+        error:
+          "Não foi possível preparar o consentimento. Tente novamente em instantes.",
+      }, pendingErr.code === "23505" ? 409 : 500);
+    }
+
+    const tombstonePending = async (reason: string) => {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("tenant_subscriptions")
+        .update({
+          status: "cancelled",
+          pix_auto_status: "cancelled",
+          checkout_status: reason,
+          deleted_at: now,
+          deleted_by: userId,
+          archived_at: now,
+          updated_at: now,
+        })
+        .eq("id", localSubscriptionId)
+        .eq("company_id", companyId)
+        .is("deleted_at", null);
+      if (error) {
+        console.error("[pix-auto-authorize] cleanup do pending falhou", {
+          subscription_id: localSubscriptionId,
+          error: error.message,
+        });
+      }
+    };
+
+    // 3) Cria a AUTORIZAÇÃO de Pix Automático no Asaas.
+    // A negativa "Pix Automático não habilitado na conta" é capturada e convertida
+    // numa resposta ESTRUTURADA (409 + code/method).
+    let authorization: any;
+    try {
+      authorization = await asaas.post<any>("/pix/automatic/authorizations", {
+        frequency,
+        contractId,
+        startDate,
+        customerId: asaasCustomerId,
+        value: subValue,
+        description: (description ?? "Cobrança recorrente").substring(0, 35),
+        paymentCreationMode: "SUBSCRIPTION",
+        immediateQrCode: {
+          expirationSeconds: qrExpirationSeconds,
+          originalValue: subValue,
+        },
+      });
+    } catch (postErr) {
+      const definitiveFailure = postErr instanceof AsaasApiError &&
+        postErr.status >= 400 && postErr.status < 500;
+      if (definitiveFailure) {
+        await tombstonePending("CREATE_FAILED");
+      } else {
+        await supabase
+          .from("tenant_subscriptions")
+          .update({
+            checkout_status: "CREATE_UNKNOWN",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", localSubscriptionId)
+          .eq("company_id", companyId);
+      }
+      if (isMethodNotEnabledError(postErr, "pix_auto")) {
+        return jsonResponse(req, methodNotEnabledBody("pix_auto"), 409);
+      }
+      throw postErr; // erro normal → catch de topo.
+    }
+
+    const authorizationId: string | undefined = authorization?.id;
+    if (!authorizationId) {
+      await tombstonePending("INVALID_RESPONSE");
+      return jsonResponse(req, {
+        error:
+          "A Asaas não retornou a autorização de Pix Automático. Tente novamente.",
+      }, 502);
+    }
+
+    // Artefatos de consentimento (o cliente aprova no banco dele).
+    // TODO(asaas-shape): confirmar os nomes exatos dos campos de QR/copia-e-cola
+    // na resposta da autorização (encodedImage/payload são os do SaaS; algumas
+    // versões aninham em `immediateQrCode`).
+    const qrCode: string | null = authorization?.encodedImage ??
+      authorization?.immediateQrCode?.encodedImage ??
+      null;
+    const copyPaste: string | null = authorization?.payload ??
+      authorization?.immediateQrCode?.payload ??
+      null;
+    const authStatus: string =
+      typeof authorization?.status === "string" && authorization.status
+        ? authorization.status
+        : "PENDING";
+    const asaasSubscriptionId: string | null =
+      typeof authorization?.subscriptionId === "string" &&
+        authorization.subscriptionId
+        ? authorization.subscriptionId
+        : null;
+
+    const { data: saved, error: updateErr } = await supabase
+      .from("tenant_subscriptions")
+      .update({
+        asaas_subscription_id: asaasSubscriptionId,
+        pix_auto_authorization_id: authorizationId,
+        checkout_status: authStatus,
+        pix_auto_qr_code: qrCode,
+        pix_auto_copy_paste: copyPaste,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", localSubscriptionId)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .select(
+        "id, pix_auto_authorization_id, pix_auto_status, status, next_due_date, value, cycle, billing_type, checkout_status",
+      )
       .maybeSingle();
 
-    if (insertErr) {
-      // Autorização órfã: existe no Asaas mas não gravou aqui. Não perdemos o link —
-      // o webhook reconcilia por pix_auto_authorization_id / externalReference.
+    if (updateErr || !saved?.id) {
       console.error(
-        "[pix-auto-authorize] insert tenant_subscriptions falhou (autorização órfã no Asaas):",
+        "[pix-auto-authorize] autorização criada, atualização local falhou:",
         JSON.stringify({
           pix_auto_authorization_id: authorizationId,
+          subscription_id: localSubscriptionId,
           company_id: companyId,
-          error: insertErr.message,
+          error: updateErr?.message ?? "sem linha",
         }),
       );
+      let revoked = false;
+      try {
+        await asaas.delete(
+          `/pix/automatic/authorizations/${
+            encodeURIComponent(authorizationId)
+          }`,
+        );
+        revoked = true;
+      } catch (revokeErr) {
+        if (revokeErr instanceof AsaasApiError && revokeErr.status === 404) {
+          revoked = true;
+        } else {
+          console.error("[pix-auto-authorize] rollback remoto falhou", {
+            subscription_id: localSubscriptionId,
+            authorization_id: authorizationId,
+          });
+        }
+      }
+      if (revoked) {
+        await tombstonePending("LOCAL_UPDATE_FAILED");
+      }
       return jsonResponse(req, {
-        warning: "A autorização de Pix Automático foi criada na Asaas, mas não conseguimos registrá-la no sistema. O consentimento continua válido.",
-        authorization: {
-          id: authorizationId,
-          qr_code: qrCode,
-          copy_paste: copyPaste,
-          status: authStatus,
-        },
-      }, 207);
+        error:
+          "A autorização não pôde ser concluída com segurança. Tente novamente em instantes.",
+      }, 500);
     }
 
     return jsonResponse(req, {
@@ -500,13 +643,25 @@ async function handleRequest(req: Request): Promise<Response> {
         copy_paste: copyPaste,
         status: authStatus,
       },
+      subscription: {
+        id: saved?.id ?? null,
+        status: saved?.status ?? "pending",
+        next_due_date: saved?.next_due_date ?? startDate,
+        value: saved?.value ?? subValue,
+        cycle: saved?.cycle ?? cycle,
+        billing_type: saved?.billing_type ?? "PIX_AUTO",
+        checkout_status: saved?.checkout_status ?? authStatus,
+      },
+      checkout_url: publicCheckoutUrl,
+      checkout_kind: "pix_auto",
     }, 200);
   } catch (e) {
     const status = e instanceof AsaasApiError ? e.status : 500;
     console.error("[pix-auto-authorize] erro:", (e as Error).message);
     return jsonResponse(req, {
       error: e instanceof AsaasApiError
-        ? (e.message || "Falha ao criar a autorização de Pix Automático na Asaas.")
+        ? (e.message ||
+          "Falha ao criar a autorização de Pix Automático na Asaas.")
         : "Ocorreu um erro ao criar a autorização de Pix Automático. Tente novamente.",
     }, status >= 400 && status < 600 ? status : 500);
   }

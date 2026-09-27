@@ -15,6 +15,7 @@ import {
   Settings as SettingsIcon,
   UserCircle,
   TrendingUp,
+  ListFilter,
   Wrench,
   ChevronDown,
   ChevronsUpDown,
@@ -98,7 +99,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
     ],
   },
-  { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
+  { title: 'CRM/Kanban', icon: ListFilter, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
   {
     title: 'Financeiro',
     icon: DollarSign,

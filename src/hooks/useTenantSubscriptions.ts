@@ -23,7 +23,7 @@ export type SubscriptionCycle =
   | 'SEMIANNUALLY'
   | 'YEARLY';
 
-export type SubscriptionBillingType = 'PIX' | 'BOLETO' | 'UNDEFINED' | 'CREDIT_CARD';
+export type SubscriptionBillingType = 'PIX' | 'BOLETO' | 'UNDEFINED' | 'CREDIT_CARD' | 'PIX_AUTO';
 
 export type SubscriptionStatus =
   | 'pending'
@@ -59,6 +59,18 @@ export interface TenantSubscription {
    */
   pix_auto_authorization_id: string | null;
   pix_auto_status: string | null;
+  category: string | null;
+  cost_center_id: string | null;
+  max_payments: number | null;
+  fine_type: 'PERCENTAGE' | 'FIXED' | null;
+  fine_value: number | null;
+  checkout_url: string | null;
+  checkout_status: string | null;
+  deleted_at: string | null;
+  /** Derivado no servidor. `true` bloqueia a exclusão e preserva o histórico. */
+  has_financial_history?: boolean;
+  charge_count?: number;
+  can_delete?: boolean;
   // joined
   customers: { id: string; name: string } | null;
 }
@@ -81,31 +93,11 @@ export function hasLivePixConsent(sub: TenantSubscription): boolean {
   );
 }
 
-/** Dados do cartão de crédito para assinatura recorrente (NUNCA logar). */
-export interface CreditCardInput {
-  holderName: string;
-  number: string;
-  expiryMonth: string;
-  expiryYear: string;
-  ccv: string;
-}
-
-/** Dados do titular do cartão exigidos pela Asaas para tokenização. */
-export interface CreditCardHolderInfo {
-  name: string;
-  email: string;
-  cpfCnpj: string;
-  postalCode: string;
-  addressNumber: string;
-  phone: string;
-}
-
-/** Retorno do edge tenant-asaas-pix-auto-authorize (QR de consentimento). */
-export interface PixAutoAuthorization {
-  id: string;
-  qr_code: string;    // base64 PNG do QR (pode ou não ter prefixo data:image)
-  copy_paste: string; // Pix copia e cola
-  status: string;
+/** Resultado comum dos fluxos que exigem ação posterior do pagador. */
+export interface SubscriptionCheckoutResult {
+  subscription?: Partial<TenantSubscription> | null;
+  checkout_url: string;
+  checkout_kind: 'asaas' | 'pix_auto';
 }
 
 export interface CreateSubscriptionInput {
@@ -137,14 +129,9 @@ export interface CreateSubscriptionInput {
   source_id?: string;
   /** Número máximo de ciclos (cobranças) desta assinatura. Ausente/undefined =
    *  contínua (a Asaas gera cobranças indefinidamente até cancelar). Mapeia pra
-   *  `maxPayments` no POST /subscriptions da Asaas. Não persistido localmente
-   *  (a Asaas é a fonte da verdade; ela mesma encerra a assinatura ao esgotar
-   *  os ciclos, e o webhook reflete o cancelamento). */
+   *  `maxPayments` no POST /subscriptions da Asaas e é persistido no espelho
+   *  local para edição e projeção do DRE. */
   max_payments?: number;
-  // ── Cartão recorrente (feature dormente — só enviado quando billing_type=CREDIT_CARD) ──
-  credit_card?: CreditCardInput;
-  credit_card_holder_info?: CreditCardHolderInfo;
-  remote_ip?: string;
 }
 
 /** Input para autorizar Pix Automático (gera QR de consentimento). */
@@ -173,6 +160,15 @@ export interface ManageSubscriptionInput {
   cycle?: SubscriptionCycle;
   next_due_date?: string;
   description?: string;
+  billing_type?: SubscriptionBillingType;
+  category?: string | null;
+  cost_center_id?: string | null;
+  max_payments?: number | null;
+  fine_type?: 'PERCENTAGE' | 'FIXED';
+  fine_value?: number;
+  fine_percent?: number;
+  interest_percent?: number;
+  updatePendingPayments?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,9 +254,10 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       let query = supabase
         .from('tenant_subscriptions')
         .select(
-          'id, company_id, customer_id, asaas_subscription_id, cycle, value, billing_type, next_due_date, status, fine_percent, interest_percent, description, created_by, created_at, source_type, source_id, archived_at, pix_auto_authorization_id, pix_auto_status, customers(id, name)',
+          'id, company_id, customer_id, asaas_subscription_id, cycle, value, billing_type, next_due_date, status, fine_percent, fine_type, fine_value, interest_percent, description, category, cost_center_id, max_payments, checkout_url, checkout_status, deleted_at, created_by, created_at, source_type, source_id, archived_at, pix_auto_authorization_id, pix_auto_status, customers(id, name)',
         )
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)
+        .is('deleted_at', null);
       // Arquivada some da lista principal. Sem este filtro, arquivar não muda
       // nada na tela e a função simplesmente não existe pro usuário.
       query = includeArchived
@@ -277,19 +274,44 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       }
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
-      return (data as unknown as TenantSubscription[]) ?? [];
+      const rows = (data as unknown as TenantSubscription[]) ?? [];
+      if (rows.length === 0) return rows;
+
+      // A RPC usa a empresa do JWT e conta TODA cobrança (inclusive pendente).
+      // É somente uma dica de UX; a edge revalida banco + Asaas ao excluir.
+      const { data: capabilities, error: capabilitiesError } = await supabase
+        .rpc('get_tenant_subscription_delete_capabilities');
+      if (capabilitiesError) throw capabilitiesError;
+      const summary = new Map(
+        (capabilities ?? []).map((item) => [item.subscription_id, item]),
+      );
+
+      return rows.map((row) => {
+        const item = summary.get(row.id);
+        const chargeCount = Number(item?.charge_count ?? 0);
+        return {
+          ...row,
+          charge_count: chargeCount,
+          has_financial_history: chargeCount > 0,
+          can_delete: item?.can_delete === true,
+        };
+      });
     },
   });
 
-  const invalidate = () => {
+  const invalidate = async () => {
     // Invalida TODAS as queries de assinaturas desta empresa (lista geral +
     // filtros + as duas abas, ativa e arquivada). O prefixo cobre o sufixo
     // archivedKey, então arquivar/desarquivar atualiza os dois lados de uma vez.
-    queryClient.invalidateQueries({ queryKey: ['tenant-subscriptions', companyId] });
+    const queryKey = ['tenant-subscriptions', companyId];
+    await queryClient.invalidateQueries({ queryKey });
+    // `staleTime` é de 30s. O refetch explícito evita a lista antiga ficar
+    // visível até sair e voltar da aba depois de criar/editar/excluir.
+    await queryClient.refetchQueries({ queryKey, type: 'active' });
   };
 
   const createSubscription = useMutation({
-    mutationFn: async (input: CreateSubscriptionInput): Promise<void> => {
+    mutationFn: async (input: CreateSubscriptionInput): Promise<SubscriptionCheckoutResult | null> => {
       const body: Record<string, unknown> = {
         customer_id: input.customer_id,
         value: input.value,
@@ -318,17 +340,6 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       if (input.source_type) body.source_type = input.source_type;
       if (input.source_id) body.source_id = input.source_id;
       if (input.max_payments !== undefined) body.max_payments = input.max_payments;
-      // ── Cartão recorrente (feature dormente) ─────────────────────────────────
-      // INVARIANTE: dados de cartão nunca são logados. Enviados direto ao edge e
-      // nunca persistidos no banco (o edge guarda apenas o token no Vault).
-      if (input.billing_type === 'CREDIT_CARD' && input.credit_card) {
-        body.credit_card = input.credit_card;
-      }
-      if (input.credit_card_holder_info) {
-        body.credit_card_holder_info = input.credit_card_holder_info;
-      }
-      if (input.remote_ip !== undefined) body.remote_ip = input.remote_ip;
-
       const { data, error } = await supabase.functions.invoke(
         'tenant-asaas-create-subscription',
         { body },
@@ -341,9 +352,17 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
         }
         throw new Error(message);
       }
+      const response = data as Partial<SubscriptionCheckoutResult> | null;
+      return response?.checkout_url
+        ? {
+            subscription: response.subscription ?? null,
+            checkout_url: String(response.checkout_url),
+            checkout_kind: response.checkout_kind === 'pix_auto' ? 'pix_auto' : 'asaas',
+          }
+        : null;
     },
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await invalidate();
       toast({ title: 'Assinatura criada', description: 'A assinatura recorrente foi configurada.' });
     },
     onError: (err) => {
@@ -358,13 +377,12 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
   });
 
   // ── authorizePixAuto ────────────────────────────────────────────────────────
-  // Chama o edge tenant-asaas-pix-auto-authorize e retorna o objeto
-  // { authorization: { id, qr_code, copy_paste, status } }. O QR gerado é
-  // exibido ao usuário para consentimento — a assinatura só começa a debitar
-  // após o cliente autorizar pelo app do banco. Feature dormente: o edge devolve
+  // Chama o edge tenant-asaas-pix-auto-authorize e retorna somente o link
+  // público Dominex. O QR existe apenas no checkout do pagador; o painel do
+  // gestor não expõe o consentimento bancário. Feature dormente: o edge devolve
   // 400 PT-BR se pix_auto_enabled=false na conta do tenant.
   const authorizePixAuto = useMutation({
-    mutationFn: async (input: AuthorizePixAutoInput): Promise<PixAutoAuthorization> => {
+    mutationFn: async (input: AuthorizePixAutoInput): Promise<SubscriptionCheckoutResult> => {
       const body: Record<string, unknown> = {
         customer_id: input.customer_id,
         value: input.value,
@@ -392,9 +410,17 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
         }
         throw new Error(message);
       }
-      const authorization = (data as { authorization?: PixAutoAuthorization })?.authorization;
-      if (!authorization) throw new Error('Resposta inesperada do servidor. Tente novamente.');
-      return authorization;
+      const response = data as Partial<SubscriptionCheckoutResult> | null;
+      if (!response?.checkout_url) throw new Error('A autorização foi criada, mas o link de checkout não foi retornado.');
+      return {
+        subscription: response.subscription ?? null,
+        checkout_url: String(response.checkout_url),
+        checkout_kind: 'pix_auto',
+      };
+    },
+    onSuccess: async () => {
+      await invalidate();
+      toast({ title: 'Link criado', description: 'Envie o checkout para o cliente autorizar a assinatura.' });
     },
     onError: (err) => {
       // MethodNotEnabledError é tratado no SubscriptionDialog — não exibir toast aqui.
@@ -416,7 +442,18 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       if (input.value !== undefined) body.value = input.value;
       if (input.cycle) body.cycle = input.cycle;
       if (input.next_due_date) body.next_due_date = input.next_due_date;
-      if (input.description?.trim()) body.description = input.description.trim();
+      if (input.description !== undefined) body.description = input.description.trim();
+      if (input.billing_type) body.billing_type = input.billing_type;
+      if (input.category !== undefined) body.category = input.category?.trim() || null;
+      if (input.cost_center_id !== undefined) body.cost_center_id = input.cost_center_id;
+      if (input.max_payments !== undefined) body.max_payments = input.max_payments;
+      if (input.fine_type) body.fine_type = input.fine_type;
+      if (input.fine_value !== undefined) body.fine_value = input.fine_value;
+      if (input.fine_percent !== undefined) body.fine_percent = input.fine_percent;
+      if (input.interest_percent !== undefined) body.interest_percent = input.interest_percent;
+      if (input.action === 'update') {
+        body.updatePendingPayments = input.updatePendingPayments ?? true;
+      }
 
       const { data, error } = await supabase.functions.invoke(
         'tenant-asaas-manage-subscription',
@@ -427,8 +464,8 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
         throw new Error(message);
       }
     },
-    onSuccess: (_, vars) => {
-      invalidate();
+    onSuccess: async (_, vars) => {
+      await invalidate();
       if (vars.action === 'cancel') {
         toast({ title: t.toast.cancelSuccessTitle, description: t.toast.cancelSuccessDescription });
       } else {
@@ -439,6 +476,37 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
       toast({
         variant: 'destructive',
         title: vars.action === 'cancel' ? t.toast.cancelErrorTitle : t.toast.updateErrorTitle,
+        description: err instanceof Error ? err.message : t.toast.genericError,
+      });
+    },
+  });
+
+  const deleteSubscription = useMutation({
+    mutationFn: async (subscriptionId: string): Promise<void> => {
+      const { data, error } = await supabase.functions.invoke(
+        'tenant-asaas-manage-subscription',
+        { body: { subscription_id: subscriptionId, action: 'delete' } },
+      );
+      if (error || (data && typeof data === 'object' && 'error' in data && (data as EdgeErrorBody).error)) {
+        const { message } = await extractEdgeError(
+          error,
+          data,
+          'Não foi possível excluir a assinatura.',
+        );
+        throw new Error(message);
+      }
+    },
+    onSuccess: async () => {
+      await invalidate();
+      toast({
+        title: 'Assinatura excluída',
+        description: 'A recorrência sem pagamentos foi removida.',
+      });
+    },
+    onError: (err) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao excluir',
         description: err instanceof Error ? err.message : t.toast.genericError,
       });
     },
@@ -531,6 +599,7 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
     companyId,
     createSubscription,
     manageSubscription,
+    deleteSubscription,
     archiveSubscription,
     authorizePixAuto,
     bulkCancel,
