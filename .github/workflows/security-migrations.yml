@@ -1,0 +1,23 @@
+name: Security migrations
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/security/audit-rls.mjs'
+      - 'scripts/security/audit-rls.test.mjs'
+      - '.github/workflows/security-migrations.yml'
+      - '.github/workflows/deploy-supabase.yml'
+  workflow_dispatch:
+
+jobs:
+  audit-rls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test RLS auditor
+        run: node --test scripts/security/audit-rls.test.mjs
+
+      - name: Audit final migration state
+        run: node scripts/security/audit-rls.mjs

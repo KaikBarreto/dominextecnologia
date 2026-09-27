@@ -13,7 +13,8 @@
     "ssg": "node scripts/ssg.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "npm run test:security && vitest run",
+    "test:security": "node --test scripts/security/*.test.mjs && node scripts/security/audit-rls.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

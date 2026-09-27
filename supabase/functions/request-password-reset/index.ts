@@ -5,6 +5,13 @@ import { renderPasswordResetEmail, renderPasswordResetText, getPasswordResetSubj
 const CODE_EXPIRES_MINUTES = 60;
 const RATE_LIMIT_WINDOW_MINUTES = 15;
 const RATE_LIMIT_MAX_REQUESTS = 3;
+const RATE_LIMIT_MAX_REQUESTS_PER_IP = 10;
+
+function getClientIp(req: Request): string | null {
+  const candidate = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '';
+  if (!candidate || candidate.length > 64 || !/^[0-9a-fA-F:.]+$/.test(candidate)) return null;
+  return candidate;
+}
 
 function generateCode(): string {
   // 8 dígitos numéricos (10^7 a 10^8 - 1) — ~10x mais entropia que 6 dígitos
@@ -50,16 +57,35 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const ipAddress = getClientIp(req);
 
-    // Rate limit por email: máx N solicitações na janela
+    // Rate limit persistente por email e por IP. O limite por IP evita que um
+    // atacante distribua solicitações entre vários emails para contornar o
+    // limite individual. Sem IP confiável, mantém o limite por email (fail-open
+    // só nessa camada adicional; nunca usa estado em memória da edge).
     const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60_000).toISOString();
-    const { count: recentCount } = await supabase
+    const { count: recentEmailCount, error: emailCountError } = await supabase
       .from('password_reset_codes')
       .select('id', { count: 'exact', head: true })
       .eq('email', normalizedEmail)
       .gte('created_at', windowStart);
 
-    if ((recentCount ?? 0) >= RATE_LIMIT_MAX_REQUESTS) {
+    let recentIpCount = 0;
+    if (ipAddress) {
+      const { count, error } = await supabase
+        .from('password_reset_codes')
+        .select('id', { count: 'exact', head: true })
+        .eq('ip_address', ipAddress)
+        .gte('created_at', windowStart);
+      recentIpCount = count ?? 0;
+      if (error) console.error('Erro ao consultar rate limit por IP:', error);
+    }
+    if (emailCountError) console.error('Erro ao consultar rate limit por email:', emailCountError);
+
+    if (
+      (recentEmailCount ?? 0) >= RATE_LIMIT_MAX_REQUESTS ||
+      recentIpCount >= RATE_LIMIT_MAX_REQUESTS_PER_IP
+    ) {
       // Mesma resposta de sucesso para não vazar enumeração de email
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
@@ -96,7 +122,6 @@ Deno.serve(async (req) => {
     // Gera código + persiste
     const code = generateCode();
     const expiresAt = new Date(Date.now() + CODE_EXPIRES_MINUTES * 60_000).toISOString();
-    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
     const userAgent = req.headers.get('user-agent') ?? null;
 
     const { error: insertError } = await supabase

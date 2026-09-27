@@ -4,6 +4,30 @@ import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const RATE_LIMIT_RETRY_AFTER_SECONDS = 60 * 60;
+
+const readClientIp = (req: Request): string | null => {
+  const candidates = [
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+    req.headers.get('cf-connecting-ip')?.trim(),
+    req.headers.get('x-real-ip')?.trim(),
+  ];
+  const ip = candidates.find((candidate) => candidate && candidate.length <= 64) ?? '';
+  return ip && /^[0-9a-fA-F:.]+$/.test(ip) ? ip : null;
+};
+
+const hashRateLimitValue = async (kind: 'ip' | 'email', value: string): Promise<string> => {
+  const salt = Deno.env.get('SELF_REGISTER_RATE_LIMIT_SALT')
+    ?? Deno.env.get('LEAD_CAPTURE_IP_SALT')
+    ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    ?? '';
+  if (!salt) throw new Error('rate_limit_salt_unavailable');
+  const bytes = new TextEncoder().encode(`${salt}\0${kind}\0${value}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
 
 // ── i18n das mensagens de erro voltadas ao usuário ────────────────────────────
 // Idiomas suportados; o frontend manda `locale` no body do POST. Default 'pt-br'
@@ -23,6 +47,7 @@ const MESSAGES: Record<Locale, {
   requiredFields: string;
   invalidEmail: string;
   invalidPassword: string;
+  rateLimited: string;
   emailAlreadyRegistered: string;
   companyCreateError: (detail: string) => string;
   userCreateError: (detail: string) => string;
@@ -34,6 +59,7 @@ const MESSAGES: Record<Locale, {
     requiredFields: 'Campos obrigatórios: nome da empresa, contato, e-mail e senha',
     invalidEmail: 'E-mail inválido',
     invalidPassword: 'Senha deve ter entre 8 e 128 caracteres',
+    rateLimited: 'Muitas tentativas de cadastro. Aguarde e tente novamente.',
     emailAlreadyRegistered: 'Este email já está cadastrado. Faça login ou use outro email.',
     companyCreateError: (d) => `Erro ao criar empresa: ${d}`,
     userCreateError: (d) => `Erro ao criar usuário: ${d}`,
@@ -45,6 +71,7 @@ const MESSAGES: Record<Locale, {
     requiredFields: 'Required fields: company name, contact, email and password',
     invalidEmail: 'Invalid email',
     invalidPassword: 'Password must be between 8 and 128 characters',
+    rateLimited: 'Too many registration attempts. Wait and try again.',
     emailAlreadyRegistered: 'This email is already registered. Log in or use another email.',
     companyCreateError: (d) => `Error creating company: ${d}`,
     userCreateError: (d) => `Error creating user: ${d}`,
@@ -56,6 +83,7 @@ const MESSAGES: Record<Locale, {
     requiredFields: 'Campos obligatorios: nombre de la empresa, contacto, correo electrónico y contraseña',
     invalidEmail: 'Correo electrónico inválido',
     invalidPassword: 'La contraseña debe tener entre 8 y 128 caracteres',
+    rateLimited: 'Demasiados intentos de registro. Espera e inténtalo de nuevo.',
     emailAlreadyRegistered: 'Este correo electrónico ya está registrado. Inicia sesión o usa otro correo.',
     companyCreateError: (d) => `Error al crear la empresa: ${d}`,
     userCreateError: (d) => `Error al crear el usuario: ${d}`,
@@ -67,6 +95,7 @@ const MESSAGES: Record<Locale, {
     requiredFields: 'Champs obligatoires : nom de l\'entreprise, contact, e-mail et mot de passe',
     invalidEmail: 'E-mail invalide',
     invalidPassword: 'Le mot de passe doit contenir entre 8 et 128 caractères',
+    rateLimited: 'Trop de tentatives d’inscription. Patientez puis réessayez.',
     emailAlreadyRegistered: 'Cet e-mail est déjà enregistré. Connectez-vous ou utilisez un autre e-mail.',
     companyCreateError: (d) => `Erreur lors de la création de l'entreprise : ${d}`,
     userCreateError: (d) => `Erreur lors de la création de l'utilisateur : ${d}`,
@@ -231,6 +260,36 @@ Deno.serve(async (req) => {
     if (password.length < 8 || password.length > 128) {
       return new Response(JSON.stringify({ error: t.invalidPassword }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Rate limit persistente e atomico ANTES de qualquer operacao privilegiada.
+    // O banco recebe somente hashes SHA-256; IP/e-mail em claro nunca entram no
+    // log de tentativas. Erro no mecanismo falha fechado para nao abrir bypass.
+    const clientIp = readClientIp(req);
+    const ipHash = clientIp ? await hashRateLimitValue('ip', clientIp) : null;
+    const emailHash = await hashRateLimitValue('email', company_email);
+    const { data: registrationAllowed, error: rateLimitError } = await supabaseAdmin.rpc(
+      'register_self_registration_attempt',
+      { p_ip_hash: ipHash, p_email_hash: emailHash },
+    );
+
+    if (rateLimitError) {
+      console.error('[self-register] Falha no rate limit persistente:', rateLimitError.message);
+      return new Response(JSON.stringify({ error: t.internalError }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (registrationAllowed !== true) {
+      return new Response(JSON.stringify({ error: t.rateLimited }), {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Retry-After': String(RATE_LIMIT_RETRY_AFTER_SECONDS),
+        },
       });
     }
 
