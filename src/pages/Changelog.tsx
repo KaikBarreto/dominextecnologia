@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.3',
+    date: '28 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configuração de funis mais direta',
+        description: 'A engrenagem do funil agora abre imediatamente suas configurações, com o funil escolhido expandido e sem trocar a visualização atual. A criação de estágios também ganhou um botão próprio, deixando a tela mais limpa.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.2',
     date: '28 de setembro de 2026',
     type: 'patch',

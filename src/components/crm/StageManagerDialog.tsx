@@ -93,6 +93,7 @@ export function StageManagerDialog({
     is_won: false,
     is_lost: false,
   });
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragNodeRef = useRef<HTMLDivElement | null>(null);
@@ -108,7 +109,10 @@ export function StageManagerDialog({
     createStage.mutate(
       { ...newStage, pipeline_id: pipelineId },
       {
-        onSuccess: () => setNewStage({ name: '', color: '#6B7280', icon: null, is_won: false, is_lost: false }),
+        onSuccess: () => {
+          setNewStage({ name: '', color: '#6B7280', icon: null, is_won: false, is_lost: false });
+          setShowCreateForm(false);
+        },
       },
     );
   };
@@ -337,28 +341,48 @@ export function StageManagerDialog({
             <p className="text-sm text-muted-foreground mt-1">Crie, ordene e personalize as colunas deste funil.</p>
           </div>}
           <div className="space-y-4">
-            <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
-              <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
-              <div className="grid gap-2 sm:grid-cols-[minmax(150px,1fr)_110px_auto_auto]">
-                <Input value={newStage.name} onChange={(e) => setNewStage({ ...newStage, name: e.target.value })} placeholder={t.stages.namePlaceholder} className="flex-1 min-w-[150px]" />
-                <Select value={newStage.icon ?? 'none'} onValueChange={(v) => setNewStage({ ...newStage, icon: v === 'none' ? null : v })}>
-                  <SelectTrigger className="w-[110px] h-9" aria-label={t.stages.iconLabel}><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">{t.stages.iconNone}</SelectItem>{ICON_OPTIONS.map((ic) => <SelectItem key={ic} value={ic}>{ic}</SelectItem>)}</SelectContent>
-                </Select>
-                <ColorPicker value={newStage.color} onChange={(color) => setNewStage({ ...newStage, color })} />
-                <Button onClick={handleCreateStage} disabled={!newStage.name.trim() || !pipelineId || createStage.isPending} className="gap-2 sm:justify-self-end"><Plus className="h-4 w-4" /> Adicionar estágio</Button>
+            {!showCreateForm ? (
+              <Button variant="outline" onClick={() => setShowCreateForm(true)} className="gap-2">
+                <Plus className="h-4 w-4" /> Novo estágio
+              </Button>
+            ) : (
+              <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
+                  <Button variant="ghost" size="icon" aria-label="Fechar novo estágio" onClick={() => setShowCreateForm(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[minmax(150px,1fr)_110px_auto_auto]">
+                  <Input autoFocus value={newStage.name} onChange={(e) => setNewStage({ ...newStage, name: e.target.value })} placeholder={t.stages.namePlaceholder} className="flex-1 min-w-[150px]" />
+                  <Select value={newStage.icon ?? 'none'} onValueChange={(v) => setNewStage({ ...newStage, icon: v === 'none' ? null : v })}>
+                    <SelectTrigger className="w-[110px] h-9" aria-label={t.stages.iconLabel}><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="none">{t.stages.iconNone}</SelectItem>{ICON_OPTIONS.map((ic) => <SelectItem key={ic} value={ic}>{ic}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <ColorPicker value={newStage.color} onChange={(color) => setNewStage({ ...newStage, color })} />
+                  <Button onClick={handleCreateStage} disabled={!newStage.name.trim() || !pipelineId || createStage.isPending} className="gap-2 sm:justify-self-end"><Plus className="h-4 w-4" /> Adicionar estágio</Button>
+                </div>
               </div>
-            </div>
+            )}
             <div className="space-y-2"><p className="text-xs text-muted-foreground">{t.stages.dragHint}</p>{stages.map((stage) => <EditableRow key={stage.id} stage={stage} />)}</div>
           </div>
         </section>
       ) : (
       <ResponsiveModal open={open} onOpenChange={setOpen} title={dialogTitle}>
         <div className="space-y-4">
-          <div className="space-y-3 p-3 rounded-lg border-2 border-dashed border-muted">
-            <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
+          {!showCreateForm ? (
+            <Button variant="outline" onClick={() => setShowCreateForm(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> Novo estágio
+            </Button>
+          ) : (
+          <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
+              <Button variant="ghost" size="icon" aria-label="Fechar novo estágio" onClick={() => setShowCreateForm(false)}><X className="h-4 w-4" /></Button>
+            </div>
             <div className="flex gap-2 flex-wrap">
               <Input
+                autoFocus
                 value={newStage.name}
                 onChange={(e) => setNewStage({ ...newStage, name: e.target.value })}
                 placeholder={t.stages.namePlaceholder}
@@ -399,6 +423,7 @@ export function StageManagerDialog({
               </Button>
             </div>
           </div>
+          )}
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             <p className="text-xs text-muted-foreground mb-2">{t.stages.dragHint}</p>
             {stages.map((stage) => (

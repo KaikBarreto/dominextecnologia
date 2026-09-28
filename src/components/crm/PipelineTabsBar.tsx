@@ -129,6 +129,37 @@ export function PipelineTabsBar({
     const actions = menuActions(pipeline).filter((a) => !a.hidden);
     if (actions.length === 0) return null;
     const isOpen = openMenuId === pipeline.id;
+    const triggerClassName = cn(
+      'inline-flex items-center justify-center shrink-0 transition-opacity',
+      forMobile
+        ? 'h-7 w-7 rounded-full hover:bg-black/10'
+        : 'h-7 w-7 rounded-none hover:bg-muted',
+      !forMobile && !isActive && !isOpen && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+    );
+
+    // Hoje há uma única ação por funil: abrir suas configurações. Nesse caso,
+    // a engrenagem deve executar a ação diretamente. O dropdown anterior fazia
+    // a aba inativa ser selecionada e desaparecer antes de abrir o menu.
+    if (actions.length === 1) {
+      const [action] = actions;
+      return (
+        <button
+          type="button"
+          aria-label={configureLabel}
+          title={configureLabel}
+          data-pipeline-gear={pipeline.id}
+          disabled={action.disabled}
+          onClick={(event) => {
+            event.stopPropagation();
+            action.onClick(event);
+          }}
+          className={triggerClassName}
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+        </button>
+      );
+    }
+
     return (
       <DropdownMenu
         open={isOpen}
@@ -143,19 +174,8 @@ export function PipelineTabsBar({
             data-pipeline-gear={pipeline.id}
             onClick={(e) => {
               e.stopPropagation();
-              // Engrenagem de aba inativa também troca de funil: configurar um
-              // funil que não está na tela deixaria o usuário perdido.
-              if (!isActive) onSelect(pipeline.id);
             }}
-            className={cn(
-              'inline-flex items-center justify-center shrink-0 transition-opacity',
-              forMobile
-                ? 'h-7 w-7 rounded-full hover:bg-black/10'
-                : 'h-7 w-7 rounded-none hover:bg-muted',
-              // Mobile: só na aba ativa. Desktop: no hover da aba, e sempre na
-              // ativa e enquanto o menu dela estiver aberto.
-              !forMobile && !isActive && !isOpen && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
-            )}
+            className={triggerClassName}
           >
             <Settings2 className="h-3.5 w-3.5" />
           </button>

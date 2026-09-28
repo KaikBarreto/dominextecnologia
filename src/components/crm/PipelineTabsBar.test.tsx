@@ -35,6 +35,7 @@ let container: HTMLDivElement;
 let root: Root;
 const onSelect = vi.fn();
 const onCreate = vi.fn();
+const onConfigure = vi.fn();
 
 function render(mobile: boolean, hideSelected = false) {
   act(() => {
@@ -44,7 +45,7 @@ function render(mobile: boolean, hideSelected = false) {
         selectedId="p1"
         onSelect={onSelect}
         onCreate={onCreate}
-        menuActions={() => [{ label: 'Gerenciar etapas', icon: Settings2, onClick: () => {} }]}
+        menuActions={() => [{ label: 'Gerenciar etapas', icon: Settings2, onClick: onConfigure }]}
         mobile={mobile}
         configureLabel="Configurar funil"
         createLabel="Novo funil"
@@ -63,6 +64,7 @@ beforeEach(() => {
   root = createRoot(container);
   onSelect.mockClear();
   onCreate.mockClear();
+  onConfigure.mockClear();
 });
 
 afterEach(() => {
@@ -119,12 +121,13 @@ describe('PipelineTabsBar — desktop', () => {
     expect(document.querySelector('[data-pipeline-create]')).toBeTruthy();
   });
 
-  it('engrenagem de aba INATIVA seleciona aquele funil antes de configurar', () => {
+  it('engrenagem abre a configuração do funil sem trocar o funil ativo', () => {
     render(false);
     act(() => {
       document.querySelector('[data-pipeline-gear="p2"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
-    expect(onSelect).toHaveBeenCalledWith('p2');
+    expect(onConfigure).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });
 

@@ -232,6 +232,7 @@ export default function CRM() {
   const [pageTab, setPageTab] = useState<'funil' | 'tarefas'>('funil');
   const [crmSettingsOpen, setCrmSettingsOpen] = useState(false);
   const [crmSettingsSection, setCrmSettingsSection] = useState<'pipelines' | 'webhooks'>('pipelines');
+  const [crmSettingsPipelineId, setCrmSettingsPipelineId] = useState<string | null>(null);
   const [taskSearch, setTaskSearch] = useState('');
   // Com busca digitada, o funil esconde as etapas que ficaram sem nenhum card —
   // senão o único resultado fica na 8ª coluna e o usuário precisa rolar até
@@ -744,7 +745,10 @@ export default function CRM() {
 
       <div className="pt-2 border-t space-y-2">
         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filterConfig}</label>
-        <Button variant="outline" className="w-full justify-start gap-2" type="button" onClick={() => setCrmSettingsOpen(true)}>
+        <Button variant="outline" className="w-full justify-start gap-2" type="button" onClick={() => {
+          setCrmSettingsPipelineId(selectedPipelineId);
+          setCrmSettingsOpen(true);
+        }}>
           <Settings2 className="h-4 w-4" />
           {t.crmSettings}
         </Button>
@@ -758,7 +762,7 @@ export default function CRM() {
       label: t.crmSettings,
       icon: Settings2,
       onClick: () => {
-        selectPipeline(pipeline.id);
+        setCrmSettingsPipelineId(pipeline.id);
         setCrmSettingsSection('pipelines');
         setCrmSettingsOpen(true);
       },
@@ -771,6 +775,7 @@ export default function CRM() {
       selectedId={selectedPipelineId}
       onSelect={selectPipeline}
       onCreate={() => {
+        setCrmSettingsPipelineId(selectedPipelineId);
         setCrmSettingsSection('pipelines');
         setCrmSettingsOpen(true);
       }}
@@ -835,7 +840,10 @@ export default function CRM() {
         </div>
         <div className="min-w-0 flex-1">{pipelineTabs}</div>
         {isMobile && (
-          <Button variant="outline" size="icon" onClick={() => setCrmSettingsOpen(true)} title={t.crmSettings} aria-label={t.crmSettings}>
+          <Button variant="outline" size="icon" onClick={() => {
+            setCrmSettingsPipelineId(selectedPipelineId);
+            setCrmSettingsOpen(true);
+          }} title={t.crmSettings} aria-label={t.crmSettings}>
             <Settings2 className="h-4 w-4" />
           </Button>
         )}
@@ -1142,7 +1150,7 @@ export default function CRM() {
       open={crmSettingsOpen}
       onOpenChange={setCrmSettingsOpen}
       initialSection={crmSettingsSection}
-      pipelineId={selectedPipelineId ?? undefined}
+      pipelineId={crmSettingsPipelineId ?? selectedPipelineId ?? undefined}
       onPipelineCreated={selectPipeline}
     />
   );
@@ -1532,7 +1540,10 @@ export default function CRM() {
         subtitle={t.subtitle}
         icon={ListFilter}
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setCrmSettingsOpen(true)}>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            setCrmSettingsPipelineId(selectedPipelineId);
+            setCrmSettingsOpen(true);
+          }}>
             <Settings2 className="h-4 w-4" />
             {t.crmSettings}
           </Button>

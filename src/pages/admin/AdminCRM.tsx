@@ -228,6 +228,7 @@ function CrmTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<AdminCrmSettingsSection>('pipelines');
+  const [settingsPipelineId, setSettingsPipelineId] = useState<string | null>(null);
   const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
   const [detailLead, setDetailLead] = useState<AdminLead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -498,7 +499,7 @@ function CrmTab() {
       label: 'Configurações do CRM/Kanban',
       icon: Settings2,
       onClick: () => {
-        selectPipeline(pipeline.id);
+        setSettingsPipelineId(pipeline.id);
         setSettingsSection('pipelines');
         setSettingsOpen(true);
       },
@@ -511,6 +512,7 @@ function CrmTab() {
       selectedId={selectedPipelineId}
       onSelect={selectPipeline}
       onCreate={() => {
+        setSettingsPipelineId(selectedPipelineId);
         setSettingsSection('pipelines');
         setSettingsOpen(true);
       }}
@@ -572,7 +574,11 @@ function CrmTab() {
           <Button
             size={isMobile ? 'icon' : 'sm'}
             className="shrink-0 bg-foreground text-background hover:bg-foreground/90"
-            onClick={() => { setSettingsSection('pipelines'); setSettingsOpen(true); }}
+            onClick={() => {
+              setSettingsPipelineId(selectedPipelineId);
+              setSettingsSection('pipelines');
+              setSettingsOpen(true);
+            }}
             title="Configurações do CRM/Kanban"
             aria-label="Configurações do CRM/Kanban"
           >
@@ -882,7 +888,7 @@ function CrmTab() {
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           initialSection={settingsSection}
-          pipelineId={selectedPipelineId}
+          pipelineId={settingsPipelineId ?? selectedPipelineId}
           onPipelineCreated={selectPipeline}
         />
       </div>

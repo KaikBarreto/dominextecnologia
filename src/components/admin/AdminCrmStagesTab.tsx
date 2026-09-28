@@ -78,6 +78,7 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false, 
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#6B7280');
   const [newIcon, setNewIcon] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -99,16 +100,23 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false, 
 
   const handleCreate = () => {
     if (!newName.trim()) return;
-    createStage.mutate({
-      name: newName.trim(),
-      color: newColor,
-      icon: newIcon,
-      position: stages.length,
-      ...(activePipelineId ? { pipeline_id: activePipelineId } : {}),
-    });
-    setNewName('');
-    setNewColor('#6B7280');
-    setNewIcon(null);
+    createStage.mutate(
+      {
+        name: newName.trim(),
+        color: newColor,
+        icon: newIcon,
+        position: stages.length,
+        ...(activePipelineId ? { pipeline_id: activePipelineId } : {}),
+      },
+      {
+        onSuccess: () => {
+          setNewName('');
+          setNewColor('#6B7280');
+          setNewIcon(null);
+          setShowCreateForm(false);
+        },
+      },
+    );
   };
 
   const reorder = (targetId: string) => {
@@ -169,23 +177,33 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false, 
         </CardHeader>
       ) : null}
       <CardContent className={cn('space-y-4', compact && 'p-0')}>
-        <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
-          <Label htmlFor="admin-new-stage">Novo estágio</Label>
-          <div className="grid items-center gap-2 sm:grid-cols-[minmax(150px,1fr)_100px_auto_auto]">
-            <Input
-              id="admin-new-stage"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Nome do estágio"
-              className="h-9 min-w-[150px] flex-1"
-            />
-            <StageIconSelect value={newIcon} onChange={setNewIcon} />
-            <ColorPicker value={newColor} onChange={setNewColor} />
-            <Button size="sm" className="h-9" onClick={handleCreate} disabled={!newName.trim()}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar estágio
-            </Button>
+        {!showCreateForm ? (
+          <Button variant="outline" className="gap-2" onClick={() => setShowCreateForm(true)}>
+            <Plus className="h-4 w-4" /> Novo estágio
+          </Button>
+        ) : (
+          <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="admin-new-stage">Novo estágio</Label>
+              <Button variant="ghost" size="icon" aria-label="Fechar novo estágio" onClick={() => setShowCreateForm(false)}><X className="h-4 w-4" /></Button>
+            </div>
+            <div className="grid items-center gap-2 sm:grid-cols-[minmax(150px,1fr)_100px_auto_auto]">
+              <Input
+                id="admin-new-stage"
+                autoFocus
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Nome do estágio"
+                className="h-9 min-w-[150px] flex-1"
+              />
+              <StageIconSelect value={newIcon} onChange={setNewIcon} />
+              <ColorPicker value={newColor} onChange={setNewColor} />
+              <Button size="sm" className="h-9" onClick={handleCreate} disabled={!newName.trim()}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar estágio
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Arraste os estágios para definir a ordem das colunas.</p>
