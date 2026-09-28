@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.6',
+    date: '28 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Seletores do CRM mais fáceis de identificar',
+        description: 'Origens, funis e etapas agora exibem suas cores e seus ícones nas configurações de webhooks, inclusive depois da seleção.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Navegação mais limpa nas oportunidades',
+        description: 'As abas de detalhes, tarefas e histórico agora seguem o padrão visual com indicador inferior, facilitando a leitura dentro do card.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.5',
     date: '28 de setembro de 2026',
     type: 'patch',

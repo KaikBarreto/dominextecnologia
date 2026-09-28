@@ -406,12 +406,12 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
             aberturas (não desmonta ao fechar). Sem isso, abrir pela aba
             Tarefas continuaria caindo em Detalhes a partir da segunda vez. */}
         <Tabs key={`${lead?.id ?? 'none'}-${initialTab}`} defaultValue={initialTab} className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="flex-shrink-0">
-            <TabsTrigger value="detalhes">{t.detail.tabDetails}</TabsTrigger>
-            <TabsTrigger value="tarefas">
+          <TabsList variant="underline" className="grid w-full flex-shrink-0 grid-cols-3">
+            <TabsTrigger variant="underline" value="detalhes">{t.detail.tabDetails}</TabsTrigger>
+            <TabsTrigger variant="underline" value="tarefas">
               {t.detail.tabTasks} ({sortedLeadTasks.length})
             </TabsTrigger>
-            <TabsTrigger value="historico">
+            <TabsTrigger variant="underline" value="historico">
               {t.detail.tabHistory} ({interactions.length})
             </TabsTrigger>
           </TabsList>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Copy, Plus, Trash2, Webhook } from 'lucide-react';
+import { CircleOff, Copy, Plus, Trash2, Webhook, Workflow } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { useCrmWebhooks } from '@/hooks/useCrmWebhooks';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { useCrmPipelines } from '@/hooks/useCrmPipelines';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { IconPreview } from '@/components/customers/originIcons';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -39,11 +40,59 @@ export function WebhookManagerDialog({ children, embedded = false }: WebhookMana
   const { webhooks, isLoading, createWebhook, updateWebhook, deleteWebhook } = useCrmWebhooks();
   const { activeOrigins } = useCustomerOrigins();
   const { pipelines } = useCrmPipelines();
-  const { stages } = useCrmStages();
+  const { stages, getStageHex } = useCrmStages();
   const availableStages = useMemo(
     () => stages.filter((stage) => stage.pipeline_id === pipelineId),
     [pipelineId, stages],
   );
+  const selectedOrigin = activeOrigins.find((item) => item.name === origin);
+  const selectedPipeline = pipelines.find((pipeline) => pipeline.id === pipelineId);
+  const selectedStage = stages.find((stage) => stage.id === stageId);
+
+  const renderOriginOption = (item: (typeof activeOrigins)[number]) => (
+    <span className="flex min-w-0 items-center gap-2" data-origin-option={item.name}>
+      <span
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-white"
+        data-origin-color={item.color}
+        style={{ backgroundColor: item.color }}
+      >
+        <IconPreview name={item.icon} className="h-3 w-3" />
+      </span>
+      <span className="truncate">{item.name}</span>
+    </span>
+  );
+
+  const renderPipelineOption = (pipeline: (typeof pipelines)[number]) => (
+    <span className="flex min-w-0 items-center gap-2" data-pipeline-option={pipeline.id}>
+      <Workflow className="h-3.5 w-3.5 shrink-0" style={{ color: pipeline.color ?? '#2563EB' }} />
+      <span
+        className="h-1 w-6 shrink-0 rounded-full"
+        data-pipeline-color={pipeline.color ?? '#2563EB'}
+        style={{ backgroundColor: pipeline.color ?? '#2563EB' }}
+      />
+      <span className="truncate">{pipeline.name}</span>
+    </span>
+  );
+
+  const renderStageOption = (stage: (typeof stages)[number]) => {
+    const color = getStageHex(stage.color);
+    return (
+      <span className="flex min-w-0 items-center gap-2" data-stage-option={stage.id}>
+        {stage.icon ? (
+          <span className="shrink-0" style={{ color }}>
+            <IconPreview name={stage.icon} className="h-3.5 w-3.5" />
+          </span>
+        ) : (
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            data-stage-color={color}
+            style={{ backgroundColor: color }}
+          />
+        )}
+        <span className="truncate">{stage.name}</span>
+      </span>
+    );
+  };
 
   const selectPipeline = (nextPipelineId: string) => {
     setPipelineId(nextPipelineId);
@@ -95,14 +144,26 @@ export function WebhookManagerDialog({ children, embedded = false }: WebhookMana
               <div className="space-y-1.5">
                 <Label>{t.webhooks.originLabel}</Label>
                 <Select value={origin} onValueChange={setOrigin}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t.webhooks.originLabel} />
+                  <SelectTrigger aria-label={t.webhooks.originLabel}>
+                    <SelectValue placeholder={t.webhooks.originLabel}>
+                      {origin === 'none' ? (
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <CircleOff className="h-3.5 w-3.5" />
+                          {t.webhooks.originNone}
+                        </span>
+                      ) : selectedOrigin ? renderOriginOption(selectedOrigin) : origin}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">{t.webhooks.originNone}</SelectItem>
+                    <SelectItem value="none">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <CircleOff className="h-3.5 w-3.5" />
+                        {t.webhooks.originNone}
+                      </span>
+                    </SelectItem>
                     {activeOrigins.map((item) => (
                       <SelectItem key={item.id} value={item.name}>
-                        {item.name}
+                        {renderOriginOption(item)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -113,18 +174,34 @@ export function WebhookManagerDialog({ children, embedded = false }: WebhookMana
               <div className="space-y-1.5">
                 <Label>Funil de destino</Label>
                 <Select value={pipelineId} onValueChange={selectPipeline}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o funil" /></SelectTrigger>
+                  <SelectTrigger aria-label="Funil de destino">
+                    <SelectValue placeholder="Selecione o funil">
+                      {selectedPipeline ? renderPipelineOption(selectedPipeline) : null}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
-                    {pipelines.map((pipeline) => <SelectItem key={pipeline.id} value={pipeline.id}>{pipeline.name}</SelectItem>)}
+                    {pipelines.map((pipeline) => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {renderPipelineOption(pipeline)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Etapa de destino</Label>
                 <Select value={stageId} onValueChange={setStageId} disabled={!pipelineId || availableStages.length === 0}>
-                  <SelectTrigger><SelectValue placeholder={pipelineId ? 'Selecione a etapa' : 'Escolha o funil primeiro'} /></SelectTrigger>
+                  <SelectTrigger aria-label="Etapa de destino">
+                    <SelectValue placeholder={pipelineId ? 'Selecione a etapa' : 'Escolha o funil primeiro'}>
+                      {selectedStage ? renderStageOption(selectedStage) : null}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
-                    {availableStages.map((stage) => <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>)}
+                    {availableStages.map((stage) => (
+                      <SelectItem key={stage.id} value={stage.id}>
+                        {renderStageOption(stage)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -150,6 +227,8 @@ export function WebhookManagerDialog({ children, embedded = false }: WebhookMana
             ) : (
               webhooks.map((hook) => {
                 const endpoint = `${webhookBaseUrl}?token=${hook.token}`;
+                const hookPipeline = pipelines.find((pipeline) => pipeline.id === hook.pipeline_id);
+                const hookStage = stages.find((stage) => stage.id === hook.stage_id);
                 return (
                   <div key={hook.id} className="rounded-xl bg-muted/25 p-3 space-y-3 sm:p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -195,10 +274,20 @@ export function WebhookManagerDialog({ children, embedded = false }: WebhookMana
                             updateWebhook.mutate({ id: hook.id, pipeline_id: nextPipelineId, stage_id: nextStage?.id ?? null });
                           }}
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label={`Funil de destino de ${hook.name}`}>
+                            <SelectValue>
+                              {hookPipeline
+                                ? renderPipelineOption(hookPipeline)
+                                : 'Destino padrão antigo'}
+                            </SelectValue>
+                          </SelectTrigger>
                           <SelectContent>
                             {!hook.pipeline_id && <SelectItem value="legacy">Destino padrão antigo</SelectItem>}
-                            {pipelines.map((pipeline) => <SelectItem key={pipeline.id} value={pipeline.id}>{pipeline.name}</SelectItem>)}
+                            {pipelines.map((pipeline) => (
+                              <SelectItem key={pipeline.id} value={pipeline.id}>
+                                {renderPipelineOption(pipeline)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -209,10 +298,20 @@ export function WebhookManagerDialog({ children, embedded = false }: WebhookMana
                           onValueChange={(nextStageId) => updateWebhook.mutate({ id: hook.id, stage_id: nextStageId })}
                           disabled={!hook.pipeline_id}
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label={`Etapa de destino de ${hook.name}`}>
+                            <SelectValue>
+                              {hookStage
+                                ? renderStageOption(hookStage)
+                                : 'Primeira etapa disponível'}
+                            </SelectValue>
+                          </SelectTrigger>
                           <SelectContent>
                             {!hook.stage_id && <SelectItem value="legacy">Primeira etapa disponível</SelectItem>}
-                            {stages.filter((stage) => stage.pipeline_id === hook.pipeline_id).map((stage) => <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>)}
+                            {stages.filter((stage) => stage.pipeline_id === hook.pipeline_id).map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                {renderStageOption(stage)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

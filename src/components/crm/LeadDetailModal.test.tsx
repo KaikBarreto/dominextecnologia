@@ -150,6 +150,19 @@ afterEach(() => {
 });
 
 describe('LeadDetailModal — Observações edita direto, com autosave (prova real de DOM)', () => {
+  it('usa navegação underline nas abas internas do card', () => {
+    mount(BASE_LEAD);
+
+    const tabs = qAll('button[role="tab"]');
+    expect(tabs).toHaveLength(3);
+    tabs.forEach((tab) => {
+      expect(tab.className).toContain('border-b-2');
+      expect(tab.className).toContain('rounded-none');
+    });
+    expect(tabs[0].parentElement?.className).toContain('border-b');
+    expect(tabs[0].parentElement?.className).toContain('bg-transparent');
+  });
+
   it('digitar várias teclas em sequência dispara UMA chamada de save só, depois do debounce', () => {
     mount(BASE_LEAD);
     const textarea = q('textarea') as HTMLTextAreaElement;
