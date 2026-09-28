@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.5',
+    date: '28 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'CRM/Kanban com checklists e etiquetas',
+        description: 'As oportunidades agora podem receber etiquetas coloridas e checklists, com modelos configuráveis para padronizar o processo comercial da equipe.',
+        category: 'recurso',
+      },
+      {
+        title: 'Comentários e atividades lado a lado',
+        description: 'O detalhe da oportunidade ganhou uma visão mais ampla, com os dados e observações de um lado e o histórico de comentários e atividades do outro.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Checklists técnicos mais fáceis de consultar',
+        description: 'Checklists longos agora contam com pesquisa, filtro por tipo de pergunta, ordenação e paginação para facilitar a consulta no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.4',
     date: '28 de setembro de 2026',
     type: 'patch',

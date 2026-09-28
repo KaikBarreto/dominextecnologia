@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Webhook, Workflow } from 'lucide-react';
+import { CheckSquare2, Tags, Webhook, Workflow } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PipelineManagerDialog } from '@/components/crm/PipelineManagerDialog';
 import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
+import { CrmChecklistTemplatesManager } from '@/components/crm/CrmChecklistTemplatesManager';
+import { CrmLabelsManager } from '@/components/crm/CrmLabelsManager';
 
-type CrmSettingsSection = 'pipelines' | 'webhooks';
+type CrmSettingsSection = 'pipelines' | 'checklists' | 'labels' | 'webhooks';
 
 interface CrmSettingsDialogProps {
   open: boolean;
@@ -17,6 +19,8 @@ interface CrmSettingsDialogProps {
 
 const tabs: SettingsTab[] = [
   { value: 'pipelines', label: 'Funis', icon: Workflow },
+  { value: 'checklists', label: 'Checklists', icon: CheckSquare2 },
+  { value: 'labels', label: 'Etiquetas', icon: Tags },
   { value: 'webhooks', label: 'Webhooks', icon: Webhook },
 ];
 
@@ -54,6 +58,8 @@ export function CrmSettingsDialog({
             />
           )}
           {section === 'webhooks' && <WebhookManagerDialog embedded />}
+          {section === 'checklists' && <CrmChecklistTemplatesManager />}
+          {section === 'labels' && <CrmLabelsManager />}
         </div>
       </SettingsSidebarLayout>
     </ResponsiveModal>

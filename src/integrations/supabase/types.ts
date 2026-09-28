@@ -81,6 +81,54 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_crm_checklist_templates: {
+        Row: {
+          created_at: string
+          id: string
+          items: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_crm_labels: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_crm_pipelines: {
         Row: {
           color: string
@@ -288,6 +336,8 @@ export type Database = {
       }
       admin_leads: {
         Row: {
+          crm_checklists: Json
+          crm_label_ids: string[]
           company_name: string | null
           contact_name: string | null
           created_at: string
@@ -309,6 +359,8 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           company_name?: string | null
           contact_name?: string | null
           created_at?: string
@@ -330,6 +382,8 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           company_name?: string | null
           contact_name?: string | null
           created_at?: string
@@ -2394,6 +2448,76 @@ export type Database = {
             columns: ["pipeline_id"]
             isOneToOne: false
             referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_checklist_templates: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          items: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          items?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          items?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_checklist_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_labels: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_labels_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -6054,6 +6178,8 @@ export type Database = {
         Row: {
           assigned_to: string | null
           company_id: string
+          crm_checklists: Json
+          crm_label_ids: string[]
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -6073,6 +6199,8 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           company_id: string
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -6092,6 +6220,8 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           company_id?: string
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           created_at?: string
           created_by?: string | null
           customer_id?: string | null

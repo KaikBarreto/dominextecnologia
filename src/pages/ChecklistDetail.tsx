@@ -4,6 +4,7 @@ import {
   ArrowLeft, Plus, Pencil, Trash2, GripVertical, X,
   CheckSquare, Type, Hash, Camera, ListChecks,
   ChevronUp, ChevronDown, BookOpen, Lock, Check,
+  Search, ArrowUpDown, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
@@ -32,6 +34,7 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { buildChecklistQuestionPage, type ChecklistQuestionSort } from '@/lib/checklistQuestionList';
 
 const getQTypeIcon = (type: string) => {
   const found = QUESTION_TYPES.find(t => t.value === type);
@@ -85,6 +88,11 @@ export default function ChecklistDetail() {
     freq_kind: null, freq_months: null, freq_days: null, freq_visits: null, start_kind: null, start_visit: null,
   });
   const [newOption, setNewOption] = useState('');
+  const [questionSearch, setQuestionSearch] = useState('');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState('all');
+  const [questionSort, setQuestionSort] = useState<ChecklistQuestionSort>('position');
+  const [questionSortDirection, setQuestionSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [questionPage, setQuestionPage] = useState(1);
 
   const resetQuestionForm = () => {
     setQForm({
@@ -325,8 +333,32 @@ export default function ChecklistDetail() {
     reorderQuestions.mutate(questions.map(q => q.id));
   };
 
-  const sortedQuestions = [...(template.questions || [])].sort((a, b) => a.position - b.position);
+  const pageSize = 20;
+  const questionView = buildChecklistQuestionPage({
+    questions: template.questions || [],
+    query: questionSearch,
+    typeFilter: questionTypeFilter,
+    sort: questionSort,
+    direction: questionSortDirection,
+    page: questionPage,
+    pageSize,
+    getTypes: getEffectiveTypes,
+    getTypeLabel: getQTypeLabel,
+  });
+  const sortedQuestions = questionView.all;
+  const filteredQuestions = questionView.filtered;
+  const pagedQuestions = questionView.items;
+  const totalQuestionPages = questionView.totalPages;
+  const currentQuestionPage = questionView.currentPage;
+  const normalizedSearch = questionView.normalizedQuery;
+  const canReorder = questionSort === 'position' && questionSortDirection === 'asc' && !normalizedSearch && questionTypeFilter === 'all';
   const selectedAnswerTypes = qForm.answer_types || [];
+
+  const changeQuestionSort = (sort: ChecklistQuestionSort) => {
+    if (questionSort === sort) setQuestionSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
+    else { setQuestionSort(sort); setQuestionSortDirection('asc'); }
+    setQuestionPage(1);
+  };
 
   return (
     <div className={cn("space-y-6", isMobile && "pb-24")}>
@@ -417,6 +449,35 @@ export default function ChecklistDetail() {
         )}
       </div>
 
+      {sortedQuestions.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px_180px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={questionSearch}
+              onChange={(event) => { setQuestionSearch(event.target.value); setQuestionPage(1); }}
+              placeholder="Pesquisar pergunta, descrição ou tipo..."
+              className="pl-9"
+            />
+          </div>
+          <Select value={questionTypeFilter} onValueChange={(value) => { setQuestionTypeFilter(value); setQuestionPage(1); }}>
+            <SelectTrigger><SelectValue placeholder="Todos os tipos" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              {QUESTION_TYPES.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={questionSort} onValueChange={(value) => { setQuestionSort(value as typeof questionSort); setQuestionSortDirection('asc'); setQuestionPage(1); }}>
+            <SelectTrigger><SelectValue placeholder="Ordenar" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="position">Ordem do checklist</SelectItem>
+              <SelectItem value="question">Nome da pergunta</SelectItem>
+              <SelectItem value="type">Tipo de pergunta</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Questions list */}
       {sortedQuestions.length === 0 ? (
         <EmptyState
@@ -426,19 +487,32 @@ export default function ChecklistDetail() {
         />
       ) : (
         <div className="rounded-lg border bg-card divide-y overflow-hidden">
-          {sortedQuestions.map((question, index) => {
+          <div className="hidden grid-cols-[44px_minmax(0,1fr)_220px_150px_40px] items-center gap-2 bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground lg:grid">
+            <button type="button" className="text-left" onClick={() => changeQuestionSort('position')}>#</button>
+            <button type="button" className="flex items-center gap-1 text-left" onClick={() => changeQuestionSort('question')}>Pergunta <ArrowUpDown className="h-3 w-3" /></button>
+            <button type="button" className="flex items-center gap-1 text-left" onClick={() => changeQuestionSort('type')}>Tipo <ArrowUpDown className="h-3 w-3" /></button>
+            <span>{showFrequency ? 'Frequência' : ''}</span><span />
+          </div>
+          {pagedQuestions.length === 0 ? (
+            <div className="px-4 py-12 text-center">
+              <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="font-medium">Nenhuma pergunta encontrada</p>
+              <p className="text-sm text-muted-foreground">Ajuste a pesquisa ou os filtros.</p>
+            </div>
+          ) : pagedQuestions.map((question) => {
             const effectiveTypes = getEffectiveTypes(question);
             const questionOptions = (question.options as string[]) || [];
+            const absoluteIndex = sortedQuestions.findIndex((item) => item.id === question.id);
 
             return (
               <div
                 key={question.id}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-2.5 sm:px-3 hover:bg-muted/40 transition-colors group",
+                  "flex items-center gap-2 px-2 py-2.5 sm:px-3 lg:grid lg:grid-cols-[44px_minmax(0,1fr)_220px_150px_40px] hover:bg-muted/40 transition-colors group",
                   draggedQuestionId === question.id && "opacity-50",
                   dragOverQuestionId === question.id && "bg-primary/5 ring-1 ring-inset ring-primary"
                 )}
-                draggable
+                draggable={canReorder}
                 onDragStart={(e) => handleDragStart(e, question.id)}
                 onDragOver={(e) => handleDragOver(e, question.id)}
                 onDragLeave={() => setDragOverQuestionId(null)}
@@ -447,15 +521,15 @@ export default function ChecklistDetail() {
               >
                 {/* Reorder control: drag handle no desktop, setas no mobile */}
                 <div className="hidden lg:flex items-center gap-1.5 shrink-0">
-                  <GripVertical className="h-4 w-4 text-muted-foreground/60 cursor-grab active:cursor-grabbing" />
-                  <span className="text-xs font-medium text-muted-foreground tabular-nums w-5 text-right">{index + 1}</span>
+                  <GripVertical className={cn('h-4 w-4 text-muted-foreground/60', canReorder && 'cursor-grab active:cursor-grabbing')} />
+                  <span className="text-xs font-medium text-muted-foreground tabular-nums w-5 text-right">{absoluteIndex + 1}</span>
                 </div>
                 <div className="flex flex-col gap-0.5 lg:hidden shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    disabled={index === 0}
+                    disabled={!canReorder || absoluteIndex === 0}
                     onClick={() => moveQuestion(question.id, 'up')}
                   >
                     <ChevronUp className="h-4 w-4" />
@@ -464,7 +538,7 @@ export default function ChecklistDetail() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    disabled={index === sortedQuestions.length - 1}
+                    disabled={!canReorder || absoluteIndex === sortedQuestions.length - 1}
                     onClick={() => moveQuestion(question.id, 'down')}
                   >
                     <ChevronDown className="h-4 w-4" />
@@ -474,7 +548,7 @@ export default function ChecklistDetail() {
                 {/* Conteúdo */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0 lg:hidden">{index + 1}.</span>
+                    <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0 lg:hidden">{absoluteIndex + 1}.</span>
                     <p className="text-sm font-medium leading-snug truncate">{question.question}</p>
                     {question.is_required && (
                       <span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" title="Obrigatória" />
@@ -492,7 +566,7 @@ export default function ChecklistDetail() {
                 </div>
 
                 {/* Selos de tipo (compactos, à direita) */}
-                <div className="hidden sm:flex items-center gap-1 flex-wrap justify-end max-w-[40%] shrink-0">
+                <div className="hidden sm:flex items-center gap-1 flex-wrap justify-end max-w-[40%] shrink-0 lg:max-w-none lg:justify-start">
                   {effectiveTypes.map(t => {
                     const Icon = getQTypeIcon(t);
                     return (
@@ -548,6 +622,22 @@ export default function ChecklistDetail() {
               </div>
             );
           })}
+          {filteredQuestions.length > pageSize && (
+            <div className="flex flex-col items-center justify-between gap-2 px-3 py-3 text-sm sm:flex-row">
+              <span className="text-muted-foreground">
+                {(currentQuestionPage - 1) * pageSize + 1}–{Math.min(currentQuestionPage * pageSize, filteredQuestions.length)} de {filteredQuestions.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setQuestionPage((page) => Math.max(1, page - 1))} disabled={currentQuestionPage === 1}>
+                  <ChevronLeft className="mr-1 h-4 w-4" /> Anterior
+                </Button>
+                <span className="min-w-16 text-center">{currentQuestionPage}/{totalQuestionPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setQuestionPage((page) => Math.min(totalQuestionPages, page + 1))} disabled={currentQuestionPage === totalQuestionPages}>
+                  Próxima <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -73,6 +73,11 @@ vi.mock('@/hooks/useProfiles', () => ({
 }));
 vi.mock('@/components/service-orders/ServiceOrderFormDialog', () => ({ ServiceOrderFormDialog: () => null }));
 vi.mock('@/components/schedule/TaskFormDialog', () => ({ TaskFormDialog: () => null }));
+vi.mock('@/hooks/useCrmCardTools', () => ({
+  useCrmLabels: () => ({ labels: [], isLoading: false }),
+  useCrmChecklistTemplates: () => ({ templates: [] }),
+  useLeadCardTools: () => ({ labelIds: [], checklists: [], updateCardTools: { mutate: vi.fn(), isPending: false } }),
+}));
 
 import { LeadDetailModal } from './LeadDetailModal';
 import type { Lead } from '@/hooks/useLeads';

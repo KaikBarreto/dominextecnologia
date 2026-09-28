@@ -33,6 +33,9 @@ import { STAGE_CHANGE_INTERACTION_TYPE, parseStageChangeDescription } from '@/li
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { cn } from '@/lib/utils';
 import { AdminLeadFormDialog } from './AdminLeadFormDialog';
+import { LeadLabelsSection } from '@/components/crm/LeadLabelsSection';
+import { LeadChecklistsSection } from '@/components/crm/LeadChecklistsSection';
+import { CrmActivityFeed } from '@/components/crm/CrmActivityFeed';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -261,6 +264,13 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
     setShowForm(false);
   };
 
+  const handleAddComment = (description: string) => createInteraction.mutateAsync({
+    lead_id: lead.id,
+    interaction_type: 'comentario',
+    description,
+    created_by: user?.id,
+  });
+
   const handleDelete = () => {
     deleteLead.mutate(lead.id);
     setDeleteConfirmOpen(false);
@@ -345,7 +355,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
 
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Lead" footer={leadFooter}>
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Lead" footer={leadFooter} className="sm:max-w-[1120px]">
         <Tabs value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
           <TabsList variant="underline" className="grid w-full grid-cols-3">
             <TabsTrigger variant="underline" value="detalhes">Detalhes</TabsTrigger>
@@ -373,8 +383,8 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
 
           {/* ================= DETALHES ================= */}
           <TabsContent value="detalhes" className="mt-4">
-            <div className="max-h-[60vh] overflow-y-auto">
-              <div className="space-y-4 pr-2">
+            <div className="grid max-h-[68vh] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0 space-y-4 pb-5 lg:pr-6">
                 {/* Atalho rápido de contato */}
                 {whatsappLink && (
                   <div className="flex justify-end">
@@ -520,7 +530,17 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
                   />
                 </div>
                 {/* Motivo da perda aparece no rodapé (selo de fechamento). */}
+                <LeadLabelsSection leadId={lead.id} admin />
+                <LeadChecklistsSection leadId={lead.id} admin />
               </div>
+              <CrmActivityFeed
+                interactions={interactions.map((item) => item.interaction_type === STAGE_CHANGE_INTERACTION_TYPE
+                  ? { ...item, description: renderStageChangeText(item.description) }
+                  : item)}
+                onAddComment={handleAddComment}
+                isSaving={createInteraction.isPending}
+                className="mt-4 border-t lg:mt-0 lg:border-l lg:border-t-0"
+              />
             </div>
           </TabsContent>
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
@@ -38,6 +38,8 @@ vi.mock('@/components/admin/AdminPipelineManagerDialog', () => ({
     <div data-testid="pipelines">{`${embedded}:${initialExpandedPipelineId}`}</div>
   ),
 }));
+vi.mock('@/components/crm/CrmChecklistTemplatesManager', () => ({ CrmChecklistTemplatesManager: () => <div data-testid="checklists">Modelos</div> }));
+vi.mock('@/components/crm/CrmLabelsManager', () => ({ CrmLabelsManager: () => <div data-testid="labels">Etiquetas</div> }));
 
 import { AdminCrmSettingsDialog } from './AdminCrmSettingsDialog';
 
@@ -59,7 +61,7 @@ describe('AdminCrmSettingsDialog', () => {
     expect(screen.getByTestId('pipelines').textContent).toBe('true:pipeline-1');
   });
 
-  it('mantém somente o CRUD de funis dentro da tela', () => {
+  it('oferece checklists e etiquetas além dos funis', async () => {
     render(
       <AdminCrmSettingsDialog
         open
@@ -71,5 +73,9 @@ describe('AdminCrmSettingsDialog', () => {
 
     expect(screen.getByTestId('pipelines').textContent).toBe('true:pipeline-1');
     expect(screen.queryByTestId('stages')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Checklists' }));
+    expect(await screen.findByTestId('checklists')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Etiquetas' }));
+    expect(await screen.findByTestId('labels')).toBeTruthy();
   });
 });

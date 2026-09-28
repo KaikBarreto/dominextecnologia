@@ -49,6 +49,9 @@ import { collapseRecurringOccurrences } from '@/lib/taskRecurrence';
 import { cn } from '@/lib/utils';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
+import { LeadLabelsSection } from '@/components/crm/LeadLabelsSection';
+import { LeadChecklistsSection } from '@/components/crm/LeadChecklistsSection';
+import { CrmActivityFeed } from '@/components/crm/CrmActivityFeed';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -288,6 +291,14 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
     setIsAddingInteraction(false);
   };
 
+  const handleAddComment = (description: string) => createInteraction.mutateAsync({
+    lead_id: lead.id,
+    interaction_type: 'comentario',
+    description,
+    next_action: null,
+    next_action_date: null,
+  });
+
   const handleDelete = async () => {
     if (confirm(t.detail.deleteConfirm)) {
       await deleteLead.mutateAsync(lead.id);
@@ -361,14 +372,14 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] overflow-hidden flex flex-col sm:max-w-6xl">
         <DialogHeader className="flex-shrink-0">
           {/* pr-28 reserva espaço pro botão "FECHAR" (absolute, ModalCloseButton em
               dialog.tsx) que fica sobreposto no canto superior direito em ambos os
               modos (dialog desktop: right-4/top-4; drawer mobile: right-3/top-3).
               Sem essa reserva, o grupo Editar/Excluir (e, com título de 2 linhas,
               a própria 1ª linha do título) renderiza por baixo do FECHAR. */}
-          <div className="flex items-start justify-between gap-4 pr-28">
+          <div className="flex flex-col gap-2 pr-20 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:pr-28">
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-xl font-bold">{lead.title}</DialogTitle>
               {lead.customers && (
@@ -378,7 +389,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <Button variant="edit-ghost" size="sm" onClick={handleEditClick}>
                 <Edit className="h-4 w-4 mr-1" />
                 {t.detail.edit}
@@ -405,7 +416,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="detalhes" className="flex-1 overflow-auto mt-4 space-y-6">
+          <TabsContent value="detalhes" className="flex-1 overflow-auto mt-4">
+            <div className="grid min-h-full lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0 space-y-6 pb-5 lg:pr-6">
             {/* Funil + Estágio. São DOIS selects: o de cima move a
                 oportunidade entre funis (pedido do CEO), o de baixo anda com
                 ela dentro do funil atual. O select de funil só aparece quando a
@@ -691,6 +704,19 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
             <div className="text-xs text-muted-foreground space-y-1">
               <p>{t.detail.createdAt} {format(new Date(lead.created_at), 'dd/MM/yyyy HH:mm', { locale: dfLocale })}</p>
               <p>{t.detail.updatedAt} {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true, locale: dfLocale })}</p>
+            </div>
+            <LeadLabelsSection leadId={lead.id} />
+            <LeadChecklistsSection leadId={lead.id} />
+              </div>
+              <CrmActivityFeed
+                interactions={interactions.map((item) => item.interaction_type === STAGE_CHANGE_INTERACTION_TYPE
+                  ? { ...item, description: renderStageChangeText(item.description) }
+                  : item)}
+                onAddComment={handleAddComment}
+                isSaving={createInteraction.isPending}
+                resolveAuthor={(item) => item.created_by ? profileMap.get(item.created_by)?.full_name : null}
+                className="-mx-1 border-t lg:mx-0 lg:-my-4 lg:border-l lg:border-t-0"
+              />
             </div>
           </TabsContent>
 

@@ -55,6 +55,8 @@ export interface AdminLead {
   pipeline_id: string;
   created_at: string;
   updated_at: string;
+  crm_label_ids?: string[];
+  crm_checklists?: unknown;
 }
 
 const NO_ADMIN_PIPELINES: AdminCrmPipeline[] = [];

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Workflow } from 'lucide-react';
+import { CheckSquare2, Tags, Workflow } from 'lucide-react';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { AdminPipelineManagerDialog } from '@/components/admin/AdminPipelineManagerDialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { CrmChecklistTemplatesManager } from '@/components/crm/CrmChecklistTemplatesManager';
+import { CrmLabelsManager } from '@/components/crm/CrmLabelsManager';
 
-export type AdminCrmSettingsSection = 'pipelines';
+export type AdminCrmSettingsSection = 'pipelines' | 'checklists' | 'labels';
 
 interface AdminCrmSettingsDialogProps {
   open: boolean;
@@ -16,6 +18,8 @@ interface AdminCrmSettingsDialogProps {
 
 const tabs: SettingsTab[] = [
   { value: 'pipelines', label: 'Funis', icon: Workflow },
+  { value: 'checklists', label: 'Checklists', icon: CheckSquare2 },
+  { value: 'labels', label: 'Etiquetas', icon: Tags },
 ];
 
 export function AdminCrmSettingsDialog({
@@ -53,6 +57,8 @@ export function AdminCrmSettingsDialog({
               embedded
             />
           )}
+          {section === 'checklists' && <CrmChecklistTemplatesManager admin />}
+          {section === 'labels' && <CrmLabelsManager admin />}
         </div>
       </SettingsSidebarLayout>
     </ResponsiveModal>

@@ -8,6 +8,7 @@ import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAva
 import { getSegment } from '@/utils/companySegments';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import type { AdminLead } from '@/hooks/useAdminCrm';
+import { useCrmLabels } from '@/hooks/useCrmCardTools';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
@@ -58,6 +59,8 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
   const value = Number(lead.value || 0);
   const probability = lead.probability;
   const whatsappLink = buildWhatsAppLink(lead.phone);
+  const { labels } = useCrmLabels(true);
+  const appliedLabels = labels.filter((label) => lead.crm_label_ids?.includes(label.id));
 
   const formatCurrency = (v: number) =>
     `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -80,6 +83,15 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
       className="group cursor-pointer transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 border-border/50 bg-card"
     >
       <CardContent className="p-4">
+        {appliedLabels.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1">
+            {appliedLabels.map((label) => (
+              <span key={label.id} className="max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ backgroundColor: label.color }}>
+                {label.name}
+              </span>
+            ))}
+          </div>
+        )}
         {/* Título + empresa */}
         <div className="space-y-1 mb-3">
           <h4 className="font-medium text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">

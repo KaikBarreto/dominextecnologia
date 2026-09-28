@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.4";
+export const APP_VERSION = "1.28.5";
 
-export const VERSION_NOTES = "Contas e movimentações financeiras agora mostram categorias com mais destaque e podem ser abertas para consultar todos os detalhes. Também corrigimos a digitação de novas oportunidades no CRM administrativo.";
+export const VERSION_NOTES = "O CRM/Kanban ganhou etiquetas, checklists e uma área lateral de comentários e atividades. Checklists técnicos longos também ficaram mais fáceis de pesquisar, ordenar e navegar.";

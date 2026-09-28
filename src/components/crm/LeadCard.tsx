@@ -10,6 +10,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { useCrmLabels } from '@/hooks/useCrmCardTools';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -27,6 +28,8 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const dfLocale = DATE_FNS_LOCALES[locale];
+  const { labels } = useCrmLabels();
+  const appliedLabels = labels.filter((label) => lead.crm_label_ids?.includes(label.id));
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
@@ -51,6 +54,15 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
       className="group cursor-pointer transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 border-border/50 bg-card"
     >
       <CardContent className="p-4">
+        {appliedLabels.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1">
+            {appliedLabels.map((label) => (
+              <span key={label.id} className="max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ backgroundColor: label.color }}>
+                {label.name}
+              </span>
+            ))}
+          </div>
+        )}
         {/* Title and Customer */}
         <div className="space-y-1 mb-3">
           <h4 className="font-medium text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">

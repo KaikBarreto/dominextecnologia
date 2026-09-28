@@ -11,13 +11,15 @@
 //     port do componente do tenant.
 //
 // Driver mínimo com createRoot + act (o repo não usa @testing-library/react).
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AdminLeadCard } from './AdminLeadCard';
 import type { AdminLead } from '@/hooks/useAdminCrm';
+
+vi.mock('@/hooks/useCrmCardTools', () => ({ useCrmLabels: () => ({ labels: (globalThis as any).__adminCrmLabels ?? [] }) }));
 
 class ResizeObserverStub {
   observe() {}
@@ -68,6 +70,7 @@ afterEach(() => {
   container?.remove();
   container = null;
   root = null;
+  (globalThis as any).__adminCrmLabels = [];
 });
 
 const text = () => document.body.textContent || '';
@@ -137,5 +140,12 @@ describe('AdminLeadCard', () => {
   it('mostra a previsão de fechamento em dd/MM', () => {
     render(<AdminLeadCard lead={makeLead({ expected_close_date: '2026-10-15' })} onClick={() => {}} />);
     expect(text()).toContain('15/10');
+  });
+
+  it('mostra no card as etiquetas aplicadas à oportunidade', () => {
+    (globalThis as any).__adminCrmLabels = [{ id: 'label-1', name: 'Urgente', color: '#DC2626' }];
+    render(<AdminLeadCard lead={makeLead({ crm_label_ids: ['label-1'] })} onClick={() => {}} />);
+    const label = Array.from(document.querySelectorAll<HTMLElement>('span')).find((item) => item.textContent === 'Urgente');
+    expect(label?.style.backgroundColor).toBe('rgb(220, 38, 38)');
   });
 });
