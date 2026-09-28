@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -107,7 +132,7 @@ export type Database = {
           is_lost?: boolean
           is_won?: boolean
           name: string
-          pipeline_id?: string
+          pipeline_id: string
           position?: number
           updated_at?: string
         }
@@ -294,7 +319,7 @@ export type Database = {
           loss_reason?: string | null
           notes?: string | null
           phone?: string | null
-          pipeline_id?: string
+          pipeline_id: string
           probability?: number | null
           responsible_id?: string | null
           segment?: string | null
@@ -399,6 +424,8 @@ export type Database = {
       admin_tasks: {
         Row: {
           assigned_to: string | null
+          automation_key: string | null
+          company_id: string | null
           completed_by: string | null
           created_at: string
           created_by: string | null
@@ -417,6 +444,8 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          automation_key?: string | null
+          company_id?: string | null
           completed_by?: string | null
           created_at?: string
           created_by?: string | null
@@ -435,6 +464,8 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          automation_key?: string | null
+          company_id?: string | null
           completed_by?: string | null
           created_at?: string
           created_by?: string | null
@@ -452,6 +483,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "admin_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "admin_tasks_crm_lead_id_fkey"
             columns: ["crm_lead_id"]
@@ -8046,6 +8084,27 @@ export type Database = {
           },
         ]
       }
+      self_registration_attempts: {
+        Row: {
+          created_at: string
+          email_hash: string
+          id: string
+          ip_hash: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_hash: string
+          id?: string
+          ip_hash?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_hash?: string
+          id?: string
+          ip_hash?: string | null
+        }
+        Relationships: []
+      }
       service_cost_resources: {
         Row: {
           id: string
@@ -10865,6 +10924,7 @@ export type Database = {
     }
     Functions: {
       _assert_super_admin: { Args: never; Returns: undefined }
+      _cs_checkup_responsavel: { Args: never; Returns: string }
       _recalculate_employee_movement_balances: {
         Args: { p_employee_id: string }
         Returns: undefined
@@ -11050,6 +11110,10 @@ export type Database = {
         Args: { _pipeline_id: string }
         Returns: string
       }
+      cs_criar_checkup_semanal: {
+        Args: { p_dia?: string; p_dry_run?: boolean }
+        Returns: Json
+      }
       current_salesperson_id: { Args: never; Returns: string }
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
@@ -11166,11 +11230,11 @@ export type Database = {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
       }
+      ensure_default_admin_crm_pipeline: { Args: never; Returns: string }
       ensure_default_crm_pipeline: {
         Args: { _company_id: string }
         Returns: string
       }
-      ensure_default_admin_crm_pipeline: { Args: never; Returns: string }
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }
         Returns: undefined
@@ -11238,14 +11302,6 @@ export type Database = {
           p_to?: string
         }
         Returns: Json
-      }
-      get_tenant_subscription_delete_capabilities: {
-        Args: never
-        Returns: {
-          can_delete: boolean
-          charge_count: number
-          subscription_id: string
-        }[]
       }
       get_company_health_scores: {
         Args: never
@@ -11490,6 +11546,14 @@ export type Database = {
           stock_name: string
           unit: string
           valor: number
+        }[]
+      }
+      get_tenant_subscription_delete_capabilities: {
+        Args: never
+        Returns: {
+          can_delete: boolean
+          charge_count: number
+          subscription_id: string
         }[]
       }
       get_top_cpu_queries: {
@@ -11773,6 +11837,10 @@ export type Database = {
         }
         Returns: string
       }
+      register_self_registration_attempt: {
+        Args: { p_email_hash: string; p_ip_hash: string }
+        Returns: boolean
+      }
       replace_contract_plan_activities: {
         Args: { p_activities: Json; p_contract_id: string }
         Returns: number
@@ -11988,6 +12056,7 @@ export type Database = {
         | "financeiro"
         | "melhoria"
         | "follow-up"
+        | "cs_checkup"
       app_role:
         | "admin"
         | "gestor"
@@ -12141,6 +12210,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],
@@ -12152,6 +12224,7 @@ export const Constants = {
         "financeiro",
         "melhoria",
         "follow-up",
+        "cs_checkup",
       ],
       app_role: [
         "admin",

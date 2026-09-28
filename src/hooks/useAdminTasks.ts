@@ -64,6 +64,7 @@ export const TASK_TYPE_CONFIG: Record<AdminTaskType, { label: string; className:
   bug: { label: 'Bug', className: 'bg-red-600 text-white border-red-600' },
   financeiro: { label: 'Financeiro', className: 'bg-emerald-600 text-white border-emerald-600' },
   melhoria: { label: 'Melhoria', className: 'bg-amber-600 text-white border-amber-600' },
+  cs_checkup: { label: 'Check-up CS', className: 'bg-sky-600 text-white border-sky-600' },
   'follow-up': { label: 'Follow-up', className: 'bg-violet-600 text-white border-violet-600' },
 };
 
@@ -82,7 +83,7 @@ export const TASK_PRIORITY_CONFIG: Record<AdminTaskPriority, { label: string; cl
 };
 
 export const TASK_TYPE_OPTIONS: AdminTaskType[] = [
-  'chamado', 'implantacao', 'bug', 'financeiro', 'melhoria', 'follow-up',
+  'chamado', 'implantacao', 'bug', 'financeiro', 'melhoria', 'cs_checkup', 'follow-up',
 ];
 export const TASK_STATUS_OPTIONS: AdminTaskStatus[] = [
   'novo', 'em_andamento', 'aguardando', 'resolvido',
