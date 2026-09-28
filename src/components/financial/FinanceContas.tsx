@@ -85,6 +85,10 @@ import { generateMovimentacoesReportPdf } from '@/utils/movimentacoesPdfGenerato
 import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
 import { generateMovimentacoesCsv } from '@/utils/movimentacoesCsvGenerator';
 import { FinanceAccountsCalendar, type FinanceCalendarItem } from './FinanceAccountsCalendar';
+import {
+  getFinancialAccountPriority,
+  sortFinancialAccountsByPriority,
+} from '@/lib/finance-account-priority';
 
 type SubTab = 'todas' | 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -259,7 +263,8 @@ export function FinanceContas({
     toast({ title: fin.accounts.payroll.toastSuccess });
   };
 
-  const today = startOfDay(new Date());
+  const todayIso = todayInTz(timezone);
+  const today = startOfDay(parseLocalDate(todayIso));
   const next7Days = addDays(today, 7);
 
   const contaDefaultType: TransactionType = subTab === 'receber' ? 'entrada' : 'saida';
@@ -563,20 +568,22 @@ export function FinanceContas({
     return { total, count: filtered.length };
   }, [filtered, costCenterFilter]);
 
-  // Pré-calcula campos derivados pra ordenação na table desktop. O hook
-  // useTableSort entende números (amount, due_date_ts) e strings (status).
+  // Ordem operacional padrão, igual no desktop e no mobile: vencidas primeiro,
+  // depois pendentes e só então pagas/recebidas. Dentro dos grupos, o helper
+  // puro resolve os vencimentos e baixas; a tabela ainda permite trocar a
+  // ordenação manualmente ao clicar nos cabeçalhos.
   const filteredForSort = useMemo(() => {
-    return filtered.map(t => ({
+    return sortFinancialAccountsByPriority(filtered, todayIso).map(t => ({
       ...t,
       _due_ts: t.due_date ? parseLocalDate(t.due_date).getTime() : 0,
       _amount_num: Number(t.amount),
-      _status_order: t.is_paid ? 2 : (t.due_date && isBefore(parseLocalDate(t.due_date), today) ? 0 : 1),
+      _status_order: getFinancialAccountPriority(t, todayIso),
     }));
-  }, [filtered, today]);
+  }, [filtered, todayIso]);
 
-  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredForSort, '_due_ts', 'asc');
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredForSort, '_status_order', 'asc');
 
-  const pagination = useDataPagination(isMobile ? filtered : sortedItems);
+  const pagination = useDataPagination(sortedItems);
 
   // ══════════════════════════════════════════════════════════════════════════
   // QUITAÇÃO EM LOTE (as duas sub-abas: "A Pagar" e "A Receber")
