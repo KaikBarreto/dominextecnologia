@@ -54,6 +54,14 @@ function mount() {
 
 const q = (sel: string) => document.querySelector(sel) as HTMLElement | null;
 
+function typeInto(input: HTMLInputElement, value: string) {
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
 function paste(input: HTMLInputElement, text: string) {
   const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
   pasteEvent.clipboardData = { getData: () => text };
@@ -75,6 +83,15 @@ afterEach(() => {
 });
 
 describe('LeadFormDialog — campo de valor estimado (prova real de DOM)', () => {
+  it('mantém a digitação quando o hook recria a lista de etapas', () => {
+    mount();
+    const input = q('#title') as HTMLInputElement;
+
+    typeInto(input, 'Manutenção preventiva');
+
+    expect(input.value).toBe('Manutenção preventiva');
+  });
+
   it('colar "4.550" dá 4550 (não 4.55, o bug do sócio)', () => {
     mount();
     const input = q('#value') as HTMLInputElement;

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -38,6 +38,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { isTransactionInDateRange } from '@/lib/finance-date';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
 
@@ -89,6 +90,8 @@ import {
   getFinancialAccountPriority,
   sortFinancialAccountsByPriority,
 } from '@/lib/finance-account-priority';
+import { FinancialCategoryPill } from './FinancialCategoryPill';
+import { FinancialTransactionDetailsPanel } from './FinancialTransactionDetailsPanel';
 
 type SubTab = 'todas' | 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -143,6 +146,7 @@ export function FinanceContas({
   const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
   const [payrollTxn, setPayrollTxn] = useState<PayrollTxn | null>(null);
   const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
+  const [expandedTransactionIds, setExpandedTransactionIds] = useState<Set<string>>(new Set());
   const [payDespAccountId, setPayDespAccountId] = useState('');
   const [payDespDate, setPayDespDate] = useState('');
   const [payDespMethod, setPayDespMethod] = useState('pix');
@@ -187,6 +191,15 @@ export function FinanceContas({
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const { accounts: allAccounts } = useFinancialAccounts();
   const { costCenters } = useCostCenters();
+  const { categories: financialCategories } = useFinancialCategories();
+  const categoriesByName = useMemo(
+    () => new Map(financialCategories.map((category) => [category.name, category])),
+    [financialCategories],
+  );
+  const costCentersById = useMemo(
+    () => new Map(costCenters.map((costCenter) => [costCenter.id, costCenter])),
+    [costCenters],
+  );
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
   // Opções do SearchableSelect — só contas não-cartão e ativas.
   const cashBankAccountOptions = useMemo(
@@ -1187,117 +1200,104 @@ export function FinanceContas({
                 : status === 'parcial' ? 'bg-warning'
                 : t.transaction_type === 'entrada' ? 'bg-success/70'
                 : 'bg-warning';
+              const isExpanded = expandedTransactionIds.has(t.id);
               return (
-                <MobileListItem
-                  key={t.id}
-                  actions={itemActions}
-                  className={cn(
-                    'transition-transform active:scale-[0.98]',
-                    overdue && 'bg-destructive/5',
-                    partial && 'bg-warning/5',
-                  )}
-                  onClick={partial ? () => setViewingTxn(t) : undefined}
-                  leading={
-                    <div className="flex items-center gap-2 shrink-0">
-                      {batchEnabled && (
-                        // `stopPropagation`: o toque no checkbox não pode virar
-                        // clique da linha (que abre o histórico em conta parcial).
-                        <span
-                          className="flex items-center"
-                          onClick={(e) => { e.stopPropagation(); }}
-                        >
-                          {batchReason === 'alreadyPaid' ? (
-                            // Conta paga não precisa de explicação: o (i) em
-                            // toda linha da aba "Pagas" seria só ruído. Espaço
-                            // reservado pra lista não dançar.
-                            <span className="block h-5 w-5" />
-                          ) : batchReason ? (
-                            <button
-                              type="button"
-                              aria-label={batchMsg.reasons[batchReason]}
-                              onClick={() => toast({
-                                title: batchMsg.blockedTitle,
-                                description: batchMsg.reasons[batchReason],
-                              })}
-                              className="flex h-5 w-5 items-center justify-center text-muted-foreground"
-                            >
-                              <Info className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <Checkbox
-                              checked={selectedIds.has(t.id)}
-                              onCheckedChange={() => toggleSelectRow(t)}
-                              aria-label={t.description}
-                            />
-                          )}
-                        </span>
-                      )}
-                      <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
-                        {t.payroll_kind === 'salary'
-                          ? <Users className="h-5 w-5" />
-                          : status === 'paga'
-                            ? <Check className="h-5 w-5" />
-                            : status === 'vencida'
-                              ? <AlertTriangle className="h-5 w-5" />
-                              : status === 'parcial'
-                                ? <Receipt className="h-5 w-5" />
-                                : <Clock className="h-5 w-5" />}
-                      </div>
-                    </div>
-                  }
-                  title={
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate">{t.description}</span>
-                    </div>
-                  }
-                  subtitle={
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span>
-                          {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : fin.accounts.table.noDueDate}
-                        </span>
-                        {t.employee && <span className="truncate">{t.employee.name}</span>}
-                        {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
-                        {!t.employee && t.supplier && <span className="truncate">{t.supplier.name}</span>}
-                      </div>
-                      {partial && (
-                        <span className="text-warning text-[11px]">
-                          {fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}
-                        </span>
-                      )}
-                    </div>
-                  }
-                  trailing={
-                    <div className="flex flex-col items-end gap-1">
-                      {receiptBreakdown ? (
-                        <div className="flex flex-col items-end text-[10px] leading-4 whitespace-nowrap tabular-nums">
-                          <span className="text-muted-foreground">
-                            {fin.accounts.table.gross}: <strong className="font-medium text-foreground">{fmt(receiptBreakdown.gross)}</strong>
+                <div key={t.id} className="border-b border-border/60 last:border-b-0">
+                  <MobileListItem
+                    actions={itemActions}
+                    className={cn(
+                      'transition-transform active:scale-[0.98]',
+                      overdue && 'bg-destructive/5',
+                      partial && 'bg-warning/5',
+                    )}
+                    onClick={() => setExpandedTransactionIds((current) => {
+                      const next = new Set(current);
+                      if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                      return next;
+                    })}
+                    leading={
+                      <div className="flex items-center gap-2 shrink-0">
+                        {batchEnabled && (
+                          <span className="flex items-center" onClick={(e) => { e.stopPropagation(); }}>
+                            {batchReason === 'alreadyPaid' ? (
+                              <span className="block h-5 w-5" />
+                            ) : batchReason ? (
+                              <button
+                                type="button"
+                                aria-label={batchMsg.reasons[batchReason]}
+                                onClick={() => toast({ title: batchMsg.blockedTitle, description: batchMsg.reasons[batchReason] })}
+                                className="flex h-5 w-5 items-center justify-center text-muted-foreground"
+                              >
+                                <Info className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelectRow(t)} aria-label={t.description} />
+                            )}
                           </span>
-                          <span className="text-muted-foreground">
-                            {fin.accounts.table.fee}: <strong className="font-medium text-destructive">− {fmt(receiptBreakdown.fee)}</strong>
-                          </span>
-                          <span className="font-semibold text-success">
-                            {fin.accounts.table.net}: {fmt(receiptBreakdown.net)}
-                          </span>
+                        )}
+                        <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
+                          {t.payroll_kind === 'salary'
+                            ? <Users className="h-5 w-5" />
+                            : status === 'paga'
+                              ? <Check className="h-5 w-5" />
+                              : status === 'vencida'
+                                ? <AlertTriangle className="h-5 w-5" />
+                                : status === 'parcial'
+                                  ? <Receipt className="h-5 w-5" />
+                                  : <Clock className="h-5 w-5" />}
                         </div>
-                      ) : (
-                        <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive')}>
-                          {fmt(t.amount)}
-                        </span>
-                      )}
-                      {status === 'paga' ? (
-                        <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
-                      ) : status === 'vencida' ? (
-                        <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{fin.accounts.status.overdue}</Badge>
-                      ) : status === 'parcial' ? (
-                        <Badge className="bg-warning text-white text-[10px] px-1.5 py-0">{fin.accounts.status.partial}</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{fin.accounts.status.pending}</Badge>
-                      )}
-                    </div>
-                  }
-                />
+                      </div>
+                    }
+                    title={
+                      <div className="flex items-center gap-1.5">
+                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                        <span className="truncate">{t.description}</span>
+                      </div>
+                    }
+                    subtitle={
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : fin.accounts.table.noDueDate}</span>
+                          {t.employee && <span className="truncate">{t.employee.name}</span>}
+                          {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
+                          {!t.employee && t.supplier && <span className="truncate">{t.supplier.name}</span>}
+                        </div>
+                        {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" className="w-fit" />}
+                        {partial && <span className="text-warning text-[11px]">{fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}</span>}
+                      </div>
+                    }
+                    trailing={
+                      <div className="flex flex-col items-end gap-1">
+                        {receiptBreakdown ? (
+                          <div className="flex flex-col items-end text-[10px] leading-4 whitespace-nowrap tabular-nums">
+                            <span className="text-muted-foreground">{fin.accounts.table.gross}: <strong className="font-medium text-foreground">{fmt(receiptBreakdown.gross)}</strong></span>
+                            <span className="text-muted-foreground">{fin.accounts.table.fee}: <strong className="font-medium text-destructive">− {fmt(receiptBreakdown.fee)}</strong></span>
+                            <span className="font-semibold text-success">{fin.accounts.table.net}: {fmt(receiptBreakdown.net)}</span>
+                          </div>
+                        ) : (
+                          <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive')}>{fmt(t.amount)}</span>
+                        )}
+                        {status === 'paga' ? (
+                          <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
+                        ) : status === 'vencida' ? (
+                          <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{fin.accounts.status.overdue}</Badge>
+                        ) : status === 'parcial' ? (
+                          <Badge className="bg-warning text-white text-[10px] px-1.5 py-0">{fin.accounts.status.partial}</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{fin.accounts.status.pending}</Badge>
+                        )}
+                      </div>
+                    }
+                  />
+                  {isExpanded && (
+                    <FinancialTransactionDetailsPanel
+                      transaction={t}
+                      category={t.category ? categoriesByName.get(t.category) : null}
+                      costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
+                      onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
+                    />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -1340,17 +1340,24 @@ export function FinanceContas({
                     // `null` = entra no lote. Com motivo, o checkbox fica
                     // desabilitado e o `title` explica no hover.
                     const batchReason = batchEnabled ? batchReasonFor(t) : null;
+                    const isExpanded = expandedTransactionIds.has(t.id);
                     return (
+                    <Fragment key={t.id}>
                     <TableRow
-                      key={t.id}
+                      onClick={() => setExpandedTransactionIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                        return next;
+                      })}
                       className={cn(
+                        'cursor-pointer',
                         status === 'vencida' && 'bg-destructive/5',
                         partial && 'bg-warning/5',
                         selectedIds.has(t.id) && 'bg-primary/5',
                       )}
                     >
                       {batchEnabled && (
-                        <TableCell>
+                        <TableCell onClick={(event) => event.stopPropagation()}>
                           <span
                             className="inline-flex"
                             title={batchReason ? batchMsg.reasons[batchReason] : undefined}
@@ -1367,6 +1374,7 @@ export function FinanceContas({
                       <TableCell>
                         <div>
                           <p className="font-medium flex items-center gap-1.5">
+                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                             {t.payroll_kind === 'salary' && <Users className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
                             <span>{t.description}</span>
                           </p>
@@ -1376,7 +1384,7 @@ export function FinanceContas({
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {t.category && <Badge variant="outline">{t.category}</Badge>}
+                        {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} />}
                       </TableCell>
                       <TableCell className="text-sm">
                         {t.due_date ? (
@@ -1388,7 +1396,7 @@ export function FinanceContas({
                           <span className="text-muted-foreground text-xs">{fin.accounts.table.noDueDate}</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()}>
                         <div className="flex flex-col gap-0.5">
                           {receiptBreakdown ? (
                             <>
@@ -1457,6 +1465,19 @@ export function FinanceContas({
                         />
                       </TableCell>
                     </TableRow>
+                    {isExpanded && (
+                      <TableRow key={`${t.id}-details`} className="hover:bg-transparent">
+                        <TableCell colSpan={batchEnabled ? 7 : 6} className="p-0">
+                          <FinancialTransactionDetailsPanel
+                            transaction={t}
+                            category={t.category ? categoriesByName.get(t.category) : null}
+                            costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
+                            onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                   );})}
                 </TableBody>
               </Table>

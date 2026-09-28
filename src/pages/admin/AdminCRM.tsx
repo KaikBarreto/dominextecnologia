@@ -98,7 +98,7 @@ export default function AdminCRM() {
       <div className="container mx-auto space-y-3 px-3 pt-4 sm:px-4 lg:px-6 lg:pt-6">
         <div>
           <h1 className="text-xl font-bold text-foreground lg:text-2xl">CRM/Kanban</h1>
-          <p className="text-sm text-muted-foreground">Funis e tarefas comerciais da Dominex</p>
+          <p className="text-sm text-muted-foreground">Gerencie oportunidades e processos</p>
         </div>
         {isMobile ? (
           <MobilePillTabs

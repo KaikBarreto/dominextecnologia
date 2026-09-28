@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.4',
+    date: '28 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contas e movimentações com todos os detalhes',
+        description: 'Cada conta a pagar, conta a receber e movimentação financeira agora pode ser aberta para consultar vencimento, pagamento, vínculos, parcelamento, anexos, comprovantes e demais informações sem sair da lista.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Categorias financeiras mais fáceis de identificar',
+        description: 'As categorias agora aparecem nas listas com sua própria cor e ícone em destaque, mantendo o texto branco para facilitar a leitura.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Nova oportunidade aceita digitação normalmente',
+        description: 'Corrigimos o formulário do CRM administrativo que apagava o conteúdo enquanto a oportunidade era preenchida. O CRM principal também foi conferido, e o texto da tela foi atualizado para refletir oportunidades e processos.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.3',
     date: '28 de setembro de 2026',
     type: 'patch',

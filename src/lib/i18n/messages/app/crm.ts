@@ -11,7 +11,7 @@ export const crm = {
   'pt-br': {
     // ── Chrome da tela (CRM.tsx) ──
     title: 'CRM/Kanban',
-    subtitle: 'Gerencie oportunidades e leads',
+    subtitle: 'Gerencie oportunidades e processos',
     subtitleMobile: 'Funil Kanban',
     newOpportunity: 'Nova oportunidade',
     newOpportunityShort: 'Lead',

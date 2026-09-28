@@ -24,10 +24,6 @@ class ResizeObserverStub {
 
 const createLead = { mutate: vi.fn(), isPending: false };
 const updateLead = { mutate: vi.fn(), isPending: false };
-// Referências ESTÁVEIS (não recriar array/objeto a cada chamada do mock):
-// um array literal novo a cada render vira dependência "sempre diferente" no
-// useEffect do componente (depende de `stages`) e entra em loop infinito de
-// render — não é o bug de dinheiro, é armadilha de mock.
 const EMPTY_ARRAY: any[] = [];
 const QUERY_RESULT = { data: EMPTY_ARRAY };
 
@@ -36,7 +32,11 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 vi.mock('@/hooks/useAdminCrm', () => ({
   useAdminLeads: () => ({ createLead, updateLead }),
-  useAdminCrmStages: () => ({ stages: EMPTY_ARRAY }),
+  // Referência nova de propósito: reproduz o filtro por pipeline do hook real.
+  // O formulário deve depender do id da etapa padrão, nunca do array inteiro.
+  useAdminCrmStages: () => ({
+    stages: [{ id: 'stage-1', name: 'Novo Lead', color: '#64748b', is_won: false, is_lost: false }],
+  }),
 }));
 vi.mock('@/hooks/useCompanyOrigins', () => ({
   useCompanyOrigins: () => ({ origins: EMPTY_ARRAY }),
@@ -94,6 +94,15 @@ afterEach(() => {
 });
 
 describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', () => {
+  it('mantém a digitação mesmo quando o hook recria a lista de etapas', () => {
+    mount();
+    const input = q('input[placeholder="Ex: João Silva"]') as HTMLInputElement;
+
+    typeInto(input, 'João Silva');
+
+    expect(input.value).toBe('João Silva');
+  });
+
   it('não usa mais <input type="number"> (o bug do sócio nasceu daí)', () => {
     mount();
     const input = q('#admin-lead-value') as HTMLInputElement;

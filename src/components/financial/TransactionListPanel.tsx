@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeftRight, Layers, Undo2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -24,6 +24,7 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { getErrorMessage } from '@/utils/errorMessages';
 // Estorno de pagamento de fatura é feito por RPC, que devolve mensagem já em PT-BR
@@ -58,6 +59,8 @@ import { formatMoney } from '@/lib/format';
 import { matchesFinancialTransactionSearch } from '@/lib/financial-transaction-display';
 import { filterFinancialMovementVisibility } from '@/lib/financial-movement-visibility';
 import { useFinancial } from '@/hooks/useFinancial';
+import { FinancialCategoryPill } from './FinancialCategoryPill';
+import { FinancialTransactionDetailsPanel } from './FinancialTransactionDetailsPanel';
 
 function parseLocalDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -240,6 +243,9 @@ export function TransactionListPanel({
   const [isDeleting, setIsDeleting] = useState(false);
   // Lotes de pagamento abertos (mostrando as contas de dentro).
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  // Detalhes completos da movimentação; separado do expansível do lote porque
+  // são duas hierarquias diferentes (lote → contas; conta → seus detalhes).
+  const [expandedTransactionIds, setExpandedTransactionIds] = useState<Set<string>>(new Set());
   // Lote aguardando confirmação de "desfazer".
   const [undoTarget, setUndoTarget] = useState<PaymentGroupInfo | null>(null);
   const isMobile = useIsMobile();
@@ -256,6 +262,15 @@ export function TransactionListPanel({
   const resolvedBalanceAfterShortLabel = balanceAfterShortLabel ?? fin.transactionList.balance;
   const { accounts: allAccounts } = useFinancialAccounts();
   const { costCenters } = useCostCenters();
+  const { categories: financialCategories } = useFinancialCategories();
+  const categoriesByName = useMemo(
+    () => new Map(financialCategories.map((category) => [category.name, category])),
+    [financialCategories],
+  );
+  const costCentersById = useMemo(
+    () => new Map(costCenters.map((costCenter) => [costCenter.id, costCenter])),
+    [costCenters],
+  );
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const queryClient = useQueryClient();
@@ -948,21 +963,39 @@ export function TransactionListPanel({
                 // linha é dinheiro que entrou, e mostrar "- " em verde/vermelho
                 // trocado seria mentira sobre o extrato.
                 const childIn = c.transaction_type === 'entrada';
+                const childDetailsExpanded = expandedTransactionIds.has(c.id);
                 return (
-                  <div
-                    key={`child-${c.id}`}
-                    className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 py-2 pl-14 pr-4 last:border-b-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm truncate">{c.description}</p>
-                      <p className="text-[11px] text-muted-foreground">{renderTransactionDate(c)}</p>
-                    </div>
-                    <span className={cn(
-                      'text-sm font-medium tabular-nums whitespace-nowrap',
-                      childIn ? 'text-success' : 'text-destructive',
-                    )}>
-                      {childIn ? '+' : '-'} {fmt(c.amount)}
-                    </span>
+                  <div key={`child-${c.id}`} className="border-b border-border/60 bg-muted/30 last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedTransactionIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                        return next;
+                      })}
+                      className="flex w-full items-center justify-between gap-3 py-2 pl-14 pr-4 text-left"
+                    >
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1 text-sm">
+                          {childDetailsExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                          <span className="truncate">{c.description}</span>
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">{renderTransactionDate(c)}</p>
+                      </div>
+                      <span className={cn(
+                        'text-sm font-medium tabular-nums whitespace-nowrap',
+                        childIn ? 'text-success' : 'text-destructive',
+                      )}>
+                        {childIn ? '+' : '-'} {fmt(c.amount)}
+                      </span>
+                    </button>
+                    {childDetailsExpanded && (
+                      <FinancialTransactionDetailsPanel
+                        transaction={c}
+                        category={c.category ? categoriesByName.get(c.category) : null}
+                        costCenter={c.cost_center_id ? costCentersById.get(c.cost_center_id) : null}
+                      />
+                    )}
                   </div>
                 );
               }
@@ -970,6 +1003,7 @@ export function TransactionListPanel({
               const t = item.txn;
               const group = (t as PanelRow).__paymentGroup;
               const isExpanded = !!group && expandedGroups.has(group.groupId);
+              const areDetailsExpanded = !group && expandedTransactionIds.has(t.id);
               const isEntrada = t.transaction_type === 'entrada';
               const isHighlighted = t.id === highlightTransactionId;
               const itemActions: ItemAction[] = group ? [
@@ -1005,14 +1039,19 @@ export function TransactionListPanel({
               ];
               const listItem = (
                 <MobileListItem
-                  key={t.id}
                   actions={itemActions}
                   className={cn(
                     'transition-transform active:scale-[0.98]',
                     selectedIds.has(t.id) && 'bg-primary/5',
                     isHighlighted && 'bg-primary/10 ring-2 ring-inset ring-primary',
                   )}
-                  onClick={group ? () => toggleGroup(group.groupId) : undefined}
+                  onClick={group
+                    ? () => toggleGroup(group.groupId)
+                    : () => setExpandedTransactionIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                        return next;
+                      })}
                   leading={
                     <div
                       className={cn(
@@ -1027,6 +1066,9 @@ export function TransactionListPanel({
                   }
                   title={
                     <div className="flex items-center gap-1.5">
+                      {!group && (areDetailsExpanded
+                        ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />)}
                       <span className="truncate">{t.description}</span>
                       {group && (
                         <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 shrink-0">
@@ -1057,6 +1099,13 @@ export function TransactionListPanel({
                           <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
                           {(t as any).account.type === 'caixa' ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}` : (t as any).account.name}
                         </span>
+                      )}
+                      {!group && t.category && (
+                        <FinancialCategoryPill
+                          name={t.category}
+                          category={categoriesByName.get(t.category)}
+                          size="sm"
+                        />
                       )}
                       {group && group.fullCount > group.members.length && (
                         <span className="whitespace-nowrap text-warning">
@@ -1105,10 +1154,20 @@ export function TransactionListPanel({
               // dentro dele o `last:border-b-0` do item passa a valer sempre e a
               // linha perderia a borda de baixo. O realce (ring) fica no item, não
               // aqui: `ring-inset` do pai seria coberto pelo fundo do filho.
-              if (!isHighlighted) return listItem;
               return (
-                <div key={t.id} ref={highlightMobileRef} className="border-b border-border/60 last:border-b-0">
+                <div
+                  key={t.id}
+                  ref={isHighlighted ? highlightMobileRef : undefined}
+                  className="border-b border-border/60 last:border-b-0"
+                >
                   {listItem}
+                  {areDetailsExpanded && (
+                    <FinancialTransactionDetailsPanel
+                      transaction={t}
+                      category={t.category ? categoriesByName.get(t.category) : null}
+                      costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -1184,12 +1243,25 @@ export function TransactionListPanel({
                       const c = item.txn;
                       // Sinal e cor pelo tipo da CONTA (ver o render mobile).
                       const childIn = c.transaction_type === 'entrada';
+                      const childDetailsExpanded = expandedTransactionIds.has(c.id);
                       return (
+                        <Fragment key={`child-${c.id}`}>
                         <TableRow key={`child-${c.id}`} className="bg-muted/30 hover:bg-muted/30">
                           <TableCell colSpan={visibleColumnCount} className="py-1.5">
-                            <div className="flex items-center justify-between gap-3 pl-8">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedTransactionIds((current) => {
+                                const next = new Set(current);
+                                if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                                return next;
+                              })}
+                              className="flex w-full items-center justify-between gap-3 pl-8 text-left"
+                            >
                               <div className="min-w-0">
-                                <span className="text-sm">{c.description}</span>
+                                <span className="inline-flex items-center gap-1 text-sm">
+                                  {childDetailsExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                  {c.description}
+                                </span>
                                 <span className="ml-2 text-xs text-muted-foreground">{renderTransactionDate(c)}</span>
                               </div>
                               <span className={cn(
@@ -1198,25 +1270,44 @@ export function TransactionListPanel({
                               )}>
                                 {childIn ? '+' : '-'} {fmt(c.amount)}
                               </span>
-                            </div>
+                            </button>
                           </TableCell>
                         </TableRow>
+                        {childDetailsExpanded && (
+                          <TableRow className="hover:bg-transparent">
+                            <TableCell colSpan={visibleColumnCount} className="p-0">
+                              <FinancialTransactionDetailsPanel
+                                transaction={c}
+                                category={c.category ? categoriesByName.get(c.category) : null}
+                                costCenter={c.cost_center_id ? costCentersById.get(c.cost_center_id) : null}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </Fragment>
                       );
                     }
 
                     const t = item.txn;
                     const group = (t as PanelRow).__paymentGroup;
                     const isExpanded = !!group && expandedGroups.has(group.groupId);
+                    const areDetailsExpanded = !group && expandedTransactionIds.has(t.id);
                     return (
+                    <Fragment key={t.id}>
                     <TableRow
-                      key={t.id}
                       ref={t.id === highlightTransactionId ? highlightDesktopRef : undefined}
+                      onClick={!group ? () => setExpandedTransactionIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                        return next;
+                      }) : undefined}
                       className={cn(
+                        !group && 'cursor-pointer',
                         selectedIds.has(t.id) && 'bg-primary/5',
                         t.id === highlightTransactionId && 'bg-primary/10 outline outline-2 -outline-offset-2 outline-primary',
                       )}
                     >
-                      {type !== 'all' && canDeleteFinance && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
+                      {type !== 'all' && canDeleteFinance && <TableCell onClick={(event) => event.stopPropagation()}><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
                       <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
                       <TableCell className="text-center"><div className="flex justify-center">{renderCreatorAvatar(t)}</div></TableCell>
                       {showTypeColumn && (
@@ -1233,6 +1324,9 @@ export function TransactionListPanel({
                         <div>
                           <p className="font-medium flex items-center gap-1">
                             {group && <Layers className="h-4 w-4 text-primary shrink-0" />}
+                            {!group && (areDetailsExpanded
+                              ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                              : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />)}
                             {t.description}
                             {group && (
                               <Badge className="bg-primary text-white text-[10px] px-1.5 py-0">
@@ -1276,7 +1370,7 @@ export function TransactionListPanel({
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {t.category && <Badge variant="outline">{t.category}</Badge>}
+                        {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} />}
                       </TableCell>
                       {!hideAccountColumn && (
                         <TableCell className="hidden 2xl:table-cell">
@@ -1290,7 +1384,7 @@ export function TransactionListPanel({
                           )}
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()}>
                         <span className={`font-medium tabular-nums whitespace-nowrap ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                           {t.transaction_type === 'entrada' ? '+' : '-'} {fmt(t.amount)}
                         </span>
@@ -1334,6 +1428,18 @@ export function TransactionListPanel({
                         />
                       </TableCell>
                     </TableRow>
+                    {areDetailsExpanded && (
+                      <TableRow key={`${t.id}-details`} className="hover:bg-transparent">
+                        <TableCell colSpan={visibleColumnCount} className="p-0">
+                          <FinancialTransactionDetailsPanel
+                            transaction={t}
+                            category={t.category ? categoriesByName.get(t.category) : null}
+                            costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                     );
                   })}
                 </TableBody>

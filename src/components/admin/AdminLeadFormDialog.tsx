@@ -74,6 +74,12 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
 
   const [emailError, setEmailError] = useState('');
 
+  // O hook filtra as etapas pelo funil e pode devolver uma nova referência de
+  // array a cada render. O formulário não pode depender dessa referência: ao
+  // digitar, o render seguinte disparava o reset abaixo e apagava o caractere.
+  // Dependemos só do id primitivo que realmente interessa para o valor padrão.
+  const defaultStageId = stages.find(stage => !stage.is_won && !stage.is_lost)?.id ?? '';
+
   useEffect(() => {
     if (!open) return;
     if (editingLead) {
@@ -92,19 +98,18 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
         responsible_id: editingLead.responsible_id || '',
       });
     } else {
-      const firstStage = stages.find(s => !s.is_won && !s.is_lost);
       // Default em "Nova oportunidade": usuário atual, se ele for vendedor.
       // linkedSalespersonId aponta pra salespeople.id; aqui guardamos auth.users.id.
       const defaultResponsible = linkedSalespersonId && user?.id ? user.id : '';
       setForm({
         company_name: '', contact_name: '', email: '', phone: '',
-        value: '', source: '', segment: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
+        value: '', source: '', segment: '', stage_id: defaultStageId, expected_close_date: '', notes: '',
         loss_reason: '',
         responsible_id: defaultResponsible,
       });
     }
     setEmailError('');
-  }, [editingLead?.id, open, stages, linkedSalespersonId, user?.id]);
+  }, [editingLead, open, defaultStageId, linkedSalespersonId, user?.id]);
 
   const validateEmail = (email: string) => {
     if (!email) return true;
