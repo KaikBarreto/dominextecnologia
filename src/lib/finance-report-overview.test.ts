@@ -88,4 +88,32 @@ describe('buildFinanceReportOverview', () => {
     expect(accrual.totals.grossRevenue).toBe(1500);
     expect(accrual.revenueCategories).toEqual([{ name: 'Serviços', value: 1500 }]);
   });
+
+  it('não transforma aporte, empréstimo ou compra de ativo em resultado do DRE', () => {
+    const result = buildFinanceReportOverview({
+      transactions: [
+        transaction('servico', { amount: 2_000 }),
+        transaction('aporte', { amount: 20_000, category: 'Aporte de Sócios' }),
+        transaction('emprestimo', { amount: 30_000, category: 'Empréstimo Bancário' }),
+        transaction('ativo', {
+          transaction_type: 'saida',
+          amount: 8_000,
+          category: 'Aquisição de Imobilizado',
+        }),
+      ],
+      regime: 'caixa',
+      today: '2026-09-28',
+      categoryDreGroups: new Map([
+        ['Serviços', 'opex'],
+        ['Aporte de Sócios', 'outros'],
+        ['Empréstimo Bancário', 'outros'],
+        ['Aquisição de Imobilizado', 'outros'],
+      ]),
+    });
+
+    expect(result.totals.grossRevenue).toBe(2_000);
+    expect(result.totals.expenses).toBe(0);
+    expect(result.totals.result).toBe(2_000);
+    expect(result.movementCount).toBe(1);
+  });
 });

@@ -8,6 +8,8 @@
  * Regras de caixa:
  * - somente movimentacoes realizadas (`is_paid === true`) e com `paid_date`;
  * - transferencias internas (`transfer_pair_id`) nao alteram o caixa consolidado;
+ * - pagamento de fatura e excecao: entra pela perna de saida da conta pagadora;
+ * - compras no cartao nao entram diretamente, evitando duplicar o pagamento;
  * - entradas sao positivas e saidas negativas;
  * - toda aritmetica e feita em centavos inteiros.
  */
@@ -42,6 +44,8 @@ export interface DfcTransaction {
   transfer_pair_id?: string | null;
   cancelled_at?: string | null;
   category?: string | null;
+  credit_card_bill_date?: string | null;
+  bill_id?: string | null;
   /** Campo enriquecido a partir de `financial_categories.dfc_group`. */
   dfc_group?: DfcGroupKey | string | null;
 }
@@ -130,8 +134,22 @@ function amountToCents(amount: number | string): number | null {
 
 function prepareTransaction(transaction: DfcTransaction): PreparedTransaction | null {
   if (transaction.is_paid !== true) return null;
-  if (transaction.transfer_pair_id) return null;
   if (transaction.cancelled_at) return null;
+
+  // Compra no cartão é competência, não movimento de caixa. O caixa se move
+  // quando a fatura é paga — inclusive parcialmente — pela perna de saída da
+  // conta pagadora. Contar a compra quitada e o pagamento duplicaria a saída.
+  if (transaction.credit_card_bill_date) return null;
+
+  // Transferência comum continua neutra. Pagamento de fatura também nasce em
+  // par, mas só a perna de SAÍDA é caixa real; a entrada no cartão apenas
+  // recompõe limite. `bill_id` torna a exceção estrutural, não só por texto.
+  if (transaction.transfer_pair_id) {
+    const isCardBillCashOut = transaction.transaction_type === 'saida'
+      && transaction.category === 'Pagamento de Fatura'
+      && !!transaction.bill_id;
+    if (!isCardBillCashOut) return null;
+  }
 
   const paidDate = normalizeIsoDate(transaction.paid_date);
   if (!paidDate) return null;

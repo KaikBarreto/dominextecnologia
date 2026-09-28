@@ -11,13 +11,13 @@ const formatCurrencyBR = (value: number): string => {
   }).format(value);
 };
 
-interface ExpenseCategory {
+export interface DreExportCategory {
   name: string;
   value: number;
   color: string;
 }
 
-interface CompanyData {
+export interface DreExportCompany {
   name: string;
   document?: string;
   phone?: string;
@@ -29,7 +29,7 @@ interface CompanyData {
 }
 
 /** Linha da quebra por centro de custo (a última pode ser "sem centro"). */
-interface CostCenterLine {
+export interface DreExportCostCenter {
   name: string;
   color: string;
   revenue: number;
@@ -37,25 +37,27 @@ interface CostCenterLine {
   result: number;
 }
 
-interface DreReportData {
-  company: CompanyData;
+export interface DreReportData {
+  company: DreExportCompany;
   period: string;
   receitaBruta: number;
+  /** Quebra da receita usada pelo Excel; opcional para manter callers legados. */
+  receitaCategories?: DreExportCategory[];
   impostos: number;
-  impostosCategories: ExpenseCategory[];
+  impostosCategories: DreExportCategory[];
   receitaLiquida: number;
   cpv: number;
-  cpvCategories: ExpenseCategory[];
+  cpvCategories: DreExportCategory[];
   lucroBruto: number;
   opex: number;
-  opexCategories: ExpenseCategory[];
+  opexCategories: DreExportCategory[];
   resultadoLiquido: number;
   margem: number;
   /**
    * Quebra por centro de custo do MESMO conjunto que gerou os totais acima.
    * Some do documento quando a empresa não usa centro de custo.
    */
-  costCenters?: CostCenterLine[];
+  costCenters?: DreExportCostCenter[];
   /**
    * Regime usado pra montar os números ('caixa' = data do pagamento,
    * 'competencia' = data do fato gerador). Carimbado no cabeçalho do
@@ -90,7 +92,7 @@ export const generateDreHtml = (data: DreReportData) => {
   const grossProfitColor = data.lucroBruto > 0 ? '#16a34a' : data.lucroBruto < 0 ? '#dc2626' : '#374151';
   const resultColor = data.resultadoLiquido > 0 ? '#16a34a' : data.resultadoLiquido < 0 ? '#dc2626' : '#1f2937';
 
-  const renderCategories = (categories: ExpenseCategory[]) => categories.map(c => `
+  const renderCategories = (categories: DreExportCategory[]) => categories.map(c => `
     <div class="row">
       <span class="row-label">
         <span class="color-dot" style="background: ${escapeHtml(c.color)}"></span>

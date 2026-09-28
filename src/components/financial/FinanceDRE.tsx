@@ -8,12 +8,29 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import {
+  Banknote,
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
+  Landmark,
+  Loader2,
+  Minus,
+  Package,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 import type { FinancialTransaction } from '@/types/database';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { generateDreHtml } from '@/utils/dreHtmlGenerator';
+import { generateDreHtml, type DreReportData } from '@/utils/dreHtmlGenerator';
+import { generateDreExcel } from '@/utils/dreExcelGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useCostCenters } from '@/hooks/useCostCenters';
@@ -27,6 +44,7 @@ import {
   isPartialReceiptChild,
   isPayrollAdvance,
   isFutureCashDate,
+  isDreExcludedGroup,
   classifyDreCategory,
   type DreRegime,
 } from '@/lib/dre-regime';
@@ -43,6 +61,15 @@ import {
   shouldLoadDreSubscriptionProjections,
 } from '@/lib/dre-subscription-projections';
 import { buildDreCostCenterCategoryRows } from '@/lib/dre-cost-center-categories';
+import { useOperationalPatrimony } from '@/hooks/useOperationalPatrimony';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 interface FinanceDREProps {
   /**
@@ -96,9 +123,11 @@ export function FinanceDRE({
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
   const { costCenters } = useCostCenters();
+  const { patrimony, isLoading: isLoadingPatrimony } = useOperationalPatrimony(rawTransactions);
   // `timezone`: fuso da empresa, usado pra decidir o que já é passado no
   // regime de Caixa (ver `isFutureCashDate`).
   const { locale, currency, timezone } = useAppLocaleContext();
+  const { toast } = useToast();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
@@ -112,6 +141,16 @@ export function FinanceDRE({
   // configuração da empresa.
   const [regime, setRegime] = useState<DreRegime>('caixa');
   const [includeProjections, setIncludeProjections] = useState(false);
+  const [showPatrimony, setShowPatrimony] = useState(false);
+
+  // Nome da categoria → classificação DRE. `outros` é movimento
+  // patrimonial (aporte, empréstimo, aquisição de ativo etc.) e não compõe o
+  // resultado; o mesmo mapa também classifica as despesas que permanecem.
+  const categoryDreGroupMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    financialCategories.forEach((category) => map.set(category.name, category.dre_group));
+    return map;
+  }, [financialCategories]);
 
   const today = todayInTz(timezone);
   const selectedProjectionStart = range?.from ? format(range.from, 'yyyy-MM-dd') : today;
@@ -226,6 +265,7 @@ export function FinanceDRE({
         // `cancelled_at IS NULL`); aqui faltava. Vale nos DOIS regimes.
         if ((t as any).cancelled_at) continue;
         if (t.transfer_pair_id) continue;
+        if (isDreExcludedGroup(categoryDreGroupMap.get(t.category ?? ''))) continue;
         if (regime === 'caixa' && !t.is_paid) continue;
         if (t.category === 'Pagamento de Fatura') continue;
         if (t.category === ADJUSTMENT_CATEGORY) continue;
@@ -275,7 +315,7 @@ export function FinanceDRE({
       }
       return out;
     },
-    [rawTransactions, dreStartDate, regime, range, parentIdsWithPartialChild, today]
+    [rawTransactions, dreStartDate, regime, range, parentIdsWithPartialChild, today, categoryDreGroupMap]
   );
 
   const transactionsWithProjectionsInPeriod = useMemo(
@@ -332,15 +372,6 @@ export function FinanceDRE({
       return next;
     });
   };
-
-  // Build a map from category name to dre_group using the DB field
-  const categoryDreGroupMap = useMemo(() => {
-    const map = new Map<string, string>();
-    financialCategories.forEach((c: any) => {
-      map.set(c.name, c.dre_group || 'opex');
-    });
-    return map;
-  }, [financialCategories]);
 
   /**
    * NOME da categoria → NOME do pai dela. Montado em memória sobre a lista que
@@ -539,49 +570,61 @@ export function FinanceDRE({
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
   }, [costCenters, transactionsWithProjectionsInPeriod, costCenterMeta]);
 
-  const handleExport = () => {
+  const periodLabel = useMemo(() => {
+    if (range?.from && range?.to) return `${format(range.from, 'dd/MM/yyyy')} a ${format(range.to, 'dd/MM/yyyy')}`;
+    if (range?.from) return `A partir de ${format(range.from, 'dd/MM/yyyy')}`;
+    if (range?.to) return `Até ${format(range.to, 'dd/MM/yyyy')}`;
+    return 'Todo o histórico';
+  }, [range?.from, range?.to]);
+
+  const buildExportData = (): DreReportData => ({
+    company: {
+      name: settings?.name || fin.dre.fallbackCompany,
+      document: settings?.document || undefined,
+      phone: settings?.phone || undefined,
+      email: settings?.email || undefined,
+      address: settings?.address || undefined,
+      city: settings?.city || undefined,
+      state: settings?.state || undefined,
+      logo_url: settings?.logo_url || undefined,
+    },
+    period: periodLabel,
+    regime,
+    receitaBruta: dre.receitaBruta,
+    receitaCategories,
+    impostos: dre.impostos,
+    impostosCategories,
+    receitaLiquida: dre.receitaLiquida,
+    cpv: dre.cmv,
+    cpvCategories: cmvCategories,
+    lucroBruto: dre.lucroBruto,
+    opex: dre.opex,
+    opexCategories,
+    resultadoLiquido: dre.resultadoLiquido,
+    margem: dre.margem,
+    costCenters: costCenterBreakdown.rows.map((row) => ({
+      name: costCenterLabel(row.id),
+      color: costCenterColor(row.id),
+      revenue: row.revenue,
+      expense: row.expense,
+      result: row.result,
+    })),
+    locale,
+    timezone,
+  });
+
+  const handleExport = async (exportFormat: 'pdf' | 'excel') => {
     if (isExporting) return;
     setIsExporting(true);
     try {
-      generateDreHtml({
-        company: {
-          name: settings?.name || fin.dre.fallbackCompany,
-          document: settings?.document || undefined,
-          phone: settings?.phone || undefined,
-          email: settings?.email || undefined,
-          address: settings?.address || undefined,
-          city: settings?.city || undefined,
-          state: settings?.state || undefined,
-          logo_url: settings?.logo_url || undefined,
-        },
-        period: fin.dre.fallbackPeriod,
-        // Carimba o regime no documento: sem isso o cliente manda o PDF pro
-        // contador e ninguém sabe qual régua gerou aqueles números.
-        regime,
-        receitaBruta: dre.receitaBruta,
-        impostos: dre.impostos,
-        impostosCategories,
-        receitaLiquida: dre.receitaLiquida,
-        cpv: dre.cmv,
-        cpvCategories: cmvCategories,
-        lucroBruto: dre.lucroBruto,
-        opex: dre.opex,
-        opexCategories,
-        resultadoLiquido: dre.resultadoLiquido,
-        margem: dre.margem,
-        // Quebra por centro de custo do MESMO conjunto: o documento impresso
-        // fecha com os totais impressos logo acima dele.
-        costCenters: costCenterBreakdown.rows.map((r) => ({
-          name: costCenterLabel(r.id),
-          color: costCenterColor(r.id),
-          revenue: r.revenue,
-          expense: r.expense,
-          result: r.result,
-        })),
-        locale,
-        // Fuso da empresa: o carimbo "gerado em" do documento tem que mostrar o
-        // relógio da empresa, não o do aparelho de quem exportou.
-        timezone,
+      const data = buildExportData();
+      if (exportFormat === 'excel') await generateDreExcel(data);
+      else generateDreHtml(data);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível exportar o DRE',
+        description: getErrorMessage(error),
       });
     } finally {
       setIsExporting(false);
@@ -589,6 +632,7 @@ export function FinanceDRE({
   };
 
   const ResultIcon = dre.resultadoLiquido > 0 ? TrendingUp : dre.resultadoLiquido < 0 ? TrendingDown : Minus;
+  const PatrimonyResultIcon = patrimony.result > 0 ? TrendingUp : patrimony.result < 0 ? TrendingDown : Minus;
 
   const getResultBg = () => {
     if (dre.resultadoLiquido === 0) return 'bg-muted-foreground';
@@ -598,6 +642,11 @@ export function FinanceDRE({
   const getGrossProfitBg = () => {
     if (dre.lucroBruto === 0) return 'bg-muted-foreground';
     return dre.lucroBruto > 0 ? 'bg-success' : 'bg-destructive';
+  };
+
+  const getPatrimonyResultBg = () => {
+    if (patrimony.result === 0) return 'bg-muted-foreground';
+    return patrimony.result > 0 ? 'bg-success' : 'bg-destructive';
   };
 
   /**
@@ -968,16 +1017,28 @@ export function FinanceDRE({
                   </label>
                 </div>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExport}
-                disabled={isExporting}
-                className="gap-2 text-xs bg-transparent border-background/20 text-background hover:bg-background/20 hover:text-background w-full sm:w-auto"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                {isExporting ? fin.dre.table.exporting : fin.dre.table.export}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isExporting}
+                    className="w-full gap-2 border-background/20 bg-transparent text-xs text-background hover:bg-background/20 hover:text-background sm:w-auto"
+                  >
+                    <FileDown className="h-3.5 w-3.5" />
+                    {isExporting ? fin.dre.table.exporting : fin.dre.table.export}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-70 sm:ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onClick={() => void handleExport('excel')} className="cursor-pointer gap-2">
+                    <FileSpreadsheet className="h-4 w-4 text-success" /> Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void handleExport('pdf')} className="cursor-pointer gap-2">
+                    <FileText className="h-4 w-4 text-destructive" /> PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           {canIncludeSubscriptionProjections && regime === 'competencia' && includeProjections && (
@@ -1070,6 +1131,91 @@ export function FinanceDRE({
             <span className="text-lg sm:text-xl font-bold text-white flex-shrink-0 ml-2">
               {fmt(dre.resultadoLiquido)}
             </span>
+          </div>
+
+          {/* Foto OPERACIONAL atual, separada da cadeia de contas do DRE. Ela
+              não muda com período/regime: soma os saldos de hoje, recebíveis,
+              estoque projetado para venda e desconta obrigações atuais. */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowPatrimony((current) => !current)}
+              disabled={isLoadingPatrimony}
+              aria-expanded={showPatrimony}
+              aria-controls="dre-operational-patrimony"
+              className="flex w-full cursor-pointer items-center justify-between bg-neutral-900 px-3 py-3 text-left text-white transition-colors hover:bg-neutral-800 disabled:cursor-wait disabled:opacity-80 sm:px-4"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-wide">
+                <Landmark className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{fin.dre.patrimony.title}</span>
+              </span>
+              {isLoadingPatrimony ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/70" aria-hidden="true" />
+              ) : showPatrimony ? (
+                <ChevronUp className="h-4 w-4 shrink-0 text-white/70" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="h-4 w-4 shrink-0 text-white/70" aria-hidden="true" />
+              )}
+            </button>
+
+            {showPatrimony && !isLoadingPatrimony && (
+              <div id="dre-operational-patrimony">
+                <p className="bg-muted/20 px-4 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                  {fin.dre.patrimony.currentSnapshot}
+                </p>
+                {[
+                  { key: 'cash', label: fin.dre.patrimony.cash, value: patrimony.cashBalance, icon: Banknote },
+                  { key: 'bank', label: fin.dre.patrimony.bank, value: patrimony.bankBalance, icon: Building2 },
+                  { key: 'receivables', label: fin.dre.patrimony.receivables, value: patrimony.receivables, icon: Users },
+                  { key: 'stock', label: fin.dre.patrimony.stock, value: patrimony.stockValue, icon: Package },
+                ].map(({ key, label, value, icon: Icon }) => (
+                  <div key={key} className="flex items-center justify-between gap-3 border-t border-border/20 px-3 py-2.5 sm:px-4">
+                    <span className="flex min-w-0 items-center gap-2 pl-2 sm:pl-4">
+                      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="truncate text-xs text-foreground/70">{label}</span>
+                    </span>
+                    <span className={cn('shrink-0 text-xs font-medium tabular-nums', value >= 0 ? 'text-success' : 'text-destructive')}>
+                      {fmt(value)}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-3 border-t border-border/20 px-3 py-2.5 sm:px-4">
+                  <span className="flex min-w-0 items-start gap-2 pl-2 sm:pl-4">
+                    <ShoppingCart className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs text-foreground/70">{fin.dre.patrimony.payables}</span>
+                      {patrimony.cardDebt > 0 && (
+                        <span className="block truncate text-[10px] text-muted-foreground">
+                          {fin.dre.patrimony.cardDebt.replace('{amount}', fmt(patrimony.cardDebt))}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-destructive">
+                    {fmt(-patrimony.payables)}
+                  </span>
+                </div>
+
+                <div className={cn('flex items-center justify-between gap-3 px-3 py-4 sm:px-4 sm:py-5', getPatrimonyResultBg())}>
+                  <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                    <PatrimonyResultIcon className="h-4 w-4 shrink-0 text-white sm:h-5 sm:w-5" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <span className="block truncate text-sm font-bold text-white sm:text-base">{fin.dre.patrimony.result}</span>
+                      <span className="text-xs text-white/80">
+                        {patrimony.result > 0
+                          ? fin.dre.patrimony.positive
+                          : patrimony.result < 0
+                            ? fin.dre.patrimony.negative
+                            : fin.dre.patrimony.balanced}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="ml-2 shrink-0 text-lg font-bold tabular-nums text-white sm:text-xl">
+                    {fmt(patrimony.result)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

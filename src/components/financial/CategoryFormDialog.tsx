@@ -109,7 +109,6 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   }, [open, category?.id, initialName, initialType, initialParentId, initialParent?.id]);
 
   const selectedColor = form.watch('color');
-  const selectedType = form.watch('type');
   const selectedParentId = form.watch('parent_id');
 
   /**
@@ -172,16 +171,6 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   // lançamento automático procura) e a linha dela no resultado, e trocá-los
   // arrancaria a categoria do papel sem aviso nenhum.
   const isSystem = category?.is_system === true;
-  const showDreGroup = selectedType === 'saida' || selectedType === 'ambos';
-
-  // Grupo DRE só se aplica a despesa (classifyCategory só roda no ramo de saída).
-  // Se o campo some da tela, reseta o valor pra não gravar lixo herdado de uma escolha anterior.
-  useEffect(() => {
-    if (!showDreGroup) {
-      form.setValue('dre_group', 'opex', { shouldDirty: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDreGroup]);
 
   const handleSubmit = async (data: FormData) => {
     const nameError = validateName?.(data.name, data.type);
@@ -260,23 +249,22 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
             </FormItem>
           )} />
 
-          {showDreGroup && (
-            <FormField control={form.control} name="dre_group" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t.dreGroupLabel}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSystem}>
-                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="impostos">{t.dreGroups.impostos}</SelectItem>
-                    <SelectItem value="cmv">{t.dreGroups.cmv}</SelectItem>
-                    <SelectItem value="opex">{t.dreGroups.opex}</SelectItem>
-                  </SelectContent>
-                </Select>
-                {selectedType === 'ambos' && <FormDescription>{t.dreGroupHint}</FormDescription>}
-                <FormMessage />
-              </FormItem>
-            )} />
-          )}
+          <FormField control={form.control} name="dre_group" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t.dreGroupLabel}</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value} disabled={isSystem}>
+                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="impostos">{t.dreGroups.impostos}</SelectItem>
+                  <SelectItem value="cmv">{t.dreGroups.cmv}</SelectItem>
+                  <SelectItem value="opex">{t.dreGroups.opex}</SelectItem>
+                  <SelectItem value="outros">{t.dreGroups.outros}</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>{t.dreGroupHint}</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )} />
 
           <FormField control={form.control} name="dfc_group" render={({ field }) => (
             <FormItem>

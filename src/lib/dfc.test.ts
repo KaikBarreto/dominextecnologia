@@ -96,6 +96,52 @@ describe('calculateDfc — metodo direto', () => {
     expect(result.groups[0].categories[0].transactions).toEqual([valid]);
   });
 
+  it('conta pagamento parcial de fatura pela conta pagadora e nunca duplica as compras do cartao', () => {
+    const partialPayment = movement({
+      id: 'bill-payment-out',
+      transaction_type: 'saida',
+      amount: 300,
+      category: 'Pagamento de Fatura',
+      transfer_pair_id: 'bill-pair',
+      bill_id: 'bill-1',
+    });
+
+    const result = calculateDfc([
+      // A compra pode estar pendente ou quitada: em ambos os casos não é caixa.
+      movement({
+        id: 'card-purchase-paid',
+        transaction_type: 'saida',
+        amount: 1_000,
+        category: 'Materiais',
+        credit_card_bill_date: '2026-09-01',
+      }),
+      movement({
+        id: 'card-purchase-open',
+        transaction_type: 'saida',
+        amount: 500,
+        is_paid: false,
+        paid_date: null,
+        category: 'Combustível',
+        credit_card_bill_date: '2026-09-01',
+      }),
+      partialPayment,
+      // Perna de entrada no cartão: recompõe limite, não é entrada de caixa.
+      movement({
+        id: 'bill-payment-card-leg',
+        transaction_type: 'entrada',
+        amount: 300,
+        category: 'Pagamento de Fatura',
+        transfer_pair_id: 'bill-pair',
+        bill_id: 'bill-1',
+      }),
+    ]);
+
+    expect(result.netChange).toBe(-300);
+    expect(result.groups[0].categories).toEqual([
+      { name: 'Pagamento de Fatura', total: -300, transactions: [partialPayment] },
+    ]);
+  });
+
   it('usa fallback operacional explicito sem inferir classificacao pelo nome', () => {
     const result = calculateDfc([
       movement({

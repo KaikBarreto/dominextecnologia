@@ -193,7 +193,7 @@ export function useCreditCardBills(accountId?: string) {
           .order('due_date', { ascending: true }),
         supabase
           .from('financial_transactions')
-          .select('id, description, amount, transaction_date, category, is_paid, credit_card_bill_date')
+          .select('id, description, amount, transaction_date, category, is_paid, credit_card_bill_date, cancelled_at')
           .eq('account_id', accountId!)
           .eq('transaction_type', 'saida')
           .not('credit_card_bill_date', 'is', null)
@@ -204,6 +204,7 @@ export function useCreditCardBills(accountId?: string) {
 
       const txnsByMonth: Record<string, typeof txnsResult.data> = {};
       for (const t of (txnsResult.data ?? [])) {
+        if (t.cancelled_at) continue;
         if (!t.credit_card_bill_date) continue;
         (txnsByMonth[t.credit_card_bill_date] ??= []).push(t);
       }
@@ -340,7 +341,7 @@ export function useAllCreditCardBills() {
           .order('due_date', { ascending: true }),
         supabase
           .from('financial_transactions')
-          .select('id, description, amount, transaction_date, category, is_paid, credit_card_bill_date, account_id')
+          .select('id, description, amount, transaction_date, category, is_paid, credit_card_bill_date, account_id, cancelled_at')
           .eq('transaction_type', 'saida')
           .not('credit_card_bill_date', 'is', null),
       ]);
@@ -359,8 +360,10 @@ export function useAllCreditCardBills() {
         is_paid: boolean;
         credit_card_bill_date: string | null;
         account_id: string | null;
+        cancelled_at: string | null;
       }>> = {};
       for (const t of (txnsResult.data ?? [])) {
+        if (t.cancelled_at) continue;
         if (!t.credit_card_bill_date || !t.account_id) continue;
         const key = `${t.account_id}__${t.credit_card_bill_date}`;
         (txnsByKey[key] ??= []).push(t);

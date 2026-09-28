@@ -5,7 +5,9 @@ import {
   ArrowUpCircle,
   Banknote,
   ChevronDown,
-  Download,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
   Landmark,
   Loader2,
   PiggyBank,
@@ -13,6 +15,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
 import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
@@ -28,8 +36,18 @@ import {
 } from '@/lib/dfc';
 import { buildCategoryTree, groupDreRowsByParent, type DreRowNode } from '@/lib/category-tree';
 import { useLocaleFormatters } from '@/lib/format/hooks';
+import { toBcp47 } from '@/lib/format';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/utils/errorMessages';
+import {
+  exportDfcCsv,
+  exportDfcExcel,
+  exportDfcPdf,
+  type DfcExportData,
+} from '@/utils/dfcExport';
 import { getCategoryIcon } from './categoryIcons';
 
 type DfcTransaction = FinancialTransaction & {
@@ -95,14 +113,6 @@ function resolveDfcGroup(value: string | null | undefined): DfcGroupKey {
     : DFC_UNCLASSIFIED_FALLBACK;
 }
 
-/** Protege células textuais contra fórmulas ao abrir o CSV em planilhas. */
-function csvCell(value: string | number): string {
-  if (typeof value === 'number') return `"${value.toFixed(2).replace('.', ',')}"`;
-  let text = String(value);
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
 function transactionCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'lançamento' : 'lançamentos'}`;
 }
@@ -112,6 +122,8 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
   const { accounts, isLoading: isLoadingAccounts } = useFinancialAccounts();
   const { costCenters, isLoading: isLoadingCostCenters } = useCostCenters();
   const { money, date } = useLocaleFormatters();
+  const { locale, currency } = useAppLocaleContext();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['operacional']));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -232,43 +244,56 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
     }).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
   };
 
-  const handleExportCsv = () => {
-    const rows: Array<Array<string | number>> = [
-      ['DFC Gerencial — somente realizado'],
-      ['Período', periodLabel],
-      ['Saldo inicial', report.openingBalance],
-      ['Variação líquida', report.netChange],
-      ['Saldo final', report.closingBalance],
-      [],
-      ['Atividade', 'Categoria', 'Centro de custo', 'Data da baixa', 'Descrição', 'Tipo', 'Valor realizado'],
-    ];
+  const buildExportData = (): DfcExportData => {
+    const movements: DfcExportData['movements'] = [];
     report.groups.forEach((group) => {
       group.categories.forEach((category) => {
         category.transactions.forEach((transaction) => {
           const center = transaction.cost_center_id
             ? costCenterMetaMap.get(transaction.cost_center_id)?.name ?? 'Centro de custo não encontrado'
             : 'Sem centro de custo';
-          rows.push([
-            group.label,
-            category.name,
-            center,
-            transaction.paid_date ?? '',
-            transaction.description ?? '',
-            transaction.transaction_type === 'entrada' ? 'Entrada' : 'Saída',
-            signedTransactionAmount(transaction),
-          ]);
+          movements.push({
+            activity: group.label,
+            category: category.name,
+            costCenter: center,
+            paidDate: transaction.paid_date ?? '',
+            description: transaction.description ?? '',
+            type: transaction.transaction_type === 'entrada' ? 'Entrada' : 'Saída',
+            amount: signedTransactionAmount(transaction),
+          });
         });
       });
     });
-    const csv = rows.map((row) => row.map(csvCell).join(';')).join('\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
+    return {
+      periodLabel,
+      locale,
+      currency,
+      openingBalance: report.openingBalance,
+      netChange: report.netChange,
+      closingBalance: report.closingBalance,
+      movements,
+    };
+  };
+
+  const exportFilename = () => {
     const suffix = [normalizedRange.from, normalizedRange.to].filter(Boolean).join('_a_') || 'historico';
-    link.download = `dfc-gerencial_${suffix}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    return `dfc-gerencial_${suffix}`;
+  };
+
+  const handleExport = async (format: 'excel' | 'pdf' | 'csv') => {
+    try {
+      const data = buildExportData();
+      const filename = exportFilename();
+      if (format === 'excel') await exportDfcExcel(data, filename);
+      else if (format === 'pdf') await exportDfcPdf(data, filename);
+      else exportDfcCsv(data, filename);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível exportar o DFC',
+        description: getErrorMessage(error),
+      });
+    }
   };
 
   if (isLoading || isLoadingCategories || isLoadingAccounts || isLoadingCostCenters) {
@@ -447,9 +472,12 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
   const ChangeIcon = changeIsPositive ? ArrowUpCircle : changeIsZero ? Banknote : ArrowDownCircle;
   const kpiMoney = (value: number) => {
     if (!isMobile || Math.abs(value) < 1_000) return money(value);
-    const compactBase = (scaled: number) => money(scaled)
-      .replace(/([,.]\d)0$/, '$1')
-      .replace(/([,.])00$/, '');
+    const compactBase = (scaled: number) => new Intl.NumberFormat(toBcp47(locale), {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    }).format(scaled);
     if (Math.abs(value) >= 1_000_000) return `${compactBase(value / 1_000_000)} mi`;
     return `${compactBase(value / 1_000)} mil`;
   };
@@ -490,17 +518,32 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
               </div>
               <p className="mt-1 text-xs text-background/70">Fluxo de caixa por atividade · {periodLabel}</p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleExportCsv}
-              disabled={movementCount === 0}
-              className="w-full gap-2 border-background/20 bg-transparent text-xs text-background hover:bg-background/20 hover:text-background sm:w-auto"
-            >
-              <Download className="h-3.5 w-3.5" aria-hidden="true" />
-              Exportar CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={movementCount === 0}
+                  className="w-full gap-2 border-background/20 bg-transparent text-xs text-background hover:bg-background/20 hover:text-background sm:w-auto"
+                >
+                  <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+                  Exportar
+                  <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-70 sm:ml-1" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={() => handleExport('excel')} className="cursor-pointer gap-2">
+                  <FileSpreadsheet className="h-4 w-4 text-success" aria-hidden="true" /> Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer gap-2">
+                  <FileText className="h-4 w-4 text-destructive" aria-hidden="true" /> PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('csv')} className="cursor-pointer gap-2">
+                  <FileDown className="h-4 w-4 text-info" aria-hidden="true" /> CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
         <CardContent className="p-0">

@@ -89,10 +89,10 @@ export function useFinancialAccounts() {
         .select('id, initial_balance, type');
       if (accErr) throw accErr;
 
-      const txns = await fetchAllPaginated<{ account_id: string | null; transaction_type: string; amount: number; is_paid: boolean; credit_card_bill_date: string | null }>(
+      const txns = await fetchAllPaginated<{ account_id: string | null; transaction_type: string; amount: number; is_paid: boolean; credit_card_bill_date: string | null; cancelled_at: string | null }>(
         () => supabase
           .from('financial_transactions')
-          .select('account_id, transaction_type, amount, is_paid, credit_card_bill_date')
+          .select('account_id, transaction_type, amount, is_paid, credit_card_bill_date, cancelled_at')
           .not('account_id', 'is', null)
       );
 
@@ -114,6 +114,7 @@ export function useFinancialAccounts() {
 
       for (const t of (txns || [])) {
         if (!t.account_id) continue;
+        if (t.cancelled_at) continue;
         const accountType = accountTypeMap[t.account_id];
         const amount = Number(t.amount);
 

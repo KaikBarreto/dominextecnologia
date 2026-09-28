@@ -312,8 +312,8 @@ export function useFinancial() {
           .from('financial_transactions')
           .select(`
             *,
-            customer:customers(id, name),
-            supplier:suppliers(id, name),
+            customer:customers(id, name, document),
+            supplier:suppliers(id, name, cpf_cnpj),
             account:financial_accounts(id, name, type, color),
             employee:employees(id, name, salary, photo_url)
           `)

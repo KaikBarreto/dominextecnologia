@@ -136,7 +136,7 @@ export function FinanceReportsOverview({
         <div
           role="tablist"
           aria-label="Regime da visão geral"
-          className="grid w-full grid-cols-2 rounded-lg bg-muted p-1 sm:w-auto"
+          className="grid w-full grid-cols-2 border-b border-border bg-transparent sm:flex sm:w-auto"
         >
           {(['caixa', 'competencia'] as const).map((value) => (
             <button
@@ -146,8 +146,10 @@ export function FinanceReportsOverview({
               aria-selected={regime === value}
               onClick={() => setRegime(value)}
               className={cn(
-                'rounded-md px-3 py-2 text-xs font-medium transition-colors',
-                regime === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                '-mb-px min-h-10 whitespace-nowrap border-b-2 border-transparent bg-transparent px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                regime === value
+                  ? 'border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {value === 'caixa' ? 'Regime de Caixa' : 'Regime de Competência'}

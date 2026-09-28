@@ -31,6 +31,16 @@ import { todayInTz } from '@/lib/timezone';
  */
 export type DreRegime = 'caixa' | 'competencia';
 
+/**
+ * Categoria marcada como movimento patrimonial: aparece no DFC, mas não é
+ * receita nem despesa da operação (aporte, empréstimo, compra de ativo etc.).
+ */
+export const DRE_EXCLUDED_GROUP = 'outros';
+
+export function isDreExcludedGroup(group: string | null | undefined): boolean {
+  return group === DRE_EXCLUDED_GROUP;
+}
+
 /** Só o que o motor precisa ler — evita amarrar o módulo ao type completo. */
 export interface DreTransactionLike {
   transaction_date?: string | null;

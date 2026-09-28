@@ -11,6 +11,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { type MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
 import { generateMovimentacoesReportPdf } from '@/utils/movimentacoesPdfGenerator';
 import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
+import { generateMovimentacoesCsv } from '@/utils/movimentacoesCsvGenerator';
 import { useTransactionAttachmentsCounts } from '@/hooks/useTransactionAttachments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -650,6 +651,14 @@ export function TransactionListPanel({
     }
   };
 
+  const handleExportCsv = () => {
+    try {
+      generateMovimentacoesCsv({ title, rows: buildExportRows(), locale, timezone });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Não foi possível gerar o CSV', description: getErrorMessage(e) });
+    }
+  };
+
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
   const someSelected = canDeleteFinance && selectedIds.size > 0;
   const showTypeColumn = type === 'all';
@@ -734,14 +743,14 @@ export function TransactionListPanel({
           </div>
           <div className="flex items-center gap-2">
             {someSelected && (
-              <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="min-h-11 rounded-xl">
+              <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="min-h-11">
                 <Trash2 className="mr-2 h-4 w-4" /> {fin.transactionList.deleteSelected} {selectedIds.size}
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1 min-h-11 rounded-xl">
-                  <FileDown className="h-4 w-4" /> {fin.transactionList.export} <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                <Button variant="outline" size="sm" className="min-h-11 gap-1">
+                  <FileDown className="h-4 w-4" /> {fin.transactionList.export} <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-60" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
@@ -757,10 +766,16 @@ export function TransactionListPanel({
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Excel
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportCsv}
+                  className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
+                >
+                  <FileDown className="h-4 w-4" /> CSV
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {onNew && (
-              <Button onClick={onNew} className={cn('min-h-11 rounded-xl', buttonColor)}>
+              <Button onClick={onNew} className={cn('min-h-11', buttonColor)}>
                 <Plus className="mr-2 h-4 w-4" />
                 {newLabel}
               </Button>
@@ -798,6 +813,12 @@ export function TransactionListPanel({
                   className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white"
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportCsv}
+                  className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
+                >
+                  <FileDown className="h-4 w-4" /> CSV
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

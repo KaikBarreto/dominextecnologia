@@ -7,6 +7,7 @@ import {
   isPayrollAdvance,
   isFutureCashDate,
   isPaidDateAllowedInTz,
+  isDreExcludedGroup,
   classifyDreCategory,
   parseDreDate,
   type DreTransactionLike,
@@ -422,6 +423,14 @@ describe('classifyDreCategory', () => {
   it('sem match nenhum, cai em OPEX (o balde padrão)', () => {
     expect(classifyDreCategory('Folha de Pagamento', null)).toBe('opex');
     expect(classifyDreCategory(null, null)).toBe('opex');
+  });
+});
+
+describe('isDreExcludedGroup', () => {
+  it('reconhece apenas o grupo patrimonial fora do resultado', () => {
+    expect(isDreExcludedGroup('outros')).toBe(true);
+    expect(isDreExcludedGroup('opex')).toBe(false);
+    expect(isDreExcludedGroup(null)).toBe(false);
   });
 });
 

@@ -6,6 +6,7 @@ import {
   getDreAmount,
   getDreEffectiveDate,
   isFutureCashDate,
+  isDreExcludedGroup,
   isInDreRange,
   isPartialReceiptChild,
   isPayrollAdvance,
@@ -98,6 +99,7 @@ export function buildFinanceReportOverview({
   for (const transaction of transactions) {
     if ((transaction as ReportTransaction & { cancelled_at?: string | null }).cancelled_at) continue;
     if (transaction.transfer_pair_id) continue;
+    if (isDreExcludedGroup(categoryDreGroups.get(transaction.category ?? ''))) continue;
     if (transaction.category === 'Pagamento de Fatura' || transaction.category === ADJUSTMENT_CATEGORY) continue;
     if (regime === 'caixa' && !transaction.is_paid) continue;
     if (regime === 'competencia' && (isPartialReceiptChild(transaction) || isPayrollAdvance(transaction))) continue;

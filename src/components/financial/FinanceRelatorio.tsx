@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, FileBarChart, LayoutDashboard, Layers, RefreshCw, Tags, Wallet } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, FileBarChart, LayoutDashboard, Layers, RefreshCw, Tags, Wallet } from 'lucide-react';
 import { FinanceOverview } from './FinanceOverview';
 import { FinanceReportsOverview } from './FinanceReportsOverview';
 import { FinanceDRE } from './FinanceDRE';
 import { FinanceDFC } from './FinanceDFC';
+import { FinanceAccountingPackage } from './FinanceAccountingPackage';
 import { FinanceCategorias } from './FinanceCategorias';
 import { FinanceCostCenters } from './FinanceCostCenters';
 import { FinanceAssinaturas } from './FinanceAssinaturas';
@@ -79,6 +80,7 @@ export function FinanceRelatorio({
         { value: 'visao-geral', label: fin.report.tabs.overview, icon: LayoutDashboard },
         { value: 'dre', label: fin.report.tabs.incomeStatement, icon: FileBarChart },
         { value: 'dfc', label: fin.report.tabs.cashFlowStatement, icon: BarChart3 },
+        { value: 'contabilidade', label: fin.report.tabs.accounting, icon: BriefcaseBusiness },
       ];
     }
     if (section === 'cobrancas') {
@@ -148,6 +150,12 @@ export function FinanceRelatorio({
           transactions={allTransactions}
           range={dateRange}
           canIncludeSubscriptionProjections={hasChargeModule}
+        />
+      ) : safeTab === 'contabilidade' ? (
+        <FinanceAccountingPackage
+          transactions={allTransactions}
+          range={dateRange}
+          isLoading={isLoading}
         />
       ) : safeTab === 'categorias' ? (
         <FinanceCategorias />

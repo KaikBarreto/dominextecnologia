@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -83,6 +83,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { type MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
 import { generateMovimentacoesReportPdf } from '@/utils/movimentacoesPdfGenerator';
 import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
+import { generateMovimentacoesCsv } from '@/utils/movimentacoesCsvGenerator';
 import { FinanceAccountsCalendar, type FinanceCalendarItem } from './FinanceAccountsCalendar';
 
 type SubTab = 'todas' | 'pagar' | 'receber';
@@ -849,6 +850,14 @@ export function FinanceContas({
     }
   };
 
+  const handleExportCsv = () => {
+    try {
+      generateMovimentacoesCsv({ title: exportTitle, rows: buildExportRows(), locale, timezone });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível gerar o CSV', description: getErrorMessage(error) });
+    }
+  };
+
   const calendarItems: FinanceCalendarItem[] = [
     ...filtered.filter((t) => !!t.due_date).map((t) => ({
       id: t.id,
@@ -895,9 +904,9 @@ export function FinanceContas({
 
   return (
     <div className="space-y-5">
-      {/* Navegação e ações ocupam uma única linha no desktop. No mobile/tablet,
-          quebram em blocos tocáveis sem comprimir a busca. */}
-      <div className="space-y-3 lg:space-y-0 lg:flex lg:items-center lg:gap-3 lg:border-b lg:border-border/60">
+      {/* A navegação fica em uma linha própria para preservar uma busca ampla
+          também em notebooks. A toolbar quebra em blocos tocáveis no mobile. */}
+      <div className="space-y-3">
         <div className="lg:hidden">
           <MobilePillTabs
             variant="underline"
@@ -925,27 +934,31 @@ export function FinanceContas({
             </button>
           ))}
         </div>
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={fin.accounts.search}
-            className="h-10 pl-10"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
-        <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2 pb-1 sm:flex sm:overflow-x-auto lg:pb-0 shrink-0">
+        <div className="space-y-2 lg:flex lg:items-center lg:gap-3 lg:space-y-0">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={fin.accounts.search}
+              className="h-10 pl-10"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2 pb-1 sm:flex sm:overflow-x-auto lg:pb-0 shrink-0">
           <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value as AccountsView)} variant="outline" size="sm" className="shrink-0">
             <ToggleGroupItem value="list" aria-label="Visualização em lista" className="h-9 px-3"><List className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Lista</span></ToggleGroupItem>
             <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="h-9 px-3"><CalendarDays className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Calendário</span></ToggleGroupItem>
           </ToggleGroup>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 w-full gap-2 shrink-0 sm:w-auto"><FileDown className="h-4 w-4" />Exportar</Button>
+              <Button variant="outline" size="sm" className="h-9 w-full shrink-0 gap-2 sm:w-auto">
+                <FileDown className="h-4 w-4" />Exportar<ChevronDown className="ml-auto h-3.5 w-3.5 opacity-60 sm:ml-1" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCsv}><FileDown className="mr-2 h-4 w-4" />CSV</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <FilterButton activeCount={activeFilterCount} onClear={resetFilters} className="shrink-0">
@@ -975,9 +988,10 @@ export function FinanceContas({
               />
             )}
           </FilterButton>
-          <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:col-span-1 sm:h-9 sm:w-auto">
-            <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
-          </Button>
+            <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:col-span-1 sm:h-9 sm:w-auto">
+              <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
+            </Button>
+          </div>
         </div>
       </div>
 
