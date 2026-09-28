@@ -282,9 +282,9 @@ export default function Finance() {
     handleNew(kind);
   };
 
-  // No mobile, telas com FAB (movimentações, contas) precisam de padding extra
-  // pra última linha não ficar coberta pelo botão.
-  const screenHasFab = screen === 'movimentacoes' || screen === 'contas';
+  // Só Movimentações mantém FAB. Em Contas, "Nova Conta" faz parte da toolbar
+  // responsiva e não precisa reservar um vazio extra no fim da página.
+  const screenHasFab = screen === 'movimentacoes';
 
   // Subtítulo do header por tela (cada tela é própria agora).
   const screenSubtitle =

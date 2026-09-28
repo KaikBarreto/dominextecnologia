@@ -125,7 +125,7 @@ export function PmocContractCronogramaTab({
   };
 
   return (
-    <Card className="w-full min-w-0 max-w-full overflow-hidden">
+    <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <CardTitle className="break-words">{t.cardTitle}</CardTitle>

@@ -1145,7 +1145,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     <div className="space-y-6 min-w-0 w-full">
       {isLooseSelected ? (
         /* ============ DETALHE DO GRUPO "SEM AMBIENTE" (comum) ============ */
-        <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
           <CardHeader className="flex flex-col items-start gap-2 space-y-0">
             <Button
               variant="ghost"
@@ -1173,7 +1173,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         </Card>
       ) : selectedEnv ? (
         /* ===================== DETALHE DO AMBIENTE ===================== */
-        <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-muted/25 shadow-none">
           <CardHeader className="flex flex-col items-start gap-2 space-y-0">
             <Button
               variant="ghost"
@@ -1213,7 +1213,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         </Card>
       ) : (
         /* ===================== LISTA DE AMBIENTES ===================== */
-        <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
           <CardHeader className="flex flex-col items-start justify-between gap-2 space-y-0 sm:flex-row sm:items-center">
             <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
               <ShieldCheck className="h-5 w-5 shrink-0 text-info" />
@@ -1250,7 +1250,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     key={env.key}
                     type="button"
                     onClick={() => setSelectedEnvKey(env.key)}
-                    className="flex w-full min-h-16 items-center gap-3 rounded-2xl border-2 bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/40 active:scale-[0.99]"
+                    className="flex w-full min-h-16 items-center gap-3 rounded-2xl bg-muted/35 p-3 text-left transition-colors hover:bg-muted/50 active:scale-[0.99]"
                   >
                     {env.photo_url ? (
                       <img
@@ -1288,7 +1288,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                   <button
                     type="button"
                     onClick={() => setSelectedEnvKey(LOOSE_ENV_KEY)}
-                    className="flex w-full min-h-16 items-center gap-3 rounded-2xl border-2 border-dashed bg-muted/20 p-3 text-left shadow-sm transition-colors hover:bg-muted/40 active:scale-[0.99]"
+                    className="flex w-full min-h-16 items-center gap-3 rounded-2xl bg-muted/20 p-3 text-left transition-colors hover:bg-muted/40 active:scale-[0.99]"
                   >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                       <Wrench className="h-6 w-6" />

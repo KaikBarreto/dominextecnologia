@@ -14,15 +14,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { getErrorMessage } from '@/utils/errorMessages';
-import { FABButton } from '@/components/mobile/FABButton';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
-import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -76,9 +76,18 @@ import {
   type BatchSide,
 } from '@/lib/finance-batch-payment';
 import { BatchPayModal, type BatchPayConfirmPayload } from './BatchPayModal';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { type MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
+import { generateMovimentacoesReportPdf } from '@/utils/movimentacoesPdfGenerator';
+import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
+import { FinanceAccountsCalendar, type FinanceCalendarItem } from './FinanceAccountsCalendar';
 
-type SubTab = 'pagar' | 'receber';
+type SubTab = 'todas' | 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
+type AccountsView = 'list' | 'calendar';
 
 type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
 
@@ -110,8 +119,9 @@ export function FinanceContas({
   onMarkAsPaid,
   dateRange,
 }: FinanceContasProps) {
-  const [subTab, setSubTab] = useState<SubTab>('pagar');
-  const [filter, setFilter] = useState<FilterStatus>('pendentes');
+  const [subTab, setSubTab] = useState<SubTab>('todas');
+  const [filter, setFilter] = useState<FilterStatus>('todas');
+  const [view, setView] = useState<AccountsView>('list');
   // Filtro multi-select: vazio = todas as categorias. Pattern FilterCheckboxGroup.
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   // Filtro multi-select de centro de custo, espelhando o de categoria. Vazio =
@@ -189,6 +199,8 @@ export function FinanceContas({
   }, [payrollEmpMovements, payrollTxn?.employee]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { settings: companySettings } = useCompanySettings();
+  const { enabled: whiteLabelEnabled } = useWhiteLabel();
 
   const isPayrollSalaryRow = (t: PayrollTxn) =>
     t.payroll_kind === 'salary' && !!t.employee_id && !t.is_paid;
@@ -249,17 +261,18 @@ export function FinanceContas({
   const today = startOfDay(new Date());
   const next7Days = addDays(today, 7);
 
-  const contaDefaultType: TransactionType = subTab === 'pagar' ? 'saida' : 'entrada';
+  const contaDefaultType: TransactionType = subTab === 'receber' ? 'entrada' : 'saida';
 
   // baseFiltered = txns "visíveis" sem as despesas de cartão (que viram linhas-de-fatura).
   // Em subTab='pagar', as despesas com credit_card_bill_date saem daqui; quem
   // representa elas é o agregado em `cardInvoices`. Em subTab='receber' não tem cartão.
   const baseFiltered = useMemo(() => {
     return transactions.filter((t) => {
-      const correctType = subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada';
+      const correctType = subTab === 'todas'
+        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
       if (!correctType) return false;
-      // Em 'pagar', remove despesas que pertencem a fatura de cartão (vão pro bloco de invoices).
-      if (subTab === 'pagar' && t.credit_card_bill_date) return false;
+      // Despesas de cartão viram uma única linha de fatura em "Todas" e "A Pagar".
+      if (t.transaction_type === 'saida' && t.credit_card_bill_date) return false;
       return true;
     });
   }, [transactions, subTab]);
@@ -281,7 +294,7 @@ export function FinanceContas({
   // Só inclui faturas com pelo menos 1 transação ou amount_paid > 0
   // (filtra bills "vazias" que ficaram órfãs).
   const cardInvoices = useMemo<CreditCardBillWithTransactions[]>(() => {
-    if (subTab !== 'pagar') return [];
+    if (subTab === 'receber') return [];
     const eligible = allBills.filter((b) => {
       const account = cardAccountMap[b.account_id];
       if (!account) return false;
@@ -333,9 +346,10 @@ export function FinanceContas({
   const searchBase = useMemo(() => {
     const pool = allTransactions ?? transactions;
     return pool.filter((t) => {
-      const correctType = subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada';
+      const correctType = subTab === 'todas'
+        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
       if (!correctType) return false;
-      if (subTab === 'pagar' && t.credit_card_bill_date) return false;
+      if (t.transaction_type === 'saida' && t.credit_card_bill_date) return false;
       return true;
     });
   }, [allTransactions, transactions, subTab]);
@@ -363,7 +377,7 @@ export function FinanceContas({
    * a tela passa a DIZER que há resultado do outro lado.
    */
   const otherTabMatches = useMemo(() => {
-    if (!searchActive) return 0;
+    if (!searchActive || subTab === 'todas') return 0;
     const pool = allTransactions ?? transactions;
     return pool.filter((t) => {
       const otherType = subTab === 'pagar' ? 'entrada' : 'saida';
@@ -406,9 +420,14 @@ export function FinanceContas({
   const summary = useMemo(() => {
     // Universo completo p/ summary: txns não-cartão + total das faturas.
     // (Em subTab='receber' não tem cartão, então só txns.)
-    const txnUniverse = transactions.filter((t) =>
-      (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada')
-      && !(subTab === 'pagar' && t.credit_card_bill_date)
+    const txnUniverseByType = transactions.filter((t) => {
+      const correctType = subTab === 'todas'
+        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
+      return correctType && !(t.transaction_type === 'saida' && t.credit_card_bill_date);
+    });
+    const txnUniverse = filterByCostCenters(
+      txnUniverseByType.filter((t) => categoryFilter.length === 0 || categoryFilter.includes(t.category ?? '')),
+      costCenterFilter,
     );
 
     // Bills elegíveis (com conteúdo + dentro do período) — independente do filtro de status.
@@ -419,7 +438,7 @@ export function FinanceContas({
     // Com filtro de categoria OU de centro de custo ativo, a fatura NÃO entra:
     // ela junta despesas de várias categorias e de vários centros, não cabe em
     // "um" deles (mesmo motivo pelo qual some da lista abaixo).
-    const billUniverse = subTab === 'pagar' && categoryFilter.length === 0 && costCenterFilter.length === 0
+    const billUniverse = subTab !== 'receber' && categoryFilter.length === 0 && costCenterFilter.length === 0
       ? allBills.filter((b) => {
           if (!cardAccountMap[b.account_id]) return false;
           const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
@@ -438,6 +457,13 @@ export function FinanceContas({
     const pendenteBill = billUniverse
       .filter((b) => b.status !== 'paid')
       .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
+
+    const aPagarTxn = txnUniverse
+      .filter((t) => t.transaction_type === 'saida' && !t.is_paid)
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const aReceberTxn = txnUniverse
+      .filter((t) => t.transaction_type === 'entrada' && !t.is_paid)
+      .reduce((s, t) => s + Number(t.amount), 0);
 
     const vencidoTxn = txnUniverse
       .filter((t) => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today))
@@ -466,9 +492,10 @@ export function FinanceContas({
     //     mais semântico ("caixa realizado, sempre pela data do movimento").
     //   - dateRange vazio (sem período) inclui todos os pagos.
     const pagoPool = (allTransactions ?? transactions).filter((t) => {
-      const correctType = subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada';
+      const correctType = subTab === 'todas'
+        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
       if (!correctType) return false;
-      if (subTab === 'pagar' && t.credit_card_bill_date) return false;
+      if (t.transaction_type === 'saida' && t.credit_card_bill_date) return false;
       if (!t.is_paid) return false;
       if (!dateRange?.from && !dateRange?.to) return true;
       return isTransactionInDateRange(t, dateRange, 'caixa');
@@ -481,6 +508,8 @@ export function FinanceContas({
       vencido: vencidoTxn + vencidoBill,
       prox7: prox7Txn + prox7Bill,
       pago: pagoTxn + pagoBill,
+      aPagar: aPagarTxn + pendenteBill,
+      aReceber: aReceberTxn,
     };
   }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange, categoryFilter, costCenterFilter]);
 
@@ -559,7 +588,7 @@ export function FinanceContas({
   //
   // A copy muda por lado (quem recebe não "quita", recebe), a mecânica não: é a
   // mesma RPC, o mesmo carimbo e a mesma regra de "nenhuma linha nova nasce".
-  const isReceiveTab = subTab === 'receber';
+  const isReceiveTab = selectionSide === 'receive' || (selectionSide === null && subTab === 'receber');
   const batchMsg = isReceiveTab ? fin.accounts.batchReceive : fin.accounts.batchPay;
   const batchActionLabel = isReceiveTab
     ? fin.accounts.batchReceive.receiveButton
@@ -626,6 +655,7 @@ export function FinanceContas({
   );
   const batchSelection = useMemo(() => summarizeBatchSelection(selectedRows as any), [selectedRows]);
   const allSelectableSelected = selectableRows.length > 0 && selectedRows.length === selectableRows.length;
+  const canSelectAll = subTab !== 'todas' || selectionSide !== null;
 
   // Trocar de sub-aba zera a seleção (e o lado travado): uma seleção invisível
   // voltando depois é pedir pra quitar o que não se viu.
@@ -652,6 +682,9 @@ export function FinanceContas({
   };
 
   const toggleSelectAll = () => {
+    // Em "Todas", o primeiro item individual define se o lote é de pagamento
+    // ou recebimento. Isso impede um "selecionar tudo" de misturar direções.
+    if (!canSelectAll) return;
     resetBatchGroupId();
     if (allSelectableSelected) {
       const next = new Set(selectedIds);
@@ -755,256 +788,223 @@ export function FinanceContas({
     setEditingTransaction(null);
   };
 
+  const activeFilterCount = (filter === 'todas' ? 0 : 1) + categoryFilter.length + costCenterFilter.length;
+  const resetFilters = () => {
+    setFilter('todas');
+    setCategoryFilter([]);
+    setCostCenterFilter([]);
+  };
+
+  const visibleInvoices = !searchActive && categoryFilter.length === 0 && costCenterFilter.length === 0
+    ? cardInvoices
+    : [];
+
+  const buildExportRows = (): MovimentacaoReportRow[] => [
+    ...filtered.map((t) => ({
+      date: t.due_date ?? t.transaction_date,
+      type: t.transaction_type === 'entrada' ? 'entrada' as const : 'saida' as const,
+      description: t.description || '',
+      category: t.category || '',
+      account: allAccounts.find((account) => account.id === t.account_id)?.name ?? '',
+      amount: Number(t.amount),
+      isPaid: !!t.is_paid,
+    })),
+    ...visibleInvoices.map((bill) => ({
+      date: bill.due_date,
+      type: 'saida' as const,
+      description: `${fin.accounts.cardInvoices.invoice} — ${cardAccountMap[bill.account_id]?.name ?? ''}`,
+      category: fin.accounts.cardInvoices.sectionTitle,
+      account: cardAccountMap[bill.account_id]?.name ?? '',
+      amount: Math.max(0, Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0)),
+      isPaid: bill.status === 'paid',
+    })),
+  ];
+
+  const exportTitle = subTab === 'pagar'
+    ? 'Contas a Pagar'
+    : subTab === 'receber'
+      ? 'Contas a Receber'
+      : 'Contas a Pagar e Receber';
+
+  const handleExportPDF = async () => {
+    try {
+      await generateMovimentacoesReportPdf({
+        company: companySettings,
+        whiteLabel: whiteLabelEnabled,
+        title: exportTitle,
+        rows: buildExportRows(),
+        locale,
+        timezone,
+      });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível gerar o PDF', description: getErrorMessage(error) });
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      await generateMovimentacoesExcel({ title: exportTitle, rows: buildExportRows(), locale, timezone });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível gerar o Excel', description: getErrorMessage(error) });
+    }
+  };
+
+  const calendarItems: FinanceCalendarItem[] = [
+    ...filtered.filter((t) => !!t.due_date).map((t) => ({
+      id: t.id,
+      title: t.description,
+      date: t.due_date as string,
+      amount: Number(t.amount),
+      direction: t.transaction_type === 'entrada' ? 'entrada' as const : 'saida' as const,
+      status: getStatus(t),
+      subtitle: t.customer?.name ?? t.supplier?.name ?? t.employee?.name,
+    })),
+    ...visibleInvoices.map((bill) => ({
+      id: `bill-${bill.id}`,
+      title: `${fin.accounts.cardInvoices.invoice} ${cardAccountMap[bill.account_id]?.name ?? ''}`.trim(),
+      date: bill.due_date,
+      amount: Math.max(0, Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0)),
+      direction: 'saida' as const,
+      status: bill.status === 'paid'
+        ? 'paga' as const
+        : isBefore(parseLocalDate(bill.due_date), today)
+          ? 'vencida' as const
+          : 'pendente' as const,
+    })),
+  ];
+
+  const directionTabs = [
+    { value: 'todas', label: 'Todas', icon: <DollarSign className="h-3.5 w-3.5" /> },
+    { value: 'pagar', label: fin.accounts.subTabs.payable, icon: <ArrowDownCircle className="h-3.5 w-3.5" /> },
+    { value: 'receber', label: fin.accounts.subTabs.receivable, icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
+  ];
+
+  const kpis = subTab === 'todas'
+    ? [
+        { label: 'A pagar', value: summary.aPagar, icon: ArrowDownCircle, color: 'bg-destructive' },
+        { label: 'A receber', value: summary.aReceber, icon: ArrowUpCircle, color: 'bg-success' },
+        { label: fin.accounts.summaryCards.totalOverdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-rose-700' },
+        { label: fin.accounts.summaryCards.next7Full, value: summary.prox7, icon: Clock, color: 'bg-primary' },
+      ]
+    : [
+        { label: fin.accounts.summaryCards.totalPending, value: summary.pendente, icon: Clock, color: 'bg-warning' },
+        { label: fin.accounts.summaryCards.totalOverdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-destructive' },
+        { label: fin.accounts.summaryCards.next7Full, value: summary.prox7, icon: DollarSign, color: 'bg-primary' },
+        { label: subTab === 'receber' ? fin.accounts.summaryCards.totalReceived : fin.accounts.summaryCards.totalPaid, value: summary.pago, icon: CheckCircle2, color: 'bg-success' },
+      ];
+
   return (
     <div className="space-y-5">
-      {/* Header inline — desktop. Mobile usa o MobilePageHeader do parent + FAB. */}
-      {!isMobile && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <h2 className="text-xl font-bold">{fin.accounts.header.title}</h2>
-            <p className="text-sm text-muted-foreground">{fin.accounts.header.subtitle}</p>
-          </div>
-          <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} className="gap-2 min-h-11 rounded-xl">
-            <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
-          </Button>
+      {/* Navegação e ações ocupam uma única linha no desktop. No mobile/tablet,
+          quebram em blocos tocáveis sem comprimir a busca. */}
+      <div className="space-y-3 lg:space-y-0 lg:flex lg:items-center lg:gap-3 lg:border-b lg:border-border/60">
+        <div className="lg:hidden">
+          <MobilePillTabs
+            variant="underline"
+            tabs={directionTabs}
+            activeTab={subTab}
+            onTabChange={(value) => { setSubTab(value as SubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
+          />
         </div>
-      )}
-
-      {/* Sub-tab toggle — mobile usa pillTabs scrolláveis; desktop botões */}
-      {isMobile ? (
-        <MobilePillTabs
-          variant="underline"
-          tabs={[
-            { value: 'pagar', label: fin.accounts.subTabs.payable, icon: <ArrowDownCircle className="h-3.5 w-3.5" /> },
-            { value: 'receber', label: fin.accounts.subTabs.receivable, icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
-          ]}
-          activeTab={subTab}
-          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
-        />
-      ) : (
-        <div className="flex gap-1 border-b" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === 'pagar'}
-            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
-            className={cn(
-              'min-h-11 -mb-px border-b-2 px-4 text-sm font-medium transition-colors',
-              subTab === 'pagar' ? 'border-destructive text-destructive' : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {fin.accounts.subTabs.payable}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === 'receber'}
-            onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
-            className={cn(
-              'min-h-11 -mb-px border-b-2 px-4 text-sm font-medium transition-colors',
-              subTab === 'receber' ? 'border-success text-success' : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {fin.accounts.subTabs.receivable}
-          </button>
-        </div>
-      )}
-
-      {/* Summary cards — mobile vira carrossel snap-x compacto */}
-      {isMobile ? (
-        <div className="relative -mx-3">
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
-          <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
-              <div className="rounded-full bg-warning p-2 shrink-0">
-                <Clock className="h-4 w-4 text-warning-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">{fin.accounts.summaryCards.pending}</p>
-                <p className="text-sm font-bold truncate leading-tight tabular-nums">{fmt(summary.pendente)}</p>
-              </div>
-            </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
-              <div className="rounded-full bg-destructive p-2 shrink-0">
-                <AlertTriangle className="h-4 w-4 text-destructive-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">{fin.accounts.summaryCards.overdue}</p>
-                <p className="text-sm font-bold text-destructive truncate leading-tight tabular-nums">{fmt(summary.vencido)}</p>
-              </div>
-            </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
-              <div className="rounded-full bg-primary p-2 shrink-0">
-                <DollarSign className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">{fin.accounts.summaryCards.next7}</p>
-                <p className="text-sm font-bold truncate leading-tight tabular-nums">{fmt(summary.prox7)}</p>
-              </div>
-            </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl bg-muted/45">
-              <div className="rounded-full bg-success p-2 shrink-0">
-                <CheckCircle2 className="h-4 w-4 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">
-                  {subTab === 'receber' ? fin.accounts.summaryCards.received : fin.accounts.summaryCards.paid}
-                </p>
-                <p className="text-sm font-bold text-success truncate leading-tight tabular-nums">{fmt(summary.pago)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-full bg-warning p-2.5 shrink-0">
-                <Clock className="h-4 w-4 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">{fin.accounts.summaryCards.totalPending}</p>
-                <p className="text-lg font-bold truncate tabular-nums">{fmt(summary.pendente)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-full bg-destructive p-2.5 shrink-0">
-                <AlertTriangle className="h-4 w-4 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">{fin.accounts.summaryCards.totalOverdue}</p>
-                <p className="text-lg font-bold text-destructive truncate tabular-nums">{fmt(summary.vencido)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-full bg-primary p-2.5 shrink-0">
-                <DollarSign className="h-4 w-4 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">{fin.accounts.summaryCards.next7Full}</p>
-                <p className="text-lg font-bold truncate tabular-nums">{fmt(summary.prox7)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-2xl border-0 bg-muted/40 shadow-none">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-full bg-success p-2.5 shrink-0">
-                <CheckCircle2 className="h-4 w-4 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {subTab === 'receber' ? fin.accounts.summaryCards.totalReceived : fin.accounts.summaryCards.totalPaid}
-                </p>
-                <p className="text-lg font-bold text-success truncate tabular-nums">{fmt(summary.pago)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Busca textual UNIVERSAL — quando preenchida, ignora status/categoria/período
-          e procura no dataset inteiro do subTab. Mesmo visual da busca de Movimentações. */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder={fin.accounts.search}
-          className="pl-10"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      {/* Filters status — pillTabs em mobile, botões em desktop.
-          Escondidos durante a busca textual (busca é universal, ignora status). */}
-      {searchActive ? null : isMobile ? (
-        <MobilePillTabs
-          tabs={filters.map(f => ({ value: f.key, label: f.label }))}
-          activeTab={filter}
-          onTabChange={(v) => setFilter(v as FilterStatus)}
-        />
-      ) : (
-        <div className="flex gap-2 flex-wrap">
-          {filters.map((f) => (
-            <Button
-              key={f.key}
-              variant={filter === f.key ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter(f.key)}
+        <div className="hidden lg:flex self-stretch shrink-0" role="tablist" aria-label="Tipo de conta">
+          {directionTabs.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={subTab === tab.value}
+              onClick={() => { setSubTab(tab.value as SubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
+              className={cn(
+                'inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors',
+                subTab === tab.value
+                  ? tab.value === 'pagar' ? 'border-destructive text-destructive' : tab.value === 'receber' ? 'border-success text-success' : 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
             >
-              {f.label}
-            </Button>
+              {tab.icon}{tab.label}
+            </button>
           ))}
         </div>
-      )}
-
-      {/* Filtros de categoria e de centro de custo — dropdowns (Popover) com
-          checkboxes. Vazio = todos; marcar 1+ filtra. Escondidos durante a busca
-          textual (busca é universal). Cada um tem seu cartão de resumo (total +
-          contagem) logo abaixo. */}
-      {!searchActive && (availableCategories.length > 0 || availableCostCenters.length > 0) && (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={fin.accounts.search}
+            className="h-10 pl-10"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2 pb-1 sm:flex sm:overflow-x-auto lg:pb-0 shrink-0">
+          <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value as AccountsView)} variant="outline" size="sm" className="shrink-0">
+            <ToggleGroupItem value="list" aria-label="Visualização em lista" className="h-9 px-3"><List className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Lista</span></ToggleGroupItem>
+            <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="h-9 px-3"><CalendarDays className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Calendário</span></ToggleGroupItem>
+          </ToggleGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-full gap-2 shrink-0 sm:w-auto"><FileDown className="h-4 w-4" />Exportar</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <FilterButton activeCount={activeFilterCount} onClear={resetFilters} className="shrink-0">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</Label>
+              <Select value={filter} onValueChange={(value) => setFilter(value as FilterStatus)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{filters.map((item) => <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             {availableCategories.length > 0 && (
-              <FilterCheckboxDropdown
+              <FilterCheckboxGroup
                 label={fin.accounts.categoryFilter.label}
                 selected={categoryFilter}
                 onChange={setCategoryFilter}
                 emptyLabel={fin.accounts.categoryFilter.emptyLabel}
-                options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
+                options={availableCategories.map((category) => ({ value: category, label: category }))}
               />
             )}
             {availableCostCenters.length > 0 && (
-              <FilterCheckboxDropdown
+              <FilterCheckboxGroup
                 label={fin.costCenters.filterLabel}
                 selected={costCenterFilter}
                 onChange={setCostCenterFilter}
                 emptyLabel={fin.costCenters.filterEmptyLabel}
-                options={[
-                  ...availableCostCenters,
-                  { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter },
-                ]}
+                options={[...availableCostCenters, { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter }]}
               />
             )}
-          </div>
+          </FilterButton>
+          <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:col-span-1 sm:h-9 sm:w-auto">
+            <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
+          </Button>
+        </div>
+      </div>
 
-          {/* Resumo das categorias ativas */}
-          {categorySummary && (
-            <div className="flex items-center gap-3 rounded-lg bg-muted p-3 text-sm flex-wrap">
-              <Badge variant="outline" className="shrink-0">
-                {categoryFilter.length === 1 ? categoryFilter[0] : `${categoryFilter.length} ${fin.accounts.categoryFilter.categoriesSuffix}`}
-              </Badge>
-              <span className="text-muted-foreground">
-                {fin.accounts.categoryFilter.totalLabel}: <span className="font-semibold text-foreground tabular-nums">{fmt(categorySummary.total)}</span>
-              </span>
-              <span className="text-muted-foreground">
-                {categorySummary.count} {categorySummary.count === 1 ? fin.accounts.categoryFilter.entry : fin.accounts.categoryFilter.entries}
-              </span>
-            </div>
-          )}
+      {/* KPIs saturados, iguais ao padrão da visão geral do Financeiro. */}
+      <div className="relative -mx-3 sm:mx-0">
+        <div className="flex snap-x gap-2 overflow-x-auto px-3 pb-1 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4 scrollbar-none">
+          {kpis.map(({ label, value, icon: Icon, color }) => (
+            <Card key={label} className={cn('min-w-[168px] snap-start border-0 text-white shadow-none', color)}>
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20"><Icon className="h-4 w-4" /></span>
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-medium uppercase tracking-wider text-white/80">{label}</p>
+                  <p className="truncate text-lg font-bold tabular-nums">{fmt(value)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
 
-          {/* Resumo dos centros de custo ativos — mesmo formato do de categoria. */}
-          {costCenterSummary && (
-            <div className="flex items-center gap-3 rounded-lg bg-muted p-3 text-sm flex-wrap">
-              <Badge variant="outline" className="shrink-0">
-                {costCenterFilter.length === 1
-                  ? (costCenterFilter[0] === NO_COST_CENTER
-                      ? fin.costCenters.dreNoCenter
-                      : availableCostCenters.find((c) => c.value === costCenterFilter[0])?.label ?? fin.costCenters.filterLabel)
-                  : `${costCenterFilter.length} ${fin.costCenters.filterCountSuffix}`}
-              </Badge>
-              <span className="text-muted-foreground">
-                {fin.accounts.categoryFilter.totalLabel}: <span className="font-semibold text-foreground tabular-nums">{fmt(costCenterSummary.total)}</span>
-              </span>
-              <span className="text-muted-foreground">
-                {costCenterSummary.count} {costCenterSummary.count === 1 ? fin.accounts.categoryFilter.entry : fin.accounts.categoryFilter.entries}
-              </span>
-            </div>
-          )}
+      {(categorySummary || costCenterSummary || (filter !== 'todas' && !searchActive)) && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          {filter !== 'todas' && <Badge variant="secondary">{filters.find((item) => item.key === filter)?.label}</Badge>}
+          {categorySummary && <Badge variant="secondary">{categoryFilter.length} categoria(s) · {fmt(categorySummary.total)}</Badge>}
+          {costCenterSummary && <Badge variant="secondary">{costCenterFilter.length} centro(s) · {fmt(costCenterSummary.total)}</Badge>}
+          <button type="button" className="font-medium text-primary hover:underline" onClick={resetFilters}>Limpar filtros</button>
         </div>
       )}
 
@@ -1016,7 +1016,7 @@ export function FinanceContas({
           em vez de sumir em silêncio (e os totais do topo continuarem contando ela),
           uma linha explica o motivo. `summary` já exclui o valor da fatura dos totais
           nesse caso (ver useMemo acima). */}
-      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && !searchActive && (
+      {!isLoading && view === 'list' && subTab !== 'receber' && cardInvoices.length > 0 && !searchActive && (
         categoryFilter.length === 0 && costCenterFilter.length === 0 ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -1058,8 +1058,14 @@ export function FinanceContas({
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
         </div>
+      ) : view === 'calendar' ? (
+        <FinanceAccountsCalendar
+          items={calendarItems}
+          formatAmount={fmt}
+          initialDate={dateRange?.from ?? new Date()}
+        />
       ) : filtered.length === 0 && (searchActive || cardInvoices.length === 0 || categoryFilter.length > 0 || costCenterFilter.length > 0) ? (
-        (searchActive || categoryFilter.length > 0 || costCenterFilter.length > 0 || filter !== 'pendentes') ? (
+        (searchActive || categoryFilter.length > 0 || costCenterFilter.length > 0 || filter !== 'todas') ? (
           /* Nada nesta sub-aba: se a MESMA busca acha do outro lado, o vazio
              deixa de ser beco sem saída e vira atalho ("Ver 2 resultados em A
              Receber"). Ver `otherTabMatches`. */
@@ -1092,9 +1098,9 @@ export function FinanceContas({
         ) : (
           <EmptyState
             size="compact"
-            icon={subTab === 'receber' ? <ArrowUpCircle className="h-10 w-10" /> : <ArrowDownCircle className="h-10 w-10" />}
-            title={subTab === 'receber' ? fin.accounts.empty.noReceivableTitle : fin.accounts.empty.noPayableTitle}
-            description={subTab === 'receber' ? fin.accounts.empty.noReceivableDescription : fin.accounts.empty.noPayableDescription}
+            icon={subTab === 'receber' ? <ArrowUpCircle className="h-10 w-10" /> : subTab === 'pagar' ? <ArrowDownCircle className="h-10 w-10" /> : <DollarSign className="h-10 w-10" />}
+            title={subTab === 'receber' ? fin.accounts.empty.noReceivableTitle : subTab === 'pagar' ? fin.accounts.empty.noPayableTitle : 'Nenhuma conta por aqui'}
+            description={subTab === 'receber' ? fin.accounts.empty.noReceivableDescription : subTab === 'pagar' ? fin.accounts.empty.noPayableDescription : 'Crie uma conta a pagar ou a receber para começar.'}
             action={{ label: fin.accounts.actions.newAccount, onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }}
           />
         )
@@ -1104,7 +1110,7 @@ export function FinanceContas({
       ) : isMobile ? (
         <div className="space-y-3">
           {/* Marcar/desmarcar todas — só o que está visível no filtro atual. */}
-          {batchEnabled && selectableRows.length > 0 && (
+          {batchEnabled && selectableRows.length > 0 && canSelectAll && (
             <div className="flex items-center gap-2 px-1">
               <Checkbox
                 checked={allSelectableSelected}
@@ -1123,13 +1129,13 @@ export function FinanceContas({
               // e um toque no (i) explica o porquê (tooltip não funciona no toque).
               const batchReason = batchEnabled ? batchReasonFor(t) : null;
               const received = Number(t.amount_received ?? 0);
-              const receiptBreakdown = subTab === 'receber' && status === 'paga'
+              const receiptBreakdown = t.transaction_type === 'entrada' && status === 'paga'
                 ? receiptBreakdowns.get(t.id)
                 : undefined;
               const itemActions: ItemAction[] = [
                 ...(!t.is_paid ? [{
                   key: 'mark-paid',
-                  label: subTab === 'receber' ? fin.accounts.actions.markReceived : fin.accounts.actions.markPaid,
+                  label: t.transaction_type === 'entrada' ? fin.accounts.actions.markReceived : fin.accounts.actions.markPaid,
                   icon: <Check className="h-4 w-4" />,
                   onClick: () => handleMarkAsPaidClick(t),
                 }] : []),
@@ -1158,7 +1164,7 @@ export function FinanceContas({
                 status === 'paga' ? 'bg-success'
                 : status === 'vencida' ? 'bg-destructive'
                 : status === 'parcial' ? 'bg-warning'
-                : subTab === 'receber' ? 'bg-success/70'
+                : t.transaction_type === 'entrada' ? 'bg-success/70'
                 : 'bg-warning';
               return (
                 <MobileListItem
@@ -1255,7 +1261,7 @@ export function FinanceContas({
                           </span>
                         </div>
                       ) : (
-                        <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
+                        <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive')}>
                           {fmt(t.amount)}
                         </span>
                       )}
@@ -1289,7 +1295,7 @@ export function FinanceContas({
                         <Checkbox
                           checked={allSelectableSelected}
                           onCheckedChange={toggleSelectAll}
-                          disabled={selectableRows.length === 0}
+                          disabled={selectableRows.length === 0 || !canSelectAll}
                           aria-label={batchMsg.selectAll}
                         />
                       </SortableTableHead>
@@ -1307,7 +1313,7 @@ export function FinanceContas({
                     const status = getStatus(t);
                     const partial = status === 'parcial';
                     const received = Number(t.amount_received ?? 0);
-                    const receiptBreakdown = subTab === 'receber' && status === 'paga'
+                    const receiptBreakdown = t.transaction_type === 'entrada' && status === 'paga'
                       ? receiptBreakdowns.get(t.id)
                       : undefined;
                     // `null` = entra no lote. Com motivo, o checkbox fica
@@ -1376,7 +1382,7 @@ export function FinanceContas({
                               </span>
                             </>
                           ) : (
-                            <span className={`font-medium tabular-nums ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
+                            <span className={`font-medium tabular-nums ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                               {fmt(t.amount)}
                             </span>
                           )}
@@ -1402,7 +1408,7 @@ export function FinanceContas({
                         <RowActionsMenu
                           actions={[
                             {
-                              label: subTab === 'receber' ? fin.accounts.actions.markAsReceived : fin.accounts.actions.markAsPaid,
+                              label: t.transaction_type === 'entrada' ? fin.accounts.actions.markAsReceived : fin.accounts.actions.markAsPaid,
                               icon: Check,
                               onClick: () => handleMarkAsPaidClick(t),
                               hidden: t.is_paid,
@@ -1682,16 +1688,6 @@ export function FinanceContas({
         onCreated={(account) => setPayDespAccountId(account.id)}
       />
 
-      {/* FAB mobile — "Nova Conta". Desktop usa o botão inline do header.
-          Some enquanto há seleção: o FAB e a barra do lote dividem o mesmo
-          canto inferior, e sobrepostos um cobre o outro. */}
-      {isMobile && selectedRows.length === 0 && (
-        <FABButton
-          icon={<Plus className="h-5 w-5" />}
-          label={fin.accounts.header.title}
-          onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }}
-        />
-      )}
     </div>
   );
 }

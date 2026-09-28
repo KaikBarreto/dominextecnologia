@@ -267,7 +267,7 @@ export function PmocExecutionHistoryView({
             return (
               <Card
                 key={visit.serviceOrderId}
-                className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm"
+                className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-muted/25 shadow-none"
               >
                 <CardHeader className="pb-3">
                   <CardTitle className="flex flex-wrap items-center gap-2 text-base">
@@ -301,7 +301,7 @@ export function PmocExecutionHistoryView({
                           return (
                             <div
                               key={task.activity_id}
-                              className="rounded-xl border p-3 text-sm min-w-0 space-y-2"
+                              className="rounded-xl bg-background/70 p-3 text-sm min-w-0 space-y-2"
                             >
                               <div className="flex items-start justify-between gap-2 min-w-0">
                                 <div className="min-w-0 flex-1">

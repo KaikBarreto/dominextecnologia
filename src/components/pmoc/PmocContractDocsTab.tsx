@@ -298,7 +298,7 @@ function SubDocCard({
   t: DocsT;
 }) {
   return (
-    <div className="flex h-full flex-col gap-2 rounded-xl border bg-muted/20 p-3 transition-transform">
+    <div className="flex h-full flex-col gap-2 rounded-xl bg-muted/25 p-3 transition-transform">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="break-words text-sm font-semibold">{title}</p>
@@ -543,7 +543,7 @@ export function PmocContractDocsTab({
       {/* Gate do portal público — libera/oculta os documentos pro cliente final.
           Quando liberado, o cliente vê Dossiê, Termo, Certificado e Cronograma
           no portal público da unidade (QR Code). Ação neutra/primária. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-muted/25 shadow-none">
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <div
@@ -604,7 +604,7 @@ export function PmocContractDocsTab({
           sub-card do Dossiê — assim o gestor edita o TRT num lugar SÓ. Mesmo
           conteúdo é usado pelo TRT standalone (botão "Baixar TRT individual"
           dentro do sub-card) e pelo Dossiê completo. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
@@ -783,7 +783,7 @@ export function PmocContractDocsTab({
           Espelha o modelo do cliente: identificação + RT + relação de
           equipamentos + plano de manutenção M/T/S/A + matriz de 12 meses +
           registro de execução. Também vive embutida no Dossiê completo. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
@@ -950,7 +950,7 @@ function VersionHistory({
 
   if (isLoading) {
     return (
-      <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="w-full border-0 bg-muted/25 shadow-none">
         <CardContent className="py-4 text-center text-xs text-muted-foreground">
           {t.versionHistoryLoading}
         </CardContent>
@@ -960,7 +960,7 @@ function VersionHistory({
 
   if (documents.length === 0) {
     return (
-      <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="w-full border-0 bg-muted/25 shadow-none">
         <CardContent className="py-4 text-center text-xs text-muted-foreground">
           {t.versionHistoryEmpty}
         </CardContent>
@@ -978,7 +978,7 @@ function VersionHistory({
   );
 
   return (
-    <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+    <Card className="w-full border-0 bg-transparent shadow-none">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
           <button
@@ -1022,7 +1022,7 @@ function TypeBlock({ title, docs, downloadLabel }: { title: string; docs: PmocDo
         {docs.map(d => (
           <li
             key={d.id}
-            className="flex items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2"
+            className="flex items-center justify-between gap-2 rounded-xl bg-muted/25 px-3 py-2"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium">

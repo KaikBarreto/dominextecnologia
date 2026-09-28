@@ -1416,23 +1416,23 @@ export default function ContractDetail() {
             <button
               type="button"
               onClick={() => setShowRenewDialog(true)}
-              className="flex w-full items-center gap-3 rounded-2xl border border-warning/40 bg-warning/10 p-3 text-left transition-colors hover:bg-warning/15 active:scale-[0.99] lg:rounded-lg"
+              className="flex w-full items-center gap-3 rounded-2xl bg-warning p-3 text-left text-white transition-colors hover:bg-warning/90 active:scale-[0.99] lg:rounded-lg"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/20 text-warning">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white">
                 <Clock className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-warning">{td.overview.endingSoonTitle}</p>
-                <p className="text-xs text-muted-foreground break-words">{td.overview.endingSoonDesc}</p>
+                <p className="text-sm font-semibold text-white">{td.overview.endingSoonTitle}</p>
+                <p className="text-xs text-white/80 break-words">{td.overview.endingSoonDesc}</p>
               </div>
-              <RefreshCw className="h-4 w-4 shrink-0 text-warning" />
+              <RefreshCw className="h-4 w-4 shrink-0 text-white" />
             </button>
           )}
           <div className="grid gap-6 lg:grid-cols-3 min-w-0 w-full">
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6 min-w-0 w-full">
           {/* Info card */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
             <CardHeader>
               <CardTitle className="flex min-w-0 items-center gap-2 break-words">
                 <ScrollText className="h-5 w-5 shrink-0" />
@@ -1468,7 +1468,7 @@ export default function ContractDetail() {
               {/* Portal do Contrato — subseção dentro de Informações, separada por linha fina.
                   Aparece em TODO contrato (PMOC ou não), enquanto houver token público. */}
               {publicToken && (
-                <div className="space-y-3 border-t pt-5 min-w-0">
+                <div className="space-y-3 pt-3 min-w-0">
                   <div className="min-w-0">
                     <h3 className="flex items-center gap-2 text-base font-semibold break-words">
                       <ShieldCheck className="h-4 w-4 text-info shrink-0" />
@@ -1480,7 +1480,7 @@ export default function ContractDetail() {
                   </div>
 
                   {/* Toggle público/privado (espelha o Portal do Cliente). */}
-                  <div className="flex items-start justify-between gap-3 rounded-xl border bg-muted/30 p-3">
+                  <div className="flex items-start justify-between gap-3 rounded-xl bg-muted/35 p-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{td.overview.portalPublicTitle}</p>
                       <p className="text-xs text-muted-foreground break-words">
@@ -1503,13 +1503,13 @@ export default function ContractDetail() {
                       href={portalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-md border bg-muted/40 p-2.5 text-xs font-mono break-all min-w-0 hover:bg-muted/60 hover:text-info transition-colors cursor-pointer"
+                      className="block rounded-xl bg-muted/40 p-2.5 text-xs font-mono break-all min-w-0 hover:bg-muted/60 hover:text-info transition-colors cursor-pointer"
                     >
                       {portalUrl}
                       <ExternalLink className="h-3 w-3 inline ml-1 shrink-0 opacity-60" />
                     </a>
                   ) : (
-                    <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+                    <div className="rounded-xl bg-muted/30 p-3 text-xs text-muted-foreground">
                       {td.overview.portalLinkPending}
                     </div>
                   )}
@@ -1517,7 +1517,7 @@ export default function ContractDetail() {
                   {/* QR à esquerda, botões empilhados à direita (desktop). Mobile empilha tudo. */}
                   {portalUrl && (
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center min-w-0">
-                      <div className="inline-flex shrink-0 items-center justify-center self-center rounded-xl border border-border bg-white p-4 transition-colors sm:self-auto">
+                      <div className="inline-flex shrink-0 items-center justify-center self-center rounded-xl bg-white p-4 transition-colors sm:self-auto">
                         <BrandedQRCode
                           value={portalUrl}
                           size={isMobile ? 130 : 160}
@@ -1580,7 +1580,7 @@ export default function ContractDetail() {
 
         {/* Right column */}
         <div className="space-y-6 min-w-0 w-full">
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-muted/25 shadow-none">
             <CardHeader><CardTitle className="text-base break-words">{td.overview.cardSummaryTitle}</CardTitle></CardHeader>
             <CardContent className="space-y-4 text-sm min-w-0">
               <div className="flex min-w-0 items-start justify-between gap-3">
@@ -1625,7 +1625,7 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-muted/25 shadow-none">
             <CardHeader><CardTitle className="text-base break-words">{td.overview.cardProgressTitle}</CardTitle></CardHeader>
             <CardContent className="space-y-3 min-w-0">
               <Progress value={stats.progressPercent} className="h-3" />
@@ -1646,7 +1646,7 @@ export default function ContractDetail() {
         // Aba "Ocorrências" (própria, em todo contrato). Clicar na linha abre o
         // DETALHE da OS vinculada na MESMA aba. Status/atrasada derivam da OS real.
         const occurrencesContent = (
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
             <CardHeader>
               <CardTitle className="min-w-0 text-base sm:text-lg break-words">{td.occurrences.cardTitle.replace('{count}', String(occurrences.length))}</CardTitle>
             </CardHeader>
@@ -1873,7 +1873,7 @@ export default function ContractDetail() {
         }
 
         const billingSection = showBillingSection ? (
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-muted/25 shadow-none">
             <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
               <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
                 <RefreshCw className="h-5 w-5 shrink-0 text-emerald-500" />
@@ -1899,7 +1899,7 @@ export default function ContractDetail() {
                   <span className="text-sm text-muted-foreground">…</span>
                 </div>
               ) : activeContractSubscription ? (
-                <div className="rounded-xl border border-border bg-card p-4 min-w-0 space-y-3">
+                <div className="rounded-xl bg-background/70 p-4 min-w-0 space-y-3">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm min-w-0">
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground uppercase tracking-wider">{tdBilling.valueLabel}</p>
@@ -1967,42 +1967,41 @@ export default function ContractDetail() {
           <div className="space-y-6 min-w-0 w-full">
             {/* Mini-resumo: 4 KPIs do contrato. Grid 2 colunas no mobile, 4 no desktop. */}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+              <Card className="min-w-0 border-0 bg-primary text-primary-foreground shadow-none">
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">{td.financial.kpiPlanned}</p>
+                  <p className="text-xs text-primary-foreground/75 uppercase tracking-wider truncate">{td.financial.kpiPlanned}</p>
                   <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalReceivable)}</p>
                 </CardContent>
               </Card>
-              <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+              <Card className="min-w-0 border-0 bg-success text-white shadow-none">
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">{td.financial.kpiReceived}</p>
-                  <p className="mt-1 text-base sm:text-lg font-bold text-success break-words tabular-nums">R$ {formatBRL(totalPaid)}</p>
+                  <p className="text-xs text-white/75 uppercase tracking-wider truncate">{td.financial.kpiReceived}</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalPaid)}</p>
                 </CardContent>
               </Card>
-              <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+              <Card className="min-w-0 border-0 bg-warning text-white shadow-none">
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">{td.financial.kpiPending}</p>
-                  <p className="mt-1 text-base sm:text-lg font-bold text-warning break-words tabular-nums">R$ {formatBRL(totalPending)}</p>
+                  <p className="text-xs text-white/75 uppercase tracking-wider truncate">{td.financial.kpiPending}</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalPending)}</p>
                 </CardContent>
               </Card>
               <Card className={cn(
-                'min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
-                overdueCount > 0 && 'border-destructive/40 bg-destructive/5',
+                'min-w-0 border-0 bg-destructive text-white shadow-none',
               )}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">
+                  <p className="text-xs text-white/75 uppercase tracking-wider truncate">
                     {td.financial.kpiOverdue}{overdueCount > 0 ? ` (${overdueCount})` : ''}
                   </p>
                   <p className={cn(
                     'mt-1 text-base sm:text-lg font-bold break-words tabular-nums',
-                    overdueCount > 0 ? 'text-destructive' : 'text-muted-foreground',
+                    'text-white',
                   )}>R$ {formatBRL(totalOverdue)}</p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Lista das parcelas (contas a receber) deste contrato + ações. */}
-            <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+            <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
               <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
                 <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
                   <DollarSign className="h-5 w-5 shrink-0" />

@@ -200,7 +200,7 @@ export function ContractAttachmentsSection({
   return (
     <>
       {/* ── Card principal ─────────────────────────────────────────────────── */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
         <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Paperclip className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -232,7 +232,7 @@ export function ContractAttachmentsSection({
         <CardContent className="min-w-0 pt-0">
           {/* ── Toggle portal (só contrato comum) ──────────────────────────── */}
           {showPortalToggle && (
-            <div className="mb-4 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 flex flex-col gap-3 rounded-xl bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-semibold">{t.portalToggleTitle}</p>
@@ -275,7 +275,7 @@ export function ContractAttachmentsSection({
               {attachments.map((att) => (
                 <li
                   key={att.id}
-                  className="flex min-w-0 items-center gap-3 rounded-xl border bg-card px-3 py-2.5"
+                  className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/25 px-3 py-2.5"
                 >
                   <AttachmentIcon mimeType={att.mime_type} />
                   <div className="min-w-0 flex-1">
