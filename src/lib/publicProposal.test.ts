@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PROPOSAL_PLAN,
+  CUSTOM_PLAN_CODE,
   MAX_PROPOSAL_UNITS,
   calculateProposalTotals,
   createProposalUnit,
@@ -38,6 +39,24 @@ describe('publicProposal', () => {
     ]);
   });
 
+  it('preserva módulos e usuários do plano personalizado no link', () => {
+    const state = {
+      clientName: 'Grupo Personalizado',
+      pricesHidden: false,
+      units: [
+        createProposalUnit('Matriz', CUSTOM_PLAN_CODE, ['basic', 'crm', 'rh'], 7),
+      ],
+    };
+
+    const parsed = parsePublicProposal(serializePublicProposal(state));
+
+    expect(parsed.units[0]).toMatchObject({
+      planCode: CUSTOM_PLAN_CODE,
+      moduleCodes: ['basic', 'crm', 'rh'],
+      users: 7,
+    });
+  });
+
   it('limita URLs adulteradas e rejeita código de plano inválido', () => {
     const parsed = parsePublicProposal(
       new URLSearchParams(`k=999&l1=%3Cscript%3E&t1=${'A'.repeat(200)}`),
@@ -71,5 +90,25 @@ describe('publicProposal', () => {
   it('não deixa preço negativo contaminar o orçamento', () => {
     const units = [createProposalUnit('Matriz', 'start')];
     expect(calculateProposalTotals(units, [{ code: 'start', price: -10 }]).monthly).toBe(0);
+  });
+
+  it('calcula personalizado sem expor a composição do valor', () => {
+    const units = [
+      createProposalUnit('Matriz', CUSTOM_PLAN_CODE, ['basic', 'crm', 'rh'], 4),
+    ];
+    const totals = calculateProposalTotals(
+      units,
+      [],
+      [
+        { code: 'basic', price: 197 },
+        { code: 'crm', price: 50 },
+        { code: 'rh', price: 100 },
+      ],
+      50,
+    );
+
+    expect(totals.monthly).toBe(447);
+    expect(totals.yearlyFull).toBe(5364);
+    expect(totals.yearlyDiscounted).toBe(4291);
   });
 });
