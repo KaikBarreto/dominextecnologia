@@ -295,14 +295,23 @@ export function AdminTasksTab() {
                 <Label htmlFor="show-future-m" className="text-xs cursor-pointer">Ver futuras</Label>
               </div>
             ) : <span />}
-            {/* No mobile só existem 2 modos: lista nativa (kanban/list caem aqui) e agenda */}
+            {/* As três visualizações também ficam disponíveis no celular. */}
             <div className="flex rounded-lg border overflow-hidden h-8">
+              <button
+                type="button"
+                onClick={() => setView('kanban')}
+                aria-label="Ver como Kanban"
+                className={cn('flex items-center justify-center px-3 transition-colors',
+                  viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => setView('list')}
                 aria-label="Ver como lista"
                 className={cn('flex items-center justify-center px-3 transition-colors',
-                  viewMode !== 'agenda' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted')}
+                  viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted')}
               >
                 <LayoutList className="h-4 w-4" />
               </button>
@@ -381,6 +390,18 @@ export function AdminTasksTab() {
           adminByUserId={adminByUserId}
           onTaskClick={setSelectedTask}
           onResolve={(id) => handleStatusChange(id, 'resolvido')}
+        />
+      ) : viewMode === 'kanban' ? (
+        <TaskKanbanBoard
+          tasks={tasks}
+          onStatusChange={handleStatusChange}
+          onTaskClick={setSelectedTask}
+          adminByUserId={adminByUserId}
+          resolvedTotal={resolvedTotal}
+          hasMoreResolved={hasMoreResolved}
+          onLoadMoreResolved={loadMoreResolved}
+          isLoadingMore={isFetching}
+          filterKey={windowFilterKey}
         />
       ) : isMobile ? (
         // === MOBILE: lista nativa (default) ===================================
@@ -497,19 +518,6 @@ export function AdminTasksTab() {
             })()}
           </div>
         )
-      ) : viewMode === 'kanban' ? (
-        // === DESKTOP: Kanban ==================================================
-        <TaskKanbanBoard
-          tasks={tasks}
-          onStatusChange={handleStatusChange}
-          onTaskClick={setSelectedTask}
-          adminByUserId={adminByUserId}
-          resolvedTotal={resolvedTotal}
-          hasMoreResolved={hasMoreResolved}
-          onLoadMoreResolved={loadMoreResolved}
-          isLoadingMore={isFetching}
-          filterKey={windowFilterKey}
-        />
       ) : (
         // === DESKTOP: Lista ===================================================
         tasks.length === 0 ? (

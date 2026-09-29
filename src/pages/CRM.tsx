@@ -12,6 +12,7 @@ import {
   Settings2,
   LayoutList,
   LayoutGrid,
+  CalendarDays,
   User,
   Calendar,
   Pencil,
@@ -74,6 +75,12 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import {
+  CrmTaskAgendaView,
+  CrmTaskKanbanBoard,
+  type CrmOpportunityTask,
+  type CrmTaskStatus,
+} from '@/components/crm/CrmTaskViews';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -102,6 +109,7 @@ interface Filters {
 }
 
 type ViewMode = 'list' | 'kanban';
+type TaskViewMode = 'list' | 'kanban' | 'agenda';
 
 // Sentinela do filtro "Vendedor" pra representar leads sem NENHUM responsável
 // (fila compartilhada da correção da Onda C). Reaproveita o mesmo
@@ -240,6 +248,20 @@ export default function CRM() {
   // (pra arrastar o card pro próximo estágio sem limpar a busca).
   const [showEmptyStages, setShowEmptyStages] = useState(false);
   const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string[]>([]);
+  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>(() => {
+    if (typeof window === 'undefined') return 'list';
+    const saved = window.localStorage.getItem('crm-tasks-view-mode');
+    return saved === 'kanban' || saved === 'agenda' ? saved : 'list';
+  });
+
+  const selectTaskView = (view: TaskViewMode) => {
+    setTaskViewMode(view);
+    try {
+      window.localStorage.setItem('crm-tasks-view-mode', view);
+    } catch {
+      // A preferência é conveniente, mas a tela continua funcional sem storage.
+    }
+  };
 
   const { serviceOrders, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { submitTask } = useTaskSubmit();
@@ -1209,6 +1231,11 @@ export default function CRM() {
     await updateServiceOrder.mutateAsync({ id: task.id, status: isDone ? 'pendente' : 'concluida' } as any);
   };
 
+  const handleTaskStatusChange = async (task: CrmOpportunityTask, status: CrmTaskStatus) => {
+    if (task.status === status) return;
+    await updateServiceOrder.mutateAsync({ id: task.id, status });
+  };
+
   const handleEditTask = (task: any) => {
     setEditingTask(task);
     setTaskFormOpen(true);
@@ -1287,12 +1314,59 @@ export default function CRM() {
         )}
       </div>
 
+      <div className="flex w-full overflow-x-auto pb-1">
+        <div className="inline-flex min-w-max overflow-hidden rounded-lg border bg-card">
+          {([
+            { value: 'list' as const, label: 'Lista', icon: LayoutList },
+            { value: 'kanban' as const, label: 'Kanban', icon: LayoutGrid },
+            { value: 'agenda' as const, label: 'Agenda', icon: CalendarDays },
+          ]).map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => selectTaskView(value)}
+              aria-pressed={taskViewMode === value}
+              className={cn(
+                'inline-flex h-9 items-center justify-center gap-1.5 px-3 text-sm transition-colors',
+                taskViewMode === value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+              )}
+            >
+              <Icon className="h-4 w-4" /> {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-[72px] w-full" />
           ))}
         </div>
+      ) : taskViewMode === 'kanban' ? (
+        <CrmTaskKanbanBoard
+          tasks={sortedTasks as CrmOpportunityTask[]}
+          leadTitleMap={leadTitleMap}
+          profileMap={profileMap}
+          onOpen={(task) => {
+            setDetailLeadId(task.lead_id);
+            setDetailInitialTab('tarefas');
+            setDetailOpen(true);
+          }}
+          onStatusChange={handleTaskStatusChange}
+        />
+      ) : taskViewMode === 'agenda' ? (
+        <CrmTaskAgendaView
+          tasks={sortedTasks as CrmOpportunityTask[]}
+          leadTitleMap={leadTitleMap}
+          profileMap={profileMap}
+          onOpen={(task) => {
+            setDetailLeadId(task.lead_id);
+            setDetailInitialTab('tarefas');
+            setDetailOpen(true);
+          }}
+          onStatusChange={handleTaskStatusChange}
+        />
       ) : sortedTasks.length === 0 ? (
         <EmptyState
           icon={<ListChecks className="h-12 w-12" />}

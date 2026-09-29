@@ -17,7 +17,7 @@ const COLUMNS: KanbanColumn[] = [
   { id: 'novo', title: 'A FAZER', color: 'bg-blue-500' },
   { id: 'em_andamento', title: 'EM ANDAMENTO', color: 'bg-amber-500' },
   { id: 'aguardando', title: 'AGUARDANDO', color: 'bg-orange-500' },
-  { id: 'resolvido', title: 'RESOLVIDO', color: 'bg-emerald-500' },
+  { id: 'resolvido', title: 'CONCLUÍDO', color: 'bg-emerald-500' },
 ];
 
 // Janela de renderização por coluna: monta só as primeiras 50 e cresce de 50

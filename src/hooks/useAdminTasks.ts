@@ -72,7 +72,7 @@ export const TASK_STATUS_CONFIG: Record<AdminTaskStatus, { label: string; classN
   novo: { label: 'A Fazer', className: 'bg-blue-600 text-white' },
   em_andamento: { label: 'Em andamento', className: 'bg-amber-600 text-white' },
   aguardando: { label: 'Aguardando', className: 'bg-orange-600 text-white' },
-  resolvido: { label: 'Resolvido', className: 'bg-emerald-600 text-white' },
+  resolvido: { label: 'Concluído', className: 'bg-emerald-600 text-white' },
 };
 
 export const TASK_PRIORITY_CONFIG: Record<AdminTaskPriority, { label: string; className: string }> = {

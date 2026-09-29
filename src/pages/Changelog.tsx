@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.9',
+    date: '29 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefas do CRM em lista, Kanban e agenda',
+        description: 'As tarefas comerciais agora podem ser acompanhadas do jeito mais prático para cada momento: em lista, organizadas por etapa no Kanban ou distribuídas pela agenda. As três visualizações também funcionam no celular.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.28.8',
     date: '29 de setembro de 2026',
     type: 'patch',
