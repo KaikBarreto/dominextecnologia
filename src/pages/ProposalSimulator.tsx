@@ -12,7 +12,8 @@ import {
   Minus,
   Moon,
   Plus,
-  Printer,
+  FileDown,
+  Loader2,
   Sparkles,
   Trash2,
   Sun,
@@ -47,6 +48,7 @@ import {
 } from '@/lib/publicProposal';
 import { formatBRL } from '@/utils/currency';
 import logoWhite from '@/assets/logo-white-horizontal.png';
+import { generateProposalSimulatorPdf } from '@/utils/proposalSimulatorPdf';
 
 const MODULE_LABELS: Record<string, string> = {
   basic: 'Gestão completa de serviços e equipes',
@@ -154,6 +156,7 @@ export default function ProposalSimulator() {
   });
   const [openUnitId, setOpenUnitId] = useState<string | undefined>(initialState.units[0]?.id);
   const [modulePickerUnitId, setModulePickerUnitId] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const didMount = useRef(false);
   const { data: catalog, isLoading, isError } = usePublicSubscriptionCatalog();
   const plans = useMemo(() => catalog?.plans ?? [], [catalog?.plans]);
@@ -290,6 +293,40 @@ export default function ProposalSimulator() {
     }
   }
 
+  async function generatePdf() {
+    if (!clientName.trim()) {
+      toast.error('Informe o nome do cliente antes de gerar a proposta.');
+      return;
+    }
+
+    setIsGeneratingPdf(true);
+    try {
+      await generateProposalSimulatorPdf({
+        clientName,
+        logoUrl: logoWhite,
+        units: unitViews.map((view) => {
+          const unitTotals = calculateProposalTotals([view.unit], plans, modules, extraUserPrice);
+          return {
+            name: view.unit.name,
+            planName: view.name,
+            modules: view.modules,
+            users: view.users,
+            monthly: unitTotals.monthly,
+            yearlyFull: unitTotals.yearlyFull,
+            yearlyDiscounted: unitTotals.yearlyDiscounted,
+          };
+        }),
+        totals,
+      });
+      toast.success('Proposta em PDF gerada com sucesso.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Não foi possível gerar a proposta em PDF. Tente novamente.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }
+
   if (isError) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background p-6 text-center">
@@ -337,9 +374,14 @@ export default function ProposalSimulator() {
               <Copy className="mr-2 h-4 w-4" />
               Link
             </Button>
-            <Button size="sm" onClick={() => window.print()}>
-              <Printer className="mr-2 h-4 w-4" />
-              PDF
+            <Button size="sm" onClick={() => void generatePdf()} disabled={isGeneratingPdf || isLoading}>
+              {isGeneratingPdf ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">{isGeneratingPdf ? 'Gerando...' : 'Gerar proposta'}</span>
+              <span className="sm:hidden">Gerar</span>
             </Button>
           </div>
         </header>
