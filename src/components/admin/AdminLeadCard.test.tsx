@@ -148,4 +148,10 @@ describe('AdminLeadCard', () => {
     const label = Array.from(document.querySelectorAll<HTMLElement>('span')).find((item) => item.textContent === 'Urgente');
     expect(label?.style.backgroundColor).toBe('rgb(220, 38, 38)');
   });
+
+  it('mostra todos os segmentos associados à oportunidade', () => {
+    render(<AdminLeadCard lead={makeLead({ segments: ['refrigeracao', 'eletrica'] })} onClick={() => {}} />);
+    expect(text()).toContain('Refrigeração e Climatização');
+    expect(text()).toContain('Instalações Elétricas');
+  });
 });

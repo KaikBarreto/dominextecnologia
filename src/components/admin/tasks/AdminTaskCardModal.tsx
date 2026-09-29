@@ -27,6 +27,7 @@ import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import type { TaskAdminOption } from './TaskCreateDialog';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { cn } from '@/lib/utils';
+import { phoneMask } from '@/utils/masks';
 
 interface AdminTaskCardModalProps {
   task: AdminTask | null;
@@ -239,7 +240,7 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
               {task.crm_lead?.phone && (
                 <div>
                   <span className="text-muted-foreground">Telefone:</span>{' '}
-                  <span className="font-medium">{task.crm_lead.phone}</span>
+                  <span className="font-medium">{phoneMask(task.crm_lead.phone)}</span>
                 </div>
               )}
             </div>

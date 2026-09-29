@@ -47,15 +47,17 @@ interface AdminLeadCardProps {
  * `AdminCRM.tsx` e tinha ficado uns seis meses atrás do card do cliente.
  *
  * Duas diferenças de propósito, porque os dados do admin são outros:
- *  - responsável é UM vendedor (`admin_leads.responsible_id`), não a lista
- *    multi-responsável do tenant — o admin não tem `lead_assignees`;
+ *  - o card resume o responsável principal (`admin_leads.responsible_id`);
+ *    a lista completa continua disponível no formulário/detalhe;
  *  - o botão de WhatsApp no hover é exclusivo do admin e foi PRESERVADO: é
  *    como o time comercial fala com o lead sem abrir o card.
  *
  * Copy em PT-BR fixo: o painel master não entra no i18n dos 4 idiomas.
  */
 export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadCardProps) {
-  const segment = getSegment(lead.segment);
+  const segments = (lead.segments?.length ? lead.segments : lead.segment ? [lead.segment] : [])
+    .map(getSegment)
+    .filter((segment): segment is NonNullable<ReturnType<typeof getSegment>> => Boolean(segment));
   const value = Number(lead.value || 0);
   const probability = lead.probability;
   const whatsappLink = buildWhatsAppLink(lead.phone);
@@ -193,15 +195,16 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
             </Badge>
           ) : null}
 
-          {segment && (
+          {segments.map((segment) => (
             <Badge
+              key={segment.value}
               className="text-[10px] px-1.5 py-0 h-5 font-normal text-white border-0 gap-1 max-w-full"
               style={{ backgroundColor: segment.color }}
             >
               <segment.icon className="h-2.5 w-2.5 shrink-0" />
               <span className="truncate">{segment.label}</span>
             </Badge>
-          )}
+          ))}
 
           {lead.expected_close_date && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex items-center gap-1">

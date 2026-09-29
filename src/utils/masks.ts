@@ -8,7 +8,14 @@
  * comportamento padrão desse tipo de máscara dupla no Brasil.
  */
 export function phoneMask(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
+  const rawDigits = value.replace(/\D/g, '');
+  // Dados importados e links de WhatsApp frequentemente trazem o DDI 55.
+  // Remove apenas no tamanho exato de telefone BR para não reinterpretar uma
+  // digitação parcial que por acaso comece com 55.
+  const nationalDigits = rawDigits.startsWith('55') && (rawDigits.length === 12 || rawDigits.length === 13)
+    ? rawDigits.slice(2)
+    : rawDigits;
+  const digits = nationalDigits.slice(0, 11);
   if (digits.length <= 2) return digits.length ? `(${digits}` : '';
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
@@ -20,7 +27,11 @@ export function phoneMask(value: string): string {
  * Best-effort: formata os dígitos disponíveis sem lançar erro; capa em 11.
  */
 export function mobileMask(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
+  const rawDigits = value.replace(/\D/g, '');
+  const nationalDigits = rawDigits.startsWith('55') && rawDigits.length === 13
+    ? rawDigits.slice(2)
+    : rawDigits;
+  const digits = nationalDigits.slice(0, 11);
   if (digits.length <= 2) return digits.length ? `(${digits}` : '';
   if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;

@@ -19,10 +19,13 @@ class ResizeObserverStub {
 }
 (globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
 
+const createLead = { mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false };
+const updateLead = { mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false };
+
 vi.mock('@/hooks/useLeads', () => ({
   useLeads: () => ({
-    createLead: { mutateAsync: vi.fn(), isPending: false },
-    updateLead: { mutateAsync: vi.fn(), isPending: false },
+    createLead,
+    updateLead,
   }),
 }));
 vi.mock('@/hooks/useCustomers', () => ({ useCustomers: () => ({ customers: [] }) }));
@@ -40,15 +43,16 @@ vi.mock('@/components/customers/CustomerSelectField', () => ({ CustomerSelectFie
 vi.mock('@/components/customers/OriginSelectField', () => ({ OriginSelectField: () => null }));
 
 import { LeadFormDialog } from './LeadFormDialog';
+import type { Lead } from '@/hooks/useLeads';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 let container: HTMLDivElement;
 let root: Root;
 
-function mount() {
+function mount(lead?: Lead) {
   act(() => {
-    root.render(<LeadFormDialog open onOpenChange={() => {}} />);
+    root.render(<LeadFormDialog open onOpenChange={() => {}} lead={lead} />);
   });
 }
 
@@ -71,6 +75,8 @@ function paste(input: HTMLInputElement, text: string) {
 }
 
 beforeEach(() => {
+  createLead.mutateAsync.mockClear();
+  updateLead.mutateAsync.mockClear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -105,5 +111,30 @@ describe('LeadFormDialog — campo de valor estimado (prova real de DOM)', () =>
     const input = q('#value') as HTMLInputElement;
     paste(input, '1.234,56');
     expect(input.value).toBe('1234.56');
+  });
+
+  it('envia o nome editado para atualizar o card do Kanban', async () => {
+    mount({
+      id: 'lead-1',
+      title: 'Nome antigo',
+      customer_id: null,
+      value: 1000,
+      probability: 50,
+      source: 'Indicação',
+      stage_id: 'stage-1',
+      expected_close_date: null,
+      notes: null,
+      assigned_to: null,
+    } as Lead);
+
+    typeInto(q('#title') as HTMLInputElement, 'Nome atualizado');
+    const form = document.querySelector('form') as HTMLFormElement;
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+
+    expect(updateLead.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'lead-1', title: 'Nome atualizado' }),
+    );
   });
 });

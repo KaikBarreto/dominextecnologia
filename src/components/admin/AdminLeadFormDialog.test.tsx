@@ -54,18 +54,53 @@ vi.mock('@/components/schedule/AssigneeMultiSelect', () => ({
     </button>
   ),
 }));
+vi.mock('@/components/admin/AdminSegmentMultiSelect', () => ({
+  AdminSegmentMultiSelect: ({ onChange }: { onChange: (segments: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(['refrigeracao', 'eletrica'])}>
+      Selecionar dois segmentos
+    </button>
+  ),
+}));
 
 import { AdminLeadFormDialog } from './AdminLeadFormDialog';
+import type { AdminLead } from '@/hooks/useAdminCrm';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 let container: HTMLDivElement;
 let root: Root;
 
-function mount(pipelineId?: string) {
+function mount(pipelineId?: string, editingLead?: AdminLead) {
   act(() => {
-    root.render(<AdminLeadFormDialog open onOpenChange={() => {}} pipelineId={pipelineId} />);
+    root.render(<AdminLeadFormDialog open onOpenChange={() => {}} pipelineId={pipelineId} editingLead={editingLead} />);
   });
+}
+
+function makeLead(overrides: Partial<AdminLead> = {}): AdminLead {
+  return {
+    id: 'lead-1',
+    title: 'Projeto original',
+    company_name: 'Empresa Alfa',
+    contact_name: 'João Silva',
+    email: 'joao@alfa.com',
+    phone: '11988887777',
+    value: 4550,
+    probability: 50,
+    expected_close_date: '2026-10-10',
+    source: 'Indicação',
+    segment: 'refrigeracao',
+    segments: ['refrigeracao'],
+    stage_id: 'stage-1',
+    notes: 'Observação completa',
+    loss_reason: null,
+    created_by: 'user-1',
+    responsible_id: 'user-1',
+    pipeline_id: 'pipeline-1',
+    created_at: '2026-09-01T12:00:00Z',
+    updated_at: '2026-09-01T12:00:00Z',
+    assignees: [{ user_id: 'user-1', is_primary: true }],
+    ...overrides,
+  };
 }
 
 const q = (sel: string) => document.querySelector(sel) as HTMLElement | null;
@@ -133,6 +168,7 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
 
   it('salvar após colar "R$ 4.550" envia value=4550 pro hook de criação (não 4.55)', () => {
     mount();
+    typeInto(q('input[placeholder="Ex: Implantação na Empresa Alfa"]') as HTMLInputElement, 'Projeto Alfa');
     const input = q('#admin-lead-value') as HTMLInputElement;
     paste(input, 'R$ 4.550');
 
@@ -151,6 +187,7 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
 
   it('cria a oportunidade dentro do funil selecionado', () => {
     mount('pipeline-parcerias');
+    typeInto(q('input[placeholder="Ex: Implantação na Empresa Alfa"]') as HTMLInputElement, 'Projeto Parcerias');
 
     const saveButton = Array.from(document.querySelectorAll('button')).find(
       (button) => button.textContent === 'Criar oportunidade',
@@ -165,6 +202,7 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
 
   it('envia todos os responsáveis selecionados e preserva a ordem do principal', () => {
     mount();
+    typeInto(q('input[placeholder="Ex: Implantação na Empresa Alfa"]') as HTMLInputElement, 'Projeto Alfa');
 
     const selectAssignees = Array.from(document.querySelectorAll('button')).find(
       (button) => button.textContent === 'Selecionar dois responsáveis',
@@ -180,5 +218,71 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
       expect.objectContaining({ assignee_user_ids: ['user-1', 'user-2'] }),
       expect.anything(),
     );
+  });
+
+  it('edita o nome usado no card e envia todos os campos persistentes', () => {
+    mount(undefined, makeLead());
+    const titleInput = q('input[placeholder="Ex: Implantação na Empresa Alfa"]') as HTMLInputElement;
+    typeInto(titleInput, 'Projeto atualizado');
+
+    const saveButton = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Salvar',
+    ) as HTMLButtonElement;
+    act(() => saveButton.click());
+
+    expect(updateLead.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'lead-1',
+        title: 'Projeto atualizado',
+        company_name: 'Empresa Alfa',
+        contact_name: 'João Silva',
+        email: 'joao@alfa.com',
+        phone: '(11) 98888-7777',
+        value: 4550,
+        probability: 50,
+        source: 'Indicação',
+        segment: 'refrigeracao',
+        segments: ['refrigeracao'],
+        stage_id: 'stage-1',
+        expected_close_date: '2026-10-10',
+        notes: 'Observação completa',
+        loss_reason: null,
+        assignee_user_ids: ['user-1'],
+        pipeline_id: 'pipeline-1',
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('salva múltiplos segmentos e mantém o primeiro no campo legado', () => {
+    mount(undefined, makeLead());
+    const segmentsButton = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Selecionar dois segmentos',
+    ) as HTMLButtonElement;
+    const saveButton = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Salvar',
+    ) as HTMLButtonElement;
+
+    act(() => segmentsButton.click());
+    act(() => saveButton.click());
+
+    expect(updateLead.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        segments: ['refrigeracao', 'eletrica'],
+        segment: 'refrigeracao',
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('não permite criar oportunidade sem nome', () => {
+    mount();
+    const saveButton = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Criar oportunidade',
+    ) as HTMLButtonElement;
+
+    expect(saveButton.disabled).toBe(true);
+    act(() => saveButton.click());
+    expect(createLead.mutate).not.toHaveBeenCalled();
   });
 });

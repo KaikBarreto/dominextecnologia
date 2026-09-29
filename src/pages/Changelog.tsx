@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.7',
+    date: '29 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vários segmentos na mesma oportunidade',
+        description: 'O CRM administrativo agora permite relacionar uma oportunidade a vários segmentos, facilitando o acompanhamento de empresas que atuam em diferentes mercados.',
+        category: 'recurso',
+      },
+      {
+        title: 'Edição de oportunidades mais confiável',
+        description: 'Nome, responsável, valor, probabilidade e demais dados agora são atualizados de ponta a ponta e aparecem imediatamente nos cards. A criação e a exclusão também receberam validações adicionais.',
+        category: 'correcao',
+      },
+      {
+        title: 'Contatos e tarefas mais práticos',
+        description: 'Telefones agora aparecem formatados, o acesso ao WhatsApp fica junto do contato e as tarefas do CRM administrativo podem ser acompanhadas pela agenda.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.6',
     date: '28 de setembro de 2026',
     type: 'patch',

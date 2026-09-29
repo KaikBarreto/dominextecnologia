@@ -77,6 +77,7 @@ import { formatBRL } from '@/utils/currency';
 import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 import { formatOSNumber } from '@/lib/osNumber';
 import type { LucideIcon } from 'lucide-react';
+import { phoneMask } from '@/utils/masks';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas';
 
@@ -811,7 +812,7 @@ export default function CustomerDetail() {
                 node: (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium flex items-center gap-1 leading-tight">
-                      <Phone className="h-3 w-3 shrink-0" />{customer.phone}
+                      <Phone className="h-3 w-3 shrink-0" />{phoneMask(customer.phone)}
                     </span>
                     <button
                       type="button"
@@ -837,7 +838,7 @@ export default function CustomerDetail() {
                 node: (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium flex items-center gap-1 leading-tight">
-                      <Phone className="h-3 w-3 shrink-0" />{celular}
+                      <Phone className="h-3 w-3 shrink-0" />{phoneMask(celular)}
                     </span>
                     <button
                       type="button"
@@ -982,7 +983,7 @@ export default function CustomerDetail() {
                         )}
                         {c.phone && (
                           <a href={`tel:${c.phone}`} className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors">
-                            <Phone className="h-3 w-3" />{c.phone}
+                            <Phone className="h-3 w-3" />{phoneMask(c.phone)}
                           </a>
                         )}
                         {c.email && (

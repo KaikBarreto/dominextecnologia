@@ -75,6 +75,13 @@ interface Props {
   initialTab?: DetailTab;
 }
 
+interface LeadSalesperson {
+  id: string;
+  name: string;
+  user_id: string | null;
+  photo_url: string | null;
+}
+
 /**
  * Card da oportunidade no CRM do painel master Auctus.
  *
@@ -110,23 +117,28 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
 
   // Vendedores (com foto) p/ resolver o responsável pelo lead e alimentar o
   // seletor de responsável na criação de tarefa.
-  const { data: salespeople = [] } = useQuery({
+  const { data: salespeople = [] } = useQuery<LeadSalesperson[]>({
     queryKey: ['salespeople-basic-lead-detail'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('salespeople_basic')
         .select('id, name, user_id, photo_url');
       if (error) throw error;
-      return data || [];
+      return (data || []) as LeadSalesperson[];
     },
   });
-  const responsibleSalesperson = lead.responsible_id
-    ? salespeople.find((sp: any) => sp.user_id === lead.responsible_id) || null
-    : null;
+  const responsibleIds = lead.assignees?.length
+    ? lead.assignees.map((assignee) => assignee.user_id)
+    : lead.responsible_id
+      ? [lead.responsible_id]
+      : [];
+  const responsibleSalespeople = responsibleIds
+    .map((userId) => salespeople.find((salesperson) => salesperson.user_id === userId))
+    .filter((salesperson): salesperson is LeadSalesperson => Boolean(salesperson));
 
   const taskAdmins = useMemo<TaskAdminOption[]>(
     () =>
-      (salespeople as any[])
+      salespeople
         .filter(sp => !!sp.user_id)
         .map(sp => ({ user_id: sp.user_id as string, full_name: sp.name as string, photo_url: sp.photo_url ?? null })),
     [salespeople],
@@ -272,9 +284,12 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
   });
 
   const handleDelete = () => {
-    deleteLead.mutate(lead.id);
-    setDeleteConfirmOpen(false);
-    onOpenChange(false);
+    deleteLead.mutate(lead.id, {
+      onSuccess: () => {
+        setDeleteConfirmOpen(false);
+        onOpenChange(false);
+      },
+    });
   };
 
   const handleToggleTaskDone = (task: AdminTask) => {
@@ -282,7 +297,9 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
   };
 
   const originInfo = lead.source ? origins.find(o => o.name === lead.source) : null;
-  const segmentInfo = getSegment(lead.segment);
+  const segmentInfos = (lead.segments?.length ? lead.segments : lead.segment ? [lead.segment] : [])
+    .map(getSegment)
+    .filter((segment): segment is NonNullable<ReturnType<typeof getSegment>> => Boolean(segment));
 
   const formatCurrency = (v: number | null) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
 
@@ -385,19 +402,6 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
           <TabsContent value="detalhes" className="mt-4">
             <div className="grid max-h-[68vh] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="min-w-0 space-y-4 pb-5 lg:pr-6">
-                {/* Atalho rápido de contato */}
-                {whatsappLink && (
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      className="bg-[#25D366] hover:bg-[#1da851] text-white"
-                      onClick={() => window.open(whatsappLink, '_blank', 'noopener,noreferrer')}
-                    >
-                      <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp
-                    </Button>
-                  </div>
-                )}
-
                 {/* Contato */}
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Contato</h3>
@@ -405,7 +409,18 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <div>
                       <span className="text-[11px] text-muted-foreground/70">Telefone</span>
-                      <p className="font-medium">{lead.phone ? phoneMask(lead.phone) : <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{lead.phone ? phoneMask(lead.phone) : <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                        {whatsappLink && (
+                          <Button
+                            size="sm"
+                            className="h-7 bg-[#25D366] px-2 text-white hover:bg-[#1da851]"
+                            onClick={() => window.open(whatsappLink, '_blank', 'noopener,noreferrer')}
+                          >
+                            <MessageCircle className="mr-1 h-3.5 w-3.5" /> WhatsApp
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <span className="text-[11px] text-muted-foreground/70">E-mail</span>
@@ -429,11 +444,15 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
                     <div className="col-span-2">
                       <span className="text-[11px] text-muted-foreground/70">Segmento</span>
                       <div className="mt-0.5">
-                        {segmentInfo ? (
-                          <Badge className="border-0 flex items-center gap-1 w-fit" style={{ backgroundColor: segmentInfo.color, color: '#fff' }}>
-                            <segmentInfo.icon className="h-3 w-3" />
-                            {segmentInfo.label}
-                          </Badge>
+                        {segmentInfos.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {segmentInfos.map((segmentInfo) => (
+                              <Badge key={segmentInfo.value} className="border-0 flex items-center gap-1 w-fit" style={{ backgroundColor: segmentInfo.color, color: '#fff' }}>
+                                <segmentInfo.icon className="h-3 w-3" />
+                                {segmentInfo.label}
+                              </Badge>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-sm text-muted-foreground/40 italic">—</span>
                         )}
@@ -485,14 +504,19 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
                     <div className="col-span-2">
                       <span className="text-[11px] text-muted-foreground/70">Responsável</span>
                       <div className="mt-0.5">
-                        {responsibleSalesperson ? (
-                          <div className="flex items-center gap-2">
-                            <SalespersonAvatar
-                              name={responsibleSalesperson.name}
-                              photoUrl={(responsibleSalesperson as any).photo_url}
-                              size="sm"
-                            />
-                            <span className="font-medium">{responsibleSalesperson.name}</span>
+                        {responsibleSalespeople.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {responsibleSalespeople.map((responsibleSalesperson, index) => (
+                              <div key={responsibleSalesperson.user_id} className="flex items-center gap-2 rounded-full bg-muted px-2 py-1">
+                                <SalespersonAvatar
+                                  name={responsibleSalesperson.name}
+                                  photoUrl={responsibleSalesperson.photo_url}
+                                  size="sm"
+                                />
+                                <span className="font-medium">{responsibleSalesperson.name}</span>
+                                {index === 0 && <span className="text-[10px] text-muted-foreground">Principal</span>}
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <Badge variant="warning" className="gap-1 text-[10px] px-1.5 py-0.5 font-normal">

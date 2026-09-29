@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.6";
+export const APP_VERSION = "1.28.7";
 
-export const VERSION_NOTES = "Os seletores do CRM agora mostram as cores e os ícones de origens, funis e etapas. As abas internas das oportunidades também ganharam uma navegação mais limpa.";
+export const VERSION_NOTES = "O CRM administrativo agora aceita vários segmentos por oportunidade, atualiza os dados com mais segurança e deixa contatos e tarefas mais práticos no dia a dia.";

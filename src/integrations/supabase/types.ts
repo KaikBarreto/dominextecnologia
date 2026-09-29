@@ -381,6 +381,7 @@ export type Database = {
           probability: number | null
           responsible_id: string | null
           segment: string | null
+          segments: string[]
           source: string | null
           stage_id: string | null
           title: string
@@ -404,6 +405,7 @@ export type Database = {
           probability?: number | null
           responsible_id?: string | null
           segment?: string | null
+          segments?: string[]
           source?: string | null
           stage_id?: string | null
           title: string
@@ -427,6 +429,7 @@ export type Database = {
           probability?: number | null
           responsible_id?: string | null
           segment?: string | null
+          segments?: string[]
           source?: string | null
           stage_id?: string | null
           title?: string

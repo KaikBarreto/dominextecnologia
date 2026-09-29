@@ -47,6 +47,7 @@ export interface AdminLead {
   expected_close_date: string | null;
   source: string | null;
   segment: string | null;
+  segments?: string[];
   stage_id: string | null;
   notes: string | null;
   loss_reason: string | null;
@@ -335,6 +336,11 @@ export function useAdminLeads() {
         const { admin_lead_assignees: _relation, ...rest } = lead;
         return {
           ...rest,
+          segments: lead.segments?.length
+            ? lead.segments
+            : lead.segment
+              ? [lead.segment]
+              : [],
           assignees: assignees.length > 0
             ? assignees
             : lead.responsible_id
@@ -347,10 +353,8 @@ export function useAdminLeads() {
 
   const createLead = useMutation({
     mutationFn: async (input: AdminLeadMutationInput) => {
-      // admin_leads.title é NOT NULL no banco, mas o formulário não pede mais
-      // título explícito (UX espelhada no EcoSistema). Auto-geramos a partir do
-      // que o usuário preencheu — sem migration. Se um caller futuro mandar um
-      // title explícito, ele tem prioridade.
+      // `title` é explícito no formulário. O fallback protege importações e
+      // integrações antigas que ainda criem oportunidades sem esse campo.
       const autoTitle =
         (input.title?.trim?.() || '') ||
         input.company_name?.trim() ||
@@ -391,7 +395,15 @@ export function useAdminLeads() {
         ? ((qc.getQueryData<AdminLead[]>(['admin-leads']) || []).find(l => l.id === id)?.stage_id ?? null)
         : null;
 
-      const { error } = await supabase.from('admin_leads' as any).update(leadInput).eq('id', id);
+      // `.single()` evita falso positivo: PostgREST não considera "0 linhas"
+      // erro em update/delete comuns (ex.: RLS ou registro removido em outra
+      // aba). O CRUD só confirma sucesso quando a oportunidade foi encontrada.
+      const { error } = await supabase
+        .from('admin_leads' as any)
+        .update(leadInput)
+        .eq('id', id)
+        .select('id')
+        .single();
       if (error) throw error;
 
       if (assignee_user_ids) {
@@ -440,6 +452,7 @@ export function useAdminLeads() {
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ queryKey: ['admin-lead', result.id] });
       if (result?.loggedStageChange) {
         qc.invalidateQueries({ queryKey: ['admin-lead-interactions', result.id] });
       }
@@ -456,18 +469,35 @@ export function useAdminLeads() {
    */
   const updateLeadNotes = useMutation({
     mutationFn: async ({ id, notes }: { id: string; notes: string | null }) => {
-      const { error } = await supabase.from('admin_leads' as any).update({ notes }).eq('id', id);
+      const { error } = await supabase
+        .from('admin_leads' as any)
+        .update({ notes })
+        .eq('id', id)
+        .select('id')
+        .single();
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ queryKey: ['admin-lead', variables.id] });
+    },
   });
 
   const deleteLead = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('admin_leads' as any).delete().eq('id', id);
+      const { error } = await supabase
+        .from('admin_leads' as any)
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .single();
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead removido!' }); },
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.removeQueries({ queryKey: ['admin-lead', id] });
+      toast({ title: 'Lead removido!' });
+    },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
@@ -495,7 +525,16 @@ export function useAdminLead(leadId?: string) {
         .eq('id', leadId!)
         .maybeSingle();
       if (error) throw error;
-      return (data as unknown as AdminLead) || null;
+      const lead = (data as unknown as AdminLead) || null;
+      if (!lead) return null;
+      return {
+        ...lead,
+        segments: lead.segments?.length
+          ? lead.segments
+          : lead.segment
+            ? [lead.segment]
+            : [],
+      };
     },
     enabled: !!leadId,
   });

@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { phoneMask } from '@/utils/masks';
 
 interface ContactFormDialogProps {
   open: boolean;
@@ -33,7 +34,7 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
   useEffect(() => {
     if (contact) {
       setName(contact.name);
-      setPhone(contact.phone || '');
+      setPhone(contact.phone ? phoneMask(contact.phone) : '');
       setEmail(contact.email || '');
       setPosition(contact.position || '');
     } else {
@@ -67,7 +68,7 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
       </div>
       <div className="space-y-2">
         <Label htmlFor="contact-phone">{tc.fieldPhone}</Label>
-        <Input id="contact-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder={tc.phonePlaceholder} disabled={isLoading} />
+        <Input id="contact-phone" value={phone} onChange={e => setPhone(phoneMask(e.target.value))} placeholder={tc.phonePlaceholder} disabled={isLoading} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="contact-email">{tc.fieldEmail}</Label>

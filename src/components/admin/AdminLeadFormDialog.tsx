@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { phoneMask } from '@/utils/masks';
-import { getSelectableSegments, getSegment } from '@/utils/companySegments';
+import { AdminSegmentMultiSelect } from '@/components/admin/AdminSegmentMultiSelect';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const Icon = (LucideIcons as unknown as Record<string, LucideIcon>)[name];
@@ -64,13 +64,15 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
   });
 
   const [form, setForm] = useState({
+    title: '',
     company_name: '',
     contact_name: '',
     email: '',
     phone: '',
     value: '',
+    probability: '50',
     source: '',
-    segment: '',
+    segments: [] as string[],
     stage_id: '',
     expected_close_date: '',
     notes: '',
@@ -90,13 +92,19 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
     if (!open) return;
     if (editingLead) {
       setForm({
+        title: editingLead.title || '',
         company_name: editingLead.company_name || '',
         contact_name: editingLead.contact_name || '',
         email: editingLead.email || '',
-        phone: editingLead.phone || '',
+        phone: editingLead.phone ? phoneMask(editingLead.phone) : '',
         value: editingLead.value ? String(editingLead.value) : '',
+        probability: editingLead.probability === null ? '' : String(editingLead.probability ?? 50),
         source: editingLead.source || '',
-        segment: editingLead.segment || '',
+        segments: editingLead.segments?.length
+          ? editingLead.segments
+          : editingLead.segment
+            ? [editingLead.segment]
+            : [],
         stage_id: editingLead.stage_id || '',
         expected_close_date: editingLead.expected_close_date || '',
         notes: editingLead.notes || '',
@@ -114,8 +122,9 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
       // linkedSalespersonId aponta pra salespeople.id; aqui guardamos auth.users.id.
       const defaultResponsible = linkedSalespersonId && user?.id ? user.id : '';
       setForm({
+        title: '',
         company_name: '', contact_name: '', email: '', phone: '',
-        value: '', source: '', segment: '', stage_id: defaultStageId, expected_close_date: '', notes: '',
+        value: '', probability: '50', source: '', segments: [], stage_id: defaultStageId, expected_close_date: '', notes: '',
         loss_reason: '',
       });
       setAssigneeUserIds(defaultResponsible ? [defaultResponsible] : []);
@@ -154,18 +163,26 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
     : '';
 
   const handleSubmit = () => {
+    if (!form.title.trim()) return;
     if (form.email && !validateEmail(form.email)) {
       setEmailError('E-mail inválido');
       return;
     }
     const payload = {
+      title: form.title.trim(),
       company_name: form.company_name || null,
       contact_name: form.contact_name || null,
       email: form.email || null,
       phone: form.phone || null,
       value: form.value ? Number(form.value) : 0,
+      probability: form.probability === ''
+        ? null
+        : Math.min(100, Math.max(0, Number(form.probability))),
       source: form.source || null,
-      segment: form.segment || null,
+      // `segment` permanece como espelho do primeiro item para consumidores
+      // antigos; `segments` é a fonte da seleção múltipla.
+      segment: form.segments[0] || null,
+      segments: form.segments,
       stage_id: form.stage_id || null,
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,
@@ -192,7 +209,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
   const footer = (
     <div className="flex justify-end gap-2">
       <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
-      <Button onClick={handleSubmit} disabled={isSaving}>
+      <Button onClick={handleSubmit} disabled={isSaving || !form.title.trim()}>
         {isSaving ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar oportunidade'}
       </Button>
     </div>
@@ -212,12 +229,21 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
           <h3 className="text-sm font-semibold text-foreground mb-3">Essenciais</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
+              <Label>Nome da oportunidade</Label>
+              <Input
+                autoFocus
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Ex: Implantação na Empresa Alfa"
+                required
+              />
+            </div>
+            <div className="sm:col-span-2">
               <Label>
                 Nome do contato
                 <span className="ml-1 text-xs font-normal text-muted-foreground">(opcional)</span>
               </Label>
               <Input
-                autoFocus
                 value={form.contact_name}
                 onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
                 placeholder="Ex: João Silva"
@@ -331,39 +357,11 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
               {emailError && <p className="text-xs text-destructive mt-1">{emailError}</p>}
             </div>
             <div className="sm:col-span-2">
-              <Label>Segmento</Label>
-              {(() => {
-                const selectedSeg = getSegment(form.segment);
-                return (
-                  <Select value={form.segment} onValueChange={v => setForm(f => ({ ...f, segment: v }))}>
-                    <SelectTrigger
-                      className={selectedSeg ? 'text-white font-medium border-transparent' : ''}
-                      style={selectedSeg ? { backgroundColor: selectedSeg.color } : undefined}
-                    >
-                      {selectedSeg ? (
-                        <div className="flex items-center gap-2">
-                          <selectedSeg.icon className="h-3.5 w-3.5 text-white" />
-                          <span className="truncate">{selectedSeg.label}</span>
-                        </div>
-                      ) : (
-                        <SelectValue placeholder="Selecione o segmento" />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSelectableSegments().map(s => (
-                        <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
-                          <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>
-                              <s.icon className="h-2.5 w-2.5 text-white" />
-                            </div>
-                            <span>{s.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                );
-              })()}
+              <Label>Segmentos</Label>
+              <AdminSegmentMultiSelect
+                value={form.segments}
+                onChange={(segments) => setForm(f => ({ ...f, segments }))}
+              />
             </div>
             <div>
               <Label>Valor (R$)</Label>
@@ -379,6 +377,18 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
             <div>
               <Label>Previsão de Fechamento</Label>
               <Input type="date" value={form.expected_close_date} onChange={e => setForm(f => ({ ...f, expected_close_date: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Probabilidade (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                inputMode="numeric"
+                value={form.probability}
+                onChange={e => setForm(f => ({ ...f, probability: e.target.value }))}
+                placeholder="50"
+              />
             </div>
             <div className="sm:col-span-2">
               <Label>Observações</Label>

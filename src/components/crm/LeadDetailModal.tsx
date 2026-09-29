@@ -52,6 +52,7 @@ import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFor
 import { LeadLabelsSection } from '@/components/crm/LeadLabelsSection';
 import { LeadChecklistsSection } from '@/components/crm/LeadChecklistsSection';
 import { CrmActivityFeed } from '@/components/crm/CrmActivityFeed';
+import { phoneMask } from '@/utils/masks';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -630,7 +631,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                           className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
                         >
                           <Phone className="h-4 w-4 text-muted-foreground" />
-                          {displayPhone}
+                          {phoneMask(displayPhone)}
                         </a>
                         {whatsappLink && (
                           <Button

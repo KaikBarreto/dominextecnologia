@@ -39,10 +39,19 @@ describe('phoneMask', () => {
   it('ignora caracteres não numéricos ao colar formatado', () => {
     expect(phoneMask('(21) 96668-2012')).toBe('(21) 96668-2012');
   });
+
+  it('remove o DDI 55 de telefone brasileiro importado', () => {
+    expect(phoneMask('+55 87 99113-8640')).toBe('(87) 99113-8640');
+    expect(phoneMask('551133334444')).toBe('(11) 3333-4444');
+  });
 });
 
 describe('mobileMask (regressão, sem mudança de comportamento)', () => {
   it('formata celular de 11 dígitos com agrupamento 5+4', () => {
     expect(mobileMask('21966682012')).toBe('(21) 96668-2012');
+  });
+
+  it('remove o DDI 55 antes de formatar', () => {
+    expect(mobileMask('+55 21 96668-2012')).toBe('(21) 96668-2012');
   });
 });

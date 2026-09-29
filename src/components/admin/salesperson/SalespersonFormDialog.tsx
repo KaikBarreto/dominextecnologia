@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { phoneMask } from '@/utils/masks';
 
 interface Props {
   open: boolean;
@@ -339,7 +340,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           </div>
           <div className="space-y-2">
             <Label htmlFor="sp-phone">Telefone</Label>
-            <Input id="sp-phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+            <Input id="sp-phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: phoneMask(e.target.value) })} placeholder="(00) 00000-0000" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="sp-salary">Salário Fixo (R$)</Label>

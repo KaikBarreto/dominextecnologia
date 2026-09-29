@@ -25,7 +25,7 @@ import { CompanyActivityTab } from '@/components/admin/CompanyActivityTab';
 import { SubscriptionHistoryTab } from '@/components/admin/SubscriptionHistoryTab';
 import { CompanyPaymentsTab } from '@/components/admin/CompanyPaymentsTab';
 import { cn } from '@/lib/utils';
-import { cpfCnpjMask } from '@/utils/masks';
+import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { AdminNfseTierControl } from '@/components/admin/AdminNfseTierControl';
 import { AdminWhatsappTierControl } from '@/components/admin/AdminWhatsappTierControl';
 import { getSegment } from '@/utils/companySegments';
@@ -218,13 +218,6 @@ export default function AdminCompanyDetail() {
           <ArrowLeft className="h-4 w-4" /> {isMobile ? 'Voltar' : 'Voltar para Empresas'}
         </Button>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {company.phone && (
-            <LeadWhatsAppButton
-              company={company}
-              variant={isMobile ? 'icon' : 'full'}
-              invalidateKeys={[['admin-company', id]]}
-            />
-          )}
           <Button variant="edit-ghost" size={isMobile ? 'sm' : 'default'} className="gap-1.5" onClick={() => setShowEdit(true)}>
             <Edit className="h-4 w-4" /> {!isMobile && 'Editar'}
           </Button>
@@ -280,17 +273,27 @@ export default function AdminCompanyDetail() {
         <Card>
           <CardHeader><CardTitle>Informações Gerais</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">CNPJ/CPF</span>
                 <p className="font-medium">{company.cnpj ? cpfCnpjMask(company.cnpj) : 'N/A'}</p>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</span>
-                <p className="font-medium">{company.phone || 'N/A'}</p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{company.phone ? phoneMask(company.phone) : 'N/A'}</p>
+                  {company.phone && (
+                    <LeadWhatsAppButton
+                      company={company}
+                      variant="full"
+                      className="h-7 px-2 text-xs"
+                      invalidateKeys={[['admin-company', id]]}
+                    />
+                  )}
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Email</span>
                 <p className="font-medium break-all">{company.email || 'N/A'}</p>

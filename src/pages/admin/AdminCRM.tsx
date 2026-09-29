@@ -230,7 +230,13 @@ function CrmTab() {
   const [settingsSection, setSettingsSection] = useState<AdminCrmSettingsSection>('pipelines');
   const [settingsPipelineId, setSettingsPipelineId] = useState<string | null>(null);
   const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
-  const [detailLead, setDetailLead] = useState<AdminLead | null>(null);
+  // Guarda apenas o id e deriva o objeto da query viva: qualquer edição passa
+  // a aparecer no card e no modal assim que o cache é revalidado.
+  const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
+  const detailLead = useMemo(
+    () => leads.find((lead) => lead.id === detailLeadId) ?? null,
+    [detailLeadId, leads],
+  );
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
@@ -315,7 +321,10 @@ function CrmTab() {
         )
       ) return false;
       if (filterOrigin.length > 0 && (!l.source || !filterOrigin.includes(l.source))) return false;
-      if (filterSegment.length > 0 && (!l.segment || !filterSegment.includes(l.segment))) return false;
+      if (filterSegment.length > 0) {
+        const leadSegments = l.segments?.length ? l.segments : l.segment ? [l.segment] : [];
+        if (!leadSegments.some((segment) => filterSegment.includes(segment))) return false;
+      }
       if (filterResponsible.length > 0) {
         const responsibleIds = l.assignees?.length
           ? l.assignees.map((assignee) => assignee.user_id)
@@ -680,7 +689,7 @@ function CrmTab() {
                 return (
                   <MobileListItem
                     key={lead.id}
-                    onClick={() => { setDetailLead(lead); setDetailOpen(true); }}
+                    onClick={() => { setDetailLeadId(lead.id); setDetailOpen(true); }}
                     leading={
                       <div
                         className="flex h-10 w-10 items-center justify-center rounded-full text-white text-xs font-medium"
@@ -861,7 +870,7 @@ function CrmTab() {
                                       ? salespersonByUserId.get(lead.responsible_id) ?? null
                                       : null
                                   }
-                                  onClick={() => { setDetailLead(lead); setDetailOpen(true); }}
+                                  onClick={() => { setDetailLeadId(lead.id); setDetailOpen(true); }}
                                 />
                               </div>
                             ))

@@ -3,6 +3,7 @@ import { Clock, AlertCircle, XCircle, ChevronRight, Phone } from 'lucide-react';
 import { format, addDays, isBefore, isAfter, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { phoneMask } from '@/utils/masks';
 
 interface AdminExpiringAlertProps {
   companies: any[];
@@ -65,7 +66,7 @@ export function AdminExpiringAlert({ companies }: AdminExpiringAlertProps) {
                     {company.phone && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                         <Phone className="h-3 w-3" />
-                        {company.phone}
+                        {phoneMask(company.phone)}
                       </span>
                     )}
                     {section.id !== 'today' && (
