@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import * as LucideIcons from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -14,14 +15,22 @@ import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdm
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
-import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { phoneMask } from '@/utils/masks';
 import { getSelectableSegments, getSegment } from '@/utils/companySegments';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
-  const LucideIcon = (LucideIcons as any)[name];
-  if (!LucideIcon) return null;
-  return <LucideIcon className={className || 'h-3.5 w-3.5'} />;
+  const Icon = (LucideIcons as unknown as Record<string, LucideIcon>)[name];
+  if (!Icon) return null;
+  return <Icon className={className || 'h-3.5 w-3.5'} />;
+}
+
+interface SalespersonOption {
+  id: string;
+  name: string;
+  user_id: string | null;
+  photo_url: string | null;
+  is_active: boolean;
 }
 
 interface Props {
@@ -30,9 +39,6 @@ interface Props {
   editingLead?: AdminLead | null;
   pipelineId?: string | null;
 }
-
-// Sentinel pra opção "Nenhum responsável" no Select (Radix não aceita value="")
-const UNASSIGNED = '__unassigned__';
 
 export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineId }: Props) {
   const { createLead, updateLead } = useAdminLeads();
@@ -44,7 +50,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
   const isEditing = !!editingLead;
 
   // Lista de vendedores (com foto) para o dropdown de responsável.
-  const { data: salespeople = [] } = useQuery({
+  const { data: salespeople = [] } = useQuery<SalespersonOption[]>({
     queryKey: ['salespeople-basic-lead-form'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -53,7 +59,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
-      return data || [];
+      return (data || []) as SalespersonOption[];
     },
   });
 
@@ -69,8 +75,8 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
     expected_close_date: '',
     notes: '',
     loss_reason: '',
-    responsible_id: '' as string,
   });
+  const [assigneeUserIds, setAssigneeUserIds] = useState<string[]>([]);
 
   const [emailError, setEmailError] = useState('');
 
@@ -95,8 +101,14 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
         expected_close_date: editingLead.expected_close_date || '',
         notes: editingLead.notes || '',
         loss_reason: editingLead.loss_reason || '',
-        responsible_id: editingLead.responsible_id || '',
       });
+      setAssigneeUserIds(
+        editingLead.assignees?.length
+          ? editingLead.assignees.map((assignee) => assignee.user_id)
+          : editingLead.responsible_id
+            ? [editingLead.responsible_id]
+            : [],
+      );
     } else {
       // Default em "Nova oportunidade": usuário atual, se ele for vendedor.
       // linkedSalespersonId aponta pra salespeople.id; aqui guardamos auth.users.id.
@@ -105,8 +117,8 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
         company_name: '', contact_name: '', email: '', phone: '',
         value: '', source: '', segment: '', stage_id: defaultStageId, expected_close_date: '', notes: '',
         loss_reason: '',
-        responsible_id: defaultResponsible,
       });
+      setAssigneeUserIds(defaultResponsible ? [defaultResponsible] : []);
     }
     setEmailError('');
   }, [editingLead, open, defaultStageId, linkedSalespersonId, user?.id]);
@@ -146,7 +158,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
       setEmailError('E-mail inválido');
       return;
     }
-    const payload: any = {
+    const payload = {
       company_name: form.company_name || null,
       contact_name: form.contact_name || null,
       email: form.email || null,
@@ -158,7 +170,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,
       loss_reason: isLostStage ? (form.loss_reason || null) : null,
-      responsible_id: form.responsible_id || null,
+      assignee_user_ids: assigneeUserIds,
       pipeline_id: activePipelineId,
     };
     if (isEditing) {
@@ -167,16 +179,16 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
         { onSuccess: () => onOpenChange(false) },
       );
     } else {
-      payload.created_by = user?.id;
-      createLead.mutate(payload, { onSuccess: () => onOpenChange(false) });
+      createLead.mutate(
+        { ...payload, created_by: user?.id },
+        { onSuccess: () => onOpenChange(false) },
+      );
     }
   };
 
   const isSaving = createLead.isPending || updateLead.isPending;
 
   const selectedOrigin = origins.find(o => o.name === form.source);
-  const selectedResponsible = salespeople.find((s: any) => s.user_id === form.responsible_id);
-
   const footer = (
     <div className="flex justify-end gap-2">
       <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
@@ -220,49 +232,25 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
               />
             </div>
             <div>
-              <Label>Responsável</Label>
-              <Select
-                value={form.responsible_id || UNASSIGNED}
-                onValueChange={v => setForm(f => ({ ...f, responsible_id: v === UNASSIGNED ? '' : v }))}
-              >
-                <SelectTrigger>
-                  {selectedResponsible ? (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <SalespersonAvatar
-                        name={selectedResponsible.name}
-                        photoUrl={selectedResponsible.photo_url}
-                        size="sm"
-                      />
-                      <span className="truncate">{selectedResponsible.name}</span>
-                    </div>
-                  ) : (
-                    <SelectValue placeholder="Sem responsável" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UNASSIGNED} className="cursor-pointer rounded-md my-0.5">
-                    <span className="text-muted-foreground">Sem responsável</span>
-                  </SelectItem>
-                  {salespeople
-                    .filter((sp: any) => !!sp.user_id)
-                    .map((sp: any) => (
-                      <SelectItem
-                        key={sp.id}
-                        value={sp.user_id}
-                        className="cursor-pointer rounded-md my-0.5"
-                      >
-                        <div className="flex items-center gap-2">
-                          <SalespersonAvatar
-                            name={sp.name}
-                            photoUrl={sp.photo_url}
-                            size="sm"
-                          />
-                          <span>{sp.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <AssigneeMultiSelect
+                technicians={salespeople
+                  .filter((salesperson) => Boolean(salesperson.user_id))
+                  .map((salesperson) => ({
+                    user_id: salesperson.user_id as string,
+                    full_name: salesperson.name,
+                    avatar_url: salesperson.photo_url,
+                  }))}
+                teams={[]}
+                selectedUserIds={assigneeUserIds}
+                selectedTeamIds={[]}
+                onChangeUsers={setAssigneeUserIds}
+                onChangeTeams={() => {}}
+                label="Responsáveis"
+                usersLabel="Vendedores"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                O primeiro selecionado é o responsável principal.
+              </p>
             </div>
             <div>
               <Label>Origem</Label>
@@ -287,8 +275,8 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
                       value={o.name}
                       className="cursor-pointer rounded-md my-0.5 transition-colors hover:!text-white [&[data-highlighted]]:!text-white"
                       style={{
-                        ['--origin-color' as any]: o.color || '#6B7280',
-                      }}
+                        '--origin-color': o.color || '#6B7280',
+                      } as CSSProperties}
                     >
                       <div className="flex items-center gap-2 [div[data-highlighted]>&]:text-white">
                         <div className="h-4 w-4 rounded flex items-center justify-center shrink-0 transition-colors" style={{ backgroundColor: o.color || '#6B7280' }}>

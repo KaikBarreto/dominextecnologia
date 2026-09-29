@@ -293,6 +293,35 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_lead_assignees: {
+        Row: {
+          created_at: string
+          is_primary: boolean
+          lead_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          is_primary?: boolean
+          lead_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_lead_assignees_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "admin_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_lead_interactions: {
         Row: {
           created_at: string
@@ -12014,6 +12043,10 @@ export type Database = {
       service_order_has_any_assignee: {
         Args: { _service_order_id: string }
         Returns: boolean
+      }
+      set_admin_lead_assignees: {
+        Args: { _lead_id: string; _user_ids: string[] }
+        Returns: undefined
       }
       set_default_stock: {
         Args: { p_stock_id: string }

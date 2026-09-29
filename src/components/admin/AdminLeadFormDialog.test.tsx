@@ -47,6 +47,13 @@ vi.mock('@/contexts/AuthContext', () => ({
 vi.mock('@/hooks/useAdminPermissions', () => ({
   useAdminPermissions: () => ({ linkedSalespersonId: null }),
 }));
+vi.mock('@/components/schedule/AssigneeMultiSelect', () => ({
+  AssigneeMultiSelect: ({ onChangeUsers }: { onChangeUsers: (ids: string[]) => void }) => (
+    <button type="button" onClick={() => onChangeUsers(['user-1', 'user-2'])}>
+      Selecionar dois responsáveis
+    </button>
+  ),
+}));
 
 import { AdminLeadFormDialog } from './AdminLeadFormDialog';
 
@@ -152,6 +159,25 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
 
     expect(createLead.mutate).toHaveBeenCalledWith(
       expect.objectContaining({ pipeline_id: 'pipeline-parcerias' }),
+      expect.anything(),
+    );
+  });
+
+  it('envia todos os responsáveis selecionados e preserva a ordem do principal', () => {
+    mount();
+
+    const selectAssignees = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Selecionar dois responsáveis',
+    ) as HTMLButtonElement;
+    const saveButton = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Criar oportunidade',
+    ) as HTMLButtonElement;
+
+    act(() => selectAssignees.click());
+    act(() => saveButton.click());
+
+    expect(createLead.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ assignee_user_ids: ['user-1', 'user-2'] }),
       expect.anything(),
     );
   });

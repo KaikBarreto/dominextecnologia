@@ -57,7 +57,17 @@ export interface AdminLead {
   updated_at: string;
   crm_label_ids?: string[];
   crm_checklists?: unknown;
+  assignees?: AdminLeadAssignee[];
 }
+
+export interface AdminLeadAssignee {
+  user_id: string;
+  is_primary: boolean;
+}
+
+type AdminLeadMutationInput = Partial<AdminLead> & {
+  assignee_user_ids?: string[];
+};
 
 const NO_ADMIN_PIPELINES: AdminCrmPipeline[] = [];
 
@@ -315,15 +325,28 @@ export function useAdminLeads() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_leads' as any)
-        .select('*')
+        .select('*, admin_lead_assignees(user_id, is_primary)')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as AdminLead[];
+      return ((data || []) as unknown as Array<AdminLead & { admin_lead_assignees?: AdminLeadAssignee[] }>).map((lead) => {
+        const assignees = [...(lead.admin_lead_assignees ?? [])].sort(
+          (a, b) => Number(b.is_primary) - Number(a.is_primary),
+        );
+        const { admin_lead_assignees: _relation, ...rest } = lead;
+        return {
+          ...rest,
+          assignees: assignees.length > 0
+            ? assignees
+            : lead.responsible_id
+              ? [{ user_id: lead.responsible_id, is_primary: true }]
+              : [],
+        };
+      });
     },
   });
 
   const createLead = useMutation({
-    mutationFn: async (input: Partial<AdminLead>) => {
+    mutationFn: async (input: AdminLeadMutationInput) => {
       // admin_leads.title é NOT NULL no banco, mas o formulário não pede mais
       // título explícito (UX espelhada no EcoSistema). Auto-geramos a partir do
       // que o usuário preencheu — sem migration. Se um caller futuro mandar um
@@ -334,9 +357,20 @@ export function useAdminLeads() {
         input.contact_name?.trim() ||
         input.phone?.trim() ||
         'Lead sem identificação';
-      const payload = { ...input, title: autoTitle };
+      const { assignee_user_ids = [], assignees: _assignees, ...leadInput } = input;
+      const payload = {
+        ...leadInput,
+        title: autoTitle,
+        responsible_id: assignee_user_ids[0] ?? null,
+      };
       const { data, error } = await supabase.from('admin_leads' as any).insert(payload).select().single();
       if (error) throw error;
+      const createdLead = data as unknown as AdminLead;
+      const { error: assigneesError } = await supabase.rpc('set_admin_lead_assignees', {
+        _lead_id: createdLead.id,
+        _user_ids: assignee_user_ids,
+      });
+      if (assigneesError) throw assigneesError;
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead criado!' }); },
@@ -344,20 +378,29 @@ export function useAdminLeads() {
   });
 
   const updateLead = useMutation({
-    mutationFn: async ({ id, ...input }: Partial<AdminLead> & { id: string }) => {
+    mutationFn: async ({ id, ...input }: AdminLeadMutationInput & { id: string }) => {
       // Snapshot do estágio ANTES do update. Este é o ÚNICO caminho de escrita
       // de `admin_leads.stage_id` no painel (arrastar no kanban, Ganhar/Perder
       // no modal e o form de edição passam todos por aqui), então centralizar
       // o registro de histórico aqui garante que nenhum caminho fica de fora.
       // Lê do cache de `admin-leads`, que já está carregado pra desenhar a tela.
-      const isStageUpdate = 'stage_id' in input;
-      const nextStageId = input.stage_id as string | null | undefined;
+      const { assignee_user_ids, assignees: _assignees, ...leadInput } = input;
+      const isStageUpdate = 'stage_id' in leadInput;
+      const nextStageId = leadInput.stage_id as string | null | undefined;
       const previousStageId = isStageUpdate
         ? ((qc.getQueryData<AdminLead[]>(['admin-leads']) || []).find(l => l.id === id)?.stage_id ?? null)
         : null;
 
-      const { error } = await supabase.from('admin_leads' as any).update(input).eq('id', id);
+      const { error } = await supabase.from('admin_leads' as any).update(leadInput).eq('id', id);
       if (error) throw error;
+
+      if (assignee_user_ids) {
+        const { error: assigneesError } = await supabase.rpc('set_admin_lead_assignees', {
+          _lead_id: id,
+          _user_ids: assignee_user_ids,
+        });
+        if (assigneesError) throw assigneesError;
+      }
 
       // Só grava quando o estágio de fato mudou — soltar o card na mesma coluna
       // ou salvar o form sem mexer no estágio não pode virar ruído no histórico.

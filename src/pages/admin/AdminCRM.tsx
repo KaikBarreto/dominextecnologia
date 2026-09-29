@@ -316,7 +316,14 @@ function CrmTab() {
       ) return false;
       if (filterOrigin.length > 0 && (!l.source || !filterOrigin.includes(l.source))) return false;
       if (filterSegment.length > 0 && (!l.segment || !filterSegment.includes(l.segment))) return false;
-      if (filterResponsible.length > 0 && (!l.responsible_id || !filterResponsible.includes(l.responsible_id))) return false;
+      if (filterResponsible.length > 0) {
+        const responsibleIds = l.assignees?.length
+          ? l.assignees.map((assignee) => assignee.user_id)
+          : l.responsible_id
+            ? [l.responsible_id]
+            : [];
+        if (!responsibleIds.some((userId) => filterResponsible.includes(userId))) return false;
+      }
       if (from || to) {
         const created = new Date(l.created_at);
         if (from && created < from) return false;
