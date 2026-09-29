@@ -18,13 +18,13 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-(globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 
 vi.mock('@/contexts/AppLocaleContext', () => ({ useAppLocaleContext: () => ({ locale: 'pt-br' }) }));
 
 import { PipelineTabsBar } from './PipelineTabsBar';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const PIPELINES = [
   { id: 'p1', name: 'Funil de Vendas', color: '#123456', is_default: true, position: 0, company_id: 'c', created_at: '', updated_at: '' },
@@ -41,7 +41,7 @@ function render(mobile: boolean, hideSelected = false) {
   act(() => {
     root.render(
       <PipelineTabsBar
-        pipelines={PIPELINES as any}
+        pipelines={PIPELINES}
         selectedId="p1"
         onSelect={onSelect}
         onCreate={onCreate}
@@ -118,7 +118,17 @@ describe('PipelineTabsBar — desktop', () => {
     render(false, true);
     expect(document.querySelector('[data-pipeline-item="p1"]')).toBeNull();
     expect(document.querySelector('[data-pipeline-item="p2"]')).toBeTruthy();
+    expect(document.querySelector('[data-pipeline-gear="p1"]')).toBeTruthy();
     expect(document.querySelector('[data-pipeline-create]')).toBeTruthy();
+  });
+
+  it('mantém a configuração do funil ativo ao lado do título', () => {
+    render(false, true);
+    act(() => {
+      document.querySelector('[data-pipeline-gear="p1"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(onConfigure).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('engrenagem abre a configuração do funil sem trocar o funil ativo', () => {
@@ -146,6 +156,12 @@ describe('PipelineTabsBar — mobile (sem hover)', () => {
   it('o "+" continua existindo no mobile', () => {
     render(true);
     expect(document.querySelector('[data-pipeline-create]')).toBeTruthy();
+  });
+
+  it('mantém a configuração do funil ativo quando o nome está no título', () => {
+    render(true, true);
+    expect(document.querySelector('[data-pipeline-item="p1"]')).toBeNull();
+    expect(gears()).toEqual(['p1']);
   });
 
   it('usa abas transparentes com sublinhado, sem aparência de pill', () => {

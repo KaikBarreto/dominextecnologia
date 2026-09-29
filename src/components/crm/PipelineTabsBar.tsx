@@ -39,7 +39,7 @@ interface PipelineTabsBarProps {
   createLabel: string;
   /** Rótulo acessível da faixa de abas (ex: "Funil"). */
   listLabel: string;
-  /** Quando o funil ativo já aparece como título, mostra aqui apenas os demais. */
+  /** Quando o funil ativo já aparece como título, mantém sua ação e lista apenas os demais. */
   hideSelected?: boolean;
   className?: string;
 }
@@ -79,6 +79,9 @@ export function PipelineTabsBar({
   const visiblePipelines = hideSelected
     ? pipelines.filter((pipeline) => pipeline.id !== selectedId)
     : pipelines;
+  const selectedPipeline = hideSelected
+    ? pipelines.find((pipeline) => pipeline.id === selectedId) ?? null
+    : null;
   // Qual engrenagem está com o menu aberto — o ícone não pode sumir embaixo do
   // próprio menu quando o mouse sai da aba.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -224,6 +227,7 @@ export function PipelineTabsBar({
   if (mobile) {
     return (
       <div className={cn('flex items-center gap-2 min-w-0', className)}>
+        {selectedPipeline && gearFor(selectedPipeline, true, true)}
         <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <div className="flex w-max items-center gap-1.5 pb-1">
             {visiblePipelines.map((pipeline) => {
@@ -254,6 +258,7 @@ export function PipelineTabsBar({
 
   return (
     <div className={cn('flex items-center gap-1 min-w-0', className)}>
+      {selectedPipeline && gearFor(selectedPipeline, true, false)}
       <div
         ref={scrollRef}
         role="tablist"

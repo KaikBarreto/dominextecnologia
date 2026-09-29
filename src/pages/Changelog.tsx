@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.8',
+    date: '29 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configuração do funil sempre acessível',
+        description: 'O funil selecionado agora mantém o botão de configuração visível ao lado do título, tanto no CRM da empresa quanto no painel administrativo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.7',
     date: '29 de setembro de 2026',
     type: 'patch',
