@@ -36,6 +36,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/mapa-ao-vivo": "Mapa ao Vivo",
   "/assinatura": "Assinatura",
   "/checkout": "Checkout",
+  "/proposta": "Simulador de Proposta",
   "/changelog": "Atualizações",
   "/tutoriais": "Tutoriais",
   "/menu": "Menu",

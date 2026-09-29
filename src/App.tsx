@@ -172,6 +172,7 @@ const PublicCheckout = React.lazy(() => import("./pages/PublicCheckout"));
 // Consentimento público de assinatura/Pix Automático — sem auth.
 const PublicSubscriptionCheckout = React.lazy(() => import("./pages/PublicSubscriptionCheckout"));
 const ProposalPublic = React.lazy(() => import("./pages/ProposalPublic"));
+const ProposalSimulator = React.lazy(() => import("./pages/ProposalSimulator"));
 const CustomerPortal = React.lazy(() => import("./pages/CustomerPortal"));
 // Tela pública do Perfil Comportamental (DISC) — link /avaliacao/:token, sem auth.
 const DiscAssessmentPublic = React.lazy(() => import("./pages/DiscAssessmentPublic"));
@@ -680,6 +681,7 @@ const AppRoutes = () => (
     <Route path="/pagar/:code" element={<PublicCheckout />} />
     {/* Autorização pública de assinatura/Pix Automático — SEM auth/PermissionRoute */}
     <Route path="/assinar/:code" element={<PublicSubscriptionCheckout />} />
+    <Route path="/proposta" element={<ProposalSimulator />} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />
