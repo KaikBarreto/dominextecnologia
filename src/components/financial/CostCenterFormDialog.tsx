@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Ban } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { CATEGORY_ICONS, type CategoryIconKey } from './categoryIcons';
 import type { CostCenter } from '@/hooks/useCostCenters';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -17,6 +18,8 @@ import { MESSAGES } from '@/lib/i18n/messages';
 const baseSchema = z.object({
   name: z.string().min(1),
   color: z.string().min(1),
+  /** `null` = sem ícone (renderiza como bolinha lisa nas telas que consomem). */
+  icon: z.string().nullable().default(null),
   description: z.string().optional(),
   is_active: z.boolean().default(true),
 });
@@ -47,6 +50,7 @@ export function CostCenterFormDialog({ open, onOpenChange, costCenter, onSubmit,
     defaultValues: {
       name: costCenter?.name ?? initialName ?? '',
       color: costCenter?.color ?? '#6B7280',
+      icon: costCenter?.icon ?? null,
       description: costCenter?.description ?? '',
       is_active: costCenter?.is_active ?? true,
     },
@@ -58,12 +62,16 @@ export function CostCenterFormDialog({ open, onOpenChange, costCenter, onSubmit,
       form.reset({
         name: costCenter?.name ?? initialName ?? '',
         color: costCenter?.color ?? '#6B7280',
+        icon: costCenter?.icon ?? null,
         description: costCenter?.description ?? '',
         is_active: costCenter?.is_active ?? true,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, costCenter?.id, initialName]);
+
+  const selectedColor = form.watch('color');
+  const iconKeys = Object.keys(CATEGORY_ICONS) as CategoryIconKey[];
 
   const handleSubmit = async (data: FormData) => {
     await onSubmit(data);
@@ -99,6 +107,46 @@ export function CostCenterFormDialog({ open, onOpenChange, costCenter, onSubmit,
             <FormItem>
               <FormLabel>{t.colorLabel}</FormLabel>
               <ColorPicker value={field.value} onChange={field.onChange} />
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="icon" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t.iconLabel}</FormLabel>
+              <div className="grid max-h-[160px] grid-cols-6 gap-2 overflow-y-auto p-1 sm:grid-cols-8">
+                {/* "Sem ícone" — centro de custo continua podendo renderizar só a
+                    bolinha de cor (comportamento anterior), nunca é obrigado a
+                    escolher um ícone. */}
+                <button
+                  type="button"
+                  onClick={() => field.onChange(null)}
+                  title={t.iconNoneLabel}
+                  className={`flex h-10 w-full items-center justify-center rounded-lg border-2 transition-all ${
+                    !field.value ? 'border-foreground bg-muted text-foreground' : 'border-transparent text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Ban className="h-4 w-4" />
+                </button>
+                {iconKeys.map((key) => {
+                  const Icon = CATEGORY_ICONS[key];
+                  const isSelected = field.value === key;
+                  return (
+                    <button
+                      type="button"
+                      key={key}
+                      onClick={() => field.onChange(key)}
+                      title={key}
+                      className={`flex h-10 w-full items-center justify-center rounded-lg border-2 transition-all ${
+                        isSelected ? 'border-foreground text-white' : 'border-transparent text-muted-foreground hover:bg-muted'
+                      }`}
+                      style={isSelected ? { backgroundColor: selectedColor } : undefined}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </button>
+                  );
+                })}
+              </div>
               <FormMessage />
             </FormItem>
           )} />

@@ -18,6 +18,7 @@ import {
   useDeleteAdminFinancialCategory,
   type AdminFinancialCategory,
 } from '@/hooks/useAdminFinancialCategories';
+import { CATEGORY_ICONS, getCategoryIcon, type CategoryIconKey } from '@/components/financial/categoryIcons';
 
 export function FinancialSettingsSection() {
   const { data: categories = [] } = useAdminFinancialCategories();
@@ -51,10 +52,14 @@ export function FinancialSettingsSection() {
               </Button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {list.map((c) => (
+              {list.map((c) => {
+                const Icon = getCategoryIcon(c.icon);
+                return (
                 <div key={c.id} className="rounded-lg border p-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: c.color }} />
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0" style={{ background: c.color }}>
+                      <Icon className="h-3 w-3 text-white" />
+                    </span>
                     <span className="text-sm truncate">{c.label}</span>
                     {c.is_system && <Badge variant="secondary" className="text-[9px] h-4">Sistema</Badge>}
                   </div>
@@ -69,7 +74,8 @@ export function FinancialSettingsSection() {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
@@ -106,8 +112,9 @@ function CategoryFormModal({ category, type, onClose, onSave }: {
   onSave: (payload: any) => void;
 }) {
   const open = !!(category || type);
-  const initial = category ?? { name: '', label: '', type: type ?? 'income', color: '#10b981', icon: '', is_active: true, is_system: false };
+  const initial = category ?? { name: '', label: '', type: type ?? 'income', color: '#10b981', icon: 'Tag', is_active: true, is_system: false };
   const [form, setForm] = useState(initial);
+  const iconKeys = Object.keys(CATEGORY_ICONS) as CategoryIconKey[];
 
   // reset when changing
   useState(() => { setForm(initial); });
@@ -147,6 +154,29 @@ function CategoryFormModal({ category, type, onClose, onSave }: {
           <div className="space-y-1.5">
             <Label>Cor</Label>
             <ColorPicker value={form.color} onChange={(c) => setForm({ ...form, color: c })} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Ícone</Label>
+          <div className="grid max-h-[160px] grid-cols-6 gap-2 overflow-y-auto p-1 sm:grid-cols-8">
+            {iconKeys.map((key) => {
+              const Icon = CATEGORY_ICONS[key];
+              const isSelected = form.icon === key;
+              return (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => setForm({ ...form, icon: key })}
+                  title={key}
+                  className={`flex h-10 w-full items-center justify-center rounded-lg border-2 transition-all ${
+                    isSelected ? 'border-foreground text-white' : 'border-transparent text-muted-foreground hover:bg-muted'
+                  }`}
+                  style={isSelected ? { backgroundColor: form.color } : undefined}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

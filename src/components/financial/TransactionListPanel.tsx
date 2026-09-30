@@ -61,6 +61,24 @@ import { filterFinancialMovementVisibility } from '@/lib/financial-movement-visi
 import { useFinancial } from '@/hooks/useFinancial';
 import { FinancialCategoryPill } from './FinancialCategoryPill';
 import { FinancialTransactionDetailsPanel } from './FinancialTransactionDetailsPanel';
+import { getCategoryIcon, getCostCenterIcon } from './categoryIcons';
+import type { LucideIcon } from 'lucide-react';
+
+/**
+ * Círculo cor+ícone pro filtro multi-select (categoria/centro de custo).
+ * Categoria: `getCategoryIcon` sempre resolve (fallback Tag) — sempre círculo.
+ * Centro de custo sem ícone cadastrado devolve `null` (a chamada usa
+ * `getCostCenterIcon`) e o caller cai no `color` puro do FilterCheckboxGroup
+ * (bolinha lisa, como já era antes do campo `icon` existir).
+ */
+function filterIconNode(color: string, Icon: LucideIcon | null) {
+  if (!Icon) return undefined;
+  return (
+    <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: color }}>
+      <Icon className="h-3 w-3 text-white" />
+    </span>
+  );
+}
 
 function parseLocalDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -314,8 +332,8 @@ export function TransactionListPanel({
   // transações da tela (mesmo desativado depois) — senão o lançamento antigo
   // ficaria impossível de filtrar.
   const costCenterOptions = useMemo(() => {
-    const map = new Map<string, { name: string; color: string }>();
-    costCenters.filter((c) => c.is_active).forEach((c) => map.set(c.id, { name: c.name, color: c.color }));
+    const map = new Map<string, { name: string; color: string; icon: string | null }>();
+    costCenters.filter((c) => c.is_active).forEach((c) => map.set(c.id, { name: c.name, color: c.color, icon: c.icon }));
     transactions.forEach((t) => {
       const id = t.cost_center_id;
       if (!id || map.has(id)) return;
@@ -323,9 +341,14 @@ export function TransactionListPanel({
       // Id que não está na lista da empresa (ou lista ainda carregando) não vira
       // opção: um rótulo genérico seria pior que não oferecer o filtro.
       if (!known) return;
-      map.set(id, { name: `${known.name} (${fin.costCenters.inactiveSuffix})`, color: known.color });
+      map.set(id, { name: `${known.name} (${fin.costCenters.inactiveSuffix})`, color: known.color, icon: known.icon });
     });
-    return Array.from(map.entries()).map(([value, c]) => ({ value, label: c.name, color: c.color }));
+    return Array.from(map.entries()).map(([value, c]) => ({
+      value,
+      label: c.name,
+      color: c.color,
+      icon: filterIconNode(c.color, getCostCenterIcon(c.icon)),
+    }));
   }, [costCenters, transactions, fin.costCenters.inactiveSuffix]);
 
   const activeFiltersCount = [
@@ -867,7 +890,16 @@ export function TransactionListPanel({
             selected={categoryFilter}
             onChange={setCategoryFilter}
             emptyLabel={fin.transactionList.filters.categoryAll}
-            options={categories.map((c) => ({ value: c, label: c }))}
+            options={categories.map((c) => {
+              // Categoria apagada do cadastro (texto livre, sem FK) não tem cor/ícone
+              // conhecidos: renderiza como hoje, só o nome.
+              const known = categoriesByName.get(c);
+              return {
+                value: c,
+                label: c,
+                icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
+              };
+            })}
           />
           <FilterCheckboxGroup
             label={fin.transactionList.filters.account}

@@ -92,6 +92,24 @@ import {
 } from '@/lib/finance-account-priority';
 import { FinancialCategoryPill } from './FinancialCategoryPill';
 import { FinancialTransactionDetailsPanel } from './FinancialTransactionDetailsPanel';
+import { getCategoryIcon, getCostCenterIcon } from './categoryIcons';
+import type { LucideIcon } from 'lucide-react';
+
+/**
+ * Círculo cor+ícone pro filtro multi-select (categoria/centro de custo).
+ * Categoria: `getCategoryIcon` sempre resolve (fallback Tag) — sempre círculo.
+ * Centro de custo sem ícone cadastrado devolve `null` (via `getCostCenterIcon`)
+ * e o caller cai no `color` puro do FilterCheckboxGroup (bolinha lisa, como já
+ * era antes do campo `icon` existir). Mesmo helper de TransactionListPanel.tsx.
+ */
+function filterIconNode(color: string, Icon: LucideIcon | null) {
+  if (!Icon) return undefined;
+  return (
+    <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: color }}>
+      <Icon className="h-3 w-3 text-white" />
+    </span>
+  );
+}
 
 type SubTab = 'todas' | 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -562,16 +580,21 @@ export function FinanceContas({
   // Centros ofertados: ativos + qualquer um já usado nas contas da tela (mesmo
   // desativado depois) — senão a conta antiga ficaria sem como ser filtrada.
   const availableCostCenters = useMemo(() => {
-    const map = new Map<string, { name: string; color: string }>();
-    costCenters.filter((c) => c.is_active).forEach((c) => map.set(c.id, { name: c.name, color: c.color }));
+    const map = new Map<string, { name: string; color: string; icon: string | null }>();
+    costCenters.filter((c) => c.is_active).forEach((c) => map.set(c.id, { name: c.name, color: c.color, icon: c.icon }));
     for (const t of baseFiltered) {
       const id = t.cost_center_id;
       if (!id || map.has(id)) continue;
       const known = costCenters.find((c) => c.id === id);
       if (!known) continue;
-      map.set(id, { name: `${known.name} (${fin.costCenters.inactiveSuffix})`, color: known.color });
+      map.set(id, { name: `${known.name} (${fin.costCenters.inactiveSuffix})`, color: known.color, icon: known.icon });
     }
-    return Array.from(map.entries()).map(([value, c]) => ({ value, label: c.name, color: c.color }));
+    return Array.from(map.entries()).map(([value, c]) => ({
+      value,
+      label: c.name,
+      color: c.color,
+      icon: filterIconNode(c.color, getCostCenterIcon(c.icon)),
+    }));
   }, [costCenters, baseFiltered, fin.costCenters.inactiveSuffix]);
 
   // Resumo do centro de custo ativo: total + quantidade (espelha o de categoria).
@@ -995,7 +1018,16 @@ export function FinanceContas({
                 selected={categoryFilter}
                 onChange={setCategoryFilter}
                 emptyLabel={fin.accounts.categoryFilter.emptyLabel}
-                options={availableCategories.map((category) => ({ value: category, label: category }))}
+                options={availableCategories.map((category) => {
+                  // Categoria apagada do cadastro (texto livre, sem FK) não tem
+                  // cor/ícone conhecidos: renderiza como hoje, só o nome.
+                  const known = categoriesByName.get(category);
+                  return {
+                    value: category,
+                    label: category,
+                    icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
+                  };
+                })}
               />
             )}
             {availableCostCenters.length > 0 && (

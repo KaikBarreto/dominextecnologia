@@ -29,6 +29,24 @@ import { formatMoney } from '@/lib/format';
 import type { FinancialTransaction } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { FinancialCategoryPill } from './FinancialCategoryPill';
+import { getCostCenterIcon } from './categoryIcons';
+
+/** Mesma regra de CostCenterSelect: sem ícone cadastrado, continua a bolinha lisa. */
+function costCenterBadge(costCenter: CostCenter) {
+  const Icon = getCostCenterIcon(costCenter.icon);
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {Icon ? (
+        <span className="flex h-4 w-4 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: costCenter.color }}>
+          <Icon className="h-2.5 w-2.5 text-white" />
+        </span>
+      ) : (
+        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: costCenter.color }} />
+      )}
+      {costCenter.name}
+    </span>
+  );
+}
 
 type DetailTransaction = FinancialTransaction & {
   customer?: { name?: string | null; document?: string | null } | null;
@@ -133,7 +151,7 @@ export function FinancialTransactionDetailsPanel({
         <DetailItem label="Data do lançamento" icon={CalendarDays} value={formatDate(transaction.transaction_date)} />
         <DetailItem label="Vencimento" icon={CalendarDays} value={formatDate(transaction.due_date)} />
         <DetailItem label={transaction.transaction_type === 'entrada' ? 'Recebimento' : 'Pagamento'} icon={WalletCards} value={transaction.paid_date ? `${formatDate(transaction.paid_date)} · ${PAYMENT_METHODS[transaction.payment_method || ''] || transaction.payment_method || 'Forma não informada'}` : 'Ainda não realizado'} />
-        <DetailItem label="Centro de custo" value={costCenter ? <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: costCenter.color }} />{costCenter.name}</span> : 'Não vinculado'} />
+        <DetailItem label="Centro de custo" value={costCenter ? costCenterBadge(costCenter) : 'Não vinculado'} />
         <DetailItem label="Repete / parcelamento" icon={Repeat2} value={installment} />
         <DetailItem label="Valor original" value={money(Number(transaction.amount))} />
         {transaction.transaction_type === 'entrada' && received > 0 && (

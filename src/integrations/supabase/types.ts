@@ -2417,6 +2417,7 @@ export type Database = {
           company_id: string
           created_at: string
           description: string | null
+          icon: string | null
           id: string
           is_active: boolean
           name: string
@@ -2427,6 +2428,7 @@ export type Database = {
           company_id: string
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -2437,6 +2439,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           is_active?: boolean
           name?: string

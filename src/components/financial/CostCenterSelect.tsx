@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
 import { useCostCenters, CostCenterInactiveDuplicateError, type CostCenter, type CostCenterInput } from '@/hooks/useCostCenters';
 import { filterCostCentersForSelect } from '@/lib/cost-center-filter';
+import { getCostCenterIcon } from './categoryIcons';
 import { CostCenterFormDialog } from './CostCenterFormDialog';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { useToast } from '@/hooks/use-toast';
@@ -53,17 +54,26 @@ export function CostCenterSelect({
 
   const options: SearchableSelectOption[] = [
     { value: NONE, label: t.none },
-    ...visible.map((c) => ({
-      value: c.id,
-      label: c.name,
-      sublabel: c.is_active ? undefined : t.inactiveSuffix,
-      icon: (
-        <span
-          className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: c.color }}
-        />
-      ),
-    })),
+    ...visible.map((c) => {
+      const Icon = getCostCenterIcon(c.icon);
+      return {
+        value: c.id,
+        label: c.name,
+        sublabel: c.is_active ? undefined : t.inactiveSuffix,
+        // Sem ícone cadastrado: continua a bolinha lisa de sempre. Com ícone,
+        // vira círculo cor+ícone (mesmo molde de CategorySelectField).
+        icon: Icon ? (
+          <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: c.color }}>
+            <Icon className="h-3 w-3 text-white" />
+          </span>
+        ) : (
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: c.color }}
+          />
+        ),
+      };
+    }),
   ];
 
   const showCreate = allowCreate && canManage;

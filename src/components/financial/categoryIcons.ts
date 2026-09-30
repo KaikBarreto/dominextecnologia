@@ -80,3 +80,17 @@ export function getCategoryIcon(iconName?: string | null): LucideIcon {
   }
   return Tag;
 }
+
+/**
+ * Ícone de centro de custo. Mesmo catálogo/nome Lucide de `getCategoryIcon`
+ * (`cost_centers.icon` usa o mesmo formato de `financial_categories.icon`),
+ * mas SEM fallback: centro de custo sem ícone continua renderizando como
+ * bolinha lisa (comportamento anterior à introdução do campo), nunca um
+ * ícone genérico forçado.
+ */
+export function getCostCenterIcon(iconName?: string | null): LucideIcon | null {
+  if (iconName && CATEGORY_ICONS[iconName]) {
+    return CATEGORY_ICONS[iconName];
+  }
+  return null;
+}

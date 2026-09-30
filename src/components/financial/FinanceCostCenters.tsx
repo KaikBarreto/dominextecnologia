@@ -28,6 +28,7 @@ import {
   type CostCenterInput,
 } from '@/hooks/useCostCenters';
 import { CostCenterFormDialog } from './CostCenterFormDialog';
+import { getCostCenterIcon } from './categoryIcons';
 
 /**
  * Tela "Centro de Custo" — aba nova dentro de Financeiro > Relatório, ao lado
@@ -188,7 +189,12 @@ export function FinanceCostCenters() {
         <p className="text-center text-sm text-muted-foreground py-8">{t.noResults}</p>
       ) : isMobile ? (
         <div className="rounded-xl bg-muted/25 overflow-hidden">
-          {filtered.map((cc) => (
+          {filtered.map((cc) => {
+            // Avatar sempre mostra ALGUM ícone (mesmo padrão dos outros avatares
+            // de lista do sistema): o próprio, ou o genérico de centro de custo
+            // quando ainda não escolheu um.
+            const Icon = getCostCenterIcon(cc.icon) ?? Layers;
+            return (
             <MobileListItem
               key={cc.id}
               actions={buildActions(cc)}
@@ -199,7 +205,7 @@ export function FinanceCostCenters() {
                   className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 shadow-sm"
                   style={{ backgroundColor: cc.color }}
                 >
-                  <Layers className="h-5 w-5 text-white" />
+                  <Icon className="h-5 w-5 text-white" />
                 </div>
               }
               title={cc.name}
@@ -212,7 +218,8 @@ export function FinanceCostCenters() {
                 </span>
               }
             />
-          ))}
+            );
+          })}
         </div>
       ) : (
         <Card>
@@ -228,10 +235,16 @@ export function FinanceCostCenters() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((cc) => (
+                {filtered.map((cc) => {
+                  // Mesmo fallback do avatar mobile: ícone próprio, ou o
+                  // genérico de centro de custo quando ainda não escolheu um.
+                  const Icon = getCostCenterIcon(cc.icon) ?? Layers;
+                  return (
                   <TableRow key={cc.id} className={!cc.is_active ? 'opacity-60' : ''}>
                     <TableCell>
-                      <div className="h-6 w-6 rounded-full" style={{ backgroundColor: cc.color }} />
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full" style={{ backgroundColor: cc.color }}>
+                        <Icon className="h-3.5 w-3.5 text-white" />
+                      </div>
                     </TableCell>
                     <TableCell className="font-medium">{cc.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate">
@@ -260,7 +273,8 @@ export function FinanceCostCenters() {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

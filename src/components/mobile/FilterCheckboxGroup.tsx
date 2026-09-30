@@ -12,6 +12,14 @@ export interface FilterCheckboxOption {
   label: string;
   /** Cor de acento opcional (renderiza bolinha colorida à esquerda) */
   color?: string;
+  /**
+   * Nó opcional renderizado à ESQUERDA do rótulo, no lugar da bolinha de
+   * `color` (ex.: círculo cor+ícone de categoria/centro de custo). Aditiva:
+   * quem não passa continua vendo exatamente o mesmo (bolinha de `color` ou
+   * nada). Quando os dois são passados, `icon` vence — evita duas marcas
+   * coloridas lado a lado pra mesma opção.
+   */
+  icon?: ReactNode;
   /** Nó opcional renderizado depois do rótulo (ex.: ícone de inflamabilidade do gás). */
   suffix?: ReactNode;
   /**
@@ -185,12 +193,14 @@ export function FilterCheckboxGroup({
                 )}
               >
                 <Checkbox checked={checked} onCheckedChange={() => toggle(opt.value)} className="pointer-events-none" />
-                {opt.color && (
+                {opt.icon ? (
+                  <span className="shrink-0">{opt.icon}</span>
+                ) : opt.color ? (
                   <span
                     className="h-3 w-3 rounded-full shrink-0"
                     style={{ backgroundColor: opt.color }}
                   />
-                )}
+                ) : null}
                 <span className="text-sm truncate">{opt.label}</span>
                 {opt.suffix && <span className="flex shrink-0 items-center">{opt.suffix}</span>}
                 <span className="flex-1" />

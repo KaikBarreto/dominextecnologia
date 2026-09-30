@@ -17,6 +17,8 @@ import {
 import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { AccountFormDialog } from './AccountFormDialog';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { FinancialCategoryPill } from './FinancialCategoryPill';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { BankLogo } from './BankInstitutionCombobox';
@@ -95,6 +97,12 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
     partial: { label: cc.statusPartial, badgeClass: 'bg-amber-600', icon: AlertCircle },
     paid: { label: cc.statusPaid, badgeClass: 'bg-success', icon: CheckCircle2 },
   };
+
+  const { categories: financialCategories } = useFinancialCategories();
+  const categoriesByName = useMemo(
+    () => new Map(financialCategories.map((category) => [category.name, category])),
+    [financialCategories],
+  );
 
   const { bills, isLoading, payBill } = useCreditCardBills(account.id);
   const [expandedBill, setExpandedBill] = useState<string | null>(null);
@@ -458,9 +466,11 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                             <div key={t.id} className="flex items-center justify-between text-sm py-1">
                               <div>
                                 <p className="text-sm">{t.description}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(parseISO(t.transaction_date + 'T12:00:00'), 'dd/MM/yyyy')}
-                                  {t.category && ` · ${t.category}`}
+                                <p className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                                  <span>{format(parseISO(t.transaction_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
+                                  {t.category && (
+                                    <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" />
+                                  )}
                                 </p>
                               </div>
                               <p className="font-medium text-destructive">{fmt(Number(t.amount))}</p>
@@ -540,9 +550,11 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                         key={t.id}
                         title={t.description}
                         subtitle={
-                          <span>
-                            {format(parseISO(t.transaction_date + 'T12:00:00'), 'dd/MM/yyyy')}
-                            {t.category && ` · ${t.category}`}
+                          <span className="flex flex-wrap items-center gap-1">
+                            <span>{format(parseISO(t.transaction_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
+                            {t.category && (
+                              <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" />
+                            )}
                           </span>
                         }
                         trailing={

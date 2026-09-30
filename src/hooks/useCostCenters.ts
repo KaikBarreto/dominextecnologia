@@ -11,6 +11,7 @@ export interface CostCenter {
   company_id: string;
   name: string;
   color: string;
+  icon: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
@@ -20,6 +21,7 @@ export interface CostCenter {
 export interface CostCenterInput {
   name: string;
   color?: string;
+  icon?: string | null;
   description?: string | null;
   is_active?: boolean;
 }
