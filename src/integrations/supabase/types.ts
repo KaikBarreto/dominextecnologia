@@ -5843,6 +5843,7 @@ export type Database = {
           sale_price: number | null
           sku: string | null
           supplier: string | null
+          supplier_id: string | null
           unit: string | null
           updated_at: string
         }
@@ -5860,6 +5861,7 @@ export type Database = {
           sale_price?: number | null
           sku?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           unit?: string | null
           updated_at?: string
         }
@@ -5877,6 +5879,7 @@ export type Database = {
           sale_price?: number | null
           sku?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           unit?: string | null
           updated_at?: string
         }
@@ -5893,6 +5896,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "material_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]

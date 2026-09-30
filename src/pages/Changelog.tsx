@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.11',
+    date: '30 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fornecedor do material vem do cadastro',
+        description: 'No cadastro de material, o fornecedor deixou de ser um campo de digitar e virou uma lista com busca, igual ao que já acontece com cliente. Dá para cadastrar um fornecedor novo ali mesmo, sem sair da tela. Os nomes que já tinham sido digitados à mão viraram cadastro e foram ligados aos materiais correspondentes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.10',
     date: '30 de setembro de 2026',
     type: 'patch',

@@ -14,6 +14,8 @@ import { ColorPicker } from '@/components/ui/ColorPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
 import { useStocks } from '@/hooks/useStocks';
+import { useSuppliers } from '@/hooks/useSuppliers';
+import { SupplierSelectField } from '@/components/financial/SupplierSelectField';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -41,11 +43,12 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   const { toast } = useToast();
   const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity, getPresenceForStock, setInventoryPresence, stockLevelsLoaded } = useInventory();
   const { stocks, isLoading: stocksLoading } = useStocks();
+  const { suppliers } = useSuppliers();
   const { groups, createGroup } = useMaterialGroups();
   const isEditing = !!item;
 
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
-    name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '',
+    name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null,
   });
   const [isSkuGenerating, setIsSkuGenerating] = useState(false);
   // Quick-create de grupo de material (botão "+" ao lado do seletor).
@@ -126,7 +129,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     let cancelled = false;
     const run = async () => {
       if (item) {
-        setFormData({ name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null, description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier: item.supplier || '' });
+        setFormData({ name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null, description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier_id: item.supplier_id ?? null });
         setNumericText({
           quantity: toNumericText(item.quantity),
           cost_price: toNumericText(item.cost_price),
@@ -134,7 +137,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         });
         return;
       }
-      setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '' });
+      setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null });
       setNumericText({ quantity: '', cost_price: '', sale_price: '' });
       if (!open) return;
       try {
@@ -362,8 +365,29 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
             </div>
           </div>
           <div className="space-y-2">
-            <Label>{t.fields.supplier}</Label>
-            <Input value={formData.supplier || ''} onChange={(e) => handleChange('supplier', e.target.value)} placeholder={t.fields.supplierPlaceholder} />
+            <Label htmlFor="inventory-supplier">{t.fields.supplier}</Label>
+            {/* Select do CADASTRO de fornecedor (não texto livre): mesmo padrão do
+                cliente/origem, com busca e "+" colado na borda pra criar na hora.
+                O nome em inventory.supplier é espelhado por gatilho a partir do
+                supplier_id, então o form só manda o id. */}
+            <SupplierSelectField
+              id="inventory-supplier"
+              suppliers={suppliers}
+              value={formData.supplier_id || ''}
+              onValueChange={(id) => handleChange('supplier_id', id || null)}
+              placeholder={t.fields.supplierPlaceholder}
+              searchPlaceholder={t.fields.supplierSearchPlaceholder}
+              emptyMessage={t.fields.supplierEmpty}
+              createAriaLabel={t.fields.supplierCreateAriaLabel}
+            />
+            {/* Material antigo tinha o fornecedor digitado à mão. Enquanto ele não
+                for vinculado ao cadastro, o select fica vazio e o nome sumiria da
+                tela — mostramos o texto legado pra não perder a informação. */}
+            {!formData.supplier_id && item?.supplier && (
+              <p className="text-xs text-muted-foreground">
+                {t.fields.supplierLegacy.replace('{name}', item.supplier)}
+              </p>
+            )}
           </div>
         </div>
 
