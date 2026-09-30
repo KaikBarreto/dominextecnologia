@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 export default {
   darkMode: ["class"],
@@ -141,5 +142,32 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
+    // Quiosque de ponto (tablet fixo no balcão): grade de 2 colunas só quando o
+    // aparelho está DEITADO e com altura de verdade. `orientation: landscape`
+    // sozinho também bate com celular deitado (ex.: 667x375), que deve seguir em
+    // coluna única — daí o piso de 600px: um tablet 10" landscape passa de ~800px
+    // de altura, celular deitado fica bem abaixo disso.
+    //
+    // Registrada como VARIANTE (plugin), e NÃO em `theme.extend.screens`: um
+    // `screens` contendo objeto `raw` desliga em silêncio TODOS os variants
+    // `min-*`/`max-*` do Tailwind 3 (o build avisa, mas não falha). Medido em
+    // 30/09/2026 no repo irmão: derrubava os usos de `max-lg:` do CSS gerado.
+    //
+    // Também NÃO usar a variante arbitrária sem espaços
+    // `[@media(orientation:landscape)and(min-height:600px)]` — é CSS INVÁLIDO: o
+    // tokenizer lê `)and(` como function-token, a query vira `not all` e nunca
+    // casa em browser nenhum.
+    plugin(({ addVariant }) => {
+      // `&&` (classe duplicada) de propósito: sobe a especificidade pra 0-2-0.
+      // Registrada por plugin, esta variante é emitida ANTES do bloco `sm:`
+      // (min-width:640px) no CSS final — e um tablet deitado casa com OS DOIS.
+      // Sem o bump, `sm:h-[26rem]` venceria `kiosk-landscape:h-[38rem]` só por
+      // vir depois na cascata, e a câmera do quiosque ficava no tamanho errado.
+      // Medido em 30/09/2026.
+      addVariant("kiosk-landscape", "@media (orientation: landscape) and (min-height: 600px) { && }");
+    }),
+  ],
 } satisfies Config;

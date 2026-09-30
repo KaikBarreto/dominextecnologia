@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, Camera, Check, Loader2, ShieldCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { detectFaceFrame, loadFaceApiModels } from '@/lib/face/faceApiClient';
@@ -8,7 +8,7 @@ import {
   type FaceCapturePose,
   type FaceTemplatePayload,
 } from '@/lib/face/faceCapture';
-import { FaceScanRing } from '@/components/ponto/FaceScanRing';
+import { FaceIdFrame } from '@/components/ponto/FaceIdFrame';
 
 export type { FaceTemplatePayload } from '@/lib/face/faceCapture';
 
@@ -38,6 +38,21 @@ interface FaceCaptureExperienceProps {
   /** Acao secundaria opcional, usada pelo quiosque para abrir a busca manual. */
   secondaryActionLabel?: string;
   showClose?: boolean;
+  /**
+   * Conteudo extra (relogio + data da empresa) no topo da coluna direita, so
+   * visivel no layout de 2 colunas em landscape (tablet do quiosque deitado).
+   * Nunca aparece em retrato. O cadastro de biometria (mode="enrollment") nao
+   * passa essa prop — logica de relogio/i18n fica no caller, nao aqui dentro.
+   */
+  headerSlot?: ReactNode;
+  /**
+   * Quando presente, substitui o bloco rotulo/pose + status (ex.: card de
+   * resultado do reconhecimento facial do quiosque), mantendo a mesma
+   * moldura (video + coluna direita). A camera ja foi desligada por
+   * stopCamera() antes deste slot entrar em uso — ver capture() abaixo, nao
+   * mexer nesse contrato.
+   */
+  statusSlot?: ReactNode;
 }
 
 type SetupState = 'preparing' | 'requesting_camera' | 'scanning' | 'error';
@@ -72,6 +87,8 @@ export function FaceCaptureExperience({
   mode = 'enrollment',
   secondaryActionLabel,
   showClose = true,
+  headerSlot,
+  statusSlot,
 }: FaceCaptureExperienceProps) {
   const poses = mode === 'verification'
     ? VERIFICATION_POSES
@@ -283,8 +300,70 @@ export function FaceCaptureExperience({
   const currentPose = poses[Math.min(poseIndex, poses.length - 1)];
   const statusText = justCaptured ? copy.captured : copy.guidance[guidance];
 
+  // Limiar de 2 colunas: SÓ landscape com altura mínima de tablet. Celular
+  // deitado (ex.: 667x375) tem menos de 600px de altura e fica de fora de
+  // propósito — o mesmo limiar é usado no produto irmão, os dois precisam
+  // bater. Em retrato nada muda (layout de coluna única de sempre), EXCETO a
+  // moldura (círculo -> Face ID) — é identidade visual, vale nas duas
+  // orientações.
+  //
+  // As classes landscape são escritas por extenso (nunca via variável
+  // interpolada): o scanner estático do Tailwind só gera CSS pra classes que
+  // aparecem como string literal completa no arquivo-fonte.
+  //
+  // `order-2` fixa a posição do vídeo no fluxo de retrato (entre o rótulo da
+  // pose e o status — ou logo após o statusSlot, ver os dois ramos abaixo),
+  // independente de onde ele fica no DOM: em retrato o wrapper da coluna 2
+  // vira `contents` e promove seus filhos pro MESMO flex container do
+  // vídeo, então a ordem visual é só `order-*`, não a ordem no arquivo. Em
+  // landscape o valor de `order` não tem efeito (grid-column/row explícitos
+  // decidem a posição), por isso não precisa de override.
+  const videoFrame = (
+    <div className="relative order-2 h-[19rem] w-[19rem] sm:h-[23rem] sm:w-[23rem] kiosk-landscape:col-start-1 kiosk-landscape:row-start-1 kiosk-landscape:h-[29rem] kiosk-landscape:w-[29rem] kiosk-landscape:justify-self-center">
+      <FaceIdFrame progress={progress} accentColor={accentColor} />
+      <div className="relative h-full w-full overflow-hidden rounded-[2.5rem] bg-white/[0.04] ring-1 ring-white/10">
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          autoPlay
+          aria-label={copy.poses[currentPose]}
+          className="h-full w-full scale-x-[-1] object-cover"
+        />
+        {setup !== 'scanning' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0a0a0b]/90">
+            <Loader2 className="h-9 w-9 animate-spin motion-reduce:animate-none" style={{ color: accentColor }} />
+            <p className="max-w-[14rem] text-sm text-white/65">
+              {setup === 'preparing' ? copy.preparing : copy.requestingCamera}
+            </p>
+          </div>
+        )}
+        {justCaptured && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-sm">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full" style={{ backgroundColor: accentColor }}>
+              <Check className="h-12 w-12 text-white" strokeWidth={3} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Nota de privacidade: SEMPRE visível (inclusive no erro — regra que já
+  // existia e não está em escopo mudar). `[@media(landscape)]:col-start-2`
+  // funciona nos dois usos abaixo: como item direto da grade (erro, sem
+  // pai-grid real) ou como filho normal dentro do wrapper da coluna 2 (grid
+  // só tem efeito em item direto de um `display:grid`; dentro de um
+  // `display:flex` a propriedade é ignorada, então não atrapalha lá).
+  const privacyNote = (
+    <div className="order-4 flex max-w-md items-start gap-2.5 text-center text-xs leading-relaxed text-white/45 kiosk-landscape:col-start-2 kiosk-landscape:text-left">
+      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>{copy.privacy}</p>
+    </div>
+  );
+
   return (
-    <div className="relative flex min-h-[100svh] flex-col items-center overflow-hidden bg-[#050506] px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-white">
+    <div className="relative flex min-h-[100svh] flex-col items-center overflow-hidden bg-[#050506] px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-white kiosk-landscape:grid kiosk-landscape:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] kiosk-landscape:items-center kiosk-landscape:justify-center kiosk-landscape:gap-x-14 kiosk-landscape:px-16 kiosk-landscape:pb-6">
       {showClose && (
         <button
           type="button"
@@ -296,80 +375,75 @@ export function FaceCaptureExperience({
         </button>
       )}
 
-      <div className="flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-7 py-12 text-center">
-        {setup === 'error' ? (
-          <div className="flex max-w-md flex-col items-center gap-5">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-              <AlertCircle className="h-10 w-10" />
-            </div>
-            <p className="text-xl font-semibold">{setupError}</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button type="button" size="lg" onClick={() => setAttempt((value) => value + 1)}>
-                <Camera className="h-4 w-4" /> {copy.tryAgain}
-              </Button>
-              <Button type="button" size="lg" variant="outline" onClick={onCancel} className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
-                {copy.cancel}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div>
-              <p className="text-sm font-medium uppercase tracking-[0.22em] text-white/45">
-                {copy.scanLabel}
-              </p>
-              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{copy.poses[currentPose]}</h1>
-            </div>
-
-            <div className="relative h-[19rem] w-[19rem] sm:h-[23rem] sm:w-[23rem]">
-              <FaceScanRing progress={progress} accentColor={accentColor} />
-              <div className="relative h-full w-full overflow-hidden rounded-full bg-white/[0.04] ring-1 ring-white/10">
-                <video
-                  ref={videoRef}
-                  muted
-                  playsInline
-                  autoPlay
-                  aria-label={copy.poses[currentPose]}
-                  className="h-full w-full scale-x-[-1] object-cover"
-                />
-                {setup !== 'scanning' && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0a0a0b]/90">
-                    <Loader2 className="h-9 w-9 animate-spin motion-reduce:animate-none" style={{ color: accentColor }} />
-                    <p className="max-w-[14rem] text-sm text-white/65">
-                      {setup === 'preparing' ? copy.preparing : copy.requestingCamera}
-                    </p>
-                  </div>
-                )}
-                {justCaptured && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-sm">
-                    <div className="flex h-24 w-24 items-center justify-center rounded-full" style={{ backgroundColor: accentColor }}>
-                      <Check className="h-12 w-12 text-white" strokeWidth={3} />
-                    </div>
-                  </div>
-                )}
+      {setup === 'error' ? (
+        <>
+          <div className="flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-7 py-12 text-center">
+            <div className="flex max-w-md flex-col items-center gap-5">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+                <AlertCircle className="h-10 w-10" />
+              </div>
+              <p className="text-xl font-semibold">{setupError}</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button type="button" size="lg" onClick={() => setAttempt((value) => value + 1)}>
+                  <Camera className="h-4 w-4" /> {copy.tryAgain}
+                </Button>
+                <Button type="button" size="lg" variant="outline" onClick={onCancel} className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                  {copy.cancel}
+                </Button>
               </div>
             </div>
+          </div>
+          {privacyNote}
+        </>
+      ) : (
+        <div className="flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-7 py-12 text-center kiosk-landscape:contents">
+          {videoFrame}
 
-            <div aria-live="polite" className="min-h-16">
-              <p className="text-lg font-medium">{statusText}</p>
-            </div>
-          </>
-        )}
-      </div>
+          {/* Coluna 2 em landscape: cabeçalho + rótulo/status (ou statusSlot)
+              + privacidade + CTA secundário numa ÚNICA pilha vertical
+              (gap-6), centralizada na altura da câmera. Em retrato esse
+              agrupamento desaparece (`contents`) e cada filho volta a fluir
+              solto no MESMO flex column do vídeo — a ordem visual usa
+              `order-*` (ver comentário em `videoFrame`), não a posição no
+              arquivo. */}
+          <div className="contents kiosk-landscape:col-start-2 kiosk-landscape:row-start-1 kiosk-landscape:flex kiosk-landscape:flex-col kiosk-landscape:items-start kiosk-landscape:gap-6 kiosk-landscape:text-left">
+            {headerSlot && (
+              <div className="hidden kiosk-landscape:block">
+                {headerSlot}
+              </div>
+            )}
 
-      <div className="flex max-w-md items-start gap-2.5 text-center text-xs leading-relaxed text-white/45">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>{copy.privacy}</p>
-      </div>
-      {secondaryActionLabel && setup !== 'error' && (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => { stopCamera(); onCancel(); }}
-          className="mt-3 text-white/70 hover:bg-white/10 hover:text-white"
-        >
-          {secondaryActionLabel}
-        </Button>
+            {statusSlot ? (
+              <div className="order-3">{statusSlot}</div>
+            ) : (
+              <>
+                <div className="order-1 kiosk-landscape:text-left">
+                  <p className="text-sm font-medium uppercase tracking-[0.22em] text-white/45">
+                    {copy.scanLabel}
+                  </p>
+                  <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{copy.poses[currentPose]}</h1>
+                </div>
+
+                <div aria-live="polite" className="order-3 min-h-16 kiosk-landscape:text-left">
+                  <p className="text-lg font-medium">{statusText}</p>
+                </div>
+              </>
+            )}
+
+            {privacyNote}
+
+            {secondaryActionLabel && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => { stopCamera(); onCancel(); }}
+                className="order-5 mt-3 text-white/70 hover:bg-white/10 hover:text-white kiosk-landscape:mt-0"
+              >
+                {secondaryActionLabel}
+              </Button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

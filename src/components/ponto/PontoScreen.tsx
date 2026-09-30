@@ -510,27 +510,34 @@ export function PinKeypadScreen({
         // gap/padding enxutos: o conjunto (logo + cartão + bolinhas + teclado)
         // precisa caber SEM rolagem no tablet e também num celular de 667px,
         // inclusive com a linha de erro de PIN visível.
-        className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-3 px-6 pb-6"
+        //
+        // Landscape (tablet deitado, mesmo limiar do FaceCaptureExperience):
+        // vira grid de 2 colunas — identidade à esquerda, teclado à direita.
+        // Classes escritas por extenso: o scanner do Tailwind só gera CSS pra
+        // classe que aparece completa, literal, no arquivo-fonte.
+        className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-3 px-6 pb-6 kiosk-landscape:grid kiosk-landscape:max-w-3xl kiosk-landscape:grid-cols-[minmax(0,18rem)_minmax(0,20rem)] kiosk-landscape:items-center kiosk-landscape:justify-center kiosk-landscape:gap-x-10 kiosk-landscape:gap-y-2"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 1.5rem)" }}
       >
         {resolvedLogo && (
           <img
             src={resolvedLogo}
             alt={company.name || ""}
-            className="max-h-10 w-auto object-contain"
+            className="max-h-10 w-auto object-contain kiosk-landscape:col-start-1"
           />
         )}
 
-        <PinPersonCard employee={employee} accentColor={accentColor} />
+        <div className="kiosk-landscape:col-start-1">
+          <PinPersonCard employee={employee} accentColor={accentColor} />
+        </div>
 
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground kiosk-landscape:col-start-1">
           <Lock className="h-4 w-4 shrink-0" />
           {t.pin.prompt}
         </p>
 
         {/* Bolinhas do PIN (nunca o dígito em claro, é tablet compartilhado) */}
         <div
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 kiosk-landscape:col-start-1"
           aria-label={t.pin.dotsAria.replace("{n}", String(pin.length))}
         >
           {Array.from({ length: dotCount }).map((_, i) => (
@@ -547,13 +554,13 @@ export function PinKeypadScreen({
         {message && (
           <p
             role="alert"
-            className="max-w-xs text-center text-sm font-medium text-destructive"
+            className="max-w-xs text-center text-sm font-medium text-destructive kiosk-landscape:col-start-1"
           >
             {message}
           </p>
         )}
 
-        <div className="grid w-full grid-cols-3 gap-3">
+        <div className="grid w-full grid-cols-3 gap-3 kiosk-landscape:col-start-2 kiosk-landscape:row-span-full kiosk-landscape:self-center">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
             <button
               key={d}

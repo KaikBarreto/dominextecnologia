@@ -360,44 +360,91 @@ function PontoKioskContent({
   // a pessoa pede explicitamente o fallback manual. No modo obrigatorio, rosto
   // ambiguo ou nao reconhecido pede nova leitura; falha tecnica de camera,
   // modelo ou rede continua liberando a contingencia.
+  //
+  // A moldura (FaceCaptureExperience) fica SEMPRE montada aqui, mesmo quando
+  // ha resultado de reconhecimento: o card de erro/ambiguidade entra via
+  // `statusSlot` no lugar do bloco pose/status, e o relogio via `headerSlot`
+  // — assim a coluna de 2 no landscape e o relogio nao somem no meio da
+  // leitura (antes trocava pra uma tela cheia diferente e perdia os dois).
   if (!loading && employees.length > 0 && !manualMode) {
-    if (recognitionState) {
-      const isMatching = recognitionState === "matching";
-      const message = recognitionState === "ambiguous"
-        ? (faceRequired ? tk.recognition.ambiguousRequired : tk.recognition.ambiguous)
-        : recognitionState === "not_recognized"
-          ? (faceRequired ? tk.recognition.notRecognizedRequired : tk.recognition.notRecognized)
-          : recognitionState === "unavailable"
-            ? tk.recognition.unavailable
-            : tk.recognition.matching;
-      return (
-        <div className="dark flex min-h-[100svh] flex-col items-center justify-center gap-6 bg-[#050506] px-6 text-center text-white">
-          <KioskBackdrop accentColor={accentColor} />
-          <div
-            className="flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.06] ring-1 ring-white/10"
-            style={{ color: accentColor }}
-          >
-            {isMatching ? <Loader2 className="h-10 w-10 animate-spin" /> : <ScanFace className="h-10 w-10" />}
-          </div>
-          <div className="max-w-md">
-            <h1 className="text-2xl font-semibold">{isMatching ? tk.recognition.matchingTitle : tk.recognition.retryTitle}</h1>
-            <p className="mt-2 text-white/60">{message}</p>
-          </div>
-          {!isMatching && (
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button type="button" size="lg" onClick={retryRecognition}>
-                <ScanFace className="h-4 w-4" /> {tk.recognition.tryAgain}
-              </Button>
-              {canUseManualSearch && (
-                <Button type="button" size="lg" variant="outline" onClick={openManualSearch} className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
-                  <Search className="h-4 w-4" /> {tk.recognition.manualSearch}
-                </Button>
-              )}
-            </div>
-          )}
+    const isMatching = recognitionState === "matching";
+    const recognitionMessage = recognitionState === "ambiguous"
+      ? (faceRequired ? tk.recognition.ambiguousRequired : tk.recognition.ambiguous)
+      : recognitionState === "not_recognized"
+        ? (faceRequired ? tk.recognition.notRecognizedRequired : tk.recognition.notRecognized)
+        : recognitionState === "unavailable"
+          ? tk.recognition.unavailable
+          : tk.recognition.matching;
+
+    const headerSlot = (
+      // Identidade da empresa (logo + nome, como no desenho mobile — ver
+      // secao de identidade em PontoScreen.tsx) + relogio/data, empilhados:
+      // a empresa IDENTIFICA, o relogio e o dado grande. `resolvedLogo` ja
+      // resolvido mais acima (white label), reusado aqui — nao recalculado.
+      <div className="flex flex-col items-center gap-4 text-center kiosk-landscape:items-start kiosk-landscape:text-left">
+        <div className="flex items-center gap-2.5">
+          {resolvedLogo ? (
+            // Logo na proporcao natural (w-auto object-contain, sem caixa
+            // quadrada) — igual ao mobile. O chip claro so entra pra dar
+            // base de contraste no fundo quase preto desta tela; ele acompanha
+            // a largura do logo, nunca vira quadrado forcado.
+            <span className="inline-flex items-center rounded-lg bg-white/95 px-2 py-1.5">
+              <img
+                src={resolvedLogo}
+                alt={state?.company.name ?? ""}
+                className="h-7 w-auto object-contain"
+              />
+            </span>
+          ) : null}
+          <p className="max-w-[14rem] truncate text-base font-semibold text-white/90">
+            {state?.company.name || tk.headerFallbackTitle}
+          </p>
         </div>
-      );
-    }
+
+        <div className="flex flex-col items-center gap-0.5 kiosk-landscape:items-start">
+          {/* Relogio ao vivo, no fuso da EMPRESA (payload), nunca do aparelho —
+              mesmo par de formatacao do header da lista (fmtTime + Intl.DateTimeFormat). */}
+          <p className="text-4xl font-bold leading-none tabular-nums text-white">
+            {fmtTime(now, locale as LocaleCode, timezone, { hour: "2-digit", minute: "2-digit" })}
+          </p>
+          <p className="text-sm text-white/45 first-letter:uppercase">
+            {new Intl.DateTimeFormat(toBcp47(locale as LocaleCode), {
+              weekday: "long",
+              day: "2-digit",
+              month: "long",
+              timeZone: timezone,
+            }).format(now)}
+          </p>
+        </div>
+      </div>
+    );
+
+    const statusSlot = recognitionState ? (
+      <div className="flex flex-col items-center gap-5 text-center kiosk-landscape:items-start kiosk-landscape:text-left">
+        <div
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-white/[0.06] ring-1 ring-white/10"
+          style={{ color: accentColor }}
+        >
+          {isMatching ? <Loader2 className="h-10 w-10 animate-spin" /> : <ScanFace className="h-10 w-10" />}
+        </div>
+        <div className="max-w-md">
+          <h1 className="text-2xl font-semibold">{isMatching ? tk.recognition.matchingTitle : tk.recognition.retryTitle}</h1>
+          <p className="mt-2 text-white/60">{recognitionMessage}</p>
+        </div>
+        {!isMatching && (
+          <div className="flex flex-wrap justify-center gap-3 kiosk-landscape:justify-start">
+            <Button type="button" size="lg" onClick={retryRecognition}>
+              <ScanFace className="h-4 w-4" /> {tk.recognition.tryAgain}
+            </Button>
+            {canUseManualSearch && (
+              <Button type="button" size="lg" variant="outline" onClick={openManualSearch} className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                <Search className="h-4 w-4" /> {tk.recognition.manualSearch}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    ) : undefined;
 
     return (
       <FaceCaptureExperience
@@ -409,6 +456,8 @@ function PontoKioskContent({
         showClose={canUseManualSearch}
         onComplete={handleFaceCaptureComplete}
         onCancel={openManualSearch}
+        headerSlot={headerSlot}
+        statusSlot={statusSlot}
       />
     );
   }
