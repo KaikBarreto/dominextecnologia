@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Star, Loader2, CheckCircle2, Smile, Meh, Frown, ChevronUp } from 'lucide-react';
+import { Star, Loader2, Smile, Meh, Frown, ChevronUp } from 'lucide-react';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
@@ -380,13 +381,9 @@ export function OSRatingSurvey({
     return (
       <>
         <div className="space-y-3 animate-in fade-in zoom-in-95 duration-300">
-          <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-success/5 px-4 py-3 text-sm">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-            <div className="min-w-0">
-              <p className="font-semibold text-foreground">Avaliação enviada</p>
-              <p className="text-xs text-muted-foreground">Obrigado pelo seu feedback!</p>
-            </div>
-          </div>
+          <NoticeBanner variant="success" title="Avaliação enviada">
+            Obrigado pelo seu feedback!
+          </NoticeBanner>
 
           {/* Gatilho discreto pra (re)abrir o convite ao Google. No fluxo
               recém-enviado o modal já abriu sozinho; aqui é o acesso pra quem

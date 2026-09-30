@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { Eraser, Save, AlertTriangle } from 'lucide-react';
+import { Eraser, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 
 /**
@@ -181,13 +182,10 @@ export function PmocSignatureCanvas({ value, onChange, className, height = 140 }
         </div>
       </div>
 
-      <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-2.5 py-2 text-xs text-foreground">
-        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
-        <span>
-          Assinatura desenhada pode ser questionada em auditoria. Prefira upload de imagem
-          real quando possível.
-        </span>
-      </div>
+      <NoticeBanner variant="warning">
+        Assinatura desenhada pode ser questionada em auditoria. Prefira upload de imagem
+        real quando possível.
+      </NoticeBanner>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
@@ -334,21 +335,15 @@ export function ModulesManagementCard({
     if (kind === 'igual') return null;
     if (kind === 'upgrade') {
       return (
-        <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2.5">
-          <TrendingUp className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-emerald-700 dark:text-emerald-400">
-            {tBilling.planSummaryUpgradeNote}
-          </p>
-        </div>
+        <NoticeBanner variant="success" icon={TrendingUp}>
+          {tBilling.planSummaryUpgradeNote}
+        </NoticeBanner>
       );
     }
     return (
-      <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5">
-        <TrendingDown className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          {tBilling.planSummaryDowngradeNote.replace('{value}', `R$ ${formatBRL(newValue)}`)}
-        </p>
-      </div>
+      <NoticeBanner variant="warning" icon={TrendingDown}>
+        {tBilling.planSummaryDowngradeNote.replace('{value}', `R$ ${formatBRL(newValue)}`)}
+      </NoticeBanner>
     );
   };
 
@@ -626,12 +621,9 @@ export function ModulesManagementCard({
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0 space-y-3">
           {pendingValue != null && (
-            <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5">
-              <TrendingDown className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                Mudança agendada: a partir da próxima cobrança o valor passa a ser R$ {formatBRL(pendingValue)}/mês.
-              </p>
-            </div>
+            <NoticeBanner variant="warning" icon={TrendingDown}>
+              Mudança agendada: a partir da próxima cobrança o valor passa a ser R$ {formatBRL(pendingValue)}/mês.
+            </NoticeBanner>
           )}
 
           <div className="flex flex-col sm:flex-row gap-2">

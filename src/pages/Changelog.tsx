@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.10',
+    date: '30 de setembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ordem de compra no controle de estoque',
+        description: 'Depois de cotar, agora dá para escolher o fornecedor de cada material e gerar uma ordem de compra separada para cada um, com PDF pronto para enviar. Quando a mercadoria chega, você lança o que recebeu, mesmo que tenha vindo só uma parte, e a entrada cai direto no almoxarifado escolhido na requisição. O que faltou continua em aberto até completar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Materiais respeitam o almoxarifado escolhido',
+        description: 'Ao tirar um material de um almoxarifado, a escolha agora fica gravada de verdade. Antes, em alguns casos, ele voltava a aparecer nos outros locais com quantidade zerada. O aviso de itens abaixo do mínimo também passou a contar apenas os materiais que realmente pertencem a cada local.',
+        category: 'correcao',
+      },
+      {
+        title: 'Avisos e selos mais fáceis de enxergar',
+        description: 'As faixas de aviso e os selos de situação espalhados pelo sistema ganharam cor cheia com texto branco, no lugar do tom lavado que se perdia no fundo da tela.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.9',
     date: '29 de setembro de 2026',
     type: 'patch',

@@ -252,8 +252,8 @@ export function AdminCrmStagesTab({ pipelineId, pipelineName, embedded = false, 
                   <div className="h-6 w-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   {s.icon && <IconPreview name={s.icon} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                   <span className="flex-1 text-sm font-medium truncate">{s.name}</span>
-                  {s.is_won && <Badge variant="outline" className="text-[10px] border-green-500 text-green-600"><Trophy className="h-3 w-3 mr-1" />Ganho</Badge>}
-                  {s.is_lost && <Badge variant="outline" className="text-[10px] border-red-500 text-red-600"><Ban className="h-3 w-3 mr-1" />Perdido</Badge>}
+                  {s.is_won && <Badge variant="success" className="text-[10px]"><Trophy className="h-3 w-3 mr-1" />Ganho</Badge>}
+                  {s.is_lost && <Badge variant="destructive" className="text-[10px]"><Ban className="h-3 w-3 mr-1" />Perdido</Badge>}
                   <RowActionsMenu
                     triggerClassName="h-7 w-7"
                     actions={[

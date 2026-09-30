@@ -29,7 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
   Collapsible,
   CollapsibleContent,
@@ -500,34 +500,28 @@ export function PmocContractDocsTab({
     <div className="space-y-6">
       {/* Documentos vencidos — alerta no topo (validade regulatória PMOC). */}
       {hasExpiredDoc && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{t.expiredAlert}</AlertTitle>
-          <AlertDescription className="text-sm">
-            {trtValidityStatus === 'vencido' && certValidityStatus === 'vencido'
-              ? t.expiredAlertDescBoth
-              : trtValidityStatus === 'vencido'
-                ? t.expiredAlertDescTrt
-                : t.expiredAlertDescCert}
-          </AlertDescription>
-        </Alert>
+        <NoticeBanner variant="destructive" title={t.expiredAlert}>
+          {trtValidityStatus === 'vencido' && certValidityStatus === 'vencido'
+            ? t.expiredAlertDescBoth
+            : trtValidityStatus === 'vencido'
+              ? t.expiredAlertDescTrt
+              : t.expiredAlertDescCert}
+        </NoticeBanner>
       )}
 
       {/* Onda G — banner de campos obrigatórios faltando. Avisa o gestor antes
           dele gerar documento com placeholder literal no PDF. */}
       {missingFields.length > 0 && (
-        <Alert className="border-warning/40 bg-warning/5">
-          <AlertTriangle className="h-4 w-4 text-warning" />
-          <AlertTitle>{t.missingFieldsAlert}</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p className="text-sm">
+        <NoticeBanner variant="warning" title={t.missingFieldsAlert}>
+          <div className="space-y-2">
+            <p>
               {t.missingFieldsDesc}
             </p>
-            <ul className="ml-4 list-disc space-y-0.5 text-sm">
+            <ul className="ml-4 list-disc space-y-0.5">
               {missingFields.map((f) => (
                 <li key={f.label}>
                   {f.href ? (
-                    <Link to={f.href} className="underline hover:text-foreground">
+                    <Link to={f.href} className="underline hover:opacity-80">
                       {f.label}
                     </Link>
                   ) : (
@@ -536,8 +530,8 @@ export function PmocContractDocsTab({
                 </li>
               ))}
             </ul>
-          </AlertDescription>
-        </Alert>
+          </div>
+        </NoticeBanner>
       )}
 
       {/* Gate do portal público — libera/oculta os documentos pro cliente final.
@@ -627,16 +621,14 @@ export function PmocContractDocsTab({
         </CardHeader>
         <CardContent className="space-y-4 min-w-0">
           {trtStatus === 'pending' && (
-            <Alert className="border-warning/40 bg-warning/5">
-              <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle>{t.rtSignaturePendingTitle}</AlertTitle>
-              <AlertDescription className="space-y-2">
+            <NoticeBanner variant="warning" title={t.rtSignaturePendingTitle}>
+              <div className="space-y-2">
                 <p>
                   {t.rtSignaturePendingDesc}
                 </p>
                 <Button
                   size="sm"
-                  variant="edit-ghost"
+                  variant="secondary"
                   className="mt-1 min-h-[40px] active:scale-[0.97] transition-transform"
                   onClick={() => setSignatureDialogOpen(true)}
                   disabled={!responsibleTechnicianId}
@@ -645,12 +637,12 @@ export function PmocContractDocsTab({
                   {t.rtSignatureAddBtn}
                 </Button>
                 {!responsibleTechnicianId && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-warning-foreground/80">
                     {t.rtSignatureNoRtHint}
                   </p>
                 )}
-              </AlertDescription>
-            </Alert>
+              </div>
+            </NoticeBanner>
           )}
 
           {/* Stack vertical sempre (mobile-first). No desktop também vertical

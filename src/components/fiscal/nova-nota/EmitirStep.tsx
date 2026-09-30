@@ -1,7 +1,8 @@
-import { ShieldAlert, AlertTriangle, Building2, User, MapPin, FileText, DollarSign } from 'lucide-react';
+import { ShieldAlert, Building2, User, MapPin, FileText, DollarSign } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate } from '@/lib/format';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import type { NfseCustomer, NfseServicoState, NfseValoresState, NfseTaxResult } from './types';
 
 interface EmitirStepProps {
@@ -58,36 +59,24 @@ export function EmitirStep({
     <div className="space-y-4">
       {/* Bloqueios de habilitação */}
       {habilitacaoErrors.length > 0 && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm">
-          <ShieldAlert className="h-5 w-5 shrink-0 text-red-600" />
+        <NoticeBanner variant="destructive" icon={ShieldAlert} title={s.emitir.habilitacaoBlockedTitle}>
           <div className="space-y-0.5">
-            <p className="font-semibold text-red-700 dark:text-red-400">
-              {s.emitir.habilitacaoBlockedTitle}
-            </p>
             {habilitacaoErrors.map((msg, i) => (
-              <p key={i} className="text-red-700/90 dark:text-red-400/90">
-                {msg}
-              </p>
+              <p key={i}>{msg}</p>
             ))}
           </div>
-        </div>
+        </NoticeBanner>
       )}
 
       {/* Avisos não-bloqueantes */}
       {habilitacaoWarnings.length > 0 && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+        <NoticeBanner variant="warning" title={s.emitir.habilitacaoWarningTitle}>
           <div className="space-y-0.5">
-            <p className="font-semibold text-amber-700 dark:text-amber-400">
-              {s.emitir.habilitacaoWarningTitle}
-            </p>
             {habilitacaoWarnings.map((msg, i) => (
-              <p key={i} className="text-amber-700/90 dark:text-amber-400/90">
-                {msg}
-              </p>
+              <p key={i}>{msg}</p>
             ))}
           </div>
-        </div>
+        </NoticeBanner>
       )}
 
       {/* Resumo tipo DANFS-e */}

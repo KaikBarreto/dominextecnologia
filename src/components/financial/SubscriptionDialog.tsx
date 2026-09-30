@@ -4,6 +4,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { formatMoney, toBcp47 } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -622,10 +623,7 @@ export function SubscriptionDialog({
               {netExpanded && (
                 <div className="max-h-[42vh] space-y-2.5 overflow-y-auto border-t border-border px-3 pb-3 pt-3">
                   {feesAreReference && (
-                    <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                      <p className="text-xs leading-snug text-foreground">{tCobrar.net.fallbackWarning}</p>
-                    </div>
+                    <NoticeBanner variant="warning">{tCobrar.net.fallbackWarning}</NoticeBanner>
                   )}
 
                   {simulation && (
@@ -838,14 +836,11 @@ export function SubscriptionDialog({
               })()
             ) : checkoutResult ? (
               <div className="space-y-4">
-                <div className="rounded-lg border border-success/30 bg-success/10 p-4">
-                  <p className="text-sm font-semibold text-foreground">{t.checkout.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {checkoutResult.checkout_kind === 'pix_auto'
-                      ? t.checkout.pixAutoDescription
-                      : t.checkout.cardDescription}
-                  </p>
-                </div>
+                <NoticeBanner variant="success" title={t.checkout.title}>
+                  {checkoutResult.checkout_kind === 'pix_auto'
+                    ? t.checkout.pixAutoDescription
+                    : t.checkout.cardDescription}
+                </NoticeBanner>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">{t.checkout.linkLabel}</Label>

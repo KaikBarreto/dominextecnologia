@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Tables } from '@/integrations/supabase/types';
+import type { Database, Tables } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 export type Compra = Tables<'compras'>;
@@ -39,6 +39,12 @@ export interface CompraMaterialDraft {
 export interface SaveCompraInput {
   title: string;
   notes?: string | null;
+  /**
+   * Local de estoque de DESTINO do recebimento das ordens de compra.
+   * `null` limpa a escolha. No update, `undefined` PRESERVA o valor atual
+   * (form que ainda não tem o campo não pode apagar o destino sem querer).
+   */
+  stockId?: string | null;
   materials: CompraMaterialDraft[];
 }
 
@@ -141,15 +147,21 @@ export function useCompras() {
   const createCompra = useMutation({
     mutationFn: async (input: SaveCompraInput) => {
       if (!companyId) throw new Error('Usuário sem empresa associada. Contate o administrador.');
+      // `numero` é o sequencial por empresa, gerado por trigger no banco. A
+      // coluna é NOT NULL sem DEFAULT, então o tipo gerado a marca como
+      // obrigatória no Insert: daí o cast (mandar o número do client seria
+      // corrida entre abas).
+      const payload = {
+        company_id: companyId,
+        created_by: user?.id ?? null,
+        status: 'aberta',
+        title: input.title.trim(),
+        notes: input.notes ?? null,
+        stock_id: input.stockId ?? null,
+      } as Database['public']['Tables']['compras']['Insert'];
       const { data: header, error: hErr } = await supabase
         .from('compras')
-        .insert({
-          company_id: companyId,
-          created_by: user?.id ?? null,
-          status: 'aberta',
-          title: input.title.trim(),
-          notes: input.notes ?? null,
-        })
+        .insert(payload)
         .select()
         .single();
       if (hErr) throw hErr;
@@ -173,10 +185,14 @@ export function useCompras() {
   const updateCompra = useMutation({
     mutationFn: async ({ id, ...input }: SaveCompraInput & { id: string }) => {
       if (!companyId) throw new Error('Usuário sem empresa associada. Contate o administrador.');
-      const { error: uErr } = await supabase
-        .from('compras')
-        .update({ title: input.title.trim(), notes: input.notes ?? null })
-        .eq('id', id);
+      // `stock_id` só entra no UPDATE quando o payload trouxe a chave: se vier
+      // undefined, o destino atual é preservado (null = limpar de propósito).
+      const patch: { title: string; notes: string | null; stock_id?: string | null } = {
+        title: input.title.trim(),
+        notes: input.notes ?? null,
+      };
+      if (input.stockId !== undefined) patch.stock_id = input.stockId;
+      const { error: uErr } = await supabase.from('compras').update(patch).eq('id', id);
       if (uErr) throw uErr;
       const { error: dErr } = await supabase
         .from('compra_materiais')
@@ -217,6 +233,38 @@ export function useCompras() {
     },
   });
 
+  // ---- Fornecedor escolhido POR MATERIAL (base da ordem de compra) ----
+  // `chosen_cotacao_id` = de qual cotação sai este material. É o que agrupa os
+  // materiais por fornecedor na hora de gerar as O.C. (useCompraOrdens).
+  // `null` limpa a escolha e tira o material das próximas ordens.
+  //
+  // Sem toast de sucesso de propósito: é autosave inline de um select, e toast a
+  // cada troca vira ruído. Falha SEMPRE avisa.
+  const setChosenCotacao = useMutation<
+    void,
+    Error,
+    { compraMaterialId: string; cotacaoId: string | null }
+  >({
+    mutationFn: async ({ compraMaterialId, cotacaoId }) => {
+      const { error } = await supabase
+        .from('compra_materiais')
+        .update({ chosen_cotacao_id: cotacaoId })
+        .eq('id', compraMaterialId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compras'] });
+      queryClient.invalidateQueries({ queryKey: ['compra-cotacoes'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erro ao escolher o fornecedor',
+        description: getErrorMessage(error),
+        variant: 'destructive',
+      });
+    },
+  });
+
   // ---- Excluir compra (CASCADE remove materiais, cotações e preços) ----
   const deleteCompra = useMutation({
     mutationFn: async (id: string) => {
@@ -240,6 +288,7 @@ export function useCompras() {
     createCompra,
     updateCompra,
     setStatus,
+    setChosenCotacao,
     deleteCompra,
   };
 }

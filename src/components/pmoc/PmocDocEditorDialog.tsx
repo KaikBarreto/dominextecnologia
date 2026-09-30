@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, RotateCcw, Save, Building2, Eye } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -292,9 +293,7 @@ export function PmocDocEditorDialog({
       >
         <div className="space-y-3 px-1 pt-1 sm:px-2">
           {helperText && (
-            <p className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info">
-              {helperText}
-            </p>
+            <NoticeBanner variant="info">{helperText}</NoticeBanner>
           )}
           <PmocRichTextEditor
             value={html}

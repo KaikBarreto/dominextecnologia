@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, PackageSearch, PencilLine, AlertTriangle, PackagePlus } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
@@ -60,9 +61,10 @@ const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', '
 export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchaseEditor;
+  const tCompras = MESSAGES[locale].app.inventory.compras;
   const tMat = t.materials;
   const { items: inventory } = useInventory();
-  const { stocks } = useStocks();
+  const { stocks, defaultStock } = useStocks();
   const { lowStockRows, lowStockInventoryIds, isLoading: loadingLowStock, getByStock } = useLowStock();
   const { toast } = useToast();
   const { loadCompra, createCompra, updateCompra } = useCompras();
@@ -73,6 +75,10 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
   const [rows, setRows] = useState<MaterialRow[]>([]);
   const [originToAdd, setOriginToAdd] = useState<Origin>('estoque');
   const [loading, setLoading] = useState(false);
+  // Local de estoque onde o recebimento das O.C. desta requisição vai dar
+  // entrada. Default = depósito principal; requisições antigas (stock_id nulo)
+  // também caem no default assim que os locais carregarem (efeito abaixo).
+  const [stockId, setStockId] = useState<string>('');
 
   // Texto CRU da quantidade, por linha (chave = MaterialRow.key). O número em
   // rows.quantity segue sendo o que vai pro save; este espelho existe porque um
@@ -96,6 +102,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
         setRows([]);
         setQtyText({});
         setOriginToAdd('estoque');
+        setStockId('');
         return;
       }
       setLoading(true);
@@ -104,6 +111,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
         if (cancelled) return;
         setTitle(c.title);
         setNotes(c.notes ?? '');
+        setStockId(c.stock_id ?? '');
         setRows(materials.map((m) => ({
           key: m.id,
           origin: m.inventory_id ? 'estoque' : 'manual',
@@ -129,6 +137,15 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
       if (def) setBelowMinStockId(def.id);
     }
   }, [belowMinOpen, stocks, belowMinStockId]);
+
+  // Destino no estoque: aplica o depósito principal assim que os locais
+  // carregarem, se o modal está aberto e ainda não há um selecionado (nova
+  // requisição, ou requisição antiga salva antes deste campo existir).
+  useEffect(() => {
+    if (open && !loading && !stockId && defaultStock) {
+      setStockId(defaultStock.id);
+    }
+  }, [open, loading, stockId, defaultStock]);
 
   const inventoryById = new Map(inventory.map((i) => [i.id, i]));
 
@@ -244,7 +261,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
       unit: r.unit,
       quantity: r.quantity,
     }));
-    const payload = { title: title.trim(), notes: notes.trim() || null, materials };
+    const payload = { title: title.trim(), notes: notes.trim() || null, materials, stockId: stockId || null };
     if (editingId) {
       await updateCompra.mutateAsync({ id: editingId, ...payload });
     } else {
@@ -279,9 +296,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
         ) : (
           <div className="space-y-5">
             {editingId && compra && compra.cotacao_count > 0 && (
-              <p className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
-                {t.cotacaoWarning}
-              </p>
+              <NoticeBanner variant="warning">{t.cotacaoWarning}</NoticeBanner>
             )}
 
             {/* Título */}
@@ -292,6 +307,22 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={t.fields.titlePlaceholder}
               />
+            </div>
+
+            {/* Local de estoque de destino do recebimento */}
+            <div className="space-y-1.5">
+              <Label>{tCompras.stockDestination}</Label>
+              <Select value={stockId} onValueChange={setStockId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={tCompras.stockDestination} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stocks.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{tCompras.stockDestinationHint}</p>
             </div>
 
             {/* Materiais */}

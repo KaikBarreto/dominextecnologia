@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Zap } from 'lucide-react';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
 import {
@@ -223,14 +224,9 @@ export function CalculadoraFontePSU() {
           </div>
         </div>
 
-        <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
-          <div className="flex items-start gap-2">
-            <Zap className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {t.marginNote}
-            </p>
-          </div>
-        </div>
+        <NoticeBanner variant="neutral" icon={Zap}>
+          {t.marginNote}
+        </NoticeBanner>
       </div>
 
       <ToolDisclaimer texto={t.disclaimer} />

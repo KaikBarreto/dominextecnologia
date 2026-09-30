@@ -54,7 +54,7 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
           <div className="space-y-2">
-            <button type="button" onClick={onOpenIncome} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer group">
+            <button type="button" onClick={onOpenIncome} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-muted/40 border border-border/50 hover:bg-muted transition-all cursor-pointer group">
               <div className="flex-shrink-0 w-12 h-12 rounded-full bg-emerald-500 ring-4 ring-emerald-600/30 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <TrendingUp className="h-6 w-6 text-white" />
               </div>
@@ -68,7 +68,7 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
             </Button>
           </div>
           <div className="space-y-2">
-            <button type="button" onClick={onOpenExpense} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all cursor-pointer group">
+            <button type="button" onClick={onOpenExpense} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-muted/40 border border-border/50 hover:bg-muted transition-all cursor-pointer group">
               <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500 ring-4 ring-red-600/30 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <TrendingDown className="h-6 w-6 text-white" />
               </div>

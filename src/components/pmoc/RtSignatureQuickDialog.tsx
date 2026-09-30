@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Upload, X, ImageIcon, Camera, Pen, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, X, ImageIcon, Camera, Pen } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -223,12 +224,9 @@ export function RtSignatureQuickDialog({
           </Tabs>
         </div>
 
-        <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-2.5 py-2 text-xs">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
-          <span>
-            {trt.sigWarning}
-          </span>
-        </div>
+        <NoticeBanner variant="warning">
+          {trt.sigWarning}
+        </NoticeBanner>
       </div>
     </ResponsiveModal>
   );

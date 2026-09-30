@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
@@ -275,8 +276,8 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
   return (
-    <div className="rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800 p-3 space-y-2">
-      <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300">
+    <div className="rounded-lg border border-border bg-muted p-3 space-y-2">
+      <div className="flex items-center gap-2 text-foreground">
         <CreditCard className="h-4 w-4 shrink-0" />
         <p className="text-sm font-medium">{tf.creditCardSection.title}</p>
       </div>
@@ -287,13 +288,13 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
           próprio dia do fechamento cai na fatura seguinte. */}
       {installmentBreakdown ? (
         <div className="space-y-1">
-          <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Info className="h-3 w-3 shrink-0" />
             {tf.creditCardSection.installmentInfo.replace('{count}', String(installmentCount)).replace('{card}', cardName)}
           </p>
           <div className="space-y-0.5 pl-4">
             {installmentBreakdown.map(({ num, label, amount }) => (
-              <div key={num} className="flex justify-between text-xs text-violet-700 dark:text-violet-300">
+              <div key={num} className="flex justify-between text-xs text-foreground">
                 <span className="capitalize">
                   {tf.creditCardSection.installmentRow
                     .replace('{num}', String(num))
@@ -307,7 +308,7 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
         </div>
       ) : (
         billLabel && (
-          <p className="text-sm font-medium text-violet-700 dark:text-violet-300 capitalize">
+          <p className="text-sm font-medium text-foreground capitalize">
             {tf.creditCardSection.singleBillRow
               .replace('{month}', billLabel)
               .replace('{amount}', fmt(totalAmount))}
@@ -315,7 +316,7 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
         )
       )}
 
-      <p className="text-[11px] text-violet-600/80 dark:text-violet-400/80 flex items-start gap-1">
+      <p className="text-[11px] text-muted-foreground flex items-start gap-1">
         <Info className="h-3 w-3 shrink-0 mt-0.5" />
         {tf.creditCardSection.notOnCashFlowNote}
       </p>
@@ -323,10 +324,10 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
       {!installmentBreakdown && (
         <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs text-violet-700 dark:text-violet-300">{tf.creditCardSection.billMonthLabel}</FormLabel>
+            <FormLabel className="text-xs">{tf.creditCardSection.billMonthLabel}</FormLabel>
             <Select onValueChange={field.onChange} value={field.value || ''}>
               <FormControl>
-                <SelectTrigger className="h-8 text-sm border-violet-300 dark:border-violet-700">
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder={tf.creditCardSection.billMonthPlaceholder} />
                 </SelectTrigger>
               </FormControl>
@@ -483,10 +484,7 @@ function CardReceiptModeSection({ form, installmentCount, totalAmount, transacti
             ) : !simulation ? null : (
               <>
                 {feesAreReference && (
-                  <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                    <p className="text-xs leading-snug">{t.referenceWarning}</p>
-                  </div>
+                  <NoticeBanner variant="warning">{t.referenceWarning}</NoticeBanner>
                 )}
 
                 <dl className="space-y-1.5 text-sm">
@@ -744,10 +742,9 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
       <p className="text-xs text-muted-foreground">{tf.attachmentsHint}</p>
 
       {showInstallmentInfo && (
-        <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md p-2 flex items-start gap-1.5">
-          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>{tf.attachmentsInstallmentInfo.replace('{count}', String(installmentCount))}</span>
-        </p>
+        <NoticeBanner variant="info">
+          {tf.attachmentsInstallmentInfo.replace('{count}', String(installmentCount))}
+        </NoticeBanner>
       )}
     </div>
   );
@@ -1561,13 +1558,10 @@ export function TransactionFormDialog({
 
           {/* Account */}
           {accounts.length === 0 ? (
-            <div className="lg:col-span-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">{tf.noAccountTitle}</p>
-              <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                {tf.noAccountDescription}{' '}
-                <a href="/financeiro/caixas-bancos" className="underline font-medium">{tf.noAccountLink}</a>
-              </p>
-            </div>
+            <NoticeBanner variant="warning" title={tf.noAccountTitle} className="lg:col-span-2">
+              {tf.noAccountDescription}{' '}
+              <a href="/financeiro/caixas-bancos" className="underline font-medium">{tf.noAccountLink}</a>
+            </NoticeBanner>
           ) : (
             <FormField control={form.control} name="account_id" render={({ field }) => (
               <FormItem>

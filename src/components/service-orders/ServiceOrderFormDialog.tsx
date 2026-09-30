@@ -43,6 +43,7 @@ import { ChecklistPreviewDialog } from '@/components/service-orders/ChecklistPre
 import { CepLookup } from '@/components/CepLookup';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -1341,12 +1342,7 @@ export function ServiceOrderFormDialog({
                   <FormItem>
                     <FormLabel>{t.labelDescription}</FormLabel>
                     {isPmocOrder && (
-                      <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground sm:text-sm">
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
-                        <p className="leading-relaxed">
-                          {t.pmocDescriptionWarning}
-                        </p>
-                      </div>
+                      <NoticeBanner variant="warning">{t.pmocDescriptionWarning}</NoticeBanner>
                     )}
                     <FormControl><Textarea placeholder={t.placeholderDescription} {...field} /></FormControl>
                     <FormMessage />

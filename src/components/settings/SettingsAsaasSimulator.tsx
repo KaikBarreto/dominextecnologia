@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -157,13 +158,9 @@ export function SettingsAsaasSimulator() {
     <div className="space-y-4">
       {/* Aviso de conta não conectada: a aba é argumento de venda, não some. */}
       {!isActive && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium leading-tight">{t.notConnectedTitle}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{t.notConnectedDesc}</p>
-          </div>
-        </div>
+        <NoticeBanner variant="warning" title={t.notConnectedTitle}>
+          {t.notConnectedDesc}
+        </NoticeBanner>
       )}
 
       <Card>

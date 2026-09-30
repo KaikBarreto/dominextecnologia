@@ -84,7 +84,14 @@ export function useInventory() {
   // Saldos por estoque — fonte de verdade do novo modelo multi-depósito.
   // Consultado separado pra não poluir a query principal e ser invalidado
   // independentemente (transferências, movimentos, etc.).
-  const { data: stockLevels = [] } = useQuery({
+  //
+  // `isSuccess` vira `stockLevelsLoaded`: é o sinal de "já tenho a resposta do
+  // servidor" (fica true mesmo quando a resposta é lista vazia, e continua true
+  // em refetches de fundo — não pisca pra false a cada invalidate). Os dialogs
+  // de presença (InventoryFormDialog, StockConfiguratorDialog) usam esse sinal
+  // pra nunca hidratar um checkbox em cima do default permissivo de
+  // `getPresenceForStock` antes dos levels reais chegarem.
+  const { data: stockLevels = [], isSuccess: stockLevelsLoaded } = useQuery({
     queryKey: ['inventory-stock-levels'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -463,6 +470,7 @@ export function useInventory() {
   return {
     items,
     stockLevels,
+    stockLevelsLoaded,
     isLoading,
     error,
     createItem,

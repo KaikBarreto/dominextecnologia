@@ -64,14 +64,16 @@ interface ServiceOrderViewDialogProps {
   onStatusChange?: (newStatus: OsStatus) => Promise<void> | void;
 }
 
+// Régua do CEO: selo de status é SATURADO com texto e ícone brancos, nunca
+// pastel com texto na cor.
 const statusColors: Record<OsStatus, string> = {
-  agendada: 'bg-violet-500/10 text-violet-600 border-violet-500',
-  pendente: 'bg-warning/10 text-warning border-warning',
-  a_caminho: 'bg-indigo-500/10 text-indigo-600 border-indigo-500',
-  em_andamento: 'bg-info/10 text-info border-info',
-  pausada: 'bg-amber-600/10 text-amber-600 border-amber-600',
-  concluida: 'bg-success/10 text-success border-success',
-  cancelada: 'bg-destructive/10 text-destructive border-destructive',
+  agendada: 'bg-violet-500 text-white border-transparent',
+  pendente: 'bg-warning text-warning-foreground border-transparent',
+  a_caminho: 'bg-indigo-500 text-white border-transparent',
+  em_andamento: 'bg-info text-info-foreground border-transparent',
+  pausada: 'bg-amber-600 text-white border-transparent',
+  concluida: 'bg-success text-success-foreground border-transparent',
+  cancelada: 'bg-destructive text-destructive-foreground border-transparent',
 };
 
 // Helper de imagem do dialog: usa SignedImg (resolve signed URLs de buckets privados).
@@ -266,13 +268,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           parcial: 'warning',
           nao_conforme: 'destructive',
         } as const;
-        const CONFORMITY_BORDER = {
-          conforme: 'border-success/40 bg-success/5',
-          parcial: 'border-warning/40 bg-warning/5',
-          nao_conforme: 'border-destructive/40 bg-destructive/5',
-        } as const;
         return (
-          <Card className={CONFORMITY_BORDER[status]}>
+          <Card>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium">{tv.sectionConformity}</h4>
@@ -466,7 +463,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                   ((min != null && numericValue < min) || (max != null && numericValue > max));
                 return (
                   <div className="space-y-1 mt-1">
-                    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2 py-0.5 rounded-md ${isOutOfRange ? 'bg-amber-100 text-amber-800' : 'bg-muted text-foreground'}`}>
+                    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2 py-0.5 rounded-md ${isOutOfRange ? 'bg-warning text-warning-foreground' : 'bg-muted text-foreground'}`}>
                       {isOutOfRange && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
                       {response.response_value}{unit ? ` ${unit}` : ''}
                     </span>

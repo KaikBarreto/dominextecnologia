@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Loader2, Copy, RefreshCw, Clock, KeyRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -162,13 +163,10 @@ export function AdminLoginTokenModal({ open, onOpenChange }: AdminLoginTokenModa
             </ol>
           </div>
 
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
-            <KeyRound className="h-4 w-4 text-warning mt-0.5 shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              O token expira a cada <strong>30 minutos</strong> e funciona como senha para qualquer
-              usuário. Todos os acessos ficam registrados para auditoria.
-            </p>
-          </div>
+          <NoticeBanner variant="warning" icon={KeyRound}>
+            O token expira a cada <strong>30 minutos</strong> e funciona como senha para qualquer
+            usuário. Todos os acessos ficam registrados para auditoria.
+          </NoticeBanner>
         </div>
       </div>
     </ResponsiveModal>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Eye, Loader2, XCircle, Ban } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -127,9 +128,7 @@ export function ManifestarDialog({ open, onOpenChange, nota, submitting, onConfi
     >
       <div className="space-y-4">
         {alreadyPending && (
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-            {t.alreadyPending}
-          </div>
+          <NoticeBanner variant="warning">{t.alreadyPending}</NoticeBanner>
         )}
 
         <div className="space-y-2">

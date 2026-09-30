@@ -4,7 +4,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -123,13 +123,10 @@ export function PmocQuickCreateRTDialog({
       }
     >
       <div className="space-y-4 py-2">
-        <Alert className="border-info/40 bg-info/5">
-          <ShieldCheck className="h-4 w-4 text-info" />
-          <AlertDescription className="text-xs">
-            {trt.quickHint}
-            <strong>{trt.quickHintLink}</strong>.
-          </AlertDescription>
-        </Alert>
+        <NoticeBanner variant="info" icon={ShieldCheck}>
+          {trt.quickHint}
+          <strong>{trt.quickHintLink}</strong>.
+        </NoticeBanner>
 
         <div className="space-y-1.5">
           <Label htmlFor="quick-rt-name">

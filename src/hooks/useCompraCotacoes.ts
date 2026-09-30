@@ -246,86 +246,20 @@ export function useCompraCotacoes(compraId: string | null) {
     },
   });
 
-  // ---- Registrar entrada no estoque (cotação aceita) ----
-  // Para cada material da compra:
-  //  - item do estoque (inventory_id) → entrada via RPC register_inventory_movement.
-  //  - item manual → cria no estoque (quantity 0) e então dá a entrada.
-  // Aceitar a cotação NÃO mexe no estoque; só esta ação manual mexe.
-  const registerStockEntry = useMutation({
-    mutationFn: async ({
-      cotacaoId,
-      supplierId,
-      compraTitle,
-    }: {
-      cotacaoId: string;
-      supplierId: string;
-      compraTitle: string;
-    }) => {
-      if (!companyId) throw new Error('Usuário sem empresa associada. Contate o administrador.');
-      if (!compraId) throw new Error('Compra inválida.');
-
-      const [matsRes, prices] = await Promise.all([
-        supabase.from('compra_materiais').select('*').eq('compra_id', compraId),
-        loadPrices(cotacaoId),
-      ]);
-      if (matsRes.error) throw matsRes.error;
-      const mats = (matsRes.data ?? []) as CompraMaterial[];
-      const priceByMaterial = new Map<string, number>(
-        prices.map((p) => [p.compra_material_id, p.unit_price]),
-      );
-
-      let count = 0;
-      for (const mat of mats) {
-        if (!(mat.quantity > 0)) continue;
-        const unitCost = priceByMaterial.get(mat.id);
-        let inventoryId = mat.inventory_id;
-
-        // Material manual: cria no estoque antes da entrada.
-        if (!inventoryId) {
-          const { data: created, error: cErr } = await supabase
-            .from('inventory')
-            .insert({
-              company_id: companyId,
-              name: mat.material_name ?? 'Material',
-              unit: mat.unit ?? 'un',
-              cost_price: unitCost ?? 0,
-              quantity: 0,
-            })
-            .select('id')
-            .single();
-          if (cErr) throw cErr;
-          inventoryId = created.id;
-          // Liga o material da compra ao novo item de estoque (rastreio).
-          await supabase
-            .from('compra_materiais')
-            .update({ inventory_id: inventoryId })
-            .eq('id', mat.id);
-        }
-
-        const { error } = await supabase.rpc('register_inventory_movement', {
-          p_inventory_id: inventoryId,
-          p_movement_type: 'entrada',
-          p_quantity: Math.abs(mat.quantity),
-          p_supplier_id: supplierId,
-          p_unit_cost: unitCost,
-          p_notes: `Entrada da compra: ${compraTitle}`,
-        });
-        if (error) throw error;
-        count += 1;
-      }
-      return { count };
-    },
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['compra-cotacoes', compraId] });
-      queryClient.invalidateQueries({ queryKey: ['compras'] });
-      toast({ title: `Entrada registrada (${res.count} ${res.count === 1 ? 'item' : 'itens'}).` });
-    },
-    onError: (error) => {
-      toast({ title: 'Erro ao registrar entrada', description: getErrorMessage(error), variant: 'destructive' });
-    },
-  });
+  // ---- NÃO EXISTE MAIS: registerStockEntry ----------------------------------
+  // Tinha um "Registrar entrada no estoque" aqui, na cotação aceita, que dava
+  // entrada de TUDO de uma vez e sem local de destino (caía sempre no estoque
+  // principal, furando o multi-local).
+  //
+  // Foi REMOVIDO de propósito: com a Ordem de Compra, existiria uma SEGUNDA
+  // porta de entrada e dava pra duplicar saldo (receber pela O.C. e ainda clicar
+  // no botão antigo). O índice único do banco não cobre esse caso, ele só impede
+  // duas O.C. em aberto pro mesmo fornecedor.
+  //
+  // A entrada no estoque agora é EXCLUSIVA do recebimento da O.C.:
+  // `useCompraOrdens().receber` → RPC `receber_ordem_compra` (atômica, respeita
+  // `compras.stock_id`). Não ressuscite este atalho.
+  // ---------------------------------------------------------------------------
 
   return {
     cotacoes: listQuery.data ?? [],
@@ -337,6 +271,5 @@ export function useCompraCotacoes(compraId: string | null) {
     savePrices,
     decideCotacao,
     deleteCotacao,
-    registerStockEntry,
   };
 }

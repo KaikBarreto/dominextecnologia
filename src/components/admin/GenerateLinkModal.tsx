@@ -20,6 +20,7 @@ import {
   Unlock, Lock, Sparkles,
 } from 'lucide-react';
 import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, BASE_MODULE_CODES } from './ModuleGrid';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { readPastedCents } from '@/lib/money-paste-mask';
 
@@ -628,15 +629,9 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
           )}
 
           {planMode !== 'livre' && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Lock className="h-4 w-4 text-amber-600 mt-0.5" />
-                <div className="text-xs text-amber-700 dark:text-amber-400">
-                  <p className="font-medium">Plano bloqueado para o cliente</p>
-                  <p className="mt-1">O cliente não poderá alterar o plano na tela de cadastro.</p>
-                </div>
-              </div>
-            </div>
+            <NoticeBanner variant="warning" icon={Lock} title="Plano bloqueado para o cliente">
+              O cliente não poderá alterar o plano na tela de cadastro.
+            </NoticeBanner>
           )}
         </TabsContent>
       </Tabs>

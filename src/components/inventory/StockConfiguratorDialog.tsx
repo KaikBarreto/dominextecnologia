@@ -3,7 +3,7 @@
  * Abre via botão "Configurar itens deste local" na aba do local ativo (Inventory.tsx).
  * Mobile = drawer (ResponsiveModal), desktop = modal.
  */
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Package, Search, Settings2, Users, AlertCircle } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -12,6 +12,7 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { fuzzyIncludes } from '@/lib/utils';
@@ -41,21 +42,53 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.stockConfigurator;
   const { toast } = useToast();
-  const { items, getPresenceForStock, addGroupToStock, setStockMaterials } = useInventory();
+  const { items, isLoading: itemsLoading, getPresenceForStock, addGroupToStock, setStockMaterials, stockLevelsLoaded } = useInventory();
   const { groups } = useMaterialGroups();
 
   const [search, setSearch] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
-  // Estado local de presença: { [inventoryId]: boolean }
-  const [presenceMap, setPresenceMap] = useState<Record<string, boolean>>(() => {
+  // Estado local de presença: { [inventoryId]: boolean }. Nasce vazio de
+  // propósito: só é preenchido pelo efeito de hidratação abaixo, depois de
+  // stockLevels (fonte de verdade) e items terem carregado.
+  const [presenceMap, setPresenceMap] = useState<Record<string, boolean>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
+
+  // Trava de hidratação: mesma lógica do InventoryFormDialog. `hydratedRef`
+  // garante UMA hidratação por abertura (não deixa um refetch em background
+  // sobrescrever o que o usuário já mexeu); `itemsHydrated` (estado) é o que a
+  // UI usa pra skeleton/controles desabilitados e pra travar o Salvar.
+  const hydratedRef = useRef(false);
+  const [itemsHydrated, setItemsHydrated] = useState(false);
+  const stocksSectionReady = stockLevelsLoaded && !itemsLoading;
+
+  // Zera a trava a cada abertura (ou troca do local sendo configurado).
+  useEffect(() => {
+    hydratedRef.current = false;
+    setItemsHydrated(false);
+  }, [open, stock.id]);
+
+  // Hidrata presença UMA VEZ por abertura, só depois de stocksSectionReady —
+  // nunca antes. Mesma correção do InventoryFormDialog: sem essa trava, abrir
+  // o dialog antes da query de stockLevels resolver fazia getPresenceForStock
+  // cair no default permissivo (true) pra todo material.
+  useEffect(() => {
+    if (!open) return;
+    if (hydratedRef.current) return;
+    if (!stocksSectionReady) return;
     const map: Record<string, boolean> = {};
     for (const item of items) {
       map[item.id] = getPresenceForStock(item.id, stock.id);
     }
-    return map;
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [isAddingGroup, setIsAddingGroup] = useState(false);
+    setPresenceMap(map);
+    hydratedRef.current = true;
+    setItemsHydrated(true);
+    // items/getPresenceForStock mudam de identidade a cada render (a segunda é
+    // recriada a cada chamada de useInventory()) — não entram nas deps pra não
+    // disparar o efeito em todo render; o gate real é open + stocksSectionReady,
+    // com hydratedRef travando a segunda execução.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, stock.id, stocksSectionReady]);
 
   // --- Aba ativa (Itens | Acesso) ---
   const [activeTab, setActiveTab] = useState<'items' | 'access'>('items');
@@ -96,14 +129,11 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [access, users]);
 
-  // Re-inicializa quando o dialog abre (garante dados frescos do cache)
+  // Reseta busca/grupo/aba ao abrir. A hidratação de presenceMap é feita pelo
+  // efeito acima (guardado por hydratedRef) — não aqui, pra nunca rodar antes
+  // de stocksSectionReady.
   const handleOpenChange = (v: boolean) => {
     if (v) {
-      const map: Record<string, boolean> = {};
-      for (const item of items) {
-        map[item.id] = getPresenceForStock(item.id, stock.id);
-      }
-      setPresenceMap(map);
       setSearch('');
       setSelectedGroupId('');
       setActiveTab('items');
@@ -153,7 +183,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   };
 
   const handleAddGroup = async () => {
-    if (!selectedGroupId) return;
+    if (!selectedGroupId || !itemsHydrated) return;
     setIsAddingGroup(true);
     try {
       await addGroupToStock.mutateAsync({ stockId: stock.id, groupId: selectedGroupId });
@@ -173,8 +203,14 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   };
 
   const handleSave = async () => {
+    if (!itemsHydrated) return;
     setIsSaving(true);
-    const presentIds = items.filter((i) => presenceMap[i.id] !== false).map((i) => i.id);
+    // Só considera chaves que EXISTEM no mapa — ausente do mapa nunca é
+    // tratado como presente (era esse default cego que corrompia a presença
+    // real quando o dialog salvava antes de stockLevels carregar).
+    const presentIds = items
+      .filter((i) => i.id in presenceMap && presenceMap[i.id] === true)
+      .map((i) => i.id);
     try {
       await setStockMaterials.mutateAsync({ stockId: stock.id, inventoryIds: presentIds });
       toast({ title: t.successMessage });
@@ -218,7 +254,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isSaving}>
               {t.cancel}
             </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="flex-1">
+            <Button onClick={handleSave} disabled={isSaving || !itemsHydrated} className="flex-1">
               {isSaving ? t.saving : t.save}
             </Button>
           </div>
@@ -274,7 +310,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
               size="sm"
               className="shrink-0"
               onClick={handleAddGroup}
-              disabled={!selectedGroupId || isAddingGroup}
+              disabled={!selectedGroupId || isAddingGroup || !itemsHydrated}
             >
               {t.addByGroupButton}
             </Button>
@@ -294,19 +330,38 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
 
         {/* Marcar / Desmarcar todos */}
         <div className="flex items-center gap-2">
-          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleMarkAll} disabled={allSelected}>
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleMarkAll} disabled={!itemsHydrated || allSelected}>
             {t.markAll}
           </Button>
-          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleUnmarkAll} disabled={noneSelected}>
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleUnmarkAll} disabled={!itemsHydrated || noneSelected}>
             {t.unmarkAll}
           </Button>
-          <span className="text-xs text-muted-foreground ml-auto">
-            {items.filter((i) => presenceMap[i.id] !== false).length}/{items.length}
-          </span>
+          {itemsHydrated ? (
+            <span className="text-xs text-muted-foreground ml-auto">
+              {items.filter((i) => presenceMap[i.id] !== false).length}/{items.length}
+            </span>
+          ) : (
+            <Skeleton className="h-3 w-10 ml-auto" />
+          )}
         </div>
 
         {/* Lista de materiais */}
-        {items.length === 0 ? (
+        {!itemsHydrated ? (
+          // Skeleton: nasce aqui em vez do estado "tudo marcado" enquanto os
+          // stockLevels ainda não chegaram — era esse default permissivo que
+          // corrompia a presença real ao salvar, antes desta correção.
+          <div className="rounded-xl border divide-y max-h-[400px] overflow-y-auto">
+            {Array.from({ length: Math.max(items.length, 3) }).map((_, idx) => (
+              <div key={idx} className="flex items-center gap-3 px-3 py-2.5">
+                <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <Skeleton className="h-2 w-2 rounded-full shrink-0" />
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
           <EmptyState
             size="compact"
             icon={<Package className="h-10 w-10" />}

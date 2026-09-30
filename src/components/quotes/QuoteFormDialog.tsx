@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -192,7 +192,7 @@ function ServiceItemsList({
                       <span>{item.description}</span>
                     </button>
                     {!hasCosts && (
-                      <Badge variant="outline" className="ml-5 mt-0.5 text-[10px] text-amber-600 border-amber-300 bg-amber-50">
+                      <Badge variant="warning" className="ml-5 mt-0.5 text-[10px]">
                         {tq.serviceNoCosts}
                       </Badge>
                     )}
@@ -983,14 +983,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       <div className="flex items-center gap-2">
         <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title={tq.bdiHeader} />
         <Badge
-          variant="outline"
-          className={`text-xs font-mono ml-auto px-2.5 py-0.5 ${
-            bdiDanger
-              ? 'border-destructive/50 bg-destructive/10 text-destructive'
-              : bdiWarning
-                ? 'border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
-                : 'border-primary/30 bg-primary/5 text-primary'
-          }`}
+          variant={bdiDanger ? 'destructive' : bdiWarning ? 'warning' : 'default'}
+          className="text-xs font-mono ml-auto px-2.5 py-0.5"
         >
           BDI {(bdiFactor * 100).toFixed(1)}%
         </Badge>
@@ -1026,18 +1020,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const summaryBlock = (
     <section className="space-y-3">
       {hasPricing && bdiDanger && (
-        <Alert variant="destructive" className="border-destructive/50">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{tq.bdiAlertDanger}</AlertDescription>
-        </Alert>
+        <NoticeBanner variant="destructive" icon={AlertTriangle}>
+          {tq.bdiAlertDanger}
+        </NoticeBanner>
       )}
       {hasPricing && bdiWarning && !bdiDanger && (
-        <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-700 dark:text-amber-400">
-            {tq.bdiAlertWarning}
-          </AlertDescription>
-        </Alert>
+        <NoticeBanner variant="warning" icon={AlertTriangle}>
+          {tq.bdiAlertWarning}
+        </NoticeBanner>
       )}
       {hasPricing ? (
         <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />

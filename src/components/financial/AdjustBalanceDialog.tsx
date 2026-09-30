@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { ArrowDownCircle, ArrowUpCircle, Loader2 } from 'lucide-react';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
@@ -179,23 +180,16 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
               {t.neutralMessage}
             </div>
           ) : (
-            <div className={cn(
-              'rounded-lg border px-4 py-3 flex items-center gap-3',
-              isEntrada ? 'border-success/40 bg-success/5' : 'border-destructive/40 bg-destructive/5'
-            )}>
-              {isEntrada ? (
-                <ArrowUpCircle className="h-5 w-5 text-success shrink-0" />
-              ) : (
-                <ArrowDownCircle className="h-5 w-5 text-destructive shrink-0" />
-              )}
-              <p className="text-sm">
-                {t.adjustEntryPrefix}{' '}
-                <span className={cn('font-bold', isEntrada ? 'text-success' : 'text-destructive')}>
-                  {isEntrada ? '+' : '−'}R$ {formatBRL(Math.abs(delta))}
-                </span>{' '}
-                <span className="text-muted-foreground">({isEntrada ? t.directionEntrada : t.directionSaida})</span>.
-              </p>
-            </div>
+            <NoticeBanner
+              variant={isEntrada ? 'success' : 'destructive'}
+              icon={isEntrada ? ArrowUpCircle : ArrowDownCircle}
+            >
+              {t.adjustEntryPrefix}{' '}
+              <span className="font-bold">
+                {isEntrada ? '+' : '−'}R$ {formatBRL(Math.abs(delta))}
+              </span>{' '}
+              ({isEntrada ? t.directionEntrada : t.directionSaida}).
+            </NoticeBanner>
           )}
 
         </div>

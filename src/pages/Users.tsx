@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -577,25 +578,19 @@ export default function Users() {
       <div className="space-y-4">
           {/* Aviso de limite atingido: convida a contratar mais usuários */}
           {!canAddUser && canManageRoles && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                  <UsersIcon className="h-5 w-5 text-amber-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {t.limitTitle.replace('{count}', String(currentUserCount)).replace('{max}', String(maxUsers))}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.limitDesc}
-                  </p>
-                </div>
-              </div>
-              <Button size="sm" className="shrink-0" onClick={() => setUserLimitOpen(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                {t.btnHireMore}
-              </Button>
-            </div>
+            <NoticeBanner
+              variant="warning"
+              icon={UsersIcon}
+              title={t.limitTitle.replace('{count}', String(currentUserCount)).replace('{max}', String(maxUsers))}
+              action={
+                <Button size="sm" onClick={() => setUserLimitOpen(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {t.btnHireMore}
+                </Button>
+              }
+            >
+              {t.limitDesc}
+            </NoticeBanner>
           )}
 
           {/* Search */}

@@ -2561,7 +2561,7 @@ function ModelCard({
       instalacao: 'bg-sky-500 text-white',
       servico: 'bg-amber-500 text-white',
       usuario: 'bg-muted text-muted-foreground',
-      guia: 'bg-teal-500/15 text-teal-700 dark:text-teal-300',
+      guia: 'bg-muted text-muted-foreground',
     }[model.manual_type ?? ''] ?? 'bg-muted text-muted-foreground';
 
   const temBadges =
@@ -2936,7 +2936,7 @@ function CodigosErro({
               )}
 
               {ecSolution && (
-                <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
+                <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                     <Wrench className="h-3.5 w-3.5" />
                     {t.solution}

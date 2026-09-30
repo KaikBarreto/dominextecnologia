@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, AlertTriangle, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -588,14 +589,11 @@ function ConversaoNumericaView({
     </div>
 
       {mostrarAvisoHpBtu && (
-        <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-          <p className="text-xs leading-relaxed">
-            {t.hpBtuNote
-              .replace('{energy}', t.calcModeEnergy)
-              .replace('{refrigeration}', t.calcModeRefrigeration)}
-          </p>
-        </div>
+        <NoticeBanner variant="neutral" icon={AlertTriangle}>
+          {t.hpBtuNote
+            .replace('{energy}', t.calcModeEnergy)
+            .replace('{refrigeration}', t.calcModeRefrigeration)}
+        </NoticeBanner>
       )}
 
       <ToolDisclaimer />

@@ -66,21 +66,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_crm_followup_template: {
-        Row: {
-          offset_days: number
-          step: number
-        }
-        Insert: {
-          offset_days: number
-          step: number
-        }
-        Update: {
-          offset_days?: number
-          step?: number
-        }
-        Relationships: []
-      }
       admin_crm_checklist_templates: {
         Row: {
           created_at: string
@@ -102,6 +87,21 @@ export type Database = {
           items?: Json
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_crm_followup_template: {
+        Row: {
+          offset_days: number
+          step: number
+        }
+        Insert: {
+          offset_days: number
+          step: number
+        }
+        Update: {
+          offset_days?: number
+          step?: number
         }
         Relationships: []
       }
@@ -365,12 +365,12 @@ export type Database = {
       }
       admin_leads: {
         Row: {
-          crm_checklists: Json
-          crm_label_ids: string[]
           company_name: string | null
           contact_name: string | null
           created_at: string
           created_by: string | null
+          crm_checklists: Json
+          crm_label_ids: string[]
           email: string | null
           expected_close_date: string | null
           id: string
@@ -389,12 +389,12 @@ export type Database = {
           value: number | null
         }
         Insert: {
-          crm_checklists?: Json
-          crm_label_ids?: string[]
           company_name?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           email?: string | null
           expected_close_date?: string | null
           id?: string
@@ -413,12 +413,12 @@ export type Database = {
           value?: number | null
         }
         Update: {
-          crm_checklists?: Json
-          crm_label_ids?: string[]
           company_name?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           email?: string | null
           expected_close_date?: string | null
           id?: string
@@ -1540,6 +1540,7 @@ export type Database = {
       }
       compra_materiais: {
         Row: {
+          chosen_cotacao_id: string | null
           company_id: string
           compra_id: string
           created_at: string
@@ -1550,6 +1551,7 @@ export type Database = {
           unit: string | null
         }
         Insert: {
+          chosen_cotacao_id?: string | null
           company_id: string
           compra_id: string
           created_at?: string
@@ -1560,6 +1562,7 @@ export type Database = {
           unit?: string | null
         }
         Update: {
+          chosen_cotacao_id?: string | null
           company_id?: string
           compra_id?: string
           created_at?: string
@@ -1570,6 +1573,13 @@ export type Database = {
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "compra_materiais_chosen_cotacao_id_fkey"
+            columns: ["chosen_cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "compra_cotacoes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "compra_materiais_compra_id_fkey"
             columns: ["compra_id"]
@@ -1586,6 +1596,153 @@ export type Database = {
           },
         ]
       }
+      compra_ordem_itens: {
+        Row: {
+          company_id: string
+          compra_material_id: string | null
+          created_at: string
+          id: string
+          inventory_id: string | null
+          material_name: string | null
+          ordem_id: string
+          quantity_ordered: number
+          quantity_received: number
+          unit: string | null
+          unit_price: number | null
+        }
+        Insert: {
+          company_id: string
+          compra_material_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          material_name?: string | null
+          ordem_id: string
+          quantity_ordered: number
+          quantity_received?: number
+          unit?: string | null
+          unit_price?: number | null
+        }
+        Update: {
+          company_id?: string
+          compra_material_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          material_name?: string | null
+          ordem_id?: string
+          quantity_ordered?: number
+          quantity_received?: number
+          unit?: string | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_ordem_itens_compra_material_id_fkey"
+            columns: ["compra_material_id"]
+            isOneToOne: false
+            referencedRelation: "compra_materiais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_ordem_itens_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_ordem_itens_ordem_id_fkey"
+            columns: ["ordem_id"]
+            isOneToOne: false
+            referencedRelation: "compra_ordens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compra_ordens: {
+        Row: {
+          company_id: string
+          compra_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          numero: number
+          received_at: string | null
+          sent_at: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          compra_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          numero: number
+          received_at?: string | null
+          sent_at?: string | null
+          status?: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          compra_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          numero?: number
+          received_at?: string | null
+          sent_at?: string | null
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_ordens_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_ordens_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compra_ordens_number_counters: {
+        Row: {
+          company_id: string
+          next_value: number
+        }
+        Insert: {
+          company_id: string
+          next_value?: number
+        }
+        Update: {
+          company_id?: string
+          next_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_ordens_number_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compras: {
         Row: {
           company_id: string
@@ -1595,6 +1752,7 @@ export type Database = {
           notes: string | null
           numero: number
           status: string
+          stock_id: string | null
           title: string
           updated_at: string
         }
@@ -1606,6 +1764,7 @@ export type Database = {
           notes?: string | null
           numero: number
           status?: string
+          stock_id?: string | null
           title: string
           updated_at?: string
         }
@@ -1617,10 +1776,19 @@ export type Database = {
           notes?: string | null
           numero?: number
           status?: string
+          stock_id?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "compras_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       compras_number_counters: {
         Row: {
@@ -2455,35 +2623,6 @@ export type Database = {
           },
         ]
       }
-      crm_pipeline_access: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          pipeline_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          pipeline_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          pipeline_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "crm_pipeline_access_pipeline_id_fkey"
-            columns: ["pipeline_id"]
-            isOneToOne: false
-            referencedRelation: "crm_pipelines"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       crm_checklist_templates: {
         Row: {
           company_id: string
@@ -2550,6 +2689,35 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipeline_access: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          pipeline_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          pipeline_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          pipeline_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_access_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
             referencedColumns: ["id"]
           },
         ]
@@ -6210,10 +6378,10 @@ export type Database = {
         Row: {
           assigned_to: string | null
           company_id: string
-          crm_checklists: Json
-          crm_label_ids: string[]
           created_at: string
           created_by: string | null
+          crm_checklists: Json
+          crm_label_ids: string[]
           customer_id: string | null
           expected_close_date: string | null
           id: string
@@ -6231,10 +6399,10 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           company_id: string
-          crm_checklists?: Json
-          crm_label_ids?: string[]
           created_at?: string
           created_by?: string | null
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           customer_id?: string | null
           expected_close_date?: string | null
           id?: string
@@ -6252,10 +6420,10 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           company_id?: string
-          crm_checklists?: Json
-          crm_label_ids?: string[]
           created_at?: string
           created_by?: string | null
+          crm_checklists?: Json
+          crm_label_ids?: string[]
           customer_id?: string | null
           expected_close_date?: string | null
           id?: string
@@ -11798,6 +11966,10 @@ export type Database = {
         Returns: Json
       }
       next_compra_numero: { Args: { p_company_id: string }; Returns: number }
+      next_compra_ordem_numero: {
+        Args: { p_company_id: string }
+        Returns: number
+      }
       next_equipment_identifier: {
         Args: { p_company_id: string }
         Returns: string
@@ -11875,6 +12047,10 @@ export type Database = {
       recalc_amount_received: {
         Args: { p_parent_id: string }
         Returns: undefined
+      }
+      receber_ordem_compra: {
+        Args: { p_itens: Json; p_ordem_id: string }
+        Returns: Json
       }
       recompute_time_sheet: {
         Args: { p_company_id: string; p_date: string; p_employee_id: string }

@@ -165,26 +165,21 @@ interface PortalPayload {
 }
 
 // Cores de badge por status (fundo saturado + texto branco, regra Dominex).
-const OS_STATUS_STYLE: Record<string, { badgeClass: string; color: string }> = {
+const OS_STATUS_STYLE: Record<string, { badgeClass: string }> = {
   pendente: {
     badgeClass: 'bg-warning text-white border-transparent',
-    color: 'bg-warning/10 text-warning border-warning/30',
   },
   em_andamento: {
     badgeClass: 'bg-primary text-white border-transparent',
-    color: 'bg-primary/10 text-primary border-primary/30',
   },
   a_caminho: {
     badgeClass: 'bg-indigo-500 text-white border-transparent',
-    color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30',
   },
   concluida: {
     badgeClass: 'bg-success text-white border-transparent',
-    color: 'bg-success/10 text-success border-success/30',
   },
   cancelada: {
     badgeClass: 'bg-destructive text-white border-transparent',
-    color: 'bg-destructive/10 text-destructive border-destructive/30',
   },
 };
 

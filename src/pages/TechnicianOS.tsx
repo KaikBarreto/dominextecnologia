@@ -36,6 +36,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SignedImg } from '@/components/ui/SignedImg';
@@ -3925,12 +3926,9 @@ function TechnicianOSInner() {
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3">
               {isPaused && (
-                <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
-                  <Lock className="h-4 w-4 mt-0.5 shrink-0" />
-                  <p className="text-sm font-medium">
-                    {tFlow.checklistPausedWarning}
-                  </p>
-                </div>
+                <NoticeBanner variant="warning" icon={Lock} className="mb-3">
+                  {tFlow.checklistPausedWarning}
+                </NoticeBanner>
               )}
               <Accordion
                 type="single"
@@ -4047,12 +4045,9 @@ function TechnicianOSInner() {
             </CardHeader>
             <CardContent className="px-3 sm:px-6">
               {isPaused && (
-                <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
-                  <Lock className="h-4 w-4 mt-0.5 shrink-0" />
-                  <p className="text-sm font-medium">
-                    {tFlow.checklistPausedWarning}
-                  </p>
-                </div>
+                <NoticeBanner variant="warning" icon={Lock} className="mb-3">
+                  {tFlow.checklistPausedWarning}
+                </NoticeBanner>
               )}
               <div className={isPaused ? 'opacity-60 cursor-not-allowed' : ''}>
                 {/* CAMINHO LEGADO: só roda quando NÃO há linhas de junção com
@@ -4156,7 +4151,7 @@ function TechnicianOSInner() {
           <Card className="border-info/30">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-info/10 px-2.5 py-1 text-xs font-medium text-info">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-info px-2.5 py-1 text-xs font-medium text-info-foreground">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   PMOC
                 </span>

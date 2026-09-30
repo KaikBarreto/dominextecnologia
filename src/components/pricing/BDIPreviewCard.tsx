@@ -149,7 +149,7 @@ export function BDIPreviewCard() {
                 {fmt(result.finalPrice)}
               </p>
             </div>
-            <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+            <Badge className="text-xs">
               BDI {result.bdiFactor.toFixed(4)}
             </Badge>
           </div>

@@ -4,6 +4,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Button } from '@/components/ui/button';
@@ -762,10 +763,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   {/* Taxa não veio da conta do tenant: o número é referência,
                       e o usuário precisa saber disso antes de confiar nele. */}
                   {feesAreReference && (
-                    <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                      <p className="text-xs leading-snug text-foreground">{t.net.fallbackWarning}</p>
-                    </div>
+                    <NoticeBanner variant="warning">{t.net.fallbackWarning}</NoticeBanner>
                   )}
 
                   {simulation && (
@@ -1149,26 +1147,22 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     deixa completar o cadastro sem perder o que já foi preenchido.
                     Vale também no modo travado (cobrança vinda de um orçamento). */}
                 {documentBlocked && documentMessage && (
-                  <div
-                    className={cn(
-                      'flex flex-col gap-2 rounded-md border p-2.5 sm:flex-row sm:items-center sm:justify-between',
-                      showDocumentError ? 'border-destructive/50 bg-destructive/10' : 'border-warning/40 bg-warning/10',
-                    )}
+                  <NoticeBanner
+                    variant={showDocumentError ? 'destructive' : 'warning'}
+                    action={
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditCustomerOpen(true)}
+                      >
+                        <UserCog className="mr-2 h-4 w-4" />
+                        {t.missingDocument.cta}
+                      </Button>
+                    }
                   >
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className={cn('mt-0.5 h-4 w-4 shrink-0', showDocumentError ? 'text-destructive' : 'text-warning')} />
-                      <p className="text-xs leading-snug text-foreground">{documentMessage}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="shrink-0 bg-warning text-warning-foreground hover:bg-warning/90"
-                      onClick={() => setEditCustomerOpen(true)}
-                    >
-                      <UserCog className="mr-2 h-4 w-4" />
-                      {t.missingDocument.cta}
-                    </Button>
-                  </div>
+                    {documentMessage}
+                  </NoticeBanner>
                 )}
               </div>
 
@@ -1524,15 +1518,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 lançamento automático no Financeiro falhou. Dinheiro não pode
                 ter falha silenciosa. */}
             {financeWarning && (
-              <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning" />
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">
-                    {isContractInstallment ? t.contractInstallment.warningTitle : t.financeWarning.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{financeWarning}</p>
-                </div>
-              </div>
+              <NoticeBanner
+                variant="warning"
+                title={isContractInstallment ? t.contractInstallment.warningTitle : t.financeWarning.title}
+              >
+                {financeWarning}
+              </NoticeBanner>
             )}
 
             {/* QR do link de pagamento — o dono mostra a tela pro cliente escanear

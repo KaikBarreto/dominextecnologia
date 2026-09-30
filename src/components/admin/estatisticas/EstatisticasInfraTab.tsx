@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
   Table,
   TableBody,
@@ -293,20 +294,16 @@ export function EstatisticasInfraTab() {
 
         {/* Aviso vem DA RESPOSTA, não reescrito aqui: uma verdade só sobre o
             que está sendo medido. */}
-        <Alert className="border-amber-500/60 bg-amber-500/10">
-          <Users className="h-4 w-4" />
-          <AlertTitle>Estes números não são só do Dominex</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p className="text-sm">{box.aviso}</p>
-            {box.ocupantes?.length > 0 && (
-              <ul className="text-sm list-disc pl-4 space-y-0.5">
-                {box.ocupantes.map((o, i) => (
-                  <li key={i}>{o}</li>
-                ))}
-              </ul>
-            )}
-          </AlertDescription>
-        </Alert>
+        <NoticeBanner variant="warning" icon={Users} title="Estes números não são só do Dominex">
+          <p>{box.aviso}</p>
+          {box.ocupantes?.length > 0 && (
+            <ul className="list-disc pl-4 space-y-0.5 mt-1">
+              {box.ocupantes.map((o, i) => (
+                <li key={i}>{o}</li>
+              ))}
+            </ul>
+          )}
+        </NoticeBanner>
 
         {/* Caixas independentes em vez de `divide-*` num grid (borda torta na
             quebra de linha). */}

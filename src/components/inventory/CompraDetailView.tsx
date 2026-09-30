@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, FileSpreadsheet, Eye, Check, X, PackagePlus, Trash2, Trophy, CheckCircle2,
-  ArrowLeft, Pencil, CheckCheck, XCircle, RotateCcw, FileText,
+  ArrowLeft, Pencil, CheckCheck, XCircle, RotateCcw, FileText, ClipboardList, Send, FileDown,
 } from 'lucide-react';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import {
@@ -10,6 +10,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { cn } from '@/lib/utils';
 import { useLocaleFormatters } from '@/lib/format/hooks';
@@ -17,9 +21,17 @@ import { unitLabel } from '@/lib/inventoryUnits';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompras, type CompraListRow, type CompraMaterial } from '@/hooks/useCompras';
 import { useCompraCotacoes, type CotacaoRow } from '@/hooks/useCompraCotacoes';
+import { useCompraOrdens, type CompraOrdemRow } from '@/hooks/useCompraOrdens';
+import { generateOrdemCompraPdf } from '@/utils/ordemCompraPdfGenerator';
 import { CotacaoDialog } from './CotacaoDialog';
+import { OrdemCompraReceiveDialog } from './OrdemCompraReceiveDialog';
+
+/** Sentinela pro Select de "fornecedor escolhido": Radix crasha com SelectItem value="". */
+const NO_SUPPLIER = '__none__';
 
 interface CompraDetailViewProps {
   compra: CompraListRow;
@@ -28,23 +40,39 @@ interface CompraDetailViewProps {
 }
 
 export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchaseDetail;
+  const tCompras = MESSAGES[locale].app.inventory.compras;
+  const tOrdens = tCompras.ordens;
   const { money } = useLocaleFormatters();
   const { suppliers } = useSuppliers();
-  const { loadCompra, setStatus, deleteCompra } = useCompras();
+  const { settings: companySettings } = useCompanySettings();
+  const { enabled: whiteLabelEnabled } = useWhiteLabel();
+  const { loadCompra, setStatus, deleteCompra, setChosenCotacao } = useCompras();
   const {
-    cotacoes, isLoading, decideCotacao, deleteCotacao, registerStockEntry,
+    cotacoes, isLoading, decideCotacao, deleteCotacao, loadPrices,
   } = useCompraCotacoes(compra.id);
+  // `receber` não é usado aqui: o recebimento é feito dentro de
+  // OrdemCompraReceiveDialog, que instancia seu próprio useCompraOrdens(compraId).
+  const {
+    ordens, isLoading: ordensLoading, gerarOrdens, setOrdemStatus, deleteOrdem,
+  } = useCompraOrdens(compra.id);
 
   const [materials, setMaterials] = useState<CompraMaterial[]>([]);
+  // Preços informados por cotação, agrupados por material — alimenta o select
+  // de "fornecedor escolhido" de cada item. Só cotações não recusadas contam.
+  const [pricesByMaterial, setPricesByMaterial] = useState<
+    Record<string, { cotacaoId: string; supplierName: string; unitPrice: number }[]>
+  >({});
   const [newCotacaoOpen, setNewCotacaoOpen] = useState(false);
   const [sheetFor, setSheetFor] = useState<CotacaoRow | null>(null);
   const [toRefuse, setToRefuse] = useState<CotacaoRow | null>(null);
   const [toDelete, setToDelete] = useState<CotacaoRow | null>(null);
-  const [toRegister, setToRegister] = useState<CotacaoRow | null>(null);
   const [toCancelCompra, setToCancelCompra] = useState(false);
   const [toDeleteCompra, setToDeleteCompra] = useState(false);
+  const [ordemToCancel, setOrdemToCancel] = useState<CompraOrdemRow | null>(null);
+  const [ordemToDelete, setOrdemToDelete] = useState<CompraOrdemRow | null>(null);
+  const [ordemToReceive, setOrdemToReceive] = useState<CompraOrdemRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +82,67 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compra.id]);
+
+  // Preços por material através das cotações (exceto recusadas), pra montar o
+  // seletor de fornecedor por item. `loadPrices` é exposto pelo hook — nenhuma
+  // chamada a supabase acontece aqui no componente.
+  useEffect(() => {
+    let cancelled = false;
+    const eligible = cotacoes.filter((c) => c.status !== 'recusada');
+    if (eligible.length === 0) {
+      setPricesByMaterial({});
+      return;
+    }
+    Promise.all(eligible.map((c) => loadPrices(c.id).then((rows) => ({ cotacao: c, rows }))))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, { cotacaoId: string; supplierName: string; unitPrice: number }[]> = {};
+        for (const { cotacao, rows } of results) {
+          for (const r of rows) {
+            if (!(r.unit_price > 0)) continue;
+            const list = map[r.compra_material_id] ?? (map[r.compra_material_id] = []);
+            list.push({ cotacaoId: cotacao.id, supplierName: cotacao.supplier_name, unitPrice: r.unit_price });
+          }
+        }
+        for (const list of Object.values(map)) list.sort((a, b) => a.unitPrice - b.unitPrice);
+        setPricesByMaterial(map);
+      })
+      .catch(() => { if (!cancelled) setPricesByMaterial({}); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cotacoes]);
+
+  /** Grava o fornecedor escolhido do item (otimista; reverte se a mutação falhar). */
+  const handleChooseSupplier = async (materialId: string, cotacaoId: string | null) => {
+    const previous = materials.find((m) => m.id === materialId)?.chosen_cotacao_id ?? null;
+    setMaterials((prev) => prev.map((m) => (m.id === materialId ? { ...m, chosen_cotacao_id: cotacaoId } : m)));
+    try {
+      await setChosenCotacao.mutateAsync({ compraMaterialId: materialId, cotacaoId });
+    } catch {
+      setMaterials((prev) => prev.map((m) => (m.id === materialId ? { ...m, chosen_cotacao_id: previous } : m)));
+    }
+  };
+
+  const canGenerateOrdens = materials.some((m) => m.chosen_cotacao_id);
+
+  // Sucesso/erro (incluindo singular-plural de "criadas"/"puladas" e o caso só
+  // pulou) já viram toast dentro do próprio hook (onSuccess/onError de
+  // gerarOrdens) — não duplicar aqui.
+  const handleGenerateOrdens = () => {
+    gerarOrdens.mutate({ compraId: compra.id });
+  };
+
+  const handleDownloadOrdemPdf = async (ordem: CompraOrdemRow) => {
+    await generateOrdemCompraPdf({
+      company: companySettings,
+      whiteLabel: whiteLabelEnabled,
+      ordem,
+      compraTitle: compra.title,
+      locale,
+      currency,
+      timezone,
+    });
+  };
 
   // Fornecedores que ainda não têm cotação nesta compra (UNIQUE compra+supplier).
   const availableSuppliers = useMemo(() => {
@@ -87,6 +176,16 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
     pendente: { label: t.quoteStatus.pendente, variant: 'muted' },
     aceita: { label: t.quoteStatus.aceita, variant: 'success' },
     recusada: { label: t.quoteStatus.recusada, variant: 'destructive' },
+  };
+
+  // Status da ordem de compra (canônico → traduzido)
+  type OrdemVariant = 'muted' | 'info' | 'warning' | 'success' | 'destructive';
+  const ORDEM_STATUS: Record<string, { label: string; variant: OrdemVariant }> = {
+    rascunho: { label: tOrdens.statusLabels.rascunho, variant: 'muted' },
+    enviada: { label: tOrdens.statusLabels.enviada, variant: 'info' },
+    recebida_parcial: { label: tOrdens.statusLabels.recebida_parcial, variant: 'warning' },
+    recebida: { label: tOrdens.statusLabels.recebida, variant: 'success' },
+    cancelada: { label: tOrdens.statusLabels.cancelada, variant: 'destructive' },
   };
 
   const meta = COMPRA_STATUS[compra.status] ?? COMPRA_STATUS.aberta;
@@ -154,19 +253,46 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
           <p className="text-sm text-muted-foreground">{t.loadingMaterials}</p>
         ) : (
           <div className="space-y-1.5">
-            {materials.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                <span className="truncate max-w-[70%]">
-                  {m.material_name || t.materialFallback}
-                  {!m.inventory_id && (
-                    <span className="ml-2 text-xs text-warning">{t.outOfStock}</span>
+            {materials.map((m) => {
+              const options = pricesByMaterial[m.id] ?? [];
+              return (
+                <div key={m.id} className="space-y-1.5 rounded-md border p-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate max-w-[70%]">
+                      {m.material_name || t.materialFallback}
+                      {!m.inventory_id && (
+                        <span className="ml-2 text-xs text-warning">{t.outOfStock}</span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-muted-foreground">
+                      • {m.quantity} {unitLabel(m.unit)}
+                    </span>
+                  </div>
+                  {/* Fornecedor escolhido pro item — só aparece quando alguma cotação já precificou o material. */}
+                  {options.length > 0 && (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">{tCompras.chosenSupplier}</Label>
+                      <Select
+                        value={m.chosen_cotacao_id ?? NO_SUPPLIER}
+                        onValueChange={(v) => handleChooseSupplier(m.id, v === NO_SUPPLIER ? null : v)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder={tCompras.chooseSupplierPlaceholder} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_SUPPLIER}>{tCompras.chooseSupplierPlaceholder}</SelectItem>
+                          {options.map((opt) => (
+                            <SelectItem key={opt.cotacaoId} value={opt.cotacaoId}>
+                              {opt.supplierName} ({money(opt.unitPrice)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
-                </span>
-                <span className="shrink-0 text-muted-foreground">
-                  • {m.quantity} {unitLabel(m.unit)}
-                </span>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -214,12 +340,6 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                   onClick: () => decideCotacao.mutate({ cotacaoId: c.id, status: 'aceita' }),
                   disabled: c.total <= 0 || decideCotacao.isPending,
                   hidden: !isPending,
-                },
-                {
-                  label: t.quoteActions.registerEntry,
-                  icon: PackagePlus,
-                  onClick: () => setToRegister(c),
-                  hidden: !isAccepted,
                 },
                 {
                   label: t.quoteActions.undoAccept,
@@ -291,6 +411,104 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                       {t.acceptNote}
                     </p>
                   )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Ordens de Compra (uma por fornecedor, geradas a partir da escolha por item) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {tOrdens.title}
+          </h2>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            disabled={!canGenerateOrdens || gerarOrdens.isPending}
+            onClick={handleGenerateOrdens}
+          >
+            <ClipboardList className="h-4 w-4" /> {tOrdens.generate}
+          </Button>
+        </div>
+
+        {ordensLoading ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">{t.loadingQuotes}</p>
+        ) : ordens.length === 0 ? (
+          <EmptyState
+            size="compact"
+            icon={<ClipboardList className="h-10 w-10" />}
+            title={tOrdens.empty}
+          />
+        ) : (
+          <div className="space-y-2">
+            {ordens.map((o) => {
+              const ometa = ORDEM_STATUS[o.status] ?? ORDEM_STATUS.rascunho;
+              const canMarkSent = o.status === 'rascunho';
+              const canReceive = o.status === 'enviada' || o.status === 'recebida_parcial';
+              const canCancel = o.status === 'rascunho' || o.status === 'enviada';
+              const canReopen = o.status === 'cancelada';
+
+              const ordemActions: RowAction[] = [
+                {
+                  label: tOrdens.markSent,
+                  icon: Send,
+                  onClick: () => setOrdemStatus.mutate({ ordemId: o.id, status: 'enviada' }),
+                  hidden: !canMarkSent,
+                },
+                {
+                  label: tOrdens.downloadPdf,
+                  icon: FileDown,
+                  onClick: () => { void handleDownloadOrdemPdf(o); },
+                },
+                {
+                  label: tOrdens.receiveTitle,
+                  icon: PackagePlus,
+                  onClick: () => setOrdemToReceive(o),
+                  hidden: !canReceive,
+                },
+                {
+                  label: tOrdens.reopen,
+                  icon: RotateCcw,
+                  onClick: () => setOrdemStatus.mutate({ ordemId: o.id, status: 'rascunho' }),
+                  hidden: !canReopen,
+                },
+                {
+                  label: tOrdens.cancelOrder,
+                  icon: XCircle,
+                  variant: 'delete',
+                  onClick: () => setOrdemToCancel(o),
+                  hidden: !canCancel,
+                },
+                {
+                  label: tOrdens.deleteOrder,
+                  icon: Trash2,
+                  variant: 'delete',
+                  onClick: () => setOrdemToDelete(o),
+                },
+              ];
+
+              return (
+                <div key={o.id} className="space-y-2 rounded-lg border p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground">#{o.numero}</span>
+                        <span className="text-base font-semibold leading-tight">{o.supplier_name}</span>
+                        <Badge variant={ometa.variant} className="text-[10px]">{ometa.label}</Badge>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {tOrdens.itemsCount.replace('{count}', String(o.items.length))}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span className="text-base font-bold">{money(o.total)}</span>
+                      <RowActionsMenu actions={ordemActions} label={t.actionsLabel} />
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -370,46 +588,53 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Registrar entrada no estoque */}
-      <AlertDialog open={!!toRegister} onOpenChange={(o) => !o && setToRegister(null)}>
+      {/* Recebimento (parcial permitido) de uma ordem de compra */}
+      <OrdemCompraReceiveDialog
+        open={!!ordemToReceive}
+        onOpenChange={(o) => !o && setOrdemToReceive(null)}
+        compraId={compra.id}
+        ordem={ordemToReceive}
+      />
+
+      {/* Cancelar ordem de compra */}
+      <AlertDialog open={!!ordemToCancel} onOpenChange={(o) => !o && setOrdemToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.registerEntryDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {toRegister
-                ? t.registerEntryDialog.description.replace('{name}', toRegister.supplier_name)
-                : t.registerEntryDialog.descriptionNoName}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{tOrdens.cancelTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tOrdens.cancelConfirm}</AlertDialogDescription>
           </AlertDialogHeader>
-          <ul className="max-h-56 space-y-1.5 overflow-y-auto py-1 text-sm">
-            {materials.map((m) => (
-              <li key={m.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                <span className="min-w-0 truncate">
-                  {m.material_name || t.materialFallback}
-                  <span className="text-muted-foreground"> • {m.quantity} {unitLabel(m.unit)}</span>
-                </span>
-                {!m.inventory_id && (
-                  <Badge variant="warning" className="shrink-0 text-[10px]">{t.registerEntryDialog.badgeCreateInStock}</Badge>
-                )}
-              </li>
-            ))}
-          </ul>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t.registerEntryDialog.back}</AlertDialogCancel>
+            <AlertDialogCancel>{t.refuseDialog.back}</AlertDialogCancel>
             <AlertDialogAction
-              disabled={registerStockEntry.isPending}
+              className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
-                if (toRegister) {
-                  await registerStockEntry.mutateAsync({
-                    cotacaoId: toRegister.id,
-                    supplierId: toRegister.supplier_id,
-                    compraTitle: compra.title,
-                  });
-                }
-                setToRegister(null);
+                if (ordemToCancel) await setOrdemStatus.mutateAsync({ ordemId: ordemToCancel.id, status: 'cancelada' });
+                setOrdemToCancel(null);
               }}
             >
-              {registerStockEntry.isPending ? t.registerEntryDialog.confirming : t.registerEntryDialog.confirm}
+              {tOrdens.cancelOrder}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Excluir ordem de compra */}
+      <AlertDialog open={!!ordemToDelete} onOpenChange={(o) => !o && setOrdemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tOrdens.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tOrdens.deleteConfirm}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.deleteQuoteDialog.back}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={async () => {
+                if (ordemToDelete) await deleteOrdem.mutateAsync(ordemToDelete.id);
+                setOrdemToDelete(null);
+              }}
+            >
+              {tOrdens.deleteOrder}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CircuitBoard, Settings2, Zap } from 'lucide-react';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import {
@@ -528,12 +529,7 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
               </p>
 
               {resultado.acimaDaLinha && (
-                <div className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                  <p className="text-xs leading-relaxed text-foreground">
-                    {t.aboveCommercial}
-                  </p>
-                </div>
+                <NoticeBanner variant="warning">{t.aboveCommercial}</NoticeBanner>
               )}
             </div>
 
@@ -574,12 +570,9 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
       )}
 
       {/* Nota destacada — trifásico não usa capacitor */}
-      <div className="mx-auto flex max-w-4xl gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-        <p className="text-sm leading-relaxed text-foreground">
-          <span className="font-semibold">{t.triNoCapacitor}</span> {t.triNoCapacitorNote}
-        </p>
-      </div>
+      <NoticeBanner variant="neutral" icon={AlertTriangle} className="mx-auto max-w-4xl">
+        <span className="font-semibold">{t.triNoCapacitor}</span> {t.triNoCapacitorNote}
+      </NoticeBanner>
 
       <ToolDisclaimer texto={t.disclaimer} />
     </>

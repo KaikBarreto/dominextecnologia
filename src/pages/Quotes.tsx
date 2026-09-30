@@ -14,6 +14,7 @@ import {
   Undo2, Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -787,7 +788,7 @@ function QuotesList() {
                           "vou receber depois", dizer "Recebido" aqui era mentira: as
                           parcelas podem estar todas pendentes em Contas a Receber. */}
                       {q.financial_transaction_id && (
-                        <Badge variant="outline" className="h-7 gap-1 text-success border-success/40" title="Lançamento financeiro gerado">
+                        <Badge variant="success" className="h-7 gap-1" title="Lançamento financeiro gerado">
                           <DollarSign className="h-3 w-3" /> {tq.financialPosted}
                         </Badge>
                       )}
@@ -957,7 +958,7 @@ function QuotesList() {
             {undoPreview === null ? (
               <p className="text-xs text-muted-foreground">{tq.undoReceiptLoading}</p>
             ) : undoPreview.orphan ? (
-              <p className="text-xs text-warning bg-warning/10 rounded p-2">{tq.undoReceiptOrphanNote}</p>
+              <NoticeBanner variant="warning">{tq.undoReceiptOrphanNote}</NoticeBanner>
             ) : undoPreview.txns.length > 0 ? (
               <>
                 <p className="text-sm font-medium">

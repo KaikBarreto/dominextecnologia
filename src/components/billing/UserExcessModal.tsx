@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AlertTriangle, User, CheckCircle2, Loader2, ShieldAlert } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -168,28 +169,26 @@ export function UserExcessModal({
     >
       <div className="space-y-4">
         {/* Resumo do limite */}
-        <div className="flex items-start gap-2.5 rounded-lg bg-warning/10 border border-warning/30 p-3">
-          <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">
-              Seu novo plano permite {targetMaxUsers} usuário{targetMaxUsers !== 1 ? 's' : ''} e você tem {totalUsers} ativo{totalUsers !== 1 ? 's' : ''}.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Escolha quais continuam. Os não escolhidos serão{' '}
-              <strong>desativados</strong> (você pode reativar depois, quando liberar espaço) — não são excluídos.
-            </p>
-          </div>
-        </div>
+        <NoticeBanner
+          variant="warning"
+          icon={AlertTriangle}
+          title={
+            <>
+              Seu novo plano permite {targetMaxUsers} usuário{targetMaxUsers !== 1 ? 's' : ''} e você tem{' '}
+              {totalUsers} ativo{totalUsers !== 1 ? 's' : ''}.
+            </>
+          }
+        >
+          Escolha quais continuam. Os não escolhidos serão{' '}
+          <strong>desativados</strong> (você pode reativar depois, quando liberar espaço) — não são excluídos.
+        </NoticeBanner>
 
         {/* Timing: desativação agora, valor do plano só no fim do ciclo (B2) */}
-        <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5">
-          <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-            A desativação dos usuários acontece <strong>agora</strong>. Já o novo valor do plano
-            (mais barato) passa a valer só na <strong>próxima cobrança</strong> — você mantém o
-            plano atual até o fim do período que já pagou.
-          </p>
-        </div>
+        <NoticeBanner variant="warning" icon={ShieldAlert}>
+          A desativação dos usuários acontece <strong>agora</strong>. Já o novo valor do plano
+          (mais barato) passa a valer só na <strong>próxima cobrança</strong> — você mantém o
+          plano atual até o fim do período que já pagou.
+        </NoticeBanner>
 
         {/* Lista: escolha quem fica */}
         <div className="space-y-2">

@@ -33,10 +33,10 @@ interface Profile {
 const ALL_TECHNICIANS = '__all__';
 
 const eventConfig: Record<string, { label: string; color: string; icon: string }> = {
-  check_in: { label: 'Check-in', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30', icon: '🟢' },
-  check_out: { label: 'Check-out', color: 'bg-red-500/15 text-red-700 border-red-500/30', icon: '🔴' },
-  tracking: { label: 'Rastreamento', color: 'bg-blue-500/15 text-blue-700 border-blue-500/30', icon: '🔵' },
-  en_route: { label: 'A Caminho', color: 'bg-indigo-500/15 text-indigo-700 border-indigo-500/30', icon: '🟣' },
+  check_in: { label: 'Check-in', color: 'border-transparent bg-success text-white hover:bg-success', icon: '🟢' },
+  check_out: { label: 'Check-out', color: 'border-transparent bg-destructive text-white hover:bg-destructive', icon: '🔴' },
+  tracking: { label: 'Rastreamento', color: 'border-transparent bg-info text-white hover:bg-info', icon: '🔵' },
+  en_route: { label: 'A Caminho', color: 'border-transparent bg-indigo-500 text-white hover:bg-indigo-500', icon: '🟣' },
 };
 
 export function TrackingHistoryTab() {

@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
@@ -612,14 +613,13 @@ export default function AdminCompanyDetail() {
               <p className="text-sm">
                 Cancelar a recorrência de <strong className="text-foreground">{company.name}</strong> ({recurrenceLabel})?
               </p>
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 space-y-1.5 text-sm">
-                <p className="font-medium text-destructive">Isto interrompe a cobrança automática.</p>
-                <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <NoticeBanner variant="destructive" title="Isto interrompe a cobrança automática.">
+                <ul className="list-disc list-inside space-y-1">
                   <li>O cliente mantém o acesso até o vencimento já pago</li>
                   <li>Nenhum dado é perdido</li>
                   <li>Cobranças futuras em aberto também são canceladas</li>
                 </ul>
-              </div>
+              </NoticeBanner>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

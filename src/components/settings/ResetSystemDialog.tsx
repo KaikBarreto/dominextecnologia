@@ -3,6 +3,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { AlertTriangle, ChevronDown, Loader2, ShieldCheck, WifiOff } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -433,16 +434,19 @@ export function ResetSystemDialog({
   const progressNumber = currentStepIndex >= 0 ? currentStepIndex + 1 : 1;
 
   const footer = isLoading ? (
-    <div className="flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 p-3">
-      <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-warning" />
-      <div className="text-sm text-foreground">
-        <div className="font-medium">{t.progressTitle}</div>
-        <div className="text-xs text-muted-foreground">
-          {t.progressStep.replace('{current}', String(progressNumber)).replace('{total}', String(totalSteps))}{' '}
-          {currentStepLabel || '...'}
-        </div>
-      </div>
-    </div>
+    <NoticeBanner
+      variant="neutral"
+      icon={null}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          {t.progressTitle}
+        </span>
+      }
+    >
+      {t.progressStep.replace('{current}', String(progressNumber)).replace('{total}', String(totalSteps))}{' '}
+      {currentStepLabel || '...'}
+    </NoticeBanner>
   ) : (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <Button
@@ -473,15 +477,12 @@ export function ResetSystemDialog({
     >
       <div className="space-y-4">
         {/* Aviso de acao irreversivel */}
-        <div className="flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-          <p className="text-sm text-foreground">
-            {t.irreversibleWarning}{' '}
-            <strong className="text-destructive">{t.deletePermanently}</strong>{' '}
-            {t.warningCompany}{' '}
-            <strong className="text-foreground">{companyName || '...'}</strong>. {t.chooseWhat}
-          </p>
-        </div>
+        <NoticeBanner variant="destructive" icon={AlertTriangle}>
+          {t.irreversibleWarning}{' '}
+          <strong>{t.deletePermanently}</strong>{' '}
+          {t.warningCompany}{' '}
+          <strong>{companyName || '...'}</strong>. {t.chooseWhat}
+        </NoticeBanner>
 
         {/* Marcar tudo global */}
         <label
@@ -537,11 +538,7 @@ export function ResetSystemDialog({
         </div>
 
         {/* Aviso final em vermelho */}
-        <div className="rounded-md border border-destructive bg-destructive/10 p-3">
-          <p className="text-center text-sm font-bold text-destructive">
-            {t.finalWarning}
-          </p>
-        </div>
+        <NoticeBanner variant="destructive" title={t.finalWarning} />
 
         {/* Confirmacao por nome */}
         <div className="space-y-2">
@@ -575,12 +572,9 @@ export function ResetSystemDialog({
 
         {/* Aviso offline */}
         {!isOnline && (
-          <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3">
-            <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-            <p className="text-xs text-foreground">
-              {t.offline}
-            </p>
-          </div>
+          <NoticeBanner variant="warning" icon={WifiOff}>
+            {t.offline}
+          </NoticeBanner>
         )}
       </div>
     </ResponsiveModal>

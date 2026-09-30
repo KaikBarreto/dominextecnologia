@@ -23,7 +23,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { AlertTriangle, Loader2, X } from 'lucide-react';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import { Loader2, X } from 'lucide-react';
 import { formatBRL } from '@/utils/currency';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import type { ChargeActions } from './useChargeActions';
@@ -37,22 +38,23 @@ export function ChargeFinanceWarningBanner({ actions }: { actions: ChargeActions
   const t = MESSAGES[locale].app.charges.central;
   if (!actions.warningBanner) return null;
   return (
-    <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-sm font-medium text-foreground">{t.financeWarning.title}</p>
-        <p className="whitespace-pre-line text-xs text-muted-foreground">{actions.warningBanner}</p>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 shrink-0"
-        onClick={actions.dismissWarning}
-        aria-label={t.financeWarning.dismiss}
-      >
-        <X className="h-3.5 w-3.5" />
-      </Button>
-    </div>
+    <NoticeBanner
+      variant="warning"
+      title={t.financeWarning.title}
+      action={
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 shrink-0"
+          onClick={actions.dismissWarning}
+          aria-label={t.financeWarning.dismiss}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      }
+    >
+      <span className="whitespace-pre-line">{actions.warningBanner}</span>
+    </NoticeBanner>
   );
 }
 

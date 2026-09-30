@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, CheckCircle2, Wrench, User, Star, FileText } from 'lucide-react';
+import { Calendar, Wrench, User, Star, FileText } from 'lucide-react';
 
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 import type { PortalOsEntry, PortalOsStatus } from '@/types/pmocPortal';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -30,11 +31,11 @@ import { MESSAGES } from '@/lib/i18n/messages';
 const OS_STATUS_CONFIG: Record<PortalOsStatus, { label: string; className: string }> = {
   agendada: { label: 'Agendada', className: 'bg-muted text-muted-foreground' },
   pendente: { label: 'Pendente', className: 'bg-muted text-muted-foreground' },
-  a_caminho: { label: 'A caminho', className: 'bg-info/15 text-info' },
-  em_andamento: { label: 'Em andamento', className: 'bg-info/15 text-info' },
-  pausada: { label: 'Pausada', className: 'bg-warning/15 text-warning' },
-  concluida: { label: 'Concluída', className: 'bg-success/15 text-success' },
-  cancelada: { label: 'Cancelada', className: 'bg-destructive/10 text-destructive' },
+  a_caminho: { label: 'A caminho', className: 'bg-info text-info-foreground' },
+  em_andamento: { label: 'Em andamento', className: 'bg-info text-info-foreground' },
+  pausada: { label: 'Pausada', className: 'bg-warning text-warning-foreground' },
+  concluida: { label: 'Concluída', className: 'bg-success text-success-foreground' },
+  cancelada: { label: 'Cancelada', className: 'bg-destructive text-destructive-foreground' },
 };
 
 function parseLocal(date: string | null): Date | null {
@@ -180,13 +181,10 @@ export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalMo
 
           {/* Marcador legal */}
           {os.status === 'concluida' && (
-            <div className="flex items-start gap-2 rounded-xl border border-success/20 bg-success/5 p-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-              <p className="text-xs leading-relaxed text-foreground/80">
-                {osd.legalNote}{' '}
-                <span className="font-medium">{osd.legalHighlight}</span>.
-              </p>
-            </div>
+            <NoticeBanner variant="success">
+              {osd.legalNote}{' '}
+              <span className="font-medium">{osd.legalHighlight}</span>.
+            </NoticeBanner>
           )}
         </div>
       </ResponsiveModal>

@@ -25,6 +25,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
@@ -2296,10 +2297,7 @@ export default function ContractDetail() {
                         {/* Motivo de não dar pra cobrar online, quando o card não
                             deixa isso óbvio sozinho. */}
                         {showOnlineCharge && chargeBlockedReason && (
-                          <div className="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5">
-                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
-                            <p className="text-xs leading-snug text-foreground">{chargeBlockedReason}</p>
-                          </div>
+                          <NoticeBanner variant="warning">{chargeBlockedReason}</NoticeBanner>
                         )}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
@@ -2736,19 +2734,19 @@ export default function ContractDetail() {
               </p>
             )}
             {batchResult.failures.length > 0 && (
-              <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-2.5">
-                <p className="text-xs font-semibold text-destructive">
-                  {tCharge.batch.resultFailuresTitle.replace('{n}', String(batchResult.failures.length))}
-                </p>
+              <NoticeBanner
+                variant="destructive"
+                title={tCharge.batch.resultFailuresTitle.replace('{n}', String(batchResult.failures.length))}
+              >
                 <ul className="mt-1 space-y-1.5 text-xs">
                   {batchResult.failures.map((f) => (
                     <li key={f.installmentId} className="min-w-0 break-words">
-                      <strong className="text-foreground">{f.label}</strong>
-                      <span className="text-muted-foreground"> {f.message}</span>
+                      <strong>{f.label}</strong>
+                      <span className="opacity-80"> {f.message}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </NoticeBanner>
             )}
             {(batchResult.failures.length > 0 || batchResult.notAttempted > 0) && (
               <p className="text-xs text-muted-foreground break-words">{tCharge.batch.resultRetryHint}</p>
@@ -2937,10 +2935,9 @@ export default function ContractDetail() {
               disabled={pendingEditData?.valueLocked === true}
             />
             {pendingEditData?.valueLocked === true && (
-              <div className="mt-2 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-2.5">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                <p className="text-xs leading-snug text-foreground">{tCharge.valueLocked.single}</p>
-              </div>
+              <NoticeBanner variant="warning" className="mt-2">
+                {tCharge.valueLocked.single}
+              </NoticeBanner>
             )}
           </div>
           <div><Label>{td.financial.dueDateLabel}</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
@@ -3063,23 +3060,24 @@ export default function ContractDetail() {
                     : td.financial.selection.deleteDesc.replace('{n}', String(selectedRecCount))}
                 </p>
                 {selectedPaidCount > 0 && (
-                  <div className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
-                    <p className="text-sm font-medium text-warning">{td.financial.selection.paidWarnTitle}</p>
-                    <p className="text-sm">
-                      {td.financial.selection.paidWarnDesc.replace('{n}', String(selectedPaidCount))}
-                    </p>
-                    <div className="flex items-start gap-2 pt-1">
-                      <Checkbox
-                        id="bulk-delete-paid-ack"
-                        className="mt-0.5"
-                        checked={bulkDeletePaidAck}
-                        onCheckedChange={(v) => setBulkDeletePaidAck(!!v)}
-                      />
-                      <Label htmlFor="bulk-delete-paid-ack" className="cursor-pointer text-sm leading-snug">
-                        {td.financial.selection.paidAck.replace('{n}', String(selectedPaidCount))}
-                      </Label>
+                  <NoticeBanner variant="warning" title={td.financial.selection.paidWarnTitle}>
+                    <div className="space-y-2">
+                      <p>
+                        {td.financial.selection.paidWarnDesc.replace('{n}', String(selectedPaidCount))}
+                      </p>
+                      <div className="flex items-start gap-2 pt-1">
+                        <Checkbox
+                          id="bulk-delete-paid-ack"
+                          className="mt-0.5"
+                          checked={bulkDeletePaidAck}
+                          onCheckedChange={(v) => setBulkDeletePaidAck(!!v)}
+                        />
+                        <Label htmlFor="bulk-delete-paid-ack" className="cursor-pointer text-sm leading-snug">
+                          {td.financial.selection.paidAck.replace('{n}', String(selectedPaidCount))}
+                        </Label>
+                      </div>
                     </div>
-                  </div>
+                  </NoticeBanner>
                 )}
               </div>
             </AlertDialogDescription>
@@ -3110,9 +3108,9 @@ export default function ContractDetail() {
         <div className="space-y-4 p-1">
           <p className="text-sm text-muted-foreground">{td.financial.selection.editDesc}</p>
           {selectedPaidCount > 0 && (
-            <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
+            <NoticeBanner variant="warning">
               {td.financial.selection.editPaidWarn.replace('{n}', String(selectedPaidCount))}
-            </div>
+            </NoticeBanner>
           )}
           <div>
             <Label>{td.financial.amountLabel}</Label>
@@ -3132,14 +3130,11 @@ export default function ContractDetail() {
                 inteiro fica travado (aplicar em algumas e pular outras seria
                 surpresa silenciosa). Conta e categoria seguem valendo. */}
             {bulkValueLockedCount > 0 && (
-              <div className="mt-2 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-2.5">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                <p className="text-xs leading-snug text-foreground">
-                  {bulkValueLockedCount === 1
-                    ? tCharge.valueLocked.bulkSingle
-                    : tCharge.valueLocked.bulk.replace('{n}', String(bulkValueLockedCount))}
-                </p>
-              </div>
+              <NoticeBanner variant="warning" className="mt-2">
+                {bulkValueLockedCount === 1
+                  ? tCharge.valueLocked.bulkSingle
+                  : tCharge.valueLocked.bulk.replace('{n}', String(bulkValueLockedCount))}
+              </NoticeBanner>
             )}
           </div>
           <div>

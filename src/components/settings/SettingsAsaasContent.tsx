@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -474,35 +475,26 @@ export function SettingsAsaasContent() {
                   {t.activeState.connected}
                 </div>
               ) : (
-                <div className="flex items-start gap-2 rounded-md border border-border bg-card p-3">
-                  <Loader2 className="h-4 w-4 text-amber-500 shrink-0 mt-0.5 animate-spin" />
-                  <p className="text-sm text-muted-foreground">{t.activeState.pendingDesc}</p>
-                </div>
+                <NoticeBanner variant="warning">{t.activeState.pendingDesc}</NoticeBanner>
               )}
 
               {/* Pendência bloqueante da baixa automática: sem conta de destino
                   a receita da cobrança paga não entra no Financeiro. Não impede
                   usar a integração — sinaliza e leva direto pra seção. */}
               {financeAccountPending && (
-                <button
-                  type="button"
+                <NoticeBanner
+                  variant="warning"
                   onClick={scrollToFinanceSection}
-                  className="w-full text-left flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 transition-colors hover:bg-amber-500/15"
-                >
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight">
-                      {t.activeState.financeAccountPendingTitle}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t.activeState.financeAccountPendingDesc}
-                    </p>
-                    <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-500">
+                  title={t.activeState.financeAccountPendingTitle}
+                  action={
+                    <span className="inline-flex items-center gap-1">
                       {t.activeState.financeAccountPendingCta}
                       <ArrowRight className="h-3 w-3" />
                     </span>
-                  </div>
-                </button>
+                  }
+                >
+                  {t.activeState.financeAccountPendingDesc}
+                </NoticeBanner>
               )}
 
               <Separator />
@@ -934,21 +926,22 @@ export function SettingsAsaasContent() {
                   ) : (
                     /* Sem NENHUMA conta cadastrada o select ficaria vazio e o
                        usuário travaria. Aqui a saída é explícita. */
-                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5">
-                      <p className="text-sm font-medium leading-tight">
-                        {t.activeState.financeAccountEmptyTitle}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {t.activeState.financeAccountEmptyDesc}
-                      </p>
-                      <Link
-                        to="/financeiro/movimentacoes"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-500 hover:underline"
-                      >
-                        {t.activeState.financeAccountEmptyCta}
-                        <ExternalLink className="h-3 w-3" />
-                      </Link>
-                    </div>
+                    <NoticeBanner
+                      variant="warning"
+                      icon={null}
+                      title={t.activeState.financeAccountEmptyTitle}
+                      action={
+                        <Link
+                          to="/financeiro/movimentacoes"
+                          className="inline-flex items-center gap-1 hover:underline"
+                        >
+                          {t.activeState.financeAccountEmptyCta}
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      }
+                    >
+                      {t.activeState.financeAccountEmptyDesc}
+                    </NoticeBanner>
                   )}
                 </div>
 

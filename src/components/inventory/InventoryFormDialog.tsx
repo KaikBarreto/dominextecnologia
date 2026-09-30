@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Wand2, Plus, Loader2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
@@ -38,8 +39,8 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.formDialog;
   const { toast } = useToast();
-  const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity, getPresenceForStock, setInventoryPresence } = useInventory();
-  const { stocks } = useStocks();
+  const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity, getPresenceForStock, setInventoryPresence, stockLevelsLoaded } = useInventory();
+  const { stocks, isLoading: stocksLoading } = useStocks();
   const { groups, createGroup } = useMaterialGroups();
   const isEditing = !!item;
 
@@ -65,6 +66,17 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
 
   // Estado de presença por estoque: { [stockId]: boolean } — default true para todos
   const [stockPresenceMap, setStockPresenceMap] = useState<Record<string, boolean>>({});
+
+  // Trava de hidratação: presença/mínimo só são lidos do banco DEPOIS de
+  // stockLevels (fonte de verdade) e stocks terem carregado — nunca a partir
+  // do default permissivo de getPresenceForStock (true quando o level ainda
+  // não chegou). `hydratedRef` garante UMA hidratação por abertura, pra um
+  // refetch em background não sobrescrever o que o usuário já mexeu na tela.
+  // `stocksHydrated` (estado, não ref) é o que a UI usa pra alternar entre
+  // skeleton/controles desabilitados e a lista real, e pra travar o Salvar.
+  const hydratedRef = useRef(false);
+  const [stocksHydrated, setStocksHydrated] = useState(false);
+  const stocksSectionReady = stockLevelsLoaded && !stocksLoading;
 
   const getNextSequentialSku = async (): Promise<string> => {
     const { data, error } = await supabase.from('inventory').select('sku, created_at').ilike('sku', 'EST-%').order('created_at', { ascending: false }).limit(200);
@@ -120,14 +132,10 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
           cost_price: toNumericText(item.cost_price),
           sale_price: toNumericText(item.sale_price),
         });
-        initStockMinMap();
-        initStockPresenceMap();
         return;
       }
       setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '' });
       setNumericText({ quantity: '', cost_price: '', sale_price: '' });
-      initStockMinMap();
-      initStockPresenceMap();
       if (!open) return;
       try {
         setIsSkuGenerating(true);
@@ -140,16 +148,41 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     return () => { cancelled = true; };
   }, [item, open]);
 
-  // Quando stocks carregar (assíncrono), re-inicializa os mapas
+  // Zera a trava de hidratação a cada abertura (ou troca de item) — a próxima
+  // passagem pelo efeito abaixo hidrata de novo, do zero.
   useEffect(() => {
-    if (open) {
-      initStockMinMap();
-      initStockPresenceMap();
-    }
-  }, [stocks.length, open]);
+    hydratedRef.current = false;
+    setStocksHydrated(false);
+  }, [open, item]);
+
+  // Hidrata presença + mínimo por estoque UMA VEZ por abertura, e só quando
+  // stocksSectionReady (stockLevels e stocks já carregados) — nunca antes.
+  // É a correção do bug: sem essa trava, abrir o modal antes da query de
+  // stockLevels resolver fazia getPresenceForStock cair no default permissivo
+  // (true) pra todo local, e um refetch posterior nunca re-hidratava o mapa —
+  // o usuário salvava presença errada por cima da configuração real.
+  useEffect(() => {
+    if (!open) return;
+    if (hydratedRef.current) return;
+    if (!stocksSectionReady) return;
+    initStockMinMap();
+    initStockPresenceMap();
+    hydratedRef.current = true;
+    setStocksHydrated(true);
+    // initStockMinMap/initStockPresenceMap mudam de identidade a cada render
+    // (dependem de getPresenceForStock/getMinQuantityForStock, recriadas a
+    // cada chamada de useInventory()) — não entram nas deps pra não disparar
+    // o efeito em todo render; o gate real é open + stocksSectionReady, com
+    // hydratedRef travando a segunda execução.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, stocksSectionReady]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Trava dura: nunca deixa salvar presença/mínimo em cima de um mapa não
+    // hidratado (cobre também o Enter dentro do <form>, que dispara o submit
+    // sem passar pelo botão Salvar fora dele).
+    if (!stocksHydrated) return;
     let savedItemId: string | null = null;
 
     // Normaliza SKU: vazio ou só espaços → null, para não colidir com UNIQUE(company_id, sku)
@@ -191,8 +224,12 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         }
       }
 
-      // Grava presença por estoque (locais marcados)
-      const presentStockIds = stocks.filter((s) => stockPresenceMap[s.id] !== false).map((s) => s.id);
+      // Grava presença por estoque (locais marcados). Só considera chaves que
+      // EXISTEM no mapa — ausente do mapa nunca é tratado como presente (era
+      // exatamente esse default cego que corrompia a presença real).
+      const presentStockIds = stocks
+        .filter((s) => s.id in stockPresenceMap && stockPresenceMap[s.id] === true)
+        .map((s) => s.id);
       try {
         await setInventoryPresence.mutateAsync({ inventoryId: savedItemId, stockIds: presentStockIds });
       } catch (err: unknown) {
@@ -266,7 +303,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       footer={
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isPending}>{t.cancel}</Button>
-          <Button onClick={handleSubmit as any} disabled={isPending} className="flex-1">
+          <Button onClick={handleSubmit as any} disabled={isPending || !stocksHydrated} className="flex-1">
             {isPending ? t.saving : t.save}
           </Button>
         </div>
@@ -388,7 +425,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
                     size="sm"
                     className="h-7 px-2 text-xs"
                     onClick={handleMarkAll}
-                    disabled={allPresent}
+                    disabled={!stocksHydrated || allPresent}
                   >
                     {t.fields.markAll}
                   </Button>
@@ -398,55 +435,73 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
                     size="sm"
                     className="h-7 px-2 text-xs"
                     onClick={handleUnmarkAll}
-                    disabled={nonePresent}
+                    disabled={!stocksHydrated || nonePresent}
                   >
                     {t.fields.unmarkAll}
                   </Button>
                 </div>
               )}
             </div>
-            <div className="rounded-xl border divide-y">
-              {stocks.map((s) => {
-                const isPresent = stockPresenceMap[s.id] !== false;
-                return (
-                  <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-                    {/* Checkbox de presença */}
-                    <Checkbox
-                      id={`presence-${s.id}`}
-                      checked={isPresent}
-                      onCheckedChange={(checked) => {
-                        setStockPresenceMap((prev) => ({ ...prev, [s.id]: !!checked }));
-                      }}
-                      className="shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <label
-                        htmlFor={`presence-${s.id}`}
-                        className="text-sm font-medium truncate cursor-pointer block"
-                      >
-                        {s.name}
-                      </label>
-                      {s.is_default && (
-                        <p className="text-xs text-muted-foreground">{t.fields.minQtyDefaultBadge}</p>
-                      )}
-                    </div>
-                    {/* Campo de mínimo (sempre visível mas desabilitado quando ausente) */}
-                    <div className="w-28 shrink-0">
-                      <NumericInput
-                        decimal
-                        value={stockMinQtyMap[s.id] ?? ''}
-                        onValueChange={(v) =>
-                          setStockMinQtyMap((prev) => ({ ...prev, [s.id]: v }))
-                        }
-                        placeholder={t.fields.minQtyPlaceholder}
-                        className="h-8 text-sm"
-                        disabled={!isPresent}
+            {stocksHydrated ? (
+              <div className="rounded-xl border divide-y">
+                {stocks.map((s) => {
+                  const isPresent = stockPresenceMap[s.id] !== false;
+                  return (
+                    <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+                      {/* Checkbox de presença */}
+                      <Checkbox
+                        id={`presence-${s.id}`}
+                        checked={isPresent}
+                        onCheckedChange={(checked) => {
+                          setStockPresenceMap((prev) => ({ ...prev, [s.id]: !!checked }));
+                        }}
+                        className="shrink-0"
                       />
+                      <div className="flex-1 min-w-0">
+                        <label
+                          htmlFor={`presence-${s.id}`}
+                          className="text-sm font-medium truncate cursor-pointer block"
+                        >
+                          {s.name}
+                        </label>
+                        {s.is_default && (
+                          <p className="text-xs text-muted-foreground">{t.fields.minQtyDefaultBadge}</p>
+                        )}
+                      </div>
+                      {/* Campo de mínimo (sempre visível mas desabilitado quando ausente) */}
+                      <div className="w-28 shrink-0">
+                        <NumericInput
+                          decimal
+                          value={stockMinQtyMap[s.id] ?? ''}
+                          onValueChange={(v) =>
+                            setStockMinQtyMap((prev) => ({ ...prev, [s.id]: v }))
+                          }
+                          placeholder={t.fields.minQtyPlaceholder}
+                          className="h-8 text-sm"
+                          disabled={!isPresent}
+                        />
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            ) : (
+              // Skeleton: nasce aqui em vez do estado "tudo marcado" enquanto os
+              // stockLevels ainda não chegaram — era exatamente esse estado
+              // (default permissivo pintado como marcado) que corrompia a
+              // presença real ao salvar, antes desta correção.
+              <div className="rounded-xl border divide-y">
+                {stocks.map((s) => (
+                  <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+                    <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-8 w-28 rounded-md shrink-0" />
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </form>

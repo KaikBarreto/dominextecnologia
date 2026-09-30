@@ -34,21 +34,22 @@ export function AdminExpiringAlert({ companies }: AdminExpiringAlertProps) {
 
   if (!expiringToday.length && !expiringNext7Days.length && !expiredLast7Days.length) return null;
 
+  // Régua do CEO: card de estado é BRANCO; a cor saturada fica só no ícone e no
+  // título em negrito. Nada de card tingido a 10%, nada de círculo dessaturado
+  // atrás do ícone. O contador é badge saturado com texto branco.
   const sections = [
-    { id: 'today', title: 'Vencem Hoje', companies: expiringToday, icon: AlertCircle, iconColor: 'text-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', badgeVariant: 'destructive' as const },
-    { id: 'next7', title: 'Próximos 7 Dias', companies: expiringNext7Days, icon: Clock, iconColor: 'text-amber-500', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20', badgeVariant: 'secondary' as const },
-    { id: 'expired', title: 'Vencidas', companies: expiredLast7Days, icon: XCircle, iconColor: 'text-gray-500', bgColor: 'bg-gray-500/10', borderColor: 'border-gray-500/20', badgeVariant: 'outline' as const },
+    { id: 'today', title: 'Vencem Hoje', companies: expiringToday, icon: AlertCircle, iconColor: 'text-destructive', badgeVariant: 'destructive' as const },
+    { id: 'next7', title: 'Próximos 7 Dias', companies: expiringNext7Days, icon: Clock, iconColor: 'text-warning', badgeVariant: 'warning' as const },
+    { id: 'expired', title: 'Vencidas', companies: expiredLast7Days, icon: XCircle, iconColor: 'text-muted-foreground', badgeVariant: 'muted' as const },
   ].filter((s) => s.companies.length > 0);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {sections.map((section) => (
-        <div key={section.id} className={`p-4 rounded-lg ${section.bgColor} ${section.borderColor} border`}>
+        <div key={section.id} className="p-4 rounded-lg bg-card border border-border">
           <div className="flex items-center gap-2 mb-3">
-            <div className={`p-1.5 rounded-md ${section.bgColor}`}>
-              <section.icon className={`h-4 w-4 ${section.iconColor}`} />
-            </div>
-            <h3 className="font-semibold text-sm">{section.title}</h3>
+            <section.icon className={`h-4 w-4 shrink-0 ${section.iconColor}`} />
+            <h3 className={`font-bold text-sm ${section.iconColor}`}>{section.title}</h3>
             <Badge variant={section.badgeVariant} className="ml-auto text-xs">
               {section.companies.length}
             </Badge>

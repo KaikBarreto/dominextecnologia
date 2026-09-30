@@ -11,6 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
@@ -168,25 +169,20 @@ export function MaterialPurchasesTab() {
 
       {/* Alerta de materiais abaixo do mínimo */}
       {lowStockRows.length > 0 && (
-        <button
-          type="button"
-          className="flex w-full items-center gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-left transition-colors hover:bg-destructive/15"
+        <NoticeBanner
+          variant="destructive"
+          icon={AlertTriangle}
           onClick={openNew}
+          action={t.lowStockAlert.action}
         >
-          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
-          <span className="flex-1 text-sm text-destructive">
-            {(() => {
-              // Conta materiais únicos (não pares material×local)
-              const uniqueCount = new Set(lowStockRows.map((r) => r.inventory_id)).size;
-              return uniqueCount === 1
-                ? t.lowStockAlert.singular.replace('{count}', String(uniqueCount))
-                : t.lowStockAlert.plural.replace('{count}', String(uniqueCount));
-            })()}
-          </span>
-          <span className="shrink-0 text-xs font-medium text-destructive underline-offset-2 hover:underline">
-            {t.lowStockAlert.action}
-          </span>
-        </button>
+          {(() => {
+            // Conta materiais únicos (não pares material×local)
+            const uniqueCount = new Set(lowStockRows.map((r) => r.inventory_id)).size;
+            return uniqueCount === 1
+              ? t.lowStockAlert.singular.replace('{count}', String(uniqueCount))
+              : t.lowStockAlert.plural.replace('{count}', String(uniqueCount));
+          })()}
+        </NoticeBanner>
       )}
 
       {/* Cabeçalho de ações */}

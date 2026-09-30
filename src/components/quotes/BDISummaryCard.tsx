@@ -52,7 +52,7 @@ export function BDISummaryCard({ data, className }: BDISummaryCardProps) {
           </div>
           <div>
             <p className="text-xs text-slate-400 mb-1">{t.avgProfit}</p>
-            <Badge variant="outline" className="text-xs text-emerald-300 border-emerald-600/50 bg-emerald-950/30">
+            <Badge variant="success" className="text-xs">
               {data.weightedProfitRate.toFixed(1)}%
             </Badge>
           </div>

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NoticeBanner } from "@/components/ui/NoticeBanner";
 import { cn } from "@/lib/utils";
 import { cpfCnpjMask } from "@/utils/masks";
 import { useEffect, useState } from "react";
@@ -368,21 +369,15 @@ export function CheckoutLayout({
                 )}
 
                 {hasCustomPrice && customPriceEndDate && customPriceOriginal != null && (
-                  <div className="flex items-start gap-2.5 text-sm bg-blue-500/10 rounded-lg px-3 py-2.5">
-                    <Sparkles className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
-                    <span>
-                      R$ {finalPrice.toFixed(2).replace(".", ",")}, e após {format(new Date(customPriceEndDate), "dd/MM/yyyy")} reajustará para R$ {customPriceOriginal.toFixed(2).replace(".", ",")}/mês
-                    </span>
-                  </div>
+                  <NoticeBanner variant="info" icon={Sparkles}>
+                    R$ {finalPrice.toFixed(2).replace(".", ",")}, e após {format(new Date(customPriceEndDate), "dd/MM/yyyy")} reajustará para R$ {customPriceOriginal.toFixed(2).replace(".", ",")}/mês
+                  </NoticeBanner>
                 )}
 
                 {pendingSubscriptionValue != null && currentSubscriptionValue != null && pendingSubscriptionValue !== currentSubscriptionValue && (
-                  <div className="flex items-start gap-2.5 text-sm bg-orange-500/10 rounded-lg px-3 py-2.5">
-                    <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
-                    <span>
-                      Após pagar esta mensalidade de R$ {currentSubscriptionValue.toFixed(2).replace(".", ",")}, seu novo valor será de R$ {pendingSubscriptionValue.toFixed(2).replace(".", ",")}/mês.
-                    </span>
-                  </div>
+                  <NoticeBanner variant="warning" icon={AlertTriangle}>
+                    Após pagar esta mensalidade de R$ {currentSubscriptionValue.toFixed(2).replace(".", ",")}, seu novo valor será de R$ {pendingSubscriptionValue.toFixed(2).replace(".", ",")}/mês.
+                  </NoticeBanner>
                 )}
               </div>
 

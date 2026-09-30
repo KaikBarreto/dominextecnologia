@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
@@ -2667,13 +2667,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </span>
           </div>
 
-          <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
-            <ShieldCheck className="h-4 w-4 text-info" />
-            <AlertTitle className="text-sm">{t.unit.pmocUnlocksTitle}</AlertTitle>
-            <AlertDescription className="text-xs">
-              {t.unit.pmocUnlocksDesc}
-            </AlertDescription>
-          </Alert>
+          <NoticeBanner variant="info" icon={ShieldCheck} title={t.unit.pmocUnlocksTitle}>
+            {t.unit.pmocUnlocksDesc}
+          </NoticeBanner>
 
           {/* A caracterização do ambiente climatizado (Seção 4) migrou para a
               etapa "Ambientes", onde cada ambiente tem seus próprios dados e
@@ -2778,20 +2774,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   personalizar é por conta do gestor). Data de Início e Horizonte
                   continuam valendo nos dois casos. */}
               {usePlanEngine && !isPmoc ? (
-                <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
-                  <CalendarCheck className="h-4 w-4 text-info" />
-                  <AlertTitle className="text-sm">{t.frequency.planVisitsAlertTitle}</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    {t.frequency.planVisitsNote}
-                  </AlertDescription>
-                </Alert>
+                <NoticeBanner variant="info" icon={CalendarCheck} title={t.frequency.planVisitsAlertTitle}>
+                  {t.frequency.planVisitsNote}
+                </NoticeBanner>
               ) : (
                 <>
                   {isPmoc && (
-                    <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
-                      <ShieldCheck className="h-4 w-4 text-info" />
-                      <AlertTitle className="text-sm">{t.frequency.pmocCadenceAlertTitle}</AlertTitle>
-                      <AlertDescription className="text-xs space-y-1">
+                    <NoticeBanner variant="info" icon={ShieldCheck} title={t.frequency.pmocCadenceAlertTitle}>
+                      <div className="space-y-1">
                         <p>
                           {t.frequency.pmocCadenceDesc}
                         </p>
@@ -2801,8 +2791,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             <span>{t.frequency.pmocCadenceCustomWarning}</span>
                           </p>
                         )}
-                      </AlertDescription>
-                    </Alert>
+                      </div>
+                    </NoticeBanner>
                   )}
                   <div className="space-y-2">
                     <Label>{t.frequency.freqTypeLabel}</Label>
@@ -2922,7 +2912,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               <Badge variant="info" className="text-[10px] px-1.5 py-0 shrink-0">
                                 {visit.activityIndexes.length} {visit.activityIndexes.length === 1 ? t.frequency.activity : t.frequency.activities}
                               </Badge>
-                              {isWeekend && <Badge variant="outline" className="text-warning border-warning/30 text-[10px] px-1.5 py-0">{t.frequency.weekendBadge}</Badge>}
+                              {isWeekend && <Badge variant="warning" className="text-[10px] px-1.5 py-0">{t.frequency.weekendBadge}</Badge>}
                             </div>
                           );
                         })}
@@ -2992,7 +2982,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             <span className="text-muted-foreground w-5 text-right font-mono text-xs">{i + 1}</span>
                             <span className="text-foreground">{format(date, 'dd/MM/yyyy', { locale: ptBR })}</span>
                             <span className="text-muted-foreground text-xs">{format(date, 'EEEE', { locale: ptBR })}</span>
-                            {isWeekend && <Badge variant="outline" className="text-warning border-warning/30 text-[10px] px-1.5 py-0">{t.frequency.weekendBadge}</Badge>}
+                            {isWeekend && <Badge variant="warning" className="text-[10px] px-1.5 py-0">{t.frequency.weekendBadge}</Badge>}
                           </div>
                         );
                       })}
@@ -3017,13 +3007,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   fase e sua listagem). Aqui só lembramos o gestor. O escopo POR
                   CONTRATO foi removido (Fase 3). */}
               {isPmoc && (
-                <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
-                  <ShieldCheck className="h-4 w-4 text-info" />
-                  <AlertTitle className="text-sm">{t.frequency.pmocRoutineAlertTitle}</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    {t.frequency.pmocRoutineDesc}
-                  </AlertDescription>
-                </Alert>
+                <NoticeBanner variant="info" icon={ShieldCheck} title={t.frequency.pmocRoutineAlertTitle}>
+                  {t.frequency.pmocRoutineDesc}
+                </NoticeBanner>
               )}
 
               {/* Opções avançadas — serviços com frequência própria. Decisão CEO:
@@ -3116,7 +3102,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                   className={cn(
                                     'px-2 py-1 rounded-full text-[10px] font-medium border transition-colors whitespace-nowrap',
                                     perEquip
-                                      ? 'bg-info/10 text-info border-info/30'
+                                      ? 'bg-info text-info-foreground border-transparent'
                                       : 'bg-muted text-muted-foreground border-border',
                                     locked && 'opacity-60 cursor-not-allowed',
                                   )}

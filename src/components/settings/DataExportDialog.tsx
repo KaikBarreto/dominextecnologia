@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, FileSpreadsheet, Info, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, Loader2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
@@ -103,22 +104,27 @@ export function DataExportDialog({
     progress && progress.total > 0 ? Math.round((progress.index / progress.total) * 100) : 0;
 
   const footer = isRunning ? (
-    <div className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
-      <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" />
-      <div className="flex-1 space-y-2 text-sm text-foreground">
-        <div className="font-medium">{t.running}</div>
-        {progress && (
-          <>
-            <div className="text-xs text-muted-foreground">
-              {t.progressLabel
-                .replace('{sheet}', t.sheets[progress.sheetKey] ?? progress.sheetKey)
-                .replace('{rows}', String(progress.rows))}
-            </div>
-            <Progress value={progressPercent} className="h-1.5" />
-          </>
-        )}
-      </div>
-    </div>
+    <NoticeBanner
+      variant="neutral"
+      icon={null}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          {t.running}
+        </span>
+      }
+    >
+      {progress && (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">
+            {t.progressLabel
+              .replace('{sheet}', t.sheets[progress.sheetKey] ?? progress.sheetKey)
+              .replace('{rows}', String(progress.rows))}
+          </div>
+          <Progress value={progressPercent} className="h-1.5" />
+        </div>
+      )}
+    </NoticeBanner>
   ) : (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
@@ -195,25 +201,16 @@ export function DataExportDialog({
         </div>
 
         {/* Aviso das abas pesadas */}
-        <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-3">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">{t.heavyHint}</p>
-        </div>
+        <NoticeBanner variant="neutral">{t.heavyHint}</NoticeBanner>
 
         {/* Aviso de seleção vazia */}
         {selectedCount === 0 && (
-          <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-            <p className="text-xs text-foreground">{t.emptySelection}</p>
-          </div>
+          <NoticeBanner variant="warning">{t.emptySelection}</NoticeBanner>
         )}
 
         {/* Erro da última tentativa */}
         {error && !isRunning && (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <p className="text-xs text-destructive">{error}</p>
-          </div>
+          <NoticeBanner variant="destructive">{error}</NoticeBanner>
         )}
       </div>
     </ResponsiveModal>

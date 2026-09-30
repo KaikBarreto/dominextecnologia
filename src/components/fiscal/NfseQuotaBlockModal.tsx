@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, ArrowUpCircle, Lock, Sparkles } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { useNfseTierChange } from '@/hooks/useNfseTierChange';
 import { formatMoney } from '@/lib/format';
@@ -101,14 +102,11 @@ export function NfseQuotaBlockModal({
       }
     >
       <div className="space-y-4 py-1">
-        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3">
-          <Lock className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-          <p className="text-sm text-foreground">
-            {t.quotaBlock.warning
-              .replace('{used}', String(info?.used ?? 0))
-              .replace('{limit}', String(info?.limit ?? 0))}
-          </p>
-        </div>
+        <NoticeBanner variant="warning" icon={Lock}>
+          {t.quotaBlock.warning
+            .replace('{used}', String(info?.used ?? 0))
+            .replace('{limit}', String(info?.limit ?? 0))}
+        </NoticeBanner>
 
         {nextTier ? (
           <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4">

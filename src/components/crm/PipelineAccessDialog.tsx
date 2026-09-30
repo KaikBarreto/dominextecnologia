@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Globe, Lock } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,7 +20,6 @@ import { useCrmPipelineAccess } from '@/hooks/useCrmPipelineAccess';
 import { useUsers } from '@/hooks/useUsers';
 import { useLeads } from '@/hooks/useLeads';
 import type { CrmPipeline } from '@/hooks/useCrmPipelines';
-import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -152,26 +152,13 @@ export function PipelineAccessDialog({ pipeline, open, onOpenChange }: PipelineA
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">{t.subtitle}</p>
 
-          <div
-            className={cn(
-              'flex items-start gap-2.5 rounded-lg border p-3',
-              willBeRestricted ? 'border-warning/40 bg-warning/10' : 'border-success/40 bg-success/10',
-            )}
+          <NoticeBanner
+            variant={willBeRestricted ? 'warning' : 'success'}
+            icon={willBeRestricted ? Lock : Globe}
+            title={willBeRestricted ? t.restrictedStateTitle : t.openStateTitle}
           >
-            {willBeRestricted ? (
-              <Lock className="h-4 w-4 mt-0.5 shrink-0 text-warning" />
-            ) : (
-              <Globe className="h-4 w-4 mt-0.5 shrink-0 text-success" />
-            )}
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium">
-                {willBeRestricted ? t.restrictedStateTitle : t.openStateTitle}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {willBeRestricted ? t.restrictedStateDesc : t.openStateDesc}
-              </p>
-            </div>
-          </div>
+            {willBeRestricted ? t.restrictedStateDesc : t.openStateDesc}
+          </NoticeBanner>
 
           <div className="space-y-1.5">
             <AssigneeMultiSelect

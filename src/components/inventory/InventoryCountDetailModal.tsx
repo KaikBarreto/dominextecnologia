@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -267,14 +268,12 @@ export function InventoryCountDetailModal({
 
           {/* Mini-relatório de divergências */}
           {optimisticDivergences.length > 0 && (
-            <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 space-y-2">
-              <p className="text-sm font-semibold text-warning">
-                {t.divergenceReport}: {optimisticDivergences.length} {optimisticDivergences.length === 1 ? t.item : t.items}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t.totalDiffLabel}: <span className="font-semibold text-foreground">{formatCurrency(totalDiffValue)}</span>
-              </p>
-            </div>
+            <NoticeBanner
+              variant="warning"
+              title={`${t.divergenceReport}: ${optimisticDivergences.length} ${optimisticDivergences.length === 1 ? t.item : t.items}`}
+            >
+              {t.totalDiffLabel}: <span className="font-semibold">{formatCurrency(totalDiffValue)}</span>
+            </NoticeBanner>
           )}
 
           {/* Abas */}

@@ -5,7 +5,6 @@ import {
   Loader2,
   AlertCircle,
   AlertTriangle,
-  CheckCircle2,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -13,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { CertificateAuditList } from '@/components/fiscal/CertificateAuditList';
 import { formatDate as formatDateLib } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -82,78 +81,48 @@ export function CertificadoSection({
       {!isRegistered &&
         (registerError ? (
           /* Motivo real da falha de registro — substitui o aviso genérico */
-          <Alert
-            className={
-              registerError.kind === 'data'
-                ? 'border-warning/40 bg-warning/10'
-                : 'border-destructive/40 bg-destructive/10'
-            }
+          <NoticeBanner
+            variant={registerError.kind === 'data' ? 'warning' : 'destructive'}
+            icon={registerError.kind === 'data' ? AlertCircle : AlertTriangle}
+            title={t.settings.certificado.registerFailedTitle}
           >
-            {registerError.kind === 'data' ? (
-              <AlertCircle className="h-4 w-4" />
-            ) : (
-              <AlertTriangle className="h-4 w-4" />
-            )}
-            <AlertDescription className="text-xs space-y-0.5">
-              <p className="font-semibold">{t.settings.certificado.registerFailedTitle}</p>
-              <p>
-                {(registerError.kind === 'data'
-                  ? t.settings.certificado.registerFailedData
-                  : t.settings.certificado.registerFailedPlatform
-                ).replace('{error}', registerError.message)}
-              </p>
-            </AlertDescription>
-          </Alert>
+            {(registerError.kind === 'data'
+              ? t.settings.certificado.registerFailedData
+              : t.settings.certificado.registerFailedPlatform
+            ).replace('{error}', registerError.message)}
+          </NoticeBanner>
         ) : (
           /* Aviso genérico: ainda não tentou salvar ou erro foi limpo */
-          <Alert className="border-warning/40 bg-warning/10">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              {t.settings.certificado.notRegisteredWarning.split('{link}')[0]}
-              <button
-                type="button"
-                onClick={onGoToEmpresa}
-                className="font-semibold underline underline-offset-2"
-              >
-                {t.settings.certificado.notRegisteredLink}
-              </button>
-              {t.settings.certificado.notRegisteredWarning.split('{link}')[1]}
-            </AlertDescription>
-          </Alert>
+          <NoticeBanner variant="warning" icon={AlertCircle}>
+            {t.settings.certificado.notRegisteredWarning.split('{link}')[0]}
+            <button
+              type="button"
+              onClick={onGoToEmpresa}
+              className="font-semibold underline underline-offset-2"
+            >
+              {t.settings.certificado.notRegisteredLink}
+            </button>
+            {t.settings.certificado.notRegisteredWarning.split('{link}')[1]}
+          </NoticeBanner>
         ))}
 
       {hasCertificate && (
-        <Alert
-          className={
-            expired
-              ? 'border-destructive/40 bg-destructive/10'
-              : expiringSoon
-                ? 'border-warning/40 bg-warning/10'
-                : 'border-success/40 bg-success/10'
-          }
-        >
-          {expired || expiringSoon ? (
-            <AlertTriangle className="h-4 w-4" />
-          ) : (
-            <CheckCircle2 className="h-4 w-4" />
-          )}
-          <AlertDescription className="text-xs">
-            {expired
-              ? t.settings.certificado.certExpired.replace(
+        <NoticeBanner variant={expired ? 'destructive' : expiringSoon ? 'warning' : 'success'}>
+          {expired
+            ? t.settings.certificado.certExpired.replace(
+                '{date}',
+                certificateExpiresAt ? formatDateLib(certificateExpiresAt, locale, timezone) : '',
+              )
+            : certificateExpiresAt
+              ? t.settings.certificado.certValidUntil.replace(
                   '{date}',
-                  certificateExpiresAt ? formatDateLib(certificateExpiresAt, locale, timezone) : '',
-                )
-              : certificateExpiresAt
-                ? t.settings.certificado.certValidUntil.replace(
-                    '{date}',
-                    formatDateLib(certificateExpiresAt, locale, timezone),
-                  ) +
-                  (expiringSoon
-                    ? t.settings.certificado.certExpiringSoon.replace('{days}', String(expiresDays))
-                    : '.')
-                : t.settings.certificado.certSent}
-          </AlertDescription>
-        </Alert>
+                  formatDateLib(certificateExpiresAt, locale, timezone),
+                ) +
+                (expiringSoon
+                  ? t.settings.certificado.certExpiringSoon.replace('{days}', String(expiresDays))
+                  : '.')
+              : t.settings.certificado.certSent}
+        </NoticeBanner>
       )}
 
       <div className="space-y-2">

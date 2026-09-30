@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Badge } from '@/components/ui/badge';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
   Select,
   SelectContent,
@@ -265,10 +266,7 @@ export function OsConsumeStockDialog({ open, onOpenChange, serviceOrderId }: OsC
                 disabled={busy}
               />
               {overBalance && (
-                <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-2.5 text-xs text-foreground">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
-                  <p className="leading-relaxed">{t.overBalanceWarning}</p>
-                </div>
+                <NoticeBanner variant="warning">{t.overBalanceWarning}</NoticeBanner>
               )}
             </div>
 

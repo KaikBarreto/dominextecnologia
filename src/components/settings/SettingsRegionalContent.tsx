@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Globe, Coins, Clock, Loader2, CheckCircle2, AlertTriangle, User, Brain } from 'lucide-react';
+import { Globe, Coins, Clock, Loader2, CheckCircle2, User, Brain } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -308,7 +309,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
           </Select>
 
           {suggestLocale && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border border-primary/30 bg-primary/5 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border bg-muted p-3">
               <p className="text-xs text-foreground">
                 {t.companyCard.localeDefaultsPrompt.replace('{locale}', getLocaleDef(suggestLocale).label)}
               </p>
@@ -345,12 +346,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
             </SelectContent>
           </Select>
           {currencyChanged ? (
-            <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3">
-              <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
-              <p className="text-xs text-foreground">
-                {t.companyCard.currencyChangedWarning}
-              </p>
-            </div>
+            <NoticeBanner variant="warning">{t.companyCard.currencyChangedWarning}</NoticeBanner>
           ) : (
             <p className="text-xs text-muted-foreground">
               {t.companyCard.currencyHint}

@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { ListChecks, Check, X, MinusCircle, Minus, AlertTriangle, Lock, Camera, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -1112,12 +1113,9 @@ export function VisitChecklistPanel({
       </CardHeader>
       <CardContent className="px-3 sm:px-6 pb-3 space-y-4">
         {readOnly && (
-          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
-            <Lock className="h-4 w-4 mt-0.5 shrink-0" />
-            <p className="text-sm font-medium">
-              {tPanel.pausedWarning}
-            </p>
-          </div>
+          <NoticeBanner variant="warning" icon={Lock}>
+            {tPanel.pausedWarning}
+          </NoticeBanner>
         )}
         <Accordion
           type="single"

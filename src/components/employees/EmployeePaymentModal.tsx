@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Loader2, Wallet, CreditCard } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -245,9 +246,9 @@ export function EmployeePaymentModal({
     >
       <div className="p-1">
         {financialTransactionId && (
-          <div className="mb-4 rounded-lg border-2 border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+          <NoticeBanner variant="info" className="mb-4">
             {t.payrollPendingPrefix}{payrollPeriodLabel ? `${t.payrollPendingPeriodInfix} ${payrollPeriodLabel}` : ''}
-          </div>
+          </NoticeBanner>
         )}
 
         <div className="grid gap-4 md:grid-cols-[1fr_320px]">
@@ -405,9 +406,9 @@ export function EmployeePaymentModal({
                 </div>
 
                 {/* LÍQUIDO (destaque) */}
-                <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 text-center">
+                <div className="rounded-lg bg-muted border border-border p-4 text-center">
                   <p className="text-sm text-muted-foreground mb-1">{t.cltSummary.liquido}</p>
-                  <p className={`text-2xl font-bold ${cltLiquido >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  <p className={`text-2xl font-bold ${cltLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
                     {fmt(cltLiquido)}
                   </p>
                 </div>
@@ -472,9 +473,9 @@ export function EmployeePaymentModal({
                 </div>
 
                 {/* Amount to Pay */}
-                <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 text-center">
+                <div className="rounded-lg bg-muted border border-border p-4 text-center">
                   <p className="text-sm text-muted-foreground mb-1">{t.amountToPay.label}</p>
-                  <p className={`text-2xl font-bold ${toPay >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  <p className={`text-2xl font-bold ${toPay >= 0 ? 'text-success' : 'text-destructive'}`}>
                     {fmt(toPay)}
                   </p>
                   {valeDiscount > 0 && (

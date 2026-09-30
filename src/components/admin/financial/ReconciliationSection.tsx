@@ -4,7 +4,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { cn } from '@/lib/utils';
 import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
@@ -119,26 +121,14 @@ export function ReconciliationSection() {
 
           {/* Indicador de divergência */}
           {canCompare && (
-            <div
-              className={cn(
-                'flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium',
-                reconciled
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400',
-              )}
+            <NoticeBanner
+              variant={reconciled ? 'success' : 'destructive'}
+              icon={reconciled ? CheckCircle2 : AlertTriangle}
             >
-              {reconciled ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  Conciliado — saldos batem.
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  Divergência de {fmt(Math.abs(diff))} entre Asaas e sistema.
-                </>
-              )}
-            </div>
+              {reconciled
+                ? 'Conciliado — saldos batem.'
+                : `Divergência de ${fmt(Math.abs(diff))} entre Asaas e sistema.`}
+            </NoticeBanner>
           )}
 
           {/* Última sincronização + botão */}
@@ -173,10 +163,10 @@ export function ReconciliationSection() {
               className="flex-1 max-w-sm"
             />
             {pendingCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-700 dark:text-red-400 self-start sm:self-auto">
+              <Badge variant="destructive" className="gap-1.5 self-start px-3 py-1 sm:self-auto">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 {pendingCount} a categorizar
-              </span>
+              </Badge>
             )}
           </div>
 

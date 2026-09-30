@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { AlertTriangle, Gift, Heart, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { StepTransition } from '@/components/ui/step-transition';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { usePlanChange } from '@/hooks/usePlanChange';
@@ -295,9 +296,8 @@ export function CancelSubscriptionModal({
 
         {step === 'confirm' && (
           <div className="space-y-4">
-          <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 space-y-2">
-            <p className="text-sm font-medium">{t.confirmOnConfirm}</p>
-            <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+          <NoticeBanner variant="destructive" title={t.confirmOnConfirm}>
+            <ul className="list-disc list-inside space-y-1">
               <li>{t.confirmBullet1}</li>
               <li>
                 {t.confirmBullet2Until}{' '}
@@ -308,7 +308,7 @@ export function CancelSubscriptionModal({
               <li>{t.confirmBullet3}</li>
               <li>{t.confirmBullet4}</li>
             </ul>
-          </div>
+          </NoticeBanner>
 
           {cheaperPlan && (
             <DowngradeOfferCard

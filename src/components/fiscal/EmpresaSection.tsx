@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { CnpjDocumentInput, type CnpjData } from '@/components/customers/CnpjDocumentInput';
@@ -269,28 +270,16 @@ export function EmpresaSection({
       {/* Alerta persistente de falha de registro — visível até a empresa
           ser registrada com sucesso. Distingue causa (dado vs plataforma). */}
       {registerError && !isRegistered && (
-        <Alert
-          className={
-            registerError.kind === 'data'
-              ? 'border-warning/40 bg-warning/10'
-              : 'border-destructive/40 bg-destructive/10'
-          }
+        <NoticeBanner
+          variant={registerError.kind === 'data' ? 'warning' : 'destructive'}
+          icon={registerError.kind === 'data' ? AlertCircle : AlertTriangle}
+          title={t.settings.certificado.registerFailedTitle}
         >
-          {registerError.kind === 'data' ? (
-            <AlertCircle className="h-4 w-4" />
-          ) : (
-            <AlertTriangle className="h-4 w-4" />
-          )}
-          <AlertDescription className="text-xs space-y-0.5">
-            <p className="font-semibold">{t.settings.certificado.registerFailedTitle}</p>
-            <p>
-              {(registerError.kind === 'data'
-                ? t.settings.certificado.registerFailedData
-                : t.settings.certificado.registerFailedPlatform
-              ).replace('{error}', registerError.message)}
-            </p>
-          </AlertDescription>
-        </Alert>
+          {(registerError.kind === 'data'
+            ? t.settings.certificado.registerFailedData
+            : t.settings.certificado.registerFailedPlatform
+          ).replace('{error}', registerError.message)}
+        </NoticeBanner>
       )}
 
       {/* Barra de ação fixa no rodapé — Salvar sempre presente e, quando já

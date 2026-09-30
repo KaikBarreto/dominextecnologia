@@ -448,7 +448,7 @@ export function NpsDashboard() {
                           </p>
                         </div>
                         {isAttention && (
-                          <Badge variant="outline" className="border-destructive text-destructive gap-1 shrink-0">
+                          <Badge variant="destructive" className="gap-1 shrink-0">
                             <AlertTriangle className="h-3 w-3" />
                             {t.attentionBadge}
                           </Badge>
@@ -475,7 +475,7 @@ export function NpsDashboard() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
             {t.openDetractorsTitle}
             {openDetractors.length > 0 && (
-              <Badge variant="outline" className="border-destructive text-destructive ml-1">
+              <Badge variant="destructive" className="ml-1">
                 {openDetractors.length}
               </Badge>
             )}
