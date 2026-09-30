@@ -65,13 +65,13 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
         )}
         {/* Title and Customer */}
         <div className="space-y-1 mb-3">
-          <h4 className="font-medium text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+          <h4 className="font-medium text-sm leading-tight line-clamp-2 break-words group-hover:text-primary transition-colors">
             {lead.title}
           </h4>
           {lead.customers && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <User className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">{lead.customers.name}</span>
+              <span className="min-w-0 truncate">{lead.customers.name}</span>
             </div>
           )}
         </div>

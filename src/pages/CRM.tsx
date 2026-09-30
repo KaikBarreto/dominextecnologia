@@ -1010,7 +1010,10 @@ export default function CRM() {
                   </p>
                 </div>
 
-                <ScrollArea className="h-[450px] rounded-b-lg border border-t-0 bg-card">
+                {/* `[&_[data-radix-scroll-area-viewport]>div]:!block`: mesma trava do
+                    funil do admin — o `display:table` do Radix cresce até o max-content
+                    e um único card comprido corta a coluna inteira. */}
+                <ScrollArea className="h-[450px] rounded-b-lg border border-t-0 bg-card [&_[data-radix-scroll-area-viewport]>div]:!block">
                   <div className="space-y-3 p-3">
                     {(leadsByStage[stage.id] || []).map((lead) => (
                       <div

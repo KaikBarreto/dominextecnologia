@@ -832,9 +832,17 @@ function CrmTab() {
                         </p>
                       </div>
 
+                      {/* `[&_[data-radix-scroll-area-viewport]>div]:!block`: o Radix
+                          embrulha o conteúdo num `display:table; min-width:100%`, que
+                          CRESCE até o max-content. Basta UM lead com etiqueta/título
+                          comprido pra coluna inteira estourar os 300px e todos os
+                          cards saírem cortados à direita (o `truncate` não segura,
+                          porque largura de tabela é definida pelo conteúdo). Voltando
+                          pra `block` a coluna fica presa na largura real. */}
                       <ScrollArea
                         className={cn(
                           'rounded-b-lg border border-t-0 bg-card transition-all',
+                          '[&_[data-radix-scroll-area-viewport]>div]:!block',
                           isMobile ? 'h-[calc(100vh-420px)]' : 'h-[calc(100vh-360px)]',
                           isDropTarget && 'ring-2 ring-inset ring-primary bg-primary/5',
                         )}

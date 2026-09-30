@@ -96,13 +96,13 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
         )}
         {/* Título + empresa */}
         <div className="space-y-1 mb-3">
-          <h4 className="font-medium text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+          <h4 className="font-medium text-sm leading-tight line-clamp-2 break-words group-hover:text-primary transition-colors">
             {lead.title}
           </h4>
           {lead.company_name && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <User className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">{lead.company_name}</span>
+              <span className="min-w-0 truncate">{lead.company_name}</span>
             </div>
           )}
         </div>
@@ -187,11 +187,11 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
               style={{ backgroundColor: origin.color || '#6B7280' }}
             >
               <OriginIcon name={origin.icon || 'Globe'} className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">{origin.name}</span>
+              <span className="min-w-0 truncate">{origin.name}</span>
             </Badge>
           ) : lead.source ? (
             <Badge variant="muted" className="text-[10px] px-1.5 py-0 h-5 font-normal max-w-full">
-              <span className="truncate">{lead.source}</span>
+              <span className="min-w-0 truncate">{lead.source}</span>
             </Badge>
           ) : null}
 
@@ -202,7 +202,7 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
               style={{ backgroundColor: segment.color }}
             >
               <segment.icon className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">{segment.label}</span>
+              <span className="min-w-0 truncate">{segment.label}</span>
             </Badge>
           ))}
 
