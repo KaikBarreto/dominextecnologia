@@ -618,9 +618,10 @@ Deno.serve(async (req) => {
       contract: ctx.contract,
       cert: customDocs?.certificado_content ?? null,
       art: effectiveArt,
-      art_brand:
-        ((companySettings as unknown as Record<string, unknown>)
-          ?.white_label_primary_color as string | null) ?? null,
+      art_brand: certUseWhiteLabel
+        ? ((companySettings as unknown as Record<string, unknown>)
+            ?.white_label_primary_color as string | null) ?? null
+        : null,
       vars: variableContext,
     });
     const contentHash = await sha256Hex(hashInput);
@@ -701,10 +702,14 @@ Deno.serve(async (req) => {
                 }
               : null,
           signatureUrl: ctx.rt.signature_image_url ?? null,
-          // Sem tema salvo, a arte nasce na cor da marca do tenant.
-          brandPrimary:
-            ((companySettings as unknown as Record<string, unknown>)
-              ?.white_label_primary_color as string | null) ?? null,
+          // Sem tema salvo, a arte nasce na cor da marca do tenant — mas só
+          // quando o white-label está LIGADO, igual à regra do logo. Com ele
+          // desligado, `white_label_primary_color` é resquício de configuração
+          // e pintaria o certificado numa cor que o tenant não escolheu.
+          brandPrimary: certUseWhiteLabel
+            ? ((companySettings as unknown as Record<string, unknown>)
+                ?.white_label_primary_color as string | null) ?? null
+            : null,
         })
       : await drawCertificadoPage(
           pdf,

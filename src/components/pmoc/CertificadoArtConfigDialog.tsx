@@ -39,6 +39,7 @@ import { usePmocContractCustomDocs } from '@/hooks/usePmocContractCustomDocs';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 
 import { DocArtSvgRenderer, type DocArtImageUrls } from '@/lib/docArt/DocArtSvgRenderer';
+import { idealForeground } from '@/lib/docArt/resolve';
 import { DOC_ART_TEMPLATES, getDocArtTemplate } from '@/lib/docArt/templates';
 import type {
   DocArtConfig,
@@ -118,13 +119,18 @@ function toggleLabel(t: CertArtT, key: DocArtToggleKey): string {
 }
 
 /**
- * Descrição curta de cada arte (chrome da app). Derivada da ORIENTAÇÃO, não
- * do slug — o catálogo de artes em `docArt/templates/` é propriedade do
- * motor e os nomes/slugs específicos mudam de vez em quando (ex: redesign de
- * arte aprovado pelo CEO); descrição por orientação nunca fica desatualizada.
+ * Descrição curta de cada arte, DERIVADA da própria arte (orientação + tom),
+ * nunca escrita à mão por slug: o catálogo em `docArt/templates/` muda com os
+ * redesigns, e descrição escrita à mão envelhece em silêncio. A versão anterior
+ * dizia "cara clássica de certificado emoldurado" em artes que já não tinham
+ * moldura nenhuma.
  */
 function modelDescription(t: CertArtT, template: DocArtTemplate): string {
-  return template.orientation === 'portrait' ? t.modelPortraitDesc : t.modelLandscapeDesc;
+  const orientation =
+    template.orientation === 'portrait' ? t.modelPortrait : t.modelLandscape;
+  // Papel que pede texto branco = arte de fundo escuro.
+  const isDark = idealForeground(template.defaultTheme.paper) === '#ffffff';
+  return `${orientation} · ${isDark ? t.modelToneDark : t.modelToneLight}`;
 }
 
 /** Folha (proporção real da arte) usada tanto nos cards do seletor quanto na revisão. */
@@ -132,6 +138,7 @@ function CertSheet({
   template,
   config,
   substitute,
+  brand,
   images,
   className,
   title,
@@ -139,6 +146,7 @@ function CertSheet({
   template: DocArtTemplate;
   config?: DocArtConfig;
   substitute: (html: string) => string;
+  brand?: Partial<DocArtTheme>;
   images: DocArtImageUrls;
   className?: string;
   title?: string;
@@ -148,7 +156,14 @@ function CertSheet({
       className={cn('w-full overflow-hidden rounded-lg border bg-white shadow-sm', className)}
       style={{ aspectRatio: template.orientation === 'portrait' ? '210 / 297' : '297 / 210' }}
     >
-      <DocArtSvgRenderer template={template} config={config} substitute={substitute} images={images} title={title} />
+      <DocArtSvgRenderer
+        template={template}
+        config={config}
+        substitute={substitute}
+        brand={brand}
+        images={images}
+        title={title}
+      />
     </div>
   );
 }
@@ -272,6 +287,14 @@ export function CertificadoArtConfigDialog({
       ? company?.white_label_logo_url ?? company?.logo_url
       : company?.logo_url) ?? null;
   const effectiveLogo = logoUrl || companyLogoUrl || undefined;
+
+  // Cor da marca que entra como default do tema, ESPELHANDO a regra do
+  // servidor (`generate-pmoc-certificado-pdf`): só vale com white-label ligado.
+  // Sem isso o preview mostrava a cor da arte e o PDF saía na cor da marca.
+  const brandTheme = useMemo<Partial<DocArtTheme> | undefined>(() => {
+    const primary = company?.white_label_enabled ? company?.white_label_primary_color : null;
+    return primary ? { primary } : undefined;
+  }, [company?.white_label_enabled, company?.white_label_primary_color]);
 
   // Imagens pros CARDS do seletor de modelo — sempre o logo/assinatura reais,
   // sem o rascunho de personalização (os cards mostram a arte "de base").
@@ -415,7 +438,7 @@ export function CertificadoArtConfigDialog({
             )}
           >
             <div className="relative">
-              <CertSheet template={tpl} substitute={substitute} images={baseImages} />
+              <CertSheet template={tpl} substitute={substitute} brand={brandTheme} images={baseImages} />
               {selected && (
                 <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
                   <Check className="h-3 w-3 text-primary-foreground" />
@@ -437,7 +460,13 @@ export function CertificadoArtConfigDialog({
   const livePreview = (
     <div className="mx-auto w-full" style={{ maxWidth: selectedTemplate?.orientation === 'landscape' ? 480 : 340 }}>
       {selectedTemplate ? (
-        <CertSheet template={selectedTemplate} config={draftConfig} substitute={substitute} images={draftImages} />
+        <CertSheet
+          template={selectedTemplate}
+          config={draftConfig}
+          substitute={substitute}
+          brand={brandTheme}
+          images={draftImages}
+        />
       ) : (
         <PlainSheet />
       )}
@@ -711,6 +740,7 @@ export function CertificadoArtConfigDialog({
                     template={selectedTemplate}
                     config={draftConfig}
                     substitute={substitute}
+                    brand={brandTheme}
                     images={draftImages}
                     className="shadow-md"
                   />
