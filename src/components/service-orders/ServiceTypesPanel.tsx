@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Wrench, Search, Tags } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wrench, Tags } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
@@ -35,6 +35,8 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
+import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { ServiceTypeCategoriesDialog } from '@/components/service-orders/ServiceTypeCategoriesDialog';
@@ -264,50 +266,69 @@ export function ServiceTypesPanel({
         </div>
       )}
 
-      {/* Ações no mobile (acima da busca). Embutido não tem botão flutuante
-          (ele ficaria atrás do drawer), então o "Novo Tipo" vem inline aqui. */}
+      {/* Mobile: com dados, toolbar padrão (busca em cima, filtro+ações embaixo).
+          Sem dados, só os botões soltos (nada pra buscar/filtrar ainda). Embutido
+          não tem botão flutuante (ficaria atrás do drawer), então o "Novo Tipo"
+          vem inline aqui. */}
       {isMobile && (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => setCategoriesDialogOpen(true)}
+        serviceTypes.length > 0 ? (
+          <MobileListToolbar
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder={t.searchPlaceholder}
           >
-            <Tags className="mr-2 h-4 w-4" />
-            {tCat.btnManage}
-          </Button>
-          {embedded && (
-            <Button size="sm" className="flex-1" onClick={handleNew}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t.btnNew}
+            {categories.length > 0 && (
+              <FilterSheet
+                activeCount={categoryFilter.length}
+                onClear={() => setCategoryFilter([])}
+                triggerClassName="h-10"
+              >
+                <FilterCheckboxGroup
+                  label={tCat.filterLabel}
+                  options={categoryFilterOptions}
+                  selected={categoryFilter}
+                  onChange={setCategoryFilter}
+                  emptyLabel={tCat.filterEmpty}
+                />
+              </FilterSheet>
+            )}
+            {/* Ação rara: fica só com o ícone pra os controles caberem em 390px. */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0"
+              onClick={() => setCategoriesDialogOpen(true)}
+              title={tCat.btnManage}
+              aria-label={tCat.btnManage}
+            >
+              <Tags className="h-4 w-4" />
             </Button>
-          )}
-        </div>
-      )}
-
-      {/* Campo de busca — aparece sempre que há tipos cadastrados */}
-      {serviceTypes.length > 0 && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            className="pl-9"
-          />
-        </div>
-      )}
-
-      {/* Filtro por categoria — só aparece se há categorias cadastradas */}
-      {categories.length > 0 && serviceTypes.length > 0 && (
-        <FilterCheckboxGroup
-          label={tCat.filterLabel}
-          options={categoryFilterOptions}
-          selected={categoryFilter}
-          onChange={setCategoryFilter}
-          emptyLabel={tCat.filterEmpty}
-        />
+            {embedded && (
+              <Button size="sm" className="h-10 shrink-0 gap-1.5" onClick={handleNew}>
+                <Plus className="h-4 w-4" />
+                <span className="hidden min-[340px]:inline">{t.btnNew}</span>
+              </Button>
+            )}
+          </MobileListToolbar>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => setCategoriesDialogOpen(true)}
+            >
+              <Tags className="mr-2 h-4 w-4" />
+              {tCat.btnManage}
+            </Button>
+            {embedded && (
+              <Button size="sm" className="flex-1" onClick={handleNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t.btnNew}
+              </Button>
+            )}
+          </div>
+        )
       )}
 
       {serviceTypes.length === 0 ? (

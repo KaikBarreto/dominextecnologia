@@ -28,6 +28,7 @@ import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { AdminTasksTab } from '@/components/admin/tasks/AdminTasksTab';
@@ -618,32 +619,30 @@ function CrmTab() {
 
         {/* Search + Actions */}
         {isMobile ? (
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar oportunidades..."
-                className="pl-9 h-10"
-              />
-            </div>
+          <MobileListToolbar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Buscar oportunidades..."
+          >
             <FilterSheet
               triggerLabel="Filtros"
               activeCount={activeFilterCount + (viewMode !== 'kanban' ? 1 : 0)}
               onClear={clearFilters}
+              triggerClassName="h-10"
             >
               {filtersContent}
             </FilterSheet>
             <Button
-              size="icon"
+              size="sm"
+              className="h-10 shrink-0 gap-2 px-3"
               onClick={() => { setEditingLead(null); setDialogOpen(true); }}
               aria-label="Nova oportunidade"
               title="Nova oportunidade"
             >
               <Plus className="h-4 w-4" />
+              <span className="hidden min-[340px]:inline">Nova</span>
             </Button>
-          </div>
+          </MobileListToolbar>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <div className="relative flex-1 sm:max-w-md">

@@ -1106,27 +1106,30 @@ function CustomerPortalContent({
             {eqPagination.paginatedItems.map((eq) => (
               <Card
                 key={eq.id}
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className="cursor-pointer overflow-hidden hover:shadow-md transition-shadow"
                 onClick={() => handleSelectEquipment(eq.id)}
               >
-                <CardContent className="p-4 flex items-center gap-3">
+                {/* Foto colada no topo, embaixo e à esquerda, sempre quadrada. */}
+                <CardContent className="flex h-24 items-stretch p-0">
                   {eq.photo_url ? (
-                    <img src={eq.photo_url} alt="" className="h-12 w-12 rounded object-cover border shrink-0" />
+                    <img src={eq.photo_url} alt="" className="h-full w-24 shrink-0 object-cover" />
                   ) : (
-                    <div className="h-12 w-12 rounded bg-muted flex items-center justify-center shrink-0">
-                      <Package className="h-5 w-5 text-muted-foreground" />
+                    <div className="h-full w-24 bg-muted flex items-center justify-center shrink-0">
+                      <Package className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{eq.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {[eq.brand, eq.model].filter(Boolean).join(' - ')}
-                    </p>
-                    {eq.location && (
-                      <p className="text-xs text-muted-foreground">{eq.location}</p>
-                    )}
+                  <div className="flex flex-1 min-w-0 items-center gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{eq.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                      </p>
+                      {eq.location && (
+                        <p className="text-xs text-muted-foreground truncate">{eq.location}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </CardContent>
               </Card>
             ))}

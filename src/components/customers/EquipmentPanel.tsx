@@ -33,6 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { FABButton } from '@/components/mobile/FABButton';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
@@ -62,46 +63,51 @@ function EquipmentGridCard({
   const tEqCard = MESSAGES[locale].app.equipment;
   return (
     <Card
-      className="cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99]"
+      className="cursor-pointer overflow-hidden transition-shadow hover:shadow-md active:scale-[0.99]"
       onClick={onOpen}
     >
-      <CardContent className="p-4 flex flex-col gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          {(eq as any).photo_url ? (
-            <img src={(eq as any).photo_url} alt={eq.name} className="h-14 w-14 rounded-lg object-cover shrink-0" />
-          ) : (
-            <div
-              className="h-14 w-14 rounded-lg flex items-center justify-center text-white shrink-0"
-              style={{ backgroundColor: categoryColor || 'hsl(var(--muted))' }}
-            >
-              <Package className={cn('h-6 w-6', !categoryColor && 'text-muted-foreground')} />
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
+      {/* Foto sangra no topo, embaixo e à esquerda, sempre quadrada; o resto do card fica à direita. */}
+      <CardContent className="flex h-24 items-stretch p-0 sm:h-28">
+        {(eq as any).photo_url ? (
+          <img
+            src={(eq as any).photo_url}
+            alt={eq.name}
+            className="h-full w-24 shrink-0 object-cover sm:w-28"
+          />
+        ) : (
+          <div
+            className="flex h-full w-24 shrink-0 items-center justify-center text-white sm:w-28"
+            style={{ backgroundColor: categoryColor || 'hsl(var(--muted))' }}
+          >
+            <Package className={cn('h-6 w-6', !categoryColor && 'text-muted-foreground')} />
+          </div>
+        )}
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-4 py-3">
+          <div className="min-w-0">
             <p className="font-medium truncate">
               {eq.name}
               {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
             </p>
             {customerName && <p className="text-xs text-muted-foreground truncate">{customerName}</p>}
           </div>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          {categoryName ? (
-            <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: categoryColor }} />
-              {categoryName}
-            </Badge>
-          ) : <span />}
-          {!isMobile && canManage && (
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title={tEqCard.edit}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title={tEqCard.delete}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            {categoryName ? (
+              <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: categoryColor }} />
+                {categoryName}
+              </Badge>
+            ) : <span />}
+            {!isMobile && canManage && (
+              <div className="flex items-center gap-1 -mr-1" onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title={tEqCard.edit}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title={tEqCard.delete}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -275,37 +281,35 @@ export function EquipmentPanel() {
       {/* Toolbar de busca + filtros + actions (varia por viewport). */}
       {isMobile ? (
         <>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={tEq.searchPlaceholderMobile}
-                className="pl-10 h-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+          <MobileListToolbar
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder={tEq.searchPlaceholderMobile}
+            trailing={<ViewModeToggle value={viewMode} onChange={setViewMode} />}
+          >
             <FilterSheet
               triggerLabel={tEq.filterLabel}
               activeCount={activeFilterCount}
               onClear={clearFilters}
+              triggerClassName="h-10"
             >
               {filterContent}
             </FilterSheet>
             {canManageEquipment && (
               <Button
                 variant="outline"
-                size="icon"
-                className="h-10 w-10 shrink-0 text-warning"
+                size="sm"
+                className="h-10 shrink-0 gap-2 px-3 text-warning"
                 onClick={() => setConfigOpen(true)}
                 title={tEq.configureFields}
                 aria-label={tEq.configureFields}
               >
                 <Settings className="h-4 w-4" />
+                {/* Rótulo some só em tela muito estreita, pra engrenagem sozinha não virar adivinhação. */}
+                <span className="hidden min-[340px]:inline">{tEq.fieldsShort}</span>
               </Button>
             )}
-            <ViewModeToggle value={viewMode} onChange={setViewMode} />
-          </div>
+          </MobileListToolbar>
 
           {/* StatCarousel só faz sentido se houver categorias cadastradas. */}
           {categories.length > 0 && (

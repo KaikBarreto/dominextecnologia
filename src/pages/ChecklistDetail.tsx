@@ -449,26 +449,28 @@ export default function ChecklistDetail() {
         )}
       </div>
 
+      {/* Mobile: busca sozinha na 1ª linha e os dois filtros dividindo a 2ª
+          (régua da toolbar mobile). Desktop: tudo na mesma linha. */}
       {sortedQuestions.length > 0 && (
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px_180px]">
-          <div className="relative">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_180px_180px]">
+          <div className="relative col-span-2 sm:col-span-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={questionSearch}
               onChange={(event) => { setQuestionSearch(event.target.value); setQuestionPage(1); }}
               placeholder="Pesquisar pergunta, descrição ou tipo..."
-              className="pl-9"
+              className="h-10 pl-9"
             />
           </div>
           <Select value={questionTypeFilter} onValueChange={(value) => { setQuestionTypeFilter(value); setQuestionPage(1); }}>
-            <SelectTrigger><SelectValue placeholder="Todos os tipos" /></SelectTrigger>
+            <SelectTrigger className="h-10 min-w-0"><SelectValue placeholder="Todos os tipos" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os tipos</SelectItem>
               {QUESTION_TYPES.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={questionSort} onValueChange={(value) => { setQuestionSort(value as typeof questionSort); setQuestionSortDirection('asc'); setQuestionPage(1); }}>
-            <SelectTrigger><SelectValue placeholder="Ordenar" /></SelectTrigger>
+            <SelectTrigger className="h-10 min-w-0"><SelectValue placeholder="Ordenar" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="position">Ordem do checklist</SelectItem>
               <SelectItem value="question">Nome da pergunta</SelectItem>

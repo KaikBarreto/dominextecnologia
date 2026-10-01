@@ -43,6 +43,7 @@ import { TaskFiltersForm } from './TaskFilters';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -273,30 +274,13 @@ export function AdminTasksTab() {
 
       {/* Toolbar: busca + filtros + ver futuras + view toggle */}
       {isMobile ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={searchInput}
-                onChange={e => setSearchInput(e.target.value)}
-                placeholder="Buscar tarefas..."
-                className="pl-9 h-10"
-              />
-            </div>
-            <FilterSheet triggerLabel="Filtros" activeCount={activeFilterCount} onClear={clearFilters}>
-              {filtersContent}
-            </FilterSheet>
-          </div>
-          <div className="flex items-center justify-between gap-2 px-1">
-            {viewMode !== 'agenda' ? (
-              <div className="flex items-center gap-2">
-                <Switch id="show-future-m" checked={showFuture} onCheckedChange={setShowFuture} />
-                <Label htmlFor="show-future-m" className="text-xs cursor-pointer">Ver futuras</Label>
-              </div>
-            ) : <span />}
-            {/* As três visualizações também ficam disponíveis no celular. */}
-            <div className="flex rounded-lg border overflow-hidden h-8">
+        <MobileListToolbar
+          searchValue={searchInput}
+          onSearchChange={setSearchInput}
+          searchPlaceholder="Buscar tarefas..."
+          trailing={
+            // As três visualizações também ficam disponíveis no celular.
+            <div className="flex rounded-lg border overflow-hidden h-10">
               <button
                 type="button"
                 onClick={() => setView('kanban')}
@@ -325,8 +309,23 @@ export function AdminTasksTab() {
                 <CalendarDays className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        </div>
+          }
+        >
+          <FilterSheet
+            triggerLabel="Filtros"
+            activeCount={activeFilterCount}
+            onClear={clearFilters}
+            triggerClassName="h-10"
+          >
+            {filtersContent}
+          </FilterSheet>
+          {viewMode !== 'agenda' && (
+            <div className="flex h-10 shrink-0 items-center gap-2 rounded-md border bg-card px-2.5">
+              <Switch id="show-future-m" checked={showFuture} onCheckedChange={setShowFuture} />
+              <Label htmlFor="show-future-m" className="text-xs cursor-pointer whitespace-nowrap">Ver futuras</Label>
+            </div>
+          )}
+        </MobileListToolbar>
       ) : (
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div className="relative flex-1 sm:max-w-md">

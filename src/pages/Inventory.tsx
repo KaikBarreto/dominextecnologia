@@ -70,6 +70,7 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { FABButton } from '@/components/mobile/FABButton';
@@ -671,27 +672,23 @@ export default function Inventory() {
 
             {/* Barra de busca + filtros */}
             {isMobile ? (
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={t.search.placeholderShort}
-                    className="pl-10 h-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
+              <MobileListToolbar
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                searchPlaceholder={t.search.placeholderShort}
+                trailing={exportDropdown(true)}
+              >
                 {hasAnyFilter && (
                   <FilterSheet
                     triggerLabel={t.filters.button}
                     activeCount={activeFilterCount}
                     onClear={clearFilters}
+                    triggerClassName="h-10"
                   >
                     {filterContent}
                   </FilterSheet>
                 )}
-                {exportDropdown(true)}
-              </div>
+              </MobileListToolbar>
             ) : (
               <div className="flex items-center gap-2">
                 <div className="relative flex-1 sm:max-w-sm">

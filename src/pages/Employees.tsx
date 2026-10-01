@@ -24,6 +24,7 @@ import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebar
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeesListView } from '@/components/employees/EmployeesListView';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
@@ -886,11 +887,28 @@ export default function Employees() {
       <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
         {activeTab === 'list' ? (
           <div className="space-y-4">
+            {isMobile ? (
+              <MobileListToolbar
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder={t.toolbar.searchPlaceholderMobile}
+                trailing={<ViewModeToggle value={viewMode} onChange={setViewMode} />}
+              >
+                <Select value={sort} onValueChange={setSort}>
+                  <SelectTrigger className="h-10 w-[150px] shrink-0"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
+                    <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
+                    <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </MobileListToolbar>
+            ) : (
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={isMobile ? t.toolbar.searchPlaceholderMobile : t.toolbar.searchPlaceholder}
+                  placeholder={t.toolbar.searchPlaceholder}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="pl-9"
@@ -904,13 +922,12 @@ export default function Employees() {
                   <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
                 </SelectContent>
               </Select>
-              <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels={!isMobile} />
-              {!isMobile && (
-                <Button onClick={openNewEmployee} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> {t.toolbar.newEmployee}
-                </Button>
-              )}
+              <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
+              <Button onClick={openNewEmployee} className="gap-1.5">
+                <Plus className="h-4 w-4" /> {t.toolbar.newEmployee}
+              </Button>
             </div>
+            )}
 
             {/* Loading / vazio compartilhados entre os modos */}
             {isLoading ? (

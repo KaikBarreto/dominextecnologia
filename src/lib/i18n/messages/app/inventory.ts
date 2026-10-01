@@ -166,6 +166,7 @@ export const inventory = {
       actions: {
         suppliers: 'Fornecedores',
         newPurchase: 'Nova requisição de compra',
+        newPurchaseShort: 'Nova Compra',
       },
       status: {
         open: 'Aberta',
@@ -1068,6 +1069,7 @@ export const inventory = {
       actions: {
         suppliers: 'Suppliers',
         newPurchase: 'New purchase request',
+        newPurchaseShort: 'New Purchase',
       },
       status: {
         open: 'Open',
@@ -1967,6 +1969,7 @@ export const inventory = {
       actions: {
         suppliers: 'Proveedores',
         newPurchase: 'Nueva solicitud de compra',
+        newPurchaseShort: 'Nueva Compra',
       },
       status: {
         open: 'Abierta',
@@ -2866,6 +2869,7 @@ export const inventory = {
       actions: {
         suppliers: 'Fournisseurs',
         newPurchase: `Nouvelle demande d'achat`,
+        newPurchaseShort: `Nouvel Achat`,
       },
       status: {
         open: 'Ouvert',

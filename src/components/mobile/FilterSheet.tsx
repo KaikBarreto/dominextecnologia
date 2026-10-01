@@ -4,6 +4,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -13,6 +14,8 @@ interface FilterSheetProps {
   children: ReactNode;
   onClear?: () => void;
   onApply?: () => void;
+  /** Classe extra no botão de gatilho (ex: alinhar altura com os vizinhos da toolbar). */
+  triggerClassName?: string;
 }
 
 /**
@@ -24,6 +27,7 @@ export function FilterSheet({
   children,
   onClear,
   onApply,
+  triggerClassName,
 }: FilterSheetProps) {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
@@ -47,7 +51,7 @@ export function FilterSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 h-9">
+        <Button variant="outline" size="sm" className={cn('gap-2 h-9', triggerClassName)}>
           <SlidersHorizontal className="h-4 w-4" />
           {label}
           {activeCount > 0 && (

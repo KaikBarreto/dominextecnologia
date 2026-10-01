@@ -59,6 +59,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate } from '@/lib/format';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -512,25 +513,21 @@ export default function ServiceOrders() {
             {/* Mobile: busca sempre visível + botão filtros + FAB. Desktop: actions bar atual. */}
             {isMobile ? (
               <>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      ref={mobileSearchInputRef}
-                      placeholder={t.search.placeholderShort}
-                      className="pl-10 h-11 rounded-lg"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
+                <MobileListToolbar
+                  searchValue={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  searchPlaceholder={t.search.placeholderShort}
+                  searchInputRef={mobileSearchInputRef}
+                >
                   <FilterSheet
                     triggerLabel={t.filters.button}
                     activeCount={activeFilterCount}
                     onClear={clearFilters}
+                    triggerClassName="h-10"
                   >
                     {filterContent}
                   </FilterSheet>
-                </div>
+                </MobileListToolbar>
 
                 {hasSearch && (
                   <p className="text-xs text-muted-foreground -mt-1 px-0.5">

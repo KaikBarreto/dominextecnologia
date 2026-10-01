@@ -64,6 +64,7 @@ import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fn
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
@@ -1280,21 +1281,17 @@ export default function CRM() {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const tasksBlock = (
     <div className="space-y-4">
-      <div className={cn('flex gap-2', isMobile ? 'flex-col' : 'flex-row items-center')}>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t.tasks.searchPlaceholder}
-            className="pl-10"
-            value={taskSearch}
-            onChange={(e) => setTaskSearch(e.target.value)}
-          />
-        </div>
-        {isMobile ? (
+      {isMobile ? (
+        <MobileListToolbar
+          searchValue={taskSearch}
+          onSearchChange={setTaskSearch}
+          searchPlaceholder={t.tasks.searchPlaceholder}
+        >
           <FilterSheet
             triggerLabel="Filtros"
             activeCount={taskAssigneeFilter.length}
             onClear={() => setTaskAssigneeFilter([])}
+            triggerClassName="h-10"
           >
             <FilterCheckboxGroup
               label={t.tasks.filterAssignee}
@@ -1304,7 +1301,18 @@ export default function CRM() {
               emptyLabel={t.tasks.filterAssigneeAll}
             />
           </FilterSheet>
-        ) : (
+        </MobileListToolbar>
+      ) : (
+        <div className="flex flex-row items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={t.tasks.searchPlaceholder}
+              className="pl-10"
+              value={taskSearch}
+              onChange={(e) => setTaskSearch(e.target.value)}
+            />
+          </div>
           <FilterButton activeCount={taskAssigneeFilter.length} onClear={() => setTaskAssigneeFilter([])}>
             <FilterCheckboxGroup
               label={t.tasks.filterAssignee}
@@ -1314,8 +1322,8 @@ export default function CRM() {
               emptyLabel={t.tasks.filterAssigneeAll}
             />
           </FilterButton>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="flex w-full overflow-x-auto pb-1">
         <div className="inline-flex min-w-max overflow-hidden rounded-lg border bg-card">
@@ -1520,35 +1528,32 @@ export default function CRM() {
           <>
             {summaryRow}
 
-            {/* Busca + filtros */}
-            <div className="flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder={t.searchPlaceholderMobile}
-                  className="pl-10 h-10"
-                  value={filters.search}
-                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                />
-              </div>
+            {/* Busca (1ª linha) + filtros/ações (2ª linha) — régua da toolbar
+                mobile de listagem (CEO, 2026-10-01). */}
+            <MobileListToolbar
+              searchValue={filters.search}
+              onSearchChange={(v) => setFilters(prev => ({ ...prev, search: v }))}
+              searchPlaceholder={t.searchPlaceholderMobile}
+            >
               <FilterSheet
                 triggerLabel="Filtros"
                 activeCount={activeFiltersCount + (viewMode === 'list' ? 0 : 0)}
                 onClear={clearFilters}
+                triggerClassName="h-10"
               >
                 {filterSheetContent}
               </FilterSheet>
               <Button
-                size="icon"
-                className="h-10 shrink-0 min-[430px]:w-auto min-[430px]:gap-1.5 min-[430px]:px-3"
+                size="sm"
+                className="h-10 shrink-0 gap-1.5 px-3"
                 onClick={() => setDialogOpen(true)}
                 aria-label={t.newOpportunity}
                 title={t.newOpportunity}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden min-[430px]:inline">{t.newOpportunity}</span>
+                <span className="hidden min-[340px]:inline">{t.newOpportunityShort}</span>
               </Button>
-            </div>
+            </MobileListToolbar>
 
             {/* StatCarousel — 1 chip por stage; tap filtra (apenas view lista). */}
             {stages.length > 0 && viewMode === 'list' && (

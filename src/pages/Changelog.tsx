@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.13',
+    date: '1 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca e filtros mais fáceis de usar no celular',
+        description: 'A busca passou a ocupar a linha inteira, em vez de ficar espremida ao lado dos botões, e os filtros e ações ficam logo abaixo, sempre na mesma ordem e com o mesmo tamanho. O botão de alternar entre lista e grade fica no canto direito. Vale para ordens de serviço, clientes, fornecedores, funcionários, orçamentos, contratos, oportunidades, estoque, compras, financeiro, equipamentos, serviços e checklists.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Foto do equipamento maior na lista',
+        description: 'Na lista de equipamentos e no portal do cliente, a foto aparece maior e encostada na borda do card, ocupando toda a altura. Equipamentos com e sem foto ficam alinhados entre si, o que deixa a identificação mais rápida ao passar o olho pela lista.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.12',
     date: '1 de outubro de 2026',
     type: 'patch',

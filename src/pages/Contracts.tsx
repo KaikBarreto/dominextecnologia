@@ -51,6 +51,7 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -392,26 +393,22 @@ export default function Contracts() {
 
       {/* Mobile: busca fixa + filtros + carrossel de KPIs. Desktop: KPIs em grid + filtros em linha. */}
       {isMobile ? (
-        <>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder={t.searchPlaceholderMobile}
-                className="pl-10 h-10"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <FilterSheet
-              triggerLabel={t.filters}
-              activeCount={activeFilterCount}
-              onClear={clearFilters}
-            >
-              {filterContent}
-            </FilterSheet>
-          </div>
-        </>
+        // Busca (1ª linha) + filtros (2ª linha) — régua da toolbar mobile de
+        // listagem (CEO, 2026-10-01).
+        <MobileListToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={t.searchPlaceholderMobile}
+        >
+          <FilterSheet
+            triggerLabel={t.filters}
+            activeCount={activeFilterCount}
+            onClear={clearFilters}
+            triggerClassName="h-10"
+          >
+            {filterContent}
+          </FilterSheet>
+        </MobileListToolbar>
       ) : (
         <>
 

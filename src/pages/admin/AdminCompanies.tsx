@@ -51,6 +51,7 @@ import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -480,20 +481,16 @@ export default function AdminCompanies() {
         // MOBILE: busca + FilterSheet (com toggle de view dentro) + Stats.
         // -----------------------------------------------------------------
         <>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar empresas..."
-                className="pl-10 h-10"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+          <MobileListToolbar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Buscar empresas..."
+          >
             <FilterSheet
               triggerLabel="Filtros"
               activeCount={activeFilterCount}
               onClear={clearFilters}
+              triggerClassName="h-10"
             >
               <FilterContent withViewToggle />
             </FilterSheet>
@@ -508,7 +505,7 @@ export default function AdminCompanies() {
                 <Shield className="h-4 w-4" />
               </Button>
             )}
-          </div>
+          </MobileListToolbar>
 
           <StatCarousel items={statItems} loading={isLoading} />
         </>

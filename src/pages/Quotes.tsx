@@ -53,6 +53,7 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -546,24 +547,22 @@ function QuotesList() {
       {/* Mobile: busca sempre visível + botão filtros. Desktop: actions bar + filtros inline. */}
       {isMobile ? (
         <>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={tq.searchPlaceholderMobile}
-                className="pl-10 h-10"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+          {/* Busca (1ª linha) + filtros (2ª linha) — régua da toolbar mobile
+              de listagem (CEO, 2026-10-01). */}
+          <MobileListToolbar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder={tq.searchPlaceholderMobile}
+          >
             <FilterSheet
               triggerLabel={tq.filterStatus}
               activeCount={activeFilterCount}
               onClear={clearFilters}
+              triggerClassName="h-10"
             >
               {filterContent}
             </FilterSheet>
-          </div>
+          </MobileListToolbar>
 
           <div className="relative -mx-3">
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-background to-transparent" />

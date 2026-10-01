@@ -33,6 +33,7 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { useViewMode } from '@/hooks/useViewMode';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -262,42 +263,53 @@ export default function Customers() {
         <SuppliersTab />
       ) : (
       <>
+      {isMobile ? (
+        <MobileListToolbar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder={t.searchPlaceholderMobile}
+          trailing={<ViewModeToggle value={viewMode} onChange={setViewMode} />}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setOriginConfigOpen(true)}
+            className="h-10 shrink-0 gap-2 px-3"
+            title={t.origins}
+            aria-label={t.origins}
+          >
+            <Settings2 className="h-4 w-4" />
+            <span className="hidden min-[340px]:inline">{t.origins}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLeadFormsOpen(true)}
+            className="h-10 shrink-0 gap-2 px-3"
+            title={t.leadForms}
+            aria-label={t.leadForms}
+          >
+            <ClipboardList className="h-4 w-4" />
+            {/* Rótulo mais longo dos dois: some antes, pra linha nunca estourar em tela estreita. */}
+            <span className="hidden min-[375px]:inline">{t.leadForms}</span>
+          </Button>
+        </MobileListToolbar>
+      ) : (
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isMobile ? t.searchPlaceholderMobile : t.searchPlaceholder}
+            placeholder={t.searchPlaceholder}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-2">
-          {isMobile && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOriginConfigOpen(true)}
-              className="gap-2 h-10"
-            >
-              <Settings2 className="h-4 w-4" />
-              {t.origins}
-            </Button>
-          )}
-          {isMobile && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLeadFormsOpen(true)}
-              className="gap-2 h-10"
-            >
-              <ClipboardList className="h-4 w-4" />
-              Formulários
-            </Button>
-          )}
-          <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels={!isMobile} />
+          <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
         </div>
       </div>
+      )}
 
       {viewMode === 'grid' ? (
         // -----------------------------------------------------------------

@@ -475,11 +475,12 @@ export function EstatisticasSistemaTab() {
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
                     placeholder="Buscar empresa"
-                    className="pl-9"
+                    className="h-10 pl-9"
                   />
                 </div>
+                {/* Mobile: ordenação na 2ª linha com largura própria, não full-width. */}
                 <Select value={ordem} onValueChange={(v) => setOrdem(v as OrdemRanking)}>
-                  <SelectTrigger className="w-full sm:w-[190px]">
+                  <SelectTrigger className="h-10 w-[210px] sm:w-[190px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

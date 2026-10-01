@@ -50,6 +50,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { EmptyState } from '@/components/mobile/EmptyState';
 
@@ -593,7 +594,10 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
   const statusInlineFilter = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 h-9">
+        {/* h-10 no mobile pra alinhar com o resto da 2ª linha da MobileListToolbar
+            (régua do CEO); h-9 no desktop, onde esse dropdown fica sozinho numa
+            linha "atalho" abaixo da busca. */}
+        <Button variant="outline" size="sm" className={cn('gap-1.5', isMobile ? 'h-10' : 'h-9')}>
           {t.filters.status}
           {statusFilter.length > 0 && (
             <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-primary text-primary-foreground border-transparent hover:bg-primary">
@@ -854,26 +858,43 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
 
   return (
     <div className="space-y-4 min-w-0 w-full">
-      {/* Barra de busca + filtros + botão Nova Nota */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t.search.placeholder}
-              className="pl-9"
-            />
-          </div>
+      {/* Barra de busca + filtros + botão Nova Nota.
+          Mobile: régua CEO 2026-10-01 — busca em linha cheia (1ª linha),
+          filtros + status na 2ª (nunca mais de 3 controles). Desktop idêntico
+          ao que já era: busca+filtro na mesma linha, status abaixo. */}
+      {isMobile ? (
+        <MobileListToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={t.search.placeholder}
+        >
           {/* "Nova Nota" saiu daqui: a ação principal virou FAB no nível da
               página, e dois botões idênticos na mesma tela só dividiam a
               atenção. O gate de emissão continua valendo dentro do modal. */}
           {filterButton}
+          {statusInlineFilter}
+        </MobileListToolbar>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t.search.placeholder}
+                className="pl-9"
+              />
+            </div>
+            {/* "Nova Nota" saiu daqui: a ação principal virou FAB no nível da
+                página, e dois botões idênticos na mesma tela só dividiam a
+                atenção. O gate de emissão continua valendo dentro do modal. */}
+            {filterButton}
+          </div>
+          {/* Filtro mais usado em linha própria — sem precisar abrir o painel. */}
+          <div className="flex flex-wrap items-center gap-2">{statusInlineFilter}</div>
         </div>
-        {/* Filtro mais usado em linha própria — sem precisar abrir o painel. */}
-        <div className="flex flex-wrap items-center gap-2">{statusInlineFilter}</div>
-      </div>
+      )}
 
       {/* Lista */}
       {loading ? (

@@ -23,6 +23,7 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -245,23 +246,17 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
       <StatCarousel items={statItems} variant="saturated" />
 
       {/* Busca + filtros */}
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1 sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={tRT.searchPlaceholder}
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {/* Filtro mobile: bottom sheet com checkboxes multi-select. */}
-        {isMobile && (
+      {isMobile ? (
+        <MobileListToolbar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder={tRT.searchPlaceholder}
+        >
           <FilterSheet
             triggerLabel={tRT.filterStatus}
             activeCount={activeFilterCount}
             onClear={() => setStatusFilter([])}
+            triggerClassName="h-10"
           >
             <FilterCheckboxGroup
               label={tRT.filterStatus}
@@ -273,8 +268,18 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
               onChange={(next) => setStatusFilter(next as StatusKey[])}
             />
           </FilterSheet>
-        )}
-      </div>
+        </MobileListToolbar>
+      ) : (
+        <div className="relative min-w-0 flex-1 sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={tRT.searchPlaceholder}
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      )}
 
       {/* Lista mobile */}
       {isMobile ? (

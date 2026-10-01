@@ -49,6 +49,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FABButton } from '@/components/mobile/FABButton';
@@ -221,6 +222,48 @@ function compareWalkOrder(a: PanelTxn, b: PanelTxn): number {
   const createdCmp = String((a as any).created_at ?? '').localeCompare(String((b as any).created_at ?? ''));
   if (createdCmp !== 0) return createdCmp;
   return String(a.id).localeCompare(String(b.id));
+}
+
+/**
+ * Toolbar de busca + filtro: no mobile segue a régua `MobileListToolbar`
+ * (busca sozinha na 1ª linha, filtro na 2ª); no desktop fica tudo na mesma
+ * linha, como era antes. O filtro é passado como children pra não duplicar o
+ * corpo do FilterButton nos dois ramos.
+ */
+function ToolbarShell({
+  isMobile, search, onSearchChange, searchPlaceholder, children,
+}: {
+  isMobile: boolean;
+  search: string;
+  onSearchChange: (v: string) => void;
+  searchPlaceholder: string;
+  children: React.ReactNode;
+}) {
+  if (isMobile) {
+    return (
+      <MobileListToolbar
+        searchValue={search}
+        onSearchChange={onSearchChange}
+        searchPlaceholder={searchPlaceholder}
+      >
+        {children}
+      </MobileListToolbar>
+    );
+  }
+  return (
+    <div className="flex flex-col sm:flex-row gap-2">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder={searchPlaceholder}
+          className="pl-10"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export function TransactionListPanel({
@@ -864,11 +907,14 @@ export function TransactionListPanel({
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={fin.transactionList.search} className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
+      {/* Mobile: busca sozinha na 1ª linha, filtro na 2ª (régua MobileListToolbar).
+          Desktop: busca + filtro na mesma linha, como sempre foi. */}
+      <ToolbarShell
+        isMobile={isMobile}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={fin.transactionList.search}
+      >
         {/* FilterButton standard: tipo (quando type==='all') + categoria + conta.
             Sem filtro de Status: Movimentações = só realizado (is_paid), todo registro é "Pago".
             Drawer de baixo no mobile, sheet lateral no desktop (pattern v1.9.9). */}
@@ -925,7 +971,7 @@ export function TransactionListPanel({
             />
           )}
         </FilterButton>
-      </div>
+      </ToolbarShell>
 
       {isLoading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}</div>

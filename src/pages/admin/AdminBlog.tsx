@@ -172,13 +172,15 @@ function PostsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row gap-3 w-full flex-wrap">
-          <div className="relative flex-1 min-w-[160px]">
+        {/* Mobile: busca sozinha na 1ª linha; os 3 filtros dividem a 2ª (régua da
+            toolbar mobile). Desktop: tudo na mesma linha, como era. */}
+        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:gap-3">
+          <div className="relative col-span-3 min-w-[160px] sm:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar artigos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar artigos..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10 pl-9 sm:h-10" />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full min-w-0 sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="draft">Rascunho</SelectItem>
@@ -186,7 +188,7 @@ function PostsTab() {
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full min-w-0 sm:w-[140px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               {dbCategories.map((cat) => (
@@ -195,7 +197,7 @@ function PostsTab() {
             </SelectContent>
           </Select>
           <Select value={localeFilter} onValueChange={setLocaleFilter}>
-            <SelectTrigger className="w-full sm:w-[120px]"><SelectValue placeholder="Idioma" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full min-w-0 sm:w-[120px]"><SelectValue placeholder="Idioma" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os idiomas</SelectItem>
               {LOCALES.map((l) => (
@@ -214,7 +216,7 @@ function PostsTab() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => navigate("/admin/blog/novo")} className="w-full sm:w-auto shrink-0">
+        <Button onClick={() => navigate("/admin/blog/novo")} className="h-10 w-full shrink-0 sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Novo Artigo
         </Button>

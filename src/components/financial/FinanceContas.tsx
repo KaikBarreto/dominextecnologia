@@ -987,14 +987,16 @@ export function FinanceContas({
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2 pb-1 sm:flex sm:overflow-x-auto lg:pb-0 shrink-0">
-          <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value as AccountsView)} variant="outline" size="sm" className="shrink-0">
-            <ToggleGroupItem value="list" aria-label="Visualização em lista" className="h-9 px-3"><List className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Lista</span></ToggleGroupItem>
-            <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="h-9 px-3"><CalendarDays className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Calendário</span></ToggleGroupItem>
+          {/* Mobile: Exportar + Filtros à esquerda, alternador lista/calendário
+              encostado à direita (régua da toolbar mobile). */}
+          <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 pb-1 sm:flex sm:overflow-x-auto lg:pb-0 shrink-0">
+          <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value as AccountsView)} variant="outline" size="sm" className="order-3 shrink-0 sm:order-none">
+            <ToggleGroupItem value="list" aria-label="Visualização em lista" className="h-10 px-3 sm:h-9"><List className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Lista</span></ToggleGroupItem>
+            <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="h-10 px-3 sm:h-9"><CalendarDays className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Calendário</span></ToggleGroupItem>
           </ToggleGroup>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 w-full shrink-0 gap-2 sm:w-auto">
+              <Button variant="outline" size="sm" className="order-1 h-10 w-full shrink-0 gap-2 sm:order-none sm:h-9 sm:w-auto">
                 <FileDown className="h-4 w-4" />Exportar<ChevronDown className="ml-auto h-3.5 w-3.5 opacity-60 sm:ml-1" />
               </Button>
             </DropdownMenuTrigger>
@@ -1004,7 +1006,7 @@ export function FinanceContas({
               <DropdownMenuItem onClick={handleExportCsv}><FileDown className="mr-2 h-4 w-4" />CSV</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <FilterButton activeCount={activeFilterCount} onClear={resetFilters} className="shrink-0">
+          <FilterButton activeCount={activeFilterCount} onClear={resetFilters} className="order-2 shrink-0 sm:order-none">
             <div className="space-y-2">
               <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</Label>
               <Select value={filter} onValueChange={(value) => setFilter(value as FilterStatus)}>
@@ -1040,7 +1042,7 @@ export function FinanceContas({
               />
             )}
           </FilterButton>
-            <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:col-span-1 sm:h-9 sm:w-auto">
+            <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="order-4 col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:order-none sm:col-span-1 sm:h-9 sm:w-auto">
               <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
             </Button>
           </div>

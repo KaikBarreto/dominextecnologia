@@ -218,11 +218,13 @@ export default function AdminHealthScore() {
                   placeholder="Buscar empresa..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="h-10 pl-9"
                 />
               </div>
+              {/* Mobile: busca sozinha em cima, filtro na 2ª linha com largura
+                  própria (régua da toolbar mobile) — não full-width. */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectTrigger className="h-10 w-[180px] sm:w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -19,6 +19,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 // Reusa o formulário do módulo de Estoque/Compras (mesmo hook `useSuppliers`,
@@ -72,11 +73,26 @@ export function SuppliersTab() {
 
   return (
     <div className="space-y-4">
+      {isMobile ? (
+        <MobileListToolbar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder={t.searchPlaceholderMobile}
+        >
+          <Button
+            className="h-10 w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={openNew}
+          >
+            <Plus className="h-4 w-4" />
+            {t.newSupplierShort}
+          </Button>
+        </MobileListToolbar>
+      ) : (
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isMobile ? t.searchPlaceholderMobile : t.searchPlaceholder}
+            placeholder={t.searchPlaceholder}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -84,9 +100,10 @@ export function SuppliersTab() {
         </div>
         <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" />
-          {isMobile ? t.newSupplierShort : t.newSupplier}
+          {t.newSupplier}
         </Button>
       </div>
+      )}
 
       {isMobile ? (
         <>
