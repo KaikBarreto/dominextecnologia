@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
-import { useTimeSettings, useTimeSchedules } from '@/hooks/useTimeRecords';
+import { useTimeSettings, useTimeSchedules, type TimeSettings } from '@/hooks/useTimeRecords';
 import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Pencil, Save } from 'lucide-react';
@@ -44,20 +44,25 @@ export function TimeSettingsPanel() {
     max_radius_meters: 0,
     allow_off_hours: true,
     late_tolerance_min: 10,
+    // Corte da madrugada: batida ANTES desse horário pode herdar o dia
+    // anterior (jornada aberta lá). Default igual ao da migration.
+    overnight_until: '05:00',
   });
 
   useEffect(() => {
     if (settings) {
+      const row = settings;
       setForm({
-        default_in: settings.default_in,
-        default_out: settings.default_out,
-        default_break_min: settings.default_break_min,
-        require_selfie: settings.require_selfie,
-        require_geolocation: settings.require_geolocation,
-        kiosk_require_face: settings.kiosk_require_face,
-        max_radius_meters: settings.max_radius_meters,
-        allow_off_hours: settings.allow_off_hours,
-        late_tolerance_min: settings.late_tolerance_min,
+        default_in: row.default_in,
+        default_out: row.default_out,
+        default_break_min: row.default_break_min,
+        require_selfie: row.require_selfie,
+        require_geolocation: row.require_geolocation,
+        kiosk_require_face: row.kiosk_require_face,
+        max_radius_meters: row.max_radius_meters,
+        allow_off_hours: row.allow_off_hours,
+        late_tolerance_min: row.late_tolerance_min,
+        overnight_until: row.overnight_until?.slice(0, 5) ?? '05:00',
       });
     }
   }, [settings]);
@@ -152,6 +157,19 @@ export function TimeSettingsPanel() {
               <Label>{ts.allowOffHours}</Label>
               <Switch checked={form.allow_off_hours} onCheckedChange={v => setForm(f => ({ ...f, allow_off_hours: v }))} />
             </div>
+          </div>
+          {/* Corte da jornada noturna (migration 20260930150000). Campo isolado,
+              não dentro do grid de 3 colunas, porque o texto de apoio precisa de
+              largura própria pra não quebrar feio no mobile. */}
+          <div className="space-y-2 rounded-lg border p-3">
+            <Label>{ts.overnightUntil}</Label>
+            <Input
+              type="time"
+              className="max-w-[160px]"
+              value={form.overnight_until}
+              onChange={e => setForm(f => ({ ...f, overnight_until: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">{ts.overnightUntilHint}</p>
           </div>
           <Button onClick={() => upsert.mutate(form)} className="gap-2">
             <Save className="h-4 w-4" /> {ts.saveButton}

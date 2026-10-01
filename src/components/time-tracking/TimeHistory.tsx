@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,8 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { supabase } from '@/integrations/supabase/client';
+import { countShiftsPerDay, shiftCountKey, formatShiftOutTime, type ShiftCountRecord } from '@/lib/ponto/shifts';
 
 export function TimeHistory() {
   const { locale, timezone } = useAppLocaleContext();
@@ -66,7 +69,35 @@ export function TimeHistory() {
     });
   }, [rawSheets, employeeIds, statusFilter]);
 
+  // ─── Contagem de jornadas por dia ───
+  // Uma query ADICIONAL, com o MESMO recorte de período/funcionário que a
+  // tela já aplica (nunca período aberto) — só as colunas que
+  // `countShiftsPerDay` precisa, sem `select('*')`. O badge "N jornadas" só
+  // existe pra avisar que 08:00→17:00 + 23:00→01:10 são DUAS jornadas, não um
+  // erro de digitação.
+  const { data: shiftCountRecords = [] } = useQuery({
+    queryKey: ['timeRecordsShiftCounts', startDate, endDate, employeeIds.length === 1 ? employeeIds[0] : null],
+    queryFn: async () => {
+      let query = supabase
+        .from('time_records')
+        .select('employee_id, date, type, recorded_at, is_valid');
+      if (startDate) query = query.gte('date', startDate);
+      if (endDate) query = query.lte('date', endDate);
+      if (employeeIds.length === 1) query = query.eq('employee_id', employeeIds[0]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as ShiftCountRecord[];
+    },
+    enabled: !!startDate && !!endDate,
+  });
+
+  const shiftCounts = useMemo(() => countShiftsPerDay(shiftCountRecords), [shiftCountRecords]);
+  const shiftsOf = (sh: TimeSheet) => shiftCounts.get(shiftCountKey(sh.employee_id, sh.date)) ?? 0;
+
   const getName = (empId: string | null) => employees.find(e => e.id === empId)?.name || '—';
+
+  const formatClockOut = (sh: TimeSheet) =>
+    sh.last_clock_out ? formatShiftOutTime(sh.last_clock_out, sh.date, timezone, tc.shifts.nextDaySuffix) : '—';
 
   // Pré-calcula campos derivados pra alimentar o useTableSort: nome do funcionário,
   // timestamps absolutos pra horário (ordenar como número), etc. O hook usa
@@ -159,7 +190,7 @@ export function TimeHistory() {
             variant="outline"
             size="sm"
             className="gap-2 h-9"
-            onClick={() => exportToCSV(sheets, employees, locale, timezone)}
+            onClick={() => exportToCSV(sheets, employees, locale, timezone, shiftCounts)}
             disabled={sheets.length === 0}
           >
             <Download className="h-4 w-4" /> CSV
@@ -178,7 +209,7 @@ export function TimeHistory() {
               variant="outline"
               size="sm"
               className="gap-2 h-9"
-              onClick={() => exportToCSV(sheets, employees, locale, timezone)}
+              onClick={() => exportToCSV(sheets, employees, locale, timezone, shiftCounts)}
               disabled={sheets.length === 0}
             >
               <Download className="h-4 w-4" /> CSV
@@ -226,9 +257,10 @@ export function TimeHistory() {
                 },
               ];
 
+              const shiftsCount = shiftsOf(sh);
               const subtitleParts: string[] = [];
               subtitleParts.push(`${tc.todaySubtitle.clockIn} ${sh.first_clock_in ? timeInTz(sh.first_clock_in, timezone) : '—'}`);
-              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${sh.last_clock_out ? timeInTz(sh.last_clock_out, timezone) : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${formatClockOut(sh)}`);
               subtitleParts.push(sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—');
 
               return (
@@ -246,9 +278,16 @@ export function TimeHistory() {
                   }
                   subtitle={subtitleParts.join(' • ')}
                   trailing={
-                    <Badge className={cn('text-[10px] shrink-0 whitespace-nowrap', stCfg.className)}>
-                      {stCfg.label}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge className={cn('text-[10px] shrink-0 whitespace-nowrap', stCfg.className)}>
+                        {stCfg.label}
+                      </Badge>
+                      {shiftsCount > 1 && (
+                        <Badge variant="muted" className="text-[10px] shrink-0 whitespace-nowrap">
+                          {(shiftsCount === 1 ? tc.shifts.count.one : tc.shifts.count.other).replace('{{count}}', String(shiftsCount))}
+                        </Badge>
+                      )}
+                    </div>
                   }
                 />
               );
@@ -280,12 +319,21 @@ export function TimeHistory() {
                         <TableCell>{format(new Date(sh.date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
                         <TableCell className="font-medium">{sh._employee_name}</TableCell>
                         <TableCell className="hidden sm:table-cell">{sh.first_clock_in ? timeInTz(sh.first_clock_in, timezone) : '—'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{sh.last_clock_out ? timeInTz(sh.last_clock_out, timezone) : '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{formatClockOut(sh)}</TableCell>
                         <TableCell>{sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</TableCell>
                         <TableCell className={cn('hidden md:table-cell font-medium', (sh.balance_min ?? 0) >= 0 ? 'text-success' : 'text-destructive')}>
                           {sh.balance_min != null ? `${sh.balance_min >= 0 ? '+' : ''}${formatMinutes(sh.balance_min)}` : '—'}
                         </TableCell>
-                        <TableCell><Badge className={cn('text-xs', stCfg.className)}>{stCfg.label}</Badge></TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge className={cn('text-xs', stCfg.className)}>{stCfg.label}</Badge>
+                            {shiftsOf(sh) > 1 && (
+                              <Badge variant="muted" className="text-xs whitespace-nowrap">
+                                {(shiftsOf(sh) === 1 ? tc.shifts.count.one : tc.shifts.count.other).replace('{{count}}', String(shiftsOf(sh)))}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetail(sh)}>
                             <Eye className="h-4 w-4" />

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -16,6 +17,8 @@ import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { timeInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { supabase } from '@/integrations/supabase/client';
+import { countShiftsPerDay, shiftCountKey, formatShiftOutTime, type ShiftCountRecord } from '@/lib/ponto/shifts';
 
 export function TimeReport() {
   const { locale, timezone } = useAppLocaleContext();
@@ -76,6 +79,25 @@ export function TimeReport() {
     if (employeeIds.length <= 1) return rawSheets;
     return rawSheets.filter(s => s.employee_id && employeeIds.includes(s.employee_id));
   }, [rawSheets, employeeIds]);
+
+  // ─── Contagem de jornadas por dia (mesmo recorte de período/funcionário) ───
+  // Usada no popover do calendário pra avisar quando um dia teve 2+ jornadas
+  // (madrugada que herdou o dia da entrada, ou plantão extra).
+  const { data: shiftCountRecords = [] } = useQuery({
+    queryKey: ['timeRecordsShiftCounts', startDate, endDate, employeeIds.length === 1 ? employeeIds[0] : null],
+    queryFn: async () => {
+      let query = supabase
+        .from('time_records')
+        .select('employee_id, date, type, recorded_at, is_valid')
+        .gte('date', startDate)
+        .lte('date', endDate);
+      if (employeeIds.length === 1) query = query.eq('employee_id', employeeIds[0]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as ShiftCountRecord[];
+    },
+  });
+  const shiftCounts = useMemo(() => countShiftsPerDay(shiftCountRecords), [shiftCountRecords]);
 
   // Summary/calendário por funcionário só fazem sentido com exatamente 1 selecionado.
   const singleEmployeeId = employeeIds.length === 1 ? employeeIds[0] : null;
@@ -214,8 +236,18 @@ export function TimeReport() {
                     {sh ? (
                       <>
                         <p>{cal.popoverClockIn}: {sh.first_clock_in ? timeInTz(sh.first_clock_in, timezone) : '—'}</p>
-                        <p>{cal.popoverClockOut}: {sh.last_clock_out ? timeInTz(sh.last_clock_out, timezone) : '—'}</p>
+                        <p>
+                          {cal.popoverClockOut}: {sh.last_clock_out ? formatShiftOutTime(sh.last_clock_out, sh.date, timezone, tc.shifts.nextDaySuffix) : '—'}
+                        </p>
                         <p>{cal.popoverWorked}: {sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</p>
+                        {(shiftCounts.get(shiftCountKey(sh.employee_id, sh.date)) ?? 0) > 1 && (
+                          <p className="text-muted-foreground">
+                            {(() => {
+                              const n = shiftCounts.get(shiftCountKey(sh.employee_id, sh.date)) ?? 0;
+                              return (n === 1 ? tc.shifts.count.one : tc.shifts.count.other).replace('{{count}}', String(n));
+                            })()}
+                          </p>
+                        )}
                       </>
                     ) : <p className="text-muted-foreground">{cal.noRecord}</p>}
                   </PopoverContent>

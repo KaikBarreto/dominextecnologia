@@ -85,11 +85,30 @@ export const employees = {
           clock_out: 'Saída',
         },
       },
+      // Erros levantados por `register_time_punch` / `register_time_punch_service`
+      // (migration 20260930150000_ponto_multiplas_jornadas.sql). O código de
+      // máquina vem no TEXTO da mensagem do Postgres, nunca mostre ele cru.
+      punchErrors: {
+        title: 'Não foi possível registrar o ponto',
+        punch_out_of_order: 'Esta ação não está disponível agora. Recarregue a página e tente novamente.',
+        punch_invalid_type: 'Tipo de registro inválido.',
+        punch_missing_identity: 'Não foi possível identificar o funcionário. Recarregue a página e tente novamente.',
+        company_not_found: 'Empresa não encontrada. Fale com o administrador.',
+        employee_not_linked: 'Sua conta não está vinculada a um funcionário. Fale com o administrador.',
+        employee_not_in_company: 'Este funcionário não pertence à sua empresa.',
+        not_authenticated: 'Sua sessão expirou. Entre de novo para registrar o ponto.',
+        forbidden: 'Você não tem permissão para registrar ponto por outra pessoa.',
+        forbidden_force_date: 'Só administrador ou gestor pode lançar batida em outra data.',
+        generic: 'Não foi possível registrar o ponto. Tente novamente.',
+      },
 
       // TimeDayDetailModal
       dayDetail: {
         titlePrefix: 'Registros do dia,',
         noRecords: 'Nenhum registro para este dia.',
+        // Cabeçalho por jornada, só aparece quando o dia tem 2+ jornadas
+        // (madrugada que herdou o dia da entrada, ou plantão extra).
+        shiftHeading: 'Jornada {{n}}',
         punchTypes: {
           clock_in: 'Entrada',
           break_start: 'Início intervalo',
@@ -153,6 +172,17 @@ export const employees = {
         expected: 'Esperado',
         worked: 'Trabalhado',
         balance: 'Saldo',
+      },
+
+      // Jornadas múltiplas por dia (TimeHistory, TimeReport, exportTimesheets).
+      // `nextDaySuffix` marca a saída que caiu no dia seguinte ("01:10 +1"),
+      // pra não parecer erro de digitação.
+      shifts: {
+        count: {
+          one: '{{count}} jornada',
+          other: '{{count}} jornadas',
+        },
+        nextDaySuffix: '+1',
       },
 
       // TimeHistory — cabeçalhos de tabela desktop
@@ -251,6 +281,8 @@ export const employees = {
         maxRadiusHint: '0 = sem restrição',
         lateTolerance: 'Tolerância atraso (min)',
         allowOffHours: 'Permitir fora do horário',
+        overnightUntil: 'Batidas da madrugada contam para o dia anterior até',
+        overnightUntilHint: 'Quem entra à noite e sai depois da meia-noite tem as horas somadas no dia em que começou a trabalhar.',
         saveButton: 'Salvar configurações',
         scheduleModalTitlePrefix: 'Jornada,',
         cancelSchedule: 'Cancelar',
@@ -593,6 +625,7 @@ export const employees = {
       csvColBreak: 'Intervalo',
       csvColBalance: 'Saldo',
       csvColStatus: 'Status',
+      csvColShifts: 'Jornadas',
       statusOpen: 'Em andamento',
       statusComplete: 'Completo',
       statusIncomplete: 'Incompleto',
@@ -1112,9 +1145,23 @@ export const employees = {
           clock_out: 'Clock out',
         },
       },
+      punchErrors: {
+        title: 'Could not record the punch',
+        punch_out_of_order: 'This action is not available right now. Reload the page and try again.',
+        punch_invalid_type: 'Invalid punch type.',
+        punch_missing_identity: 'We could not identify the employee. Reload the page and try again.',
+        company_not_found: 'Company not found. Contact your administrator.',
+        employee_not_linked: 'Your account is not linked to an employee. Contact your administrator.',
+        employee_not_in_company: 'This employee does not belong to your company.',
+        not_authenticated: 'Your session expired. Sign in again to clock in.',
+        forbidden: 'You do not have permission to clock in on behalf of someone else.',
+        forbidden_force_date: 'Only an admin or manager can add a punch on another date.',
+        generic: 'We could not record the punch. Please try again.',
+      },
       dayDetail: {
         titlePrefix: 'Day records,',
         noRecords: 'No records for this day.',
+        shiftHeading: 'Shift {{n}}',
         punchTypes: {
           clock_in: 'Clock in',
           break_start: 'Break start',
@@ -1169,6 +1216,13 @@ export const employees = {
         expected: 'Expected',
         worked: 'Worked',
         balance: 'Balance',
+      },
+      shifts: {
+        count: {
+          one: '{{count}} shift',
+          other: '{{count}} shifts',
+        },
+        nextDaySuffix: '+1',
       },
       historyTable: {
         date: 'Date',
@@ -1249,6 +1303,8 @@ export const employees = {
         maxRadiusHint: '0 = no restriction',
         lateTolerance: 'Late tolerance (min)',
         allowOffHours: 'Allow off-hours',
+        overnightUntil: 'Overnight punches count toward the previous day until',
+        overnightUntilHint: 'Employees who start at night and clock out after midnight have their hours added to the day they started working.',
         saveButton: 'Save settings',
         scheduleModalTitlePrefix: 'Schedule,',
         cancelSchedule: 'Cancel',
@@ -1564,6 +1620,7 @@ export const employees = {
       csvColBreak: 'Break',
       csvColBalance: 'Balance',
       csvColStatus: 'Status',
+      csvColShifts: 'Shifts',
       statusOpen: 'In progress',
       statusComplete: 'Complete',
       statusIncomplete: 'Incomplete',
@@ -2065,9 +2122,23 @@ export const employees = {
           clock_out: 'Salida',
         },
       },
+      punchErrors: {
+        title: 'No fue posible registrar el fichaje',
+        punch_out_of_order: 'Esta acción no está disponible ahora. Recarga la página e inténtalo de nuevo.',
+        punch_invalid_type: 'Tipo de fichaje inválido.',
+        punch_missing_identity: 'No fue posible identificar al empleado. Recarga la página e inténtalo de nuevo.',
+        company_not_found: 'Empresa no encontrada. Habla con el administrador.',
+        employee_not_linked: 'Tu cuenta no está vinculada a un empleado. Habla con el administrador.',
+        employee_not_in_company: 'Este empleado no pertenece a tu empresa.',
+        not_authenticated: 'Tu sesión expiró. Inicia sesión de nuevo para fichar.',
+        forbidden: 'No tienes permiso para fichar en nombre de otra persona.',
+        forbidden_force_date: 'Solo un administrador o gestor puede registrar un fichaje en otra fecha.',
+        generic: 'No fue posible registrar el fichaje. Inténtalo de nuevo.',
+      },
       dayDetail: {
         titlePrefix: 'Registros del día,',
         noRecords: 'Sin registros para este día.',
+        shiftHeading: 'Jornada {{n}}',
         punchTypes: {
           clock_in: 'Entrada',
           break_start: 'Inicio descanso',
@@ -2122,6 +2193,13 @@ export const employees = {
         expected: 'Esperado',
         worked: 'Trabajado',
         balance: 'Saldo',
+      },
+      shifts: {
+        count: {
+          one: '{{count}} jornada',
+          other: '{{count}} jornadas',
+        },
+        nextDaySuffix: '+1',
       },
       historyTable: {
         date: 'Fecha',
@@ -2202,6 +2280,8 @@ export const employees = {
         maxRadiusHint: '0 = sin restricción',
         lateTolerance: 'Tolerancia retraso (min)',
         allowOffHours: 'Permitir fuera de horario',
+        overnightUntil: 'Los fichajes de madrugada cuentan para el día anterior hasta',
+        overnightUntilHint: 'Quien entra por la noche y sale después de medianoche tiene las horas sumadas en el día en que empezó a trabajar.',
         saveButton: 'Guardar configuración',
         scheduleModalTitlePrefix: 'Jornada,',
         cancelSchedule: 'Cancelar',
@@ -2517,6 +2597,7 @@ export const employees = {
       csvColBreak: 'Descanso',
       csvColBalance: 'Saldo',
       csvColStatus: 'Estado',
+      csvColShifts: 'Jornadas',
       statusOpen: 'En curso',
       statusComplete: 'Completo',
       statusIncomplete: 'Incompleto',
@@ -3018,9 +3099,23 @@ export const employees = {
           clock_out: 'Départ',
         },
       },
+      punchErrors: {
+        title: `Impossible d'enregistrer le pointage`,
+        punch_out_of_order: `Cette action n'est pas disponible pour le moment. Rechargez la page et réessayez.`,
+        punch_invalid_type: 'Type de pointage invalide.',
+        punch_missing_identity: `Impossible d'identifier le salarié. Rechargez la page et réessayez.`,
+        company_not_found: `Entreprise introuvable. Contactez l'administrateur.`,
+        employee_not_linked: `Votre compte n'est lié à aucun salarié. Contactez l'administrateur.`,
+        employee_not_in_company: `Ce salarié n'appartient pas à votre entreprise.`,
+        not_authenticated: 'Votre session a expiré. Reconnectez-vous pour pointer.',
+        forbidden: `Vous n'avez pas la permission de pointer à la place de quelqu'un d'autre.`,
+        forbidden_force_date: `Seul un administrateur ou un gestionnaire peut saisir un pointage à une autre date.`,
+        generic: `Impossible d'enregistrer le pointage. Réessayez.`,
+      },
       dayDetail: {
         titlePrefix: 'Pointages du jour,',
         noRecords: 'Aucun pointage pour ce jour.',
+        shiftHeading: 'Vacation {{n}}',
         punchTypes: {
           clock_in: 'Arrivée',
           break_start: 'Début de pause',
@@ -3075,6 +3170,13 @@ export const employees = {
         expected: 'Prévu',
         worked: 'Travaillé',
         balance: 'Solde',
+      },
+      shifts: {
+        count: {
+          one: '{{count}} vacation',
+          other: '{{count}} vacations',
+        },
+        nextDaySuffix: '+1',
       },
       historyTable: {
         date: 'Date',
@@ -3155,6 +3257,8 @@ export const employees = {
         maxRadiusHint: '0 = sans restriction',
         lateTolerance: 'Tolérance retard (min)',
         allowOffHours: 'Autoriser hors horaires',
+        overnightUntil: `Les pointages de nuit comptent pour la veille jusqu'à`,
+        overnightUntilHint: `Un employé qui arrive le soir et repart après minuit voit ses heures ajoutées au jour où il a commencé à travailler.`,
         saveButton: 'Enregistrer la configuration',
         scheduleModalTitlePrefix: 'Horaire,',
         cancelSchedule: 'Annuler',
@@ -3470,6 +3574,7 @@ export const employees = {
       csvColBreak: 'Pause',
       csvColBalance: 'Solde',
       csvColStatus: 'Statut',
+      csvColShifts: 'Vacations',
       statusOpen: 'En cours',
       statusComplete: 'Complet',
       statusIncomplete: 'Incomplet',

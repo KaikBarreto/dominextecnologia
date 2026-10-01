@@ -10624,6 +10624,7 @@ export type Database = {
           kiosk_require_face: boolean
           late_tolerance_min: number | null
           max_radius_meters: number | null
+          overnight_until: string
           require_geolocation: boolean | null
           require_selfie: boolean | null
           updated_at: string | null
@@ -10639,6 +10640,7 @@ export type Database = {
           kiosk_require_face?: boolean
           late_tolerance_min?: number | null
           max_radius_meters?: number | null
+          overnight_until?: string
           require_geolocation?: boolean | null
           require_selfie?: boolean | null
           updated_at?: string | null
@@ -10654,6 +10656,7 @@ export type Database = {
           kiosk_require_face?: boolean
           late_tolerance_min?: number | null
           max_radius_meters?: number | null
+          overnight_until?: string
           require_geolocation?: boolean | null
           require_selfie?: boolean | null
           updated_at?: string | null
@@ -11272,6 +11275,27 @@ export type Database = {
         Args: { p_employee_id: string }
         Returns: undefined
       }
+      _register_time_punch_core: {
+        Args: {
+          p_address: string
+          p_company_id: string
+          p_device_info: Json
+          p_employee_id: string
+          p_face_match: boolean
+          p_face_model_version: string
+          p_face_score: number
+          p_force_date: string
+          p_latitude: number
+          p_longitude: number
+          p_notes: string
+          p_photo_url: string
+          p_recorded_at: string
+          p_source: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       accept_terms_of_service: {
         Args: { p_version?: string }
         Returns: undefined
@@ -11283,6 +11307,10 @@ export type Database = {
       admin_delete_company: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      allowed_punch_actions: {
+        Args: { p_company_id: string; p_date: string; p_employee_id: string }
+        Returns: string[]
       }
       apply_tenant_charge_installment_payment: {
         Args: {
@@ -11963,6 +11991,15 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      kiosk_punch_states: {
+        Args: { p_company_id: string; p_employee_ids: string[] }
+        Returns: {
+          allowed_actions: string[]
+          employee_id: string
+          last_type: string
+          punch_date: string
+        }[]
+      }
       lead_valida_cnpj: { Args: { p_doc: string }; Returns: boolean }
       lead_valida_cpf: { Args: { p_doc: string }; Returns: boolean }
       mark_lead_worked_and_release: {
@@ -12192,6 +12229,43 @@ export type Database = {
         Args: { p_email_hash: string; p_ip_hash: string }
         Returns: boolean
       }
+      register_time_punch: {
+        Args: {
+          p_address?: string
+          p_device_info?: Json
+          p_employee_id?: string
+          p_force_date?: string
+          p_latitude?: number
+          p_longitude?: number
+          p_notes?: string
+          p_photo_url?: string
+          p_recorded_at?: string
+          p_source?: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      register_time_punch_service: {
+        Args: {
+          p_address?: string
+          p_company_id: string
+          p_device_info?: Json
+          p_employee_id: string
+          p_face_match?: boolean
+          p_face_model_version?: string
+          p_face_score?: number
+          p_force_date?: string
+          p_latitude?: number
+          p_longitude?: number
+          p_notes?: string
+          p_photo_url?: string
+          p_recorded_at?: string
+          p_source?: string
+          p_type: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       replace_contract_plan_activities: {
         Args: { p_activities: Json; p_contract_id: string }
         Returns: number
@@ -12215,6 +12289,10 @@ export type Database = {
       resolve_billing_reminder: {
         Args: { p_transaction_id: string }
         Returns: undefined
+      }
+      resolve_punch_day: {
+        Args: { p_at: string; p_company_id: string; p_employee_id: string }
+        Returns: string
       }
       resolve_system_category_name: {
         Args: { p_company_id: string; p_role: string }

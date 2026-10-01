@@ -8,6 +8,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { dateInTz, timeInTz, todayInTz } from '@/lib/timezone';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { MESSAGES } from '@/lib/i18n/messages';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 // ─── Types ───────────────────────────────────────────
 export type PunchType = 'clock_in' | 'break_start' | 'break_end' | 'clock_out';
@@ -67,6 +68,11 @@ export interface TimeSettings {
   max_radius_meters: number;
   allow_off_hours: boolean;
   late_tolerance_min: number;
+  // Batida feita ANTES desta hora, havendo jornada aberta do dia anterior,
+  // pertence ao dia anterior — é a jornada noturna que cruza a meia-noite
+  // (migration 20260930150000_ponto_multiplas_jornadas.sql). Quem decide de
+  // fato é `resolve_punch_day` no banco; aqui é só a régua que o gestor edita.
+  overnight_until: string;
 }
 
 export interface TimeSchedule {
@@ -93,6 +99,39 @@ export interface EmployeeBasic {
 // `todayInTz`, `dateInTz` e `timeInTz` moram em `@/lib/timezone` (uma
 // implementação só, reusada aqui e no export do espelho). O dia e a hora do
 // ponto seguem o fuso da EMPRESA, nunca o do aparelho. O porquê está lá.
+
+// ─── Helper: traduz os erros das RPCs de batida ───
+//
+// `register_time_punch` e `register_time_punch_service` levantam exceção com o
+// CÓDIGO no texto da mensagem (`punch_out_of_order`, `forbidden_force_date`,
+// ...). Mostrar esse texto cru pro gestor é mostrar jargão de banco; mostrar o
+// genérico esconde a causa. Este mapa resolve os dois problemas, nos 4 idiomas.
+const PUNCH_ERROR_CODES = [
+  'punch_out_of_order',
+  'punch_invalid_type',
+  'punch_missing_identity',
+  'company_not_found',
+  'employee_not_linked',
+  'employee_not_in_company',
+  'not_authenticated',
+  'forbidden_force_date',
+  // `forbidden` é PREFIXO de `forbidden_force_date`: tem que vir DEPOIS, senão
+  // a batida em outra data mostraria a mensagem errada.
+  'forbidden',
+] as const;
+
+export function punchErrorMessage(err: unknown, locale: LocaleCode): string {
+  const dict = MESSAGES[locale].app.employees.timeclock.punchErrors;
+  const raw = typeof err === 'string'
+    ? err
+    : (err as { message?: string } | null)?.message ?? '';
+  for (const code of PUNCH_ERROR_CODES) {
+    if (raw.includes(code)) return dict[code];
+  }
+  // Não é erro conhecido da RPC: cai no tradutor genérico do app (constraint,
+  // rede, RLS), e só então na mensagem genérica de ponto.
+  return getErrorMessage(err) || dict.generic;
+}
 
 // ─── Helper: calculate worked minutes from records ───
 export function calculateWorkedMinutes(records: TimeRecord[]): { worked: number; breakMin: number } {
@@ -159,8 +198,52 @@ export function useTimeRecord(userId: string | undefined) {
   const queryClient = useQueryClient();
   // Fuso da EMPRESA, não do aparelho. Entra na queryKey, no filtro `date` e no
   // path da selfie, sempre o mesmo valor.
-  const { timezone } = useAppLocaleContext();
-  const today = todayInTz(timezone);
+  const { locale, timezone } = useAppLocaleContext();
+  const clockDay = todayInTz(timezone);
+
+  // Empresa + funcionário vinculado: a RPC do dia da jornada e a das ações
+  // permitidas precisam dos dois. Uma consulta só, cacheada.
+  const { data: punchIdentity } = useQuery({
+    queryKey: ['punchIdentity', userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const [{ data: profile }, { data: linkedEmployee }] = await Promise.all([
+        supabase.from('profiles').select('company_id').eq('user_id', userId).maybeSingle(),
+        supabase.from('employees').select('id').eq('user_id', userId).maybeSingle(),
+      ]);
+      return {
+        companyId: (profile?.company_id as string | null) ?? null,
+        employeeId: (linkedEmployee?.id as string | null) ?? null,
+      };
+    },
+    enabled: !!userId,
+  });
+
+  // ─── DIA DA JORNADA, não dia do calendário ───
+  // `resolve_punch_day` devolve o dia ANTERIOR quando há jornada aberta lá, é
+  // madrugada (antes de `time_settings.overnight_until`) e a jornada tem menos
+  // de 16h. Regra da Portaria 671/2021, implementada UMA VEZ SÓ no banco
+  // (migration 20260930150000_ponto_multiplas_jornadas.sql) — nunca reescrita
+  // aqui em TS: essa duplicação é exatamente o que gerou o bug da Imperium.
+  // Fallback pro dia do relógio: falha na RPC não pode deixar ninguém sem ponto.
+  const { data: resolvedDay } = useQuery({
+    queryKey: ['punchDay', punchIdentity?.companyId, punchIdentity?.employeeId, clockDay],
+    queryFn: async () => {
+      if (!punchIdentity?.companyId || !punchIdentity?.employeeId) return clockDay;
+      const { data, error } = await supabase.rpc('resolve_punch_day', {
+        p_company_id: punchIdentity.companyId,
+        p_employee_id: punchIdentity.employeeId,
+        p_at: new Date().toISOString(),
+      });
+      // supabase.rpc NÃO lança: o erro vem no retorno.
+      if (error || typeof data !== 'string' || !data) return clockDay;
+      return data;
+    },
+    enabled: !!userId,
+    refetchInterval: 60000,
+  });
+
+  const today = resolvedDay ?? clockDay;
 
   const { data: todayRecords = [], isLoading: loadingRecords } = useQuery({
     queryKey: ['timeRecords', userId, today],
@@ -212,22 +295,57 @@ export function useTimeRecord(userId: string | undefined) {
     enabled: !!userId,
   });
 
-  const currentStatus = useMemo(() => {
-    const types = todayRecords.map(r => r.type);
-    if (!types.includes('clock_in')) return 'not_started' as const;
-    if (types.includes('clock_out')) return 'finished' as const;
-    if (types.includes('break_start') && !types.includes('break_end')) return 'on_break' as const;
-    return 'working' as const;
-  }, [todayRecords]);
+  // ─── AÇÕES PERMITIDAS: vêm do BANCO, não de uma cópia em TS ───
+  // `allowed_punch_actions` decide pelo ÚLTIMO evento válido do dia, o que
+  // libera a 2ª jornada (clock_out → clock_in) e a jornada SEM intervalo
+  // (clock_in → clock_out). Havia uma segunda implementação desta regra aqui,
+  // divergente da da edge — foi ela que travou o dia seguinte na Imperium.
+  //
+  // ⚠️ `allowed_punch_actions` é SECURITY INVOKER, e a policy de SELECT de
+  // `time_records` pra `authenticated` é `user_id = auth.uid()`. Batida de
+  // quiosque/link público grava `user_id = NULL` e o app não a enxerga — o
+  // mesmo recorte que este hook já tinha (`.eq('user_id', userId)`), então não
+  // é regressão. O valor CONFIÁVEL é o `allowed_actions` que a própria RPC de
+  // registro devolve (calculado dentro do SECURITY DEFINER, que vê tudo), e é
+  // ele que usamos pra atualizar o cache depois de bater.
+  const { data: allowedActionsData } = useQuery({
+    queryKey: ['allowedPunchActions', punchIdentity?.companyId, punchIdentity?.employeeId, today],
+    queryFn: async (): Promise<PunchType[]> => {
+      if (!punchIdentity?.companyId || !punchIdentity?.employeeId) return [];
+      const { data, error } = await supabase.rpc('allowed_punch_actions', {
+        p_company_id: punchIdentity.companyId,
+        p_employee_id: punchIdentity.employeeId,
+        p_date: today,
+      });
+      if (error || !Array.isArray(data)) return [];
+      return data as PunchType[];
+    },
+    enabled: !!userId && !!punchIdentity?.companyId && !!punchIdentity?.employeeId,
+  });
 
-  const nextAction = useMemo((): PunchType | null => {
-    const types = todayRecords.map(r => r.type);
-    if (types.includes('clock_out')) return null;
-    if (!types.includes('clock_in')) return 'clock_in';
-    if (!types.includes('break_start')) return 'break_start';
-    if (!types.includes('break_end')) return 'break_end';
-    return 'clock_out';
-  }, [todayRecords]);
+  const allowedActions = useMemo<PunchType[]>(
+    () => allowedActionsData ?? [],
+    [allowedActionsData],
+  );
+
+  // Mesma régua do `deriveStatus` da tela pública: lista com `clock_out` =
+  // trabalhando; só `break_end` = em intervalo; só `clock_in` = não começou (dia
+  // vazio) ou jornada anterior encerrada (dia com batidas).
+  const currentStatus = useMemo(() => {
+    if (allowedActions.length === 0) return 'finished' as const;
+    if (allowedActions.includes('clock_out')) return 'working' as const;
+    if (allowedActions.includes('break_end')) return 'on_break' as const;
+    return todayRecords.length === 0 ? ('not_started' as const) : ('finished' as const);
+  }, [allowedActions, todayRecords.length]);
+
+  /**
+   * Ação SUGERIDA (primeiro item da lista). Mantida só pra compatibilidade de
+   * quem lê o campo singular — a régua de verdade é `allowedActions`.
+   */
+  const nextAction = useMemo(
+    (): PunchType | null => allowedActions[0] ?? null,
+    [allowedActions],
+  );
 
   const registerPunch = useMutation({
     mutationFn: async ({
@@ -290,54 +408,43 @@ export function useTimeRecord(userId: string | undefined) {
 
       const now = new Date().toISOString();
 
-      const { error: recErr } = await supabase.from('time_records').insert({
-        company_id: companyId,
-        user_id: userId,
-        employee_id: employeeId,
-        date: today,
-        type,
-        recorded_at: now,
-        latitude: coords?.latitude ?? null,
-        longitude: coords?.longitude ?? null,
-        address,
-        photo_url: photoPath,
-        device_info: { userAgent: navigator.userAgent, platform: navigator.platform },
-        source: 'app',
+      // ─── UMA chamada só: resolve o dia, valida a ordem, insere e recomputa o
+      // espelho, tudo na MESMA transação (`register_time_punch`, SECURITY
+      // DEFINER). `company_id` NÃO viaja no payload — a RPC o deriva de
+      // `auth.uid()`, então o client não escolhe tenant.
+      //
+      // ⚠️ NÃO mandamos `date`: quem decide o dia da batida é
+      // `resolve_punch_day` dentro da RPC. Montar o dia aqui é o que partia a
+      // jornada noturna em duas datas.
+      //
+      // O bloco que montava `time_sheets` à mão MORREU aqui: ele divergia do
+      // `recompute_time_sheet` do banco (marcava `complete` em QUALQUER
+      // clock_out e escrevia `balance_min` mesmo com jornada aberta, gerando
+      // -8h falsas). Espelho é responsabilidade do banco, ponto.
+      //
+      // ⚠️ `supabase.rpc` NÃO lança em erro: o erro vem no retorno.
+      const { data: punchResult, error: recErr } = await supabase.rpc('register_time_punch', {
+        p_type: type,
+        p_recorded_at: now,
+        p_employee_id: employeeId ?? undefined,
+        p_latitude: coords?.latitude ?? undefined,
+        p_longitude: coords?.longitude ?? undefined,
+        p_address: address ?? undefined,
+        // PATH do Storage (bucket time-photos é privado), nunca URL.
+        p_photo_url: photoPath ?? undefined,
+        p_device_info: { userAgent: navigator.userAgent, platform: navigator.platform },
+        p_source: 'app',
       });
       if (recErr) throw recErr;
 
-      // Upsert time_sheet
-      const allRecords = [...todayRecords, { type, recorded_at: now, is_valid: true } as TimeRecord];
-      const { worked, breakMin } = calculateWorkedMinutes(allRecords);
-
-      const clockIn = allRecords.find(r => r.type === 'clock_in');
-      const clockOut = type === 'clock_out' ? { recorded_at: now } : allRecords.find(r => r.type === 'clock_out');
-
-      const sheetData: any = {
-        company_id: companyId,
-        user_id: userId,
-        employee_id: employeeId,
-        date: today,
-        first_clock_in: clockIn?.recorded_at || now,
-        total_worked_min: worked,
-        total_break_min: breakMin,
-        status: type === 'clock_out' ? 'complete' : 'open',
+      const result = (punchResult ?? {}) as {
+        date?: string;
+        allowed_actions?: PunchType[];
       };
-      if (clockOut) {
-        sheetData.last_clock_out = clockOut.recorded_at;
-        sheetData.balance_min = worked - (sheetData.expected_min || 480);
-      }
 
-      if (todaySheet) {
-        await supabase.from('time_sheets').update(sheetData).eq('id', todaySheet.id);
-      } else {
-        sheetData.expected_min = 480;
-        await supabase.from('time_sheets').insert(sheetData);
-      }
-
-      return type;
+      return { type, allowedActions: result.allowed_actions ?? [], date: result.date ?? today };
     },
-    onSuccess: (type) => {
+    onSuccess: ({ type, allowedActions: actionsAfter, date: punchDate }) => {
       const labels: Record<PunchType, string> = {
         clock_in: 'Entrada',
         break_start: 'Início do intervalo',
@@ -349,12 +456,23 @@ export function useTimeRecord(userId: string | undefined) {
       // batia às 08:00 via 08:00 no toast e 09:00 no espelho, e abria chamado.
       toast({ title: `✅ ${labels[type]} registrada às ${timeInTz(new Date(), timezone)}` });
       if (navigator.vibrate) navigator.vibrate(200);
+      // Estado JÁ ATUALIZADO, calculado dentro do SECURITY DEFINER (que enxerga
+      // inclusive batida de quiosque, invisível pro SELECT do app). Semeia o
+      // cache antes do refetch pra tela não piscar a ação errada.
+      if (actionsAfter.length > 0) {
+        queryClient.setQueryData(
+          ['allowedPunchActions', punchIdentity?.companyId, punchIdentity?.employeeId, punchDate],
+          actionsAfter,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['timeRecords'] });
       queryClient.invalidateQueries({ queryKey: ['timeSheet'] });
       queryClient.invalidateQueries({ queryKey: ['timeSheets'] });
+      queryClient.invalidateQueries({ queryKey: ['allowedPunchActions'] });
+      queryClient.invalidateQueries({ queryKey: ['punchDay'] });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao registrar ponto', description: getErrorMessage(err), variant: 'destructive' });
+      toast({ title: 'Erro ao registrar ponto', description: punchErrorMessage(err, locale), variant: 'destructive' });
     },
   });
 
@@ -363,7 +481,12 @@ export function useTimeRecord(userId: string | undefined) {
     todaySheet,
     recentSheets,
     currentStatus,
+    /** Lista de ações permitidas agora (contrato novo, vem do banco). */
+    allowedActions,
+    /** Primeiro item de `allowedActions` — compatibilidade com quem lê o singular. */
     nextAction,
+    /** Dia da jornada ao qual a próxima batida pertence. */
+    punchDay: today,
     loadingRecords,
     registerPunch,
   };
@@ -374,9 +497,11 @@ export function useAdminTimeSheet() {
   const { user } = useAuth();
   const { companyId } = useUserCompany();
   // Mesma regra do useTimeRecord: o dia do painel é o dia da EMPRESA.
-  const { timezone } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const today = todayInTz(timezone);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const tPunchErrors = MESSAGES[locale].app.employees.timeclock.punchErrors;
 
   // Fetch employees instead of profiles
   const { data: employees = [] } = useQuery({
@@ -475,40 +600,36 @@ export function useAdminTimeSheet() {
     mutationFn: async ({ employeeId, type, recordedAt, notes }: {
       employeeId: string; type: PunchType; recordedAt: string; notes: string;
     }) => {
-      // Get company_id from current user's profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
-        .single();
-      if (!profile?.company_id) throw new Error('Empresa não encontrada');
-
       // Batida manual é lançamento em documento de jornada: o dia sai do fuso
       // da EMPRESA no instante que o admin informou, não do fuso do aparelho
       // dele. Admin em Lisboa lançando 00:30 pra empresa em Cuiabá grava o dia
       // de Cuiabá, que ainda é o dia anterior, e não o dia de Lisboa.
-      // O recompute abaixo tem que usar ESTE mesmo dia.
       const punchDate = dateInTz(recordedAt, timezone);
 
-      const { error } = await supabase.from('time_records').insert({
-        company_id: profile.company_id,
-        employee_id: employeeId,
-        date: punchDate,
-        type,
-        recorded_at: recordedAt,
-        source: 'admin',
-        notes,
+      // `p_force_date` é o QUE DIFERENCIA o lançamento do gestor da batida do
+      // funcionário: com ele a RPC NÃO valida a ordem das ações, de propósito —
+      // é assim que o gestor grava a saída que alguém esqueceu de bater, mesmo
+      // que a sequência do dia fique "fora de ordem". Sem ele, corrigir dia
+      // fechado seria impossível.
+      //
+      // Quem pode: só admin/gestor. A RPC barra o resto com `forbidden_force_date`
+      // (não é gate de UI — é `is_admin_or_gestor` dentro do SECURITY DEFINER).
+      //
+      // `company_id` NÃO viaja mais no payload: a RPC o deriva de `auth.uid()`.
+      // E o `recompute_time_sheet` manual sumiu — a RPC recomputa o espelho na
+      // MESMA transação, então não existe mais a janela em que a batida está
+      // gravada e o Histórico ainda não sabe.
+      //
+      // ⚠️ `supabase.rpc` NÃO lança: o erro vem no retorno.
+      const { error } = await supabase.rpc('register_time_punch', {
+        p_type: type,
+        p_recorded_at: recordedAt,
+        p_employee_id: employeeId,
+        p_source: 'admin',
+        p_notes: notes,
+        p_force_date: punchDate,
       });
       if (error) throw error;
-
-      // Lançamento manual entra fora do fluxo normal de bater ponto — sem isso
-      // o time_sheets (Histórico/Relatório) nunca reflete a batida inserida.
-      const { error: recomputeError } = await supabase.rpc('recompute_time_sheet', {
-        p_company_id: profile.company_id,
-        p_employee_id: employeeId,
-        p_date: punchDate,
-      });
-      if (recomputeError) throw recomputeError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminTimeRecords'] });
@@ -517,6 +638,18 @@ export function useAdminTimeSheet() {
       queryClient.invalidateQueries({ queryKey: ['timeHistory'] });
       queryClient.invalidateQueries({ queryKey: ['timeSheet'] });
       queryClient.invalidateQueries({ queryKey: ['timeSheets'] });
+      queryClient.invalidateQueries({ queryKey: ['allowedPunchActions'] });
+      queryClient.invalidateQueries({ queryKey: ['punchDay'] });
+    },
+    onError: (err: unknown) => {
+      // Antes este erro não tinha destino: `mutateAsync` rejeitava, o modal não
+      // capturava e o gestor via a tela parada sem explicação. Agora o código da
+      // RPC vira copy PT-BR (e nos outros 3 idiomas).
+      toast({
+        title: tPunchErrors.title,
+        description: punchErrorMessage(err, locale),
+        variant: 'destructive',
+      });
     },
   });
 

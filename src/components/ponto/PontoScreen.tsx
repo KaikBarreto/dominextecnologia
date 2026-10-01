@@ -125,11 +125,32 @@ export const STATUS_DOT: Record<string, string> = {
 
 type StatusKey = "not_started" | "working" | "on_break" | "finished";
 
-export function deriveStatus(nextAction: PunchType | null, today: PontoTodayRecord[]): StatusKey {
-  if (nextAction === null) return "finished";
-  if (nextAction === "clock_in" || today.length === 0) return "not_started";
-  if (nextAction === "break_end") return "on_break";
-  return "working"; // break_start ou clock_out pendentes = trabalhando
+/**
+ * Status do dia a partir da LISTA de ações permitidas (contrato novo da edge:
+ * `allowed_actions`). Antes recebia o `next_action` singular, e por isso não
+ * conseguia distinguir "jornada fechada, pode abrir outra" de "dia não
+ * começou" — as duas situações têm `clock_in` como próxima ação.
+ *
+ *   []                          -> finished  (fail-safe; não acontece na prática)
+ *   ["clock_in"] e SEM batidas  -> not_started
+ *   ["clock_in"] e COM batidas  -> finished   (jornada anterior fechou; o botão
+ *                                              vira "Registrar Nova Entrada")
+ *   ["break_end"]               -> on_break
+ *   qualquer lista com clock_out-> working
+ *
+ * Pura e exportada de propósito: é a única regra de tela do ponto que dá pra
+ * conferir lendo, sem montar o componente.
+ */
+export function deriveStatus(
+  allowedActions: readonly PunchType[],
+  today: PontoTodayRecord[],
+): StatusKey {
+  if (allowedActions.length === 0) return "finished";
+  if (allowedActions.includes("clock_out")) return "working";
+  if (allowedActions.includes("break_end")) return "on_break";
+  // Só sobrou clock_in: dia sem nenhuma batida = não começou; com batidas = a
+  // jornada anterior foi encerrada.
+  return today.length === 0 ? "not_started" : "finished";
 }
 
 // -----------------------------------------------------------------------------
@@ -753,7 +774,7 @@ export function PontoScreen({ identity, faceProof, onBack, onPunchSuccess }: Pon
     return () => ro.disconnect();
     // Re-observa quando o conteúdo do rodapé muda (status/CTA), pra recapturar a
     // altura caso o elemento seja remontado.
-  }, [state?.next_action, loading]);
+  }, [state?.next_action, state?.allowed_actions?.length, loading]);
 
   // Fluxo de registro
   const [flowOpen, setFlowOpen] = useState(false);
@@ -1023,10 +1044,35 @@ export function PontoScreen({ identity, faceProof, onBack, onPunchSuccess }: Pon
   }
 
   const { employee, company, next_action, today } = state;
-  const status = deriveStatus(next_action, today);
+  // Contrato novo: a LISTA. Fallback pro campo singular só pra sobreviver a um
+  // payload de edge antiga em cache (o hook já normaliza; aqui é cinto e
+  // suspensório, porque lista vazia esconderia todos os botões).
+  const allowedActions: PunchType[] =
+    state.allowed_actions && state.allowed_actions.length > 0
+      ? state.allowed_actions
+      : next_action
+      ? [next_action]
+      : [];
+  const status = deriveStatus(allowedActions, today);
   const statusDot = STATUS_DOT[status];
   const statusLabel = t.status[status];
-  const ActionIcon = next_action ? ACTION_ICON[next_action] : null;
+  // Ação SUGERIDA (botão primário) e a alternativa (botão secundário). Duas
+  // ações acontecem em dois casos: com a jornada aberta (Intervalo | Saída) e
+  // depois de voltar do intervalo (Intervalo | Saída). É o que torna possível
+  // a jornada SEM intervalo, que antes o sistema recusava.
+  const primaryAction = allowedActions[0] ?? null;
+  const secondaryAction = allowedActions[1] ?? null;
+  const PrimaryIcon = primaryAction ? ACTION_ICON[primaryAction] : null;
+  const SecondaryIcon = secondaryAction ? ACTION_ICON[secondaryAction] : null;
+  // Entrada depois de uma jornada já encerrada no mesmo dia não é "a entrada do
+  // dia": é uma jornada NOVA (plantão, chamado noturno). A copy precisa dizer
+  // isso, senão parece que a pessoa vai duplicar a batida da manhã.
+  const primaryLabel =
+    primaryAction === "clock_in" && status === "finished"
+      ? t.actionNewShift
+      : primaryAction
+      ? t.actions[primaryAction]
+      : "";
   const { accentColor, resolvedLogo } = resolveBranding(company);
 
   if (flowOpen && flowStep === "selfie") {
@@ -1292,24 +1338,40 @@ export function PontoScreen({ identity, faceProof, onBack, onPunchSuccess }: Pon
             </div>
           )}
 
-          {/* CTA grande da próxima ação (cores semânticas) ou estado concluído */}
-          {next_action && ActionIcon ? (
+          {/* CTA da ação sugerida + (quando existir) a alternativa.
+              Régua Dominex: os DOIS botões de ação são saturados, com ícone e
+              texto brancos. O secundário se distingue pelo TAMANHO (h-12 x
+              h-16), nunca por dessaturação — botão apagado some no fundo escuro
+              e a pessoa acha que a saída não está disponível. */}
+          {primaryAction && PrimaryIcon ? (
             <div className="space-y-2.5">
               <Button
                 className={cn(
                   "w-full h-16 rounded-2xl text-lg font-bold gap-2",
-                  ACTION_CLASSNAME[next_action],
+                  ACTION_CLASSNAME[primaryAction],
                 )}
-                onClick={() => startFlow(next_action)}
+                onClick={() => startFlow(primaryAction)}
               >
-                <ActionIcon className="h-5 w-5" />
-                {t.actions[next_action]}
+                <PrimaryIcon className="h-5 w-5" />
+                {primaryLabel}
               </Button>
+              {secondaryAction && SecondaryIcon && (
+                <Button
+                  className={cn(
+                    "w-full h-12 rounded-2xl text-base font-bold gap-2",
+                    ACTION_CLASSNAME[secondaryAction],
+                  )}
+                  onClick={() => startFlow(secondaryAction)}
+                >
+                  <SecondaryIcon className="h-4 w-4" />
+                  {t.actions[secondaryAction]}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 className="h-11 w-full gap-2 rounded-2xl border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white"
-                onClick={() => setFaceCalibrationAction(next_action)}
+                onClick={() => setFaceCalibrationAction(primaryAction)}
               >
                 <ScanFace className="h-5 w-5" />
                 {t.faceCalibration.button}

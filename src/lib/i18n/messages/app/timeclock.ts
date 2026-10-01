@@ -29,6 +29,11 @@ export const timeclock = {
       clock_out: 'Registrar Saída',
     },
 
+    // Entrada de uma jornada NOVA no mesmo dia (plantão, chamado noturno). Copy
+    // separada de `actions.clock_in` de propósito: a jornada da manhã já fechou,
+    // e "Registrar Entrada" faria a pessoa achar que ia duplicar a batida.
+    actionNewShift: 'Registrar Nova Entrada',
+
     // ── Rótulos de tipo de batida (timeline) ──────────────────────────────
     typeLabels: {
       clock_in: 'Entrada',
@@ -193,6 +198,8 @@ export const timeclock = {
       clock_out: 'Clock Out',
     },
 
+    actionNewShift: 'Start New Shift',
+
     typeLabels: {
       clock_in: 'Clock in',
       break_start: 'Break started',
@@ -335,6 +342,8 @@ export const timeclock = {
       clock_out: 'Registrar Salida',
     },
 
+    actionNewShift: 'Registrar Nueva Entrada',
+
     typeLabels: {
       clock_in: 'Entrada',
       break_start: 'Inicio del descanso',
@@ -476,6 +485,8 @@ export const timeclock = {
       break_end: 'Reprendre le travail',
       clock_out: 'Pointer le départ',
     },
+
+    actionNewShift: `Pointer une nouvelle arrivée`,
 
     typeLabels: {
       clock_in: 'Arrivée',

@@ -3,6 +3,7 @@ import { formatMinutes } from '@/hooks/useTimeRecords';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { safeTimeZone, timeInTz, todayInTz, zonedDateTimeToUtc } from '@/lib/timezone';
+import { formatShiftOutTime, shiftCountKey } from '@/lib/ponto/shifts';
 
 /**
  * Exporta o espelho de ponto em CSV.
@@ -10,12 +11,18 @@ import { safeTimeZone, timeInTz, todayInTz, zonedDateTimeToUtc } from '@/lib/tim
  * `timeZone` é o fuso da EMPRESA (`useAppLocaleContext().timezone`). Util não
  * chama hook, então quem chama passa por parâmetro. Vazio ou inválido cai em
  * America/Sao_Paulo.
+ *
+ * `shiftCounts` (opcional): mapa `employee_id|date` → nº de jornadas do dia
+ * (`countShiftsPerDay`, `@/lib/ponto/shifts`). Sem ele, a coluna de jornadas
+ * sai vazia em vez de quebrar o export — quem chama sem essa informação
+ * ainda gera um CSV válido, só sem essa coluna preenchida.
  */
 export function exportToCSV(
   sheets: TimeSheet[],
   employees: { id: string; name: string }[],
   locale: LocaleCode = 'pt-br',
   timeZone?: string | null,
+  shiftCounts?: Map<string, number>,
 ) {
   const t = MESSAGES[locale].app.employees.timesheetsGenerator;
   const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
@@ -33,7 +40,7 @@ export function exportToCSV(
 
   const header = [
     t.csvColEmployee, t.csvColDate, t.csvColWeekday, t.csvColClockIn, t.csvColClockOut,
-    t.csvColWorked, t.csvColBreak, t.csvColBalance, t.csvColStatus,
+    t.csvColWorked, t.csvColBreak, t.csvColBalance, t.csvColStatus, t.csvColShifts,
   ].join(';');
 
   // Fuso da empresa, já validado: cada linha do CSV é documento de jornada e
@@ -48,16 +55,21 @@ export function exportToCSV(
     const d = new Date(zonedDateTimeToUtc(s.date, '12:00', tz));
     const weekday = d.toLocaleDateString(bcp47, { weekday: 'long', timeZone: tz });
     const dateStr = d.toLocaleDateString('pt-BR', { timeZone: tz });
+    // Saída que caiu no dia seguinte (jornada noturna) ganha o mesmo sufixo
+    // "+1" que a tela mostra — sem ele, "01:10" isolado parece erro de digitação.
+    const clockOut = s.last_clock_out ? formatShiftOutTime(s.last_clock_out, s.date, tz, '+1') : '—';
+    const shiftsCount = shiftCounts?.get(shiftCountKey(s.employee_id, s.date));
     return [
       getName(s.employee_id),
       dateStr,
       weekday,
       s.first_clock_in ? timeInTz(s.first_clock_in, tz) : '—',
-      s.last_clock_out ? timeInTz(s.last_clock_out, tz) : '—',
+      clockOut,
       s.total_worked_min != null ? formatMinutes(s.total_worked_min) : '—',
       s.total_break_min != null ? formatMinutes(s.total_break_min) : '—',
       s.balance_min != null ? formatMinutes(s.balance_min) : '—',
       STATUS_LABELS[s.status] || s.status,
+      shiftsCount != null ? String(shiftsCount) : '—',
     ].join(';');
   });
 

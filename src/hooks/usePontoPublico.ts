@@ -73,13 +73,28 @@ export interface PontoState {
   company: PontoCompany;
   /**
    * true = a pessoa tem PIN cadastrado e ainda não digitou. Nesse estado vêm
-   * só o cartão e a marca: `settings` é null, `today` é vazio e `next_action`
-   * é null (o servidor não mandou, a tela não monta o fluxo de batida).
+   * só o cartão e a marca: `settings` é null, `today` e `allowed_actions` são
+   * vazios e `next_action` é null (o servidor não mandou, a tela não monta o
+   * fluxo de batida).
    */
   pin_required?: boolean;
   /** null enquanto `pin_required` — não há exigência a mostrar sem PIN válido. */
   settings: { require_selfie: boolean; require_geolocation: boolean } | null;
+  /** Batidas do DIA DA JORNADA (pode ser o dia anterior, na jornada noturna). */
   today: PontoTodayRecord[];
+  /**
+   * Ações permitidas agora, decididas pelo ÚLTIMO evento (múltiplas jornadas e
+   * jornada sem intervalo). Duas ações = a tela mostra dois botões; a primeira
+   * é a sugerida (botão primário).
+   *
+   * Opcional no tipo porque o campo é NOVO: uma edge ainda não atualizada
+   * responde só com `next_action`. O fallback está em `normalizeState`.
+   */
+  allowed_actions?: PunchType[];
+  /**
+   * Contrato ANTIGO, mantido pra compatibilidade de bundle em cache de PWA.
+   * Hoje é sempre `allowed_actions[0]`.
+   */
   next_action: PunchType | null;
 }
 
@@ -143,9 +158,22 @@ interface UsePontoPublicoResult {
    * nunca devolve score ou informa se ha template cadastrado.
    */
   calibrateFace: (args: CalibrateFaceArgs) => Promise<{ status: "captured" | "unavailable" }>;
-  registerPunch: (
-    args: RegisterPunchArgs,
-  ) => Promise<{ success: true; type: PunchType; recorded_at: string }>;
+  registerPunch: (args: RegisterPunchArgs) => Promise<RegisterPunchResult>;
+}
+
+export interface RegisterPunchResult {
+  success: true;
+  type: PunchType;
+  recorded_at: string;
+  /** Dia a que a batida foi atribuída (pode ser o dia anterior, na madrugada). */
+  date?: string;
+  /**
+   * Estado JÁ ATUALIZADO, calculado no banco depois da gravação. A tela repinta
+   * os botões com ISTO, sem refetch — e sem recalcular do que o client leu (que
+   * não enxerga batida de quiosque, por causa da policy `user_id = auth.uid()`).
+   */
+  allowed_actions?: PunchType[];
+  next_action?: PunchType | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -278,6 +306,39 @@ async function photoToBase64(file: File, stampData: SelfieStampData): Promise<st
   });
 }
 
+const PUNCH_TYPES: readonly PunchType[] = [
+  "clock_in",
+  "break_start",
+  "break_end",
+  "clock_out",
+];
+
+function sanitizeActions(value: unknown): PunchType[] | null {
+  if (!Array.isArray(value)) return null;
+  const out = value.filter(
+    (v): v is PunchType => typeof v === "string" && (PUNCH_TYPES as readonly string[]).includes(v),
+  );
+  return out;
+}
+
+/**
+ * Normaliza o estado vindo da edge pros dois campos conviverem.
+ *
+ * COMPATIBILIDADE NOS DOIS SENTIDOS: a edge nova manda `allowed_actions` E
+ * `next_action`; uma edge ainda não atualizada manda só `next_action`. Sem este
+ * fallback, o bundle novo contra a edge velha ficaria com a lista vazia e a
+ * tela esconderia TODOS os botões — falha muda no meio do deploy.
+ */
+function normalizeState(data: PontoState): PontoState {
+  const fromServer = sanitizeActions(data.allowed_actions);
+  const allowed = fromServer && fromServer.length > 0
+    ? fromServer
+    : data.next_action
+    ? [data.next_action]
+    : [];
+  return { ...data, allowed_actions: allowed, next_action: allowed[0] ?? null };
+}
+
 /**
  * Espelha o antigo `if (!slug)` (undefined OU string vazia contam como
  * "sem identidade válida") pros dois formatos de PontoIdentity, pra continuar
@@ -337,7 +398,7 @@ export function usePontoPublico(
         // não vai no corpo, e o corpo fica idêntico ao de antes desta feature.
         ...(pin ? { pin } : {}),
       });
-      setState(data);
+      setState(normalizeState(data));
       setPinLock(null);
     } catch (e) {
       const err = e as PontoError;
@@ -379,7 +440,7 @@ export function usePontoPublico(
           pin: candidate,
         });
         setPin(candidate);
-        setState(data);
+        setState(normalizeState(data));
         setError(null);
         setPinLock(null);
       } catch (e) {
@@ -436,7 +497,7 @@ export function usePontoPublico(
       }
 
       try {
-        return await callEdge<{ success: true; type: PunchType; recorded_at: string }>({
+        const result = await callEdge<RegisterPunchResult>({
           action: "register_punch",
           ...JSON.parse(identityKey),
           ...(pin ? { pin } : {}),
@@ -448,6 +509,29 @@ export function usePontoPublico(
           photo_base64,
           device_info: { userAgent: navigator.userAgent, platform: navigator.platform },
         });
+
+        // Repinta os botões com o estado que o BANCO devolveu (calculado dentro
+        // do SECURITY DEFINER, que enxerga inclusive batida de quiosque). Não
+        // recalculamos da lista local: ela pode estar incompleta. O refetch da
+        // tela vem depois e só confirma.
+        const actions = sanitizeActions(result.allowed_actions);
+        if (actions && actions.length > 0) {
+          setState((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  today: [
+                    ...prev.today,
+                    { type: result.type, recorded_at: result.recorded_at },
+                  ],
+                  allowed_actions: actions,
+                  next_action: actions[0] ?? null,
+                }
+              : prev,
+          );
+        }
+
+        return result;
       } catch (e) {
         const err = e as PontoError;
         // PIN recusado NA HORA DA BATIDA (o admin trocou/cadastrou o PIN no meio

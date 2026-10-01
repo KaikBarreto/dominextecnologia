@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.12',
+    date: '1 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais de uma jornada no mesmo dia',
+        description: 'O funcionário pode encerrar a jornada e começar outra no mesmo dia, quantas vezes precisar. Serve para quem volta à noite para um chamado de emergência ou cumpre plantão. Também ficou possível registrar a saída sem passar pelo intervalo, que era obrigatório antes e não fazia sentido num atendimento curto de madrugada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Jornada que vira a noite conta no dia certo',
+        description: 'Quem entra às 23h e sai à 1h da manhã tem todas as horas somadas no dia em que começou a trabalhar, e não divididas entre dois dias. O dia seguinte começa limpo, sem bloquear a batida e sem o saldo negativo que aparecia antes. Em Configurações do Ponto dá para escolher até que hora da madrugada a batida ainda conta para o dia anterior.',
+        category: 'recurso',
+      },
+      {
+        title: 'Histórico e relatório mostram cada jornada',
+        description: 'O dia com mais de uma jornada passa a exibir quantas foram, e o detalhe do dia separa cada uma com o próprio total de horas. A saída que caiu depois da meia-noite aparece marcada, para não parecer erro de digitação. A planilha exportada ganhou uma coluna com o número de jornadas do dia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tablet da recepção acompanha o plantão',
+        description: 'Na lista do tablet, quem está no meio de uma jornada que virou a noite aparece como trabalhando, em vez de constar como se não tivesse batido ponto.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.11',
     date: '30 de setembro de 2026',
     type: 'patch',

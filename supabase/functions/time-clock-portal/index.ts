@@ -28,6 +28,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  allowedActionsFrom,
+  dayStatusFromLastType,
+  type DayStatus,
   deriveDayStatus,
   looksLikeKioskBody,
   nextActionFrom,
@@ -63,12 +66,16 @@ const corsHeaders = {
 //  2) Teto persistente por FUNCIONÁRIO/dia contado em time_records (à prova de
 //     reset de isolate). É por funcionário, nunca por slug do quiosque: senão a
 //     20ª batida do dia travaria a empresa inteira.
-//  3) Validação de `type` contra `next_action` recalculado server-side: por
-//     construção já barra bater fora de ordem e duplicar a mesma ação.
-//     ESTE é o controle de integridade real do ponto. O limite por IP mora na
-//     memória do isolate, some no cold start e não é compartilhado entre
-//     isolates — é um teto "mais ou menos" e nunca pode ser citado como razão
-//     pra relaxar qualquer outra checagem.
+//  3) Validação de `type` contra a LISTA `allowed_actions` recalculada
+//     server-side: por construção barra bater fora de ordem e duplicar a mesma
+//     ação, e ao mesmo tempo permite a saída sem intervalo e a 2ª jornada do
+//     dia (antes comparava com o `next_action` singular, que barrava as duas).
+//     A checagem aqui existe pra recusar ANTES do upload da selfie; a FONTE DA
+//     VERDADE contra corrida é a RPC `register_time_punch_service`, que
+//     revalida dentro da transação. O limite por IP mora na memória do isolate,
+//     some no cold start e não é compartilhado entre isolates — é um teto "mais
+//     ou menos" e nunca pode ser citado como razão pra relaxar qualquer outra
+//     checagem.
 const ipHits = new Map<string, { count: number; resetAt: number }>();
 const IP_MAX = 120; // requests por janela
 const IP_WINDOW_MS = 60 * 1000; // 1 minuto
@@ -525,6 +532,11 @@ Deno.serve(async (req) => {
       // ORDEM IMPORTA: o dia só pode ser calculado DEPOIS de company_settings,
       // porque quem decide qual dia é hoje é o fuso da empresa. Calcular antes
       // era o que chumbava UTC-3.
+      //
+      // Este "dia do relógio" NÃO manda mais no status da lista (quem manda é
+      // o dia de JORNADA que vem de `kiosk_punch_states`). Ele sobrevive como
+      // rede de segurança do caminho degradado, logo abaixo. O relógio e a data
+      // do cabeçalho do tablet saem de `company.timezone`, que vai no payload.
       const todayDate = todayInTz(company.timezone);
 
       // Quem aparece: empresa do slug + ponto habilitado + não arquivado.
@@ -548,24 +560,69 @@ Deno.serve(async (req) => {
       >;
       const employeeIds = employeeList.map((e) => e.id);
 
-      // Batidas de hoje de TODO o time numa consulta só (sem N+1). Só
-      // employee_id + type: o payload não carrega horário, endereço, selfie nem
-      // id de registro — publicar isso seria publicar o horário e o lugar de
-      // cada pessoa do time. Só o `status` agregado sai.
-      const typesByEmployee = new Map<string, string[]>();
+      // Estado de ponto de TODO o time numa chamada só (sem N+1), pelo dia da
+      // JORNADA — não pelo dia do relógio.
+      //
+      // ⚠️ É AQUI que o tablet mentia: a consulta antiga filtrava
+      // `.eq("date", todayDate)`, então à 01:00 quem estava no meio de um
+      // plantão que virou a noite (batida gravada no dia ANTERIOR, pela regra
+      // de `resolve_punch_day`) aparecia como "não bateu hoje" na lista,
+      // enquanto a tela individual dele mostrava tudo certo. `kiosk_punch_states`
+      // resolve o dia de jornada de cada pessoa com a MESMA função que a tela
+      // individual usa, então lista e detalhe não podem mais divergir.
+      //
+      // Continua saindo só o `status` agregado: a RPC devolve `punch_date` e
+      // `allowed_actions`, e NENHUM dos dois entra no payload. Horário, lugar,
+      // selfie e id de registro seguem fora (allowlist do quiosque).
+      const statusByEmployee = new Map<string, DayStatus>();
       let photos: (string | null)[] = [];
       if (employeeIds.length > 0) {
-        const { data: dayRecords } = await supabase
-          .from("time_records")
-          .select("employee_id, type")
-          .eq("company_id", companyId)
-          .eq("date", todayDate)
-          .in("employee_id", employeeIds);
-        for (const r of dayRecords ?? []) {
-          const id = r.employee_id as string;
-          const list = typesByEmployee.get(id) ?? [];
-          list.push(r.type as string);
-          typesByEmployee.set(id, list);
+        const { data: punchStates, error: punchStatesError } = await supabase
+          .rpc("kiosk_punch_states", {
+            p_company_id: companyId,
+            p_employee_ids: employeeIds,
+          });
+
+        if (punchStatesError) {
+          // supabase-js NÃO lança em erro de RPC — sem este `if`, `punchStates`
+          // viria null e o tablet inteiro apareceria "não bateu ninguém".
+          // Degradação deliberada: volta pro comportamento antigo (dia do
+          // relógio). A lista pode mentir na madrugada, mas o quiosque continua
+          // batendo ponto — ficar sem registrar é pior do que um crachá errado.
+          // Loga só o sqlstate: a mensagem pode carregar valor de parâmetro.
+          console.error(
+            "[time-clock-portal] kiosk_punch_states falhou, caindo pro dia do relógio. sqlstate:",
+            punchStatesError.code ?? "unknown",
+          );
+          // ⚠️ `.order("recorded_at")` é OBRIGATÓRIO neste caminho:
+          // `deriveDayStatus` decide pelo ÚLTIMO evento. Sem a ordem, quem
+          // fechou a 1ª jornada e voltou pra uma 2ª apareceria como "Jornada
+          // concluída". `recorded_at` NÃO entra no payload, só ordena.
+          const { data: dayRecords } = await supabase
+            .from("time_records")
+            .select("employee_id, type")
+            .eq("company_id", companyId)
+            .eq("date", todayDate)
+            .eq("is_valid", true)
+            .in("employee_id", employeeIds)
+            .order("recorded_at", { ascending: true });
+          const typesByEmployee = new Map<string, string[]>();
+          for (const r of dayRecords ?? []) {
+            const id = r.employee_id as string;
+            const list = typesByEmployee.get(id) ?? [];
+            list.push(r.type as string);
+            typesByEmployee.set(id, list);
+          }
+          for (const [id, types] of typesByEmployee) {
+            statusByEmployee.set(id, deriveDayStatus(types));
+          }
+        } else {
+          for (const st of punchStates ?? []) {
+            statusByEmployee.set(
+              st.employee_id as string,
+              dayStatusFromLastType(st.last_type as string | null),
+            );
+          }
         }
 
         // Lote derivado EXCLUSIVAMENTE do array já filtrado por company_id.
@@ -590,7 +647,9 @@ Deno.serve(async (req) => {
             // Sempre signed URL curta, nunca o valor cru da coluna nem o path do
             // Storage. Sem foto (ou falha ao assinar) → null.
             photo_url: photos[i] ?? null,
-            status: deriveDayStatus(typesByEmployee.get(e.id) ?? []),
+            // Funcionário sem linha na RPC (ou sem batida no dia de jornada)
+            // é "não bateu": ausência de estado nunca pode virar outro status.
+            status: statusByEmployee.get(e.id) ?? "not_started",
             // A Dominex não tem employee_absences. A chave fica no contrato,
             // fixa em null, pra tela e hook nascerem com o formato final.
             absence_label: null,
@@ -869,8 +928,8 @@ Deno.serve(async (req) => {
 
       // Ainda não digitou → 200 com o cartão da pessoa e a marca da empresa
       // (a tela de PIN é white-label e monta a marca do PAYLOAD, inline).
-      // `settings`, `today` e `next_action` saem VAZIOS: sem PIN correto não
-      // existe histórico nem próxima ação pra mostrar.
+      // `settings`, `today`, `allowed_actions` e `next_action` saem VAZIOS: sem
+      // PIN correto não existe histórico nem próxima ação pra mostrar.
       return jsonResponse(
         {
           pin_required: true,
@@ -878,6 +937,7 @@ Deno.serve(async (req) => {
           company: await loadBranding(),
           settings: null,
           today: [],
+          allowed_actions: [],
           next_action: null,
         },
         200,
@@ -966,10 +1026,45 @@ Deno.serve(async (req) => {
     // resolvido só aqui, depois de o branding (que já traz o `timezone`) estar
     // disponível. Fica DEPOIS do gate de PIN de propósito: quem erra o PIN
     // continua sendo recusado sem nenhuma leitura extra.
-    const todayDate = todayInTz((await loadBranding()).timezone);
+    const clockDate = todayInTz((await loadBranding()).timezone);
 
-    // Registros de hoje (no fuso da empresa) ordenados: base do next_action e
-    // do teto por dia.
+    // DIA DA JORNADA, não dia do calendário.
+    //
+    // `resolve_punch_day` devolve o dia ANTERIOR quando há jornada aberta lá, é
+    // madrugada (antes de `time_settings.overnight_until`) e a jornada tem
+    // menos de 16h — regra da Portaria 671/2021, implementada uma vez só no
+    // banco (migration 20260930150000_ponto_multiplas_jornadas.sql).
+    //
+    // É ESTE ponto que faz a tela da madrugada mostrar a jornada aberta em vez
+    // de "você ainda não bateu o ponto hoje": quem entrou 23:00 e abre a tela
+    // 01:00 precisa ver a jornada de ONTEM, com a saída disponível.
+    //
+    // supabase-js NÃO lança em erro de RPC — checar `error`. Fallback pro dia do
+    // relógio (comportamento de antes) pra que uma falha na função nunca deixe
+    // o funcionário sem bater ponto.
+    const { data: resolvedDay, error: resolveError } = await supabase.rpc(
+      "resolve_punch_day",
+      {
+        p_company_id: companyId,
+        p_employee_id: employee.id,
+        p_at: new Date().toISOString(),
+      },
+    );
+    if (resolveError) {
+      console.error(
+        "[time-clock-portal] resolve_punch_day failed, sqlstate:",
+        resolveError.code ?? "unknown",
+      );
+    }
+    const todayDate = typeof resolvedDay === "string" && resolvedDay
+      ? resolvedDay
+      : clockDate;
+
+    // Registros do DIA DA JORNADA, ordenados: base do allowed_actions e do teto
+    // por dia.
+    // `is_valid = true` espelha o filtro de `public.allowed_punch_actions`: sem
+    // ele, uma batida invalidada pelo gestor faria a edge calcular um estado
+    // diferente do da RPC e recusar (409) uma ação que o banco aceitaria.
     // NÃO seleciona address: o link é compartilhável (anônimo) e a localização do
     // funcionário não pode vazar no payload público (LGPD). A batida continua
     // gravando lat/long/address no register_punch (evidência pro admin autenticado).
@@ -978,9 +1073,14 @@ Deno.serve(async (req) => {
       .select("type, recorded_at")
       .eq("employee_id", employee.id)
       .eq("date", todayDate)
+      .eq("is_valid", true)
       .order("recorded_at", { ascending: true });
 
     const records = todayRecords ?? [];
+    // `allowedActions` é a LISTA (permite saída sem intervalo e 2ª jornada);
+    // `nextAction` é só o primeiro item, mantido no payload pra bundle velho em
+    // cache de PWA continuar funcionando.
+    const allowedActions = allowedActionsFrom(records.map((r) => r.type as string));
     const nextAction = nextActionFrom(records.map((r) => r.type as string));
 
     // Branding white-label seguro: allowlist explícita de company_settings.
@@ -1051,6 +1151,13 @@ Deno.serve(async (req) => {
           type: r.type,
           recorded_at: r.recorded_at,
         })),
+        // Contrato novo: a LISTA de ações permitidas. Duas ações (ex.:
+        // ["break_start","clock_out"]) = a tela mostra dois botões.
+        allowed_actions: allowedActions,
+        // Contrato ANTIGO, mantido de propósito: bundle velho em cache de PWA
+        // lê só este campo. Depois da saída ele volta a ser "clock_in" (jornada
+        // nova), então a tela velha continua batendo ponto — só não oferece a
+        // segunda opção. Por isso a edge pode subir antes do frontend.
         next_action: nextAction,
       });
     }
@@ -1069,9 +1176,15 @@ Deno.serve(async (req) => {
         ? body.face_proof
         : null;
 
-      // Anti-duplicado/corrida: o type precisa ser EXATAMENTE o next_action
-      // recalculado server-side. Barra "bater entrada 2x" e qualquer ordem fora.
-      if (!type || type !== nextAction) {
+      // Anti-duplicado/ordem: o type precisa estar na LISTA de ações permitidas
+      // recalculada server-side. Barra "bater entrada 2x" e qualquer ordem fora,
+      // MAS permite a saída sem intervalo e a 2ª jornada (a regra antiga comparava
+      // com o `next_action` singular e por isso barrava as duas).
+      //
+      // DEFESA EM PROFUNDIDADE: esta checagem fica aqui pra recusar ANTES do
+      // upload da selfie (que é caro). A fonte da verdade contra corrida é a
+      // RPC `register_time_punch_service`, que revalida dentro da transação.
+      if (!type || !(allowedActions as readonly string[]).includes(type)) {
         return jsonResponse(
           { error: "Esta ação não está disponível agora. Recarregue a página e tente novamente." },
           409,
@@ -1180,44 +1293,76 @@ Deno.serve(async (req) => {
         }
       }
 
+      // UMA chamada só: a RPC resolve o dia da batida, revalida a ordem, insere
+      // e recomputa o espelho — tudo na MESMA transação. Antes eram um insert +
+      // um `recompute_time_sheet` "best-effort", e o `date` era montado aqui
+      // (era isso que partia a jornada noturna em duas datas).
+      //
+      // ⚠️ NÃO mandamos `date`: quem decide o dia é `resolve_punch_day`, dentro
+      // da RPC. O `todayDate` calculado acima serve só pro path da selfie e pro
+      // estado exibido na tela.
       const recordedAt = new Date().toISOString();
-      const { error: insertError } = await supabase
-        .from("time_records")
-        .insert({
-          company_id: companyId,
-          user_id: null,
-          employee_id: employee.id,
-          date: todayDate,
-          type,
-          recorded_at: recordedAt,
-          latitude,
-          longitude,
-          address,
-          photo_url: photoPath,
-          device_info: deviceInfo,
-          source: "link_publico",
-          is_valid: true,
-          face_match: faceMatch,
-          face_score: faceScore,
-          face_model_version: faceModelVersion,
-        });
+      const { data: punchResult, error: punchError } = await supabase.rpc(
+        "register_time_punch_service",
+        {
+          p_company_id: companyId,
+          p_employee_id: employee.id,
+          p_type: type,
+          p_recorded_at: recordedAt,
+          // Batida de link público/quiosque não tem usuário autenticado.
+          p_user_id: null,
+          p_latitude: latitude,
+          p_longitude: longitude,
+          p_address: address,
+          // PATH do Storage (bucket time-photos é privado), nunca URL.
+          p_photo_url: photoPath,
+          p_device_info: deviceInfo,
+          p_source: "link_publico",
+          p_face_match: faceMatch,
+          p_face_score: faceScore,
+          p_face_model_version: faceModelVersion,
+        },
+      );
 
-      if (insertError) {
-        console.error("[time-clock-portal] insert error:", insertError.message);
+      // supabase-js NÃO lança em erro de RPC: o erro vem no retorno. Um
+      // try/catch aqui daria falso saudável e a batida sumiria em silêncio.
+      if (punchError) {
+        const msg = punchError.message ?? "";
+        // A RPC revalida a ordem dentro da transação (é ela que vence a corrida
+        // de dois toques simultâneos). Mesmo 409, mesma copy do gate acima.
+        if (msg.includes("punch_out_of_order")) {
+          return jsonResponse(
+            { error: "Esta ação não está disponível agora. Recarregue a página e tente novamente." },
+            409,
+          );
+        }
+        console.error(
+          "[time-clock-portal] register_time_punch_service failed, sqlstate:",
+          punchError.code ?? "unknown",
+          msg,
+        );
         return jsonResponse({ error: "Falha ao registrar o ponto." }, 500);
       }
 
-      // Recalcula o espelho do dia (best-effort — o registro já está gravado).
-      const { error: rpcError } = await supabase.rpc("recompute_time_sheet", {
-        p_company_id: companyId,
-        p_employee_id: employee.id,
-        p_date: todayDate,
-      });
-      if (rpcError) {
-        console.error("[time-clock-portal] recompute error:", rpcError.message);
-      }
+      // Estado JÁ ATUALIZADO, calculado dentro do SECURITY DEFINER (que enxerga
+      // tudo). A tela repinta os botões sem uma segunda ida ao servidor.
+      const resultObj = punchResult && typeof punchResult === "object"
+        ? punchResult as Record<string, unknown>
+        : {};
+      const actionsAfter = Array.isArray(resultObj.allowed_actions)
+        ? resultObj.allowed_actions as string[]
+        : allowedActionsFrom([...records.map((r) => r.type as string), type]);
 
-      return jsonResponse({ success: true, type, recorded_at: recordedAt });
+      return jsonResponse({
+        success: true,
+        type,
+        recorded_at: recordedAt,
+        // Dia a que a batida FOI ATRIBUÍDA (pode ser o dia anterior, na
+        // jornada que cruza a meia-noite).
+        date: typeof resultObj.date === "string" ? resultObj.date : todayDate,
+        allowed_actions: actionsAfter,
+        next_action: actionsAfter[0] ?? null,
+      });
     }
 
     return jsonResponse({ error: "Ação desconhecida." }, 400);
