@@ -76,6 +76,7 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   cobrancas: { en: 'charges', es: 'cobros', fr: 'encaissements' },
   'configuracoes-financeiras': { en: 'financial-settings', es: 'configuracion-financiera', fr: 'parametres-financiers' },
   organograma: { en: 'organogram', es: 'organigrama', fr: 'organigramme' },
+  processos: { en: 'processes', es: 'procesos', fr: 'processus' },
   // 'configuracoes' já está no mapa acima e serve como sub-segmento também
   // (/notas-fiscais/configuracoes → /invoices/settings).
 };
@@ -142,6 +143,11 @@ const ROUTES: AppRouteDef[] = [
   // (editor de um organograma), ambos in-place dentro de Employees.
   { key: 'orgChart', base: '/funcionarios/organograma' },
   { key: 'orgChartDetail', base: '/funcionarios/organograma/:param' },
+  // Processos (Fluxograma) deep-link amigável: espelha o Organograma — a LISTA
+  // (aba processos) e o DETALHE (editor de um processo), ambos in-place dentro
+  // de Employees.
+  { key: 'processes', base: '/funcionarios/processos' },
+  { key: 'processDetail', base: '/funcionarios/processos/:param' },
   { key: 'liveMap', base: '/mapa-ao-vivo' },
   { key: 'technicianArea', base: '/area-tecnico/*' },
   { key: 'billing', base: '/assinatura' },

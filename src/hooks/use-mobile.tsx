@@ -3,7 +3,12 @@ import * as React from "react";
 const MOBILE_BREAKPOINT = 1024;
 const COMPACT_BREAKPOINT = 1024;
 
-function useMediaBreakpoint(breakpoint: number) {
+/**
+ * Breakpoint sob medida. A tela que precisa de um limiar DIFERENTE do shell
+ * (1024) chama este — ex.: o editor de Processos libera edição em tablet a
+ * partir de 768, porque num iPad a pessoa quer editar, não só olhar.
+ */
+export function useMediaBreakpoint(breakpoint: number) {
   // Initial state é síncrono baseado em window — evita o ciclo
   // undefined → false → true que remontava Dialog/Drawer em árvores
   // diferentes (causa do "modal preto" no mobile). SSR-safe via typeof check.

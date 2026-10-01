@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.14',
+    date: '1 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Processos: desenhe como cada rotina da empresa é feita',
+        description: 'Nova aba em Funcionários para montar o passo a passo das rotinas da empresa, como instalação, atendimento de chamado, dedetização ou manutenção preventiva. Você arrasta as etapas na tela, separa por faixas de responsável, marca as decisões com os caminhos de Sim e Não, e registra o prazo e quem executa cada passo. O sistema confere o desenho e avisa quando falta um começo, quando uma etapa não leva a lugar nenhum ou quando um caminho volta para trás e nunca termina.',
+        category: 'recurso',
+      },
+      {
+        title: 'Procedimento em PDF para entregar ao técnico',
+        description: 'Com um clique, o processo desenhado vira um documento pronto, com objetivo, escopo, entradas e saídas, responsáveis, o desenho do fluxo e o passo a passo numerado, dizendo para onde ir em cada decisão. É o documento que o técnico novo consegue seguir sozinho e que cliente corporativo e auditoria costumam pedir. Também dá para exportar só o desenho, como imagem ou PDF, já com o nome do processo no topo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Desfazer e refazer pelo teclado no Organograma',
+        description: 'Agora dá para desfazer com Ctrl+Z, ou Command+Z no Mac, e refazer segurando Shift junto, tanto no Organograma quanto no novo editor de Processos. No Organograma o refazer pelo teclado não funcionava e só respondia ao botão da barra. Enquanto você digita em um campo de texto, o atalho continua desfazendo o que você escreveu, como esperado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.13',
     date: '1 de outubro de 2026',
     type: 'patch',

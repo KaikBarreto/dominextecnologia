@@ -63,6 +63,7 @@ import { domiflix } from './domiflix';
 import { tasks } from './tasks';
 import { discProfile } from './discProfile';
 import { charges } from './charges';
+import { processes } from './processes';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
@@ -88,6 +89,7 @@ function sliceForLocale(locale: LocaleCode) {
     tasks: tasks[locale],
     discProfile: discProfile[locale],
     charges: charges[locale],
+    processes: processes[locale],
     // <dominio>: <dominio>[locale],
   };
 }

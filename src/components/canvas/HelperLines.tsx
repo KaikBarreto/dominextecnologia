@@ -12,7 +12,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useStore } from '@xyflow/react';
-import { HELPER_LINE_COLOR } from './helperLines';
+import { HELPER_LINE_COLOR } from '@/lib/canvas/helperLines';
 
 interface HelperLinesProps {
   /** Coordenada Y em flow-space da linha guia horizontal (undefined = oculta). */

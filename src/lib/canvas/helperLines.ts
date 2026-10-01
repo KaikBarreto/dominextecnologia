@@ -1,5 +1,7 @@
 /**
- * Helper Lines — guias de alinhamento + snap para o canvas do Organograma.
+ * Helper Lines — guias de alinhamento + snap para canvas React Flow.
+ *
+ * COMPARTILHADO entre o Organograma e os Processos (fluxograma).
  *
  * Implementa o padrão oficial do React Flow "Helper Lines":
  *   https://reactflow.dev/examples/interaction/helper-lines
@@ -29,10 +31,22 @@ export interface HelperLinesResult {
   snapPosition: Partial<XYPosition>;
 }
 
-/** Dimensões de um nó (com fallback para os defaults do canvas do Dominex). */
-function nodeRect(node: Node): { x: number; y: number; width: number; height: number } {
-  const w = node.measured?.width ?? (node as { width?: number }).width ?? 220;
-  const h = node.measured?.height ?? (node as { height?: number }).height ?? 92;
+/** Tamanho assumido quando o nó ainda não foi medido pelo React Flow. */
+export interface FallbackNodeSize {
+  width: number;
+  height: number;
+}
+
+/** Fallback do Organograma (card de pessoa). Processos passam o seu. */
+export const DEFAULT_FALLBACK_NODE_SIZE: FallbackNodeSize = { width: 220, height: 92 };
+
+/** Dimensões de um nó. `measured` quase sempre existe; o fallback é só pro 1º frame. */
+function nodeRect(
+  node: Node,
+  fallback: FallbackNodeSize,
+): { x: number; y: number; width: number; height: number } {
+  const w = node.measured?.width ?? (node as { width?: number }).width ?? fallback.width;
+  const h = node.measured?.height ?? (node as { height?: number }).height ?? fallback.height;
   return { x: node.position.x, y: node.position.y, width: w, height: h };
 }
 
@@ -40,13 +54,15 @@ function nodeRect(node: Node): { x: number; y: number; width: number; height: nu
  * Compara o retângulo do nó sendo arrastado com os retângulos de todos os
  * outros nós e encontra (por eixo) o alinhamento mais próximo dentro do limiar.
  *
- * @param change  - O NodeChange do tipo `position` do nó arrastado.
- * @param nodes   - Lista completa de nós do canvas (inclui o nó arrastado).
- * @returns       - Resultado com coordenadas das guias e snap.
+ * @param change   - O NodeChange do tipo `position` do nó arrastado.
+ * @param nodes    - Lista completa de nós do canvas (inclui o nó arrastado).
+ * @param fallback - Tamanho assumido pra nó ainda não medido (default: card de pessoa).
+ * @returns        - Resultado com coordenadas das guias e snap.
  */
 export function getHelperLines(
   change: NodeChange & { type: 'position'; position?: XYPosition },
   nodes: Node[],
+  fallback: FallbackNodeSize = DEFAULT_FALLBACK_NODE_SIZE,
 ): HelperLinesResult {
   const result: HelperLinesResult = {
     horizontal: undefined,
@@ -64,9 +80,9 @@ export function getHelperLines(
 
   // Dimensões do nó arrastado.
   const w =
-    draggingNode.measured?.width ?? (draggingNode as { width?: number }).width ?? 220;
+    draggingNode.measured?.width ?? (draggingNode as { width?: number }).width ?? fallback.width;
   const h =
-    draggingNode.measured?.height ?? (draggingNode as { height?: number }).height ?? 92;
+    draggingNode.measured?.height ?? (draggingNode as { height?: number }).height ?? fallback.height;
 
   // Pontos-chave do retângulo candidato (em coordenadas de flow).
   const cLeft = cx;
@@ -84,7 +100,7 @@ export function getHelperLines(
     // Não compara consigo mesmo.
     if (node.id === (change as { id: string }).id) continue;
 
-    const r = nodeRect(node);
+    const r = nodeRect(node, fallback);
     const nLeft = r.x;
     const nRight = r.x + r.width;
     const nCenterX = r.x + r.width / 2;

@@ -18,9 +18,19 @@ import {
   type EdgeChange,
   type ReactFlowInstance,
 } from '@xyflow/react';
-import { type OrgChartPrefs, useOrgChartPrefs } from './useOrgChartPrefs';
-import { getHelperLines } from './helperLines';
-import { HelperLines } from './HelperLines.tsx';
+import {
+  type CanvasPrefs,
+  CANVAS_PREFS_KEYS,
+  useCanvasPrefs,
+} from '@/lib/canvas/useCanvasPrefs';
+import { getHelperLines } from '@/lib/canvas/helperLines';
+import { useUndoRedoShortcuts } from '@/lib/canvas/useUndoRedoShortcuts';
+import {
+  centerCanvasOnFlowPoint,
+  centerCanvasOnNode,
+  fitCanvasToNodes,
+} from '@/lib/canvas/centerViewport';
+import { HelperLines } from '@/components/canvas/HelperLines';
 import { Plus, Wand2, Loader2, Check, Info, Trash2, StickyNote, Undo2, Redo2, Download, Settings2, Maximize, Minimize } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -143,7 +153,7 @@ interface CanvasInnerProps {
 
 function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmployee, fullscreen, containerReady, spotlight, addBoxSignal, onBack, backLabel, backIcon }: CanvasInnerProps) {
   // Canvas é dono das preferências — persiste via localStorage.
-  const { prefs, setPref } = useOrgChartPrefs();
+  const { prefs, setPref } = useCanvasPrefs(CANVAS_PREFS_KEYS.orgChart);
   const isMobile = useIsMobile();
   const isDark = useIsDark();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
@@ -350,15 +360,16 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     }
     try {
       if (format === 'png') {
-        const { exportOrgChartPng } = await import('@/utils/orgChartExport');
-        await exportOrgChartPng({ element, nodes, isDark, chartName: chart.name });
+        const { exportGraphPng } = await import('@/lib/canvas/graphExport');
+        await exportGraphPng({ element, nodes, isDark, graphName: chart.name, filePrefix: 'organograma' });
       } else {
-        const { exportOrgChartPdf } = await import('@/utils/orgChartExport');
-        await exportOrgChartPdf({
+        const { exportGraphPdf } = await import('@/lib/canvas/graphExport');
+        await exportGraphPdf({
           element,
           nodes,
           isDark,
-          chartName: chart.name,
+          graphName: chart.name,
+          filePrefix: 'organograma',
           hideBranding: whiteLabelEnabled,
         });
       }
@@ -421,215 +432,25 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   // fullscreen do container estável, E dos nós populados. Até lá não monta.
   const canMountFlow = !!wrapperSize && isContainerReady && nodesReady;
 
-  // Centraliza a árvore no container disparando eventos de MOUSE sintéticos
-  // (única coisa que move o viewport neste editor). Lê o transform atual e os
-  // nós direto do DOM (via flowWrapperRef), computa o zoom-alvo (fit com padding,
-  // maxZoom 1) e converge por WHEEL sintético, depois faz o PAN exato por um
-  // arrasto de mouse (mousedown no pane + mousemove/mouseup no window). Se o zoom
-  // sintético não estabilizar, o PAN exato sozinho já tira a árvore do canto.
+  // Centraliza a árvore no container. Toda a mecânica (zoom por WheelEvent e pan
+  // por arrasto de MouseEvent sintético — única coisa que move o viewport neste
+  // editor) vive em @/lib/canvas/centerViewport, compartilhada com os Processos.
   const centerOnTree = useCallback(() => {
-    const wrapper = flowWrapperRef.current;
-    if (!wrapper) return;
-    const pane = wrapper.querySelector('.react-flow__pane');
-    const vpEl = wrapper.querySelector('.react-flow__viewport');
-    if (!pane || !vpEl) return;
-    const rect = wrapper.getBoundingClientRect();
-
-    // transform atual do viewport lido do style inline
-    const parse = () => {
-      const m = (vpEl as HTMLElement).style.transform.match(
-        /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/,
-      );
-      return m ? { x: +m[1], y: +m[2], k: +m[3] } : { x: 0, y: 0, k: 1 };
-    };
-
-    // bounds da árvore em coords de FLOW, lendo os nós do DOM (translate do
-    // transform, dividido pelo zoom atual, + tamanho medido também em flow).
-    const nodeEls = Array.from(wrapper.querySelectorAll('.react-flow__node')) as HTMLElement[];
-    if (!nodeEls.length) return;
-    const kNow = parse().k || 1;
-    const b = nodeEls.reduce(
-      (a, n) => {
-        const mm = n.style.transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-        const x = mm ? +mm[1] : 0;
-        const y = mm ? +mm[2] : 0;
-        const w = n.offsetWidth / kNow;
-        const h = n.offsetHeight / kNow;
-        return {
-          minX: Math.min(a.minX, x),
-          minY: Math.min(a.minY, y),
-          maxX: Math.max(a.maxX, x + w),
-          maxY: Math.max(a.maxY, y + h),
-        };
-      },
-      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
-    );
-    const bw = Math.max(b.maxX - b.minX, 1);
-    const bh = Math.max(b.maxY - b.minY, 1);
-    const cxFlow = (b.minX + b.maxX) / 2;
-    const cyFlow = (b.minY + b.maxY) / 2;
-
-    const cxScr = rect.left + rect.width / 2;
-    const cyScr = rect.top + rect.height / 2;
-
-    // 1) ZOOM alvo (fit com padding, maxZoom 1) via wheel sintético no centro do
-    //    container, convergindo com teto de iterações. Se não convergir limpo,
-    //    o PAN abaixo (recalculado no zoom vigente) ainda centraliza.
-    const pad = 0.15;
-    const targetZoom = Math.min(
-      rect.width / (bw * (1 + 2 * pad)),
-      rect.height / (bh * (1 + 2 * pad)),
-      1,
-    );
-    let guard = 0;
-    while (guard++ < 40 && Math.abs(parse().k - targetZoom) > 0.02) {
-      const cur = parse().k;
-      const deltaY = cur > targetZoom ? 100 : -100; // 100 = zoom out, -100 = zoom in
-      pane.dispatchEvent(
-        new WheelEvent('wheel', {
-          bubbles: true,
-          cancelable: true,
-          view: window,
-          deltaY,
-          clientX: cxScr,
-          clientY: cyScr,
-        }),
-      );
-      // passou do alvo → para (evita oscilar em torno do target)
-      if (Math.sign(parse().k - targetZoom) !== Math.sign(cur - targetZoom)) break;
-    }
-
-    // 2) PAN exato: leva o centro da árvore ao centro do container (recalcula com
-    //    o zoom vigente). Arrasto de mouse: mousedown no pane, mousemove/mouseup
-    //    no window (PointerEvent não funciona aqui; MouseEvent sim).
-    const cur = parse();
-    const treeScrX = cxFlow * cur.k + cur.x;
-    const treeScrY = cyFlow * cur.k + cur.y;
-    const dx = Math.round(rect.width / 2 - treeScrX);
-    const dy = Math.round(rect.height / 2 - treeScrY);
-    if (dx !== 0 || dy !== 0) {
-      const o = (x: number, y: number, buttons = 1): MouseEventInit => ({
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: x,
-        clientY: y,
-        button: 0,
-        buttons,
-      });
-      pane.dispatchEvent(new MouseEvent('mousedown', o(cxScr, cyScr)));
-      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx * 0.5, cyScr + dy * 0.5)));
-      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx, cyScr + dy)));
-      window.dispatchEvent(new MouseEvent('mouseup', o(cxScr + dx, cyScr + dy, 0)));
-    }
+    fitCanvasToNodes(flowWrapperRef.current, { padding: 0.15, maxZoom: 1 });
   }, []);
 
   // ── Centralizar num nó específico (busca pessoa) ─────────────────────────
-  //
-  // Mesmo mecanismo do centerOnTree (arrasto sintético de MouseEvent), mas mira
-  // no nó com o ID informado em vez do centro da árvore inteira.
-  // NUNCA usa setCenter/fitView/setViewport — essas APIs são inertes neste editor.
   const centerOnNode = useCallback((nodeId: string) => {
-    const wrapper = flowWrapperRef.current;
-    if (!wrapper) return;
-    const pane = wrapper.querySelector('.react-flow__pane');
-    const vpEl = wrapper.querySelector('.react-flow__viewport');
-    if (!pane || !vpEl) return;
-    const rect = wrapper.getBoundingClientRect();
-
-    const parse = () => {
-      const m = (vpEl as HTMLElement).style.transform.match(
-        /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/,
-      );
-      return m ? { x: +m[1], y: +m[2], k: +m[3] } : { x: 0, y: 0, k: 1 };
-    };
-
-    // Localiza o elemento DOM do nó alvo via atributo data-id do React Flow.
-    const nodeEl = wrapper.querySelector(
-      `.react-flow__node[data-id="${CSS.escape(nodeId)}"]`,
-    ) as HTMLElement | null;
-    if (!nodeEl) return;
-
-    const mm = nodeEl.style.transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-    if (!mm) return;
-
-    const kNow = parse().k || 1;
-    const nodeFlowX = +mm[1] + (nodeEl.offsetWidth / kNow) / 2;
-    const nodeFlowY = +mm[2] + (nodeEl.offsetHeight / kNow) / 2;
-
-    const cxScr = rect.left + rect.width / 2;
-    const cyScr = rect.top + rect.height / 2;
-
-    // PAN exato para levar o centro do nó ao centro do container.
-    const cur = parse();
-    const nodeScrX = nodeFlowX * cur.k + cur.x;
-    const nodeScrY = nodeFlowY * cur.k + cur.y;
-    const dx = Math.round(rect.width / 2 - nodeScrX);
-    const dy = Math.round(rect.height / 2 - nodeScrY);
-
-    if (dx !== 0 || dy !== 0) {
-      const o = (x: number, y: number, buttons = 1): MouseEventInit => ({
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: x,
-        clientY: y,
-        button: 0,
-        buttons,
-      });
-      pane.dispatchEvent(new MouseEvent('mousedown', o(cxScr, cyScr)));
-      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx * 0.5, cyScr + dy * 0.5)));
-      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx, cyScr + dy)));
-      window.dispatchEvent(new MouseEvent('mouseup', o(cxScr + dx, cyScr + dy, 0)));
-    }
+    centerCanvasOnNode(flowWrapperRef.current, nodeId);
   }, []);
 
   // ── Centralizar num PONTO de flow arbitrário (navegação pelo minimapa) ────
-  //
-  // Generaliza o centerOnNode: dado um ponto (fx, fy) em coords de FLOW, arrasta
-  // o pane por MouseEvent sintético para levar esse ponto ao centro do container.
-  // NUNCA usa setCenter/setViewport (inertes neste editor).
+  // ── Centralizar num PONTO de flow arbitrário (navegação pelo minimapa) ────
+  // Mecânica (arrasto sintético de MouseEvent) vive em @/lib/canvas/centerViewport
+  // — a API de viewport do React Flow é inerte neste editor. Leia o cabeçalho de
+  // lá antes de tentar trocar por setCenter/setViewport.
   const centerOnFlowPoint = useCallback((flowX: number, flowY: number) => {
-    const wrapper = flowWrapperRef.current;
-    if (!wrapper) return;
-    const pane = wrapper.querySelector('.react-flow__pane');
-    const vpEl = wrapper.querySelector('.react-flow__viewport');
-    if (!pane || !vpEl) return;
-    const rect = wrapper.getBoundingClientRect();
-
-    const parse = () => {
-      const m = (vpEl as HTMLElement).style.transform.match(
-        /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/,
-      );
-      return m ? { x: +m[1], y: +m[2], k: +m[3] } : { x: 0, y: 0, k: 1 };
-    };
-
-    const cxScr = rect.left + rect.width / 2;
-    const cyScr = rect.top + rect.height / 2;
-
-    // Posição atual do ponto de flow relativa ao wrapper (mesma base do transform)
-    // e delta pra levá-lo ao centro do container.
-    const cur = parse();
-    const ptScrX = flowX * cur.k + cur.x;
-    const ptScrY = flowY * cur.k + cur.y;
-    const dx = Math.round(rect.width / 2 - ptScrX);
-    const dy = Math.round(rect.height / 2 - ptScrY);
-
-    if (dx !== 0 || dy !== 0) {
-      const o = (x: number, y: number, buttons = 1): MouseEventInit => ({
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: x,
-        clientY: y,
-        button: 0,
-        buttons,
-      });
-      pane.dispatchEvent(new MouseEvent('mousedown', o(cxScr, cyScr)));
-      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx * 0.5, cyScr + dy * 0.5)));
-      window.dispatchEvent(new MouseEvent('mousemove', o(cxScr + dx, cyScr + dy)));
-      window.dispatchEvent(new MouseEvent('mouseup', o(cxScr + dx, cyScr + dy, 0)));
-    }
+    centerCanvasOnFlowPoint(flowWrapperRef.current, flowX, flowY);
   }, []);
 
   // ── Aplicar esmaecimento (spotlight) nos nós e arestas ───────────────────
@@ -1059,33 +880,8 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
   }, [toast, t.fullscreenLabel]);
 
   // Refs estáveis pra o handler de teclado usar sempre a versão mais recente.
-  const undoRef = useRef(undo);
-  const redoRef = useRef(redoFn);
-  useEffect(() => { undoRef.current = undo; }, [undo]);
-  useEffect(() => { redoRef.current = redoFn; }, [redoFn]);
-
-  // ── Atalhos de teclado: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl+Y ────────────
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Não intercepta quando o foco está em input/textarea (não briga com edição).
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return;
-
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && !e.shiftKey && e.key === 'z') {
-        e.preventDefault();
-        undoRef.current();
-      } else if (mod && e.shiftKey && e.key === 'z') {
-        e.preventDefault();
-        redoRef.current();
-      } else if (e.ctrlKey && !e.shiftKey && e.key === 'y') {
-        e.preventDefault();
-        redoRef.current();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  // Desfazer/refazer por teclado — implementação compartilhada com os Processos.
+  useUndoRedoShortcuts({ onUndo: undo, onRedo: redoFn });
 
   const quickAddValue = useMemo(
     () => ({ onQuickAdd: handleQuickAdd, enabled: !isMobile, addLabel: t.toolbar.addNode }),
@@ -1871,8 +1667,8 @@ function CanvasSettingsPanel({
   setPref,
   t,
 }: {
-  prefs: OrgChartPrefs;
-  setPref: <K extends keyof OrgChartPrefs>(key: K, value: OrgChartPrefs[K]) => void;
+  prefs: CanvasPrefs;
+  setPref: <K extends keyof CanvasPrefs>(key: K, value: CanvasPrefs[K]) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;
 }) {
@@ -1892,7 +1688,7 @@ function CanvasSettingsPanel({
         <span className="text-sm text-foreground">{t.backgroundLabel}</span>
         <Select
           value={prefs.background}
-          onValueChange={(v) => setPref('background', v as OrgChartPrefs['background'])}
+          onValueChange={(v) => setPref('background', v as CanvasPrefs['background'])}
         >
           <SelectTrigger className="h-8 w-28 text-xs">
             <SelectValue />

@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { extractShortCode, isUuid, buildEmployeeProfilePath, buildOrgChartPath } from '@/utils/prettyLinks';
+import { extractShortCode, isUuid, buildEmployeeProfilePath, buildOrgChartPath, buildProcessPath } from '@/utils/prettyLinks';
 import { resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
 import { useOrgCharts } from '@/hooks/useOrgCharts';
+import { useProcesses } from '@/hooks/useProcesses';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -11,7 +12,7 @@ import { formatMoney } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import {
   Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
-  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Archive, Brain, Network,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Archive, Brain, Network, Workflow,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/Emp
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeeDiscOverview } from '@/components/employees/EmployeeDiscOverview';
 import { OrgChartTab } from '@/components/employees/orgchart/OrgChartTab';
+import { ProcessesTab } from '@/components/employees/processes/ProcessesTab';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
@@ -123,7 +125,9 @@ export default function Employees() {
   //  • `/funcionarios/perfil/<slug>-<code>`     → aba behavioral + detalhe do funcionário
   //  • `/funcionarios/organograma`              → aba organograma (LISTA)
   //  • `/funcionarios/organograma/<slug>-<code>`→ aba organograma + editor aberto
-  // Como os três compartilham `:param`, distinguimos QUAL rota casou pela KEY
+  //  • `/funcionarios/processos`                → aba processos (LISTA)
+  //  • `/funcionarios/processos/<slug>-<code>`  → aba processos + editor aberto
+  // Como compartilham `:param`, distinguimos QUAL rota casou pela KEY
   // canônica do pathname (resolveAppSlug cobre os 4 idiomas + bookmarks pt-br).
   const { param: routeParam } = useParams<{ param?: string }>();
   const navigate = useNavigate();
@@ -137,9 +141,17 @@ export default function Employees() {
   const profileParam = routeKey === 'employeeProfile' ? routeParam : undefined;
   const isOrgChartRoute = routeKey === 'orgChart' || routeKey === 'orgChartDetail';
   const orgChartParam = routeKey === 'orgChartDetail' ? routeParam : undefined;
+  const isProcessRoute = routeKey === 'processes' || routeKey === 'processDetail';
+  const processParam = routeKey === 'processDetail' ? routeParam : undefined;
 
   const [activeTab, setActiveTab] = useState(
-    profileParam ? 'behavioral' : isOrgChartRoute ? 'organogram' : 'list',
+    profileParam
+      ? 'behavioral'
+      : isOrgChartRoute
+        ? 'organogram'
+        : isProcessRoute
+          ? 'processes'
+          : 'list',
   );
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('az');
@@ -249,15 +261,63 @@ export default function Employees() {
     [orgCharts, navigate],
   );
 
-  // Troca de aba: se sair da behavioral/organograma estando numa URL de deep-link,
-  // limpa a URL (mantém consistência entre aba visível e endereço).
+  // ── Deep-link de Processos (Fluxograma) ─────────────────────────────────────
+  // Espelha o organograma: resolve o processo aberto a partir do `:param`
+  // (rota processDetail). Prioriza o public_short_code do fim do slug; FALLBACK
+  // para UUID puro.
+  const { processes } = useProcesses();
+  const resolvedProcessId = useMemo(() => {
+    if (!processParam) return null;
+    const code = extractShortCode(processParam);
+    if (code) {
+      const byCode = processes.find((p) => p.public_short_code === code);
+      if (byCode) return byCode.id;
+    }
+    // Retrocompat / fallback: link com o UUID cru do processo.
+    if (isUuid(processParam) && processes.some((p) => p.id === processParam)) {
+      return processParam;
+    }
+    return null;
+  }, [processParam, processes]);
+
+  // Numa rota de processo, força a aba processos.
+  useEffect(() => {
+    if (isProcessRoute) setActiveTab('processes');
+  }, [isProcessRoute]);
+
+  // Rota de detalhe com param que não resolveu (código inválido / inexistente):
+  // cai na LISTA (aba processos). Espera os processos carregarem.
+  const processesLoaded = processes.length > 0 || !isProcessRoute;
+  useEffect(() => {
+    if (processParam && processesLoaded && !resolvedProcessId) {
+      navigate('/funcionarios/processos', { replace: true });
+    }
+  }, [processParam, processesLoaded, resolvedProcessId, navigate]);
+
+  // Abre/fecha o editor de um processo navegando (deep-link + histórico).
+  const handleSelectProcess = useCallback(
+    (id: string | null) => {
+      if (!id) {
+        navigate('/funcionarios/processos');
+        return;
+      }
+      const process = processes.find((p) => p.id === id);
+      const code = process?.public_short_code;
+      navigate(code ? buildProcessPath(process!.name, code) : `/funcionarios/processos/${id}`);
+    },
+    [processes, navigate],
+  );
+
+  // Troca de aba: se sair da behavioral/organograma/processos estando numa URL
+  // de deep-link, limpa a URL (mantém consistência entre aba visível e endereço).
   const handleTabChange = useCallback(
     (tab: string) => {
       setActiveTab(tab);
       if (profileParam && tab !== 'behavioral') navigate('/funcionarios');
       else if (isOrgChartRoute && tab !== 'organogram') navigate('/funcionarios');
+      else if (isProcessRoute && tab !== 'processes') navigate('/funcionarios');
     },
-    [profileParam, isOrgChartRoute, navigate],
+    [profileParam, isOrgChartRoute, isProcessRoute, navigate],
   );
 
   // Navega para a URL amigável ao abrir um detalhe; para /funcionarios ao voltar.
@@ -301,9 +361,10 @@ export default function Employees() {
     base.push(
       { value: 'behavioral', label: t.tabs.behavioral, icon: Brain },
       { value: 'organogram', label: t.tabs.organogram, icon: Network },
+      { value: 'processes', label: MESSAGES[locale].app.processes.tabLabel, icon: Workflow },
     );
     return base;
-  }, [canManageTime, t]);
+  }, [canManageTime, t, locale]);
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
@@ -1105,6 +1166,11 @@ export default function Employees() {
           <OrgChartTab
             openChartId={resolvedOrgChartId}
             onSelectChart={handleSelectOrgChart}
+          />
+        ) : activeTab === 'processes' ? (
+          <ProcessesTab
+            openProcessId={resolvedProcessId}
+            onSelectProcess={handleSelectProcess}
           />
         ) : null}
       </SettingsSidebarLayout>

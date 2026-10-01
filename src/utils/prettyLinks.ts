@@ -81,6 +81,20 @@ export function buildOrgChartPath(name: string, shortCode: string): string {
 }
 
 /**
+ * Monta o path amigável de um Processo (Fluxograma):
+ * `/funcionarios/processos/<slug-do-nome>-<public_short_code>`.
+ *
+ * Espelha o organograma: o `public_short_code` é sempre o último segmento
+ * (nunca contém '-'), então `extractShortCode` o recupera mesmo com nome
+ * hifenizado. O path fica canônico em pt-br; a localização de rota
+ * (localizeAppPath) é aplicada por quem navega — este helper só monta a
+ * forma canônica.
+ */
+export function buildProcessPath(name: string, shortCode: string): string {
+  return `/funcionarios/processos/${buildSlugSegment([name], shortCode, "processo")}`;
+}
+
+/**
  * Monta o miolo do path: slug de um ou mais nomes + código curto.
  * Ex.: buildSlugSegment(['Cliente Demo', 'Manutenção Preventiva'], 'a1b2c3d4e5f6')
  *      → 'cliente-demo-manutencao-preventiva-a1b2c3d4e5f6'

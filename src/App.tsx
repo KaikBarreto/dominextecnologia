@@ -759,6 +759,10 @@ const AppRoutes = () => (
          organograma; o DETALHE (/:param) abre o organograma resolvido pelo código. */}
       {localizedAppRoutes('orgChart', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('orgChartDetail', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {/* Processos (Fluxograma) deep-link amigável: mesma tela Employees. A LISTA
+         abre a aba processos; o DETALHE (/:param) abre o processo resolvido pelo código. */}
+      {localizedAppRoutes('processes', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('processDetail', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
 <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       {localizedAppRoutes('liveMap', <PermissionRoute screenKey="screen:tracking"><LiveMap /></PermissionRoute>)}
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas
