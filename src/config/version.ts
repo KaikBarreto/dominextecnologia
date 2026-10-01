@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.14";
+export const APP_VERSION = "1.28.15";
 
-export const VERSION_NOTES = "Chegou a aba Processos, onde você desenha o passo a passo das rotinas da empresa e gera o procedimento em PDF para entregar ao técnico. O desfazer pelo teclado também passou a funcionar no Organograma.";
+export const VERSION_NOTES = "O Certificado de Conformidade do contrato agora pode sair com arte: são 11 modelos, claros e escuros, que já nascem com o logo e as cores da sua empresa, e você vê o resultado na tela antes de gerar.";

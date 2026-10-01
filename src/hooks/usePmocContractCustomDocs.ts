@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
+import type { DocArtConfig } from '@/lib/docArt/types';
 
 /**
  * Leitura/edição dos textos rich-text dos documentos PMOC do contrato (Onda C).
@@ -23,6 +24,15 @@ export interface PmocCustomDocs {
   company_id: string;
   termo_rt_content: string | null;
   certificado_content: string | null;
+  /**
+   * Slug do template visual (arte) do Certificado deste CONTRATO, sobrepondo
+   * o padrão da empresa. `null` = herda o que a empresa configurou em
+   * `company_pmoc_document_templates` (ou texto puro, se a empresa também
+   * não configurou nada). Ver `resolveEffectiveArt` na edge function.
+   */
+  certificado_art_slug: string | null;
+  /** Config da arte deste contrato. `null` junto de `certificado_art_slug: null` = herda da empresa. */
+  certificado_art_config: DocArtConfig | null;
   termo_rt_updated_at: string | null;
   certificado_updated_at: string | null;
   updated_by: string | null;
@@ -141,6 +151,63 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
     },
   });
 
+  /**
+   * Upsert da ARTE do Certificado (slug + config) deste CONTRATO — sobrepõe o
+   * padrão da empresa. `slug: null` + `config: null` volta a HERDAR o que a
+   * empresa tiver configurado (ver `resolveEffectiveArt` na edge function).
+   */
+  async function upsertCertificadoArt(
+    slug: string | null,
+    config: DocArtConfig | null,
+  ): Promise<void> {
+    if (!contractId) throw new Error('Contrato não identificado.');
+    const company_id = await getCurrentUserCompanyId();
+
+    const { error } = await supabase
+      .from('pmoc_contract_documents_custom')
+      .upsert(
+        {
+          contract_id: contractId,
+          company_id,
+          updated_by: (await supabase.auth.getUser()).data.user?.id ?? null,
+          certificado_art_slug: slug,
+          certificado_art_config: config as never,
+        } as never,
+        { onConflict: 'contract_id' },
+      );
+
+    if (error) {
+      const code = (error as { code?: string }).code;
+      if (code === '42P01') {
+        throw new Error('Recurso em deploy. Aguarde a próxima atualização para configurar a arte do certificado.');
+      }
+      throw error;
+    }
+  }
+
+  const saveCertificadoArtMutation = useMutation({
+    mutationFn: ({ slug, config }: { slug: string | null; config: DocArtConfig | null }) =>
+      upsertCertificadoArt(slug, config),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pmoc-contract-custom-docs', contractId] });
+      toast({ title: 'Modelo visual do Certificado salvo!' });
+    },
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao salvar o modelo visual', description: getErrorMessage(err) });
+    },
+  });
+
+  const resetCertificadoArtMutation = useMutation({
+    mutationFn: () => upsertCertificadoArt(null, null),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pmoc-contract-custom-docs', contractId] });
+      toast({ title: 'Modelo visual restaurado ao padrão da empresa' });
+    },
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao restaurar', description: getErrorMessage(err) });
+    },
+  });
+
   return {
     customDocs: query.data ?? null,
     isLoading: query.isLoading,
@@ -149,6 +216,10 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
     saveCertificado: (html: string) => saveCertificadoMutation.mutateAsync(html),
     resetTermoRTToDefault: () => resetTermoRTMutation.mutateAsync(),
     resetCertificadoToDefault: () => resetCertificadoMutation.mutateAsync(),
+    saveCertificadoArt: (slug: string | null, config: DocArtConfig | null) =>
+      saveCertificadoArtMutation.mutateAsync({ slug, config }),
+    resetCertificadoArtToDefault: () => resetCertificadoArtMutation.mutateAsync(),
+    isSavingCertificadoArt: saveCertificadoArtMutation.isPending || resetCertificadoArtMutation.isPending,
     isSaving:
       saveTermoRTMutation.isPending ||
       saveCertificadoMutation.isPending ||

@@ -24,6 +24,10 @@ import {
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
 import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
+import {
+  drawCertificadoArtPage,
+  resolveEffectiveArt,
+} from "../_shared/doc-art/certificado-art.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -283,7 +287,7 @@ Deno.serve(async (req) => {
         // Onda I: + report_header_* pra estilizar o cabeçalho identidade do
         //         tenant no topo do documento.
         .select(
-          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size, timezone",
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, white_label_primary_color, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size, timezone",
         )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
@@ -299,7 +303,7 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null } as { data: null }),
       supabase
         .from("pmoc_contract_documents_custom")
-        .select("certificado_content")
+        .select("certificado_content, certificado_art_slug, certificado_art_config")
         .eq("contract_id", contract.id)
         .eq("company_id", contract.company_id) // filtro defensivo cross-tenant
         .maybeSingle(),
@@ -307,7 +311,9 @@ Deno.serve(async (req) => {
       // não existir). Define o `valid_until` gravado em pmoc_documents.
       supabase
         .from("company_pmoc_document_templates")
-        .select("certificado_validity_months")
+        .select(
+          "certificado_validity_months, certificado_art_slug, certificado_art_config",
+        )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
     ]);
@@ -523,6 +529,22 @@ Deno.serve(async (req) => {
       computeValidUntil(generatedAt, validityMonths, companyTimeZone);
     const validadeLabel = `${validityMonths} ${validityMonths === 1 ? "mês" : "meses"}`;
 
+    // ---- Arte do Certificado (2026-10). O contrato herda a arte da empresa
+    //      quando não definiu a sua. Sem slug em nenhum dos dois, NADA muda:
+    //      o certificado sai no layout de texto puro de sempre.
+    const artRow = customDocs as
+      | { certificado_art_slug?: string | null; certificado_art_config?: unknown }
+      | null;
+    const companyArtRow = docTemplates as
+      | { certificado_art_slug?: string | null; certificado_art_config?: unknown }
+      | null;
+    const effectiveArt = resolveEffectiveArt(
+      artRow?.certificado_art_slug ?? null,
+      artRow?.certificado_art_config ?? null,
+      companyArtRow?.certificado_art_slug ?? null,
+      companyArtRow?.certificado_art_config ?? null,
+    );
+
     const variableContext: PmocVariableContext = {
       "empresa.nome": tenantName,
       "empresa.razao_social": tenantName,
@@ -563,8 +585,11 @@ Deno.serve(async (req) => {
     // Emissão/vencimento mudam por dia → cache gira diariamente (esperado).
     // Remoção do selo (2026-06): bump pra cert_v4 — o selo "Conforme Lei
     // 13.589/2018" saiu do rodapé do Certificado.
+    // Arte (2026-10): bump pra cert_v5. O slug e a config entram no hash —
+    // trocar de arte ou de cor tem que invalidar o PDF guardado, senão o
+    // gestor salva e continua baixando o certificado antigo.
     const hashInput = JSON.stringify({
-      v: "cert_v4",
+      v: "cert_v5",
       tenant: {
         name: tenantName,
         cnpj,
@@ -592,6 +617,10 @@ Deno.serve(async (req) => {
       customer: ctx.customer,
       contract: ctx.contract,
       cert: customDocs?.certificado_content ?? null,
+      art: effectiveArt,
+      art_brand:
+        ((companySettings as unknown as Record<string, unknown>)
+          ?.white_label_primary_color as string | null) ?? null,
       vars: variableContext,
     });
     const contentHash = await sha256Hex(hashInput);
@@ -656,12 +685,33 @@ Deno.serve(async (req) => {
     pdf.setSubject("Certificado de Conformidade — Lei 13.589/2018");
     pdf.setProducer("Dominex");
 
-    const certResult = await drawCertificadoPage(
-      pdf,
-      ctx,
-      customDocs?.certificado_content ?? null,
-      variableContext,
-    );
+    // Com arte configurada, a página inteira é desenhada pelo motor de spec
+    // (e sai em paisagem quando a arte é paisagem). Sem arte, o caminho de
+    // sempre: HTML rich renderizado em A4 retrato.
+    const certResult = effectiveArt
+      ? await drawCertificadoArtPage(pdf, {
+          slug: effectiveArt.slug,
+          config: effectiveArt.config,
+          variables: variableContext,
+          logo:
+            certLogoBytes && certLogoMime
+              ? {
+                  data: certLogoBytes,
+                  format: certLogoMime === "image/png" ? "png" : "jpg",
+                }
+              : null,
+          signatureUrl: ctx.rt.signature_image_url ?? null,
+          // Sem tema salvo, a arte nasce na cor da marca do tenant.
+          brandPrimary:
+            ((companySettings as unknown as Record<string, unknown>)
+              ?.white_label_primary_color as string | null) ?? null,
+        })
+      : await drawCertificadoPage(
+          pdf,
+          ctx,
+          customDocs?.certificado_content ?? null,
+          variableContext,
+        );
 
     const pdfBytes = await pdf.save();
     const pdfSize = pdfBytes.length;

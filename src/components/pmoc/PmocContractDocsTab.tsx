@@ -16,6 +16,7 @@ import {
   EyeOff,
   Globe,
   Table2,
+  Palette,
 } from 'lucide-react';
 import { dateInTz, timeInTz } from '@/lib/timezone';
 import {
@@ -40,6 +41,8 @@ import { cn } from '@/lib/utils';
 
 import { PmocDocEditorDialog } from './PmocDocEditorDialog';
 import { RtSignatureQuickDialog } from './RtSignatureQuickDialog';
+import { CertificadoArtConfigDialog } from './CertificadoArtConfigDialog';
+import { getDocArtTemplate } from '@/lib/docArt/templates';
 import { ContractAttachmentsSection } from '@/components/contracts/ContractAttachmentsSection';
 import {
   usePmocContractCustomDocs,
@@ -282,6 +285,7 @@ function SubDocCard({
   extraActions,
   topRightSlot,
   validityNote,
+  modelNote,
   t,
 }: {
   title: string;
@@ -295,6 +299,8 @@ function SubDocCard({
   topRightSlot?: ReactNode;
   /** Linha opcional de validade ("Válido até DD/MM/AAAA" + selo de status). */
   validityNote?: ReactNode;
+  /** Linha opcional sobre o modelo visual (arte) em uso — só o Certificado usa. */
+  modelNote?: ReactNode;
   t: DocsT;
 }) {
   return (
@@ -321,6 +327,11 @@ function SubDocCard({
       {validityNote && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {validityNote}
+        </div>
+      )}
+      {modelNote && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          {modelNote}
         </div>
       )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -357,7 +368,8 @@ export function PmocContractDocsTab({
   const t = useDocsT();
   // Fuso da EMPRESA (company_settings.timezone). Toda data desta aba, incluindo
   // o selo de validade dos documentos regulatórios, sai no calendário dela.
-  const { timezone } = useAppLocaleContext();
+  const { timezone, locale } = useAppLocaleContext();
+  const tCertArt = MESSAGES[locale].app.pmoc.certArt;
   const {
     customDocs,
     saveTermoRT,
@@ -383,6 +395,7 @@ export function PmocContractDocsTab({
 
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [artWizardOpen, setArtWizardOpen] = useState(false);
 
   // Onda H — templates default NÃO recebem mais ctx: emitem `<span
   // data-pmoc-var>` que vira badge visual no editor. Substituição pelo valor
@@ -409,6 +422,27 @@ export function PmocContractDocsTab({
     () => htmlPreview(certificadoHtml ?? defaultCertificado, 220),
     [certificadoHtml, defaultCertificado],
   );
+
+  // Modelo visual (arte) do Certificado — só pra exibir a dica "Modelo
+  // visual: X" no card. O contrato HERDA o padrão da empresa quando não tem
+  // o seu próprio (`certificado_art_slug: null`); a lógica de edição/
+  // salvamento em si vive dentro do `CertificadoArtConfigDialog`.
+  const certArtOwnSlug = customDocs?.certificado_art_slug ?? null;
+  const certArtCompanySlug = companyTemplates?.certificado_art_slug ?? null;
+  const certArtInherits = certArtOwnSlug === null;
+  const certArtEffectiveSlug = certArtInherits ? certArtCompanySlug : certArtOwnSlug;
+  const certArtEffectiveName = certArtEffectiveSlug
+    ? getDocArtTemplate(certArtEffectiveSlug)?.name ?? certArtEffectiveSlug
+    : null;
+  const certArtModelNote = certArtEffectiveName ? (
+    <>
+      <Palette className="h-3 w-3 shrink-0" aria-hidden="true" />
+      <span>{tCertArt.cardCurrentModel.replace('{model}', certArtEffectiveName)}</span>
+      <Badge variant="outline" className="text-[9px]">
+        {certArtInherits ? tCertArt.cardBadgeInherited : tCertArt.cardBadgeOwn}
+      </Badge>
+    </>
+  ) : null;
 
   const latestDossie = latestByType.dossie_pmoc;
   const latestTrt = latestByType.termo_rt;
@@ -710,6 +744,7 @@ export function PmocContractDocsTab({
                   </>
                 ) : null
               }
+              modelNote={certArtModelNote}
               topRightSlot={
                 <div className="flex items-center gap-1.5">
                   {latestCertificado && (
@@ -722,6 +757,15 @@ export function PmocContractDocsTab({
               }
               extraActions={
                 <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setArtWizardOpen(true)}
+                    className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
+                  >
+                    <Palette className="mr-1 h-3.5 w-3.5" />
+                    {tCertArt.openWizardBtn}
+                  </Button>
                   {latestCertificado?.pdf_storage_path && (
                     <DownloadLatestButton doc={latestCertificado} label={t.certDownloadBtn} />
                   )}
@@ -863,6 +907,16 @@ export function PmocContractDocsTab({
         open={signatureDialogOpen}
         onOpenChange={setSignatureDialogOpen}
         responsibleTechnicianId={responsibleTechnicianId ?? null}
+      />
+
+      {/* Modelo visual (arte) do Certificado — 2026-10. Edita o override
+          deste CONTRATO (herda da empresa quando não tem o seu próprio). */}
+      <CertificadoArtConfigDialog
+        open={artWizardOpen}
+        onOpenChange={setArtWizardOpen}
+        contractId={contractId}
+        responsibleTechnicianId={responsibleTechnicianId}
+        variableContext={variableContext}
       />
     </div>
   );

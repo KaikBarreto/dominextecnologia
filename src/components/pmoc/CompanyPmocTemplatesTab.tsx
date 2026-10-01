@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import {
   FileText,
   FileCheck,
@@ -8,6 +8,7 @@ import {
   RotateCcw,
   CalendarClock,
   Loader2,
+  Palette,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { PmocDocEditorDialog } from './PmocDocEditorDialog';
+import { CertificadoArtConfigDialog } from './CertificadoArtConfigDialog';
 import {
   useCompanyPmocDocTemplates,
   DEFAULT_DOC_VALIDITY_MONTHS,
@@ -63,6 +65,8 @@ function TemplateCard({
   restoreBtn = 'Restaurar texto padrão',
   editBtn = 'Editar texto',
   fallbackPreview = 'Texto padrão do sistema. Toque em "Editar texto" pra personalizar.',
+  /** Ação extra (ex: "Modelo visual") — só o card do Certificado usa. */
+  extraAction,
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
@@ -78,6 +82,7 @@ function TemplateCard({
   restoreBtn?: string;
   editBtn?: string;
   fallbackPreview?: string;
+  extraAction?: ReactNode;
 }) {
   return (
     <div className="flex h-full flex-col gap-3 rounded-2xl bg-background/80 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -122,8 +127,9 @@ function TemplateCard({
         {preview || fallbackPreview}
       </p>
 
-      {/* Ações: restaurar (neutro) + editar (warning/laranja) */}
+      {/* Ações: extra (ex: modelo visual) + restaurar (neutro) + editar (warning/laranja) */}
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {extraAction}
         {edited && (
           <Button
             variant="ghost"
@@ -163,6 +169,7 @@ function num(s: string, fallback: number): number {
 export function CompanyPmocTemplatesTab() {
   const { locale } = useAppLocaleContext();
   const tmpl = MESSAGES[locale].app.pmoc.templates;
+  const tCertArt = MESSAGES[locale].app.pmoc.certArt;
   const {
     templates,
     saveTermoRT,
@@ -175,6 +182,7 @@ export function CompanyPmocTemplatesTab() {
   } = useCompanyPmocDocTemplates();
 
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
+  const [artWizardOpen, setArtWizardOpen] = useState(false);
 
   // Validade (meses) — state string crua; converte só no save via `num`.
   const [termoMonths, setTermoMonths] = useState('');
@@ -256,6 +264,17 @@ export function CompanyPmocTemplatesTab() {
               restoreBtn={tmpl.restoreBtn}
               editBtn={tmpl.editBtn}
               fallbackPreview={tmpl.fallbackPreview}
+              extraAction={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 rounded-xl transition-transform active:scale-[0.97] sm:min-h-[40px]"
+                  onClick={() => setArtWizardOpen(true)}
+                >
+                  <Palette className="mr-1 h-3.5 w-3.5" />
+                  {tCertArt.openWizardBtn}
+                </Button>
+              }
             />
           </div>
         </CardContent>
@@ -336,6 +355,10 @@ export function CompanyPmocTemplatesTab() {
         isSaving={isSaving}
         helperText={tmpl.editorHelperCert}
       />
+
+      {/* Modelo visual (arte) do Certificado — 2026-10. Edita o padrão da
+          EMPRESA (sem contractId); cada contrato herda isto por padrão. */}
+      <CertificadoArtConfigDialog open={artWizardOpen} onOpenChange={setArtWizardOpen} />
     </div>
   );
 }

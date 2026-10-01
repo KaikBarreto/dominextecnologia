@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.15',
+    date: '1 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Certificado de Conformidade com arte, em 11 modelos',
+        description: 'O Certificado de Conformidade do contrato deixou de ser só uma folha branca com texto. Agora você escolhe entre 11 modelos prontos, sete claros e quatro escuros, incluindo dois com cara mais técnica. O certificado já nasce com o logo e as cores da sua empresa, e dá para trocar as cores, subir um logo só para ele e editar cada texto, com as mesmas informações automáticas de sempre, como nome do cliente, CNPJ e responsável técnico.',
+        category: 'recurso',
+      },
+      {
+        title: 'Você vê o certificado antes de gerar',
+        description: 'Ao escolher o modelo, a folha aparece montada na tela e vai mudando conforme você mexe nas cores e nos textos. O que você vê é o que sai no arquivo. Dá para definir um modelo padrão para a empresa inteira e, em um contrato específico, usar outro quando fizer sentido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Contratos que não escolherem arte continuam como estão',
+        description: 'Quem não mexer em nada continua recebendo o certificado exatamente no formato de hoje. A arte só entra depois que você escolher um modelo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.14',
     date: '1 de outubro de 2026',
     type: 'patch',

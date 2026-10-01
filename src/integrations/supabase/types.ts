@@ -1198,6 +1198,8 @@ export type Database = {
       }
       company_pmoc_document_templates: {
         Row: {
+          certificado_art_config: Json | null
+          certificado_art_slug: string | null
           certificado_content: string | null
           certificado_validity_months: number
           company_id: string
@@ -1208,6 +1210,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          certificado_art_config?: Json | null
+          certificado_art_slug?: string | null
           certificado_content?: string | null
           certificado_validity_months?: number
           company_id: string
@@ -1218,6 +1222,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          certificado_art_config?: Json | null
+          certificado_art_slug?: string | null
           certificado_content?: string | null
           certificado_validity_months?: number
           company_id?: string
@@ -7360,6 +7366,8 @@ export type Database = {
       }
       pmoc_contract_documents_custom: {
         Row: {
+          certificado_art_config: Json | null
+          certificado_art_slug: string | null
           certificado_content: string | null
           certificado_updated_at: string | null
           company_id: string
@@ -7370,6 +7378,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          certificado_art_config?: Json | null
+          certificado_art_slug?: string | null
           certificado_content?: string | null
           certificado_updated_at?: string | null
           company_id: string
@@ -7380,6 +7390,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          certificado_art_config?: Json | null
+          certificado_art_slug?: string | null
           certificado_content?: string | null
           certificado_updated_at?: string | null
           company_id?: string

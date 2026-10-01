@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
+import type { DocArtConfig } from '@/lib/docArt/types';
 
 /**
  * Leitura/edição dos MODELOS PADRÃO de documentos PMOC a NÍVEL DE EMPRESA.
@@ -32,6 +33,16 @@ export interface CompanyPmocDocTemplates {
   termo_rt_validity_months: number;
   /** Validade do Certificado em meses (default 12). */
   certificado_validity_months: number;
+  /**
+   * Slug do template visual (arte) do Certificado de Conformidade, padrão da
+   * empresa. `null` = layout texto puro legado (via `certificado_content`).
+   * Catálogo de slugs válidos: `src/lib/docArt/templates/index.ts`
+   * (`DOC_ART_TEMPLATES`) — evite hardcodar slugs específicos fora dali, o
+   * catálogo de artes muda de vez em quando.
+   */
+  certificado_art_slug: string | null;
+  /** Config do template visual (tema, logo, toggles, slots). `null` = default da arte. */
+  certificado_art_config: DocArtConfig | null;
   updated_at: string | null;
   updated_by: string | null;
   created_at: string;
@@ -146,6 +157,50 @@ export function useCompanyPmocDocTemplates() {
     },
   });
 
+  /**
+   * Upsert da ARTE do Certificado (slug + config) padrão da empresa — o
+   * "Certificado de Conformidade com Arte" (2026-10). `slug: null` volta ao
+   * layout texto puro legado (equivalente a "Texto simples" no seletor de
+   * modelo). Mesmo onConflict por `company_id` dos demais campos deste hook.
+   */
+  async function upsertCertificadoArt(
+    slug: string | null,
+    config: DocArtConfig | null,
+  ): Promise<void> {
+    const company_id = await getCurrentUserCompanyId();
+
+    const { error } = await supabase
+      .from('company_pmoc_document_templates')
+      .upsert(
+        {
+          company_id,
+          certificado_art_slug: slug,
+          certificado_art_config: config as never,
+        } as never,
+        { onConflict: 'company_id' },
+      );
+
+    if (error) {
+      const code = (error as { code?: string }).code;
+      if (code === '42P01') {
+        throw new Error('Recurso em deploy. Aguarde a próxima atualização para configurar a arte do certificado.');
+      }
+      throw error;
+    }
+  }
+
+  const saveCertificadoArtMutation = useMutation({
+    mutationFn: ({ slug, config }: { slug: string | null; config: DocArtConfig | null }) =>
+      upsertCertificadoArt(slug, config),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-pmoc-doc-templates'] });
+      toast({ title: 'Modelo visual do Certificado salvo!' });
+    },
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao salvar o modelo visual', description: getErrorMessage(err) });
+    },
+  });
+
   const saveTermoRTMutation = useMutation({
     mutationFn: (html: string) => upsertField('termo_rt', html),
     onSuccess: () => {
@@ -201,6 +256,9 @@ export function useCompanyPmocDocTemplates() {
     saveValidity: (termoMonths: number, certMonths: number) =>
       saveValidityMutation.mutateAsync({ termoMonths, certMonths }),
     isSavingValidity: saveValidityMutation.isPending,
+    saveCertificadoArt: (slug: string | null, config: DocArtConfig | null) =>
+      saveCertificadoArtMutation.mutateAsync({ slug, config }),
+    isSavingCertificadoArt: saveCertificadoArtMutation.isPending,
     isSaving:
       saveTermoRTMutation.isPending ||
       saveCertificadoMutation.isPending ||
