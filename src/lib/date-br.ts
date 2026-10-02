@@ -76,3 +76,29 @@ export function formatBrtDateTime(iso: string | null | undefined): string | null
 
   return `${get('day')}/${get('month')}/${get('year')} às ${get('hour')}:${get('minute')}:${get('second')}`;
 }
+
+/**
+ * Dia de HOJE em Brasília, no formato "yyyy-MM-dd".
+ *
+ * Usa `Intl` com `timeZone: 'America/Sao_Paulo'` em vez de componentes locais do
+ * Date: o CEO e o time operam em fusos diferentes (Europa inclusive), e um
+ * `new Date().getDate()` devolveria o dia da máquina, não o dia de Brasília —
+ * que é a régua do painel Auctus. Espelha a função `public.brt_today()` do
+ * banco, usada na RLS que bloqueia registro retroativo do vendedor.
+ *
+ * ⚠️ Recalcule a cada render em que a data importa: valor guardado em `useState`
+ * fica velho na virada da meia-noite BRT e o front passa a discordar da RLS.
+ */
+export function brtToday(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? '';
+
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}

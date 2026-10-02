@@ -8234,6 +8234,8 @@ export type Database = {
       salespeople: {
         Row: {
           created_at: string
+          daily_goal_contacts: number
+          daily_goal_meetings_scheduled: number
           email: string | null
           id: string
           in_rotation: boolean
@@ -8253,6 +8255,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          daily_goal_contacts?: number
+          daily_goal_meetings_scheduled?: number
           email?: string | null
           id?: string
           in_rotation?: boolean
@@ -8272,6 +8276,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          daily_goal_contacts?: number
+          daily_goal_meetings_scheduled?: number
           email?: string | null
           id?: string
           in_rotation?: boolean
@@ -8329,6 +8335,66 @@ export type Database = {
           },
           {
             foreignKeyName: "salesperson_advances_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople_basic"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salesperson_daily_activity: {
+        Row: {
+          activity_date: string
+          contacts: number
+          created_at: string
+          created_by: string | null
+          id: string
+          meetings_held: number
+          meetings_scheduled: number
+          notes: string | null
+          period: string
+          sales_count: number
+          salesperson_id: string
+          updated_at: string
+        }
+        Insert: {
+          activity_date: string
+          contacts?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meetings_held?: number
+          meetings_scheduled?: number
+          notes?: string | null
+          period: string
+          sales_count?: number
+          salesperson_id: string
+          updated_at?: string
+        }
+        Update: {
+          activity_date?: string
+          contacts?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meetings_held?: number
+          meetings_scheduled?: number
+          notes?: string | null
+          period?: string
+          sales_count?: number
+          salesperson_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesperson_daily_activity_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesperson_daily_activity_salesperson_id_fkey"
             columns: ["salesperson_id"]
             isOneToOne: false
             referencedRelation: "salespeople_basic"
@@ -11298,6 +11364,8 @@ export type Database = {
       }
       salespeople_basic: {
         Row: {
+          daily_goal_contacts: number | null
+          daily_goal_meetings_scheduled: number | null
           email: string | null
           id: string | null
           is_active: boolean | null
@@ -11308,6 +11376,8 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          daily_goal_contacts?: number | null
+          daily_goal_meetings_scheduled?: number | null
           email?: string | null
           id?: string | null
           is_active?: boolean | null
@@ -11318,6 +11388,8 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          daily_goal_contacts?: number | null
+          daily_goal_meetings_scheduled?: number | null
           email?: string | null
           id?: string | null
           is_active?: boolean | null
@@ -11407,6 +11479,7 @@ export type Database = {
       assign_next_lead_salesperson: { Args: never; Returns: string }
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
+      brt_today: { Args: never; Returns: string }
       buscar_guia: {
         Args: {
           p_consulta: string

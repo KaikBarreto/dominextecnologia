@@ -14,6 +14,10 @@ export interface Salesperson {
   phone: string | null;
   salary: number;
   monthly_goal: number;
+  /** Meta DIÁRIA de contatos/prospecções (default do banco: 200). */
+  daily_goal_contacts: number;
+  /** Meta DIÁRIA de reuniões agendadas (default do banco: 5). */
+  daily_goal_meetings_scheduled: number;
   is_active: boolean;
   no_commission: boolean;
   referral_code: string | null;
@@ -33,6 +37,10 @@ export interface SalespersonBasic {
   is_active: boolean | null;
   role: SalespersonRole | null;
   user_id: string | null;
+  /** Metas diárias do diário comercial — não são dado sensível, por isso
+   * entraram na view enxuta junto com o resto. */
+  daily_goal_contacts: number | null;
+  daily_goal_meetings_scheduled: number | null;
 }
 
 export interface SalespersonSale {

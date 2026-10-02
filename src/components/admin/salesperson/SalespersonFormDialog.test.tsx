@@ -27,6 +27,21 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/hooks/useSalespersonData', () => ({
   useSaveSalesperson: () => ({ mutateAsync, isPending: false }),
 }));
+// SalespersonFormDialog agora usa useAdminPermissions (seção "Metas diárias").
+// Mockado com hasMasterAccess: true pra exercitar a seção no teste de DOM;
+// sem o mock, useAdminPermissions chamaria useAuth() sem AuthProvider no ar.
+vi.mock('@/hooks/useAdminPermissions', () => ({
+  useAdminPermissions: () => ({
+    hasMasterAccess: true,
+    hasFullAccess: true,
+    hasScreenAccess: () => true,
+    hasFunctionAccess: () => true,
+    linkedSalespersonId: null,
+    isSalespersonOnly: false,
+    permissions: [],
+    isLoading: false,
+  }),
+}));
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     functions: { invoke: vi.fn().mockResolvedValue({ data: { users: [] }, error: null }) },

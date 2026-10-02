@@ -44,6 +44,8 @@ const salesperson: Salesperson = {
   phone: null,
   salary: 3000,
   monthly_goal: 10,
+  daily_goal_contacts: 200,
+  daily_goal_meetings_scheduled: 5,
   is_active: true,
   no_commission: false,
   referral_code: null,

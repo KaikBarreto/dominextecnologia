@@ -19,13 +19,14 @@ import { SalespersonAdvanceForm } from '@/components/admin/salesperson/Salespers
 import { SalespersonAdvancesList } from '@/components/admin/salesperson/SalespersonAdvancesList';
 import { SalespersonPaymentControl } from '@/components/admin/salesperson/SalespersonPaymentControl';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { SalespersonActivityTab } from '@/components/admin/salesperson/SalespersonActivityTab';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function AdminSalespersonDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { hasFunctionAccess, linkedSalespersonId } = useAdminPermissions();
+  const { hasFunctionAccess, linkedSalespersonId, hasMasterAccess } = useAdminPermissions();
   const canSeeAllSalespeople = hasFunctionAccess('admin_vendedores_ver_todos');
   const isViewingOwnRecord = !!linkedSalespersonId && id === linkedSalespersonId;
   // Vendedor admin restrito (sem ver_todos) só pode ver o próprio registro.
@@ -127,6 +128,7 @@ export default function AdminSalespersonDetail() {
             variant="underline"
             tabs={[
               { value: 'overview', label: 'Visão Geral' },
+              { value: 'activity', label: 'Atividade' },
               { value: 'sales', label: 'Vendas' },
               { value: 'advances', label: 'Vales' },
               { value: 'payment', label: 'Pagamento' },
@@ -135,8 +137,9 @@ export default function AdminSalespersonDetail() {
             onTabChange={setActiveTab}
           />
         ) : (
-          <TabsList variant="underline" className="grid w-full max-w-[600px] grid-cols-4">
+          <TabsList variant="underline" className="grid w-full max-w-[720px] grid-cols-5">
             <TabsTrigger variant="underline" value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger variant="underline" value="activity">Atividade</TabsTrigger>
             <TabsTrigger variant="underline" value="sales">Vendas</TabsTrigger>
             <TabsTrigger variant="underline" value="advances">Vales</TabsTrigger>
             <TabsTrigger variant="underline" value="payment">Pagamento</TabsTrigger>
@@ -145,6 +148,10 @@ export default function AdminSalespersonDetail() {
 
         <TabsContent value="overview" className="space-y-4">
           <SalespersonDetailCharts salesperson={salesperson} allSales={allSales} currentMonthSales={filteredSales} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-4">
+          <SalespersonActivityTab salesperson={salesperson} range={range} isMaster={hasMasterAccess} />
         </TabsContent>
 
         <TabsContent value="sales" className="space-y-4">

@@ -17,6 +17,10 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { phoneMask } from '@/utils/masks';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import {
+  DEFAULT_DAILY_GOAL_CONTACTS, DEFAULT_DAILY_GOAL_MEETINGS_SCHEDULED,
+} from '@/hooks/useSalespersonActivity';
 
 interface Props {
   open: boolean;
@@ -40,12 +44,21 @@ function extractStoragePath(publicUrl: string | null | undefined): string | null
 export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }: Props) {
   const saveMutation = useSaveSalesperson();
   const queryClient = useQueryClient();
+  // Metas diárias (daily_goal_*) só gravam se quem salva for super_admin — a
+  // RLS de UPDATE/INSERT em `salespeople` exige `is_super_admin` (confirmado em
+  // `20260512205543_salespeople_admin_user_access.sql`). Quem abre este dialog
+  // sem ser master (ex.: admin com só `admin_vendedores_ver_todos`) já teria
+  // TODOS os campos barrados no save — não é um problema novo desta seção —
+  // mas escondemos a seção de metas pra não sugerir uma ação que a RLS nega.
+  const { hasMasterAccess } = useAdminPermissions();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     salary: '' as string,
     monthly_goal: '30',
+    daily_goal_contacts: String(DEFAULT_DAILY_GOAL_CONTACTS),
+    daily_goal_meetings_scheduled: String(DEFAULT_DAILY_GOAL_MEETINGS_SCHEDULED),
     is_active: true,
     no_commission: false,
     in_rotation: true,
@@ -81,6 +94,10 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         phone: editingSalesperson.phone || '',
         salary: editingSalesperson.salary != null ? String(editingSalesperson.salary) : '',
         monthly_goal: String(editingSalesperson.monthly_goal ?? 30),
+        daily_goal_contacts: String(editingSalesperson.daily_goal_contacts ?? DEFAULT_DAILY_GOAL_CONTACTS),
+        daily_goal_meetings_scheduled: String(
+          editingSalesperson.daily_goal_meetings_scheduled ?? DEFAULT_DAILY_GOAL_MEETINGS_SCHEDULED,
+        ),
         is_active: editingSalesperson.is_active ?? true,
         no_commission: editingSalesperson.no_commission ?? false,
         in_rotation: (editingSalesperson as any).in_rotation ?? true,
@@ -90,7 +107,12 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
       });
       setPhotoUrl(editingSalesperson.photo_url || null);
     } else {
-      setFormData({ name: '', email: '', phone: '', salary: '', monthly_goal: '30', is_active: true, no_commission: false, in_rotation: true, notes: '', user_id: 'none', role: 'closer' });
+      setFormData({
+        name: '', email: '', phone: '', salary: '', monthly_goal: '30',
+        daily_goal_contacts: String(DEFAULT_DAILY_GOAL_CONTACTS),
+        daily_goal_meetings_scheduled: String(DEFAULT_DAILY_GOAL_MEETINGS_SCHEDULED),
+        is_active: true, no_commission: false, in_rotation: true, notes: '', user_id: 'none', role: 'closer',
+      });
       setPhotoUrl(null);
     }
   }, [editingSalesperson, open]);
@@ -240,6 +262,8 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         phone: formData.phone.trim() || null,
         salary: formData.salary ? Number(formData.salary) : 0,
         monthly_goal: parseInt(formData.monthly_goal, 10) || 0,
+        daily_goal_contacts: parseInt(formData.daily_goal_contacts, 10) || 0,
+        daily_goal_meetings_scheduled: parseInt(formData.daily_goal_meetings_scheduled, 10) || 0,
         is_active: formData.is_active,
         no_commission: formData.no_commission,
         in_rotation: formData.in_rotation,
@@ -356,6 +380,39 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
             <Label htmlFor="sp-goal">Meta Mensal (vendas)</Label>
             <NumericInput id="sp-goal" value={formData.monthly_goal} onValueChange={(v) => setFormData({ ...formData, monthly_goal: v })} />
           </div>
+
+          {/* Metas diárias do diário comercial — só pro master: UPDATE em
+              `salespeople` exige is_super_admin na RLS, e esconder a seção
+              evita sugerir uma ação que o banco vai negar. */}
+          {hasMasterAccess && (
+            <div className="sm:col-span-2 space-y-3 rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Metas diárias (diário comercial)</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Manhã + tarde somadas. Usadas no acompanhamento da aba "Atividade".
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sp-daily-goal-contacts">Contatos / prospecções por dia</Label>
+                  <NumericInput
+                    id="sp-daily-goal-contacts"
+                    value={formData.daily_goal_contacts}
+                    onValueChange={(v) => setFormData({ ...formData, daily_goal_contacts: v })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sp-daily-goal-meetings">Reuniões agendadas por dia</Label>
+                  <NumericInput
+                    id="sp-daily-goal-meetings"
+                    value={formData.daily_goal_meetings_scheduled}
+                    onValueChange={(v) => setFormData({ ...formData, daily_goal_meetings_scheduled: v })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="sm:col-span-2 space-y-2">
             <Label>Tipo</Label>
             <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as 'sdr' | 'closer' })}>

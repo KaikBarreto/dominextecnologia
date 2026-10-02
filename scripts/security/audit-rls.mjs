@@ -21,6 +21,7 @@ export const SENSITIVE_TABLES = new Set([
   'companies',
   'usage_events',
   'self_registration_attempts',
+  'salesperson_daily_activity',
 ]);
 
 function unquoteIdentifier(identifier) {

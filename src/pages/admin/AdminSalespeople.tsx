@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Users, TrendingUp, DollarSign, Target,
-  Pencil, Trash2, Eye,
+  Pencil, Trash2, Eye, BarChart3,
 } from 'lucide-react';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import {
@@ -23,6 +25,7 @@ import { SalespersonFormDialog } from '@/components/admin/salesperson/Salesperso
 import { SalespersonDashboardStats } from '@/components/admin/salesperson/SalespersonDashboardStats';
 import { SalespersonPerformanceTable } from '@/components/admin/salesperson/SalespersonPerformanceTable';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { CommercialActivityTab } from '@/components/admin/salesperson/activity/CommercialActivityTab';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
@@ -41,7 +44,15 @@ export default function AdminSalespeople() {
   const [editing, setEditing] = useState<Salesperson | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  // 'activity' só é um estado alcançável quando `canSeeAll` é true (gatilho
+  // condicional abaixo) — mas o conteúdo da aba também se nega sozinho via
+  // `enabled` do CommercialActivityTab, pra nenhum estado residual vazar o
+  // espelho de todos os vendedores pra quem perdeu a permissão em runtime.
+  const [activeTab, setActiveTab] = useState('vendedores');
 
+  // `hasFunctionAccess` já devolve `true` pra master (ver useAdminPermissions),
+  // então esta variável única cobre a regra do briefing
+  // `hasMasterAccess || hasFunctionAccess('admin_vendedores_ver_todos')`.
   const canSeeAll = hasFunctionAccess('admin_vendedores_ver_todos');
 
   // Vendedor restrito → redireciona para a própria página de detalhes
@@ -135,42 +146,13 @@ export default function AdminSalespeople() {
   const openNew = () => { setEditing(null); setIsFormOpen(true); };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Conteúdo da aba "Vendedores" — EXATAMENTE o que a página já renderizava
+  // antes das abas existirem (comportamento 100% preservado, só relocado pra
+  // uma variável porque agora é reusado dentro de <TabsContent> quando há
+  // abas, e sozinho quando não há).
   // ---------------------------------------------------------------------------
-  return (
-    <div
-      className={cn(
-        'container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-6 min-w-0 w-full max-w-full overflow-x-hidden',
-        isMobile && 'pb-24',
-      )}
-    >
-      <MobilePageHeader
-        title="Vendedores"
-        subtitle={
-          isMobile
-            ? 'Equipe comercial Auctus'
-            : 'Dashboard de controle gerencial da equipe comercial'
-        }
-        icon={Users}
-        actions={
-          isMobile ? undefined : (
-            <div className="flex flex-wrap items-center gap-2">
-              <DateRangeFilter
-                value={range}
-                preset={preset}
-                onPresetChange={setPreset}
-                onRangeChange={setRange}
-              />
-              {canSeeAll && (
-                <Button onClick={openNew} className="gap-2">
-                  <Plus className="h-4 w-4" /> Novo Vendedor
-                </Button>
-              )}
-            </div>
-          )
-        }
-      />
-
+  const vendedoresTabContent = (
+    <>
       {isMobile ? (
         // ---------------------------------------------------------------------
         // MOBILE: header compacto + carrossel de stats + busca + lista nativa
@@ -350,9 +332,92 @@ export default function AdminSalespeople() {
           )}
         </>
       )}
+    </>
+  );
 
-      {/* FAB mobile-only — desktop usa botão inline no header. */}
-      {isMobile && canSeeAll && (
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+  return (
+    <div
+      className={cn(
+        'container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-6 min-w-0 w-full max-w-full overflow-x-hidden',
+        isMobile && 'pb-24',
+      )}
+    >
+      <MobilePageHeader
+        title="Vendedores"
+        subtitle={
+          isMobile
+            ? 'Equipe comercial Auctus'
+            : 'Dashboard de controle gerencial da equipe comercial'
+        }
+        icon={Users}
+        actions={
+          isMobile ? undefined : (
+            <div className="flex flex-wrap items-center gap-2">
+              <DateRangeFilter
+                value={range}
+                preset={preset}
+                onPresetChange={setPreset}
+                onRangeChange={setRange}
+              />
+              {canSeeAll && activeTab === 'vendedores' && (
+                <Button onClick={openNew} className="gap-2">
+                  <Plus className="h-4 w-4" /> Novo Vendedor
+                </Button>
+              )}
+            </div>
+          )
+        }
+      />
+
+      {/* Abas só existem pra quem enxerga todos os vendedores — vendedor-only
+          nem chega aqui (redirecionado pro useEffect acima), e um admin sem
+          `admin_vendedores_ver_todos` não ganha uma 2ª aba de "ver todo mundo"
+          escondida atrás de 1 clique. Sem a permissão, a tela volta a ser a
+          mesma coisa de sempre: só a listagem, sem seletor de abas. */}
+      {canSeeAll ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          {isMobile ? (
+            <MobilePillTabs
+              variant="underline"
+              tabs={[
+                { value: 'vendedores', label: 'Vendedores' },
+                { value: 'activity', label: 'Atividade Comercial' },
+              ]}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          ) : (
+            <TabsList variant="underline" className="grid w-full max-w-[420px] grid-cols-2">
+              <TabsTrigger variant="underline" value="vendedores">Vendedores</TabsTrigger>
+              <TabsTrigger variant="underline" value="activity">
+                <BarChart3 className="mr-1.5 h-3.5 w-3.5" /> Atividade Comercial
+              </TabsTrigger>
+            </TabsList>
+          )}
+
+          <TabsContent value="vendedores" className="mt-0 space-y-6">
+            {vendedoresTabContent}
+          </TabsContent>
+
+          <TabsContent value="activity" className="mt-0">
+            <CommercialActivityTab
+              salespeople={salespeople}
+              range={range}
+              enabled={canSeeAll}
+              isMobile={isMobile}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        vendedoresTabContent
+      )}
+
+      {/* FAB mobile-only — desktop usa botão inline no header. Só na aba
+          "Vendedores": na "Atividade Comercial" não existe ação de criar. */}
+      {isMobile && canSeeAll && activeTab === 'vendedores' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label="Vendedor"
