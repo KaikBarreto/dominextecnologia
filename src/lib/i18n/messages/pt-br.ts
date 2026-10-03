@@ -564,7 +564,7 @@ export const ptBr = {
     s6OutroMid: ' ou envie e-mail para ',
     s6OutroPost: '.',
     s7Title: '7. Cookies e Tecnologias de Rastreamento',
-    s7P: 'Utilizamos apenas cookies essenciais para funcionamento da plataforma (autenticação e preferências de sessão). Não utilizamos cookies de rastreamento ou publicidade. A fonte Montserrat é carregada localmente, sem conexão ao Google Fonts.',
+    s7P: 'Dentro da plataforma utilizamos apenas cookies essenciais para o funcionamento (autenticação e preferências de sessão), sem rastreamento publicitário. No site público (páginas de marketing, blog e cadastro) carregamos a tag do Google Ads, que grava cookie de publicidade para medir quantas pessoas chegaram até nós pelos nossos anúncios. Essa tag não é carregada dentro da plataforma: sua navegação como cliente não é compartilhada com o Google. A fonte Montserrat é carregada localmente, sem conexão ao Google Fonts.',
     s8Title: '8. Segurança',
     s8P: 'Adotamos medidas técnicas e organizacionais para proteger seus dados: criptografia TLS em trânsito, controle de acesso por empresa (multi-tenant com RLS no banco), autenticação segura e monitoramento de segurança.',
     s9Title: '9. Alterações nesta Política',

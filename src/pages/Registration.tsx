@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cepMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 import { captureUtmParams, getLeadOriginLabel } from '@/lib/whatsapp';
+import { trackSignupConversion } from '@/lib/gtag';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
@@ -325,6 +326,12 @@ export default function Registration() {
       return result;
     },
     onSuccess: async (_, variables) => {
+      // Conversão do Google Ads (meta "Inscrições"). Disparada AQUI, com a
+      // empresa já criada e ainda na página /cadastro: o redirect pro
+      // /dashboard é client-side (react-router), então o Google nunca veria um
+      // page load pra medir sozinho. Silenciosa e sem await — nunca atrasa nem
+      // quebra o fluxo do cadastro.
+      trackSignupConversion();
       toast({
         title: t.toastSuccess,
         description: isSale ? t.toastRedirectingPayment : t.toastRedirecting,

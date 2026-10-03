@@ -24,8 +24,8 @@ export function CookieBanner() {
       <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex-1 text-sm text-muted-foreground">
           <p>
-            Utilizamos cookies essenciais para o funcionamento da plataforma (autenticação e preferências).
-            Não utilizamos cookies de rastreamento ou publicidade.{' '}
+            Utilizamos cookies essenciais para o funcionamento da plataforma (autenticação e preferências)
+            e, no site público, a tag do Google Ads para medir o resultado dos nossos anúncios.{' '}
             <Link to="/privacidade#cookies" className="text-primary underline">Saiba mais</Link>.
           </p>
         </div>

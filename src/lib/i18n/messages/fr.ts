@@ -750,7 +750,7 @@ export const frOverrides: MessagesOverride = {
     s6OutroMid: ' ou envoyez un e-mail à ',
     s6OutroPost: '.',
     s7Title: '7. Cookies et technologies de suivi',
-    s7P: 'Nous utilisons uniquement des cookies essentiels au fonctionnement de la plateforme (authentification et préférences de session). Nous n’utilisons pas de cookies de suivi ou publicitaires. La police Montserrat est chargée localement, sans connexion à Google Fonts.',
+    s7P: 'Au sein de la plateforme, nous utilisons uniquement des cookies essentiels à son fonctionnement (authentification et préférences de session), sans suivi publicitaire. Sur le site public (pages marketing, blog et inscription), nous chargeons la balise Google Ads, qui dépose un cookie publicitaire afin de mesurer combien de personnes nous ont trouvés via nos annonces. Cette balise n’est pas chargée dans la plateforme : votre navigation en tant que client n’est pas partagée avec Google. La police Montserrat est chargée localement, sans connexion à Google Fonts.',
     s8Title: '8. Sécurité',
     s8P: 'Nous adoptons des mesures techniques et organisationnelles pour protéger vos données : chiffrement TLS en transit, contrôle d’accès par entreprise (multi-tenant avec sécurité au niveau des lignes dans la base de données), authentification sécurisée et surveillance de la sécurité.',
     s9Title: '9. Modifications de cette politique',

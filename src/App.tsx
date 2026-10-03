@@ -77,6 +77,7 @@ import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
 import { isLocaleCode } from "@/lib/i18n";
 import { localizedTemplatesFor } from "@/lib/i18n/appRouteSlugs";
 import { LocaleAutoRedirect } from "@/lib/i18n/LocaleAutoRedirect";
+import { GoogleAdsTag } from "@/components/GoogleAdsTag";
 import { HtmlLangManager } from "@/lib/i18n/HtmlLangManager";
 
 // Pages
@@ -567,6 +568,7 @@ function PublicMarketingLayout() {
   return (
     <>
       <LocaleAutoRedirect />
+      <GoogleAdsTag />
       <Outlet />
     </>
   );
@@ -581,7 +583,12 @@ function LocalizedMarketingLayout() {
   if (!isLocaleCode(lang) || lang === 'pt-br') {
     return <NotFound />;
   }
-  return <Outlet />;
+  return (
+    <>
+      <GoogleAdsTag />
+      <Outlet />
+    </>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

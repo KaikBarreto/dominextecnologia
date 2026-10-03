@@ -749,7 +749,7 @@ export const enOverrides: MessagesOverride = {
     s6OutroMid: ' or send an email to ',
     s6OutroPost: '.',
     s7Title: '7. Cookies and Tracking Technologies',
-    s7P: 'We use only essential cookies for the platform to work (authentication and session preferences). We do not use tracking or advertising cookies. The Montserrat font is loaded locally, with no connection to Google Fonts.',
+    s7P: 'Inside the platform we use only essential cookies for it to work (authentication and session preferences), with no advertising tracking. On our public website (marketing pages, blog and sign-up) we load the Google Ads tag, which sets an advertising cookie to measure how many people reached us through our ads. That tag is not loaded inside the platform: your activity as a customer is not shared with Google. The Montserrat font is loaded locally, with no connection to Google Fonts.',
     s8Title: '8. Security',
     s8P: 'We adopt technical and organizational measures to protect your data: TLS encryption in transit, access control per company (multi-tenant with row-level security in the database), secure authentication and security monitoring.',
     s9Title: '9. Changes to this Policy',
